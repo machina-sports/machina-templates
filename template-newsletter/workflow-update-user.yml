@@ -1,0 +1,30 @@
+workflow:
+  name: "workflow-update-user"
+  title: "Newsletter Update User"
+  description: "This workflow update users newsletter"
+  inputs:
+    user-object: "$.get('user-object')"
+  outputs:
+    empty: "''"
+  tasks:
+    # task-update-user
+    - type: "document"
+      name: "task-update-user"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        user: |
+          {
+            **$.get('user-object', {}),
+            'processing': True
+          }
+      metadata:
+        email: "$.get('user-object').get('email')"
+      outputs:
+        empty: "''"

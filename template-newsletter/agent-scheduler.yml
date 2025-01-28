@@ -1,0 +1,65 @@
+agent:
+  name: "agent-scheduler"
+  title: "Newsletter Scheduler"
+  description: "Agent / scheduler to send recurrent newsletter"
+  context:
+    config-frequency: 60 # 1 minute
+    newsletter-result: {}
+    resume-subjects: []
+    user-selected: {}
+  context-variables:
+    api-football:
+      api_key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    api-mailgun:
+      username: "$TEMP_CONTEXT_VARIABLE_MAILGUN_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+    api-perplexity:
+      basicAuth: "$TEMP_CONTEXT_VARIABLE_PERPLEXITY_API_KEY"
+    sdk-audio:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_AUDIO_API_KEY"
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sdk-serper:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SERPER_API_KEY"
+    sdk-slack-sender:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SLACK_BOT_TOKEN"
+  workflows:
+    - name: "workflow-load-users"
+      description: "Load Newsletter Users"
+      inputs:
+        empty: "''"
+      outputs:
+        user-id: "next(iter($.get('users-list', [])), {}).get('_id', None)"
+        user-registration: "next(iter($.get('users-list', [])), None)"
+        user-selected: "next(iter($.get('users-list', [])), {}).get('value', None)"
+
+    - name: "workflow-update-user"
+      condition: "$.get('user-id') is not None"
+      inputs:
+        user-object: "$.get('user-selected')"
+      outputs:
+        empty: "''"
+
+    - name: "workflow-topic-analysis"
+      description: "Generate subjects resume"
+      condition: "len($.get('user-selected', {}).get('preferences', {}).get('subjects')) > 0"
+      foreach:
+        name: "item"
+        expr: "$.get('key')"
+        value: "[{'name': name, 'key': str(index)} for index, name in enumerate($.get('user-selected', {}).get('preferences', {}).get('subjects', []))]"
+      inputs:
+        thread-id: "$.get('user-selected').get('thread')"
+        user-object: "$.get('user-selected')"
+      outputs:
+        resume-subjects: "$.get('topic-resume')"
+
+    - name: "workflow-topic-review"
+      condition: "len($.get('resume-subjects')) > 0"
+      description: "Generate User Newsletter"
+      inputs:
+        resume-subjects: "$.get('resume-subjects')"
+        thread-id: "$.get('user-selected').get('thread')"
+        user-object: "$.get('user-selected')"
+        user-registration: "$.get('user-registration')"
+      outputs:
+        newsletter-result: "$.get('newsletter-result')"
