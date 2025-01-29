@@ -49,22 +49,6 @@ workflow:
       outputs:
         newsletter-title: "$"
 
-    # notify slack channel (original)
-    - type: "connector"
-      name: "notify slack channel"
-      condition: "$.get('newsletter-result') is not None"
-      connector:
-        name: "sdk-slack-sender"
-        command: "send_slack_message"
-      inputs:
-        channel_id: "'C06MPJJJR7Z'"
-        message: f"{'*:one:'} {$.get('newsletter-title')}*\n\n {str($.get('newsletter-result'))}"
-        slack_emoji: "':genius_bet:'"
-        slack_username: "'Site-Newsletter'"
-        thread-id: "$.get('thread-id')"
-      outputs:
-        send-result: "$"
-
     # prompt-review-transform
     - type: "prompt"
       name: "prompt-transform-simple-html"
@@ -76,6 +60,27 @@ workflow:
         newsletter-translated: "$.get('newsletter-translated')"
       outputs:
         newsletter-parsed: "$"
+
+    # document-save-newsletter
+    - type: "document"
+      name: "document-save-newsletter"
+      config:
+        action: "save"
+        embed-vector: false
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        newsletter: |
+          {
+            'name': $.get('newsletter-title'),
+            'newsletter': $.get('newsletter-parsed')
+          }
+      metadata:
+        email: "$.get('user-object').get('email')"
+      outputs:
+        newsletter: "$"
 
     # send email
     - type: "connector"

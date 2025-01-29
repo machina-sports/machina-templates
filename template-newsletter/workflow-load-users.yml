@@ -15,7 +15,6 @@ workflow:
         action: "search"
         search-vector: false
       filters:
-        status: "'active'"
         value.last-execution: "{'$lte': datetime.utcnow() - timedelta(days=7)}"
         value.processing: "{'$ne': True}"
         value.unsubscribed: "{'$ne': True}"

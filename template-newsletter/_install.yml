@@ -4,7 +4,11 @@ datasets:
   - type: "connector"
     path: "../connector-openai/sdk-openai.yml"
   - type: "connector"
+    path: "../connector-mailgun/api-mailgun.yml"
+  - type: "connector"
     path: "../connector-perplexity/api-perplexity.yml"
+  - type: "connector"
+    path: "../connector-slack/sdk-slack-sender.yml"
 
   # template-newsletter
   - type: "prompts"
@@ -25,8 +29,8 @@ datasets:
     path: "workflow-update-user.yml"
 
   # agents & documents setup
-  # - type: "workflow"
-  #   path: "folders.yml"
+  - type: "workflow"
+    path: "_folders.yml"
   - type: "agent"
     path: "agent-registration.yml"
   - type: "agent"

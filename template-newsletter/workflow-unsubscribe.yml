@@ -7,6 +7,7 @@ workflow:
     email: "$.get('user-object').get('email')"
   outputs:
     empty: "''"
+    workflow-status: "$.get('email') is not None and 'executed' or 'skipped'"
   tasks:
     # task-save-user
     - type: "document"

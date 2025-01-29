@@ -106,7 +106,6 @@ agent:
 
     - name: "workflow-topic-review"
       description: "Generate User Newsletter"
-      condition: "True is False"
       inputs:
         newsletter-title: "'Welcome to your Personalized Sports Newsletter, powered by Machina Sports'"
         resume-athletes: "$.get('resume-athletes')"

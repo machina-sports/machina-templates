@@ -1,0 +1,3 @@
+datasets:
+  - type: "connector"
+    path: "api-mailgun.yml"

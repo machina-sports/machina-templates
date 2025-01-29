@@ -126,18 +126,23 @@ workflow:
       outputs:
         text-resume: "$"
 
-    # notify slack channel
-    - type: "connector"
-      name: "notify slack channel"
-      condition: "$.get('text-resume') is not None"
+    # document-save-snippets
+    - type: "document"
+      name: "document-save-snippets"
+      config:
+        action: "save"
+        embed-vector: false
       connector:
-        name: "sdk-slack-sender"
-        command: "send_slack_message"
-      inputs:
-        channel_id: "'C06MPJJJR7Z'"
-        message: f"{'*:mag_right:'} SEARCH {$.get('search-query')}*\n\n {str($.get('text-resume'))}"
-        slack_emoji: "':genius_bet:'"
-        slack_username: "'Site-Newsletter'"
-        thread-id: "$.get('thread-id')"
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        snippets: |
+          {
+            'name': $.get('topic-name'),
+            'search-query': $.get('search-query'),
+            'search-results': $.get('search-results'),
+            'text-resume': $.get('text-resume')
+          }
       outputs:
-        send-result: "$"
+        snippets: "$"
