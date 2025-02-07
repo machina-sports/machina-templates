@@ -140,7 +140,6 @@ def query_graph(request_data):
             - headers: DB connection info
             - params: Query parameters including:
                 - entity: Entity label to search for
-                - relationship (optional): Relationship type to filter by
                 - limit (optional): Maximum number of results to return
                 
     Returns:
@@ -156,7 +155,6 @@ def query_graph(request_data):
     )
 
     entity = params.get("entity")
-    relationship = params.get("relationship")
     limit = params.get("limit", 100)
 
     result = {
@@ -170,31 +168,17 @@ def query_graph(request_data):
             "message": "Entity parameter is required",
             "data": result
         }
-
-    if relationship:
-        query = """
-        MATCH (n:{entity_label})-[r:{rel_type}]-(related)
-        RETURN DISTINCT 
-            n as source_node,
-            r as relationship,
-            related as target_node
-        LIMIT $limit
-        """.format(
-            entity_label=entity,
-            rel_type=relationship
-        )
-    else:
-        query = """
-        MATCH (n:{entity_label})
-        RETURN DISTINCT 
-            n as source_node,
-        LIMIT $limit
-        """.format(
-            entity_label=entity
-        )
+    
+    print("> entity", entity)
 
     records, summary, keys = db._driver.execute_query(
-        query,
+        """
+        CALL apoc.cypher.run("MATCH (n:" + $entity + ") 
+        RETURN DISTINCT n as source_node", {}) YIELD value
+        RETURN value.source_node as source_node
+        LIMIT $limit
+        """,
+        entity=entity,
         limit=limit,
         database_="neo4j",
     )
@@ -208,29 +192,6 @@ def query_graph(request_data):
         }
         if source_data not in result["entities"]:
             result["entities"].append(source_data)
-        
-        target = record["target_node"]
-        rel = record["relationship"]
-        
-        if target is not None:
-            target_data = {
-                "id": target.element_id,
-                "labels": list(target.labels),
-                "properties": dict(target)
-            }
-            if target_data not in result["entities"]:
-                result["entities"].append(target_data)
-        
-        if rel is not None:
-            rel_data = {
-                "id": rel.element_id,
-                "type": rel.type,
-                "properties": dict(rel),
-                "start_node": rel.start_node.element_id,
-                "end_node": rel.end_node.element_id
-            }
-            if rel_data not in result["relationships"]:
-                result["relationships"].append(rel_data)
 
     return {
         "status": True,
