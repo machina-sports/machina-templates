@@ -1,0 +1,108 @@
+setup:
+  title: "Estelar Bet - Blog"
+  description: AI-powered sports blog with personalized recommendations based on betting history.
+  category:
+    - betting-fantasy
+    - crm-fan-data
+  estimatedTime: 15 minutes
+  features:
+    - Real-time Odds Analysis
+    - Historical Performance
+    - AI Insights
+    - Custom Models
+    - Personalized Recommendations
+    - Betting Pattern Analysis
+    - Risk Profile Assessment
+    - Preference-Based Alerts
+    - Betting History Tracking
+    - Deal Stage Management
+  integrations:
+    - genius-sports
+    - machina-vectordb
+    - machina-ai
+    - hubspot
+  status: available
+  value: template-estelarbet-blog
+  version: 1.0.0
+  
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../connector-openai/sdk-openai.yml"
+  - type: "connector"
+    path: "../connector-perplexity/api-perplexity.yml"
+  - type: "connector"
+    path: "../connector-sportradar/api-sr-soccer-v4.yml"
+  - type: "connector"
+    path: "../connector-stability/sdk-stability.yml"
+  - type: "connector"
+    path: "../connector-storage/sdk-storage.yml"
+
+  # sportradar-soccer-setup
+  - type: "workflow"
+    path: "../sportradar-soccer/workflow-reset-schedule.yml"
+  - type: "workflow"
+    path: "../sportradar-soccer/workflow-sync-competitions.yml"
+  - type: "workflow"
+    path: "../sportradar-soccer/workflow-sync-probabilities.yml"
+  - type: "workflow"
+    path: "../sportradar-soccer/workflow-sync-schedules.yml"
+  - type: "workflow"
+    path: "../sportradar-soccer/workflow-sync-seasons.yml"
+  - type: "workflow"
+    path: "../sportradar-soccer/workflow-sync-standings.yml"
+
+  # reporter-websearch
+  - type: "workflow"
+    path: "../reporter-websearch/workflow-reporter-websearch.yml"
+
+  # reporter-summary
+  - type: "workflow"
+    path: "../reporter-summary/workflow-reporter-summary.yml"
+
+  # reporter-briefing-en
+  - type: "prompts"
+    path: "../reporter-briefing-en/prompt-reporter-briefing-en.yml"
+  - type: "workflow"
+    path: "../reporter-briefing-en/workflow-reporter-briefing-en.yml"
+
+  # reporter-preview-br
+  - type: "prompts"
+    path: "../reporter-preview-br/prompt-reporter-preview-br.yml"
+  - type: "workflow"
+    path: "../reporter-preview-br/workflow-reporter-preview-br.yml"
+
+  # reporter-image
+  - type: "prompts"
+    path: "../reporter-image/prompt-reporter-image.yml"
+  - type: "workflow"
+    path: "../reporter-image/workflow-image-preview.yml"
+
+  # reporter-polls-en
+  - type: "prompts"
+    path: "../reporter-polls-en/prompt-reporter-polls-en.yml"
+  - type: "workflow"
+    path: "../reporter-polls-en/workflow-reporter-polls-en.yml"
+
+  # reporter-quizzes-en
+  - type: "prompts"
+    path: "../reporter-quizzes-en/prompt-reporter-quizzes-en.yml"
+  - type: "workflow"
+    path: "../reporter-quizzes-en/workflow-reporter-quizzes-en.yml"
+
+  # chat-completion
+  - type: "prompts"
+    path: "../chat-completion/prompt-chat-completion.yml"
+  - type: "workflow"
+    path: "../chat-completion/workflow-chat-completion.yml"
+
+  # documents setup
+  - type: "workflow"
+    path: "_folders.yml"
+  - type: "agent"
+    path: "_populate.yml"
+  - type: "agent"
+    path: "../chat-completion/_scheduler.yml"
+  - type: "agent"
+    path: "_scheduler.yml"

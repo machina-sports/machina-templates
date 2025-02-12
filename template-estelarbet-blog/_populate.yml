@@ -1,0 +1,67 @@
+agent:
+  name: template-sportsblog-populate  
+  title: "Populate Sportsblog"
+  description: "Populate Sportsblog"
+  context:
+    config-frequency: 99999999
+  workflows:
+
+    - name: "template-sportsblog-folders"
+      description: "Setup Folders"
+      condition: "$.get('setup-register') is not True"
+      outputs:
+        setup-register: "$.get('setup-register')"
+
+    - name: "workflow-sync-competitions"
+      description: "sync-competitions"
+      condition: "$.get('setup-register') is not True"
+      outputs:
+        sync-competitions-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-seasons"
+      description: "sync-seasons-libertadores"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        competition_id: "'sr:competition:384'"
+      outputs:
+        sync-seasons-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-seasons"
+      description: "sync-seasons-uefa"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        competition_id: "'sr:competition:7'"
+      outputs:
+        sync-seasons-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-standings"
+      description: "sync-standings-libertadores"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        season_id: "'sr:season:127215'"
+      outputs:
+        sync-standings-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-schedules"
+      description: "sync-schedules-libertadores"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        season_id: "'sr:season:127215'"
+      outputs:
+        sync-schedules-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-standings"
+      description: "sync-standings-uefa"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        season_id: "'sr:season:119239'"
+      outputs:
+        sync-standings-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-schedules"
+      description: "sync-schedules-uefa"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        season_id: "'sr:season:119239'"
+      outputs:
+        sync-schedules-status: "$.get('workflow-status', False)"

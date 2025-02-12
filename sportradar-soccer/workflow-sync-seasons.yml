@@ -11,27 +11,6 @@ workflow:
     seasons: "$.get('seasons')"
     workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
   tasks:
-    # task-check-document-timedelta
-    - type: "document"
-      name: "check-document-timedelta"
-      description: "Check if the seasons document has expired."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "sdk-openai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      filters:
-        value.cid: "$.get('competition_id')"
-        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
-        value.status: "'active'"
-      inputs:
-        name: "'seasons'"
-      outputs:
-        documents: "$.get('documents')"
-        should_update: "len($.get('documents')) == 0"
 
     # task-check-document-get-competition
     - type: "document"
@@ -45,7 +24,7 @@ workflow:
         name: "sdk-openai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      condition: "$.get('should_update') == True"
+      condition: "$.get('competition_id') is not None"
       filters:
         value.id: "$.get('competition_id')"
       inputs:
@@ -57,7 +36,7 @@ workflow:
     - type: "connector"
       name: "task-load-seasons"
       description: "Get Seasons from SportRadar"
-      condition: "$.get('should_update') == True and $.get('competition') is not None"
+      condition: "$.get('competition_id') is not None"
       connector:
         name: "api-sr-soccer-v4"
         command: "get-competitions/{competition_id}/seasons.json"
@@ -82,7 +61,7 @@ workflow:
     - type: "document"
       name: "task-update-seasons"
       description: "Update the seasons document."
-      condition: "$.get('should_update') == True and $.get('competition') is not None"
+      condition: "$.get('competition_id') is not None"
       config:
         action: "update"
         embed-vector: false
@@ -108,7 +87,7 @@ workflow:
     - type: "document"
       name: "task-bulk-save-seasons"
       description: "Bulk save the seasons."
-      condition: "$.get('should_update') == True and $.get('competition') is not None"
+      condition: "$.get('competition_id') is not None"
       config:
         action: "bulk-save"
         embed-vector: false
