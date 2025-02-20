@@ -1,0 +1,65 @@
+workflow:
+  name: "workflow-save-user"
+  title: "Newsletter Save User"
+  description: "This workflow register user in newsletter"
+  inputs:
+    user-object: "$.get('user-object')"
+  outputs:
+    user-analysis: "$.get('user-analysis')"
+    user-registration: "$.get('user-registration')"
+    thread-id: "$.get('thread-id')"
+    workflow-status: "$.get('user-object').get('email') is not None and 'executed' or 'skipped'"
+  tasks:
+    # prompt-profile-analysis
+    - type: "prompt"
+      name: "prompt-profile-analysis"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        interests: "$.get('user-object').get('interests')"
+      outputs:
+        user-analysis: "$"
+
+    # notify slack channel
+    - type: "connector"
+      name: "notify slack channel"
+      condition: "$.get('user-object').get('email') is not None"
+      connector:
+        name: "sdk-slack-sender"
+        command: "send_slack_message"
+      inputs:
+        channel_id: "'C06MPJJJR7Z'"
+        message: f"Name {$.get('user-object').get('name')}\n\nEmail {$.get('user-object').get('email')}\n\nInterests {$.get('user-object').get('interests')}\n\nStyle {$.get('user-object').get('style')}\n\nLanguage {$.get('user-object').get('language')}"
+        slack_emoji: "':genius_bet:'"
+        slack_username: "'Site-Newsletter'"
+      outputs:
+        thread-id: "$"
+
+    # task-save-user
+    - type: "document"
+      name: "task-save-user"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        user: |
+          {
+            'name': $.get('user-object').get('name'),
+            'email': $.get('user-object').get('email'),
+            'interests': $.get('user-object').get('interests'),
+            'language': $.get('user-object').get('language'),
+            'preferences': $.get('user-analysis'),
+            'style': $.get('user-object').get('style'),
+            'thread': $.get('thread-id')
+          }
+      metadata:
+        email: "$.get('user-object').get('email')"
+      outputs:
+        user-registration: "$"
