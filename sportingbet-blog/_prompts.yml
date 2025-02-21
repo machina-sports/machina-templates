@@ -224,8 +224,6 @@ prompts:
                 type: "number"
                 description: "The confidence score for the accuracy of the comparison analysis (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
-          minItems: 10
-          maxItems: 10
 
   # reporter-standings
   - type: "prompt"
@@ -253,8 +251,6 @@ prompts:
                 type: "number"
                 description: "The confidence score for the accuracy of the standings analysis (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
-          minItems: 10
-          maxItems: 10
 
   # research-match-odds
   - type: "prompt"
@@ -300,8 +296,6 @@ prompts:
               analysis:
                 type: "string"
                 description: "Detailed analysis explaining the rating, including specific odds, trends, and factors that justify the score"
-          minItems: 6
-          maxItems: 6
         snippets:
           type: "array"
           description: "An array of snippets covering different aspects of the match odds analysis."
@@ -318,28 +312,26 @@ prompts:
                 type: "number"
                 description: "The confidence score for the accuracy of the odds analysis (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
-          minItems: 10
-          maxItems: 10
 
   # research-team-history
   - type: "prompt"
     title: "Research Team History"
     name: "research-team-history"
-    description: |
-      You are creating a comprehensive historical briefing about a sports competition or event.
-      
-      Provide key historical information and notable facts about the topic, including:
-      1. Origin and evolution of the competition
-      2. Most successful teams/athletes
-      3. Memorable moments and iconic matches
-      4. Record holders and significant achievements
-      5. Historical impact and cultural significance
-      6. Interesting traditions and unique features
-      
-      Focus on providing engaging, well-researched facts that capture the essence and history of the competition.
+    description: "This schema defines the structure for generating a historical sports briefing."
     schema:
       title: "ResearchTeamHistory"
-      description: "This schema defines the structure for generating a historical sports briefing."
+      description: |
+        You are creating a comprehensive historical briefing about a sports competition or event.
+        
+        Provide key historical information and notable facts about the topic, including:
+        1. Origin and evolution of the competition
+        2. Most successful teams/athletes
+        3. Memorable moments and iconic matches
+        4. Record holders and significant achievements
+        5. Historical impact and cultural significance
+        6. Interesting traditions and unique features
+        
+        Focus on providing engaging, well-researched facts that capture the essence and history of the competition.
       type: "object"
       properties:
         rating:
@@ -365,8 +357,6 @@ prompts:
               analysis:
                 type: "string"
                 description: "Detailed analysis explaining the rating, including specific examples and historical facts that justify the score"
-          minItems: 6
-          maxItems: 6
         snippets:
           type: "array"
           description: "An array of snippets covering different aspects of the team's history."
@@ -383,8 +373,6 @@ prompts:
                 type: "number"
                 description: "The confidence score for the historical accuracy of the information (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
-          minItems: 10
-          maxItems: 10
 
   # research-team-news
   - type: "prompt"
@@ -419,8 +407,6 @@ prompts:
               analysis:
                 type: "string"
                 description: "Detailed analysis explaining the rating, including specific examples and recent facts that justify the score"
-          minItems: 6
-          maxItems: 6
         snippets:
           type: "array"
           description: "An array of snippets covering different aspects of the team's current news and situation."
@@ -437,8 +423,6 @@ prompts:
                 type: "number"
                 description: "The confidence score for the accuracy of the news information (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
-          minItems: 10
-          maxItems: 10
 
   # verify-selected-fixture
   - type: "prompt"

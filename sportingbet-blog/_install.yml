@@ -21,6 +21,8 @@ datasets:
   - type: "connector"
     path: "../connector-openai/sdk-openai.yml"
   - type: "connector"
+    path: "../connector-google-vertex/sdk-vertex.yml"
+  - type: "connector"
     path: "../connector-perplexity/api-perplexity.yml"
   - type: "connector"
     path: "../connector-sportingbet/api-sportingbet.yml"
@@ -95,7 +97,7 @@ datasets:
   - type: "agent"
     path: "_populate.yml"
 
-  # populate-scheduler
-  - type: "agent"
-    path: "_scheduler.yml"
+  # # populate-scheduler
+  # - type: "agent"
+  #   path: "_scheduler.yml"
 

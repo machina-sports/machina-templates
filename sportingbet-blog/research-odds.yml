@@ -166,9 +166,9 @@ workflow:
       description: "Verify the selected fixture."
       condition: "$.get('event_exists') is True and $.get('selected-fixture-exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         scheduled-item-title: "$.get('title')"
         selected-fixture-title: "$.get('selected-fixture-title')"
@@ -231,9 +231,9 @@ workflow:
       description: "Research match odds."
       condition: "$.get('event_exists') is True and $.get('selected-fixture-exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         title: "$.get('title')"
         markets: "$.get('bulk-markets')"

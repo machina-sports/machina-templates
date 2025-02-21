@@ -7,6 +7,9 @@ workflow:
       enabled: true
     sdk-openai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sdk-vertex:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_CLOUD_API_KEY"
+      credentials: "$TEMP_CONTEXT_VARIABLE_GOOGLE_CLOUD_CREDENTIALS"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -136,12 +139,13 @@ workflow:
       description: "Generate research team history."
       condition: "$.get('event_exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
+        params:
+          question: "What is the history of the team?"
       inputs:
-        title: "$.get('title')"
-        team: "$.get('team_home_name')"
+        team_name: "$.get('team_home_name')"
       outputs:
         research-team-history-home: "$"
         research-team-history-home-bulk: |
@@ -165,12 +169,13 @@ workflow:
       description: "Generate research team history."
       condition: "$.get('event_exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
+        params:
+          question: "What is the history of the team?"
       inputs:
-        title: "$.get('title')"
-        team: "$.get('team_away_name')"
+        team_name: "$.get('team_away_name')"
       outputs:
         research-team-history-away: "$"
         research-team-history-away-bulk: |
