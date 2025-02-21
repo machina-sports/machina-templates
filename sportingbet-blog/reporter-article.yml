@@ -266,9 +266,9 @@ workflow:
       description: "Generate a preview for the upcoming game"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         start_time: "$.get('event_selected').get('start_time')"
         content-snippets: |
@@ -288,9 +288,9 @@ workflow:
       description: "Generate a preview for the upcoming game"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         start_time: "$.get('event_selected').get('start_time')"
         content-snippets: |

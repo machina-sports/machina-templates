@@ -213,9 +213,9 @@ workflow:
       description: "Generate research team news."
       condition: "$.get('event_exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         title: "$.get('title')"
         team: "$.get('team_home_name')"
@@ -243,9 +243,9 @@ workflow:
       description: "Generate research team news."
       condition: "$.get('event_exists') is True"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         title: "$.get('title')"
         team: "$.get('team_away_name')"
