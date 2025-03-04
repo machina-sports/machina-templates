@@ -119,9 +119,9 @@ workflow:
       description: "Reporter standings."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         title: "$.get('title')"
         standings: "$.get('result-standings')"
@@ -210,9 +210,9 @@ workflow:
       description: "Reporter h2h comparison."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sdk-openai"
+        name: "sdk-vertex"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         title: "$.get('title')"
         home-competitor: "$.get('result-home-competitor')"

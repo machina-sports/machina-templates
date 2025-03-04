@@ -3,9 +3,6 @@ connector:
   description: "This connector is the Google Vertex AI SDK connector for text generation and embeddings."
   filename: "sdk-vertex.py"
   filetype: "pyscript"
-  config:
-    project: "prismatic-smoke-433121-j9"
-    location: "us-central1"
   commands:
     - name: "Embedding"
       value: "invoke_embedding"
