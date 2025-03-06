@@ -87,6 +87,14 @@ datasets:
   - type: "agent"
     path: "agent-producer.yml"
 
+  # evaluate-loader
+  - type: "workflow"
+    path: "evaluate-loader.yml"
+
+  # evaluate-process
+  - type: "workflow"
+    path: "evaluate-process.yml"
+
   # mappings
   - type: "mappings"
     path: "_mappings.yml"
@@ -95,11 +103,11 @@ datasets:
   - type: "prompts"
     path: "_prompts.yml"
 
-  # populate-content
-  - type: "agent"
-    path: "_populate.yml"
+  # # populate-content
+  # - type: "agent"
+  #   path: "_populate.yml"
 
-  # populate-scheduler
-  - type: "agent"
-    path: "_scheduler.yml"
+  # # populate-scheduler
+  # - type: "agent"
+  #   path: "_scheduler.yml"
 

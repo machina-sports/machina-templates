@@ -1,0 +1,243 @@
+workflow:
+  name: "workflow-evaluate-process"
+  title: "Workflow Evaluate Process"
+  description: "Workflow to process a document."
+  context-variables:
+    debugger:
+      enabled: true
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['nba-game', 'soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for schedule events (sportradar)."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        # value.start_time: "{'$gt': datetime.utcnow(), '$lt': datetime.utcnow() + timedelta(hours=48)}"
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.article_status: "{'$exists': False}"
+        value.version_control.evaluate_status: "{'$exists': False}"
+        value.version_control.research_odds_status: "'processed'"
+        value.version_control.research_stats_status: "'processed'"
+        # value.version_control.research_news_status: "'processed'"
+        # value.version_control.research_team_status: "'processed'"
+      inputs:
+        name: "{'$in': ['nba-game', 'soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 2 sportradar-nba-mapping
+    - type: "mapping"
+      name: "sportradar-nba-mapping"
+      description: "Transform the sportradar nba data"
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'nba-game'"
+      inputs:
+        event_selected: "$.get('event_selected')"
+      outputs:
+        article_count: "$.get('article_count')"
+        event_code: "$.get('event_code')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 3 sportradar-soccer-mapping
+    - type: "mapping"
+      name: "sportradar-soccer-mapping"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      inputs:
+        event_selected: "$.get('event_selected')"
+      outputs:
+        article_count: "$.get('article_count')"
+        event_code: "$.get('event_code')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 4 version-control-update (schedule)
+    - type: "document"
+      name: "version-control-update-schedule"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'evaluate_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 5 version-control-update (nba-game)
+    - type: "document"
+      name: "version-control-update-nba-game"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'nba-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        nba-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'evaluate_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # Load event documents
+    - type: "document"
+      name: "load-event-documents"
+      description: "Load event documents"
+      config:
+        action: "search"
+        search-vector: false
+      condition: "$.get('event_exists') is True"
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'content-snippet'"
+        search-limit: "'100'"
+      outputs:
+        documents: "$.get('documents')"
+
+    # thread-executor-prompt
+    - type: "prompt"
+      name: "thread-executor-prompt"
+      description: "Thread Executor."
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "sdk-groq"
+        command: "invoke_prompt"
+        model: "llama-3.3-70b-versatile"
+        # model: "deepseek-r1-distill-qwen-32b"
+        # model: "llama-3.1-8b-instant"
+        # model: "llama-3.3-70b-versatile"
+        # model: "deepseek-r1-distill-llama-70b"
+        # model: "deepseek-r1-distill-llama-70b-specdec"
+        #  name: "sdk-openai"
+        #  command: "invoke_prompt"
+        #  model: "gpt-4o"
+      inputs:
+        documents: "$.get('documents')"
+        messages: "$.get('messages')"
+        question: "$.get('question')"
+      outputs:
+        content: "$"
+
+    # # Prompt bet confirmation
+    # - type: "prompt"
+    #   name: "prompt-bet-confirmation"
+    #   description: "Bet Confirmation."
+    #   condition: "$.get('document_id') is not None and $.get('prompt_name') == 'prompt-bet-confirmation'"
+    #   connector:
+    #     name: "sdk-openai"
+    #     command: "invoke_prompt"
+    #     model: "gpt-4o"
+    #   inputs:
+    #     documents: "$.get('documents')"
+    #     messages: "$.get('messages')"
+    #     question: "$.get('question')"
+    #   outputs:
+    #     content: "$"
+
+    # Load thread document
+    - type: "document"
+      name: "load-thread-document"
+      description: "Load thread document"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        _id: "$.get('document_id')"
+      inputs:
+        name: "'thread'"
+      outputs:
+        document_data: "$.get('documents')[0]"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', [])"
+
+    # Update thread document
+    - type: "document"
+      name: "update-thread-document"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data').get('value', {}),
+            'messages': [
+              *$.get('messages'),
+              {
+                'role': 'assistant',
+                'content': $.get('content'),
+                'date': datetime.now().isoformat()
+              }
+            ],
+            'status': $.get('output_status')
+          }
+      filters:
+        document_id: "$.get('document_id')"
