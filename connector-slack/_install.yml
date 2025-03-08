@@ -1,0 +1,3 @@
+datasets:
+  - type: "connector"
+    path: "sdk-slack-sender.yml"
