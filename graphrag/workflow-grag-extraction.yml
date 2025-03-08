@@ -1,0 +1,99 @@
+workflow:
+  name: "workflow-grag-extraction"
+  title: "Graph Rag Extraction"
+  description: "Workflow to produce a knowledge graph information node from a chunk"
+  context-variables:
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event-exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search for events in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        value.sport_event.id: "$.get('event_code')"
+      outputs:
+        event-exists: "len($.get('documents', [])) > 0"
+        event-selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event-title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+
+    # 1 load-event-snippets
+    - type: "document"
+      name: "load-snippets"
+      description: "Search for event snippets in database"
+      condition: "$.get('event-exists') is True"
+      config:
+        action: "search"
+        search-limit: 10
+        search-vector: false
+      filters:
+        name: "'content-snippet'"
+        metadata.event_code: "$.get('event_code')"
+      outputs:
+        snippets: |
+          [
+            f"{d.get('value', {}).get('subject')} - {d.get('value', {}).get('text')}"
+            for d in $.get('documents', [])
+          ]
+
+    # 2 prompt schema questions
+    - type: "prompt"
+      name: "prompt-generate-schema-questions"
+      description: "Generate event context based questions"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        documents: "$.get('snippets')"
+      outputs:
+        questions: "$.get('questions')"
+
+    # 3 prompt schema model
+    - type: "prompt"
+      name: "prompt-generate-schema"
+      description: "Generate entity/relationship schema for event"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        questions: "$.get('questions')"
+        snippets: "$.get('snippets')"
+      outputs:
+        schema: "$"
+
+    # 4 save schema document
+    - type: "document"
+      name: "save_result"
+      description: "Save result in database"
+      config:
+        action: "save"
+        embed-vector: false
+      documents:
+        knowledge-schema: |
+          {
+            'execution': datetime.utcnow(),
+            'event_code': $.get('event_code'), 
+            'event_title': $.get('event-title'), 
+            'name': 'knowledge-schema',
+            'questions': $.get('questions'),
+            'entities': $.get('schema', {}).get('entities', []),
+            'triples': $.get('schema', {}).get('triples', []),
+            'status': 'active',
+            'version_control': {
+              'grag': 1,
+            },
+          }
+          
