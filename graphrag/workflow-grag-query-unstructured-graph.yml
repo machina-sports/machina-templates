@@ -1,0 +1,34 @@
+workflow:
+  name: "workflow-grag-query-unstructured"
+  title: "Graph Rag Query Unstructured"
+  description: "Allow to query an specific knowledge graph with unstructured data."
+  context-variables:
+    neo4j-driver:
+      uri: "neo4j://192.168.88.207:7687"
+      username: "neo4j"
+      password: "sofia-maximum-tape-maestro-story-3965"
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    question: "$.get('question')"
+  outputs:
+    workflow-status: "$.get('event-exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    # 0 Prompt embbeding for user question
+    # 1 Search on DB using KG embbed schemas
+    # 2 Query Neo4j Entity X Relation database using result (similarity + semantic)
+
+    # 2 query graph
+    - type: "connector"
+      name: "query_graph"
+      description: "Query graph"
+      connector:
+        name: "neo4j-driver"
+        command: "query_graph"
+      inputs:
+        entities: "$.get('entities')"
+        relationships: "$.get('relationships')"
+        limit: "$.get('limit')"
+      outputs:
+        records: "$"
+        
