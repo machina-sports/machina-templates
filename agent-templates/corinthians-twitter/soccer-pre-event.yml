@@ -1,0 +1,170 @@
+workflow:
+  name: "soccer-pre-event"
+  title: "Soccer Pre-Event"
+  description: "Workflow to produce pre-event analysis for Corinthians matches."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search Corinthians event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for Corinthians scheduled matches (sportradar)."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(days=2), '$lt': datetime.utcnow() + timedelta(days=2)}"
+        value.version_control.research_pre_event_status: "{'$ne': 'processed'}"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 2 sportradar-soccer-mapping
+    - type: "mapping"
+      name: "sportradar-soccer-mapping"
+      description: "Transform the Corinthians match data with brutal stats insight"
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      inputs:
+        event_selected: "$.get('event_selected')"
+      outputs:
+        event_code: "$.get('event_code')"
+        stats_count: "$.get('research_pre_event_count')"
+        season: "$.get('season')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 3 version-control-update-schedule
+    - type: "document"
+      name: "version-control-update-schedule"
+      description: "Update the Corinthians events document version control."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'research_pre_event_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 4 fetch-event-fun-facts
+    - type: "connector"
+      name: "fetch-event-fun-facts"
+      description: "Get fun facts about a specific sport event from SportRadar"
+      condition: "$.get('event_exists') is True and $.get('season') is not None"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-sport_events/{sport_event_id}/fun_facts.json"
+        command_attribute:
+          sport_event_id: "$.get('event_code')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        result-fun-facts: "$.get('facts')"
+        result-fun-facts-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('statement', ''),
+              'title': f"$.(title) - Fun Facts",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              } 
+            }
+            for c in $.get('facts', [])
+          ]
+
+    # 6 update-snippets - fun-facts
+    - type: "document"
+      name: "update-snippets-fun-facts"
+      condition: "$.get('event_exists') is True"
+      description: "Update Corinthians analysis snippets with viral-worthy stats."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('result-fun-facts-bulk', []),
+          ]
+
+    # 7 version-control-success-schedule
+    - type: "document"
+      name: "version-control-success-schedule"
+      description: "Update the Corinthians events document version control after processing."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'research_pre_event_count': $.get('stats_count', 0) + 1,
+              'research_pre_event_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

@@ -54,6 +54,10 @@ datasets:
   - type: "workflow"
     path: "soccer-embeddings.yml"
 
+  # workflow to generate fun facts
+  - type: "workflow"
+    path: "soccer-pre-event.yml"
+
   # workflow to sync soccer team
   - type: "workflow"
     path: "team-events-sync.yml"

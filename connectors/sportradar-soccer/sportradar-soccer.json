@@ -428,6 +428,55 @@
         }
       }
     },
+    "/sport_events/{sport_event_id}/fun_facts.json": {
+      "get": {
+        "summary": "Get fun facts about a specific sport event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { 
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/seasons/{season_id}/{data_type}": {
       "get": {
         "summary": "Get a season data",
