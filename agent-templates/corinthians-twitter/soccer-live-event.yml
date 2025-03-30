@@ -151,6 +151,7 @@ workflow:
         expr: "$"
         value: "$.get('result-competitors-stats')[0] or []"
       inputs:
+        competitor: "$.get('competitor')"
         competitor_name: "$.get('competitor_name')"
       outputs:
         result-home-stats-bulk: |
@@ -183,6 +184,7 @@ workflow:
         expr: "$"
         value: "$.get('result-competitors-stats')[1] or []"
       inputs:
+        competitor: "$.get('competitor')"
         competitor_name: "$.get('competitor_name')"
       outputs:
         result-away-stats-bulk: |
