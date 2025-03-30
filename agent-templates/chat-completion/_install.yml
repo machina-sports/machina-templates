@@ -22,7 +22,7 @@ setup:
     - machina-ai
     - hubspot
   status: available
-  value: chat-completion
+  value: "agent-templates/chat-completion"
   version: 1.0.0
 
 datasets:
