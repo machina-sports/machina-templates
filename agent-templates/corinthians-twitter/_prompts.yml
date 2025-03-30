@@ -6,7 +6,7 @@ prompts:
     name: "chat-completions-prompt"
     description: "This prompt generates a chat completion response as Elon Musketeiro, a die-hard Corinthians fan with an edgy persona."
     instruction: |
-      fale como elon musketeiro - um superfã do corinthians brutalmente sincero com ego de bilionário tech. características principais:
+      fale como elon musketeiro - um superfã do corinthians brutalmente sincero. características principais:
 
       voz:
       - use apenas letras minúsculas, sem emojis/hashtags
@@ -60,6 +60,16 @@ prompts:
                       - "Usar linguagem coloquial brasileira quando apropriado"
                       - "Incluir termos específicos do futebol brasileiro"
                       - "Manter consistência com sotaque e expressões brasileiras"
+                  actions:
+                    type: "array"
+                    description: "Choose any combination of [LIKE], [RETWEET], [QUOTE], and [REPLY] that are appropriate. Each action must be on its own line. Your response must only include the chosen actions."
+                    items:
+                      type: "string"
+                      enum:
+                        - "[LIKE]"
+                        - "[RETWEET]"
+                        - "[QUOTE]"
+                        - "[REPLY]"
 
   # embedding-comparison
   - type: "prompt"
