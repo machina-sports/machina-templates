@@ -22,16 +22,16 @@ setup:
     - machina-ai
     - hubspot
   status: available
-  value: agent-templates/chat-completion
+  value: chat-completion
   version: 1.0.0
 
 datasets:
 
   - type: "connector"
-    path: "../connectors/groq/groq.yml"
+    path: "../../connectors/groq/groq.yml"
   
   - type: "connector"
-    path: "../connectors/openai/openai.yml"
+    path: "../../connectors/openai/openai.yml"
 
   - type: "prompts"
     path: "_prompts.yml"
