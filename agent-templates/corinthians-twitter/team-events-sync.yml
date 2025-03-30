@@ -1,17 +1,17 @@
 workflow:
-  name: "sync-soccer-team"
-  title: "Sync Corinthians Team"
-  description: "Workflow to sync Corinthians soccer team data with brutal stats insight."
+  name: "team-events-sync"
+  title: "Events Synchronizer"
+  description: "Workflow to sync Corinthians soccer team events with brutal stats insight."
   context-variables:
     debugger:
       enabled: true
     sportradar-soccer:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
-    team_id: "$.get('team_id') or None"
+    team_id: "$.get('team_id', 'sr:competitor:1957')"
   outputs:
     events: "$.get('events')"
-    workflow-status: "len($.get('selected_events', [])) == 0 and 'skipped' or 'executed'"
+    workflow-status: "len([*$.get('not_started_events', []), *$.get('closed_events', [])]) == 0 and 'skipped' or 'executed'"
   tasks:
     
     # task-load-team-events
@@ -28,7 +28,7 @@ workflow:
         api_key: "$.get('api_key')"
       outputs:
         events: "$"
-        selected_events: |
+        not_started_events: |
           [
             {
               **c,
@@ -43,15 +43,38 @@ workflow:
               'title': f"{c.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', '')} {c.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')}: {c.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', '')} - {c.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {c.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}",
             }
             for c in $.get('summaries', [])
-            if c.get('sport_event_status', {}).get('status', '') in ['closed', 'scheduled', 'not_started']
-          ][:10]
-        selected_ids: |
+            if c.get('sport_event_status', {}).get('status', '') in ['not_started']
+          ][-3:]
+        not_started_ids: |
           [
             c.get('sport_event', {}).get('id', '')
             for c in $.get('summaries', [])
-            if c.get('sport_event_status', {}).get('status', '') in ['closed', 'scheduled', 'not_started']
-          ][:10]
-
+            if c.get('sport_event_status', {}).get('status', '') in ['not_started']
+          ][-3:]
+        closed_events: |
+          [
+            {
+              **c,
+              'metadata': {
+                'event_code': c.get('sport_event', {}).get('id', '')
+              },
+              'version_control': {
+                'created': datetime.utcnow(),
+                'status': 'pending'
+              },
+              'start_time': datetime.fromisoformat(c.get('sport_event', {}).get('start_time', '')),
+              'title': f"{c.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', '')} {c.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')}: {c.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', '')} - {c.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {c.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}",
+            }
+            for c in $.get('summaries', [])
+            if c.get('sport_event_status', {}).get('status', '') in ['closed']
+          ][:3]
+        closed_ids: |
+          [
+            c.get('sport_event', {}).get('id', '')  
+            for c in $.get('summaries', [])
+            if c.get('sport_event_status', {}).get('status', '') in ['closed']
+          ][:3]
+        
     # check if events exist
     - type: "document"
       name: "check-if-events-exist"
@@ -60,11 +83,11 @@ workflow:
         action: "search"
         search-limit: 5
         search-vector: false
-      condition: "len($.get('selected_ids', [])) > 0"
+      condition: "len([*$.get('not_started_ids', []), *$.get('closed_ids', [])]) > 0"
       filters:
         metadata.event_code: |
           {
-            '$in': $.get('selected_ids')
+            '$in': [*$.get('not_started_ids', []), *$.get('closed_ids', [])]
           }
       inputs:
         name: "'soccer-game'"
@@ -93,6 +116,6 @@ workflow:
             {
               **c
             }
-            for c in $.get('selected_events', [])
+            for c in [*$.get('not_started_events', []), *$.get('closed_events', [])]
             if c.get('metadata', {}).get('event_code', '')
           ]

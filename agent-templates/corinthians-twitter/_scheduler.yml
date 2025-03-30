@@ -1,6 +1,6 @@
 agent:
-  name: "scheduler-sync"
-  title: "Corinthians Stats Sync Scheduler"
+  name: "statistics-scheduler"
+  title: "Statistics Scheduler"
   description: "Agent responsible for scheduling Corinthians data workflows with brutal stats insight."
   context:
     config-frequency: 0.5
