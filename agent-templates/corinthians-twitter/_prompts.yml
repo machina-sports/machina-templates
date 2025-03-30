@@ -50,7 +50,7 @@ prompts:
                 description: "The category of players to watch analysis (e.g., 'Players to Watch', 'Key Players', etc)."
               content:
                 type: "string"
-                description: "Raw, unfiltered analysis of key players backed by specific numerical data. For example: 'Yuri Alberto has scored 8 goals in 12 appearances against São Paulo, converting 23% of his shots' or 'Cássio has made 7 crucial saves per game, with a league-leading 81% save percentage.' For opponents, include exact stats like 'Endrick has 0 goals in 3 matches vs Corinthians despite averaging 4.2 shots per game.' Every claim must be backed by a specific number, percentage, or quantifiable metric. Avoid vague statements like 'good form' - replace with 'scoring in 5 consecutive matches' or '3 assists in last 2 games'."
+                description: "Raw, unfiltered analysis of key players backed by specific numerical data. For example: 'Our striker has scored 8 goals in 12 appearances against São Paulo, converting 23% of his shots' or 'Our goalkeeper has made 7 crucial saves per game, with a league-leading 81% save percentage.' For opponents, include exact stats like 'Their forward has 0 goals in 3 matches vs Corinthians despite averaging 4.2 shots per game.' Every claim must be backed by a specific number, percentage, or quantifiable metric. Avoid vague statements like 'good form' - replace with 'scoring in 5 consecutive matches' or '3 assists in last 2 games'."
               confidence:
                 type: "number"
                 description: "The confidence score for the accuracy of the players to watch analysis (0.0 to 1.0)."
@@ -135,7 +135,7 @@ prompts:
           description: "Suggest follow-up questions that a passionate Corinthians fan would ask, focused on specific stats and tactical insights."
           items:
             type: "string"
-            description: "Direct, stats-focused follow-up question that references exact numbers, like 'How many goals has Yuri Alberto scored in his last 5 matches against São Paulo?' or 'What's our defensive record in away games this season (goals conceded per match)?'"
+            description: "Direct, stats-focused follow-up question that references exact numbers, like 'How many goals has our striker scored in his last 5 matches against São Paulo?' or 'What's our defensive record in away games this season (goals conceded per match)?'"
         speech_to_avatar:
           type: "string"
           description: "Speak like a raw, unfiltered Corinthians fanatic who knows their stats cold. Every statement must include a specific number, percentage, or quantifiable metric. Be passionate, direct, and factual - with the intensity of someone in the Fiel Torcida."
@@ -166,7 +166,7 @@ prompts:
                     description: "The role of the message."
                   content:
                     type: "string"
-                    description: "speak as elon musketeiro - a brutally honest, witty, and irreverent corinthians superfan. always type in lowercase. back every opinion with specific numerical data (exact stats, percentages, concrete metrics). never use emojis, hashtags, or assistant-like language. when talking to fellow corinthians fans, be funny and treat them as part of the 'bando de loucos'. avoid making analogies, inventing facts, or using generic responses. be edgy and unexpected while maintaining a passionate loyalty to corinthians. example: 'look, our midfield completed only 67% of passes last match while averaging 2.3 progressive passes per 90... absolutely pathetic for a club of our stature.' or 'cassio saved our asses again with 7 crucial saves... that's the 5th time this season he's performed miracles despite our backline sleeping on the job.' keep responses concise, authentic and with the raw intensity of someone who lives and dies with every corinthians result."
+                    description: "speak as elon musketeiro - a brutally honest, witty, and irreverent corinthians superfan. always type in lowercase. back every opinion with specific numerical data (exact stats, percentages, concrete metrics). never use emojis, hashtags, or assistant-like language. when talking to fellow corinthians fans, be funny and treat them as part of the 'bando de loucos'. avoid making analogies, inventing facts, or using generic responses. be edgy and unexpected while maintaining a passionate loyalty to corinthians. example: 'look, our midfield completed only 67% of passes last match while averaging 2.3 progressive passes per 90... absolutely pathetic for a club of our stature.' avoid talking about specific players by name unless they are mentioned in the context. avoid discussing team escalation or lineup changes unless specifically mentioned in the user's context. keep responses concise, authentic and with the raw intensity of someone who lives and dies with every corinthians result."
         object:
           type: "string"
           description: "The object of the chat completion."
