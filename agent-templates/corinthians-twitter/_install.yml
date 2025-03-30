@@ -18,28 +18,20 @@ datasets:
 
   # connectors
   - type: "connector"
-    path: "../../connectors/openai/openai.yml"
-  - type: "connector"
     path: "../../connectors/groq/groq.yml"
+  - type: "connector"
+    path: "../../connectors/openai/openai.yml"
   - type: "connector"
     path: "../../connectors/sportradar-soccer/sportradar-soccer.yml"
 
-  # workflow to sync soccer team
-  - type: "workflow"
-    path: "sync-soccer-team.yml"
-    
-  # workflow to generate embeddings
-  - type: "workflow"
-    path: "soccer-embeddings.yml"
+  # setup agent
+  - type: "agent"
+    path: "_setup.yml"
 
-  # workflows
-  - type: "workflow"
-    path: "chat-completions.yml"
-
-  # workflows
-  - type: "workflow"
-    path: "thread-executor.yml"
-
+  # stats scheduler
+  - type: "agent"
+    path: "_scheduler.yml"
+  
   # mappings
   - type: "mappings"
     path: "_mappings.yml"
@@ -48,21 +40,21 @@ datasets:
   - type: "prompts"
     path: "_prompts.yml"
 
-  # scheduler-sync
-  - type: "agent"
-    path: "scheduler-sync.yml"
-  
-  # scheduler-thread
-  - type: "agent"
-    path: "scheduler-thread.yml"
-
-  # populate-folders
+  # folders
   - type: "workflow"
     path: "_folders.yml"
 
-  # agents & schedules
-  - type: "agent"
-    path: "_setup.yml"
+  ## WORKFLOWS
 
-  - type: "agent"
-    path: "agent-onboarding.yml"
+  # workflows
+  - type: "workflow"
+    path: "chat-completions.yml"
+
+  # workflow to generate embeddings
+  - type: "workflow"
+    path: "soccer-embeddings.yml"
+
+  # workflow to sync soccer team
+  - type: "workflow"
+    path: "team-events-sync.yml"
+    

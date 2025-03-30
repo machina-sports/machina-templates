@@ -1,5 +1,36 @@
 prompts:
-       
+
+  # chat-completions-prompt
+  - type: "prompt"
+    title: "Chat Completions Prompt"
+    name: "chat-completions-prompt"
+    description: "This prompt generates a chat completion response to user questions about Corinthians."
+    schema:
+      title: "ChatCompletions"
+      description: "This schema defines the structure for generating chat completion responses with a die-hard Corinthians fan persona."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          description: "List of chat completion choices with a passionate Corinthians fan voice."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer" 
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "The role of the message."
+                  content:
+                    type: "string"
+                    description: "Brutally honest, stats-driven response from a die-hard Corinthians fan perspective. Keep it direct, factual, and raw while highlighting viral-worthy stats and insights."
+        object:
+          type: "string"
+          description: "The object of the chat completion."
+                 
   # embedding-comparison
   - type: "prompt"
     title: "Embedding Comparison"
@@ -86,7 +117,7 @@ prompts:
             required: ["title", "content", "confidence"]
           minItems: 3
           maxItems: 10
-
+          
   # thread-executor-prompt
   - type: "prompt"
     title: "Thread Executor Prompt"

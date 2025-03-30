@@ -1,6 +1,6 @@
 workflow:
   name: "soccer-embeddings"
-  title: "Corinthians Soccer Embeddings"
+  title: "Soccer Embeddings"
   description: "Workflow to produce brutally honest, stats-driven embeddings for Corinthians matches."
   context-variables:
     debugger:

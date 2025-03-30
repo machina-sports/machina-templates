@@ -1,6 +1,5 @@
 mappings:
 
-
   - type: "mapping"
     title: "Sportradar Soccer Mapping"
     name: "sportradar-soccer-mapping"
