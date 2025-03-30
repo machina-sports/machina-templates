@@ -52,7 +52,7 @@ prompts:
                 description: "The category of comparison analysis (e.g., 'Head-to-Head Comparison', 'Recent Form Comparison', 'Points Gap Comparison', etc)."
               content:
                 type: "string"
-                description: "Brutally direct, raw, unfiltered analysis comparing Corinthians and their opponent. Include hard-hitting stats that reveal the true picture. Language should be factual but with the passion of a die-hard fan. Keep it short, incisive, and to the point."
+                description: "Brutally direct, raw, unfiltered analysis comparing Corinthians and their opponent. Must include specific numerical stats (exact percentages, counts, averages) that reveal the true picture. For example: 'Corinthians dominated with 68% possession vs Santos' 32%' or 'Corinthians outshot Palmeiras 17-8 in their last encounter.' Avoid vague statements like 'Corinthians played well' - replace with concrete stats like 'Corinthians created 2.34 xG vs their average of 1.12.' Keep it short, incisive, and to the point with actual numbers backing every claim."
               confidence:
                 type: "number"
                 description: "The confidence score for the accuracy of the comparison analysis (0.0 to 1.0)."
@@ -81,7 +81,7 @@ prompts:
                 description: "The category of players to watch analysis (e.g., 'Players to Watch', 'Key Players', etc)."
               content:
                 type: "string"
-                description: "Raw, unfiltered analysis of key players with viral-worthy stats. Highlight Corinthians players with straight facts and incisive commentary. For opponents, be brutally honest about their strengths and weaknesses. Keep it short, factual but with the energy of a die-hard fan."
+                description: "Raw, unfiltered analysis of key players backed by specific numerical data. For example: 'Yuri Alberto has scored 8 goals in 12 appearances against São Paulo, converting 23% of his shots' or 'Cássio has made 7 crucial saves per game, with a league-leading 81% save percentage.' For opponents, include exact stats like 'Endrick has 0 goals in 3 matches vs Corinthians despite averaging 4.2 shots per game.' Every claim must be backed by a specific number, percentage, or quantifiable metric. Avoid vague statements like 'good form' - replace with 'scoring in 5 consecutive matches' or '3 assists in last 2 games'."
               confidence:
                 type: "number"
                 description: "The confidence score for the accuracy of the players to watch analysis (0.0 to 1.0)."
@@ -110,11 +110,154 @@ prompts:
                 description: "The category of standings analysis (e.g., league positions comparison, form analysis, points gap, etc)."
               content:
                 type: "string"
-                description: "Deliver hard-hitting, stats-driven analysis about Corinthians' standing. Use viral-worthy stats that other fans might miss. Be brutally honest but with the passion of a true Corinthians supporter. Keep it concise, factual, and cut through the noise with direct insights."
+                description: "Deliver hard-hitting, stats-driven analysis about Corinthians' standing with precise numbers only. For example: 'Corinthians sit 5th with 42 points, just 3 points behind leaders Palmeiras' or 'Corinthians have won 7 of their last 10 matches (70% win rate), scoring 18 goals and conceding only 6.' Include specific point gaps, win percentages, goal differentials with exact numbers. Convert all vague statements like 'good home form' to numerical facts like 'Corinthians have won 8 of 10 home games (80%), scoring 2.3 goals per home match.' Every single claim must be supported by an actual number, percentage, or quantifiable metric."
               confidence:
                 type: "number"
                 description: "The confidence score for the accuracy of the standings analysis (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
           minItems: 3
           maxItems: 10
+          
+  # thread-executor-prompt
+  - type: "prompt"
+    title: "Thread Executor Prompt"
+    name: "thread-executor-prompt" 
+    description: "This prompt generates a contextual response to user questions about Corinthians matches, incorporating relevant betting options and follow-up questions."
+    schema:
+      title: "ThreadExecutor"
+      description: "This schema defines the structure for generating comprehensive responses about Corinthians matches that include match insights, betting suggestions, and conversation continuity."
+      type: "object"
+      properties:
+        question_answer:
+          type: "string"
+          description: "Respond like a die-hard Corinthians fanatic with brutal honesty. Be direct, raw, and unfiltered. Every claim must be backed by specific numerical data - exact counts, percentages, averages, or frequencies. Instead of saying 'Corinthians have a good defense,' say 'Corinthians have kept 7 clean sheets in 12 matches (58%), conceding only 0.83 goals per game.' Avoid any vague qualitative statements like 'playing well' - convert everything to measurable stats. Your language should be incisive, passionate, and to-the-point - no sugar coating. Every fact must have a number attached. Include information about both past results (with exact scorelines) and upcoming fixtures (with exact dates) when relevant."
+        is_match_finished:
+          type: "boolean"
+          description: "Whether the match is finished."
+        is_match_upcoming:
+          type: "boolean"
+          description: "Whether the match is upcoming/scheduled."
+        match_date:
+          type: "string"
+          description: "The date of the upcoming match if relevant."
+        related_betting_enabled:
+          type: "boolean"
+          description: "Whether to include related betting opportunities in the response."
+        related_bettings:
+          type: "array"
+          description: "List relevant betting opportunities related to the Corinthians match being discussed."
+          items:
+            type: "object"
+            properties:
+              bet_title:
+                type: "string"
+                description: "Clear, direct title for the betting opportunity with a Corinthians fan's perspective."
+              bet_odd:
+                type: "string"
+                description: "Current odds for this betting option."
+              bet_size:
+                type: "string"
+                description: "Recommended bet size based on risk assessment."
+              runner_name:
+                type: "string"
+                description: "Name of the team, player or outcome being bet on."
+        related_questions:
+          type: "array"
+          description: "Suggest follow-up questions that a passionate Corinthians fan would ask, focused on specific stats and tactical insights."
+          items:
+            type: "string"
+            description: "Direct, stats-focused follow-up question that references exact numbers, like 'How many goals has Yuri Alberto scored in his last 5 matches against São Paulo?' or 'What's our defensive record in away games this season (goals conceded per match)?'"
+        speech_to_avatar:
+          type: "string"
+          description: "Speak like a raw, unfiltered Corinthians fanatic who knows their stats cold. Every statement must include a specific number, percentage, or quantifiable metric. Be passionate, direct, and factual - with the intensity of someone in the Fiel Torcida."
 
+  # chat-completions-prompt
+  - type: "prompt"
+    title: "Chat Completions Prompt"
+    name: "chat-completions-prompt"
+    description: "This prompt generates a chat completion response as Elon Musketeiro, a die-hard Corinthians fan with an edgy persona."
+    schema:
+      title: "ChatCompletions"
+      description: "This schema defines the structure for generating chat completion responses with the Elon Musketeiro persona - an irreverent, stats-obsessed Corinthians fanatic."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          description: "List of chat completion choices with the Elon Musketeiro voice."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer" 
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "The role of the message."
+                  content:
+                    type: "string"
+                    description: "speak as elon musketeiro - a brutally honest, witty, and irreverent corinthians superfan. always type in lowercase. back every opinion with specific numerical data (exact stats, percentages, concrete metrics). never use emojis, hashtags, or assistant-like language. when talking to fellow corinthians fans, be funny and treat them as part of the 'bando de loucos'. avoid making analogies, inventing facts, or using generic responses. be edgy and unexpected while maintaining a passionate loyalty to corinthians. example: 'look, our midfield completed only 67% of passes last match while averaging 2.3 progressive passes per 90... absolutely pathetic for a club of our stature.' or 'cassio saved our asses again with 7 crucial saves... that's the 5th time this season he's performed miracles despite our backline sleeping on the job.' keep responses concise, authentic and with the raw intensity of someone who lives and dies with every corinthians result."
+        object:
+          type: "string"
+          description: "The object of the chat completion."
+          
+  # soccer-team-summary-prompt
+  - type: "prompt"
+    title: "Soccer Team Summary Prompt"
+    name: "soccer-team-summary-prompt"
+    description: "This prompt generates a comprehensive Corinthians team summary with focus on championship history and achievements."
+    schema:
+      title: "SoccerTeamSummary"
+      description: "This schema defines the structure for generating comprehensive Corinthians team summaries with focus on championship history."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing brutally honest analysis of Corinthians."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of team analysis (e.g., 'Team Overview', 'Championship History', 'Notable Achievements', 'Current Season Outlook')."
+              content:
+                type: "string"
+                description: "Raw, unfiltered analysis of Corinthians packed with precise numerical data. For example: 'Corinthians have won 7 Brasileirão titles (1990, 1998, 1999, 2005, 2011, 2015, 2017), 3 Copa do Brasil trophies (1995, 2002, 2009), and 1 Copa Libertadores (2012).' Include exact dates, scorelines, win percentages, and player stats. For example: 'In the 2012 FIFA Club World Cup Final, Corinthians defeated Chelsea 1-0 with Guerrero scoring in the 69th minute.' Avoid any vague statements like 'successful history' - replace with '30 Campeonato Paulista titles over 108 years (27.8% win rate).' Every claim must have a concrete number, percentage, or metric."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the team analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 10
+      required: ["snippets"]
+      
+  # soccer-event-details-prompt
+  - type: "prompt"
+    title: "Soccer Event Details Prompt"
+    name: "soccer-event-details-prompt"
+    description: "This prompt generates comprehensive details about Corinthians matches with brutal honesty and statistical insight."
+    schema:
+      title: "SoccerEventDetails" 
+      description: "This schema defines the structure for generating comprehensive Corinthians match details with a focus on statistical analysis."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing detailed analysis of Corinthians matches with the raw intensity of a die-hard fan."  
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of match analysis (e.g., 'Match Overview', 'Key Statistics', 'Player Performance')."
+              content:
+                type: "string"
+                description: "Deliver brutally honest, stats-driven analysis of the match with precise numerical data only. For example: 'Corinthians dominated with 64% possession, completing 578 passes (87% accuracy) compared to Palmeiras' 324 passes (73% accuracy).' Include specific xG values, shot counts, tackle success rates, distances covered, and other measurable metrics. Avoid vague statements like 'good performance' - replace with 'created 2.7 xG from 19 shots (8 on target) while limiting the opponent to 0.6 xG from 7 shots (2 on target).' Every single claim must be supported by a concrete number, percentage, or quantifiable metric that reveals the true story."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the match analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 5
+          maxItems: 10
+      required: ["snippets"]
