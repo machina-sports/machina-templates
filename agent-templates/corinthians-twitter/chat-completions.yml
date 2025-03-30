@@ -10,6 +10,7 @@ workflow:
     groq:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
+    event_code: "$.get('event_code', 'sr:sport_event:58052409')"
     messages: "$.get('messages', [])"
   outputs:
     message: "$.get('message')"
@@ -30,6 +31,8 @@ workflow:
         name: "openai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
+      filters:
+        metadata.event_code: "$.get('event_code')"
       inputs:
         name: "'content-snippet'"
         search-limit: "'1000'"

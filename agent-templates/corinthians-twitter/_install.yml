@@ -56,6 +56,10 @@ datasets:
 
   # workflow to generate fun facts
   - type: "workflow"
+    path: "soccer-live-event.yml"
+
+  # workflow to generate live event
+  - type: "workflow"
     path: "soccer-pre-event.yml"
 
   # workflow to sync soccer team

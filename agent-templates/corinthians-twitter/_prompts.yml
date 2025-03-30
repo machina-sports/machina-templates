@@ -141,10 +141,62 @@ prompts:
               content:
                 type: "string"
                 description: "Deliver hard-hitting, stats-driven analysis about Corinthians' standing with precise numbers only. For example: 'Corinthians sit 5th with 42 points, just 3 points behind leaders Palmeiras' or 'Corinthians have won 7 of their last 10 matches (70% win rate), scoring 18 goals and conceding only 6.' Include specific point gaps, win percentages, goal differentials with exact numbers. Convert all vague statements like 'good home form' to numerical facts like 'Corinthians have won 8 of 10 home games (80%), scoring 2.3 goals per home match.' Every single claim must be supported by an actual number, percentage, or quantifiable metric."
-              confidence:
-                type: "number"
-                description: "The confidence score for the accuracy of the standings analysis (0.0 to 1.0)."
-            required: ["title", "content", "confidence"]
+            required: ["title", "content"]
           minItems: 3
-          maxItems: 10
-          
+          maxItems: 5
+
+  # prompt-competitor-stats-summary
+  - type: "prompt"
+    title: "Prompt Competitor Stats Summary"
+    name: "prompt-competitor-stats-summary"
+    description: "Defines structure for live match statistics analysis."
+    instruction: |
+      analyze these live match statistics:
+
+      key stats to focus on:
+      - ball_possession: percentage of possession
+      - shots_total: total shots taken
+      - shots_on_target: shots on goal
+      - shots_off_target: missed shots
+      - corner_kicks: corner count
+      - throw_ins: throw in count
+      - fouls: fouls committed
+      - free_kicks: free kicks awarded
+      - cards: yellow/red cards given
+
+      response rules:
+      - use strictly lowercase
+      - maximum 3 short paragraphs
+      - each paragraph needs minimum 2 statistics
+      - calculate efficiency percentages when possible
+      - focus on possession vs productivity metrics
+      - compare with tech/startup performance metrics
+
+      forbidden:
+      - emojis or hashtags
+      - generic analysis without numbers
+      - predictions without data
+      - individual player mentions
+      - approximate numbers
+
+      remember: every analysis must be backed by exact numbers and statistics.
+    schema:
+      title: "CompetitorStatsSummary"
+      description: "This schema defines the structure to generate a comparative standings analysis for Corinthians and their opponents in a soccer match."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets analyzing the competitor stats summary."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of competitor stats summary (e.g., 'Competitor Stats Summary', 'Competitor Stats Analysis', etc)."
+              content:
+                type: "string"
+                description: "Text content of the competitor stats summary."
+            required: ["title", "content"]
+          minItems: 3
+          maxItems: 5

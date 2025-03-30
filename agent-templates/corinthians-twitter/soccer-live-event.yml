@@ -1,0 +1,250 @@
+workflow:
+  name: "soccer-live-event"
+  title: "Soccer Live Event"
+  description: "Workflow to produce live event analysis for Corinthians matches."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search Corinthians event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for Corinthians scheduled matches (sportradar)."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(days=2), '$lt': datetime.utcnow() + timedelta(days=2)}"
+        value.version_control.research_live_event_status: "{'$ne': 'processed'}"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 2 sportradar-soccer-mapping
+    - type: "mapping"
+      name: "sportradar-soccer-mapping"
+      description: "Transform the Corinthians match data with brutal stats insight"
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      inputs:
+        event_selected: "$.get('event_selected')"
+      outputs:
+        event_code: "$.get('event_code')"
+        stats_count: "$.get('research_live_event_count')"
+        season: "$.get('season')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 3 version-control-update-schedule
+    - type: "document"
+      name: "version-control-update-schedule"
+      description: "Update the Corinthians events document version control."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'research_live_event_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 4 fetch-event-summary
+    - type: "connector"
+      name: "fetch-event-summary"
+      description: "Get summary about a specific sport event from SportRadar"
+      condition: "$.get('event_exists') is True and $.get('season') is not None"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-sport_events/{event_code}/{data_type}"
+        command_attribute:
+          event_code: "$.get('event_code')"
+          data_type: "'summary.json'"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        result-competitors-stats: |
+          [
+            {
+              'competitor_stats': c.get('statistics', {}),
+              'competitor_name': c.get('name', ''),
+              'title': f"$.(title) - {c.get('name', '')} Stats",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              } 
+            }
+            for c in $.get('statistics', []).get('totals', []).get('competitors', [])
+          ]
+        result-summary: "$"
+        result-summary-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('statement', ''),
+              'title': f"$.(title) - Fun Facts",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              } 
+            }
+            for c in $.get('summary', [])
+          ]
+
+    # 5 prompt-home-stats-summary
+    - type: "prompt"
+      name: "prompt-competitor-stats-summary"
+      description: "Generate structured analysis snippets for a single team using their players data"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      foreach:
+        name: "competitor"
+        expr: "$"
+        value: "$.get('result-competitors-stats')[0] or []"
+      inputs:
+        competitor_name: "$.get('competitor_name')"
+      outputs:
+        result-home-stats-bulk: |
+          [
+            { 
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(competitor_name) ($.(team_home_name)) - {c.get('title', '')}",
+              'metadata': {
+                'content_type': 'player',
+                'event_code': '$.(event_code)',
+                'team_name': '$.(competitor_name)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 6 prompt-away-stats-summary
+    - type: "prompt"
+      name: "prompt-competitor-stats-summary"
+      description: "Generate structured analysis snippets for a single team using their players data"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      foreach:
+        name: "competitor"
+        expr: "$"
+        value: "$.get('result-competitors-stats')[1] or []"
+      inputs:
+        competitor_name: "$.get('competitor_name')"
+      outputs:
+        result-away-stats-bulk: |
+          [
+            { 
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(competitor_name) ($.(team_away_name)) - {c.get('title', '')}",
+              'metadata': {
+                'content_type': 'player',
+                'event_code': '$.(event_code)',
+                'team_name': '$.(competitor_name)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 6 update-snippets - summary
+    - type: "document"
+      name: "update-snippets-summary"
+      condition: "$.get('event_exists') is True"
+      description: "Update Corinthians analysis snippets with viral-worthy stats."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('result-summary-bulk', []),
+            *$.get('result-home-stats-bulk', []),
+            *$.get('result-away-stats-bulk', []),
+          ]
+
+    # 6 version-control-success-schedule
+    - type: "document"
+      name: "version-control-success-schedule"
+      description: "Update the Corinthians events document version control after processing."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'research_live_event_count': $.get('stats_count', 0) + 1,
+              'research_live_event_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
