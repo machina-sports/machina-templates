@@ -1,0 +1,14 @@
+agent:
+  name: "scheduler-sync"
+  title: "Corinthians Stats Sync Scheduler"
+  description: "Agent responsible for scheduling Corinthians data workflows with brutal stats insight."
+  context:
+    config-frequency: 0.5
+  workflows:
+        
+    # Corinthians Stats Generator
+    - name: "soccer-embeddings"
+      description: "Generate viral-worthy Corinthians stats and embeddings with raw fan perspective"
+      outputs:
+        research-stats-soccer: "$.get('workflow-status', False)"
+        research-odds: "$.get('workflow-status', False)"

@@ -1,0 +1,98 @@
+workflow:
+  name: "sync-soccer-team"
+  title: "Sync Corinthians Team"
+  description: "Workflow to sync Corinthians soccer team data with brutal stats insight."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    team_id: "$.get('team_id') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "len($.get('selected_events', [])) == 0 and 'skipped' or 'executed'"
+  tasks:
+    
+    # task-load-team-events
+    - type: "connector"
+      name: "task-load-team-events"
+      description: "Get Corinthians Events from SportRadar with detailed stats"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitors/{competitor_id}/summaries.json"
+        command_attribute:
+          competitor_id: "$.get('team_id')"
+      condition: "$.get('team_id') is not None"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        events: "$"
+        selected_events: |
+          [
+            {
+              **c,
+              'metadata': {
+                'event_code': c.get('sport_event', {}).get('id', '')
+              },
+              'version_control': {
+                'created': datetime.utcnow(),
+                'status': 'pending'
+              },
+              'start_time': datetime.fromisoformat(c.get('sport_event', {}).get('start_time', '')),
+              'title': f"{c.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', '')} {c.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')}: {c.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', '')} - {c.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {c.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}",
+            }
+            for c in $.get('summaries', [])
+            if c.get('sport_event_status', {}).get('status', '') == 'closed'
+          ][:2]
+        selected_ids: |
+          [
+            c.get('sport_event', {}).get('id', '')
+            for c in $.get('summaries', [])
+            if c.get('sport_event_status', {}).get('status', '') == 'closed'
+          ][:2]
+
+    # check if events exist
+    - type: "document"
+      name: "check-if-events-exist"
+      description: "Check if Corinthians events exist in database"
+      config:
+        action: "search"
+        search-limit: 5
+        search-vector: false
+      condition: "len($.get('selected_ids', [])) > 0"
+      filters:
+        metadata.event_code: |
+          {
+            '$in': $.get('selected_ids')
+          }
+      inputs:
+        name: "'soccer-game'"
+      outputs:
+        existing_events: |
+          [
+            c.get('metadata', {}).get('event_code', '')
+            for c in $.get('documents', [])
+          ]
+
+    # bulk-save-schedules
+    - type: "document"
+      name: "bulk-save-events"
+      condition: "len($.get('existing_events', [])) < 5"
+      description: "Bulk save the Corinthians events with detailed stats for raw analysis."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "soccer-game"
+      documents:
+        items: "$.get('events_filtered')"
+      inputs:
+        events_filtered: |
+          [
+            {
+              **c
+            }
+            for c in $.get('selected_events', [])
+            if c.get('metadata', {}).get('event_code', '')
+          ]

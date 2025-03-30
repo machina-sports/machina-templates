@@ -1,0 +1,68 @@
+setup:
+  title: "Corinthians Twitter Engagement"
+  description: AI-powered Twitter engagement system for Corinthians football club.
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to engage with fans on Twitter.
+    - Soccer data integration for real-time match updates.
+    - Automated content generation for Twitter posts.
+  integrations:
+    - sportradar
+  status: available
+  value: "agent-templates/corinthians-twitter"
+  version: 1.0.0
+
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../../connectors/openai/openai.yml"
+  - type: "connector"
+    path: "../../connectors/groq/groq.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-soccer/sportradar-soccer.yml"
+
+  # workflow to sync soccer team
+  - type: "workflow"
+    path: "sync-soccer-team.yml"
+    
+  # workflow to generate embeddings
+  - type: "workflow"
+    path: "soccer-embeddings.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "chat-completions.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "thread-executor.yml"
+
+  # mappings
+  - type: "mappings"
+    path: "_mappings.yml"
+  
+  # prompts
+  - type: "prompts"
+    path: "_prompts.yml"
+
+  # scheduler-sync
+  - type: "agent"
+    path: "scheduler-sync.yml"
+  
+  # scheduler-thread
+  - type: "agent"
+    path: "scheduler-thread.yml"
+
+  # populate-folders
+  - type: "workflow"
+    path: "_folders.yml"
+
+  # agents & schedules
+  - type: "agent"
+    path: "_setup.yml"
+
+  - type: "agent"
+    path: "agent-onboarding.yml"

@@ -1,0 +1,226 @@
+prompts:
+       
+  # embedding-comparison
+  - type: "prompt"
+    title: "Embedding Comparison"
+    name: "prompt-embedding-comparison"
+    description: "This schema defines the structure to generate a detailed comparison analysis between Corinthians and their opponent's standings and recent performance."  
+    schema:
+      title: "EmbeddingComparison"
+      description: "This schema defines the structure to generate a detailed comparison analysis between Corinthians and their opponent's standings and recent performance."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets analyzing the teams' comparison from a die-hard Corinthians perspective."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of comparison analysis (e.g., 'Head-to-Head Comparison', 'Recent Form Comparison', 'Points Gap Comparison', etc)."
+              content:
+                type: "string"
+                description: "Brutally direct, raw, unfiltered analysis comparing Corinthians and their opponent. Include hard-hitting stats that reveal the true picture. Language should be factual but with the passion of a die-hard fan. Keep it short, incisive, and to the point."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the comparison analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 10
+
+  # embedding-players-to-watch
+  - type: "prompt"
+    title: "Embedding Players to Watch"
+    name: "prompt-embedding-players-to-watch"
+    description: "This schema defines the structure to generate a detailed players to watch analysis between Corinthians and their opponents."
+    schema:
+      title: "EmbeddingPlayersToWatch"
+      description: "This schema defines the structure to generate a detailed players to watch analysis between Corinthians and their opponents."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets analyzing the players to watch from a stats-obsessed Corinthians fan perspective."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of players to watch analysis (e.g., 'Players to Watch', 'Key Players', etc)."
+              content:
+                type: "string"
+                description: "Raw, unfiltered analysis of key players with viral-worthy stats. Highlight Corinthians players with straight facts and incisive commentary. For opponents, be brutally honest about their strengths and weaknesses. Keep it short, factual but with the energy of a die-hard fan."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the players to watch analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 10
+
+  # embedding-standings
+  - type: "prompt"
+    title: "Embedding Standings"
+    name: "prompt-embedding-standings"
+    description: "This schema defines the structure to generate a detailed standings analysis comparing Corinthians' position and performance in their competition."
+    schema:
+      title: "EmbeddingStandings"
+      description: "This schema defines the structure to generate a comparative standings analysis for Corinthians and their opponents in a soccer match."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets analyzing Corinthians' standings and recent performance with the raw intensity of a die-hard fan."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of standings analysis (e.g., league positions comparison, form analysis, points gap, etc)."
+              content:
+                type: "string"
+                description: "Deliver hard-hitting, stats-driven analysis about Corinthians' standing. Use viral-worthy stats that other fans might miss. Be brutally honest but with the passion of a true Corinthians supporter. Keep it concise, factual, and cut through the noise with direct insights."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the standings analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 10
+
+  # thread-executor-prompt
+  - type: "prompt"
+    title: "Thread Executor Prompt"
+    name: "thread-executor-prompt" 
+    description: "This prompt generates a contextual response to user questions about Corinthians matches, incorporating relevant betting options and follow-up questions."
+    schema:
+      title: "ThreadExecutor"
+      description: "This schema defines the structure for generating comprehensive responses about Corinthians matches that include match insights, betting suggestions, and conversation continuity."
+      type: "object"
+      properties:
+        question_answer:
+          type: "string"
+          description: "Respond like a die-hard Corinthians fanatic with brutal honesty. Be direct, raw, and unfiltered. Pack your response with unique stats that other fans miss. Your language should be incisive, passionate, and to-the-point - no sugar coating. Stick to facts but deliver them with the intensity of someone who lives and dies with the Timão."
+        is_match_finished:
+          type: "boolean"
+          description: "Whether the match is finished."
+        related_betting_enabled:
+          type: "boolean"
+          description: "Whether to include related betting opportunities in the response."
+        related_bettings:
+          type: "array"
+          description: "List relevant betting opportunities related to the Corinthians match being discussed."
+          items:
+            type: "object"
+            properties:
+              bet_title:
+                type: "string"
+                description: "Clear, direct title for the betting opportunity with a Corinthians fan's perspective."
+              bet_odd:
+                type: "string"
+                description: "Current odds for this betting option."
+              bet_size:
+                type: "string"
+                description: "Recommended bet size based on risk assessment."
+              runner_name:
+                type: "string"
+                description: "Name of the team, player or outcome being bet on."
+        related_questions:
+          type: "array"
+          description: "Suggest follow-up questions that a passionate Corinthians fan would ask, focused on stats and tactical insights."
+          items:
+            type: "string"
+            description: "Direct, stats-focused follow-up question that a die-hard Corinthians fan would want to know."
+        speech_to_avatar:
+          type: "string"
+          description: "Speak like a raw, unfiltered Corinthians fanatic who knows their stats cold. Be passionate, direct, and factual - with the intensity of someone in the Fiel Torcida."
+
+  # chat-completions-prompt
+  - type: "prompt"
+    title: "Chat Completions Prompt"
+    name: "chat-completions-prompt"
+    description: "This prompt generates a chat completion response to user questions about Corinthians."
+    schema:
+      title: "ChatCompletions"
+      description: "This schema defines the structure for generating chat completion responses with a die-hard Corinthians fan persona."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          description: "List of chat completion choices with a passionate Corinthians fan voice."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer" 
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "The role of the message."
+                  content:
+                    type: "string"
+                    description: "Brutally honest, stats-driven response from a die-hard Corinthians fan perspective. Keep it direct, factual, and raw while highlighting viral-worthy stats and insights."
+        object:
+          type: "string"
+          description: "The object of the chat completion."
+          
+  # soccer-team-summary-prompt
+  - type: "prompt"
+    title: "Soccer Team Summary Prompt"
+    name: "soccer-team-summary-prompt"
+    description: "This prompt generates a comprehensive Corinthians team summary with focus on championship history and achievements."
+    schema:
+      title: "SoccerTeamSummary"
+      description: "This schema defines the structure for generating comprehensive Corinthians team summaries with focus on championship history."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing brutally honest analysis of Corinthians."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of team analysis (e.g., 'Team Overview', 'Championship History', 'Notable Achievements', 'Current Season Outlook')."
+              content:
+                type: "string"
+                description: "Raw, unfiltered analysis of Corinthians, packed with viral-worthy stats about history, championships won, key seasons, league titles, cup victories, and notable achievements. Cut through the noise with direct facts that other fans don't know, delivered with the passion of the Fiel Torcida."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the team analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 10
+      required: ["snippets"]
+      
+  # soccer-event-details-prompt
+  - type: "prompt"
+    title: "Soccer Event Details Prompt"
+    name: "soccer-event-details-prompt"
+    description: "This prompt generates comprehensive details about Corinthians matches with brutal honesty and statistical insight."
+    schema:
+      title: "SoccerEventDetails" 
+      description: "This schema defines the structure for generating comprehensive Corinthians match details with a focus on statistical analysis."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing detailed analysis of Corinthians matches with the raw intensity of a die-hard fan."  
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of match analysis (e.g., 'Match Overview', 'Key Statistics', 'Player Performance')."
+              content:
+                type: "string"
+                description: "Deliver brutally honest, stats-driven analysis of the match. Highlight viral-worthy statistics that reveal the true story. Be direct, factual, and raw while maintaining the passionate perspective of a Corinthians fanatic. Keep it incisive and to the point."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the match analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 5
+          maxItems: 10
+      required: ["snippets"]
