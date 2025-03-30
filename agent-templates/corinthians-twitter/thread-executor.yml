@@ -110,6 +110,8 @@ workflow:
         documents: "$.get('documents')"
         messages: "$.get('messages')"
         question: "$.get('question')"
+        upcoming_matches: "[d for d in $.get('documents') if d.get('value', {}).get('start_time', datetime.utcnow()) > datetime.utcnow()]"
+        past_matches: "[d for d in $.get('documents') if d.get('value', {}).get('start_time', datetime.utcnow()) <= datetime.utcnow()]"
       outputs:
         content: "$"
 

@@ -47,8 +47,7 @@ workflow:
         search-vector: false
         search-sorters: ["start_time", 1]
       filters:
-        # value.start_time: "{'$gt': datetime.utcnow(), '$lt': datetime.utcnow() + timedelta(hours=48)}"
-        value.version_control.status: "{'$ne': 'processing'}"
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(days=30), '$lt': datetime.utcnow() + timedelta(days=30)}"
         value.version_control.research_stats_status: "{'$ne': 'processed'}"
       inputs:
         name: "{'$in': ['soccer-game']}"
@@ -160,7 +159,7 @@ workflow:
               'sport_event': c.get('sport_event', ''),
               'sport_event_status': c.get('sport_event_status', '')
             }
-            for c in $.get('summaries', [])[:3]
+            for c in $.get('summaries', [])[:10]
           ]
 
     # 6 fetch-away-competitor
@@ -183,7 +182,7 @@ workflow:
               'sport_event': c.get('sport_event', ''),
               'sport_event_status': c.get('sport_event_status', '')
             }
-            for c in $.get('summaries', [])[:3]
+            for c in $.get('summaries', [])[:10]
           ]
 
     # 7 fetch-comparison

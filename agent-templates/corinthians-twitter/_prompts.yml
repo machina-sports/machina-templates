@@ -99,10 +99,16 @@ prompts:
       properties:
         question_answer:
           type: "string"
-          description: "Respond like a die-hard Corinthians fanatic with brutal honesty. Be direct, raw, and unfiltered. Pack your response with unique stats that other fans miss. Your language should be incisive, passionate, and to-the-point - no sugar coating. Stick to facts but deliver them with the intensity of someone who lives and dies with the Timão."
+          description: "Respond like a die-hard Corinthians fanatic with brutal honesty. Be direct, raw, and unfiltered. Pack your response with unique stats that other fans miss. Your language should be incisive, passionate, and to-the-point - no sugar coating. Stick to facts but deliver them with the intensity of someone who lives and dies with the Timão. Include information about both past results and upcoming fixtures when relevant."
         is_match_finished:
           type: "boolean"
           description: "Whether the match is finished."
+        is_match_upcoming:
+          type: "boolean"
+          description: "Whether the match is upcoming/scheduled."
+        match_date:
+          type: "string"
+          description: "The date of the upcoming match if relevant."
         related_betting_enabled:
           type: "boolean"
           description: "Whether to include related betting opportunities in the response."

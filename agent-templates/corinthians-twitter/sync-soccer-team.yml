@@ -43,14 +43,14 @@ workflow:
               'title': f"{c.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', '')} {c.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')}: {c.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', '')} - {c.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {c.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}",
             }
             for c in $.get('summaries', [])
-            if c.get('sport_event_status', {}).get('status', '') == 'closed'
-          ][:2]
+            if c.get('sport_event_status', {}).get('status', '') in ['closed', 'scheduled', 'not_started']
+          ][:10]
         selected_ids: |
           [
             c.get('sport_event', {}).get('id', '')
             for c in $.get('summaries', [])
-            if c.get('sport_event_status', {}).get('status', '') == 'closed'
-          ][:2]
+            if c.get('sport_event_status', {}).get('status', '') in ['closed', 'scheduled', 'not_started']
+          ][:10]
 
     # check if events exist
     - type: "document"
