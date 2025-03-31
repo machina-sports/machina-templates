@@ -60,7 +60,7 @@ prompts:
                       - "Usar linguagem coloquial brasileira quando apropriado"
                       - "Incluir termos específicos do futebol brasileiro"
                       - "Manter consistência com sotaque e expressões brasileiras"
-                  actions:
+                  action:
                     type: "string"
                     description: "Choose one appropriate action: [LIKE], [RETWEET], [QUOTE], or [REPLY]. Your response must only include the chosen action string."
                     enum:
