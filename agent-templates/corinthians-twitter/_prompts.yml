@@ -60,16 +60,14 @@ prompts:
                       - "Usar linguagem coloquial brasileira quando apropriado"
                       - "Incluir termos específicos do futebol brasileiro"
                       - "Manter consistência com sotaque e expressões brasileiras"
-                  actions:
-                    type: "array"
-                    description: "Choose any combination of [LIKE], [RETWEET], [QUOTE], and [REPLY] that are appropriate. Each action must be on its own line. Your response must only include the chosen actions."
-                    items:
-                      type: "string"
-                      enum:
-                        - "[LIKE]"
-                        - "[RETWEET]"
-                        - "[QUOTE]"
-                        - "[REPLY]"
+                  action:
+                    type: "string"
+                    description: "Choose one appropriate action: [LIKE], [RETWEET], [QUOTE], or [REPLY]. Your response must only include the chosen action string."
+                    enum:
+                      - "[LIKE]"
+                      - "[RETWEET]"
+                      - "[QUOTE]"
+                      - "[REPLY]"
 
   # embedding-comparison
   - type: "prompt"
