@@ -177,7 +177,7 @@ workflow:
             for c in $.get('snippets', [])
           ]
 
-    # 5 prompt-home-stats-summary
+    # 6 prompt-home-stats-summary
     - type: "prompt"
       name: "prompt-competitor-stats-summary"
       description: "Generate structured analysis snippets for a single team using their players data"
@@ -206,7 +206,7 @@ workflow:
             for c in $.get('snippets', [])
           ]
 
-    # 5 prompt-home-stats-summary
+    # 7 prompt-away-stats-summary
     - type: "prompt"
       name: "prompt-competitor-stats-summary"
       description: "Generate structured analysis snippets for a single team using their players data"
@@ -235,7 +235,7 @@ workflow:
             for c in $.get('snippets', [])
           ]
 
-    # 6 update-snippets - summary
+    # 8 update-snippets
     - type: "document"
       name: "update-snippets-summary"
       condition: "$.get('event_exists') is True"
@@ -260,7 +260,7 @@ workflow:
             *$.get('result-away-stats-bulk', [])
           ]
 
-    # 6 version-control-success-schedule
+    # 9 version-control-success-schedule
     - type: "document"
       name: "version-control-success-schedule"
       description: "Update the Corinthians events document version control after processing."

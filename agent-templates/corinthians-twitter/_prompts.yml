@@ -263,5 +263,5 @@ prompts:
                 type: "string"
                 description: "Text content of the competitor stats summary."
             required: ["title", "content"]
-          minItems: 3
-          maxItems: 5
+          minItems: 1
+          maxItems: 1
