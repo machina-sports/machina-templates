@@ -173,12 +173,10 @@ prompts:
       - cards: yellow/red cards given
 
       response rules:
-      - use strictly lowercase
       - maximum 3 short paragraphs
       - each paragraph needs minimum 2 statistics
       - calculate efficiency percentages when possible
       - focus on possession vs productivity metrics
-      - compare with tech/startup performance metrics
 
       forbidden:
       - emojis or hashtags

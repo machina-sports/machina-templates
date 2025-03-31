@@ -128,7 +128,7 @@ workflow:
             {
               'subject': '$.(title)',
               'text': c.get('statement', ''),
-              'title': f"$.(title) - Fun Facts",
+              'title': f"$.(title) - Event Summary",
               'metadata': {
                 'event_code': '$.(event_code)',
                 'language': 'en'
@@ -143,24 +143,21 @@ workflow:
       description: "Generate structured analysis snippets for a single team using their players data"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "machina-ai"
+        name: "openai"
         command: "invoke_prompt"
         model: "gpt-4o"
-      foreach:
-        name: "competitor"
-        expr: "$"
-        value: "$.get('result-competitors-stats')[0] or []"
       inputs:
-        competitor_name: "$.get('competitor_name')"
+        competitor: "$.get('result-competitors-stats', [])[0] or {}"
+        competitor_name: "$.get('result-competitors-stats', [])[0].get('competitor_name')"
       outputs:
         result-home-stats-bulk: |
           [
             { 
               'subject': '$.(title)',
               'text': c.get('content', ''),
-              'title': f"$.(competitor_name) ($.(team_home_name)) - {c.get('title', '')}",
+              'title': f"$.(competitor_name) - {c.get('title', '')}",
               'metadata': {
-                'content_type': 'player',
+                'content_type': 'competitor_stats',
                 'event_code': '$.(event_code)',
                 'team_name': '$.(competitor_name)',
                 'language': 'en'
@@ -169,30 +166,27 @@ workflow:
             for c in $.get('snippets', [])
           ]
 
-    # 6 prompt-away-stats-summary
+    # 5 prompt-home-stats-summary
     - type: "prompt"
       name: "prompt-competitor-stats-summary"
       description: "Generate structured analysis snippets for a single team using their players data"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "machina-ai"
+        name: "openai"
         command: "invoke_prompt"
         model: "gpt-4o"
-      foreach:
-        name: "competitor"
-        expr: "$"
-        value: "$.get('result-competitors-stats')[1] or []"
       inputs:
-        competitor_name: "$.get('competitor_name')"
+        competitor: "$.get('result-competitors-stats', [])[1] or {}"
+        competitor_name: "$.get('result-competitors-stats', [])[1].get('competitor_name')"
       outputs:
         result-away-stats-bulk: |
           [
             { 
               'subject': '$.(title)',
               'text': c.get('content', ''),
-              'title': f"$.(competitor_name) ($.(team_away_name)) - {c.get('title', '')}",
+              'title': f"$.(competitor_name) - {c.get('title', '')}",
               'metadata': {
-                'content_type': 'player',
+                'content_type': 'competitor_stats',
                 'event_code': '$.(event_code)',
                 'team_name': '$.(competitor_name)',
                 'language': 'en'
@@ -222,7 +216,7 @@ workflow:
           [
             *$.get('result-summary-bulk', []),
             *$.get('result-home-stats-bulk', []),
-            *$.get('result-away-stats-bulk', []),
+            *$.get('result-away-stats-bulk', [])
           ]
 
     # 6 version-control-success-schedule
