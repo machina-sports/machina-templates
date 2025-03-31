@@ -136,6 +136,46 @@ workflow:
             }
             for c in $.get('summary', [])
           ]
+        result-home-score: "$.get('sport_event_status', {}).get('home_score', 0)"
+        result-away-score: "$.get('sport_event_status', {}).get('away_score', 0)"
+        result-clock-played: "$.get('sport_event_status', {}).get('clock', {}).get('played', 0)"
+        result-match-status: "$.get('sport_event_status', {}).get('match_status', '')"
+        result-venue: "$.get('sport_event', {}).get('venue', {})"
+
+    # 5 prompt-score-and-players
+    - type: "prompt"
+      name: "prompt-result-score-summary"
+      description: "Generate structured analysis snippets for a single team using their players data"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        title: "$.get('title')"
+        team_home_name: "$.get('team_home_name')"
+        home_score: "$.get('result-home-score')"
+        team_away_name: "$.get('team_away_name')"
+        away_score: "$.get('result-away-score')"
+        partial_score: f"{$.get('team_home_name')} {$.get('result-home-score')} x {$.get('result-away-score')} {$.get('team_away_name')}"
+        clock_played: "$.get('result-clock-played')"
+        match_status: "$.get('result-match-status')"
+        venue: "$.get('result-venue')"
+      outputs:
+        result-score-and-players-bulk: |
+          [
+            { 
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(title) - Score and Players",
+              'metadata': {
+                'content_type': 'score_and_players',
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
 
     # 5 prompt-home-stats-summary
     - type: "prompt"
@@ -215,6 +255,7 @@ workflow:
         parsed-items: |
           [
             *$.get('result-summary-bulk', []),
+            *$.get('result-score-and-players-bulk', []),
             *$.get('result-home-stats-bulk', []),
             *$.get('result-away-stats-bulk', [])
           ]
