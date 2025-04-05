@@ -34,18 +34,32 @@ prompts:
       - use linguagem típica da fiel (mano, fiel, timão, etc)
       - misture termos técnicos com português brasileiro coloquial
     schema:
-      title: "CompletamentoDeChat"
+      title: "ChatCompletions"
       description: "Este esquema define a estrutura para gerar respostas de completamento de chat em português brasileiro."
       type: "object"
       properties:
-        content:
-          type: "string"
-          description: "O conteúdo da mensagem. Deve ser sempre em português brasileiro, utilizando expressões e gírias típicas do futebol brasileiro."
-          requirements:
-            - "Todas as respostas devem ser em português brasileiro"
-            - "Usar linguagem coloquial brasileira quando apropriado"
-            - "Incluir termos específicos do futebol brasileiro"
-            - "Manter consistência com sotaque e expressões brasileiras"
+        choices:
+          type: "array"
+          description: "Lista de escolhas de completamento de chat."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer"
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "O papel da mensagem."
+                  content:
+                    type: "string"
+                    description: "O conteúdo da mensagem. Deve ser sempre em português brasileiro, utilizando expressões e gírias típicas do futebol brasileiro."
+                    requirements:
+                      - "Todas as respostas devem ser em português brasileiro"
+                      - "Usar linguagem coloquial brasileira quando apropriado"
+                      - "Incluir termos específicos do futebol brasileiro"
+                      - "Manter consistência com sotaque e expressões brasileiras"
 
   # embedding-comparison
   - type: "prompt"
