@@ -40,3 +40,9 @@ datasets:
   # workflows
   - type: "workflow"
     path: "chat-completions.yml"
+
+  # elevenlabs
+  - type: "connector"
+    path: "../../connectors/elevenlabs/elevenlabs.yml"
+  - type: "workflow"
+    path: "../../connectors/elevenlabs/workflow_test.yml"

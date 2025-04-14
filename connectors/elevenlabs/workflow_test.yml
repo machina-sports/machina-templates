@@ -1,0 +1,37 @@
+workflow:
+  name: "elevenlabs-test"
+  title: "ElevenLabs Test"
+  description: "Workflow to test ElevenLabs."
+  context-variables:
+    debugger:
+      enabled: true
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+  inputs:
+    text: "$.get('text')"
+    voice_id: "$.get('voice_id', 'pNInz6obpgDQGcFmaJgB')"
+    model_id: "$.get('model_id', 'eleven_turbo_v2')"
+    optimize_streaming_latency: "$.get('optimize_streaming_latency', '0')"
+    output_format: "$.get('output_format', 'mp3_22050_32')"
+  outputs:
+    text_to_speech: "$.get('text_to_speech', [])"
+    workflow-status: "$.get('text_to_speech', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # task-get-text-to-speech
+    - type: "connector"
+      name: "task-get-text-to-speech"
+      description: "Get a text to speech from ElevenLabs"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('text')"
+          voice_id: "$.get('voice_id')"
+          model_id: "$.get('model_id')"
+          optimize_streaming_latency: "$.get('optimize_streaming_latency')"
+          output_format: "$.get('output_format')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        text_to_speech: "$"
