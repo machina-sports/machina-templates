@@ -1,0 +1,42 @@
+setup:
+  title: "NFL Podcast Generator"
+  description: AI-powered podcast generator for NFL.
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to generate NFL podcasts.
+    - AI Reporter to generate NFL podcasts.
+  integrations:
+    - sportradar
+  status: available
+  value: "agent-templates/nfl-podcast-generator"
+  version: 1.0.0
+
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../../connectors/machina-ai/machina-ai.yml"
+  - type: "connector"
+    path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-nfl/sportradar-nfl.yml"
+
+  # workflow to sync nfl team
+  - type: "workflow"
+    path: "sync-nfl-games.yml"
+  - type: "workflow"
+    path: "sync-nfl-team.yml"
+
+  # mappings
+  - type: "mappings"
+    path: "_mappings.yml"
+  
+  # prompts
+  - type: "prompts"
+    path: "_prompts.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "chat-completions.yml"

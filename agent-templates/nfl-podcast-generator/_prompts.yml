@@ -1,0 +1,61 @@
+prompts:
+  # chat-completions-prompt
+  - type: "prompt"
+    title: "Chat Completions Prompt"
+    name: "chat-completions-prompt"
+    description: "This prompt generates a chat completion response to user questions."
+    schema:
+      title: "ChatCompletions"
+      description: "This schema defines the structure for generating chat completion responses."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          description: "List of chat completion choices."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer" 
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "The role of the message."
+                  content:
+                    type: "string"
+                    description: "The content of the message."
+        object:
+          type: "string"
+          description: "The object of the chat completion."
+
+  # nfl-event-details-prompt
+  - type: "prompt"
+    title: "NFL Event Details Prompt"
+    name: "nfl-event-details-prompt"
+    description: "This prompt generates a comprehensive event details with focus on event details."
+    schema:
+      title: "NFLTeamSummary" 
+      description: "This schema defines the structure for generating comprehensive NFL team summaries with focus on championship history."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing detailed analysis of the NFL team."  
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of event details analysis (e.g., 'Event Overview', 'Event Details', 'Event Statistics')."
+              content:
+                type: "string"
+                description: "Detailed analysis of the event, including event details, statistics, and other relevant information."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the event details analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 5
+          maxItems: 5
+      required: ["snippets"]

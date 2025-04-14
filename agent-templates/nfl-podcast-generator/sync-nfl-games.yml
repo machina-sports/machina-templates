@@ -1,0 +1,65 @@
+workflow:
+  name: "sync-nfl-games"
+  title: "Sync NFL Games"
+  description: "Workflow to sync nfl games."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', '2024')"
+    season_type: "$.get('season_type', 'REG')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # task-load-games
+    - type: "connector"
+      name: "task-load-games"
+      description: "Get a season games from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        games: "$.get('games')"
+        games_parsed: |
+          [
+            {
+              **game,
+              'metadata': {
+                'event_code': game.get('id', ''),
+                'team_ids': [game.get('home', {}).get('id', ''), game.get('away', {}).get('id', '')],
+              },
+              'start_time': datetime.strptime(game.get('scheduled').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ'),
+              'title': f"{game.get('home', {}).get('name', '')} v {game.get('away', {}).get('name', '')}",
+              'selected': False
+            }
+            for week in $.get('weeks', [])
+            for game in week.get('games', [])
+            if game.get('status') == 'closed'
+          ]
+
+    # bulk-save-games
+    - type: "document"
+      name: "bulk-save-games"
+      condition: "$.get('games_parsed') is not None"
+      description: "Bulk save the games."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "nfl-game"
+      documents:
+        items: "$.get('games_parsed')"
+      inputs:
+        games_parsed: "$.get('games_parsed')"
