@@ -25,6 +25,12 @@ datasets:
 
   # workflow to sync nfl team
   - type: "workflow"
+    path: "chat-completions.yml"
+  - type: "workflow"
+    path: "generate-content.yml"
+  - type: "workflow"
+    path: "generate-speech.yml"
+  - type: "workflow"
     path: "sync-nfl-games.yml"
   - type: "workflow"
     path: "sync-nfl-team.yml"
@@ -37,6 +43,20 @@ datasets:
   - type: "prompts"
     path: "_prompts.yml"
 
-  # workflows
+  # elevenlabs
+  - type: "connector"
+    path: "../../connectors/elevenlabs/elevenlabs.yml"
   - type: "workflow"
-    path: "chat-completions.yml"
+    path: "../../connectors/elevenlabs/workflow_test.yml"
+
+  # storage
+  - type: "connector"
+    path: "../../connectors/storage/storage.yml"
+
+  # folders
+  - type: "workflow"
+    path: "_folders.yml"
+
+  # setup
+  - type: "agent"
+    path: "_setup.yml"

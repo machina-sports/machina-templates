@@ -30,6 +30,26 @@ prompts:
           type: "string"
           description: "The object of the chat completion."
 
+  # generate-content-prompt
+  - type: "prompt"
+    title: "Generate Content Prompt"
+    name: "generate-content-prompt"
+    description: "This prompt generates a content."
+    schema:
+      title: "GenerateContent"  
+      description: "This schema defines the structure for generating content."
+      type: "object"
+      properties:
+        content:
+          type: "string"
+          description: "The content of the message."
+        file_name:
+          type: "string"
+          description: "The file name of the content."
+        summary:
+          type: "string"
+          description: "The summary of the content."
+
   # nfl-event-details-prompt
   - type: "prompt"
     title: "NFL Event Details Prompt"
