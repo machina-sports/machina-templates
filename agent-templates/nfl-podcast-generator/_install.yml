@@ -57,6 +57,6 @@ datasets:
   - type: "workflow"
     path: "_folders.yml"
 
-  # setup
-  - type: "agent"
-    path: "_setup.yml"
+  # # setup
+  # - type: "agent"
+  #   path: "_setup.yml"
