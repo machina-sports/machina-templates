@@ -30,7 +30,7 @@ def get_text_to_speech(request_data):
 
         voice_id = path_attr.get("voice_id", "pNInz6obpgDQGcFmaJgB")
 
-        model_id = path_attr.get("model_id", "eleven_turbo_v2")
+        model_id = path_attr.get("model_id", "eleven_flash_v2_5")
 
         optimize_streaming_latency = path_attr.get("optimize_streaming_latency", "0")
 
