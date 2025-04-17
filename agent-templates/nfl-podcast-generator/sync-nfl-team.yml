@@ -147,6 +147,7 @@ workflow:
               'title': f"$.(title) - {c.get('title', '')}",
               'metadata': {
                 'event_code': '$.(event_code)',
+                'team_id': '$.(team_id)',
                 'language': 'en'
               }
             }

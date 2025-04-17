@@ -2,25 +2,9 @@ workflow:
   name: "populate-folders"
   title: "Setup Folders"
   description: "Setup Folders"
-  inputs:
-    force-setup: "$.get('force-setup') == 'true'"
   outputs:
-    setup-register: "$.get('setup-register')"
-    workflow-status: "($.get('setup-register') is True or $.get('force-setup') is True) and 'skipped' or 'executed'"
+    workflow-status: "'executed'"
   tasks:
-
-    # load-setup-register
-    - type: "document"
-      name: "load-setup-register"
-      description: "Search for setup-register"
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      inputs:
-        name: "'setup-register'"
-      outputs:
-        setup-register: "$.get('documents')[0].get('value').get('setup', False) if $.get('documents') else False"
 
     # documents-structure
     - type: "document"
@@ -37,6 +21,10 @@ workflow:
             {
               "title": "Chat Completions",
               "name": "chat-completions",
+            },
+            {
+              "title": "Generate Content",
+              "name": "generate-content",
             }
           ]
         setup-register: |
@@ -46,8 +34,8 @@ workflow:
         site-structure: |
           [
             {
-              "title": "Onboarding",
-              "url": "{onboarding_url}",
+              "title": "NFL Podcast Generator",
+              "url": "http://local.machina:3004/",
               "icon": "globe"
             }
           ]
@@ -65,50 +53,6 @@ workflow:
                   "category": "Catalogue",
                   "metadata": {
                     "name": ["nhl-game", "nhl-games", "hockey"]
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "nba-schedules",
-                  "title": "NBA Games",
-                  "description": "NBA game schedules synced from the Sportradar API.",
-                  "category": "Catalogue",
-                  "metadata": {
-                    "name": ["nba-game", "nba-games", "basketball"]
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "nfl-schedules",
-                  "title": "NFL Games",
-                  "description": "NFL game schedules synced from the Sportradar API.",
-                  "category": "Catalogue",
-                  "metadata": {
-                    "name": ["nfl-game", "nfl-games", "football"]
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "mlb-schedules",
-                  "title": "MLB Games",
-                  "description": "MLB game schedules synced from the Sportradar API.",
-                  "category": "Catalogue",
-                  "metadata": {
-                    "name": ["mlb-game", "mlb-games", "baseball"]
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "soccer-schedules",
-                  "title": "Soccer Games",
-                  "description": "Soccer game schedules synced from the Sportradar API.",
-                  "category": "Catalogue",
-                  "metadata": {
-                    "name": ["soccer-game", "soccer-games", "football"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
