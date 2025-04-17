@@ -98,7 +98,7 @@ workflow:
       inputs:
         api_key: "$.get('api_key')"
       outputs:
-        final_filename: f"text-to-speech-$.(voice_id).mp3"
+        final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
         full_filepath: "$.get('file_path')"
 
     # store audio
