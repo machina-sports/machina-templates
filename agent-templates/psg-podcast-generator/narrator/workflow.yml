@@ -1,0 +1,259 @@
+workflow:
+  # workflow-event-narration
+  name: "workflow-event-narration"
+  title: "Event Narration"
+  description: "Workflow to produce soccer event narration."
+  context-variables:
+    sportradar-soccer:
+      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    ## load event
+
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for schedule events (sportradar)."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(hours=8), '$lt': datetime.utcnow() + timedelta(hours=8)}"
+        # value.sport_event_status.status: "'live'"
+        value.version_control.processing: "{'$ne': True}"
+        # value.version_control.research_competitors_status: "'processed'"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 2 mapping-soccer-event-summary
+    - type: "mapping"
+      name: "mapping-soccer-event-summary"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_exists') is True"
+      inputs:
+        event_selected: "$.get('event_selected')"
+      outputs:
+        event_code: "$.get('event_code')"
+        season: "$.get('season')"
+        season_title: "$.get('season_title')"
+        sport_event_statistics: "$.get('sport_event_statistics')"
+        sport_event_status: "$.get('sport_event_status')"
+        sport_event_timeline: "$.get('sport_event_timeline')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 3 version-control-update-schedule
+    - type: "document"
+      name: "version-control-update-schedule"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'update_narration_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    ## generate commentaries
+
+    # 4 mapping-soccer-event-summary-status
+    - type: "mapping"
+      name: "mapping-soccer-event-summary-status"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_exists') is True"
+      inputs:
+        item: "$.get('sport_event_status')"
+      outputs:
+        status_away_score: "$.get('away_score')"
+        status_home_score: "$.get('home_score')"
+        status_ball_locations: "$.get('ball_locations')"
+        status_match_situation: "$.get('match_situation')"
+        status_played: "$.get('played')"
+        status_period_scores: "$.get('period_scores')"
+
+    # 5 load-event-documents
+    - type: "document"
+      name: "load-event-documents"
+      description: "Search for events in the database."
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      config:
+        action: "search"
+        search-limit: 100
+        search-vector: false
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'content-snippet'"
+      outputs:
+        briefing-snippets: "$"
+        briefing-snippets-bulk: |
+          [
+            {
+              **d.get('value', {}),
+              'metadata': d.get('metadata', {})
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # # 6 prompt-reporting-team-narrator-validator
+    # - type: "prompt"
+    #   name: "prompt-reporting-team-narrator-validator"
+    #   description: "prompt-reporting-team-narrator-validator"
+    #   condition: "$.get('event_exists') is True"
+    #   connector:
+    #     name: "machina-ai"
+    #     command: "invoke_prompt"
+    #     model: "gpt-4o"
+    #   inputs:
+    #     documents: "$.get('briefing-snippets-bulk')"
+    #   outputs:
+    #     reporting-team-narrator-validator: "$"
+    #     next-topic-to-cover: "$.get('next_topic_to_cover')[0]"
+        
+    # 7 prompt-reporting-team-narrator-pre-live
+    - type: "prompt"
+      name: "prompt-reporting-team-narrator-pre-live"
+      description: "prompt-reporting-team-narrator-pre-live"
+      condition: "$.get('event_exists') is True and $.get('next-topic-to-cover') != 'NONE_TOPIC_TO_COVER'"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        selected_script_code: |
+          [
+            "NONE_TOPIC_TO_COVER",
+            "PRE_LIVE_INTRO_EVENT_SERVICE",
+            "PRE_LIVE_INTRO_EVENT_COMPETITION",
+            "POST_GAME_EVENT_SCORES",
+            "POST_GAME_EVENT_SUMMARY",
+            "POST_GAME_EVENT_STATISTICS",
+            "POST_GAME_EVENT_TIMELINE"
+          ]
+        doc_event_title: "$.get('title')"
+        doc_event_data: "$.get('event_selected').get('sport_event')"
+        doc_event_status: "$.get('sport_event_status')"
+        doc_event_away_score: "$.get('status_away_score')"
+        doc_event_home_score: "$.get('status_home_score')"
+        doc_event_period_scores: "$.get('status_period_scores')"
+        doc_event_timeline: "$.get('event_selected', {}).get('sport_event_timeline', {})"
+        doc_event_statistics: "$.get('event_selected', {}).get('sport_event_statistics', {})"
+      outputs:
+        snippets-commentaries: "$"
+        snippets-commentaries-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"{c.get('title', '')}",
+              'metadata': {
+                'content_type': 'commentaries-event-status',
+                'event_code': '$.(event_code)',
+                'event_title': '$.(title)',
+                'script_code': c.get('script_code', ''),
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    ## save / update documents
+    
+    # 8 bulk-content-snippets
+    - type: "document"
+      name: "bulk-content-snippets"
+      condition: "$.get('event_exists') is True and $.get('next-topic-to-cover') != 'NONE_TOPIC_TO_COVER'"
+      description: "Update the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('snippets-commentaries-bulk', [])
+          ]
+        
+    # 9 version-control-success
+    - type: "document"
+      name: "version-control-success"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'update_narration_count': $.get('event_selected').get('version_control', {}).get('update_narration_count', 0) + 1,
+              'update_narration_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

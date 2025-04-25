@@ -1,0 +1,173 @@
+workflow:
+  name: "soccer-workflow-event-timeline"
+  title: "Soccer Workflow Event Timeline"
+  description: "Workflow to produce soccer event timeline."
+  context-variables:
+    sportradar-soccer:
+      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    ## load event
+
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for schedule events (sportradar)."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(hours=8), '$lt': datetime.utcnow() + timedelta(hours=8)}"
+        value.sport_event_status.status: "{'$ne': 'closed'}"
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.update_timeline_status: "{'$ne': 'processing'}"
+        value.version_control.research_competitors_status: "'processed'"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 2 mapping-soccer-event-summary
+    - type: "mapping"
+      name: "mapping-soccer-event-summary"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_exists') is True"
+      inputs:
+        event_selected: "$.get('event_selected')"
+      outputs:
+        event_code: "$.get('event_code')"
+        season: "$.get('season')"
+        season_title: "$.get('season_title')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 3 version-control-update-schedule
+    - type: "document"
+      name: "version-control-update-schedule"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'update_timeline_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    ## load competitor home latest matches
+    
+    # 4 fetch-event-timeline
+    - type: "connector"
+      name: "fetch-event-timeline"
+      description: "Get a event timeline from SportRadar" 
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-sport_events/{event_code}/{data_type}"
+        command_attribute:
+          event_code: "$.get('event_code')"
+          data_type: "'timeline.json'"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        result-event-statistics: "$.get('statistics', {})"
+        result-event-timeline: "$.get('timeline', [])"
+        result-status-timeline: "len($.get('timeline', [])) > 0 and 'ready' or 'skipped'"
+
+    ## save / update documents
+    
+    # 15 version-control-success-schedule
+    - type: "document"
+      name: "version-control-success-schedule"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True and $.get('result-status-timeline') == 'ready'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'sport_event_statistics': $.get('result-event-statistics'),
+            'sport_event_timeline': $.get('result-event-timeline'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'update_event_count': $.get('event_selected').get('version_control', {}).get('update_event_count', 0) + 1,
+              'update_timeline_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 15 version-control-skipped-schedule
+    - type: "document"
+      name: "version-control-skipped-schedule"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True and $.get('result-status-timeline') == 'skipped'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'update_event_count': $.get('event_selected').get('version_control', {}).get('update_event_count', 0) + 1,
+              'update_timeline_status': 'pending',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

@@ -1,0 +1,18 @@
+agent:
+  # agent-reporting-team-narrator
+  name: "agent-reporting-team-narrator"
+  title: "Reporting Team Narrator"
+  description: "Agent responsible for generating soccer reporting team commentaries."
+  context:
+    config-frequency: 10
+  context-agent:
+    event_code: "$.get('event_code') or None"
+  workflows:
+        
+    # workflow-event-narration
+    - name: "workflow-event-narration"
+      description: "Soccer Event Narration"
+      inputs:
+        event_code: "$.get('event_code')"
+      outputs:
+        workflow-event-narration: "$.get('workflow-status', False)"

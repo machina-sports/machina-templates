@@ -4,7 +4,7 @@ workflow:
   description: "Workflow to synchronize competitions from SportRadar API to Machina."
   context-variables:
     sportradar-soccer:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   outputs:
     competitions: "$.get('competitions')"
     workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
