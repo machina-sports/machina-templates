@@ -15,7 +15,7 @@ workflow:
       api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     messages: "$.get('messages', [])"
-    team_id: "$.get('team_id')"
+    event_code: "$.get('event_code')"
     voice_id: "$.get('voice_id')"
   outputs:
     audio_path: "$.get('audio_path')"
@@ -54,7 +54,7 @@ workflow:
         search-limit: 1000
         search-vector: false
       filters:
-        metadata.team_id: "$.get('team_id')"
+        metadata.event_code: "$.get('event_code')"
       inputs:
         name: "'content-snippet'"
       outputs:
