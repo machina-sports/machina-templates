@@ -3,25 +3,25 @@ workflow:
   title: "Quizzes by Topic"
   description: "Workflow to generate quizzes by topic."
   context-variables:
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
     debugger:
       enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
     topic: "$.get('topic') or None"
   outputs:
     topic: "$.get('topic')"
-    questions: "$.get('content-quizzes').get('questions', [])"
+    questions: "$.get('content-quizzes')"
     workflow-status: "$.get('topic') is None and 'skipped' or 'executed'"
   tasks:
     
-    # 0 prompt-briefing-topic
+    # 1 prompt-briefing-topic
     - type: "prompt"
       name: "prompt-briefing-topic"
       description: "Generate a briefing by topic."
       condition: "$.get('topic') is not None"
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_prompt"
         model: "gpt-4o"
       inputs:
@@ -38,52 +38,16 @@ workflow:
           ]
         content-briefing: "$"
     
-    # 1 prompt-quizzes-by-topic
-    - type: "prompt"
-      name: "prompt-quizzes"
-      description: "Generate a quiz by topic."
-      condition: "$.get('topic') is not None"
-      connector:
-        name: "openai"
-        command: "invoke_prompt"
-        model: "gpt-4o"
-      inputs:
-        data-briefing: "$.get('content-briefing')"
-        data-topic: "$.get('topic')"
-      outputs:
-        content-quizzes: "$"
-
-    # 2 save content-quizzes
+    # 2 bulk-content-snippets
     - type: "document"
-      name: "save-content-quizzes"
+      name: "bulk-content-snippets"
       condition: "$.get('topic') is not None"
-      config:
-        action: "save"
-        embed-vector: false
-      documents:
-        content-briefing: |
-          {
-            **$.get('content-briefing'),
-            'title': f"$.(topic) - Briefing"
-          }
-        content-quizzes: |
-          {
-            **$.get('content-quizzes'),
-            'title': f"$.(topic) - Quizzes"
-          }
-      metadata:
-        document_type: "'content-quizzes'"
-    
-    # 3 bulk-content-quizzes
-    - type: "document"
-      name: "bulk-content-quizzes"
-      condition: "$.get('topic') is not None"
-      description: "Bulk save the quizzes."
+      description: "Bulk save the snippets."
       config:
         action: "bulk-save"
         embed-vector: true
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       document_name: "content-snippet"
@@ -93,5 +57,41 @@ workflow:
         parsed_items: |
           [
             *$.get('bulk-briefing', [])
+          ]
+      
+    # 3 prompt-quizzes-by-topic
+    - type: "prompt"
+      name: "prompt-quizzes"
+      description: "Generate a quiz by topic."
+      condition: "$.get('topic') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        data-briefing: "$.get('content-briefing')"
+        data-topic: "$.get('topic')"
+      outputs:
+        content-quizzes: "$.get('questions', [])"
+    
+    # 4 bulk-content-quizzes
+    - type: "document"
+      name: "bulk-content-quizzes"
+      condition: "$.get('topic') is not None"
+      description: "Bulk save the quizzes."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-quiz"
+      documents:
+        items: "$.get('parsed_items')"
+      inputs:
+        parsed_items: |
+          [
+            *$.get('content-quizzes', [])
           ]
       

@@ -3,22 +3,8 @@ workflow:
   title: "Setup Folders"
   description: "Setup Folders"
   outputs:
-    setup-register: "$.get('setup-register')"
-    workflow-status: "$.get('setup-register') is True and 'skipped' or 'executed'"
+    workflow-status: "'executed'"
   tasks:
-
-    # load-setup-register
-    - type: "document"
-      name: "load-setup-register"
-      description: "Search for setup-register"
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      inputs:
-        name: "'setup-register'"
-      outputs:
-        setup-register: "$.get('documents')[0].get('value').get('setup', False) if $.get('documents') else False"
 
     # documents-structure
     - type: "document"
@@ -35,12 +21,18 @@ workflow:
             "setup": True
           }
         site-structure: |
-          []
+          [
+            {
+              "title": "API Docs",
+              "url": "https://docs.machina.gg/api-reference/introduction",
+              "icon": "globe"
+            }
+          ]
         doc-structure: |
           [
             {
               "title": "Catalogue",
-              "isActive": True,
+              "isActive": False,
               "icon": "folder",
               "items": [
                 {
@@ -91,21 +83,11 @@ workflow:
               "icon": "folder",
               "items": [
                 {
-                  "name": "content-briefing",
-                  "title": "Briefing",
-                  "category": "Content",
-                  "metadata": {
-                    "name": ["content-briefing"]
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
                   "name": "content-quizzes",
                   "title": "Quizzes",
                   "category": "Content",
                   "metadata": {
-                    "name": ["content-quizzes"]
+                    "name": ["content-quiz"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"

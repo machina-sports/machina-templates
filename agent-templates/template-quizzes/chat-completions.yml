@@ -1,0 +1,60 @@
+workflow:
+  name: "chat-completions"
+  title: "Chat Completions"
+  description: "Workflow to execute a chat completion."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    machina-ai-fast:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+  inputs:
+    messages: "$.get('messages', [])"
+  outputs:
+    message: "$.get('message')"
+    workflow-status: "$.get('message') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # Load similar documents
+    - type: "document"
+      name: "load-similar-documents"
+      description: "Load similar documents"
+      config:
+        action: "search"
+        threshold-docs: 5
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "'content-snippet'"
+        search-limit: "'1000'"
+        search-query: "$.get('messages')"
+      outputs:
+        documents: "$.get('documents')"
+
+    # chat-completions-prompt
+    - type: "prompt"
+      name: "chat-completions-prompt"
+      description: "Chat Completions."
+      connector:
+        # name: "machina-ai-fast"
+        # command: "invoke_prompt"
+        # model: "llama-3.3-70b-versatile"
+        # model: "llama-3.1-8b-instant"
+        # model: "deepseek-r1-distill-llama-70b"
+        # model: "deepseek-r1-distill-llama-70b-specdec"
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        documents: "$.get('documents')"
+        messages: "$.get('messages')"
+      outputs:
+        message: "$.get('choices')[0].get('message').get('content')"
+
+    

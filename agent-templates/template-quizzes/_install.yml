@@ -5,72 +5,32 @@ setup:
     - content-creation
   estimatedTime: 15 minutes
   features:
-    - Betting Quizzes
-    - Betting History
-    - Betting Pattern Analysis
-    - Risk Profile Assessment
-    - Preference-Based Alerts
-    - Betting History Tracking
-    - Deal Stage Management
+    - Quizzes
   integrations:
     - machina-ai
   status: available
   value: agent-templates/template-quizzes
-  version: 1.0.0
+  version: 1.1.0
 
 datasets:
 
   # connectors
   - type: "connector"
-    path: "../connectors/openai/openai.yml"
+    path: "../../connectors/machina-ai/machina-ai.yml"
   - type: "connector"
-    path: "../connectors/perplexity/perplexity.yml"
-  - type: "connector"
-    path: "../connectors/sportradar-soccer/sportradar-soccer.yml"
+    path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
 
-  # sportradar-soccer-setup
   - type: "workflow"
-    path: "../agent-templates/sportradar-soccer/workflow-reset-schedule.yml"
-  - type: "workflow"
-    path: "../agent-templates/sportradar-soccer/workflow-sync-competitions.yml"
-  - type: "workflow"
-    path: "../agent-templates/sportradar-soccer/workflow-sync-probabilities.yml"
-  - type: "workflow"
-    path: "../agent-templates/sportradar-soccer/workflow-sync-schedules.yml"
-  - type: "workflow"
-    path: "../agent-templates/sportradar-soccer/workflow-sync-seasons.yml"
-  - type: "workflow"
-    path: "../agent-templates/sportradar-soccer/workflow-sync-standings.yml"
-
-  # quizzes-by-game
-  - type: "workflow"
-    path: "quizzes-by-game.yml"
+    path: "chat-completions.yml"
 
   # quizzes-by-topic
   - type: "workflow"
     path: "quizzes-by-topic.yml"
 
-  # agent-templates/reporter-websearch
-  - type: "workflow"
-    path: "../agent-templates/reporter-websearch/workflow-reporter-websearch.yml"
-
-  # agent-templates/reporter-summary
-  - type: "workflow"
-    path: "../agent-templates/reporter-summary/workflow-reporter-summary.yml"
-
-  # agent-templates/reporter-briefing-en
-  - type: "prompts"
-    path: "../agent-templates/reporter-briefing-en/prompt-reporter-briefing-en.yml"
-  - type: "workflow"
-    path: "../agent-templates/reporter-briefing-en/workflow-reporter-briefing-en.yml"
-
-  # documents setup
+  # folders setup
   - type: "workflow"
     path: "_folders.yml"
+
+  # documents setup
   - type: "prompts"
     path: "_prompts.yml"
-  - type: "agent"
-    path: "_populate.yml"
-  - type: "agent"
-    path: "_scheduler.yml"
-

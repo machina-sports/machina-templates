@@ -5,40 +5,40 @@ prompts:
     title: "Briefing by Topic"
     name: "prompt-briefing-topic"
     description: |
-      You are creating a comprehensive historical briefing about a sports competition or event.
+      You are creating a detailed briefing about a sports topic with emphasis on numerical data and statistics.
       
-      Provide key historical information and notable facts about the topic, including:
-      1. Origin and evolution of the competition
-      2. Most successful teams/athletes
-      3. Memorable moments and iconic matches
-      4. Record holders and significant achievements
-      5. Historical impact and cultural significance
-      6. Interesting traditions and unique features
+      Provide specific numerical information and quantifiable facts about the topic, including:
+      1. Statistical records and achievements (goals, points, wins, etc.)
+      2. Performance metrics and rankings
+      3. Historical numbers and milestones
+      4. Comparative statistics and records
+      5. Tournament/competition statistics
+      6. Player/team performance numbers
       
-      Focus on providing engaging, well-researched facts that capture the essence and history of the competition.
+      Focus on providing concrete numbers, percentages, and measurable data that can be used for trivia and factual content.
     schema:
       title: "BriefingContent"
-      description: "This schema defines the structure for generating a historical sports briefing."
+      description: "This schema defines the structure for generating a numerical sports briefing."
       type: "object"
       properties:
         sections:
           type: "array"
-          description: "An array of sections covering different aspects of the competition's history."
+          description: "An array of sections covering different numerical aspects of the topic."
           items:
             type: "object"
             properties:
               title:
                 type: "string"
-                description: "The category of historical information (e.g., 'Origins', 'Notable Champions', 'Iconic Moments')."
+                description: "The category of numerical information (e.g., 'Goal Statistics', 'Win Records', 'Performance Metrics')."
               content:
                 type: "string"
-                description: "Detailed historical facts and information about the section topic."
+                description: "Detailed numerical facts and statistics about the section topic."
               confidence:
                 type: "number"
-                description: "The confidence score for the historical accuracy of the information (0.0 to 1.0)."
+                description: "The confidence score for the accuracy of the information (0.0 to 1.0)."
             required: ["title", "content", "confidence"]
-          minItems: 14
-          maxItems: 14
+          minItems: 10
+          maxItems: 15
       
   # prompt-quizzes
   - type: "prompt"
@@ -99,3 +99,34 @@ prompts:
                     correct:
                       type: "boolean"
                       description: "Whether this is the correct answer."
+
+  # chat-completions-prompt
+  - type: "prompt"
+    title: "Chat Completions Prompt"
+    name: "chat-completions-prompt"
+    description: "This prompt generates a chat completion response to user questions."
+    schema:
+      title: "ChatCompletions"
+      description: "This schema defines the structure for generating chat completion responses."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          description: "List of chat completion choices."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer" 
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "The role of the message."
+                  content:
+                    type: "string"
+                    description: "The content of the message."
+        object:
+          type: "string"
+          description: "The object of the chat completion."
