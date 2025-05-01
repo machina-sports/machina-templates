@@ -38,9 +38,9 @@ workflow:
           ]
         content-briefing: "$"
     
-    # 2 bulk-content-snippets
+    # 2 save-content-snippets
     - type: "document"
-      name: "bulk-content-snippets"
+      name: "save-content-snippets"
       condition: "$.get('topic') is not None"
       description: "Bulk save the snippets."
       config:
@@ -74,9 +74,9 @@ workflow:
       outputs:
         content-quizzes: "$.get('questions', [])"
     
-    # 4 bulk-content-quizzes
+    # 4 save-content-quizzes
     - type: "document"
-      name: "bulk-content-quizzes"
+      name: "save-content-quizzes"
       condition: "$.get('topic') is not None"
       description: "Bulk save the quizzes."
       config:
