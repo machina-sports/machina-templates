@@ -73,7 +73,7 @@ prompts:
                     description: "The role of the message."
                   content:
                     type: "string"
-                    description: "The content of the message."
+                    description: "The content of the message, short and concise, no more than 100 words."
         object:
           type: "string"
           description: "The object of the chat completion."
