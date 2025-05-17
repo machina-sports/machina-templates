@@ -1,0 +1,24 @@
+mappings:
+
+  - type: "mapping"
+    title: "Oxylabs Transcript Mapping"
+    name: "oxylabs-transcript-mapping"
+    description: "Mapping data from oxylabs transcript"
+    outputs:
+      transcript-content: |
+        [
+          item.get('transcriptSegmentRenderer', {}).get('snippet', {}).get('runs', [{'text': ''}])[0].get('text', '')
+          for item in $.get('items', [])
+        ]
+  
+  - type: "mapping"
+    title: "Oxylabs Scraping Mapping"
+    name: "oxylabs-scraping-mapping"
+    description: "Mapping data from oxylabs scraping"
+    outputs:
+      parsed-content: |
+        [
+          text[i:i+100]
+          for text in [bs4($.get('input-scraping-content'), 'html.parser').get_text()]
+          for i in range(0, len(text), 100)
+        ]
