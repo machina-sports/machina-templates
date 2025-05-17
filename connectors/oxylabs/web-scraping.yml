@@ -1,0 +1,5 @@
+connector:
+  name: "oxylabs"
+  description: "Oxylabs API"
+  filename: "web-scraping.json"
+  filetype: "restapi" 

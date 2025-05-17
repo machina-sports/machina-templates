@@ -1,0 +1,35 @@
+setup:
+  title: Oxylabs
+  description: Connect to the Oxylabs API to get scraped web pages.
+  category:
+    - data-acquisition
+    - web-scraping
+  estimatedTime: 1 minute
+  features:
+    - Real-time web page web-scraping
+    - Scrape any website
+    - Get the content of the web page
+    - Get the HTML of the web page
+    - Get the Transcript of YouTube videos
+
+  integrations:
+    - web-scraping
+  status: available
+  value: connectors/oxylabs
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "web-scraping.yml"
+
+  - type: "workflow"
+    path: "scraping.yml"
+
+  - type: "workflow"
+    path: "transcript.yml"
+
+  - type: "mappings"
+    path: "mapping.yml"
+
+  - type: "prompts"
+    path: "prompts.yml"

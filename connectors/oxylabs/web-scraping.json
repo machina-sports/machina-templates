@@ -1,0 +1,118 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Oxylabs",
+    "description": "This API allows you to retrieve information about web pages.",
+    "version": "1"
+  },
+  "servers": [
+    {
+      "url": "https://realtime.oxylabs.io/v1"
+    }
+  ],
+  "paths": {
+    "/queries": {
+      "post": {
+        "summary": "Get information about web pages",
+        "parameters": [],
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "description": "The source to scrape",
+                    "example": "https://www.google.com"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "The URL to scrape",
+                    "example": "https://www.google.com"
+                  }
+                },
+                "required": ["source", "url"]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "securitySchemes": {
+    "basicAuth": {
+      "type": "http",
+      "scheme": "basic"
+    },
+    "bearerAuth": {
+      "type": "http",
+      "scheme": "bearer",
+      "bearerFormat": "JWT"
+    }
+  }
+}
