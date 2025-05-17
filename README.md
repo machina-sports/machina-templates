@@ -17,7 +17,7 @@ The `agent-templates` directory contains all the agent templates, organized by c
 - Reporter templates (e.g., `reporter-briefing-en`, `reporter-image`, `reporter-polls-en`)
 - Sport-specific templates (e.g., `sportingbet-nba`, `sportradar-soccer`)
 - Brand-specific templates (e.g., `template-estelarbet`, `template-quizzes-dazn`)
-- General templates (e.g., `template-gameday`, `chat-completion`)
+- General templates (e.g., `chat-completion`)
 
 ## Naming Conventions
 
@@ -72,7 +72,6 @@ The repository includes a wide range of templates for various sports content wor
 
 ### General Templates
 - `chat-completion`: Generic chat completion workflows
-- `template-gameday`: Game day content generation
 - `template-quizzes`: Generic sports quiz templates
 
 ## Available Connectors
