@@ -26,11 +26,13 @@ setup:
   integrations:
     - sportradar
   status: available
-  value: sportradar-nba
+  value: connectors/sportradar-nba
   version: 8.0.0
 
 datasets:
+  
   - type: "connector"
     path: "sportradar-nba.yml"
-
-
+  
+  - type: "workflow"
+    path: "sync-nba-games.yml"

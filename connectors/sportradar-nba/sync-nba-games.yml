@@ -1,10 +1,10 @@
 workflow:
   name: "sportradar-nba-sync-games"
-  title: "NBA - Sync Games"
+  title: "Sync Games"
   description: "Workflow to synchronize NBA games from SportRadar API to Machina."
   context-variables:
     sportradar-nba:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
     season_year: "$.get('season_year', '2024')"
     season_type: "$.get('season_type', 'REG')"
@@ -98,7 +98,7 @@ workflow:
         action: "bulk-update"
         embed-vector: false
         force-update: true
-      document_name: "nba-game"
+      document_name: "'nba-game'"
       documents:
         items: "$.get('games_parsed')"
       inputs:
