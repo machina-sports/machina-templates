@@ -1,0 +1,18 @@
+agent:
+  
+  # agent-statistics-players
+  name: "agent-statistics-players"
+  title: "Agent Statistics Players"
+  description: "Agent responsible for generating statistics players"
+  context:
+    config-frequency: 0.2
+  workflows:
+    
+    # workflow-statistics-players
+    - name: "workflow-statistics-players"
+      description: "Statistics Players"
+      inputs:
+        season_year: "'2024'"
+        season_type: "'PST'"
+      outputs:
+        workflow-statistics-players: "$.get('workflow-status', False)"

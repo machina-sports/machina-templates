@@ -1,0 +1,243 @@
+workflow:
+  
+  # populate-statistics-players
+  name: populate-statistics-players
+  title: "Populate Statistics Players"
+  description: "Populate Statistics Players"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    - type: "document"
+      name: "bulk-statistics-players"
+      description: "Update the statistics players."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'content-player'"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            {
+              "player_id": "3f98b652-71d4-4a40-949d-41c33dddd15d",
+              "name": "statistics-bennedict-mathurin",
+              "title": "Bennedict Mathurin",
+              "full_name": "Bennedict Mathurin",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "BENNEDICT_MATHURIN_STATISTICS",
+              ],
+              "index-agenda": "BENNEDICT_MATHURIN_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-bennedict-mathurin",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "62c44a90-f280-438a-9c7e-252f4f376283",
+              "name": "statistics-jalen-williams",
+              "title": "Jalen Williams",
+              "full_name": "Jalen Williams",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "JALEN_WILLIAMS_STATISTICS",
+              ],
+              "index-agenda": "JALEN_WILLIAMS_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-jalen-williams",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "3f7e2350-e208-4791-98c2-684b53bb5a9a",
+              "name": "statistics-lu-dort",
+              "title": "Lu Dort",
+              "full_name": "Lu Dort",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "LU_DORT_STATISTICS",
+              ],
+              "index-agenda": "LU_DORT_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-lu-dort",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "3bec965e-1c2e-4ef0-a598-74a018a627c4",
+              "name": "statistics-dillon-jones",
+              "title": "Dillon Jones",
+              "full_name": "Dillon Jones",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "DILLON_JONES_STATISTICS",
+              ],
+              "index-agenda": "DILLON_JONES_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-dillon-jones",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "9e0b879c-8be6-445e-a437-a3bf18130b9c",
+              "name": "statistics-ousmane-dieng",
+              "title": "Ousmane Dieng",
+              "full_name": "Ousmane Dieng",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "OUSMANE_DIENG_STATISTICS",
+              ],
+              "index-agenda": "OUSMANE_DIENG_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-ousmane-dieng",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "fc036630-debc-44bf-9663-03c3fbd3045c",
+              "name": "statistics-marjon-beauchamp",
+              "title": "MarJon Beauchamp",
+              "full_name": "MarJon Beauchamp",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "MARJON_BEAUCHAMP_STATISTICS",
+              ],
+              "index-agenda": "MARJON_BEAUCHAMP_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-marjon-beauchamp",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "fd131bac-4644-4f4d-b715-2bc093775cd5",
+              "name": "statistics-pacome-dadiot",
+              "title": "Pacôme Dadiet",
+              "full_name": "Pacôme Dadiet",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "PACOME_DADIOT_STATISTICS",
+              ],
+              "index-agenda": "PACOME_DADIET_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-pacome-dadiot",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "d0c7135a-1aea-40cb-ba20-df656de71749",
+              "name": "statistics-anthony-edwards",
+              "title": "Anthony Edwards",
+              "full_name": "Anthony Edwards",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "ANTHONY_EDWARDS_STATISTICS",
+              ],
+              "index-agenda": "ANTHONY_EDWARDS_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-anthony-edwards",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "a34ec970-f4a1-47a3-98a1-51ff5e92a443",
+              "name": "statistics-jaylen-clark",
+              "title": "Jaylen Clark",
+              "full_name": "Jaylen Clark",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "JAYLEN_CLARK_STATISTICS",
+              ],
+              "index-agenda": "JAYLEN_CLARK_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-jaylen-clark",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            },
+            {
+              "player_id": "2b95727a-4273-4f8f-a45b-3d9ac9969dba",
+              "name": "terrence-shannon-jr-statistics",
+              "title": "Terrence Shannon Jr.",
+              "full_name": "Terrence Shannon Jr.",
+              "category": "Player",
+              'agenda-control': {
+                'processing': False,
+                'finished': False,
+                'updated': datetime.utcnow()
+              },
+              "indexes": [
+                "TERRENCE_SHANNON_JR_STATISTICS",
+              ],
+              "index-agenda": "TERRANCE_SHANNON_WIKIPEDIA_WEB_RESEARCH",
+              "conditions": {},
+              "metadata": {
+                "content_type": "content-player",
+                "content_name": "content-player-statistics-terrence-shannon-jr",
+                "content_group": "PLAYER_STATISTICS"
+              }
+            }
+          ]

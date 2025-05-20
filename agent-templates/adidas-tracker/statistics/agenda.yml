@@ -1,0 +1,160 @@
+workflow:
+
+  # workflow-statistics-players
+  name: workflow-statistics-players
+  title: "Statistics Players"
+  description: "Workflow to produce statistics players."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', '2024')"
+    season_type: "$.get('season_type', 'REG')"
+  outputs:
+    workflow-status: |
+      (
+        $.(content-player-exists) is True
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 0 load-existing-briefings
+    - type: "document"
+      name: "load-existing-briefings"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.agenda-control.updated", 1]
+      filters:
+        metadata.content_group: "'PLAYER_STATISTICS'"
+        value.agenda-control.processing: "{'$eq': False}"
+        value.agenda-control.finished: "{'$eq': False}"
+      inputs:
+        name: "'content-player'"
+      outputs:
+        content-player-agenda: "$.get('documents', [])[0].get('agenda-control', {}) if $.get('documents') else None"
+        content-player-doc-id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        content-player-exists: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        content-player-player-id: "$.get('documents', [])[0].get('value', {}).get('player_id') if $.get('documents') else None"
+        content-player-value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+
+    # 1 content-player-control-update 
+    - type: "document"
+      name: "content-player-control-update"
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('content-player-doc-id')"
+      documents:
+        content-player: |
+          {
+            **$.get('content-player-value', {}),
+            'agenda-control': {
+              **$.get('content-player-agenda', {}),
+              'processing': True,
+              'updated': datetime.utcnow()
+            }
+          }
+
+    # 2 load-players-from-sportradar
+    - type: "connector"
+      name: "load-players-from-sportradar"
+      description: "Get a season players from SportRadar"
+      connector:
+        name: "sportradar-nba"
+        command: "get-players/{player_id}/{data_type}"
+        command_attribute:
+          player_id: "$.get('content-player-player-id')"
+          data_type: "'profile.json'"
+      condition: "$.get('content-player-exists') is True"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        player: "$"
+        player-name: "$.get('full_name', '')"
+        player-team-name: "$.get('seasons', [])[0].get('teams', [])[0].get('name', '')"
+        player-statistics: "$.get('seasons', [])[0].get('teams', [])[0].get('total', {})"
+
+    # 3 prompt-analysis-player-statistics
+    - type: prompt
+      name: prompt-analysis-player-statistics
+      condition: "$.get('content-player-exists') is True"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
+      inputs:
+        input-content: "$.get('player-statistics')"
+        input-player-name: "$.get('player-name')"
+        input-player-team-name: "$.get('player-team-name')"
+      outputs:
+        snippets-bulk: |
+          [
+            {
+              'text': c.get('content', ''),
+              'title': c.get('title', ''),
+              'subject': c.get('subject', ''),
+              'metadata': {
+                'player_id': '$.(content-player-player-id)',
+                'script_code': c.get('script_code'),
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 4 bulk-content-snippets
+    - type: "document"
+      name: "bulk-content-snippets"
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'content-snippet'"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('snippets-bulk', [])
+          ]
+
+    # 5 content-player-control-update 
+    - type: "document"
+      name: "content-player-control-update"
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('content-player-doc-id')"
+      documents:
+        content-player: |
+          {
+            **$.get('content-player-value', {}),
+            'agenda-control': {
+              **$.get('content-player-agenda', {}),
+              'processing': False,
+              'published': False,
+              'finished': True,
+              'updated': datetime.utcnow()
+            },
+            'player-data': $.get('player')
+          }

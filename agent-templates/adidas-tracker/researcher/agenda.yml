@@ -1,0 +1,198 @@
+workflow:
+
+  # workflow-researcher-briefings
+  name: workflow-researcher-briefings
+  title: "Reearcher Briefings"
+  description: "Workflow to produce researcher briefings."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  outputs:
+    workflow-status: |
+      (
+        $.(briefing_exists) is True
+        and '$.(next-topic-to-cover)' != 'NONE_TOPIC_TO_COVER'
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 0 load-existing-briefings
+    - type: "document"
+      name: "load-existing-briefings"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      config:
+        action: "search"
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.agenda-control.updated", 1]
+      inputs:
+        name: "'content-agenda'"
+      outputs:
+        documents_covered: |
+          [
+            d.get('metadata', {}).get('briefing_code')
+            for d in $.get('documents', [])
+          ]
+
+    # 1 load-content-scripts
+    - type: "document"
+      name: "load-content-scripts"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.agenda-control.updated", 1]
+      filters:
+        metadata.content_group: "'PLAYER_RESEARCHER_BRIEFINGS'"
+      inputs:
+        name: "'content-script'"
+      outputs:
+        content-script-agenda: "$.get('documents', [{}])[0].get('agenda-control', {}) if $.get('documents') else None"
+        content-script-counter: "$.get('documents', [{}])[0].get('agenda-control', {}).get('counter', 0) if $.get('documents') else 0"
+        content-script-doc-id: "$.get('documents', [{}])[0].get('_id', '') if $.get('documents') else ''"
+        content-script-exists: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        content-script-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else None"
+        content-instructions: |
+          $.get('documents', [{}])[0].get('value', {}).get('instruction', '')
+        next-topic-to-cover: |
+          'NONE_TOPIC_TO_COVER' if not $.get('documents', [{}])[0].get('value', {}).get('indexes', []) else (
+            [
+              script
+              for script in $.get('documents', [{}])[0].get('value', {}).get('indexes', [])
+              if script not in $.(documents_covered)
+            ][0] if [
+              script
+              for script in $.get('documents', [{}])[0].get('value', {}).get('indexes', [])
+              if script not in $.(documents_covered)
+            ] else 'NONE_TOPIC_TO_COVER'
+          )
+        web-scraping-urls: |
+          $.get('documents', [{}])[0].get('value', {}).get('web-scraping-urls', [])
+        web-scraping-urls-bulk: |
+          [
+            {
+              'metadata': {
+                'briefing_code': '$.(next-topic-to-cover)',
+                'briefing_group': 'RESEARCH_GOOGLE_NEWS',
+                'season_id': '$.(season_id)'
+              },
+              'version_control': {
+                'finished': False,
+                'processing': False,
+                'updated': datetime.utcnow()
+              },
+              'web-scraping-url': url,
+            }
+            for url in $.get('documents', [{}])[0].get('value', {}).get('web-scraping-urls', [])
+          ]
+        web-search-queries: |
+          $.get('documents', [{}])[0].get('value', {}).get('web-search-queries', [])
+        web-search-queries-bulk: |
+          [
+            {
+              'metadata': {
+                'briefing_code': '$.(next-topic-to-cover)',
+                'briefing_group': 'RESEARCH_GOOGLE_NEWS',
+                'season_id': '$.(season_id)'
+              },
+              'version_control': {
+                'finished': False,
+                'processing': False,
+                'updated': datetime.utcnow()
+              },
+              'web-search-query': query,
+            }
+            for query in $.get('documents', [{}])[0].get('value', {}).get('web-search-queries', [])
+          ]
+    
+    # 2 create new agenda
+    - type: "document"
+      name: "create-new-agenda"
+      condition: |
+        (
+          '$.(next-topic-to-cover)' != 'NONE_TOPIC_TO_COVER'
+        )
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "'content-agenda'"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            {
+              'agenda-control': {
+                'counter': 0,
+                'processing': False,
+                'updated': datetime.utcnow()
+              },
+              'instruction': '$.(content-instructions)',
+              'metadata': {
+                'briefing_code': '$.(next-topic-to-cover)',
+                'briefing_group': 'RESEARCH_GOOGLE_NEWS',
+                'season_id': '$.(season_id)'
+              },
+              'status': 'active'
+            }
+          ]
+
+    # 3 create new search request
+    - type: "document"
+      name: "create-search-request"
+      condition: |
+        (
+          '$.(next-topic-to-cover)' != 'NONE_TOPIC_TO_COVER'
+        )
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "'web-search'"
+      documents:
+        items: "$.get('parsed-items', [])"
+      inputs:
+        parsed-items: "$.get('web-search-queries-bulk')"
+
+    # 4 create web-scraping url
+    - type: "document"
+      name: "create-web-scraping-url"
+      condition: |
+        (
+          '$.(next-topic-to-cover)' != 'NONE_TOPIC_TO_COVER'
+        )
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "'web-scraping'"
+      documents:
+        items: "$.get('parsed-items', [])"
+      inputs:
+        parsed-items: "$.get('web-scraping-urls-bulk')"
+
+    # 5 content-script-control-update 
+    - type: "document"
+      name: "content-script-control-update"
+      condition: "$.get('content-script-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('content-script-doc-id')"
+      documents:
+        content-script: |
+          {
+            **$.get('content-script-value', {}),
+            'agenda-control': {
+              **$.get('content-script-agenda', {}),
+              'counter': $.get('content-script-counter', 0) + 1,
+              'updated': datetime.utcnow()
+            }
+          }
