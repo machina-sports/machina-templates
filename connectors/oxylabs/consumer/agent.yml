@@ -1,0 +1,72 @@
+agent:
+  
+  # agent-researcher-competition-briefing
+  name: "oxylabs-consumer"
+  title: "Oxylabs Consumer"
+  description: "Agent responsible for consuming oxylabs."
+  context:
+    config-frequency: 0.2
+  workflows:
+
+    ## SEARCHING ##
+    
+    # workflow-consumer-oxylabs-searching
+    - name: "workflow-consumer-oxylabs-searching"
+      description: "Consumer Oxylabs Searching"
+      outputs:
+        web-search-doc-id: "$.get('document_id')"
+        web-search-query: "$.get('web-search-query') or None"
+        web-search-query-exists: "$.get('workflow-status') == 'executed'"
+
+    # workflow-oxylabs-web-search
+    - name: "oxylabs-web-search"
+      description: "Execute Oxylabs Web Search"
+      condition: "$.get('web-search-query-exists') is True and $.get('web-search-query') is not None"
+      inputs:
+        query: "$.get('web-search-query')"
+      outputs:
+        web-search-content: "$.get('parsed-content')"
+        web-search-links: "$.get('parsed-links')"
+        web-search-status: "$.get('workflow-status') == 'executed'"
+
+    # workflow-consumer-oxylabs-update
+    - name: "workflow-consumer-oxylabs-update"
+      description: "Consumer Oxylabs Update"
+      condition: "$.get('web-search-query-exists') is True and $.get('web-search-query') is not None"
+      inputs:
+        content: "$.get('web-search-content')"
+        content-links: "$.get('web-search-links')"
+        document_id: "$.get('web-search-doc-id')"
+      outputs:
+        web-search-status: "$.get('workflow-status') == 'executed'"
+
+    ## SCRAPING ##
+
+    # workflow-consumer-oxylabs-scraping
+    - name: "workflow-consumer-oxylabs-scraping"
+      description: "Consumer Oxylabs Scraping"
+      outputs:
+        web-scraping-doc-id: "$.get('document_id')"
+        web-scraping-url: "$.get('web-scraping-url') or None"
+        web-scraping-url-exists: "$.get('workflow-status') == 'executed'"
+
+    # workflow-oxylabs-web-scraping
+    - name: "oxylabs-web-scraping"
+      description: "Execute Oxylabs Web Scraping"
+      condition: "$.get('web-scraping-url-exists') is True and $.get('web-scraping-url') is not None"
+      inputs:
+        url: "$.get('web-scraping-url')"
+      outputs:
+        web-scraping-content: "$.get('parsed-content')"
+        web-scraping-status: "$.get('workflow-status') == 'executed'"
+
+    # workflow-consumer-oxylabs-update
+    - name: "workflow-consumer-oxylabs-update"
+      description: "Consumer Oxylabs Update"
+      condition: "$.get('web-scraping-url-exists') is True and $.get('web-scraping-url') is not None"
+      inputs:
+        content: "$.get('web-scraping-content')"
+        document_id: "$.get('web-scraping-doc-id')"
+      outputs:
+        web-scraping-status: "$.get('workflow-status') == 'executed'"
+    

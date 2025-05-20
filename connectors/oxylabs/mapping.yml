@@ -18,7 +18,26 @@ mappings:
     outputs:
       parsed-content: |
         [
-          text[i:i+100]
+          f"{i//100}: {text[i:i+100]}"
           for text in [bs4($.get('input-scraping-content'), 'html.parser').get_text()]
           for i in range(0, len(text), 100)
+        ]
+
+  - type: "mapping"
+    title: "Oxylabs Searching Mapping"
+    name: "oxylabs-searching-mapping"
+    description: "Mapping data from oxylabs searching"
+    outputs:
+      parsed-content: "$.get('input-searching-content', {}).get('results', {}).get('main', [])"
+      parsed-links: |
+        [
+          {
+            'version_control': {
+              'finished': False,
+              'processing': False,
+              'updated': datetime.utcnow()
+            },
+            'web-scraping-url': item.get('url', ''),
+          }
+          for item in $.(input-searching-content).get('results', {}).get('main', [])[:10]
         ]

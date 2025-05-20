@@ -13,12 +13,12 @@ workflow:
       username: "$TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME"
       password: "$TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD"
   inputs:
-    parser: "$.get('parser') == 'true'"
+    parse: "($.get('parse', 'false') == 'true') and True or False"
     render: "$.get('render')"
     source: "$.get('source', 'universal')"
     url: "$.get('url')"
   outputs:
-    result: "$.get('result')"
+    parsed-content: "$.get('parsed-content')"
     workflow-status: "'executed'"
   tasks:
 
@@ -32,7 +32,7 @@ workflow:
       inputs:
         body: |
           {
-            "parser": $.get('parser'),
+            "parse": $.get('parse'),
             "render": $.get('render'),
             "source": $.get('source'),
             "url": $.get('url'),
@@ -48,85 +48,3 @@ workflow:
         input-scraping-content: "$.get('scraping-content')"
       outputs:
         parsed-content: "$.get('parsed-content')"
-
-    - type: "prompt"
-      name: "prompt-content-analysis"
-      description: "Prompt to analyze the transcript content"
-      condition: "$.get('parsed-content') is not None"
-      connector:
-        name: "machina-ai"
-        command: "invoke_prompt"
-        model: "gpt-4.1"
-      inputs:
-        input-content: |
-          [
-            f"{i}: {content}"
-            for i, content in enumerate($.get('parsed-content', []))
-          ]
-      outputs:
-        slices: "$.get('slices')"
-        slices-bulk: |
-          [
-            {
-              'subject': c.get('subject', ''),
-              'script_code': c.get('script_code', ''),
-              'start_index': c.get('start_index', ''),
-              'end_index': c.get('end_index', ''),
-              'content': c.get('content', ''),
-              'items': $.(parsed-content)[c.get('start_index', 0):c.get('end_index', 0)]
-            }
-            for c in $.get('slices', [])
-          ]
-        snippets-bulk: |
-          [
-            {
-              'title': c.get('subject', ''),
-              'text': c.get('content', ''),
-              'metadata': {
-                'language': 'en'
-              } 
-            }
-            for c in $.get('slices', [])
-          ]
-
-    - type: "document"
-      name: "update-web-scraping"
-      description: "Update the document."
-      condition: "$.get('scraping-content') is not None"
-      config:
-        action: "update"
-        embed-vector: false
-        force-update: true
-      documents:
-        web-scraping: |
-          {
-            'content': $.get('slices-bulk'),
-            'execution': datetime.utcnow(),
-            'version_control': {
-              'processing': False,
-              'updated': datetime.utcnow()
-            }
-          }
-      metadata:
-        url: "$.get('url')"
-
-    - type: "document"
-      name: "update-snippets"
-      condition: "len($.get('snippets-bulk', [])) > 0"
-      description: "Update the snippets."
-      config:
-        action: "bulk-save"
-        embed-vector: true
-        force-update: true
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      document_name: "content-snippet"
-      documents:
-        items: "$.get('parsed-items')"
-      inputs:
-        parsed-items: |
-          [
-            *$.get('snippets-bulk', [])
-          ]

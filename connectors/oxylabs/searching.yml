@@ -1,0 +1,65 @@
+workflow:
+
+  # oxylabs-web-search
+  name: "oxylabs-web-search"
+  title: "Oxylabs - Web Search"
+  description: "Workflow to search a web page."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    oxylabs:
+      username: "$TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD"
+  inputs:
+    parser: "($.get('parser', 'true') == 'true') and True or False"
+    query: "$.get('query')"
+    source: "$.get('source', 'google_search')"
+  outputs:
+    parsed-content: "$.get('parsed-content')"
+    parsed-links: "$.get('parsed-links')"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "oxylabs-post-queries"
+      description: "Search a web page."
+      condition: "$.get('query') is not None"
+      connector:
+        name: "oxylabs"
+        command: "post-queries"
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": 12
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": 10
+                  }
+                ]
+              }
+            ],
+            "parse": $.get('parser'),
+            "query": $.get('query'),
+            "source": $.get('source'),
+          }
+      outputs:
+        searching-content: "$.get('results', [])[0].get('content')"
+
+    - type: "mapping"
+      name: "oxylabs-searching-mapping"
+      description: "Mapping data from oxylabs searching"
+      condition: "$.get('searching-content') is not None"
+      inputs:
+        input-searching-content: "$.get('searching-content')"
+      outputs:
+        parsed-content: "$.get('parsed-content')"
+        parsed-links: "$.get('parsed-links')"

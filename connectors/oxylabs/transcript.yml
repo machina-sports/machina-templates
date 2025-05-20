@@ -53,8 +53,8 @@ workflow:
         transcript-content: "$.get('transcript-content')"
 
     - type: "prompt"
-      name: "prompt-content-analysis"
-      description: "Prompt to analyze the transcript content"
+      name: "prompt-transcript-subject-analysis"
+      description: "Prompt to analyze the transcript subject"
       condition: "$.get('transcript-content') is not None"
       connector:
         name: "machina-ai"
@@ -80,17 +80,6 @@ workflow:
             }
             for c in $.get('slices', [])
           ]
-        snippets-bulk: |
-          [
-            {
-              'title': c.get('subject', ''),
-              'text': c.get('content', ''),
-              'metadata': {
-                'language': 'en'
-              } 
-            }
-            for c in $.get('slices', [])
-          ]
 
     - type: "document"
       name: "update-video-transcript"
@@ -113,24 +102,3 @@ workflow:
           }
       metadata:
         video-code: "$.get('query')"
-
-    - type: "document"
-      name: "update-snippets"
-      condition: "len($.get('snippets-bulk', [])) > 0"
-      description: "Update the snippets."
-      config:
-        action: "bulk-save"
-        embed-vector: true
-        force-update: true
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      document_name: "content-snippet"
-      documents:
-        items: "$.get('parsed-items')"
-      inputs:
-        parsed-items: |
-          [
-            *$.get('snippets-bulk', [])
-          ]        
