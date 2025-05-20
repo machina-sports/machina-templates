@@ -17,10 +17,9 @@ setup:
     - Betting History Tracking
     - Deal Stage Management
   integrations:
-    - genius-sports
+    - sportradar
     - machina-db
     - machina-ai
-    - hubspot
   status: available
   value: "agent-templates/chat-completion"
   version: 1.0.0

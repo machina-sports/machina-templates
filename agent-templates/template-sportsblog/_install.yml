@@ -12,14 +12,14 @@ setup:
     - User engagement tracking
     - Content scheduling and publishing 
     - AI-powered content generation
-    - Personalized recommendations based on pré match odds and historical performance
+    - Personalized recommendations based on pre match odds and historical performance
     - AI-powered insights and analysis
     - Customizable content creation
     - Social media integration
     - User engagement tracking
     - Content scheduling and publishing 
   integrations:
-    - genius-sports
+    - sportradar
     - machina-db
     - machina-ai
     - hubspot
