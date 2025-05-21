@@ -39,16 +39,3 @@ datasets:
 
   - type: "prompts"
     path: "prompts.yml"
-
-  # consumer
-  - type: "workflow"
-    path: "consumer/searching.yml"
-
-  - type: "workflow"
-    path: "consumer/scraping.yml"
-
-  - type: "workflow"
-    path: "consumer/update.yml"
-
-  - type: "agent"
-    path: "consumer/agent.yml"

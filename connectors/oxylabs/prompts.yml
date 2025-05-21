@@ -1,5 +1,63 @@
 prompts:
 
+  # prompt-transcript-analysis
+  - type: "prompt"
+    name: "prompt-transcript-analysis"
+    title: "Transcript Analysis"
+    description: "Generate a transcript analysis of a video"
+    schema:
+      title: "SoccerTranscriptAnalysis"
+      description: "Transcript analysis of a video"
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "Snippets of the transcript analysis"
+          minItems: 1
+          maxItems: 3
+          items:
+            type: "object"
+            required:
+              - title
+              - content
+              - script_code
+            properties:
+              title:
+                type: "string"
+                description: "The title should summarize your notes in up to 10 words"
+              subject:
+                type: "string"
+                description: "The subject of the note, cite the name of the person, team or organization, must be different from the title"
+              content:
+                type: "string"
+                description: |
+                  You are a soccer reporter and this is your notebook about the facts around the world of soccer.
+                  Your notes should cover the buzz and news from influentital people that broadcasters and journalists follow.
+                  Based on the video transcript, write a note for the topic requested in the context.
+                  If there is not enough information, write that you don't have the necessary information.
+                  Be concise and only observe the facts, don't invent information or make predictions.
+                  Do not address topics other than those requested in the context.
+
+                  TONE AND VOICE GUIDELINES:
+                  - Write in a sentimental, friendly tone like chatting with a knowledgeable friend
+                  - Use simple, accessible language that anyone can understand
+                  - Be direct and concise, avoid lengthy explanations
+                  - Show expertise without being formal or academic
+                  - Keep it conversational and engaging, like social media
+                  - Explain complex topics in a simple, approachable way
+                  - Stay helpful and welcoming to beginners
+                  - Avoid overly technical terms or jargon
+                  - Don't use promotional or sales-focused language
+              script_code:
+                type: "string"
+                description: |
+                  A enum with 3 parts, like:
+                  - PLAYER_TRANSFER_NEWS
+                  - TEAM_TRANSFER_NEWS
+                  - TEAM_MERCHANDISE_EVENT
+                  - PLAYER_RELEASE_EVENT
+                  - etc.
+
   # prompt-transcript-subject-analysis
   - type: "prompt"
     name: "prompt-transcript-subject-analysis"

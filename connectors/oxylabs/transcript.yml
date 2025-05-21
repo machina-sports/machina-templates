@@ -81,6 +81,55 @@ workflow:
             for c in $.get('slices', [])
           ]
 
+    - type: "prompt"
+      name: "prompt-transcript-analysis"
+      description: "prompt-transcript-analysis"
+      condition: "$.get('transcript-content') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        doc-video-transcript: $.get('slices-bulk', [])
+      outputs:
+        doc-video-analysis: "$"
+        doc-video-analysis-bulk: |
+          [
+            {
+              'subject': c.get('title', ''),
+              'text': c.get('content', ''),
+              'title': f"{c.get('title', '')}",
+              'metadata': {
+                'content_type': 'transcript-analysis',
+                'video_code': '$.(video-code)',
+                'script_code': c.get('script_code'),
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    - type: "document"
+      name: "bulk-transcript-analysis"
+      condition: "$.get('transcript-content') is not None"
+      description: "Update the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'content-snippet'"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('doc-video-analysis-bulk', [])
+          ]
+
     - type: "document"
       name: "update-video-transcript"
       description: "Update the document."
