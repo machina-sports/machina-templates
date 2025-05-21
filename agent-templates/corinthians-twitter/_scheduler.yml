@@ -3,7 +3,7 @@ agent:
   title: "Statistics Scheduler"
   description: "Agent responsible for scheduling Corinthians data workflows with brutal stats insight."
   context:
-    config-frequency: 0.5
+    config-frequency: 10
   workflows:
         
     # Corinthians Stats Generator
