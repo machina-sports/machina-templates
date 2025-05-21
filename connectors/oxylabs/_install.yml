@@ -26,9 +26,6 @@ datasets:
     path: "web-scraping.yml"
 
   - type: "workflow"
-    path: "searching.yml"
-
-  - type: "workflow"
     path: "scraping.yml"
 
   - type: "workflow"
