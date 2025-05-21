@@ -1,0 +1,118 @@
+workflow:
+
+  name: "workflow-generate-player-card"
+  title: "Generate Player Card"
+  description: "Workflow to produce a player card."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-soccer:
+      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    event_code: "$.get('event_code')"
+    player_id: "$.get('player_id')"
+  outputs:
+    workflow-status: |
+      (
+        $.(event_exists) is True
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 1 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        event_data: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+
+    # 2 mapping-soccer-event-summary  
+    - type: "mapping"
+      name: "mapping-soccer-event-summary"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_data') is not None"
+      inputs:
+        event_selected: "$.get('event_data')"
+      outputs:
+        season: "$.get('season')"
+        season_title: "$.get('season_title')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+        team_home_stats: "$.get('team_home_stats')"
+        team_away_stats: "$.get('team_away_stats')"
+
+    # 3 mapping-soccer-player-stats  
+    - type: "mapping"
+      name: "mapping-soccer-player-stats"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_data') is not None"
+      inputs:
+        _players: "$.get('team_home_stats').get('players', [])"
+        _player_id: "$.get('player_id')"
+      outputs:
+        player_stats: "$.get('player_stats')"
+
+    # 4 prompt-soccer-player-card
+    - type: "prompt"
+      name: "prompt-soccer-player-card"
+      description: "prompt-soccer-player-card"
+      condition: "$.get('event_data') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
+      inputs:
+        _title: "$.get('title')"
+        _team_home_name: "$.get('team_home_name')"
+        _player_stats: "$.get('player_stats')"
+      outputs:
+        player_card_content: "$"
+        positive_relevant_score: "$.get('positive_relevant_score')"
+        image_briefing: "$.get('image_briefing')"
+        random_number: "$.get('random_number')"
+
+    # 5 generate-player-card-image
+    - type: "connector"
+      name: "generate-player-card-image"
+      description: "Generate an image for a player card."
+      condition: "$.get('event_data') is not None"
+      connector:
+        name: "machina-ai"
+        command: "edit_image"
+      inputs:
+        image_id: f"player-card-{$.get('random_number')}"
+        instruction: f"{$.get('image_briefing')} {$.get('positive_relevant_score')}"
+        model: "'gpt-image-1'"
+      outputs:
+        final_filename: f"player-card-{$.get('final_filename')}"
+        full_filepath: "$.get('full_filepath')"
+
+    # 6 store image (player card)
+    - type: "connector"
+      name: "store-player-card-image"
+      condition: "$.get('event_data') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        image_path: "$.get('data')"

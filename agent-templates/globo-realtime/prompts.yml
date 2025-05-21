@@ -1,0 +1,50 @@
+prompts:
+
+  # prompt-soccer-player-card
+  - type: prompt
+    name: prompt-soccer-player-card
+    title: "Soccer Player Card"
+    description: "Generate a soccer player card about the player"
+    schema:
+      title: "SoccerPlayerCard"
+      description: |
+        Você é um jornalista esportivo que está produzindo um cartão de jogador de futebol.
+        Você receberá as estatísticas do jogador durante uma cobertura live de evento esportivo.
+        Seu objetivo é produzir um cartão de jogador de futebol com as informações recebidas.
+
+        Os textos devem ser escritos em português brasileiro e ter ênfase de transmissão ao vivo.
+        O público alvo é jovens de 14 a 24 anos e adultos que gostam de futebol.
+      type: "object"
+      required:
+        - player_summary
+        - positive_relevant_score
+        - negative_relevant_score
+        - image_briefing
+      properties:
+        player_summary:
+          type: "string"
+          description: "Sumário sobre o jogador, posição e importância para o time"
+        positive_relevant_score:
+          type: "string"
+          description: |
+            Frase de impacto sobre um índice positivo do jogador
+            Citando o nome do jogador, o índice e o valor.
+            Exemplo:
+            "X está com 1 assistência na partida."
+            "Y está com 3 gols na partida."
+            "É o segundo gol de X na partida."
+        negative_relevant_score:
+          type: "string"
+          description: |
+            Frase de impacto sobre um índice negativo do jogador
+            Citando o nome do jogador, o índice e o valor.
+            Exemplo:
+            "X está expulso na partida."
+            "Nenhuma finalização do Y até agora."
+            "Z está com 3 faltas e está perto de ser expulso."
+        image_briefing:
+          type: "string"
+          description: "Briefing para a imagem"
+        random_number:
+          type: "integer"
+          description: "Número aleatório entre 0 e 10000"
