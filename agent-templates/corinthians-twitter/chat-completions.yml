@@ -10,7 +10,6 @@ workflow:
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
-    event_code: "$.get('event_code', 'sr:sport_event:58052409')"
     messages: "$.get('messages', [])"
   outputs:
     message: "$.get('message')"
@@ -31,8 +30,6 @@ workflow:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      filters:
-        metadata.event_code: "$.get('event_code')"
       inputs:
         name: "'content-snippet'"
         search-limit: "'1000'"
@@ -51,16 +48,16 @@ workflow:
       name: "chat-completions-prompt"
       description: "Chat Completions."
       connector:
-        name: "groq"
-        command: "invoke_prompt"
-        model: "meta-llama/llama-4-scout-17b-16e-instruct"
+        # name: "groq"
+        # command: "invoke_prompt"
+        # model: "meta-llama/llama-4-scout-17b-16e-instruct"
         # model: "llama-3.3-70b-versatile"
         # model: "llama-3.1-8b-instant"
         # model: "deepseek-r1-distill-llama-70b"
         # model: "deepseek-r1-distill-llama-70b-specdec"
-        # name: "openai"
-        # command: "invoke_prompt"
-        # model: "gpt-4o"
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
       inputs:
         documents: "$.get('parsed_documents')"
         messages: "$.get('messages')"
