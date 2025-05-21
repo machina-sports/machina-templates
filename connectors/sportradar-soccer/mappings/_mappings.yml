@@ -1,0 +1,118 @@
+mappings:
+
+  - type: "mapping"
+    title: "Sportradar NBA Event Mapping"
+    name: "sportradar-nba-event-mapping"
+    description: "Mapping data from sportradar nba data"
+    outputs:
+      article_count: "$.get('event_selected', {}).get('version_control', {}).get('article_count', 0)"
+      competition_name: f"NBA {$.get('event_selected', {}).get('season_year')} {$.get('event_selected', {}).get('season_type')}"
+      event_code: "$.get('event_selected', {}).get('id')"
+      event_date: |
+        $.get('event_selected', {}).get('start_time').strftime('%Y-%m-%d')
+      event_day_before: |
+        ($.get('event_selected', {}).get('start_time') - timedelta(days=1)).strftime('%Y-%m-%d')
+      image_count: "$.get('event_selected', {}).get('version_control', {}).get('image_count', 0)"
+      research_news_count: "$.get('event_selected', {}).get('version_control', {}).get('research_news_count', 0)"
+      research_odds_count: "$.get('event_selected', {}).get('version_control', {}).get('research_odds_count', 0)"
+      research_stats_count: "$.get('event_selected', {}).get('version_control', {}).get('research_stats_count', 0)"
+      research_team_count: "$.get('event_selected', {}).get('version_control', {}).get('research_team_count', 0)"
+      team_home_name: "$.get('event_selected', {}).get('home', {}).get('name')"
+      team_away_name: "$.get('event_selected', {}).get('away', {}).get('name')"
+      team_home_id: "$.get('event_selected', {}).get('home', {}).get('id')"
+      team_away_id: "$.get('event_selected', {}).get('away', {}).get('id')"
+      team_home_sr_id: "$.get('event_selected', {}).get('home', {}).get('sr_id')"
+      team_away_sr_id: "$.get('event_selected', {}).get('away', {}).get('sr_id')"
+      title: "$.get('event_selected', {}).get('title')"
+      season: "$.get('event_selected', {}).get('season', {}).get('id')"
+      season_type: "$.get('event_selected', {}).get('season_type')"
+      season_year: "$.get('event_selected', {}).get('season_year')"
+      widget-match-embed: "$.get('event_selected', {}).get('widget-match-embed')"
+      venue_title: f"{$.get('event_selected', {}).get('venue', {}).get('name')} ({$.get('event_selected', {}).get('venue', {}).get('city')}, {$.get('event_selected', {}).get('venue', {}).get('country')})"
+      venue_address: "$.get('event_selected', {}).get('venue', {}).get('address')"
+      venue_capacity: "$.get('event_selected', {}).get('venue', {}).get('capacity')"
+      venue_city: "$.get('event_selected', {}).get('venue', {}).get('city')"
+      venue_country: "$.get('event_selected', {}).get('venue', {}).get('country')"
+      venue_id: "$.get('event_selected', {}).get('venue', {}).get('id')"
+      venue_location: "$.get('event_selected', {}).get('venue', {}).get('location')"
+      venue_name: "$.get('event_selected', {}).get('venue', {}).get('name')"
+      venue_sr_id: "$.get('event_selected', {}).get('venue', {}).get('sr_id')"
+      venue_state: "$.get('event_selected', {}).get('venue', {}).get('state')"
+      venue_zip: "$.get('event_selected', {}).get('venue', {}).get('zip')"
+
+  - type: "mapping"
+    title: "Sportradar NBA Competitor Mapping"
+    name: "sportradar-nba-competitor-mapping"
+    description: "Mapping data from sportradar nba competitor"
+    outputs:
+      own_record: "$.get('competitor', {}).get('own_record', {})"
+      opponents_record: "$.get('competitor', {}).get('opponents', {})"
+      players: "$.get('competitor', {}).get('players', [])"
+      team_stats: |
+        {
+          "offensive": {
+            "ppg": "$.get('competitor', {}).get('own_record', {}).get('average', {}).get('points')",
+            "fg_pct": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('field_goals_pct')",
+            "three_pct": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('three_points_pct')",
+            "ft_pct": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('free_throws_pct')",
+            "paint_points": "$.get('competitor', {}).get('own_record', {}).get('average', {}).get('points_in_paint')",
+            "bench_points": "$.get('competitor', {}).get('own_record', {}).get('average', {}).get('bench_points')"
+          },
+          "defensive": {
+            "def_rating": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('defensive_rating')",
+            "steals_pg": "$.get('competitor', {}).get('own_record', {}).get('average', {}).get('steals')",
+            "blocks_pg": "$.get('competitor', {}).get('own_record', {}).get('average', {}).get('blocks')",
+            "opp_ppg": "$.get('competitor', {}).get('opponents', {}).get('average', {}).get('points')"
+          },
+          "efficiency": {
+            "net_rating": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('net_rating')",
+            "true_shooting": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('true_shooting_pct')",
+            "assist_to_turnover": "$.get('competitor', {}).get('own_record', {}).get('total', {}).get('assists_turnover_ratio')"
+          }
+        }
+
+  - type: "mapping"
+    title: "Sportradar Soccer Mapping"
+    name: "sportradar-soccer-mapping"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      article_count: "$.get('event_selected', {}).get('version_control', {}).get('article_count', 0)"
+      competition_id: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id')"
+      competition_name: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name')"
+      event_code: "$.get('event_selected', {}).get('sport_event', {}).get('id')"
+      event_date: "$.get('event_selected', {}).get('start_time').strftime('%Y-%m-%d')"
+      event_days_ago: |
+        ($.get('event_selected', {}).get('start_time') - timedelta(days=1)).strftime('%Y-%m-%d')
+      event_day_before: |
+        ($.get('event_selected', {}).get('start_time') - timedelta(days=1)).strftime('%Y-%m-%d')
+      event_day_of_week: "$.get('event_selected', {}).get('start_time').strftime('%A')"
+      event_date_time: "$.get('event_selected', {}).get('start_time').strftime('%Y-%m-%d %H:%M')"
+      image_count: "$.get('event_selected', {}).get('version_control', {}).get('image_count', 0)"
+      research_news_count: "$.get('event_selected', {}).get('version_control', {}).get('research_news_count', 0)"
+      research_odds_count: "$.get('event_selected', {}).get('version_control', {}).get('research_odds_count', 0)"
+      research_stats_count: "$.get('event_selected', {}).get('version_control', {}).get('research_stats_count', 0)"
+      research_team_count: "$.get('event_selected', {}).get('version_control', {}).get('research_team_count', 0)"
+      season: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id')"
+      season_title: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name')"
+      team_home_name: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('name')"
+      team_away_name: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('name')"
+      team_home_id: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('id')"
+      team_away_id: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('id')"
+      title: "$.get('event_selected', {}).get('title')"
+      widget-match-embed: "$.get('event_selected', {}).get('widget-match-embed')"
+      venue_title: f"{$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('name')} ({$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('city_name')}, {$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('country_name')})"
+      venue_capacity: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('capacity')"
+      venue_city: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('city')"
+      venue_country: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('country')"
+      venue_id: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('id')"
+      venue_map_coordinates: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('map_coordinates')"
+      venue_name: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('name')"
+      venue_timezone: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('timezone')"
+
+  - type: "mapping"
+    title: "Tallysight - Leagues Mapping"
+    name: "tallysight-leagues-mapping"
+    description: "Mapping data from tallysight leagues"
+    outputs:
+      league_code: "next((l.get('slug') for l in $.get('site_leagues') if l.get('id') == $.get('competition_id')), '')"
+

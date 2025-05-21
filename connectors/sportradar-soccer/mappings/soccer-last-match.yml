@@ -1,0 +1,32 @@
+mappings:
+
+  # mapping-soccer-last-match
+  - type: "mapping"
+    title: "Soccer Last Match Mapping"
+    name: "mapping-soccer-last-match"
+    description: "Mapping data from last match"
+    outputs:
+      last_match: "$.get('item')"
+      competitors: "$.get('item').get('sport_event', {}).get('competitors', [])"
+      competitor_home_name: "$.get('item').get('sport_event', {}).get('competitors', [])[0].get('name')"
+      competitor_away_name: "$.get('item').get('sport_event', {}).get('competitors', [])[1].get('name')"
+      competitor_home_id: "$.get('item').get('sport_event', {}).get('competitors', [])[0].get('id')"
+      competitor_away_id: "$.get('item').get('sport_event', {}).get('competitors', [])[1].get('id')"
+      competitor_home_sr_id: "$.get('item').get('sport_event', {}).get('competitors', [])[0].get('sr_id')"
+      competitor_away_sr_id: "$.get('item').get('sport_event', {}).get('competitors', [])[1].get('sr_id')"
+      event_context: "$.get('item').get('sport_event', {}).get('sport_event_context', {})"
+      event_code: "$.get('item').get('sport_event', {}).get('id')"
+      event_date: "$.get('item').get('sport_event', {}).get('start_time')"
+      event_days_ago: |
+        datetime.strptime($.get('item').get('sport_event', {}).get('start_time'), '%Y-%m-%dT%H:%M:%S%z').replace(tzinfo=None) - timedelta(days=1)
+      event_day_of_week: |
+        datetime.strptime($.get('item').get('sport_event', {}).get('start_time'), '%Y-%m-%dT%H:%M:%S%z').strftime('%A')
+      event_status: "$.get('item').get('sport_event_status', {})"
+      last_match_title: f"{$.get('item').get('sport_event', {}).get('competitors', [])[0].get('name')} vs {$.get('item').get('sport_event', {}).get('competitors', [])[1].get('name')}"
+      statistics: "next((c for c in $.get('item').get('statistics', {}).get('totals', {}).get('competitors', []) if c.get('id') == $.get('competitor_id')), {})"
+      venue: "$.get('item').get('sport_event', {}).get('venue', {})"
+      venue_title: "$.get('item').get('sport_event', {}).get('venue', {}).get('name')"
+      venue_city: "$.get('item').get('sport_event', {}).get('venue', {}).get('city')"
+      venue_country: "$.get('item').get('sport_event', {}).get('venue', {}).get('country')"
+      venue_id: "$.get('item').get('sport_event', {}).get('venue', {}).get('id')"
+      venue_sr_id: "$.get('item').get('sport_event', {}).get('venue', {}).get('sr_id')"

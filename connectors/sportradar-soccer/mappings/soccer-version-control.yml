@@ -1,0 +1,26 @@
+mappings:
+
+  # mapping-soccer-last-match
+  - type: "mapping"
+    title: "Soccer Version Control Mapping"
+    name: "mapping-soccer-version-control"
+    description: "Mapping data from version control"
+    outputs:
+      have_lineups: |
+        (
+          len($.(item).get('sport_event_lineups').get('competitors')) > 1
+          if $.(item)
+          and $.(item).get('sport_event_lineups')
+          and $.(item).get('sport_event_lineups').get('competitors')
+          else False
+        )
+      have_last_home_matches: "len($.get('item').get('competitors_home_last_matches', [])) > 0 if $.get('item') else False"
+      have_last_away_matches: "len($.get('item').get('competitors_away_last_matches', [])) > 0 if $.get('item') else False"
+      have_timeline: "len($.get('item').get('sport_event_timeline', [])) > 0 if $.get('item') else False"
+      update_home_last_matches_count: "$.get('item').get('version_control', {}).get('update_home_last_matches_count', 0) if $.get('item') else 0"
+      update_away_last_matches_count: "$.get('item').get('version_control', {}).get('update_away_last_matches_count', 0) if $.get('item') else 0"
+      update_event_summary_count: "$.get('item').get('version_control', {}).get('update_event_summary_count', 0) if $.get('item') else 0"
+      update_event_lineups_count: "$.get('item').get('version_control', {}).get('update_event_lineups_count', 0) if $.get('item') else 0"
+      update_event_statistics_count: "$.get('item').get('version_control', {}).get('update_event_statistics_count', 0) if $.get('item') else 0"
+      update_event_timeline_count: "$.get('item').get('version_control', {}).get('update_event_timeline_count', 0) if $.get('item') else 0"
+      version_control: "$.get('item').get('version_control', {}) if $.get('item') else {}"
