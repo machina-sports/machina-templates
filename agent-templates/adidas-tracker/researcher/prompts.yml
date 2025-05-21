@@ -1,15 +1,16 @@
 prompts:
 
-  - type: "prompt"
-    name: "prompt-content-analysis"
-    title: "Transcript Content Analysis"
-    description: "Generate a transcript content analysis of a video"
+  # prompt-analysis-researcher-briefing
+  - type: prompt
+    name: prompt-analysis-researcher-briefing
+    title: "Analysis Researcher Briefing"
+    description: "Generate a researcher briefing about the competition"
     schema:
-      title: "SoccerTranscriptContentAnalysis"
+      title: "SoccerResearcherBriefing"
       description: "Analyze the transcript and return the content sliced by the subject"
       type: "object"
       properties:
-        slices:
+        snippets:
           type: "array"
           description: "specialized slices of the transcript that contains a subject"
           minItems: 1
@@ -17,6 +18,8 @@ prompts:
           items:
             type: "object"
             required:
+              - title
+              - content
               - subject
               - script_code
               - start_index
@@ -25,6 +28,9 @@ prompts:
               content:
                 type: "string"
                 description: "The content of the note, a text summarizing the sliced content"
+              title:
+                type: "string"
+                description: "The title of the note, a text summarizing the sliced content"
               subject:
                 type: "string"
                 description: "The subject of the note in the whole transcript, cite the name of the person, team or organization and mention the main subject of the text"

@@ -1,0 +1,120 @@
+workflow:
+
+  # workflow-consumer-oxylabs-update
+  name: "workflow-consumer-oxylabs-update"
+  title: "Consumer Oxylabs Update"
+  description: "Workflow to produce consumer oxylabs update."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    content: "$.get('content')"
+    content-links: "$.get('content-links')"
+    document_id: "$.get('document_id')"
+  outputs:
+    workflow-status: |
+      (
+        $.(content-exists) is True
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 1 load content
+    - type: "document"
+      name: "load-content"
+      description: "Search for content."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: "$.get('document_id')"
+      outputs:
+        content-exists: "len($.get('documents', [])) > 0"
+        content-metadata: "$.get('documents', [])[0].get('metadata', {}) if $.get('documents') else None"
+        content-name: "$.get('documents', [])[0].get('name') if $.get('documents') else None"
+        content-value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+        version-control: "$.get('documents', [])[0].get('value', {}).get('version_control', {}) if $.get('documents') else None"
+
+    # 2 create web-scraping links
+    - type: "document"
+      name: "create-web-scraping-links"
+      description: "Create a web scraping links."
+      condition: |
+        (
+          $.(content-exists) is True
+          and '$.(content-name)' == 'web-search'
+        )
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "'web-scraping'"
+      documents:
+        items: "$.get('parsed-items', [])"
+      inputs:
+        parsed-items: |
+          [
+            {
+              **item,
+              'metadata': $.(content-metadata)
+            }
+            for item in $.get('content-links', [])
+          ]
+
+    # 3 update web-scraping
+    - type: "document"
+      name: "update-web-scraping"
+      description: "Update the web scraping."
+      condition: |
+        (
+          $.(content-exists) is True
+          and '$.(content-name)' == 'web-scraping'
+        )
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        web-scraping: |
+          {
+            **$.get('content-value', {}),
+            'content': $.get('content'),
+            'version_control': {
+              **$.get('version-control', {}),
+              'count': $.get('version-control', {}).get('count', 0) + 1,
+              'finished': True,
+              'processing': False,
+              'updated': datetime.utcnow()
+            }
+          }
+          
+    # 4 update web-search
+    - type: "document"
+      name: "update-web-search"
+      description: "Update the web search."
+      condition: |
+        (
+          $.(content-exists) is True
+          and '$.(content-name)' == 'web-search'
+        )
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        web-search: |
+          {
+            **$.get('content-value', {}),
+            'content': $.get('content'),
+            'version_control': {
+              **$.get('version-control', {}),
+              'count': $.get('version-control', {}).get('count', 0) + 1,
+              'finished': True,
+              'processing': False,
+              'updated': datetime.utcnow()
+            }
+          }

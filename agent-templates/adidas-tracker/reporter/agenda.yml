@@ -1,0 +1,203 @@
+workflow:
+
+  # workflow-reporter-players
+  name: workflow-reporter-players
+  title: "Reporter Players"
+  description: "Workflow to produce reporter players."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  outputs:
+    workflow-status: |
+      (
+        $.(content-player-exists) is True
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 0 load-existing-players
+    - type: "document"
+      name: "load-existing-players"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.agenda-control.updated", 1]
+      filters:
+        metadata.content_group: "'PLAYER_STATISTICS'"
+        value.agenda-control.processing: "{'$eq': False}"
+        value.agenda-control.finished: "{'$eq': True}"
+        # value.agenda-control.published: "{'$eq': False}"
+      inputs:
+        name: "'content-player'"
+      outputs:
+        content-player-agenda: "$.get('documents', [])[0].get('agenda-control', {}) if $.get('documents') else None"
+        content-player-doc-id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        content-player-exists: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        content-player-full-name: "$.get('documents', [])[0].get('value', {}).get('full_name') if $.get('documents') else None"
+        content-player-team-name: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('team', {}).get('name') if $.get('documents') else None"
+        content-player-nationality: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('birth_place') if $.get('documents') else None"
+        content-player-jersey-number: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('jersey_number') if $.get('documents') else None"
+        content-player-position: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('primary_position') if $.get('documents') else None"
+        content-player-player-id: "$.get('documents', [])[0].get('value', {}).get('player_id') if $.get('documents') else None"
+        content-player-value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+        content-briefing-code: "$.get('documents', [])[0].get('value', {}).get('index-agenda') if $.get('documents') else None"
+        content-statistics-points: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('seasons', [])[0].get('teams', [])[0].get('total', {}).get('points') if $.get('documents') else None"
+        content-statistics-rebounds: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('seasons', [])[0].get('teams', [])[0].get('total', {}).get('rebounds') if $.get('documents') else None"
+        content-statistics-assists: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('seasons', [])[0].get('teams', [])[0].get('total', {}).get('assists') if $.get('documents') else None"
+        content-statistics-field-goals-made: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('seasons', [])[0].get('teams', [])[0].get('total', {}).get('field_goals_made') if $.get('documents') else None"
+        content-statistics-field-goals-att: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('seasons', [])[0].get('teams', [])[0].get('total', {}).get('field_goals_att') if $.get('documents') else None"
+        content-statistics-games-played: "$.get('documents', [])[0].get('value', {}).get('player-data', {}).get('seasons', [])[0].get('teams', [])[0].get('total', {}).get('games_played') if $.get('documents') else None"
+
+    # 1 content-player-control-update 
+    - type: "document"
+      name: "content-player-control-update"
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('content-player-doc-id')"
+      documents:
+        content-player: |
+          {
+            **$.get('content-player-value', {}),
+            'agenda-control': {
+              **$.get('content-player-agenda', {}),
+              'processing': True,
+              'updated': datetime.utcnow()
+            }
+          }
+
+    # 1 load-relevant-snippets
+    - type: "document"
+      name: "load-relevant-snippets"
+      description: "Search for relevant snippets in the database."
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "search"
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.updated", -1]
+      filters:
+        metadata.player_id: "$.get('content-player-player-id')"
+      inputs:
+        name: "'content-snippet'"
+      outputs:
+        has-relevant-snippets: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        relevant-snippets: |
+          [
+            d.get('value', {})
+            for d in $.get('documents', [])
+          ]
+
+    # 1 load-relevant-agenda
+    - type: "document"
+      name: "load-relevant-agenda"
+      description: "Search for relevant agenda in the database."
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "search"
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.updated", -1]
+      filters:
+        metadata.briefing_code: "$.get('content-briefing-code')"
+        value.agenda-control.finished: "{'$eq': True}"
+      inputs:
+        name: "'content-agenda'"
+      outputs:
+        has-relevant-agenda: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        relevant-agenda: |
+          [
+            d.get('value', {}).get('content-snippets')
+            for d in $.get('documents', [])
+          ]
+
+    # 1 prompt-reporter-player-analysis
+    - type: "prompt"
+      name: "prompt-reporter-player-analysis"
+      description: "prompt-reporter-player-analysis"
+      condition: |
+        (
+          $.(content-player-exists) is True
+          and $.(has-relevant-agenda) is True
+          and $.(has-relevant-snippets) is True
+        )
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        doc_player_full_name: "$.get('content-player-full-name')"
+        relevant_snippets: "$.get('relevant-snippets')"
+        relevant_agenda: "$.get('relevant-agenda')"
+      outputs:
+        player_summary: "$"
+
+    # 1 update-competition-article
+    - type: "document"
+      name: "update-competition-article"
+      description: "Update the document."
+      condition: |
+        (
+          $.get('content-player-exists') is True
+          and $.(has-relevant-agenda) is True
+          and $.(has-relevant-snippets) is True
+          and $.(player_summary) is not None
+        )
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        content-article: |
+          {
+            'player_name': $.get('content-player-full-name'),
+            'player_summary': $.get('player_summary'),
+            'player_team_name': $.get('content-player-team-name'),
+            'player_nationality': $.get('content-player-nationality'),
+            'player_jersey_number': $.get('content-player-jersey-number'),
+            'player_position': $.get('content-player-position'),
+            'player_statistics': {
+              'points': $.get('content-statistics-points'),
+              'rebounds': $.get('content-statistics-rebounds'),
+              'assists': $.get('content-statistics-assists'),
+              'field_goals_made': $.get('content-statistics-field-goals-made'),
+              'field_goals_att': $.get('content-statistics-field-goals-att'),
+              'games_played': $.get('content-statistics-games-played')
+            },
+            'execution': datetime.utcnow(),
+            'updated': datetime.utcnow()
+          }
+      metadata:
+        content_type: "'player-reporter-analysis'"
+        player_id: "$.get('content-player-player-id')"
+
+    # 2 content-player-control-update 
+    - type: "document"
+      name: "content-player-control-update"
+      condition: "$.get('content-player-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('content-player-doc-id')"
+      documents:
+        content-player: |
+          {
+            **$.get('content-player-value', {}),
+            'agenda-control': {
+              **$.get('content-player-agenda', {}),
+              'processing': False,
+              'published': $.get('has-relevant-agenda') is True and $.get('has-relevant-snippets') is True,
+              'updated': datetime.utcnow()
+            }
+          }

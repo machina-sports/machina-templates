@@ -1,0 +1,43 @@
+prompts:
+
+  # prompt-reporter-player-analysis
+  - type: prompt
+    name: prompt-reporter-player-analysis
+    title: "Reporter Player Analysis"
+    description: "Generate a reporter player analysis about the player"
+    schema:
+      title: "ReporterPlayerAnalysis"
+      description: "Analyze the transcript and return the content sliced by the subject"
+      type: "object"
+      required:
+        - player_summary
+        - performance_summary
+        - news_summary
+        - news_analysis
+      properties:
+        player_summary:
+          type: "string"
+          description: "A summary of the player, a text summarizing the player"
+        performance_summary:
+          type: "string"
+          description: "A summary of the performance, a text summarizing the performance"
+        news_summary:
+          type: "string"
+          description: "A summary of the news, a text summarizing the news"
+        news_analysis:
+          type: "object"
+          description: "The news analysis of the player"
+          required:
+            - performance_score
+            - social_impact_score
+            - brand_value_score
+          properties:
+            performance_score:
+              type: "integer"
+              description: "The performance score of the player, from 0 to 100"
+            social_impact_score:
+              type: "integer"
+              description: "The social impact score of the player, from 0 to 100"
+            brand_value_score:
+              type: "integer"
+              description: "The brand value score of the player, from 0 to 100"

@@ -1,0 +1,61 @@
+workflow:
+
+  # workflow-consumer-oxylabs-searching
+  name: "workflow-consumer-oxylabs-searching"
+  title: "Consumer Oxylabs Searching"
+  description: "Workflow to produce consumer oxylabs searching."
+  context-variables:
+    debugger:
+      enabled: true
+  outputs:
+    document_id: "$.get('document_id')"
+    web-search-query: "$.get('web-search-query')"
+    workflow-status: |
+      (
+        $.(web-search-exists) is True
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 1 load web-search
+    - type: "document"
+      name: "load-web-search"
+      description: "Search for web search."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+      inputs:
+        name: "{'$in': ['web-search']}"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        web-search-exists: "len($.get('documents', [])) > 0"
+        web-search-metadata: "$.get('documents', [])[0].get('metadata', {}) if $.get('documents') else None"
+        web-search-query: "$.get('documents', [])[0].get('value', {}).get('web-search-query') if $.get('documents') else None"
+        web-search-value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+        version-control: "$.get('documents', [])[0].get('value', {}).get('version_control', {}) if $.get('documents') else None"
+
+    # 2 update web-search
+    - type: "document"
+      name: "update-web-search"
+      description: "Update the web search."
+      condition: "$.get('web-search-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        web-search: |
+          {
+            **$.get('web-search-value', {}),
+            'version_control': {
+              **$.get('version-control', {}),
+              'processing': True,
+              'updated': datetime.utcnow()
+            }
+          }

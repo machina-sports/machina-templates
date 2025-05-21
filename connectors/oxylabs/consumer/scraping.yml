@@ -1,0 +1,61 @@
+workflow:
+
+  # workflow-consumer-oxylabs-scraping
+  name: "workflow-consumer-oxylabs-scraping"
+  title: "Consumer Oxylabs Scraping"
+  description: "Workflow to produce consumer oxylabs scraping."
+  context-variables:
+    debugger:
+      enabled: true
+  outputs:
+    document_id: "$.get('document_id')"
+    web-scraping-url: "$.get('web-scraping-url')"
+    workflow-status: |
+      (
+        $.(web-scraping-exists) is True
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 1 load web-scraping
+    - type: "document"
+      name: "load-web-scraping"
+      description: "Search for web scraping."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+      inputs:
+        name: "{'$in': ['web-scraping']}"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        web-scraping-exists: "len($.get('documents', [])) > 0"
+        web-scraping-metadata: "$.get('documents', [])[0].get('metadata', {}) if $.get('documents') else None"
+        web-scraping-url: "$.get('documents', [])[0].get('value', {}).get('web-scraping-url') if $.get('documents') else None"
+        web-scraping-value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+        version-control: "$.get('documents', [])[0].get('value', {}).get('version_control', {}) if $.get('documents') else None"
+
+    # 2 update web-scraping
+    - type: "document"
+      name: "update-web-scraping"
+      description: "Update the web scraping."
+      condition: "$.get('web-scraping-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        web-scraping: |
+          {
+            **$.get('web-scraping-value', {}),
+            'version_control': {
+              **$.get('version-control', {}),
+              'processing': True,
+              'updated': datetime.utcnow()
+            }
+          }

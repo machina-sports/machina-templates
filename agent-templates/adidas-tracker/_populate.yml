@@ -1,0 +1,28 @@
+agent:
+  name: populate-researcher
+  title: "Populate Researcher"
+  description: "Populate data for the Researcher Agent"
+  workflows:
+
+    - name: populate-researcher-briefings
+      description: "Populate Briefings"
+      outputs:
+        status-populate-researcher-briefings: "$.get('workflow-status', False)"
+
+    - name: populate-researcher-folders
+      description: "Populate Folders"
+      outputs:
+        status-populate-researcher-folders: "$.get('workflow-status', False)"
+
+    - name: populate-statistics-players
+      description: "Populate Statistics Players"
+      outputs:
+        status-populate-statistics-players: "$.get('workflow-status', False)"
+
+    - name: sportradar-nba-sync-games
+      description: "Sync NBA Games"
+      inputs:
+        season_year: "$.get('season_year', '2024')"
+        season_type: "$.get('season_type', 'PST')"
+      outputs:
+        status-sportradar-nba-sync-games: "$.get('workflow-status', False)"

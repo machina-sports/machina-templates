@@ -10,7 +10,10 @@ setup:
     - Scrape any website
     - Get the content of the web page
     - Get the HTML of the web page
-    - Get the Transcript of YouTube videos
+    - Get the text of the web page
+    - Get the images of the web page
+    - Get the links of the web page
+    - Get the title of the web page
 
   integrations:
     - web-scraping
@@ -23,6 +26,9 @@ datasets:
     path: "web-scraping.yml"
 
   - type: "workflow"
+    path: "searching.yml"
+
+  - type: "workflow"
     path: "scraping.yml"
 
   - type: "workflow"
@@ -31,5 +37,15 @@ datasets:
   - type: "mappings"
     path: "mapping.yml"
 
-  - type: "prompts"
-    path: "prompts.yml"
+  # consumer
+  - type: "workflow"
+    path: "consumer/searching.yml"
+
+  - type: "workflow"
+    path: "consumer/scraping.yml"
+
+  - type: "workflow"
+    path: "consumer/update.yml"
+
+  - type: "agent"
+    path: "consumer/agent.yml"
