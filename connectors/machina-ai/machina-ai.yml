@@ -4,6 +4,13 @@ connector:
   filename: "machina-ai.py"
   filetype: "pyscript"
   commands:
+
+    - name: "Edit Image"
+      value: "edit_image"
+
+    - name: "Generate Image"
+      value: "generate_image"
+
     - name: "Embedding"
       value: "invoke_embedding"
 
