@@ -37,6 +37,9 @@ datasets:
   - type: "mappings"
     path: "mapping.yml"
 
+  - type: "prompts"
+    path: "prompts.yml"
+
   # consumer
   - type: "workflow"
     path: "consumer/searching.yml"
