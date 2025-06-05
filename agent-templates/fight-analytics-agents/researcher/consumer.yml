@@ -1,0 +1,194 @@
+workflow:
+
+  # workflow-researcher-consumer
+  name: workflow-researcher-consumer
+  title: "Researcher Consumer"
+  description: "Workflow to consume researcher briefings."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  outputs:
+    workflow-status: |
+      (
+        $.(agenda-exists) is True
+        and $.(web-research-pending) == 0
+        and $.(web-research-processed) > 0
+      ) and 'executed' or 'skipped'
+  tasks:
+
+    # 0 load-existing-agendas
+    - type: "document"
+      name: "load-existing-agendas"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.agenda-control.updated", 1]
+      filters:
+        metadata.briefing_group: "'RESEARCH_GOOGLE_NEWS'"
+        value.agenda-control.processing: "{'$ne': True}"
+        value.agenda-control.finished: "{'$ne': True}"
+      inputs:
+        name: "'content-agenda'"
+      outputs:
+        agenda-doc-id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        agenda-counter: "$.get('documents', [])[0].get('value', {}).get('agenda-control', {}).get('counter', 0) if $.get('documents') else 0"
+        agenda-exists: "len($.get('documents', [])) > 0 if $.get('documents') else False"
+        agenda-instruction: "$.get('documents')[0].get('value', {}).get('instruction', '') if $.get('documents') else None"
+        agenda-metadata: "$.get('documents')[0].get('metadata', {}) if $.get('documents') else None"
+        agenda-value: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        briefing-code: "$.get('documents')[0].get('metadata', {}).get('briefing_code') if $.get('documents') else None"
+        briefing-group: "$.get('documents')[0].get('metadata', {}).get('briefing_group') if $.get('documents') else None"
+
+    # 1 update-agenda
+    - type: "document"
+      name: "update-agenda"
+      condition: "$.get('agenda-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('agenda-doc-id')"
+      documents:
+        content-agenda: |
+          {
+            **$.get('agenda-value', {}),
+            'agenda-control': {
+              **$.get('agenda-control', {}),
+              'processing': True,
+              'updated': datetime.utcnow()
+            }
+          }
+
+    # 2 load-pending-searches-and-scrapings
+    - type: "document"
+      name: "load-pending-searches-and-scrapings"
+      condition: "$.get('agenda-exists') is True"
+      config:
+        action: "search"
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        metadata.briefing_code: "$.get('briefing-code')"
+        metadata.briefing_group: "$.get('briefing-group')"
+        value.version_control.finished: "{'$ne': True}"
+      inputs:
+        name: "{'$in': ['web-search', 'web-scraping']}"
+      outputs:
+        web-research-pending: "len($.get('documents', [])) if $.get('documents') else 0"
+
+    # 3 load-processed-scrapings
+    - type: "document"
+      name: "load-processed-scrapings"
+      condition: "$.get('agenda-exists') is True"
+      config:
+        action: "search"
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        metadata.briefing_code: "$.get('briefing-code')"
+        metadata.briefing_group: "$.get('briefing-group')"
+        value.version_control.finished: "{'$eq': True}"
+      inputs:
+        name: "{'$in': ['web-scraping']}"
+      outputs:
+        web-research-processed: "len($.get('documents', [])) if $.get('documents') else 0"
+        web-research-processed-bulk: |
+          [
+            {
+              **d.get('value', {}),
+              'metadata': d.get('metadata', {})
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # 4 prompt analysis researcher briefing
+    - type: "prompt"
+      name: "prompt-analysis-researcher-briefing"
+      condition: |
+        (
+          $.get('web-research-pending') == 0
+          and $.get('web-research-processed') > 0
+        )
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
+      foreach:
+        name: "analysis"
+        expr: "$"
+        value: "$.get('web-research-processed-bulk')"
+      inputs:
+        input-content: "$.get('analysis', {}).get('content', [])"
+        instruction: "$.get('agenda-instruction')"
+      outputs:
+        snippets-bulk: |
+          [
+            {
+              'text': c.get('content', ''),
+              'title': c.get('title', ''),
+              'subject': c.get('subject', ''),
+              'metadata': {
+                'briefing_code': '$.(briefing-code)',
+                'briefing_group': '$.(briefing-group)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 4 bulk-content-snippets
+    - type: "document"
+      name: "bulk-content-snippets"
+      condition: |
+        (
+          $.(agenda-exists) is True
+          and len($.(snippets-bulk)) > 0
+        )
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'content-snippet'"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('snippets-bulk', [])
+          ]
+
+    # 5 update-agenda
+    - type: "document"
+      name: "update-agenda"
+      condition: "$.get('agenda-exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('agenda-doc-id')"
+      documents:
+        content-agenda: |
+          {
+            **$.get('agenda-value', {}),
+            'content-snippets': $.(snippets-bulk),
+            'agenda-control': {
+              **$.get('agenda-control', {}),
+              'counter': $.(agenda-counter) + 1,
+              'finished': $.(web-research-pending) == 0 and $.(web-research-processed) > 0,
+              'processing': False,
+              'updated': datetime.utcnow(),
+              'web-research-pending': $.(web-research-pending),
+              'web-research-processed': $.(web-research-processed)
+            }
+          }

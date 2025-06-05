@@ -1,0 +1,45 @@
+prompts:
+
+  # prompt-analysis-researcher-briefing
+  - type: prompt
+    name: prompt-analysis-researcher-briefing
+    title: "Analysis Researcher Briefing"
+    description: "Generate a researcher briefing about the content"
+    schema:
+      title: "FightAnalyticsResearcherBriefing"
+      description: "Analyze the transcript and return the content sliced by the subject"
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "specialized slices of the transcript that contains a subject"
+          minItems: 1
+          maxItems: 20
+          items:
+            type: "object"
+            required:
+              - title
+              - content
+              - subject
+              - script_code
+              - start_index
+              - end_index
+            properties:
+              content:
+                type: "string"
+                description: "The content of the note, a text summarizing the sliced content"
+              title:
+                type: "string"
+                description: "The title of the note, a text summarizing the sliced content"
+              subject:
+                type: "string"
+                description: "The subject of the note in the whole transcript, cite the name of the person, team or organization and mention the main subject of the text"
+              script_code:
+                type: "string"
+                description: "A enum with 3 parts, like: PLAYER_TRANSFER_NEWS, TEAM_TRANSFER_NEWS, TEAM_MERCHANDISE_EVENT, PLAYER_RELEASE_EVENT, etc."
+              start_index:
+                type: "integer"
+                description: "The start index of the snippet in the transcript that contains the subject"
+              end_index:
+                type: "integer"
+                description: "The end index of the snippet in the transcript that contains the subject"

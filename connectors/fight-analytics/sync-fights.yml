@@ -1,0 +1,60 @@
+workflow:
+  name: "fight-analytics-sync-fights"
+  title: "Fight Analytics - Sync Fights"
+  description: "Workflow to synchronize fights from Fight Analytics API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    fight-analytics:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FIGHTS_API_KEY"
+  inputs:
+    event_id: "$.get('event_id')"
+  outputs:
+    fights: "$.get('fights')"
+    workflow-status: "$.get('fights') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-fights
+    - type: "connector"
+      name: "task-load-fights"
+      description: "Get Fights from Fight Analytics"
+      condition: "$.get('event_id') is not None"
+      connector:
+        name: "fight-analytics"
+        command: "get-fights"
+      inputs:
+        api_key: "$.get('api_key')"
+        event_id: "$.get('event_id')"
+      outputs:
+        fights_output: "$.get('data')"
+
+    # mapping fights
+    - type: "mapping"
+      name: "fight-analytics-fights-mapping"
+      description: "Map the fights"
+      condition: "$.get('fights_output') is not None"
+      inputs:
+        data: "$.get('fights_output')"
+      outputs:
+        fights_parsed: "$.get('fights')"
+
+    # task-bulk-save-fights
+    - type: "document"
+      name: "task-bulk-save-fights"
+      description: "Bulk save the fights."
+      condition: "$.get('fights_parsed') is not None"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'fight'"
+      documents:
+        items: "$.get('fights_parsed')"
+      inputs:
+        fights_parsed: "$.get('fights_parsed')"
+      metadata:
+        document_type: "'fight'"

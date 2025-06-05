@@ -1,0 +1,34 @@
+mappings:
+
+  # mapping events
+  - type: "mapping"
+    title: "Fight Analytics Event Mapping"
+    name: "fight-analytics-event-mapping"
+    description: "Mapping data from fight analytics events"
+    outputs:
+      event-id: "$.get('_item', {}).get('id')"
+      event-name: "$.get('_item', {}).get('name')"
+      event-time: "$.get('_item', {}).get('time')"
+      event-location: "$.get('_item', {}).get('location')"
+      event-date: "$.get('_item', {}).get('date')"
+      event-country: "$.get('_item', {}).get('country')"
+      venue-id: "$.get('_item', {}).get('venueId')"
+      venue-name: "$.get('_item', {}).get('venue', {}).get('name')"
+      promotion-id: "$.get('_item', {}).get('promotionId')"
+      promotion-name: "$.get('_item', {}).get('promotion', {}).get('name')"
+      
+  # mapping fights
+  - type: "mapping"
+    title: "Fight Analytics Fights Mapping"
+    name: "fight-analytics-fights-mapping"
+    description: "Mapping data from fight analytics fights"
+    outputs:
+      fights: |
+        [
+          {
+            **c,
+            'title': f"{c.get('event', {}).get('name', '')} - {c.get('redCorner', {}).get('firstName', '')} {c.get('redCorner', {}).get('lastName', '')} vs {c.get('blueCorner', {}).get('firstName', '')} {c.get('blueCorner', {}).get('lastName', '')}",
+            'selected': False
+          }
+          for c in $.get('data')
+        ]

@@ -1,0 +1,22 @@
+agent:
+  name: setup-fight-analytics-agents
+  title: "Setup Fight Analytics Agents"
+  description: "Setup the Fight Analytics Agents"
+  workflows:
+
+    - name: setup-fight-analytics-folders
+      description: "Setup Fight Analytics Folders"
+      outputs:
+        status-setup-fight-analytics-folders: "$.get('workflow-status', False)"
+        
+    - name: fight-analytics-sync-events
+      description: "Sync Events"
+      outputs:
+        status-fight-analytics-sync-events: "$.get('workflow-status', False)"
+
+    - name: fight-analytics-sync-fights
+      description: "Sync Fights"
+      inputs:
+        event_id: "'7af58cf1-c7b3-4411-b5c9-f3c342bf9481'"
+      outputs:
+        status-fight-analytics-sync-fights: "$.get('workflow-status', False)"

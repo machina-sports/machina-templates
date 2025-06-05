@@ -1,0 +1,198 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Fight Analytics API",
+    "description": "This API allows you to retrieve information about fights, events, fighters, and promotions.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://fight-api-v2.herokuapp.com"
+    }
+  ],
+  "paths": {
+    "/events": {
+      "get": {
+        "summary": "Get all events",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{eventId}": {
+      "get": {
+        "summary": "Get event by ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "eventId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the event",
+            "example": "7af58cf1-c7b3-4411-b5c9-f3c342bf9481"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fights": {
+      "get": {
+        "summary": "Get fights",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "eventId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter fights by event ID",
+            "example": "7af58cf1-c7b3-4411-b5c9-f3c342bf9481"
+          },
+          {
+            "in": "header",
+            "name": "per_page",
+            "schema": {
+              "type": "string",
+              "default": "20"
+            },
+            "description": "Number of items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fight/{fightId}": {
+      "get": {
+        "summary": "Get fight by ID",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fightId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the fight",
+            "example": "6a532a73-f967-48f9-a495-d2f5e19b9455"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fighters": {
+      "get": {
+        "summary": "Get all fighters",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "per_page",
+            "schema": {
+              "type": "string",
+              "default": "20"
+            },
+            "description": "Number of items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promotions": {
+      "get": {
+        "summary": "Get all promotions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "authorization"
+      }
+    }
+  },
+  "security": [
+    {
+      "apiKey": []
+    }
+  ]
+}

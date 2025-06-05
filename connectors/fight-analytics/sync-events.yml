@@ -1,0 +1,54 @@
+workflow:
+  name: "fight-analytics-sync-events"
+  title: "Fight Analytics - Sync Events"
+  description: "Workflow to synchronize events from Fight Analytics API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    fight-analytics:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FIGHTS_API_KEY"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-load-events
+    - type: "connector"
+      name: "task-load-events"
+      description: "Get Events from Fight Analytics"
+      connector:
+        name: "fight-analytics"
+        command: "get-events"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        events: "$.get('data')"
+        events_parsed: |
+          [
+            {
+              **c,
+              'title': f"{c.get('name', '')}",
+              'selected': False
+            }
+            for c in $.get('data')
+          ]
+
+    # task-bulk-save-events
+    - type: "document"
+      name: "task-bulk-save-events"
+      description: "Bulk save the events."
+      condition: "$.get('events') is not None"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'event'"
+      documents:
+        items: "$.get('events_parsed')"
+      inputs:
+        events_parsed: "$.get('events_parsed')"
+      metadata:
+        document_type: "'event'"

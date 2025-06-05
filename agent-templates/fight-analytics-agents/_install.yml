@@ -1,0 +1,37 @@
+setup:
+  title: "Fight Analytics Agents"
+  description: AI-powered blog and chat for Fight Analytics Reporter.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agent to generate articles, briefings, and snippets.
+    - AI Chat to answer questions about the Fight Analytics Reporter.
+  integrations:
+    - sportradar
+  status: available
+  value: "agent-templates/fight-analytics-agents"
+  version: 1.0.0
+
+datasets:
+
+  - type: "workflow"
+    path: "_folders.yml"
+
+  - type: "agent"
+    path: "_populate.yml"
+
+  - type: "workflow"
+    path: "researcher/agenda.yml"
+
+  - type: "agent"
+    path: "researcher/agent.yml"
+
+  - type: "workflow"
+    path: "researcher/consumer.yml"
+
+  - type: "prompts"
+    path: "researcher/prompts.yml"
+
+  - type: "workflow"
+    path: "researcher/scripts.yml"

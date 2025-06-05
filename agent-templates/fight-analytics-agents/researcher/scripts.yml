@@ -1,0 +1,46 @@
+workflow:
+  
+  # populate-researcher-briefings
+  name: populate-researcher-briefings
+  title: "Populate Briefings"
+  description: "Populate Briefings"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    - type: "document"
+      name: "bulk-researcher-briefings"
+      description: "Update the researcher briefings."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'content-script'"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            {
+              "name": "content-script-researcher-jalen-williams",
+              "title": "Researcher Jalen Williams",
+              "description": "Researcher Jalen Williams",
+              "category": "Research",
+              "conditions": {
+              },
+              "indexes": [
+                "JALEN_WILLIAMS_WIKIPEDIA_WEB_RESEARCH",
+              ],
+              "instruction": "Extract comprehensive information about Jalen Williams from the web page and recent news, focusing on: 1) Recent playoff performance and impact on team success, 2) Media coverage and public perception during playoffs, 3) Social media presence and engagement trends, 4) Brand value development and marketing opportunities, 5) Notable endorsements or partnerships, 6) Fan engagement and merchandise popularity, 7) Comparison with peer players in similar market position, 8) Key moments or viral content that has increased visibility. Additionally include standard biographical details, career statistics, and playing style analysis.",
+              "metadata": {
+                "content_type": "content-script",
+                "content_name": "content-script-researcher-jalen-williams",
+                "content_group": "PLAYER_RESEARCHER_BRIEFINGS"
+              },
+              "web-scraping-urls": [
+                "https://en.wikipedia.org/wiki/Jalen_Williams"
+              ],
+              "web-search-queries": [
+                "Jalen Williams after:2025-05-16"
+              ]
+            }
+          ]

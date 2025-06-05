@@ -1,0 +1,38 @@
+setup:
+  title: Fight Analytics API
+  description: Connect to the Fight API to access fight-related data and statistics.
+  category:
+    - data-acquisition
+    - fighting-sports
+  estimatedTime: 1 minute
+  features:
+    - HTTP (GET) based API for all data retrieval
+    - JSON formatted responses
+    - Comprehensive fight event data
+    - Fighter statistics and information
+    - Event listings and details
+    - Team information
+    - Venue data
+    - Real-time action updates
+    - Promotions tracking
+    - Secure authentication system
+    - Standardized date format (YYYY-MM-DD HH:MM:SS)
+
+  integrations:
+    - fight-api
+  status: available
+  value: connectors/fight-analytics
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "fight-analytics.yml"
+
+  - type: "mappings"
+    path: "mappings.yml"
+
+  - type: "workflow"
+    path: "sync-events.yml"
+
+  - type: "workflow"
+    path: "sync-fights.yml"
