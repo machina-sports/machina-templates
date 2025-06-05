@@ -1,7 +1,7 @@
 mappings:
 
   - type: "mapping"
-    title: "Oxylabs Transcript Mapping"
+    title: "Oxylabs - Transcript Mapping"
     name: "oxylabs-transcript-mapping"
     description: "Mapping data from oxylabs transcript"
     outputs:
@@ -12,7 +12,7 @@ mappings:
         ]
   
   - type: "mapping"
-    title: "Oxylabs Scraping Mapping"
+    title: "Oxylabs - Scraping Mapping"
     name: "oxylabs-scraping-mapping"
     description: "Mapping data from oxylabs scraping"
     outputs:
@@ -24,8 +24,8 @@ mappings:
         ]
 
   - type: "mapping"
-    title: "Oxylabs Searching Mapping"
-    name: "oxylabs-searching-mapping"
+    title: "Oxylabs - Searching Mapping - News"
+    name: "oxylabs-searching-mapping-news"
     description: "Mapping data from oxylabs searching"
     outputs:
       parsed-content: "$.get('input-searching-content', {}).get('results', {}).get('main', [])"
@@ -37,7 +37,28 @@ mappings:
               'processing': False,
               'updated': datetime.utcnow()
             },
+            'title': item.get('url', ''),
             'web-scraping-url': item.get('url', ''),
           }
           for item in $.(input-searching-content).get('results', {}).get('main', [])[:10]
+        ]
+
+  - type: "mapping"
+    title: "Oxylabs - Searching Mapping - Organic"
+    name: "oxylabs-searching-mapping-organic"
+    description: "Mapping data from oxylabs searching"
+    outputs:
+      parsed-content: "$.get('input-searching-content', {}).get('results', {}).get('main', [])"
+      parsed-links: |
+        [
+          {
+            'version_control': {
+              'finished': False,
+              'processing': False,
+              'updated': datetime.utcnow()
+            },
+            'title': item.get('url', ''),
+            'web-scraping-url': item.get('url', ''),
+          }
+          for item in $.(input-searching-content)
         ]
