@@ -5,6 +5,8 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     elevenlabs:
       api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
     machina-ai:
@@ -65,15 +67,9 @@ workflow:
       name: "generate-content-prompt"
       description: "Generate Content."
       connector:
-        # name: "machina-ai-fast"
-        # command: "invoke_prompt"
-        # model: "llama-3.3-70b-versatile"
-        # model: "llama-3.1-8b-instant"
-        # model: "deepseek-r1-distill-llama-70b"
-        # model: "deepseek-r1-distill-llama-70b-specdec"
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         documents: "$.get('documents')"
         messages: "$.get('messages')"

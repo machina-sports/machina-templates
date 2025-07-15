@@ -5,6 +5,8 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     sportradar-nfl:
       sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
     machina-ai:
@@ -129,9 +131,9 @@ workflow:
       description: "Embed event details."
       condition: "$.get('event_exists') is True"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.0-flash-001"
       inputs:
         title: "$.get('title')"
         team_home_name: "$.get('team_home_name')"
