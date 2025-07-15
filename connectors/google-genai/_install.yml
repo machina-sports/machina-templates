@@ -1,0 +1,21 @@
+setup:
+  title: Google GenAI
+  description: Connect to the Google GenAI API to get AI responses.
+  category:
+    - special-templates
+  estimatedTime: 1 minute
+  features:
+    - Real-time chat completion
+    - Real-time content generation
+    - Real-time image generation
+  integrations:
+    - chat-completion
+    - content-generation
+    - image-generation
+  status: available
+  value: connectors/google-genai
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "google-genai.yml"

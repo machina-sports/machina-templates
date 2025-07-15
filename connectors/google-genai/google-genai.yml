@@ -1,0 +1,8 @@
+connector:
+  name: "google-genai"
+  description: "This connector is the google-genai"
+  filename: "google-genai.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Prompt"
+      value: "invoke_prompt"
