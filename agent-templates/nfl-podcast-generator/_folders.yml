@@ -47,12 +47,12 @@ workflow:
               "icon": "folder",
               "items": [
                 {
-                  "name": "nhl-schedules",
-                  "title": "NHL Games",
-                  "description": "NHL game schedules synced from the Sportradar API.",
+                  "name": "nfl-schedules",
+                  "title": "NFL Games",
+                  "description": "NFL game schedules synced from the Sportradar API.",
                   "category": "Catalogue",
                   "metadata": {
-                    "name": ["nhl-game", "nhl-games", "hockey"]
+                    "name": ["nfl-game", "nfl-games", "football"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"

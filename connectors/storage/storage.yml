@@ -6,3 +6,5 @@ connector:
   commands:
     - name: "store_image"
       value: "store_image" 
+    - name: "store_base64_image"
+      value: "store_base64_image"
