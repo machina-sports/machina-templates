@@ -5,15 +5,20 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     input_status: "$.get('input_status', 'waiting')"
     output_status: "$.get('output_status', 'idle')"
+    voice_id: "$.get('voice_id', '1SM7GgM6IMuvQlz2BwM3')"
   outputs:
     content: "$.get('content')"
     documents: "$.get('documents')"
@@ -110,6 +115,36 @@ workflow:
       outputs:
         content: "$"
 
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('content').get('speech_to_avatar')"
+          voice_id: "$.get('voice_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"
+
     # Load thread document
     - type: "document"
       name: "load-thread-document"
@@ -151,7 +186,10 @@ workflow:
               *$.get('messages'),
               {
                 'role': 'assistant',
-                'content': $.get('content'),
+                'content': {
+                  **$.get('content', {}),
+                  'audio_path': $.get('audio_path')
+                },
                 'date': datetime.now().isoformat()
               }
             ],

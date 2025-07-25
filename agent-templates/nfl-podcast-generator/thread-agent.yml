@@ -3,7 +3,7 @@ agent:
   title: "NFL Podcast Chatbot"
   description: "NFL Podcast Chatbot."
   context:
-    config-frequency: 1
+    config-frequency: 0.1
   workflows:
 
     # Update NFL Podcast Chatbot

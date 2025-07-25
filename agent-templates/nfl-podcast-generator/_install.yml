@@ -18,20 +18,23 @@ datasets:
   # connectors
   - type: "connector"
     path: "../../connectors/machina-ai/machina-ai.yml"
+
   - type: "connector"
     path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
+
   - type: "connector"
     path: "../../connectors/sportradar-nfl/sportradar-nfl.yml"
 
   # workflow to sync nfl team
   - type: "workflow"
-    path: "chat-completions.yml"
-  - type: "workflow"
     path: "generate-content.yml"
+
   - type: "workflow"
     path: "generate-speech.yml"
+
   - type: "workflow"
     path: "sync-nfl-games.yml"
+
   - type: "workflow"
     path: "sync-nfl-team.yml"
 
@@ -53,8 +56,6 @@ datasets:
   # elevenlabs
   - type: "connector"
     path: "../../connectors/elevenlabs/elevenlabs.yml"
-  - type: "workflow"
-    path: "../../connectors/elevenlabs/workflow_test.yml"
 
   # storage
   - type: "connector"
