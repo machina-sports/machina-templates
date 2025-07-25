@@ -35,6 +35,13 @@ datasets:
   - type: "workflow"
     path: "sync-nfl-team.yml"
 
+  # thread-executor
+  - type: "workflow"
+    path: "thread-executor.yml"
+
+  - type: "agent"
+    path: "thread-agent.yml"
+
   # mappings
   - type: "mappings"
     path: "_mappings.yml"

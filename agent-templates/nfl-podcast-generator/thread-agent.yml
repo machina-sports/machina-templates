@@ -1,0 +1,13 @@
+agent:
+  name: "nfl-podcast-chatbot"
+  title: "NFL Podcast Chatbot"
+  description: "NFL Podcast Chatbot."
+  context:
+    config-frequency: 1
+  workflows:
+
+    # Update NFL Podcast Chatbot
+    - name: thread-executor
+      description: Thread Executor
+      outputs:
+        content: "$.get('workflow-status')"
