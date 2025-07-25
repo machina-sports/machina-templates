@@ -8,6 +8,9 @@ agent:
 
     # Update NFL Podcast Chatbot
     - name: thread-executor
-      description: Thread Executor
+      description: "Thread Executor"
+      inputs:
+        input_status: "'waiting'"
+        output_status: "'idle'"
       outputs:
-        content: "$.get('workflow-status')"
+        workflow-status: "$.get('workflow-status')"

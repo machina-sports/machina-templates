@@ -5,12 +5,13 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
-    event_type: "$.get('event_type', 'content-snippet')"
     input_status: "$.get('input_status', 'waiting')"
     output_status: "$.get('output_status', 'idle')"
   outputs:
@@ -69,21 +70,29 @@ workflow:
     - type: "document"
       name: "load-similar-documents"
       description: "Load similar documents"
+      condition: "$.get('document_id') is not None"
       config:
         action: "search"
-        search-vector: false
-      condition: "$.get('document_id') is not None"
+        threshold-docs: 5
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-vector: true
       connector:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      filters:
-        metadata.event_code: "$.get('event_code')"
       inputs:
         name: "'content-snippet'"
-        search-limit: "'50'"
+        search-limit: "'1000'"
+        search-query: "$.get('question')"
       outputs:
-        documents: "$.get('documents')"
+        documents: |
+          [
+            {
+              **snippet.get('value', {}),
+            }
+            for snippet in $.get('documents', [])
+          ]
 
     # thread-executor-prompt
     - type: "prompt"
@@ -91,9 +100,9 @@ workflow:
       description: "Thread Executor."
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai-fast"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "llama-3.3-70b-versatile"
+        model: "gemini-2.5-flash"
       inputs:
         documents: "$.get('documents')"
         messages: "$.get('messages')"
