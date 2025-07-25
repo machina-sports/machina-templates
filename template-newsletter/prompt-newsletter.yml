@@ -1,0 +1,172 @@
+prompts:
+  # prompt-topic-analysis
+  - type: "prompt"
+    title: "Newsletter Topic Analysis"
+    name: "prompt-topic-analysis"
+    description: ""
+    schema:
+      title: "NewsletterTopicAnalysis"
+      description: ""
+      type: "object"
+      properties:
+        description:
+          type: "string"
+          description: "Provide a comprehensive and detailed description of the **sports topic**. Include relevant background information, historical context, achievements, or key events associated with the **sports topic**. Ensure the description is long, informative, and written in English, focusing exclusively on sports."
+        search-query:
+          type: "string"
+          description: "Provide a short, accurate search query to find the latest news specifically related to the **sports topic**, in English. Ensure the query is relevant and avoids unrelated or tangential information."
+
+  # prompt-generate-summary
+  - type: "prompt"
+    title: "Newsletter Generate Summary"
+    name: "prompt-generate-summary"
+    description: "Generate a seamless summary from provided news details."
+    instruction: "Create a concise, engaging summary of key sports events, highlighting notable results and standout performances. Mention upcoming events briefly. Keep it conversational and easy to read, focusing only on sports. Skip greetings, fluff, and avoid strict formatting like bullet points or sections. Aim for brevity without losing essential sports information."
+
+  # # prompt-generate-newsletter
+  # - type: "prompt"
+  #   name: "prompt-generate-newsletter"
+  #   description: "Generate a seamless, engaging sports newsletter summary from provided news details."
+  #   instruction: |
+  #     Craft a slick, engaging weekly sports newsletter based on the documents provided, which contain the latest researched news topics. The newsletter should highlight key sports events, recent results, standout performances, and upcoming sports events. Follow the specific style provided, ensuring the tone matches the desired voice, whether formal, casual, or conversational. Write the content in the requested language, ensuring the newsletter maintains a smooth, natural flow appropriate for a wide audience.
+
+  #     Begin the newsletter with a personalized greeting using the recipient’s name, but exclude any signatures, placeholders, or calls to action. Cross-check the news topics from the documents with the user’s interests. If any sports details do not align with the user's preferences, adjust, remove, or rewrite them to maintain relevancy.
+
+  #     Ensure the final version contains no unrelated topics or placeholders. The newsletter should flow naturally without strict divisions or bullet points, focusing entirely on sports, and maintain the requested style throughout.
+
+  # prompt-generate-newsletter
+  - type: "prompt"
+    title: "Newsletter Generate Summary"
+    name: "prompt-generate-newsletter"
+    description: "Generate a seamless, engaging sports newsletter summary from provided news details."
+    instruction: |
+      Please create a sports newsletter using the following template:
+      
+      1. Personalized Greeting
+         - Begin with "Hello [Recipient's Name]," using the recipient's actual name taken from the context. If the name is not available, use a friendly generic greeting like "Hello there,".
+      
+      2. Summarize Key Sports Updates
+         - Break down each topic separately with clear headings and relevant emojis to enhance readability. The topics could be a league, sport, team, club, athlete, etc.
+         - For example:
+      
+           ---
+           ⚽ Soccer
+      
+           [Soccer updates here.]
+      
+           🏆 UEFA Champions League
+      
+           [Champions League updates here.]
+      
+           🖤 Corinthians
+      
+           [Updates about Corinthians here.]
+      
+           🎾 Tennis
+      
+           [Tennis updates here.]
+      
+           🏅 [Athlete's Name]
+      
+           [Updates about the athlete here.]
+           ---
+      
+         - Include recent results, standout performances, and upcoming events for each topic.
+         - Ensure the content flows naturally in a conversational tone.
+         - Follow the specific style provided, matching the desired voice—whether formal, casual, or conversational.
+         - Write the content in the requested language, maintaining a smooth, natural flow appropriate for a wide audience.
+      
+      3. Positive Sign-Off
+         - End with a positive closing statement, but do not include any signatures, placeholders, or unrelated calls to action.
+      
+      Template:
+      
+      ---
+      Hello [Recipient's Name],
+      
+      [Summarized sports content goes here.]
+      
+      [Positive sign-off.]
+      ---
+      
+      Ensure that:
+      
+      - The recipient's actual name is correctly inserted, with no placeholders left in the final output.
+      - Each topic is presented under its own heading with a relevant emoji.
+      - The newsletter contains no placeholders or signatures.
+
+  # # prompt-generate-newsletter
+  # - type: "prompt"
+  #   name: "prompt-generate-newsletter"
+  #   description: "Generate a seamless, engaging sports newsletter summary from provided news details."
+  #   instruction: |
+  #     Craft a slick and engaging weekly sports newsletter based on the provided documents containing the latest researched news topics. The newsletter should:
+
+  #     1. **Content Highlights:**
+  #         - **Key Sports Events:** Highlight major sports events of the week.
+  #         - **Recent Results:** Summarize recent game or match outcomes.
+  #         - **Standout Performances:** Feature notable athlete performances.
+  #         - **Upcoming Sports Events:** Preview upcoming events.
+
+  #     2. **Style and Tone:**
+  #         - **Tone:** [Specify desired tone, e.g., conversational, formal, casual]
+  #         - **Language:** [Specify the requested language]
+  #         - **Flow:** Maintain a smooth, natural flow appropriate for a wide audience without using strict divisions or bullet points.
+
+  #     3. **Personalization:**
+  #         - Begin with a personalized greeting using the recipient's name.
+  #         - Cross-check the news topics with the user's interests. Adjust, remove, or rewrite any sports details that do not align with the user's preferences to maintain relevancy.
+
+  #     4. **Output Requirements:**
+  #         - **Exclusions:** Do not include signatures, placeholders, or calls to action.
+  #         - **Focus:** Ensure the newsletter contains only relevant sports content with no unrelated topics or placeholders.
+  #         - **Format:** Present the content in well-structured paragraphs without using bullet points or strict divisions.
+
+  #     Context:
+
+  #     {documents provided here}
+
+  #     Example Output:
+
+  #     Hi [Recipient's Name],
+
+  #     Welcome to your weekly sports roundup! This week, we saw thrilling matches in the basketball league with the Lakers securing a stunning victory over the Celtics. In soccer, Messi delivered an incredible performance, scoring two goals that led his team to triumph. Looking ahead, don't miss the upcoming championship game next Saturday, where top teams will compete for the title.
+
+  #     Stay tuned for more exciting updates next week!
+
+  #     Notes:
+
+  #     - Replace `[Recipient's Name]` with the actual name of the recipient.
+  #     - Ensure all sports details are relevant to the user's interests as specified.
+  #     - Maintain the specified tone and language throughout the newsletter.
+
+  # prompt-generate-title
+  - type: "prompt"
+    title: "Newsletter Generate Title"
+    name: "prompt-generate-title"
+    description: "Generate a captivating title for a sports newsletter based on its summary and any provided guidance."
+    instruction: "Create a concise and engaging title for the sports newsletter using the provided summary and following any specific instructions or desired tone. The title should capture the essence of the newsletter's content, reflect the requested style or tone, and appeal to the target audience. Ensure the title is compelling and accurately represents the key sports events and themes covered in the newsletter."
+
+  # prompt-transform-html
+  - type: "prompt"
+    title: "Newsletter Transform HTML"
+    name: "prompt-transform-simple-html"
+    description: "Transform the raw text into HTML format"
+    instruction: "Transform the provided raw text into a simple HTML format, where each sentence or paragraph is wrapped in basic <p> tags. Avoid using any complex HTML elements, headings, styles, or attributes—just the plain paragraph tags. The output should not include the full HTML page structure (like <html>, <head>, or <body> tags). Only wrap the text in <p> tags, and do not format any individual words or phrases within the paragraph (no bold, italic, or other styles). Keep it minimal and clean, with each sentence or paragraph enclosed in its own <p> tag. Return only the raw HTML paragraph structure, without any additional labels or descriptions like 'html' or comments. Just wrap the text in <p> tags directly."
+
+  # prompt-profile-analysis
+  - type: "prompt"
+    title: "Newsletter Profile Analysis"
+    name: "prompt-profile-analysis"
+    description: ""
+    schema:
+      title: "NewsletterUserProfile"
+      description: "Collects user preferences related to athletes, competitions, teams, sports, and subjects for generating a personalized sports newsletter. Only provide details when available; otherwise, return empty."
+      type: "object"
+      properties:
+        subjects:
+          type: "array"
+          description: "Identify well-known subjects related to the user's sports interests, including athletes, competitions, teams, and sports. Return empty if no information is available."
+          items:
+            type: "string"
+            description: "A relevant subject."
