@@ -114,7 +114,7 @@ workflow:
         value.statistics.games_started: "{'$gte': $.get('min_games_started')} if $.get('min_games_started', 0) > 0 else {'$gte': -1}"
       inputs:
         name: "'nfl-player'"
-        search-limit: "'15'"
+        search-limit: "'6'"
       outputs:
         players: |
           [
@@ -139,7 +139,7 @@ workflow:
         value.salary: "{'$lte': $.get('max_salary')} if $.get('max_salary', 100000000) < 100000000 else {'$gte': 0}"
       inputs:
         name: "'nfl-player'"
-        search-limit: "'15'"
+        search-limit: "'6'"
       outputs:
         players: |
           [
