@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.sportradar.com/nfl/official/production/v7/en"
+      "url": "https://api.sportradar.com/nfl/official/trial/v7/en"
     }
   ],
   "paths": {
@@ -124,6 +124,85 @@
           {
             "in": "path",
             "name": "data_type",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ]
+      }
+    },
+    "/league/{data_type}": {
+      "get": {
+        "summary": "Get league information",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "data_type",
+            "required": true,
             "schema": {
               "type": "string"
             }

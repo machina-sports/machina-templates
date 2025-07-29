@@ -1,0 +1,67 @@
+workflow:
+  name: "draft-nfl-search-players"
+  title: "Draft NFL Search Players"
+  description: "Workflow to search nfl players."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    query: "$.get('query')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "prompt"
+      name: "draft-nfl-search-players-prompt"
+      description: "Draft NFL Search Players."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+        # model: "gemini-2.5-flash"
+      inputs:
+        query: "$.get('query')"
+      outputs:
+        positions: "$.get('position', ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB'])"
+        max_salary: "$.get('max_salary', 100000000)"
+        teams: "$.get('teams', ['49ers', 'Bears', 'Bengals', 'Bills', 'Broncos', 'Browns', 'Buccaneers', 'Cardinals', 'Chargers', 'Chiefs', 'Colts', 'Commanders', 'Cowboys', 'Dolphins', 'Eagles', 'Falcons', 'Giants', 'Jaguars', 'Jets', 'Lions', 'Packers', 'Panthers', 'Patriots', 'Raiders', 'Rams', 'Ravens', 'Saints', 'Seahawks', 'Steelers', 'Texans', 'Titans', 'Vikings'])"
+
+    - type: "document"
+      name: "load-similar-players"
+      description: "Load similar players"
+      config:
+        action: "search"
+        search-vector: false
+        search-sorters: ["value.salary", -1]
+      filters:
+        metadata.team_name: "{'$in': $.get('teams')}"
+        value.position: "{'$in': $.get('positions')}"
+        value.salary: "{'$lte': $.get('max_salary')}"
+      inputs:
+        name: "'nfl-player'"
+        search-limit: "'15'"
+      outputs:
+        players: |
+          [
+            {
+              **player.get('value', {})
+            }
+            for player in $.get('documents', [])
+          ]
+
+    - type: "prompt"
+      name: "draft-nfl-select-players-prompt"
+      description: "Draft NFL Select Players."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+        # model: "gemini-2.5-flash"
+      inputs:
+        players: "$.get('players', [])"
+      outputs:
+        content: "$"

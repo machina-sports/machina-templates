@@ -1,0 +1,59 @@
+workflow:
+  name: "preseason-sync-nfl-teams"
+  title: "Preseason Sync NFL Teams"
+  description: "Workflow to sync nfl preseason teams."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # task-load-teams
+    - type: "connector"
+      name: "task-load-teams"
+      description: "Get a season teams from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-league/{data_type}"
+        command_attribute:
+          data_type: "'teams.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        teams: "$"
+        teams_parsed: |
+          [
+            {
+              **team,
+              'metadata': {
+                'team_id': team.get('id', ''),
+              },
+              'title': f"{team.get('name', '')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for team in $.get('teams', [])
+          ]
+
+    # bulk-save-teams
+    - type: "document"
+      name: "bulk-save-teams"
+      condition: "$.get('teams_parsed') is not None"
+      description: "Bulk save the teams."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "nfl-team"
+      documents:
+        items: "$.get('teams_parsed')"
+      inputs:
+        teams_parsed: "$.get('teams_parsed')"

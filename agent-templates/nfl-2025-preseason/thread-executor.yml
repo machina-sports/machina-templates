@@ -1,0 +1,251 @@
+workflow:
+  name: "draft-nfl-thread-executor"
+  title: "Draft NFL Thread Executor"
+  description: "Workflow to execute a draft NFL thread."
+  context-variables:
+    debugger:
+      enabled: true
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    machina-ai-fast:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    input_status: "$.get('input_status', 'waiting')"
+    output_status: "$.get('output_status', 'idle')"
+    voice_id: "$.get('voice_id', '1SM7GgM6IMuvQlz2BwM3')"
+  outputs:
+    content: "$.get('content')"
+    documents: "$.get('documents')"
+    document_id: "$.get('document_id')"
+    document_data: "$.get('document_data')"
+    messages: "$.get('messages')"
+    workflow-status: "$.get('document_id') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # Load pending thread
+    - type: "document"
+      name: "load-pending-thread"
+      description: "Load pending thread"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        name: "'thread'"
+        value.status: "$.get('input_status')"
+      outputs:
+        document_id: "$.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None"
+        document_data: "$.get('documents')[0] if len($.get('documents', [])) > 0 else None"
+        event_code: "$.get('documents')[0].get('metadata', {}).get('event_code', '') if len($.get('documents', [])) > 0 else None"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else None"
+        question: "$.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else None"
+
+    # Update thread status
+    - type: "document"
+      name: "update-thread-status"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data', {}).get('value', {}),
+            'status': 'processing'
+          }
+      filters:
+        document_id: "$.get('document_id')"
+
+    # draft-nfl-search-players-prompt
+    - type: "prompt"
+      name: "draft-nfl-search-players-prompt"
+      description: "Draft NFL Search Players."
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
+        # name: "google-genai"
+        # command: "invoke_prompt"
+        # model: "gemini-2.5-pro"
+        # model: "gemini-2.5-flash"
+      inputs:
+        question: "$.get('question')"
+      outputs:
+        positions: "$.get('position', ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB'])"
+        max_salary: "$.get('max_salary', 100000000)"
+        teams: "$.get('teams', ['49ers', 'Bears', 'Bengals', 'Bills', 'Broncos', 'Browns', 'Buccaneers', 'Cardinals', 'Chargers', 'Chiefs', 'Colts', 'Commanders', 'Cowboys', 'Dolphins', 'Eagles', 'Falcons', 'Giants', 'Jaguars', 'Jets', 'Lions', 'Packers', 'Panthers', 'Patriots', 'Raiders', 'Rams', 'Ravens', 'Saints', 'Seahawks', 'Steelers', 'Texans', 'Titans', 'Vikings'])"
+        use_statistics: "$.get('use_statistics', False)"
+        min_games_played: "$.get('min_games_played', 0)"
+        min_games_started: "$.get('min_games_started', 0)"
+        max_penalties: "$.get('max_penalties', 100)"
+        min_first_downs: "$.get('min_first_downs', 0)"
+        min_yards: "$.get('min_yards', 0)"
+
+    # load-similar-players with statistics
+    - type: "document"
+      name: "load-similar-players-with-stats"
+      description: "Load similar players with statistical filtering"
+      condition: "$.get('document_id') is not None and $.get('use_statistics') == True"
+      config:
+        action: "search"
+        search-vector: false
+        search-sorters: ["value.salary", -1]
+      filters:
+        metadata.team_name: "{'$in': $.get('teams')} if len($.get('teams', [])) > 0 else {'$exists': True}"
+        value.position: "{'$in': $.get('positions')} if len($.get('positions', [])) > 0 else {'$exists': True}"
+        value.salary: "{'$lte': $.get('max_salary')} if $.get('max_salary', 100000000) < 100000000 else {'$gte': 0}"
+        value.statistics.games_played: "{'$gte': $.get('min_games_played')} if $.get('min_games_played', 0) > 0 else {'$gte': -1}"
+        value.statistics.games_started: "{'$gte': $.get('min_games_started')} if $.get('min_games_started', 0) > 0 else {'$gte': -1}"
+      inputs:
+        name: "'nfl-player'"
+        search-limit: "'15'"
+      outputs:
+        players: |
+          [
+            {
+              **player.get('value', {})
+            }
+            for player in $.get('documents', [])
+          ]
+
+    # load-similar-players without statistics
+    - type: "document"
+      name: "load-similar-players-basic"
+      description: "Load similar players without statistical filtering"
+      condition: "$.get('document_id') is not None and $.get('use_statistics') != True"
+      config:
+        action: "search"
+        search-vector: false
+        search-sorters: ["value.salary", -1]
+      filters:
+        metadata.team_name: "{'$in': $.get('teams')} if len($.get('teams', [])) > 0 else {'$exists': True}"
+        value.position: "{'$in': $.get('positions')} if len($.get('positions', [])) > 0 else {'$exists': True}"
+        value.salary: "{'$lte': $.get('max_salary')} if $.get('max_salary', 100000000) < 100000000 else {'$gte': 0}"
+      inputs:
+        name: "'nfl-player'"
+        search-limit: "'15'"
+      outputs:
+        players: |
+          [
+            {
+              **player.get('value', {})
+            }
+            for player in $.get('documents', [])
+          ]
+
+    # draft-nfl-select-players-prompt
+    - type: "prompt"
+      name: "draft-nfl-select-players-prompt"
+      description: "Draft NFL Select Players."
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
+        # name: "google-genai"
+        # command: "invoke_prompt"
+        # model: "gemini-2.5-pro"
+        # model: "gemini-2.5-flash"
+      inputs:
+        players: "$.get('players', [])"
+      outputs:
+        content: "$"
+
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('content').get('speech_to_avatar')"
+          voice_id: "$.get('voice_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"
+
+    # Load thread document
+    - type: "document"
+      name: "load-thread-document"
+      description: "Load thread document"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        _id: "$.get('document_id')"
+      inputs:
+        name: "'thread'"
+      outputs:
+        document_data: "$.get('documents')[0]"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', [])"
+
+    # Update thread document
+    - type: "document"
+      name: "update-thread-document"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data').get('value', {}),
+            'messages': [
+              *$.get('messages'),
+              {
+                'role': 'assistant',
+                'content': {
+                  **$.get('content', {}),
+                  'audio_path': $.get('audio_path')
+                },
+                'date': datetime.now().isoformat()
+              }
+            ],
+            'status': $.get('output_status')
+          }
+      filters:
+        document_id: "$.get('document_id')" 

@@ -1,0 +1,73 @@
+setup:
+  title: "NFL 2025 Preseason"
+  description: AI-powered podcast generator for NFL 2025 Preseason.
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to generate NFL 2025 Preseason.
+    - AI Reporter to generate NFL 2025 Preseason.
+  integrations:
+    - sportradar
+  status: available
+  value: "agent-templates/nfl-2025-preseason"
+  version: 1.0.0
+
+datasets:
+
+  # elevenlabs
+  - type: "connector"
+    path: "../../connectors/elevenlabs/elevenlabs.yml"
+
+  # storage
+  - type: "connector"
+    path: "../../connectors/storage/storage.yml"
+    
+  # connectors
+  - type: "connector"
+    path: "../../connectors/machina-ai/machina-ai.yml"
+
+  - type: "connector"
+    path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
+
+  - type: "connector"
+    path: "../../connectors/sportradar-nfl/sportradar-nfl.yml"
+
+  - type: "prompts"
+    path: "prompts/search-players.yml"
+
+  - type: "prompts"
+    path: "prompts/select-players.yml"
+
+  - type: "agent"
+    path: "players-agent.yml"
+
+  - type: "workflow"
+    path: "players-update.yml"
+
+  - type: "workflow"
+    path: "search-players.yml"
+
+  - type: "workflow"
+    path: "sync-games.yml"
+
+  - type: "workflow"
+    path: "sync-players.yml"
+
+  - type: "workflow"
+    path: "sync-teams.yml"
+
+  - type: "agent"
+    path: "teams-agent.yml"
+
+  - type: "workflow"
+    path: "teams-update.yml"
+
+  - type: "agent"
+    path: "thread-agent.yml"
+
+  - type: "workflow"
+    path: "thread-executor.yml"
+
+  - type: "workflow"
+    path: "_folders.yml"

@@ -1,0 +1,79 @@
+workflow:
+  name: "draft-nfl-players-update"
+  title: "Draft NFL Players Update"
+  description: "Workflow to update nfl players."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    player_id: "$.get('player_id')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # load-selected-player
+    - type: "document"
+      name: "load-selected-player"
+      description: "Load selected player"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        value.version-control.status: "'pending'"
+      inputs:
+        name: "'nfl-player'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id', '') if $.get('documents', []) is not None else ''"
+        player: "$.get('documents', [])[0].get('value', {}) if $.get('documents', []) is not None else {}"
+        player_id: "$.get('documents', [])[0].get('metadata', {}).get('player_id', '') if $.get('documents', []) is not None else ''"
+
+    # task-load-player-stats
+    - type: "connector"
+      name: "task-load-player-stats"
+      description: "Get a player stats from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-players/{player_id}/{data_type}"
+        command_attribute:
+          player_id: "$.get('player_id')"
+          data_type: "'profile.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        player-stats: "$"
+        player-stats-last-season: |
+          [
+            {
+              **team
+            }
+            for season in $.get('seasons', [])
+            if season.get('year', '') == 2024 and season.get('type', '') == 'REG'
+            for team in season.get('teams', [])
+          ][0].get('statistics', {}) if $.get('seasons', []) is not None else {'games_played': 0, 'games_started': 0}
+
+    # version-control-success
+    - type: "document"
+      name: "version-control-success"
+      description: "Update the player document version control."
+      condition: "$.get('document_id') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        player: |
+          {
+            **$.get('player', {}),
+            'statistics': $.get('player-stats-last-season', {}),
+            'version-control': {
+              'status': 'success'
+            }
+          }

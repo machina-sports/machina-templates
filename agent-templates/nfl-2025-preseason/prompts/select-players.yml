@@ -1,0 +1,69 @@
+prompts:
+
+  # draft-nfl-select-players
+  - type: "prompt"
+    name: "draft-nfl-select-players-prompt" 
+    title: "Draft NFL Select Players"
+    description: "This prompt suggests the NFL players from the search results."
+    instruction: "You are a helpful assistant that suggests the NFL players from the search results."
+    schema:
+      title: "DraftNFLPlayers"
+      description: "This schema defines the structure for suggesting the NFL players from the search results."
+      type: "object"
+      required: 
+       - "players"
+       - "review"
+      properties:
+        players:
+          type: "array"
+          description: "The NFL players."
+          items:
+            type: "object"
+            required:
+              - "title"
+              - "salary"
+              - "position"
+              - "team"
+              - "age"
+              - "content"
+            properties:
+              title:
+                type: "string"
+              salary:
+                type: "number"
+              position:
+                type: "string"
+              team:
+                type: "string"
+              age:
+                type: "number"
+              content:
+                type: "string"
+                description: "The content of the NFL player."
+        question_answer:
+          type: "string"
+          description: "Write like an enthusiastic buddy giving friendly advice about these NFL players! Be conversational, excited, and personal - like you're texting a friend about who to pick. Highlight what makes each player awesome, mention their physical stats, where they're from, their college story, how much they're making, and why they could be great picks. Use casual language, get excited about rookies with potential, veteran experience, or great value plays. Make it feel like insider tips from someone who really knows football and wants to help you make the best choices!"
+        related_topics:
+          type: "array"
+          description: "Provide small tips and compelling reasons why to select specific players from the suggestions. Focus on what makes each player a smart pick."
+          items:
+            type: "object"
+            properties:
+              topic_title:
+                type: "string"
+                description: "Catchy tip title highlighting why a specific player is worth picking (e.g., 'Rookie Steal Alert', 'Veteran Leadership Pick', 'Hidden Gem Find')."
+              topic_content:
+                type: "string"
+                description: "Brief, convincing reason or tip explaining why this specific player should be selected - mention their key strengths, value, or potential upside."
+              relevance:
+                type: "string"
+                description: "Why this player fits perfectly for the current team needs or strategy being discussed."
+        related_questions:
+          type: "array"
+          description: "Suggest natural follow-up questions about drafting an NFL fantasy team to keep the conversation flowing and help with draft strategy decisions. Generate questions that help users make better picks, explore different positions, or refine their draft strategy (e.g., 'Should I prioritize a top QB early or wait?', 'Which rookies have the best breakout potential?', 'What's your sleeper pick for this position?')."
+          items:
+            type: "string"
+            description: "Fantasy football draft questions that help users make better picks, explore different positions, or refine their draft strategy (e.g., 'Should I prioritize a top QB early or wait?', 'Which rookies have the best breakout potential?', 'What's your sleeper pick for this position?')."
+        speech_to_avatar:
+          type: "string"
+          description: "The speech to avatar speak to the user, more conversational and engaging, more like a human talking about NFL content."

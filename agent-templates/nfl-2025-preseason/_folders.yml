@@ -58,6 +58,17 @@ workflow:
                   "view": "list"
                 },
                 {
+                  "name": "nfl-players",
+                  "title": "NFL Players",
+                  "description": "NFL players synced from the Sportradar API.",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["nfl-player", "nfl-players"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "nfl-teams",
                   "title": "NFL Teams",
                   "description": "NFL teams synced from the Sportradar API.",

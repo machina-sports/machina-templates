@@ -1,0 +1,16 @@
+agent:
+  name: "draft-nfl-thread-agent"
+  title: "Draft NFL Thread Agent"
+  description: "Draft NFL Thread Agent."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    # draft-nfl-thread-executor
+    - name: draft-nfl-thread-executor
+      description: "Draft NFL Thread Executor"
+      inputs:
+        input_status: "'waiting'"
+        output_status: "'idle'"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
