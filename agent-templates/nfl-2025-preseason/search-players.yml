@@ -43,7 +43,7 @@ workflow:
         value.salary: "{'$lte': $.get('max_salary')}"
       inputs:
         name: "'nfl-player'"
-        search-limit: "'15'"
+        search-limit: "'6'"
       outputs:
         players: |
           [
