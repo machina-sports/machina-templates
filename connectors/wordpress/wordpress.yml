@@ -1,0 +1,12 @@
+connector:
+  name: "wordpress"
+  description: "Connector to push draft posts and upload media to WordPress via REST API."
+  filename: "wordpress.py"
+  filetype: "pyscript"
+  commands:
+    - name: "upload_media"
+      value: "upload_media"
+    - name: "create_draft_post"
+      value: "create_draft_post"
+
+
