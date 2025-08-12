@@ -4,27 +4,69 @@ import os
 from typing import Any, Dict, List, Tuple
 
 import requests
+from urllib.parse import urlparse
 
 
-def _build_auth_header(username: str, application_password: str) -> Dict[str, str]:
+def _build_basic_auth(username: str, application_password: str) -> Dict[str, str]:
     token = base64.b64encode(f"{username}:{application_password}".encode("utf-8")).decode("utf-8")
     return {"Authorization": f"Basic {token}"}
 
 
-def _get_required_credentials(headers: Dict[str, Any], params: Dict[str, Any]) -> Tuple[str, str, str]:
-    site_url = headers.get("site_url") or params.get("site_url")
-    username = headers.get("username") or params.get("username")
-    application_password = headers.get("application_password") or params.get("application_password")
+def _build_bearer_auth(token: str) -> Dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
 
+
+def _detect_mode(headers: Dict[str, Any], params: Dict[str, Any]) -> str:
+    """Return 'wpcom' if bearer_token provided, else 'selfhosted'."""
+    if (headers.get("bearer_token") or params.get("bearer_token")):
+        return "wpcom"
+    return "selfhosted"
+
+
+def _normalize_site_url(site_url: str) -> str:
+    if not site_url:
+        return site_url
+    return site_url.rstrip("/")
+
+
+def _get_site_domain(site_url: str) -> str:
+    """Extract domain for WordPress.com API (sites/{domain})."""
+    parsed = urlparse(site_url if "://" in site_url else f"https://{site_url}")
+    domain = parsed.netloc or parsed.path
+    return domain.rstrip("/")
+
+
+def _get_credentials_and_base(headers: Dict[str, Any], params: Dict[str, Any]) -> Tuple[str, Dict[str, str], str]:
+    """
+    Returns (mode, auth_header, api_base).
+    - mode: 'selfhosted' or 'wpcom'
+    - auth_header: dict with Authorization header
+    - api_base: base URL to wp/v2 (no trailing slash)
+    """
+    site_url = headers.get("site_url") or params.get("site_url")
     if not site_url:
         raise ValueError("Missing WordPress 'site_url'.")
+
+    mode = _detect_mode(headers, params)
+
+    if mode == "wpcom":
+        token = headers.get("bearer_token") or params.get("bearer_token")
+        if not token:
+            raise ValueError("Missing WordPress.com 'bearer_token'.")
+        domain = _get_site_domain(site_url)
+        api_base = f"https://public-api.wordpress.com/wp/v2/sites/{domain}"
+        return mode, _build_bearer_auth(token), api_base
+
+    # self-hosted (Application Password)
+    username = headers.get("username") or params.get("username")
+    application_password = headers.get("application_password") or params.get("application_password")
     if not username:
         raise ValueError("Missing WordPress 'username'.")
     if not application_password:
         raise ValueError("Missing WordPress 'application_password'.")
-
-    site_url = site_url.rstrip("/")
-    return site_url, username, application_password
+    base = _normalize_site_url(site_url)
+    api_base = f"{base}/wp-json/wp/v2"
+    return mode, _build_basic_auth(username, application_password), api_base
 
 
 def _safe_filename(path_or_name: str) -> str:
@@ -37,8 +79,8 @@ def _guess_mime_type(filename: str) -> str:
     return mime or "application/octet-stream"
 
 
-def _download_file_to_bytes(url: str, timeout: int = 30) -> bytes:
-    resp = requests.get(url, timeout=timeout)
+def _download_file_to_bytes(url: str, timeout: int = 30, headers: Dict[str, str] | None = None) -> bytes:
+    resp = requests.get(url, timeout=timeout, headers=headers or {})
     resp.raise_for_status()
     return resp.content
 
@@ -61,7 +103,7 @@ def upload_media(request_data: Dict[str, Any]) -> Dict[str, Any]:
     params = request_data.get("params", {})
 
     try:
-        site_url, username, app_password = _get_required_credentials(headers, params)
+        mode, auth_header, api_base = _get_credentials_and_base(headers, params)
     except Exception as e:
         return {"status": False, "message": str(e)}
 
@@ -78,7 +120,16 @@ def upload_media(request_data: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         if remote_url:
-            file_bytes = _download_file_to_bytes(remote_url)
+            # Build download headers with a compliant User-Agent for sources like Wikimedia
+            default_ua = "machina-templates-wordpress-connector/1.0 (+https://machina.ai)"
+            download_user_agent = (
+                headers.get("download_user_agent")
+                or params.get("download_user_agent")
+                or default_ua
+            )
+            extra_download_headers = params.get("download_headers") or {}
+            dl_headers = {"User-Agent": download_user_agent, **extra_download_headers}
+            file_bytes = _download_file_to_bytes(remote_url, headers=dl_headers)
             filename = override_filename or _safe_filename(remote_url)
         else:
             filename = override_filename or _safe_filename(file_path)
@@ -87,8 +138,7 @@ def upload_media(request_data: Dict[str, Any]) -> Dict[str, Any]:
 
         mime_type = _guess_mime_type(filename)
 
-        api_url = f"{site_url}/wp-json/wp/v2/media"
-        auth_header = _build_auth_header(username, app_password)
+        api_url = f"{api_base}/media"
 
         files = {"file": (filename, file_bytes, mime_type)}
         data: Dict[str, Any] = {}
@@ -132,7 +182,7 @@ def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
     params = request_data.get("params", {})
 
     try:
-        site_url, username, app_password = _get_required_credentials(headers, params)
+        mode, auth_header, api_base = _get_credentials_and_base(headers, params)
     except Exception as e:
         return {"status": False, "message": str(e)}
 
@@ -186,7 +236,7 @@ def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
             content_html = f"{content_html}\n\n" + "\n".join(appended_html_parts)
 
     # 3) Create the draft post
-    post_endpoint = f"{site_url}/wp-json/wp/v2/posts"
+    post_endpoint = f"{api_base}/posts"
     post_body: Dict[str, Any] = {
         "title": title,
         "content": content_html,
@@ -206,7 +256,6 @@ def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
             post_body["featured_media"] = first_media_id
 
     try:
-        auth_header = _build_auth_header(username, app_password)
         resp = requests.post(post_endpoint, headers=auth_header, json=post_body, timeout=60)
         if resp.status_code >= 400:
             return {"status": False, "message": f"Create post failed: {resp.status_code} - {resp.text}"}

@@ -9,6 +9,7 @@ workflow:
       site_url: "$TEMP_CONTEXT_VARIABLE_WORDPRESS_SITE_URL"
       username: "$TEMP_CONTEXT_VARIABLE_WORDPRESS_USERNAME"
       application_password: "$TEMP_CONTEXT_VARIABLE_WORDPRESS_APP_PASSWORD"
+      bearer_token: "$TEMP_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN"
   inputs:
     title: "$.get('title', 'Sample Draft From Machina')"
     content_html: "$.get('content_html', '<p>Hello from Machina!</p>')"
