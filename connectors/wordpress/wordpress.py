@@ -69,6 +69,33 @@ def _get_credentials_and_base(headers: Dict[str, Any], params: Dict[str, Any]) -
     return mode, _build_basic_auth(username, application_password), api_base
 
 
+def _refresh_wpcom_access_token(params: Dict[str, Any]) -> Dict[str, Any]:
+    client_id = params.get("client_id")
+    client_secret = params.get("client_secret")
+    refresh_token = params.get("refresh_token")
+    if not client_id or not client_secret or not refresh_token:
+        return {"status": False, "message": "Missing client_id, client_secret or refresh_token for refresh."}
+    try:
+        body = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        }
+        resp = requests.post(
+            "https://public-api.wordpress.com/oauth2/token",
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if resp.status_code >= 400:
+            return {"status": False, "message": f"Refresh failed: {resp.status_code} - {resp.text}"}
+        payload = resp.json()
+        return {"status": True, "data": payload}
+    except Exception as e:
+        return {"status": False, "message": f"Exception refreshing token: {e}"}
+
+
 def _safe_filename(path_or_name: str) -> str:
     name = os.path.basename(path_or_name)
     return name or "upload.bin"
