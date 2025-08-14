@@ -1,0 +1,78 @@
+workflow:
+  name: "wordpress-push-article"
+  title: "WordPress Push Article (Auto Refresh)"
+  description: "Refresh OAuth (WP.com) and create a draft post with images. Zero human interaction during run."
+  context-variables:
+    wordpress:
+      site_url: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL"
+      client_id: "$MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_ID"
+      client_secret: "$MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_SECRET"
+      refresh_token: "$MACHINA_CONTEXT_VARIABLE_WPCOM_REFRESH_TOKEN"
+  inputs:
+    # Either provide raw WP fields or a full article object to transform
+    article: "$.get('article')"
+    title: "$.get('title')"
+    content_html: "$.get('content_html')"
+    excerpt: "$.get('excerpt')"
+    images: "$.get('images', [])"            # [{url|file_path, alt_text?, caption?, description?, filename?}]
+    categories: "$.get('categories', [])"    # [ids]
+    tags: "$.get('tags', [])"                # [ids]
+    auto_append_images: "$.get('auto_append_images', true)"
+    set_featured_image: "$.get('set_featured_image', true)"
+  outputs:
+    post_id: "$['post'].get('id')"
+    draft_url: "$['post'].get('link')"
+    uploaded_media: "$['uploaded_media']"
+    workflow-status: "$['post'].get('id') is None and 'skipped' or 'executed'"
+  tasks:
+    - type: "connector"
+      name: "transform article"
+      condition: "$['article'] is not None"
+      connector:
+        name: "transform"
+        command: "article_model_to_wp_params"
+      inputs:
+        article: "$['article']"
+        images: "$['images']"
+      outputs:
+        title: "$['title']"
+        content_html: "$['content_html']"
+        excerpt: "$['excerpt']"
+        images: "$['images']"
+        slug: "$['slug']"
+    - type: "connector"
+      name: "refresh access token"
+      description: "Exchange refresh_token for a fresh access_token (WordPress.com)."
+      connector:
+        name: "wordpress"
+        command: "refresh_wpcom_access_token"
+      inputs:
+        client_id: "$['client_id']"
+        client_secret: "$['client_secret']"
+        refresh_token: "$['refresh_token']"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    - type: "connector"
+      name: "create draft post"
+      description: "Create a draft with images."
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "$['site_url']"
+        bearer_token: "$['access_token']"
+      inputs:
+        title: "$['title']"
+        content_html: "$['content_html']"
+        excerpt: "$['excerpt']"
+        images: "$['images']"
+        categories: "$['categories']"
+        tags: "$['tags']"
+        auto_append_images: "$['auto_append_images']"
+        set_featured_image: "$['set_featured_image']"
+      outputs:
+        post: "$['post']"
+        uploaded_media: "$['uploaded_media']"
+
+

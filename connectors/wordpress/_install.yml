@@ -1,0 +1,5 @@
+datasets:
+  - type: "connector"
+    path: "wordpress.yml"
+
+

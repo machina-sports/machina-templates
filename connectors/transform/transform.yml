@@ -1,0 +1,10 @@
+connector:
+  name: "transform"
+  description: "Transform utilities for mapping article models to WordPress params."
+  filename: "transform.py"
+  filetype: "pyscript"
+  commands:
+    - name: "article_model_to_wp_params"
+      value: "article_model_to_wp_params"
+
+
