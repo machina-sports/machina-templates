@@ -179,6 +179,16 @@ def upload_media(request_data: Dict[str, Any]) -> Dict[str, Any]:
             data["alt_text"] = alt_text
 
         resp = requests.post(api_url, headers=auth_header, files=files, data=data, timeout=60)
+        if resp.status_code == 401 and mode == "wpcom":
+            # Fallback to WP.com v1.1 endpoint
+            v11_url = f"https://public-api.wordpress.com/rest/v1.1/sites/{_get_site_domain(headers.get('site_url') or params.get('site_url'))}/media/new"
+            files_v11 = {"media[]": (filename, file_bytes, mime_type)}
+            resp_v11 = requests.post(v11_url, headers=auth_header, files=files_v11, data=data, timeout=60)
+            if resp_v11.status_code >= 400:
+                return {"status": False, "message": f"Media upload failed (v1.1): {resp_v11.status_code} - {resp_v11.text}"}
+            media = resp_v11.json()
+            return {"status": True, "data": media, "message": "Media uploaded (v1.1)."}
+
         if resp.status_code >= 400:
             return {"status": False, "message": f"Media upload failed: {resp.status_code} - {resp.text}"}
 
@@ -240,6 +250,9 @@ def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
                     "alt_text": img.get("alt_text"),
                     "caption": img.get("caption"),
                     "description": img.get("description"),
+                    # allow per-image download headers/user-agent
+                    "download_user_agent": img.get("download_user_agent"),
+                    "download_headers": img.get("download_headers"),
                 },
             }
             result = upload_media(media_payload)
@@ -284,6 +297,36 @@ def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         resp = requests.post(post_endpoint, headers=auth_header, json=post_body, timeout=60)
+        if resp.status_code == 401 and mode == "wpcom":
+            # Fallback to WP.com v1.1 endpoint (form data)
+            v11_url = f"https://public-api.wordpress.com/rest/v1.1/sites/{_get_site_domain(headers.get('site_url') or params.get('site_url'))}/posts/new"
+            form: Dict[str, Any] = {
+                "title": title,
+                "content": content_html,
+                "status": "draft",
+            }
+            if excerpt is not None:
+                form["excerpt"] = excerpt
+            if post_body.get("featured_media"):
+                form["featured_image"] = post_body.get("featured_media")
+            resp_v11 = requests.post(
+                v11_url,
+                headers={**auth_header},
+                data=form,
+                timeout=60,
+            )
+            if resp_v11.status_code >= 400:
+                return {"status": False, "message": f"Create post failed (v1.1): {resp_v11.status_code} - {resp_v11.text}"}
+            post = resp_v11.json()
+            return {
+                "status": True,
+                "data": {
+                    "post": post,
+                    "uploaded_media": uploaded_media,
+                },
+                "message": "Draft post created (v1.1).",
+            }
+
         if resp.status_code >= 400:
             return {"status": False, "message": f"Create post failed: {resp.status_code} - {resp.text}"}
         post = resp.json()

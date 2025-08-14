@@ -122,6 +122,18 @@ workflow:
     # Task definitions
 ```
 
+### OpenAPI (WordPress)
+
+We include a minimal OpenAPI 3 spec for WordPress draft posts and media uploads at `openapi/wordpress.yaml` supporting both self-hosted (Basic) and WordPress.com (Bearer).
+
+Generate a typed Python client (optional):
+```bash
+pip install openapi-python-client
+openapi-python-client generate --path openapi/wordpress.yaml --meta --config "{}"
+```
+
+You can then replace direct requests in a connector or keep using the existing `wordpress` connector and treat the spec as a contract for validation/testing.
+
 ### WordPress Connector
 
 The `wordpress` connector allows pushing draft posts and uploading images to a WordPress site using the REST API (with Application Passwords).
