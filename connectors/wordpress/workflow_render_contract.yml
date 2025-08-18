@@ -1,0 +1,72 @@
+workflow:
+  name: "wordpress-render-contract"
+  title: "WordPress Render Contract Card"
+  description: "Render a contract card block (optionally upload team logo) and create a draft post."
+  context-variables:
+    wordpress:
+      site_url: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL"
+      bearer_token: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN"
+      username: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_USERNAME"
+      application_password: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_APP_PASSWORD"
+  inputs:
+    title: "$.get('title', 'Contract Card')"
+    content_html: "$.get('content_html', '<p>Assinatura confirmada:</p>')"
+    contract: "$.get('contract')"
+    name: "$.get('name')"
+    team: "$.get('team')"
+    length: "$.get('length')"
+    salary: "$.get('salary')"
+    contract_type: "$.get('contract_type')"
+    total: "$.get('total')"
+    date: "$.get('date')"
+    team_logo_url: "$.get('team_logo_url')"
+    team_logo_alt: "$.get('team_logo_alt')"
+    upload_logo: "$.get('upload_logo', true)"
+  outputs:
+    post_id: "$['post'].get('id')"
+    draft_url: "$['post'].get('link')"
+    workflow-status: "$['post'].get('id') is None and 'skipped' or 'executed'"
+  tasks:
+    - type: "connector"
+      name: "render contract"
+      connector:
+        name: "wordpress"
+        command: "render_contract_card"
+      headers:
+        site_url: "$['site_url']"
+        bearer_token: "$['bearer_token']"
+        username: "$['username']"
+        application_password: "$['application_password']"
+      inputs:
+        contract: "$['contract']"
+        name: "$['name']"
+        team: "$['team']"
+        length: "$['length']"
+        salary: "$['salary']"
+        contract_type: "$['contract_type']"
+        total: "$['total']"
+        date: "$['date']"
+        team_logo_url: "$['team_logo_url']"
+        team_logo_alt: "$['team_logo_alt']"
+        upload_logo: "$['upload_logo']"
+      outputs:
+        block: "$['block']"
+
+    - type: "connector"
+      name: "create draft"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "$['site_url']"
+        bearer_token: "$['bearer_token']"
+        username: "$['username']"
+        application_password: "$['application_password']"
+      inputs:
+        title: "$['title']"
+        content_html: "$['content_html']"
+        block: "$['block']"
+      outputs:
+        post: "$['post']"
+
+

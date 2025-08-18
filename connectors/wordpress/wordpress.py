@@ -112,6 +112,130 @@ def _download_file_to_bytes(url: str, timeout: int = 30, headers: Dict[str, str]
     return resp.content
 
 
+def render_contract_card(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Render a Gutenberg block card for a player/team contract using core blocks only.
+
+    headers: optional (only needed if upload_logo=True with team_logo_url)
+      - site_url, username/application_password OR bearer_token
+
+    params can include either a 'contract' dict or individual fields:
+      - contract: {name, team, length, salary, contract_type, total, date, team_logo_url?, team_logo_alt?}
+      - name, team, length, salary, contract_type, total, date
+      - team_logo_url: optional remote image URL
+      - team_logo_alt: optional
+      - upload_logo: bool (default True). If True and team_logo_url provided and headers available, uploads to Media Library first
+
+    Returns: {status, data: {block}}
+    """
+    headers = request_data.get("headers", {}) or {}
+    params = request_data.get("params", {}) or {}
+
+    base = params.get("contract") or {}
+    name = params.get("name", base.get("name", ""))
+    team = params.get("team", base.get("team", ""))
+    length = params.get("length", base.get("length", ""))
+    salary = params.get("salary", base.get("salary", ""))
+    contract_type = params.get("contract_type", base.get("contract_type", ""))
+    total = params.get("total", base.get("total", ""))
+    date_str = params.get("date", base.get("date", ""))
+    team_logo_url = params.get("team_logo_url", base.get("team_logo_url"))
+    team_logo_alt = params.get("team_logo_alt", base.get("team_logo_alt", team))
+    upload_logo = params.get("upload_logo", True)
+
+    logo_src: str | None = None
+    if team_logo_url:
+        if upload_logo and (headers.get("bearer_token") or (headers.get("username") and headers.get("application_password"))):
+            try:
+                up_res = upload_media({
+                    "headers": headers,
+                    "params": {"url": team_logo_url, "title": team, "alt_text": team_logo_alt},
+                })
+                if up_res.get("status"):
+                    data = up_res.get("data", {})
+                    logo_src = data.get("source_url") or team_logo_url
+                else:
+                    logo_src = team_logo_url
+            except Exception:
+                logo_src = team_logo_url
+        else:
+            logo_src = team_logo_url
+
+    # Build block using token replacement to avoid f-string escaping issues
+    # Optional image block for logo
+    image_block = ""
+    if logo_src:
+        image_block = (
+            "<!-- wp:image {\"sizeSlug\":\"full\",\"linkDestination\":\"none\"} -->\n"
+            '<figure class="wp-block-image size-full"><img src="__LOGO_SRC__" alt="__LOGO_ALT__"/></figure>\n'
+            "<!-- /wp:image -->\n"
+        )
+
+    block = (
+        "<!-- wp:group {\"style\":{\"border\":{\"radius\":\"12px\",\"width\":\"1px\"},\"spacing\":{\"padding\":{\"top\":\"16px\",\"bottom\":\"16px\",\"left\":\"16px\",\"right\":\"16px\"}}}} -->\n"
+        '<div class="wp-block-group" style="border-width:1px;border-radius:12px;padding-top:16px;padding-bottom:16px;padding-left:16px;padding-right:16px">\n'
+        "<!-- wp:columns {\"verticalAlignment\":\"top\"} -->\n"
+        '<div class="wp-block-columns are-vertically-aligned-top">\n'
+        "<!-- wp:column {\"width\":\"38%\"} -->\n"
+        '<div class="wp-block-column" style="flex-basis:38%">\n'
+        f"{image_block}"
+        "<!-- wp:heading {\"level\":3} -->\n"
+        "<h3>__NAME__</h3>\n"
+        "<!-- /wp:heading -->\n"
+        "<!-- wp:paragraph {\"fontSize\":\"small\"} -->\n"
+        '<p class="has-small-font-size"><strong>SIGNED BY</strong></p>\n'
+        "<!-- /wp:paragraph -->\n"
+        "<!-- wp:paragraph {\"fontSize\":\"large\"} -->\n"
+        "<p class=\"has-large-font-size\"><strong>__TEAM__</strong></p>\n"
+        "<!-- /wp:paragraph -->\n"
+        "</div>\n"
+        "<!-- /wp:column -->\n\n"
+        "<!-- wp:column {\"width\":\"62%\"} -->\n"
+        '<div class="wp-block-column" style="flex-basis:62%">\n'
+        "<!-- wp:columns {\"columns\":2} -->\n"
+        '<div class="wp-block-columns has-2-columns">\n'
+        "<!-- wp:column -->\n"
+        '<div class="wp-block-column">\n'
+        "<!-- wp:paragraph --><p><strong>Length:</strong><br/>__LENGTH__</p><!-- /wp:paragraph -->\n"
+        "<!-- wp:paragraph --><p><strong>Salary Cap Hit:</strong><br/>__SALARY__</p><!-- /wp:paragraph -->\n"
+        "</div>\n"
+        "<!-- /wp:column -->\n"
+        "<!-- wp:column -->\n"
+        '<div class="wp-block-column">\n'
+        "<!-- wp:paragraph --><p><strong>Contract Type:</strong><br/>__CTYPE__</p><!-- /wp:paragraph -->\n"
+        "<!-- wp:paragraph --><p><strong>Total:</strong><br/>__TOTAL__</p><!-- /wp:paragraph -->\n"
+        "</div>\n"
+        "<!-- /wp:column -->\n"
+        "</div>\n"
+        "<!-- /wp:columns -->\n"
+        "<!-- wp:paragraph {\"align\":\"center\",\"fontSize\":\"small\"} -->\n"
+        '<p class="has-text-align-center has-small-font-size">__DATE__</p>\n'
+        "<!-- /wp:paragraph -->\n"
+        "</div>\n"
+        "<!-- /wp:column -->\n"
+        "</div>\n"
+        "<!-- /wp:columns -->\n"
+        "</div>\n"
+        "<!-- /wp:group -->\n"
+    )
+
+    # Replace tokens
+    block = (
+        block.replace("__NAME__", name or "")
+        .replace("__TEAM__", team or "")
+        .replace("__LENGTH__", length or "")
+        .replace("__SALARY__", salary or "")
+        .replace("__CTYPE__", (contract_type or "").title())
+        .replace("__TOTAL__", total or "")
+        .replace("__DATE__", date_str or "")
+    )
+    if logo_src:
+        block = block.replace("__LOGO_SRC__", logo_src).replace("__LOGO_ALT__", team_logo_alt or "")
+    else:
+        block = block.replace("__LOGO_SRC__", "").replace("__LOGO_ALT__", "")
+
+    return {"status": True, "data": {"block": block}}
+
 def upload_media(request_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Upload a media asset to WordPress Media Library.
@@ -234,6 +358,18 @@ def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
     images = params.get("images") or []
     set_featured_image = params.get("set_featured_image", True)
     auto_append_images = params.get("auto_append_images", True)
+
+    # Optionally append a shortcode (wrapped in a Shortcode block) and raw Gutenberg block markup
+    shortcode = params.get("shortcode")
+    if shortcode:
+        content_html = f"{content_html}\n\n<!-- wp:shortcode -->\n{shortcode}\n<!-- /wp:shortcode -->\n"
+    raw_block = params.get("block")
+    raw_blocks = params.get("blocks") or []
+    # If both 'block' and 'blocks' are present, place single block first
+    if raw_block:
+        raw_blocks = [raw_block] + list(raw_blocks)
+    if raw_blocks:
+        content_html = f"{content_html}\n\n" + "\n\n".join(str(b) for b in raw_blocks if b)
 
     uploaded_media: List[Dict[str, Any]] = []
 

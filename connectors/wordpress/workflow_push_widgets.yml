@@ -1,0 +1,54 @@
+workflow:
+  name: "wordpress-push-widgets"
+  title: "WordPress Push Widgets/Blocks"
+  description: "Create a draft post with optional shortcode and raw Gutenberg blocks (Bearer or self-hosted)."
+  context-variables:
+    wordpress:
+      site_url: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL"
+      # Prefer Bearer (WP.com). If not present, fallback to username/app password when runner injects them.
+      bearer_token: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN"
+      username: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_USERNAME"
+      application_password: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_APP_PASSWORD"
+  inputs:
+    title: "$.get('title', 'Post with widgets')"
+    content_html: "$.get('content_html', '<p>Post body</p>')"
+    excerpt: "$.get('excerpt')"
+    shortcode: "$.get('shortcode')"
+    block: "$.get('block')"
+    blocks: "$.get('blocks', [])"
+    images: "$.get('images', [])"
+    categories: "$.get('categories', [])"
+    tags: "$.get('tags', [])"
+    auto_append_images: "$.get('auto_append_images', true)"
+    set_featured_image: "$.get('set_featured_image', true)"
+  outputs:
+    post_id: "$['post'].get('id')"
+    draft_url: "$['post'].get('link')"
+    workflow-status: "$['post'].get('id') is None and 'skipped' or 'executed'"
+  tasks:
+    - type: "connector"
+      name: "create draft post"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "$['site_url']"
+        bearer_token: "$['bearer_token']"
+        username: "$['username']"
+        application_password: "$['application_password']"
+      inputs:
+        title: "$['title']"
+        content_html: "$['content_html']"
+        excerpt: "$['excerpt']"
+        shortcode: "$['shortcode']"
+        block: "$['block']"
+        blocks: "$['blocks']"
+        images: "$['images']"
+        categories: "$['categories']"
+        tags: "$['tags']"
+        auto_append_images: "$['auto_append_images']"
+        set_featured_image: "$['set_featured_image']"
+      outputs:
+        post: "$['post']"
+
+
