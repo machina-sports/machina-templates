@@ -9,8 +9,6 @@ connector:
     - name: "create_draft_post"
       value: "create_draft_post"
     - name: "refresh_wpcom_access_token"
-      value: "_refresh_wpcom_access_token"
+      value: "refresh_wpcom_access_token"
     - name: "render_contract_card"
       value: "render_contract_card"
-
-

@@ -4,18 +4,18 @@ workflow:
   description: "Read article JSON, transform to WP params, refresh OAuth, and push draft."
   context-variables:
     wordpress:
-      site_url: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL"
-      client_id: "$MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_ID"
-      client_secret: "$MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_SECRET"
-      refresh_token: "$MACHINA_CONTEXT_VARIABLE_WPCOM_REFRESH_TOKEN"
+      site_url: "${MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL}"
+      client_id: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_ID}"
+      client_secret: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_SECRET}"
+      refresh_token: "${MACHINA_CONTEXT_VARIABLE_WPCOM_REFRESH_TOKEN}"
   inputs:
     file_path: "$.get('file_path', 'articles.model.json')"  # path to JSON list or object
     json_pointer: "$.get('json_pointer', '0.value')"        # where the article object lives
     images: "$.get('images', [])"
   outputs:
-    post_id: "$['post'].get('id')"
-    draft_url: "$['post'].get('link')"
-    workflow-status: "$['post'].get('id') is None and 'skipped' or 'executed'"
+    post_id: "$('post').get('id')"
+    draft_url: "$('post').get('link')"
+    workflow-status: "$('post').get('id') is None and 'skipped' or 'executed'"
   tasks:
     - type: "connector"
       name: "read article json"
@@ -23,8 +23,8 @@ workflow:
         name: "json-reader"
         command: "read_json_file"
       inputs:
-        file_path: "$['file_path']"
-        json_pointer: "$['json_pointer']"
+        file_path: "$('file_path')"
+        json_pointer: "$('json_pointer')"
       outputs:
         article: "$"
 
@@ -34,13 +34,13 @@ workflow:
         name: "transform"
         command: "article_model_to_wp_params"
       inputs:
-        article: "$['article']"
-        images: "$['images']"
+        article: "$('article')"
+        images: "$('images')"
       outputs:
-        title: "$['title']"
-        content_html: "$['content_html']"
-        excerpt: "$['excerpt']"
-        images: "$['images']"
+        title: "$('title')"
+        content_html: "$('content_html')"
+        excerpt: "$('excerpt')"
+        images: "$('images')"
 
     - type: "connector"
       name: "refresh access token"
@@ -48,9 +48,9 @@ workflow:
         name: "wordpress"
         command: "refresh_wpcom_access_token"
       inputs:
-        client_id: "$['client_id']"
-        client_secret: "$['client_secret']"
-        refresh_token: "$['refresh_token']"
+        client_id: "$('client_id')"
+        client_secret: "$('client_secret')"
+        refresh_token: "$('refresh_token')"
       outputs:
         access_token: "$.get('access_token')"
 
@@ -60,14 +60,12 @@ workflow:
         name: "wordpress"
         command: "create_draft_post"
       headers:
-        site_url: "$['site_url']"
-        bearer_token: "$['access_token']"
+        site_url: "$('site_url')"
+        bearer_token: "$('access_token')"
       inputs:
-        title: "$['title']"
-        content_html: "$['content_html']"
-        excerpt: "$['excerpt']"
-        images: "$['images']"
+        title: "$('title')"
+        content_html: "$('content_html')"
+        excerpt: "$('excerpt')"
+        images: "$('images')"
       outputs:
-        post: "$['post']"
-
-
+        post: "$('post')"
