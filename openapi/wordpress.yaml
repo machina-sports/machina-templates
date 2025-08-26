@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: WordPress Content API (Minimal)
+  version: 0.1.0
+  description: |
+    Minimal OpenAPI spec to create draft posts and upload media on WordPress.
+    Supports both self-hosted (Application Password) and WordPress.com (OAuth Bearer).
+
+servers:
+  - url: https://{host}/wp-json/wp/v2
+    description: Self-hosted WordPress
+    variables:
+      host:
+        default: example.com
+  - url: https://public-api.wordpress.com/wp/v2/sites/{site}
+    description: WordPress.com
+    variables:
+      site:
+        default: yoursite.wordpress.com
+
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Self-hosted Application Password
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: WordPress.com OAuth access token
+
+  schemas:
+    PostCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+          description: HTML content
+        status:
+          type: string
+          enum: [draft, publish, pending, future, private]
+          default: draft
+        excerpt:
+          type: string
+        slug:
+          type: string
+        featured_media:
+          type: integer
+        categories:
+          type: array
+          items: { type: integer }
+        tags:
+          type: array
+          items: { type: integer }
+        author:
+          type: integer
+        date:
+          type: string
+          format: date-time
+      required: [title]
+
+    PostResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        link:
+          type: string
+        status:
+          type: string
+        title:
+          type: object
+          properties:
+            rendered: { type: string }
+        content:
+          type: object
+          properties:
+            rendered: { type: string }
+
+    MediaUploadResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        source_url: { type: string }
+        alt_text: { type: string }
+        media_type: { type: string }
+
+paths:
+  /posts:
+    post:
+      operationId: createPost
+      summary: Create a post
+      description: Create a new post (use status=draft for editorial review)
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostResponse' }
+        '200':
+          description: Created (some WP setups return 200)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostResponse' }
+        '4XX': { description: Client error }
+        '5XX': { description: Server error }
+
+  /media:
+    post:
+      operationId: uploadMedia
+      summary: Upload media
+      description: Upload a media file to the Media Library
+      security:
+        - basicAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+                alt_text:
+                  type: string
+                caption:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaUploadResponse' }
+        '200':
+          description: Created (some WP setups return 200)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaUploadResponse' }
+        '4XX': { description: Client error }
+        '5XX': { description: Server error }
+
+

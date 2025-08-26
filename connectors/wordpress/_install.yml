@@ -1,0 +1,36 @@
+setup:
+  title: WordPress API
+  description: Connect to the WordPress API to create draft posts and upload media to WordPress via REST API.
+  category:
+    - content-creation
+  estimatedTime: 1 minute
+  features:
+    - Create draft posts
+    - Upload media
+    - Auto-append images to content
+    - Use either Application Passwords (self-hosted) or OAuth Bearer tokens (WordPress.com)
+  integrations:
+    - wordpress
+  requirements:
+    - WordPress-Site-URL
+    - WordPress-Username
+    - WordPress-App-Password
+  status: available
+  value: connectors/wordpress
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "wordpress.yml"
+  - type: "workflow"
+    path: "workflow_push_article.yml"
+  - type: "workflow"
+    path: "workflow_push_widgets.yml"
+  - type: "workflow"
+    path: "workflow_render_contract.yml"
+  - type: "workflow"
+    path: "workflow_send_article.yml"
+  - type: "workflow"
+    path: "workflow_send_article_bearer.yml"
+  - type: "workflow"
+    path: "workflow_test.yml" 
