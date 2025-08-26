@@ -1,0 +1,80 @@
+workflow:
+  name: "wordpress-push-widgets"
+  description: "This workflow creates a post with widgets in WordPress"
+  inputs:
+    title: "Widget via shortcode"
+    content_html: "<p>Below:</p>"
+    shortcode: ""
+    block: ""
+    blocks: []
+  outputs:
+    post_id: "$.get('post_id')"
+    draft_url: "$.get('draft_url')"
+    workflow-status: "$.get('workflow-status', 'completed')"
+  tasks:
+    - type: "connector"
+      name: "refresh-token"
+      description: "Refresh WordPress.com access token"
+      connector:
+        name: "wordpress"
+        command: "refresh_wpcom_access_token"
+      headers:
+        client_id: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_ID}"
+        client_secret: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_SECRET}"
+        refresh_token: "${MACHINA_CONTEXT_VARIABLE_WPCOM_REFRESH_TOKEN}"
+      outputs:
+        access_token: "$.get('access_token')"
+        
+    - type: "connector"
+      name: "create-post-shortcode"
+      description: "Create a post with shortcode in WordPress"
+      condition: "shortcode and shortcode != ''"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "${MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL}"
+        authorization: "Bearer $('access_token')"
+      inputs:
+        title: "title"
+        content_html: "content_html + '\\n' + shortcode"
+      outputs:
+        post_id: "$.get('id')"
+        draft_url: "$.get('link')"
+        workflow-status: "completed"
+        
+    - type: "connector"
+      name: "create-post-block"
+      description: "Create a post with a block in WordPress"
+      condition: "block and block != ''"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "${MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL}"
+        authorization: "Bearer $('access_token')"
+      inputs:
+        title: "title"
+        content_html: "content_html + '\\n' + block"
+      outputs:
+        post_id: "$.get('id')"
+        draft_url: "$.get('link')"
+        workflow-status: "completed"
+        
+    - type: "connector"
+      name: "create-post-blocks"
+      description: "Create a post with multiple blocks in WordPress"
+      condition: "blocks and len(blocks) > 0"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "${MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL}"
+        authorization: "Bearer $('access_token')"
+      inputs:
+        title: "title"
+        content_html: "content_html + '\\n' + '\\n'.join(blocks)"
+      outputs:
+        post_id: "$.get('id')"
+        draft_url: "$.get('link')"
+        workflow-status: "completed"

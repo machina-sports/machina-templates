@@ -1,0 +1,35 @@
+workflow:
+  name: "wordpress-push-draft-test"
+  description: "This workflow creates a draft post in WordPress"
+  inputs:
+    title: "Sample Draft From Machina"
+    content_html: "<p>Hello from Machina!</p>"
+    excerpt: "Short summary"
+    image_url: "https://via.placeholder.com/1200x630.png?text=Draft+Test"
+  outputs:
+    post_id: "$.get('post_id')"
+    draft_url: "$.get('draft_url')"
+    workflow-status: "$.get('workflow-status', 'completed')"
+  tasks:
+    - type: "connector"
+      name: "create-draft-post"
+      description: "Create a draft post in WordPress"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      headers:
+        site_url: "${MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL}"
+        client_id: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_ID}"
+        client_secret: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_SECRET}"
+        refresh_token: "${MACHINA_CONTEXT_VARIABLE_WPCOM_REFRESH_TOKEN}"
+      inputs:
+        title: "title"
+        content_html: "content_html"
+        excerpt: "excerpt"
+        featured_media_id: 0
+        categories: []
+        tags: []
+      outputs:
+        post_id: "$.get('id')"
+        draft_url: "$.get('link')"
+        workflow-status: "completed"
