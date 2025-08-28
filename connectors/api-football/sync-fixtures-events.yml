@@ -1,0 +1,53 @@
+workflow:
+
+  # api-football-sync-fixtures-events
+  name: "api-football-sync-fixtures-events"
+  title: "API Football - Sync Fixtures Events"
+  description: "Workflow to sync fixtures events from API Football with detailed match events like goals, cards, substitutions."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture: "$.get('fixture')"
+    team: "$.get('team', None)"
+    player: "$.get('player', None)"
+    type: "$.get('type', None)"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-fixtures-events"
+      description: "Get fixtures events from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures/events"
+      inputs:
+        fixture: "$.get('fixture')"
+        team: "$.get('team')"
+        player: "$.get('player')"
+        type: "$.get('type')"
+      outputs:
+        fixtures-events: "$.get('response')"
+        events-count: "len($.get('response', []))"
+
+    # task-update-fixtures-events
+    - type: "document"
+      name: "task-update-fixtures-events"
+      description: "Update the fixtures events document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        fixtures-events: |
+          {
+            'data': $.get('fixtures-events', {}),
+            'title': f"Fixture {$.get('fixture')} - Events ({$.get('events-count', 0)} events)",
+            'summary': f"Match events for fixture {$.get('fixture')} including goals, cards, substitutions and other key moments"
+          }
+      metadata:
+        document_type: "'synchronization'"
+        event_code: "$.get('fixture')"
