@@ -1536,6 +1536,436 @@
         }
       }
     },
+    "/standings": {
+      "get": {
+        "summary": "Get standings",
+        "description": "Get league standings for a specific season and optionally filter by team",
+        "operationId": "get-standings",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 39
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 2019
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID to filter standings",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 33
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": {
+                      "type": "string",
+                      "description": "Endpoint name"
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "description": "Request parameters"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "results": {
+                      "type": "integer",
+                      "description": "Number of results"
+                    },
+                    "paging": {
+                      "type": "object",
+                      "properties": {
+                        "current": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "league": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "League ID"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "League name"
+                              },
+                              "country": {
+                                "type": "string",
+                                "description": "Country name"
+                              },
+                              "logo": {
+                                "type": "string",
+                                "description": "League logo URL"
+                              },
+                              "flag": {
+                                "type": "string",
+                                "description": "Country flag URL"
+                              },
+                              "season": {
+                                "type": "integer",
+                                "description": "Season year"
+                              },
+                              "standings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "rank": {
+                                        "type": "integer",
+                                        "description": "Team rank"
+                                      },
+                                      "team": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "integer",
+                                            "description": "Team ID"
+                                          },
+                                          "name": {
+                                            "type": "string",
+                                            "description": "Team name"
+                                          },
+                                          "logo": {
+                                            "type": "string",
+                                            "description": "Team logo URL"
+                                          }
+                                        }
+                                      },
+                                      "points": {
+                                        "type": "integer",
+                                        "description": "Total points"
+                                      },
+                                      "goalsDiff": {
+                                        "type": "integer",
+                                        "description": "Goals difference"
+                                      },
+                                      "group": {
+                                        "type": "string",
+                                        "description": "League group"
+                                      },
+                                      "form": {
+                                        "type": "string",
+                                        "description": "Recent form (e.g., WWWLD)"
+                                      },
+                                      "status": {
+                                        "type": "string",
+                                        "description": "Team status"
+                                      },
+                                      "description": {
+                                        "type": "string",
+                                        "description": "Position description"
+                                      },
+                                      "all": {
+                                        "type": "object",
+                                        "properties": {
+                                          "played": {
+                                            "type": "integer",
+                                            "description": "Total matches played"
+                                          },
+                                          "win": {
+                                            "type": "integer",
+                                            "description": "Total wins"
+                                          },
+                                          "draw": {
+                                            "type": "integer",
+                                            "description": "Total draws"
+                                          },
+                                          "lose": {
+                                            "type": "integer",
+                                            "description": "Total losses"
+                                          },
+                                          "goals": {
+                                            "type": "object",
+                                            "properties": {
+                                              "for": {
+                                                "type": "integer",
+                                                "description": "Goals scored"
+                                              },
+                                              "against": {
+                                                "type": "integer",
+                                                "description": "Goals conceded"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "home": {
+                                        "type": "object",
+                                        "properties": {
+                                          "played": {
+                                            "type": "integer",
+                                            "description": "Home matches played"
+                                          },
+                                          "win": {
+                                            "type": "integer",
+                                            "description": "Home wins"
+                                          },
+                                          "draw": {
+                                            "type": "integer",
+                                            "description": "Home draws"
+                                          },
+                                          "lose": {
+                                            "type": "integer",
+                                            "description": "Home losses"
+                                          },
+                                          "goals": {
+                                            "type": "object",
+                                            "properties": {
+                                              "for": {
+                                                "type": "integer",
+                                                "description": "Home goals scored"
+                                              },
+                                              "against": {
+                                                "type": "integer",
+                                                "description": "Home goals conceded"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "away": {
+                                        "type": "object",
+                                        "properties": {
+                                          "played": {
+                                            "type": "integer",
+                                            "description": "Away matches played"
+                                          },
+                                          "win": {
+                                            "type": "integer",
+                                            "description": "Away wins"
+                                          },
+                                          "draw": {
+                                            "type": "integer",
+                                            "description": "Away draws"
+                                          },
+                                          "lose": {
+                                            "type": "integer",
+                                            "description": "Away losses"
+                                          },
+                                          "goals": {
+                                            "type": "object",
+                                            "properties": {
+                                              "for": {
+                                                "type": "integer",
+                                                "description": "Away goals scored"
+                                              },
+                                              "against": {
+                                                "type": "integer",
+                                                "description": "Away goals conceded"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "update": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "description": "Last update timestamp"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "get": "standings",
+                  "parameters": {
+                    "league": "39",
+                    "season": "2019"
+                  },
+                  "errors": [],
+                  "results": 1,
+                  "paging": {
+                    "current": 1,
+                    "total": 1
+                  },
+                  "response": [
+                    {
+                      "league": {
+                        "id": 39,
+                        "name": "Premier League",
+                        "country": "England",
+                        "logo": "https://media.api-sports.io/football/leagues/2.png",
+                        "flag": "https://media.api-sports.io/flags/gb.svg",
+                        "season": 2019,
+                        "standings": [
+                          [
+                            {
+                              "rank": 1,
+                              "team": {
+                                "id": 40,
+                                "name": "Liverpool",
+                                "logo": "https://media.api-sports.io/football/teams/40.png"
+                              },
+                              "points": 70,
+                              "goalsDiff": 41,
+                              "group": "Premier League",
+                              "form": "WWWWW",
+                              "status": "same",
+                              "description": "Promotion - Champions League (Group Stage)",
+                              "all": {
+                                "played": 24,
+                                "win": 23,
+                                "draw": 1,
+                                "lose": 0,
+                                "goals": {
+                                  "for": 56,
+                                  "against": 15
+                                }
+                              },
+                              "home": {
+                                "played": 12,
+                                "win": 12,
+                                "draw": 0,
+                                "lose": 0,
+                                "goals": {
+                                  "for": 31,
+                                  "against": 9
+                                }
+                              },
+                              "away": {
+                                "played": 12,
+                                "win": 11,
+                                "draw": 1,
+                                "lose": 0,
+                                "goals": {
+                                  "for": 25,
+                                  "against": 6
+                                }
+                              },
+                              "update": "2020-01-29T00:00:00+00:00"
+                            }
+                          ]
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "errors": [
+                    "You are not subscribed to this API."
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests - Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "errors": [
+                    "Requests limit exceeded"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "errors": [
+                    "Internal server error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/teams/statistics": {
       "get": {
         "summary": "Get team statistics",

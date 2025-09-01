@@ -51,4 +51,7 @@ datasets:
     path: "sync-fixtures-events.yml"
 
   - type: "workflow"
+    path: "sync-standings-league.yml"
+
+  - type: "workflow"
     path: "_folders.yml"
