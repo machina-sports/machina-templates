@@ -104,6 +104,26 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "standings",
+                  "title": "Standings Data",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["standings"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "football-standings",
+                  "title": "League Standings",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["football-standings"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             },
