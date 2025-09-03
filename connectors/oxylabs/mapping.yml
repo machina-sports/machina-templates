@@ -10,18 +10,42 @@ mappings:
           item.get('transcriptSegmentRenderer', {}).get('snippet', {}).get('runs', [{'text': ''}])[0].get('text', '')
           for item in $.get('items', [])
         ]
-  
+
   - type: "mapping"
     title: "Oxylabs Scraping Mapping"
     name: "oxylabs-scraping-mapping"
     description: "Mapping data from oxylabs scraping"
     outputs:
+      # Keep your original text chunking (optional)
       parsed-content: |
         [
           f"{i//100}: {text[i:i+100]}"
-          for text in [bs4($.get('input-scraping-content'), 'html.parser').get_text()]
+          for text in [bs4($.get('input-scraping-content'), 'html.parser').get_text(separator="\n")]
           for i in range(0, len(text), 100)
         ]
+
+      # NEW: structured events extracted from the HTML cards
+      events: |
+        (lambda soup: [
+          (lambda card, main:
+            {
+              'name': (main.select_one('.field--name-name a') or {}).get_text(strip=True) if main.select_one('.field--name-name a') else '',
+              'detail_url': (main.select_one('.field--name-name a')['href'] if main.select_one('.field--name-name a') and main.select_one('.field--name-name a').has_attr('href') else ''),
+              'date_text': next((fi.get_text(strip=True) for fi in main.select('.field--label-inline .field__item') if (fi.find_previous_sibling('div', class_='field__label') or {}).get_text(strip=True) in ['Date','Dates']), ''),
+              'venue': (main.select_one('.field--name-venue .field__item') or {}).get_text(strip=True) if main.select_one('.field--name-venue .field__item') else '',
+              'who': next((fi.get_text(strip=True) for fi in main.select('.field--label-inline .field__item') if (fi.find_previous_sibling('div', class_='field__label') or {}).get_text(strip=True) == 'Who'), ''),
+              'event_stature': (main.select_one('.field--name-event-stature .field__item') or {}).get_text(strip=True) if main.select_one('.field--name-event-stature .field__item') else '',
+              'entry_cost_text': (main.select_one('.field--name-entry-cost .field__item') or {}).get_text(strip=True) if main.select_one('.field--name-entry-cost .field__item') else '',
+              'entry_cost_value': (float(main.select_one('.field--name-entry-cost .field__item')['content']) if main.select_one('.field--name-entry-cost .field__item') and main.select_one('.field--name-entry-cost .field__item').has_attr('content') else None),
+              'registration_link': (main.select_one('.field--name-registration-link a')['href'] if main.select_one('.field--name-registration-link a') and main.select_one('.field--name-registration-link a').has_attr('href') else ''),
+              'image_src': (main.select_one('.field--name-logo img')['src'] if main.select_one('.field--name-logo img') and main.select_one('.field--name-logo img').has_attr('src') else '')
+            }
+          )(card, card.select_one('.bs-region--main') or card)
+          for card in soup.select('.event-grid')
+        ])(bs4($.get('input-scraping-content'), 'html.parser'))
+
+      # Handy counter
+      event-count: "len([(1) for _ in bs4($.get('input-scraping-content'), 'html.parser').select('.event-grid')])"
 
   - type: "mapping"
     title: "Oxylabs Searching Mapping"
