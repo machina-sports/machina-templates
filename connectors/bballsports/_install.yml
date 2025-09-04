@@ -1,0 +1,28 @@
+setup:
+  title: BBallSports Basketball API
+  description: Connect to the BBallSports Basketball API to get live and historical basketball data.
+  category:
+    - data-acquisition
+    - basketball
+    - basketball-api
+  estimatedTime: 1 minute
+  features:
+    - Comprehensive suite of basketball game and seasonal stats
+    - Live game updates and statistics
+    - Player performance data
+    - Team standings and schedules
+    - Real-time game data feeds
+    - Historical game data and analytics
+  integrations:
+    - bballsports
+  status: available
+  value: connectors/bballsports
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "bballsports.yml"
+  - type: "workflow"
+    path: "bballsports-player-stats.yml" 
+  - type: "prompts"
+    path: "bballsports-player-stats-prompt.yml"

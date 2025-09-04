@@ -1,0 +1,5 @@
+connector:
+  name: "bballsports"
+  description: "BBallSports Basketball API"
+  filename: "bballsports.json"
+  filetype: "restapi" 

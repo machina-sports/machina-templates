@@ -1,0 +1,48 @@
+workflow:
+  name: "bballsports-player-stats"
+  title: "Get Player Statistics"
+  description: "Workflow to get basketball player statistics from BBallSports API."
+  context-variables:
+    debugger:
+      enabled: true
+    bballsports:
+      apikey: "$TEMP_CONTEXT_VARIABLE_BBALLSPORTS_API_KEY"
+      authorization: "$TEMP_CONTEXT_VARIABLE_BBALLSPORTS_AUTHORIZATION"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    league_name: "$.get('league_name')"
+    team_name: "$.get('team_name')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # bballsports-get-player-stats
+    - type: connector
+      name: "bballsports-get-player-stats"
+      description: "Get player statistics from BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-get_actual_player_stats.php"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey'),
+            "league_name": $.get('league_name'),
+            "team_name": $.get('team_name')
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        player-stats: "$"
+
+    - type: "prompt"
+      name: "prompt-bballsports-player-stats"
+      description: "Prompt to get player statistics from BBallSports."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        query: "$.get('player-stats')"
+      outputs:
+        player-analysis: "$"

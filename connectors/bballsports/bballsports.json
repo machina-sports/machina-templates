@@ -1,0 +1,170 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BBallSports Basketball API",
+    "description": "This API allows you to retrieve information about basketball games, teams, and players.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://api.bballsports.com/simulationAPI"
+    }
+  ],
+  "paths": {
+    "/get_actual_player_stats.php": {
+      "post": {
+        "summary": "Get actual player statistics",
+        "description": "Retrieve current player statistics for a specific team in a league",
+        "security": [
+          {
+            "authorization": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apikey": {
+                    "type": "string",
+                    "description": "API key for authentication",
+                    "example": "7acfca7442404d6c8cd8322a06671b79"
+                  },
+                  "league_name": {
+                    "type": "string",
+                    "description": "Name of the league",
+                    "example": "PRO2015-16"
+                  },
+                  "team_name": {
+                    "type": "string",
+                    "description": "Name of the team",
+                    "example": "Cleveland Cavaliers"
+                  }
+                },
+                "required": ["apikey", "league_name", "team_name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success - Player statistics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates if request was successful"
+                    },
+                    "players": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "player_name": {
+                            "type": "string",
+                            "description": "Name of the player"
+                          },
+                          "team": {
+                            "type": "string",
+                            "description": "Team name"
+                          },
+                          "league": {
+                            "type": "string",
+                            "description": "League name"
+                          },
+                          "stats": {
+                            "type": "object",
+                            "description": "Player statistics object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the issue"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the authentication failure"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "authorization": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "security": [
+    {
+      "authorization": []
+    }
+  ]
+} 
