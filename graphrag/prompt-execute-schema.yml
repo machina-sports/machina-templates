@@ -1,0 +1,74 @@
+prompts:
+  - type: "prompt"
+    title: "Extract entity data from snippets"
+    name: "prompt-execute-schema"
+    description: "Extract concrete entity data from snippets based on abstract schema definitions"
+    schema:
+      title: "EntityExtractionMatch"
+      description: "Maps abstract schema entities to concrete values found in snippets"
+      type: "object"
+      properties:
+        extracted_entities:
+          type: "array"
+          description: "List of concrete entities extracted from snippets"
+          items:
+            type: "object"
+            required: ["abstract_type", "concrete_value", "fields"]
+            properties:
+              abstract_type:
+                type: "string"
+                description: "The abstract entity type from schema (e.g., Team, League, Player)"
+              concrete_value:
+                type: "string"
+                description: "The actual entity value found in text (e.g., Real Madrid, Serie A)"
+              fields:
+                type: "array"
+                description: "Concrete values for the entity's fields"
+                items:
+                  type: "object"
+                  required: ["name", "value"]
+                  properties:
+                    name:
+                      type: "string"
+                      description: "Field name from abstract schema"
+                    value:
+                      type: "string"
+                      description: "Actual value found in text"
+        extracted_relationships:
+          type: "array"
+          description: "List of concrete relationships found between entities"
+          items:
+            type: "object"
+            required: ["abstract_relation", "head_entity", "tail_entity"]
+            properties:
+              abstract_relation:
+                type: "string"
+                description: "The relationship type from abstract schema"
+              head_entity:
+                type: "string"
+                description: "The concrete source entity"
+              tail_entity:
+                type: "string"
+                description: "The concrete target entity"
+              properties:
+                type: "object"
+                description: "Additional properties of the relationship"
+        validation:
+          type: "object"
+          description: "Rules for validating extracted data"
+          properties:
+            required_entities:
+              type: "array"
+              description: "Entity types that must be present"
+              items:
+                type: "string"
+            relationship_constraints:
+              type: "array"
+              description: "Constraints on relationships"
+              items:
+                type: "object"
+                properties:
+                  rule:
+                    type: "string"
+                  severity:
+                    type: "string"

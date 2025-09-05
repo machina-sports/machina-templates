@@ -1,0 +1,58 @@
+prompts:
+  - type: "prompt"
+    title: "Generate knowledge schema"
+    name: "prompt-generate-schema"
+    description: "Given the snippets, create a knowledge graph schema that captures the specific entities, relationships, and semantic context from the content. Extract real-world entities (e.g., specific people, organizations, products, locations) rather than abstract concepts. Relations should be represented as standardized relation names in uppercase with underscores (e.g., 'PLAYS_FOR', 'COMPETES_IN', 'MANAGED_BY'). Each entity and relation should be described with its specific context and include actual examples from the text. Ensure that all heads and tails are inside entities. The schema should be formatted as a JSON object that adheres to the following `Schema` Pydantic model. Ensure the output is in plain JSON and parsable via `json.loads()`."
+    schema:
+      title: "KnowledgeGraphSchema"
+      description: "Defines the structure of knowledge graph schema."
+      type: "object"
+      properties:
+        entities:
+          type: "array"
+          description: "List of specific entities extracted from the content"
+          items:
+            type: "object"
+            description: "Definition of a real-world entity found in the text"
+            properties:
+              name:
+                type: "string"
+                description: "Name of the specific entity (e.g., 'Manchester United', 'Marcus Rashford', 'Old Trafford')"
+              fields:
+                type: "array"
+                description: "List of concrete attributes found in the text for this entity"
+                items: 
+                  type: "string"
+                  description: "A specific attribute mentioned in the text (e.g., 'founding year', 'stadium capacity', 'league position')"
+        relations:
+          type: "array"
+          description: "List of actual relationships found between entities in the text"
+          items:
+            type: "object"
+            description: "Definition of a specific relationship observed in the content"
+            properties:
+              name:
+                type: "string"
+                description: "Name of the concrete relationship in uppercase with underscores (e.g., 'PLAYS_FOR', 'TRAINS_AT', 'COMPETES_IN')"
+              description:
+                type: "string"
+                description: "Detailed explanation of the specific relationship as it appears in the text"
+        triples:
+          type: "array"
+          description: "List of specific entity-relationship patterns found in the content"
+          items:
+            type: "object"
+            description: "Definition of an actual entity-relationship connection from the text"
+            properties:
+              head:
+                type: "string"
+                description: "The specific source entity in the relationship (e.g., 'Marcus Rashford')"
+              relation:
+                type: "string"
+                description: "The specific type of relationship in uppercase (e.g., 'PLAYS_FOR')"
+              tail:
+                type: "string"
+                description: "The specific target entity in the relationship (e.g., 'Manchester United')"
+              description:
+                type: "string"
+                description: "Explanation of this specific relationship instance as found in the text"
