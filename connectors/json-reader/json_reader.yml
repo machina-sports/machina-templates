@@ -1,0 +1,12 @@
+connector:
+  name: "json-reader"
+  description: "Read JSON files and extract nested objects."
+  filename: "json_reader.py"
+  filetype: "pyscript"
+  commands:
+    - name: "read_json_file"
+      value: "read_json_file"
+    - name: "read_json_by_id"
+      value: "read_json_by_id"
+
+

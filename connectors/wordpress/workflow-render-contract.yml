@@ -1,0 +1,76 @@
+workflow:
+  name: "wordpress-render-contract"
+  description: "This workflow renders a contract card in WordPress"
+  inputs:
+    title: "Contract: Player Name"
+    contract_data:
+      player_name: "John Doe"
+      team: "Team Name"
+      position: "Position"
+      contract_years: 3
+      contract_value: "$30 million"
+      guaranteed: "$20 million"
+      signing_bonus: "$5 million"
+  outputs:
+    post_id: "$.get('post_id')"
+    draft_url: "$.get('draft_url')"
+    workflow-status: "$.get('workflow-status', 'completed')"
+  tasks:
+    - type: "prompt"
+      name: "format-contract"
+      description: "Format contract data into HTML"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-3.5-turbo"
+      inputs:
+        player_name: "contract_data.get('player_name')"
+        team: "contract_data.get('team')"
+        position: "contract_data.get('position')"
+        contract_years: "contract_data.get('contract_years')"
+        contract_value: "contract_data.get('contract_value')"
+        guaranteed: "contract_data.get('guaranteed')"
+        signing_bonus: "contract_data.get('signing_bonus')"
+      prompt: |
+        Create a WordPress block for a contract card with the following information:
+        
+        Player: {{player_name}}
+        Team: {{team}}
+        Position: {{position}}
+        Contract: {{contract_years}} years, {{contract_value}}
+        Guaranteed: {{guaranteed}}
+        Signing Bonus: {{signing_bonus}}
+        
+        Format it as a WordPress block with custom HTML and CSS styling.
+      outputs:
+        contract_html: "$"
+        
+    - type: "connector"
+      name: "refresh-token"
+      description: "Refresh WordPress.com access token"
+      connector:
+        name: "wordpress"
+        command: "refresh_wpcom_access_token"
+      headers:
+        client_id: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_ID}"
+        client_secret: "${MACHINA_CONTEXT_VARIABLE_WPCOM_CLIENT_SECRET}"
+        refresh_token: "${MACHINA_CONTEXT_VARIABLE_WPCOM_REFRESH_TOKEN}"
+      outputs:
+        access_token: "$.get('access_token')"
+        
+    - type: "connector"
+      name: "render-contract"
+      description: "Render contract card in WordPress"
+      connector:
+        name: "wordpress"
+        command: "render_contract_card"
+      headers:
+        site_url: "${MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL}"
+        authorization: "Bearer $('access_token')"
+      inputs:
+        title: "title"
+        content: "contract_html"
+      outputs:
+        post_id: "$.get('id')"
+        draft_url: "$.get('link')"
+        workflow-status: "completed"
