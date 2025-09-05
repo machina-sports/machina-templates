@@ -1,0 +1,22 @@
+workflow:
+  name: "workflow-load-user"
+  title: "Newsletter Load User"
+  description: "This workflow load a user to unsubscribe"
+  inputs:
+    email: "$.get('email')"
+  outputs:
+    users-list: "$.get('users-list')"
+  tasks:
+    - type: "document"
+      name: "document-search"
+      description: "Search documents"
+      config:
+        action: "search"
+        search-vector: false
+      filters:
+        metadata.email: "$.get('email')"
+      inputs:
+        name: "'user'"
+        search-limit: "'1'"
+      outputs:
+        users-list: "$.get('documents')"
