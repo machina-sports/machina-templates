@@ -1,0 +1,33 @@
+workflow:
+
+  # api-football-get-teams-statistics
+  name: "api-football-get-teams-statistics"
+  title: "API Football - Get Teams Statistics"
+  description: "Workflow to get detailed statistics for a team in a specific league and season from API Football."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    team: "$.get('team')"
+    season: "$.get('season')"
+    date: "$.get('date')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-teams-statistics"
+      description: "Get teams statistics from API Football."
+      connector:
+        name: "api-football"
+        command: "get-teams/statistics"
+      inputs:
+        league: "$.get('league')"
+        team: "$.get('team')"
+        season: "$.get('season')"
+        date: "$.get('date')"
+      outputs:
+        teams-statistics: "$.get('response')"

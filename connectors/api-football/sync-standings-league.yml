@@ -1,0 +1,72 @@
+workflow:
+
+  # api-football-sync-standings-league
+  name: "api-football-sync-standings-league"
+  title: "API Football - sync Standings League"
+  description: "Workflow to sync league standings from API Football."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    season: "$.get('season')"
+    team: "$.get('team')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-standings"
+      description: "Get standings from API Football."
+      connector:
+        name: "api-football"
+        command: "get-standings"
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+        team: "$.get('team')"
+      outputs:
+        standings: "$.get('response')"
+    
+    # task-update-standings
+    - type: "document"
+      name: "task-update-standings-league"
+      description: "Update the standings document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        standings: |
+          {
+            'data': $.get('standings'),
+            'title': 'League Standings',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-standings
+    - type: "document"
+      name: "task-bulk-save-standings-league"
+      description: "Bulk save the standings."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "football-standings"
+      documents:
+        items: |
+          [
+            {
+              **standing,
+              'title': f"{standing.get('league', {}).get('name', '')} - Season {standing.get('league', {}).get('season', '')}",
+              'selected': False
+            }
+            for standing in $.get('standings')
+          ]
+      metadata:
+        document_type: "'standings'"

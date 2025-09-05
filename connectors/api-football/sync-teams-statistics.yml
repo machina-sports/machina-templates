@@ -1,0 +1,60 @@
+workflow:
+
+  # api-football-sync-teams-statistics
+  name: "api-football-sync-teams-statistics"
+  title: "API Football - Sync Teams Statistics"
+  description: "Workflow to sync teams statistics from API Football with detailed team performance data."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    team: "$.get('team')"
+    season: "$.get('season')"
+    date: "$.get('date')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-teams-statistics"
+      description: "Get teams statistics from API Football."
+      connector:
+        name: "api-football"
+        command: "get-teams/statistics"
+      inputs:
+        league: "$.get('league')"
+        team: "$.get('team')"
+        season: "$.get('season')"
+        date: "$.get('date')"
+      outputs:
+        teams-statistics: "$.get('response')"
+        team-name: "$.get('response', {}).get('team', {}).get('name', 'Unknown')"
+        league-name: "$.get('response', {}).get('league', {}).get('name', 'Unknown')"
+
+    # task-update-teams-statistics
+    - type: "document"
+      name: "task-update-teams-statistics"
+      description: "Update the teams statistics document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        teams-statistics: |
+          {
+            'data': $.get('teams-statistics', {}),
+            'title': f"{$.get('league-name')} - {$.get('team-name')} - {$.get('season', 'Unknown')}",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'parameters': {
+              'league': $.get('league'),
+              'team': $.get('team'),
+              'season': $.get('season'),
+              'date': $.get('date')
+            }
+          }
+      metadata:
+        document_type: "'synchronization'"

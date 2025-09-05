@@ -1,0 +1,48 @@
+workflow:
+
+  # api-football-sync-teams-statistics
+  name: "api-football-sync-fixtures-statistics"
+  title: "API Football - Sync Fixtures Statistics"
+  description: "Workflow to sync fixtures statistics from API Football with detailed team performance data."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture: "$.get('fixture')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-fixtures-statistics"
+      description: "Get fixtures statistics from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures/statistics"
+      inputs:
+        fixture: "$.get('fixture')"
+      outputs:
+        fixtures-statistics: "$.get('response')"
+        fixture-team-home-name: "$.get('response', {})[0].get('team', {}).get('name', 'Unknown')"
+        fixture-team-away-name: "$.get('response', {})[1].get('team', {}).get('name', 'Unknown')"
+
+
+    # task-update-fixtures-statistics
+    - type: "document"
+      name: "task-update-fixtures-statistics"
+      description: "Update the fixtures statistics document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        fixtures-statistics: |
+          {
+            'data': $.get('fixtures-statistics', {}),
+            'title': f"{$.get('fixture')} - {$.get('fixture-team-home-name')} - {$.get('fixture-team-away-name')}",
+          }
+      metadata:
+        document_type: "'synchronization'"
+        event_code: "$.get('fixture')"
