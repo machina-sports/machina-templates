@@ -4,15 +4,15 @@ prompts:
   - type: "prompt"
     name: "prompt-transcript-analysis"
     title: "Transcript Analysis"
-    description: "Generate an analysis focused on youth sports events"
+    description: "Generate a transcript analysis of a video"
     schema:
-      title: "YouthSportsEventAnalysis"
-      description: "Analysis notes centered on youth sports events (camps, tournaments, leagues)"
+      title: "SoccerTranscriptAnalysis"
+      description: "Transcript analysis of a video"
       type: "object"
       properties:
         snippets:
           type: "array"
-          description: "Concise notes capturing key youth event facts"
+          description: "Snippets of the transcript analysis"
           minItems: 1
           maxItems: 3
           items:
@@ -24,50 +24,53 @@ prompts:
             properties:
               title:
                 type: "string"
-                description: "Summarize the note in up to 10 words (e.g., 'Fall Cup III: Oct 18–19 details')"
+                description: "The title should summarize your notes in up to 10 words"
               subject:
                 type: "string"
-                description: "Primary subject (event name, organizer, team, or venue); must differ from the title"
+                description: "The subject of the note, cite the name of the person, team or organization, must be different from the title"
               content:
                 type: "string"
                 description: |
-                  You are extracting information about youth sports events (e.g., basketball camps, tournaments, leagues).
-                  If the structured mapping output `events` exists, use it as the primary source. Otherwise, fall back to provided text.
-                  Capture only verifiable facts: event name, dates, venue, eligible ages/grades, event stature, entry cost, and registration URL.
-                  If information is missing or unclear, state that it’s not provided—do not infer.
-                  Avoid promotional language and speculation. Keep it crisp and factual.
+                  You are a soccer reporter and this is your notebook about the facts around the world of soccer.
+                  Your notes should cover the buzz and news from influentital people that broadcasters and journalists follow.
+                  Based on the video transcript, write a note for the topic requested in the context.
+                  If there is not enough information, write that you don't have the necessary information.
+                  Be concise and only observe the facts, don't invent information or make predictions.
+                  Do not address topics other than those requested in the context.
 
                   TONE AND VOICE GUIDELINES:
-                  - Clear, neutral, helpful
-                  - Simple language; no jargon
-                  - Concise bullet-style prose (but output as plain text)
-                  - No salesy phrasing; no predictions
+                  - Write in a sentimental, friendly tone like chatting with a knowledgeable friend
+                  - Use simple, accessible language that anyone can understand
+                  - Be direct and concise, avoid lengthy explanations
+                  - Show expertise without being formal or academic
+                  - Keep it conversational and engaging, like social media
+                  - Explain complex topics in a simple, approachable way
+                  - Stay helpful and welcoming to beginners
+                  - Avoid overly technical terms or jargon
+                  - Don't use promotional or sales-focused language
               script_code:
                 type: "string"
                 description: |
-                  A three-part enum describing the youth event topic, e.g.:
-                  - EVENT_YOUTH_TOURNAMENT
-                  - EVENT_YOUTH_CAMP
-                  - EVENT_YOUTH_LEAGUE
-                  - EVENT_YOUTH_SHOWCASE
-                  - EVENT_YOUTH_REGISTRATION_INFO
-                  - EVENT_YOUTH_VENUE_UPDATE
-                  - EVENT_YOUTH_COST_UPDATE
-                  - EVENT_YOUTH_ELIGIBILITY_INFO
+                  A enum with 3 parts, like:
+                  - PLAYER_TRANSFER_NEWS
+                  - TEAM_TRANSFER_NEWS
+                  - TEAM_MERCHANDISE_EVENT
+                  - PLAYER_RELEASE_EVENT
+                  - etc.
 
   # prompt-transcript-subject-analysis
   - type: "prompt"
     name: "prompt-transcript-subject-analysis"
     title: "Transcript Subject Analysis"
-    description: "Slice content by subject to isolate youth sports event details"
+    description: "Generate a transcript subject analysis of a video"
     schema:
-      title: "YouthSportsTranscriptSubjectAnalysis"
-      description: "Identify specialized slices related to youth events and summarize them"
+      title: "SoccerTranscriptSubjectAnalysis"
+      description: "Analyze the transcript and return the content sliced by the subject"
       type: "object"
       properties:
         slices:
           type: "array"
-          description: "Subject-based slices focusing on discrete youth event topics"
+          description: "specialized slices of the transcript that contains a subject"
           minItems: 1
           maxItems: 20
           items:
@@ -80,27 +83,16 @@ prompts:
             properties:
               content:
                 type: "string"
-                description: |
-                  Summary of the slice with concrete youth event facts only (name, date(s), venue, ages/grades, stature, cost, registration link).
-                  If fields are not present in the slice or mapping, explicitly note “not provided”.
+                description: "The content of the note, a text summarizing the sliced content"
               subject:
                 type: "string"
-                description: "Subject for this slice (e.g., 'Fall Cup II — dates & venue', 'HoopSeenW Preview — eligibility grades')"
+                description: "The subject of the note in the whole transcript, cite the name of the person, team or organization and mention the main subject of the text"
               script_code:
                 type: "string"
-                description: |
-                  A three-part enum classifying the slice, e.g.:
-                  - EVENT_YOUTH_TOURNAMENT
-                  - EVENT_YOUTH_CAMP
-                  - EVENT_YOUTH_LEAGUE
-                  - EVENT_YOUTH_SHOWCASE
-                  - EVENT_YOUTH_REGISTRATION_INFO
-                  - EVENT_YOUTH_VENUE_UPDATE
-                  - EVENT_YOUTH_COST_UPDATE
-                  - EVENT_YOUTH_ELIGIBILITY_INFO
+                description: "A enum with 3 parts, like: PLAYER_TRANSFER_NEWS, TEAM_TRANSFER_NEWS, TEAM_MERCHANDISE_EVENT, PLAYER_RELEASE_EVENT, etc."
               start_index:
                 type: "integer"
-                description: "Start index in the source text for this subject slice (use best-available indices if mapping-based)"
+                description: "The start index of the snippet in the transcript that contains the subject"
               end_index:
                 type: "integer"
-                description: "End index in the source text for this subject slice (use best-available indices if mapping-based)"
+                description: "The end index of the snippet in the transcript that contains the subject"
