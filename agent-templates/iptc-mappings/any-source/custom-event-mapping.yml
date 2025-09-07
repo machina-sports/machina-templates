@@ -1,0 +1,64 @@
+mappings:
+
+  # iptc-custom-event-mapping
+  - type: mapping
+    name: iptc-custom-event-mapping
+    title: "IPTC | Custom Event Mapping"
+    description: "Maps simplified event data to IPTC sport schema format"
+    outputs:
+      sport_schema_event: |
+        {
+          "@context": {
+            "sport": "https://www.sportschema.org/ontologies/sport#",
+            "schema": "https://schema.org/"
+          },
+          "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+          "@id": f"urn:custom:event:{$.get('competition', {}).get('name').replace(' ', '-')}:{$.get('datetime', '').split('T')[0].replace('-', '')}:{$.get('teams', {}).get('home').replace(' ', '-')}:{$.get('teams', {}).get('away').replace(' ', '-')}",
+          "name": f"{$.get('teams', {}).get('home')} vs {$.get('teams', {}).get('away')} - {$.get('competition', {}).get('name')}",
+          "schema:startDate": $.get('datetime'),
+          "sport:status": {
+            "finished": "FT",
+            "not_started": "NS",
+            "canceled": "CANC",
+            "postponed": "PST"
+          }.get($.get('status', '').lower(), 'NS'),
+          "sport:competition": {
+            "@type": "sport:Competition",
+            "@id": f"urn:custom:competition:{$.get('competition', {}).get('name').replace(' ', '-')}",
+            "name": $.get('competition', {}).get('name'),
+            "sport:season": {
+              "@type": "sport:Season",
+              "@id": f"urn:custom:season:{$.get('competition', {}).get('name').replace(' ', '-')}:{$.get('competition', {}).get('season')}",
+              "name": f"{$.get('competition', {}).get('country')} {$.get('competition', {}).get('name')} {$.get('competition', {}).get('season')}",
+              "sport:year": $.get('competition', {}).get('season')
+            }
+          },
+          "sport:venue": {
+            "@type": "sport:Venue",
+            "@id": f"urn:custom:venue:unknown",
+            "name": "Unknown",
+            "schema:addressLocality": "Unknown"
+          },
+          "sport:competitors": [
+            {
+              "@type": "sport:Team",
+              "@id": f"urn:custom:team:{$.get('teams', {}).get('home').replace(' ', '-')}",
+              "name": $.get('teams', {}).get('home'),
+              "sport:qualifier": "home"
+            },
+            {
+              "@type": "sport:Team",
+              "@id": f"urn:custom:team:{$.get('teams', {}).get('away').replace(' ', '-')}",
+              "name": $.get('teams', {}).get('away'),
+              "sport:qualifier": "away"
+            }
+          ],
+          "sport:score": {
+            "sport:homeScore": $.get('score', {}).get('fulltime', {}).get('home'),
+            "sport:awayScore": $.get('score', {}).get('fulltime', {}).get('away'),
+            "sport:halfTime": {
+              "home": $.get('score', {}).get('halftime', {}).get('home'),
+              "away": $.get('score', {}).get('halftime', {}).get('away')
+            }
+          }
+        }

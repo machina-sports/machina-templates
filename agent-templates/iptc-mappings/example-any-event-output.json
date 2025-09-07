@@ -1,0 +1,53 @@
+{
+  "@context": {
+    "schema": "https://schema.org/",
+    "sport": "https://www.sportschema.org/ontologies/sport#"
+  },
+  "@id": "urn:custom:event:La-Liga:Espanyol:Atletico-Madrid",
+  "@type": [
+    "sport:SportsEvent",
+    "schema:SportsEvent"
+  ],
+  "name": "Espanyol vs Atletico Madrid - La Liga",
+  "schema:startDate": "2025-08-17T19:30:00+00:00",
+  "sport:competition": {
+    "@id": "urn:custom:competition:La-Liga",
+    "@type": "sport:Competition",
+    "name": "La Liga",
+    "sport:season": {
+      "@id": "urn:custom:season:La-Liga:2025",
+      "@type": "sport:Season",
+      "name": "Spain La Liga 2025",
+      "sport:year": "2025"
+    }
+  },
+  "sport:competitors": [
+    {
+      "@id": "urn:custom:team:Espanyol",
+      "@type": "sport:Team",
+      "name": "Espanyol",
+      "sport:qualifier": "home"
+    },
+    {
+      "@id": "urn:custom:team:Atletico-Madrid",
+      "@type": "sport:Team",
+      "name": "Atletico Madrid",
+      "sport:qualifier": "away"
+    }
+  ],
+  "sport:score": {
+    "sport:awayScore": 1,
+    "sport:halfTime": {
+      "away": 1,
+      "home": 0
+    },
+    "sport:homeScore": 2
+  },
+  "sport:status": "FT",
+  "sport:venue": {
+    "@id": "urn:custom:venue:unknown",
+    "@type": "sport:Venue",
+    "name": "Unknown",
+    "schema:addressLocality": "Unknown"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "@context": {
+    "sport": "https://www.sportschema.org/ontologies/sport#",
+    "schema": "https://schema.org/"
+  },
+  "@id": "urn:apifootball:fixture:1377885",
+  "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+  "name": "Cagliari vs Parma - Serie A",
+  "schema:startDate": "2025-09-13T13:00:00+00:00",
+  "sport:status": "NS",
+  "sport:competition": {
+    "@id": "urn:apifootball:league:135",
+    "@type": "sport:Competition",
+    "name": "Serie A",
+    "sport:season": {
+      "@id": "urn:apifootball:season:2025",
+      "@type": "sport:Season",
+      "name": "Regular Season - 3",
+      "sport:year": 2025
+    }
+  },
+  "sport:venue": {
+    "@type": "sport:Venue",
+    "@id": "urn:apifootball:venue:12275",
+    "name": "Unipol Domus",
+    "schema:addressLocality": "Cagliari"
+  },
+  "sport:competitors": [
+    {
+      "@type": "sport:Team",
+      "@id": "urn:apifootball:team:490",
+      "name": "Cagliari",
+      "sport:qualifier": "home",
+      "schema:logo": "https://media.api-sports.io/football/teams/490.png"
+    },
+    {
+      "@type": "sport:Team",
+      "@id": "urn:apifootball:team:523",
+      "name": "Parma",
+      "sport:qualifier": "away",
+      "schema:logo": "https://media.api-sports.io/football/teams/523.png"
+    }
+  ],
+  "sport:score": {
+    "sport:homeScore": null,
+    "sport:awayScore": null,
+    "sport:halfTime": {
+      "home": 0,
+      "away": 0
+    }
+  }
+}
+

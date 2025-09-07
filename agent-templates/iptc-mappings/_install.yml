@@ -1,0 +1,27 @@
+setup:
+  title: "IPTC - Mappings"
+  description: AI-powered agents for IPTC.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agents to map events from custom events to IPTC.
+  integrations:
+    - iptc-sports
+  status: available
+  value: "agent-templates/iptc-mappings"
+  version: 1.0.0
+
+datasets:
+
+  - type: "mappings"
+    path: "any-selector/event-selector.yml"
+
+  - type: "mappings"
+    path: "any-source/custom-event-mapping.yml"
+
+  - type: "prompts"
+    path: "any-source/custom-event-prompt.yml"
+
+  - type: "workflow"
+    path: "any-source/custom-event-test.yml"
