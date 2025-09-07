@@ -1,47 +1,30 @@
 setup:
-  title: "Chat Completion"
-  description: AI-powered chat completion with personalized recommendations based on betting history.
+  title: "Chat Completions"
+  description: AI-powered chat completion.
   category:
-    - betting-fantasy
-    - crm-fan-data
+    - special-templates
   estimatedTime: 15 minutes
   features:
-    - Real-time Odds Analysis
-    - Historical Performance
-    - AI Insights
-    - Custom Models
-    - Personalized Recommendations
-    - Betting Pattern Analysis
-    - Risk Profile Assessment
-    - Preference-Based Alerts
-    - Betting History Tracking
-    - Deal Stage Management
+    - AI Agent to generate chat completions.
   integrations:
-    - sportradar
-    - machina-db
     - machina-ai
   status: available
-  value: "agent-templates/chat-completion"
+  value: agent-templates/chat-completion
   version: 1.0.0
 
 datasets:
-
-  - type: "connector"
-    path: "../../connectors/groq/groq.yml"
   
-  - type: "connector"
-    path: "../../connectors/openai/openai.yml"
+  - type: "prompts"
+    path: "prompts/analyzer.yml"
+  
+  - type: "prompts"
+    path: "prompts/completions.yml"
 
   - type: "prompts"
-    path: "_prompts.yml"
+    path: "prompts/event-selector.yml"
 
   - type: "workflow"
-    path: "chat-completions.yml"
+    path: "workflows/chat-completions.yml"
 
   - type: "workflow"
-    path: "thread-executor.yml"
-  
-  - type: "agent"
-    path: "_scheduler.yml"
-
-
+    path: "workflows/event-search.yml"

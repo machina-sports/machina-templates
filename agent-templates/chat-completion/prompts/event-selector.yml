@@ -1,0 +1,55 @@
+prompts:
+
+  # chat-completion-event-selector
+  - type: prompt
+    name: chat-completion-event-selector
+    title: "Chat Completion | Event Selector"
+    description: "Chat Completion Event Selector"
+    instruction: |
+      Select the correct event from the provided list based on the instruction.
+
+      SELECTION RULES:
+      - When instruction mentions a team name, find events containing that EXACT team name
+      - Match team names as substrings of event titles
+      - Return event_id and event_title when found
+      - Set has_found_event to true when match is found
+      - Include unselected events in other_events array
+
+      MATCHING PROCESS:
+      1. Take the team/event name from instruction
+      2. Search for it within each event title
+      3. If found, use that event's ID and title
+      4. Put remaining events in other_events
+      5. Set has_found_event based on match success
+
+      IMPORTANT:
+      - Substring matching is case-insensitive
+      - Keep original event titles exactly as provided
+      - Never return empty when a match exists
+      - Never modify event titles or IDs
+      - Always check both home and away teams
+    schema:
+      title: "ChatCompletionEventSelector"
+      description: "Selects events based on instruction criteria"
+      type: "object"
+      required: [
+        "event_id",
+        "event_title",
+        "other_events",
+        "has_found_event"
+      ]
+      properties:
+        event_id:
+          type: "string"
+          description: "ID of the matched event, empty if no match"
+        event_title:
+          type: "string"
+          description: "Title of the matched event, empty if no match"
+        other_events:
+          type: "array"
+          description: "List of unselected event titles"
+          items:
+            type: "string"
+        has_found_event:
+          type: "boolean"
+          description: "True if exact match was found"

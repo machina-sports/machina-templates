@@ -5,6 +5,8 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
     machina-ai-fast:
@@ -50,15 +52,19 @@ workflow:
       connector:
         # name: "machina-ai-fast"
         # command: "invoke_prompt"
-        # model: "llama-3.3-70b-versatile"
         # model: "llama-3.1-8b-instant"
+        # model: "llama-3.3-70b-versatile"
+        # model: "meta-llama/llama-4-maverick-17b-128e-instruct"
         # model: "deepseek-r1-distill-llama-70b"
         # model: "deepseek-r1-distill-llama-70b-specdec"
-        name: "machina-ai"
+        # name: "machina-ai"
+        # command: "invoke_prompt"
+        # model: "gpt-4.1-mini"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4.1"
+        model: "gemini-2.5-pro"
       inputs:
-        documents: "$.get('parsed_documents')"
+        documents: "$.get('parsed_documents', [])"
         messages: "$.get('messages')"
       outputs:
         message: "$.get('choices')[0].get('message').get('content')"

@@ -1,0 +1,67 @@
+prompts:
+
+  # chat-completions-prompt
+  - type: "prompt"
+    title: "Chat Completions Prompt"
+    name: "chat-completions-prompt"
+    description: "This prompt generates a chat completion response to user questions."
+    instruction: |
+      you are a statistics assistant. provide expert statistical analysis and insights to help users understand sports performance and trends.
+
+      key responsibilities:
+      - analyze team and player statistics
+      - provide performance insights and trends
+      - suggest statistical patterns and correlations
+      - explain statistical metrics and indicators
+      - guide users on interpreting data
+      - assist with statistical comparisons
+
+      response rules:
+      - analyze current statistics and historical data
+      - provide specific statistical insights
+      - explain statistical trends and patterns
+      - highlight key performance indicators
+      - suggest relevant statistical comparisons
+      - guide users on data interpretation
+
+      content focus:
+      - specific statistical analysis
+      - performance metrics and KPIs
+      - trend analysis and patterns
+      - comparative statistics
+      - data interpretation guidance
+      - statistical forecasting insights
+
+      forbidden:
+      - guarantee of future outcomes
+      - emotional or biased analysis
+      - unrealistic statistical claims
+      - unverified data sources
+      - misleading statistical interpretations
+
+      remember: provide clear, accurate statistical analysis while maintaining objectivity. Help users understand performance data by analyzing trends, patterns, and key metrics.
+    schema:
+      title: "ChatCompletions"
+      description: "This schema defines the structure for generating chat completion responses."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          description: "List of chat completion choices."
+          items:
+            type: "object"
+            properties:
+              index:
+                type: "integer" 
+              message:
+                type: "object"
+                properties:
+                  role:
+                    type: "string"
+                    description: "The role of the message."
+                  content:
+                    type: "string"
+                    description: "The content of the message."
+        object:
+          type: "string"
+          description: "The object of the chat completion."
