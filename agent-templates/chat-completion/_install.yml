@@ -23,8 +23,17 @@ datasets:
   - type: "prompts"
     path: "prompts/event-selector.yml"
 
+  - type: "prompts"
+    path: "prompts/moderator.yml"
+
   - type: "workflow"
     path: "workflows/chat-completions.yml"
 
   - type: "workflow"
+    path: "workflows/chat-moderator.yml"
+
+  - type: "workflow"
     path: "workflows/event-search.yml"
+
+  - type: "workflow"
+    path: "_playground.yml"
