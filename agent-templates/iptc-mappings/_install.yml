@@ -5,9 +5,10 @@ setup:
     - special-templates
   estimatedTime: 15 minutes
   features:
-    - AI Agents to map events from custom events to IPTC.
+    - AI Agents to map events from API Football and Sportradar to IPTC.
   integrations:
-    - iptc-sports
+    - api-football
+    - sportradar
   status: available
   value: "agent-templates/iptc-mappings"
   version: 1.0.0
@@ -25,3 +26,15 @@ datasets:
 
   - type: "workflow"
     path: "any-source/custom-event-test.yml"
+
+  - type: "workflow"
+    path: "api-football/event-mapping-test.yml"
+
+  - type: "mappings"
+    path: "api-football/event-mapping.yml"
+
+  - type: "workflow"
+    path: "sportradar/event-mapping-test.yml"
+
+  - type: "mappings"
+    path: "sportradar/event-mapping.yml"

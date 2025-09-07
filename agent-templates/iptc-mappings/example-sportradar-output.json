@@ -1,0 +1,55 @@
+{
+  "sport-schema-event": {
+    "@context": {
+      "schema": "https://schema.org/",
+      "sport": "https://www.sportschema.org/ontologies/sport#"
+    },
+    "@id": "urn:sportradar:sport_event:sr:sport_event:61623432",
+    "@type": [
+      "sport:SportsEvent",
+      "schema:SportsEvent"
+    ],
+    "name": "Espanyol Barcelona vs Atletico Madrid - LaLiga",
+    "schema:startDate": "2025-08-17T19:30:00+00:00",
+    "sport:competition": {
+      "@id": "urn:sportradar:competition:sr:competition:8",
+      "@type": "sport:Competition",
+      "name": "LaLiga",
+      "sport:season": {
+        "@id": "urn:sportradar:season:sr:season:130805",
+        "@type": "sport:Season",
+        "name": "Spain LaLiga 25/26",
+        "sport:year": "25/26"
+      }
+    },
+    "sport:competitors": [
+      {
+        "@id": "urn:sportradar:team:sr:competitor:2814",
+        "@type": "sport:Team",
+        "name": "Espanyol Barcelona",
+        "sport:qualifier": "home"
+      },
+      {
+        "@id": "urn:sportradar:team:sr:competitor:2836",
+        "@type": "sport:Team",
+        "name": "Atletico Madrid",
+        "sport:qualifier": "away"
+      }
+    ],
+    "sport:score": {
+      "sport:awayScore": 1,
+      "sport:halfTime": {
+        "away": 1,
+        "home": 0
+      },
+      "sport:homeScore": 2
+    },
+    "sport:status": "closed",
+    "sport:venue": {
+      "@id": "urn:sportradar:venue:sr:venue:1307",
+      "@type": "sport:Venue",
+      "name": "RCDE Stadium",
+      "schema:addressLocality": "Cornella"
+    }
+  }
+}

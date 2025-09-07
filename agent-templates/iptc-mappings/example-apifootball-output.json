@@ -1,0 +1,55 @@
+{
+  "@context": {
+    "schema": "https://schema.org/",
+    "sport": "https://www.sportschema.org/ontologies/sport#"
+  },
+  "@id": "urn:apifootball:fixture:1390823",
+  "@type": [
+    "sport:SportsEvent",
+    "schema:SportsEvent"
+  ],
+  "name": "Espanyol vs Atletico Madrid - La Liga",
+  "schema:startDate": "2025-08-17T19:30:00+00:00",
+  "sport:competition": {
+    "@id": "urn:apifootball:league:140",
+    "@type": "sport:Competition",
+    "name": "La Liga",
+    "sport:season": {
+      "@id": "urn:apifootball:season:140:2025",
+      "@type": "sport:Season",
+      "name": "Spain La Liga 2025",
+      "sport:year": "2025"
+    }
+  },
+  "sport:competitors": [
+    {
+      "@id": "urn:apifootball:team:540",
+      "@type": "sport:Team",
+      "name": "Espanyol",
+      "schema:logo": "https://media.api-sports.io/football/teams/540.png",
+      "sport:qualifier": "home"
+    },
+    {
+      "@id": "urn:apifootball:team:530",
+      "@type": "sport:Team",
+      "name": "Atletico Madrid",
+      "schema:logo": "https://media.api-sports.io/football/teams/530.png",
+      "sport:qualifier": "away"
+    }
+  ],
+  "sport:score": {
+    "sport:awayScore": 1,
+    "sport:halfTime": {
+      "away": 1,
+      "home": 0
+    },
+    "sport:homeScore": 2
+  },
+  "sport:status": "FT",
+  "sport:venue": {
+    "@id": "urn:apifootball:venue:1474",
+    "@type": "sport:Venue",
+    "name": "RCDE Stadium",
+    "schema:addressLocality": "Cornella de Llobregat"
+  }
+}

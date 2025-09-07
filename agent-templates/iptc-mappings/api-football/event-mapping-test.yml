@@ -1,0 +1,43 @@
+workflow:
+
+  # iptc-api-football-event-mapping-test
+  name: iptc-api-football-event-mapping-test
+  title: "IPTC | API Football Event Mapping Test"
+  description: "Workflow to map event from API Football to Sportschema."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    fixture: "$.get('fixture')"
+  outputs:
+    workflow-status: "$.get('has-fixture') is True and 'executed' or 'skipped'"
+    sport-schema-event: "$.get('sport-schema-event')"
+  tasks:
+
+    # api-football-search-event
+    - type: document
+      name: api-football-search-fixtures
+      description: "API Football Search Event"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.event_code: "$.get('fixture')"
+      inputs:
+        name: "'football-fixture'"
+      outputs:
+        data-fixture: "$.get('documents', [])"
+        has-fixture: "len($.get('documents', [])) > 0"
+        selected-fixture: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+
+    # iptc-api-football-event-mapping
+    - type: mapping
+      name: iptc-api-football-event-mapping
+      title: "IPTC | API Football Event Mapping"
+      description: "Mapping data from api-football to IPTC events"
+      condition: "$.get('has-fixture') is True"
+      inputs:
+        fixture: "$.get('selected-fixture', {}).get('value', {})"
+      outputs:
+        sport-schema-event: "$.get('sport_schema_event')"
