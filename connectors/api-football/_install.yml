@@ -1,0 +1,54 @@
+setup:
+  title: API Football
+  description: Connect to the API Football API to get football data.
+  category:
+    - data-acquisition
+    - football
+  estimatedTime: 1 minute
+  features:
+    - Real-time football data
+    - Scrape any website
+    - Get the content of the football data
+    - Get the HTML of the football data
+    - Get the text of the football data
+    - Get the images of the web page
+    - Get the links of the web page
+    - Get the title of the web page
+
+  integrations:
+    - api-football
+  status: available
+  value: connectors/api-football
+  version: 1.0.0
+
+
+datasets:
+  - type: "connector" 
+    path: "api-football.yml"
+
+  - type: "workflow"
+    path: "get-fixtures.yml"
+
+  - type: "workflow"
+    path: "get-leagues.yml"
+
+  - type: "workflow"
+    path: "sync-leagues.yml"
+
+  - type: "workflow"
+    path: "sync-fixtures.yml"
+
+  - type: "workflow"
+    path: "get-teams-statistics.yml"
+
+  - type: "workflow"
+    path: "sync-teams-statistics.yml"
+
+  - type: "workflow"
+    path: "sync-fixtures-statistics.yml"
+
+  - type: "workflow"
+    path: "sync-fixtures-events.yml"
+
+  - type: "workflow"
+    path: "_folders.yml"

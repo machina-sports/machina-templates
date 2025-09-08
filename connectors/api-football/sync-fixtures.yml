@@ -1,0 +1,85 @@
+workflow:
+
+  # api-football-sync-fixtures
+  name: "api-football-sync-fixtures"
+  title: "API Football - Sync Fixtures"
+  description: "Comprehensive workflow to sync fixtures from API Football with support for single/multiple IDs, live fixtures, date ranges, league/team filtering, and venue-specific queries."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    ids: "$.get('ids')"
+    live: "$.get('live')"
+    league: "$.get('league')"
+    season: "$.get('season')"
+    date: "$.get('date')"
+    team: "$.get('team')"
+    last: "$.get('last')"
+    next: "$.get('next')"
+    from: "$.get('from')"
+    to: "$.get('to')"
+    round: "$.get('round')"
+    status: "$.get('status')"
+    venue: "$.get('venue')"
+    timezone: "$.get('timezone')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-football-get-fixtures"
+      description: "Get fixtures from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        id: "$.get('id')"
+        ids: "$.get('ids')"
+        live: "$.get('live')"
+        league: "$.get('league')"
+        season: "$.get('season')"
+        date: "$.get('date')"
+        team: "$.get('team')"
+        last: "$.get('last')"
+        next: "$.get('next')"
+        from: "$.get('from')"
+        to: "$.get('to')"
+        round: "$.get('round')"
+        status: "$.get('status')"
+        venue: "$.get('venue')"
+        timezone: "$.get('timezone')"
+      outputs:
+        fixtures: "$.get('response')"
+
+    # task-bulk-save-fixtures
+    - type: "document"
+      name: "task-bulk-save-fixtures"
+      description: "Bulk save the individual fixtures."
+      config:
+        action: "bulk-update"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "football-fixture"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('fixture', {}).get('id', '')),
+              },
+              'title': f"{f.get('teams', {}).get('home', {}).get('name', 'Unknown')} vs {f.get('teams', {}).get('away', {}).get('name', 'Unknown')} - {f.get('league', {}).get('name', '')}"
+            }
+            for f in $.get('fixtures', [])
+          ]
+      metadata:
+        document_type: "'fixture'"
