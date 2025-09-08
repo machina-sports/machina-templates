@@ -38,6 +38,6 @@ workflow:
       description: "Mapping data from api-football to IPTC events"
       condition: "$.get('has-fixture') is True"
       inputs:
-        fixture: "$.get('selected-fixture', {}).get('value', {})"
+        fixtures: "[$.get('selected-fixture', {}).get('value', {})]"
       outputs:
         sport-schema-event: "$.get('sport_schema_event')"

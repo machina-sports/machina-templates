@@ -56,28 +56,40 @@ workflow:
       outputs:
         fixtures: "$.get('response')"
 
+    # iptc-api-football-event-mapping
+    - type: mapping
+      name: iptc-api-football-event-mapping
+      title: "IPTC | API Football Event Mapping"
+      description: "Mapping data from api-football to IPTC events"
+      condition: "$.get('fixtures') is not None"
+      inputs:
+        fixtures: "$.get('fixtures', [])[:10]"
+      outputs:
+        fixtures: "$.get('sport_schema_events')"
+
     # task-bulk-save-fixtures
     - type: "document"
       name: "task-bulk-save-fixtures"
       description: "Bulk save the individual fixtures."
       config:
         action: "bulk-update"
+        embed-selector: "$.get('title')"
         embed-vector: true
         force-update: true
       connector:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "football-fixture"
+      document_name: "'sport:SportsEvent'"
       documents:
         items: |
           [
             {
               **f,
               'metadata': {
-                'event_code': str(f.get('fixture', {}).get('id', '')),
+                'event_code': str(f.get('@id', '')),
               },
-              'title': f"{f.get('teams', {}).get('home', {}).get('name', 'Unknown')} vs {f.get('teams', {}).get('away', {}).get('name', 'Unknown')} - {f.get('league', {}).get('name', '')}"
+              'title': f.get('name', '')
             }
             for f in $.get('fixtures', [])
           ]

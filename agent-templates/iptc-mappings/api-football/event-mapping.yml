@@ -6,53 +6,56 @@ mappings:
     title: "IPTC | API Football Event Mapping"
     description: "Mapping data from api-football to sportschema event"
     outputs:
-      sport_schema_event: |
-        {
-          "@context": {
-            "sport": "https://www.sportschema.org/ontologies/sport#",
-            "schema": "https://schema.org/"
-          },
-          "@id": f"urn:apifootball:fixture:{$.get('fixture', {}).get('fixture', {}).get('id')}",
-          "@type": ["sport:SportsEvent", "schema:SportsEvent"],
-          "name": f"{$.get('fixture', {}).get('teams', {}).get('home', {}).get('name')} vs {$.get('fixture', {}).get('teams', {}).get('away', {}).get('name')} - {$.get('fixture', {}).get('league', {}).get('name')}",
-          "schema:startDate": $.get('fixture', {}).get('fixture', {}).get('date'),
-          "sport:status": $.get('fixture', {}).get('fixture', {}).get('status', {}).get('short'),
-          "sport:competition": {
-            "@id": f"urn:apifootball:league:{$.get('fixture', {}).get('league', {}).get('id')}",
-            "@type": "sport:Competition",
-            "name": $.get('fixture', {}).get('league', {}).get('name'),
-            "sport:season": {
-              "@id": f"urn:apifootball:season:{$.get('fixture', {}).get('league', {}).get('id')}:{$.get('fixture', {}).get('league', {}).get('season')}",
-              "@type": "sport:Season",
-              "name": f"{$.get('fixture', {}).get('league', {}).get('country')} {$.get('fixture', {}).get('league', {}).get('name')} {$.get('fixture', {}).get('league', {}).get('season')}",
-              "sport:year": f"{$.get('fixture', {}).get('league', {}).get('season')}"
-            }
-          },
-          "sport:venue": {
-            "@type": "sport:Venue",
-            "@id": f"urn:apifootball:venue:{$.get('fixture', {}).get('fixture', {}).get('venue', {}).get('id')}",
-            "name": $.get('fixture', {}).get('fixture', {}).get('venue', {}).get('name'),
-            "schema:addressLocality": $.get('fixture', {}).get('fixture', {}).get('venue', {}).get('city')
-          },
-          "sport:competitors": [
-            {
-              "@type": "sport:Team",
-              "@id": f"urn:apifootball:team:{$.get('fixture', {}).get('teams', {}).get('home', {}).get('id')}",
-              "name": $.get('fixture', {}).get('teams', {}).get('home', {}).get('name'),
-              "sport:qualifier": "home",
-              "schema:logo": $.get('fixture', {}).get('teams', {}).get('home', {}).get('logo')
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
             },
-            {
-              "@type": "sport:Team",
-              "@id": f"urn:apifootball:team:{$.get('fixture', {}).get('teams', {}).get('away', {}).get('id')}",
-              "name": $.get('fixture', {}).get('teams', {}).get('away', {}).get('name'),
-              "sport:qualifier": "away",
-              "schema:logo": $.get('fixture', {}).get('teams', {}).get('away', {}).get('logo')
+            "@id": f"urn:apifootball:fixture:{f.get('fixture', {}).get('id')}",
+            "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+            "name": f"{f.get('teams', {}).get('home', {}).get('name')} vs {f.get('teams', {}).get('away', {}).get('name')} - {f.get('league', {}).get('name')}",
+            "schema:startDate": f.get('fixture', {}).get('date'),
+            "sport:status": f.get('fixture', {}).get('status', {}).get('short'),
+            "sport:competition": {
+              "@id": f"urn:apifootball:league:{f.get('league', {}).get('id')}",
+              "@type": "sport:Competition",
+              "name": f.get('league', {}).get('name'),
+              "sport:season": {
+                "@id": f"urn:apifootball:season:{f.get('league', {}).get('id')}:{f.get('league', {}).get('season')}",
+                "@type": "sport:Season",
+                "name": f"{f.get('league', {}).get('country')} {f.get('league', {}).get('name')} {f.get('league', {}).get('season')}",
+                "sport:year": f"{f.get('league', {}).get('season')}"
+              }
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:apifootball:venue:{f.get('fixture', {}).get('venue', {}).get('id')}",
+              "name": f.get('fixture', {}).get('venue', {}).get('name'),
+              "schema:addressLocality": f.get('fixture', {}).get('venue', {}).get('city')
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:apifootball:team:{f.get('teams', {}).get('home', {}).get('id')}",
+                "name": f.get('teams', {}).get('home', {}).get('name'),
+                "sport:qualifier": "home",
+                "schema:logo": f.get('teams', {}).get('home', {}).get('logo')
+              },
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:apifootball:team:{f.get('teams', {}).get('away', {}).get('id')}",
+                "name": f.get('teams', {}).get('away', {}).get('name'),
+                "sport:qualifier": "away",
+                "schema:logo": f.get('teams', {}).get('away', {}).get('logo')
+              }
+            ],
+            "sport:score": {
+              "sport:homeScore": f.get('score', {}).get('fulltime', {}).get('home'),
+              "sport:awayScore": f.get('score', {}).get('fulltime', {}).get('away'),
+              "sport:halfTime": f.get('score', {}).get('halftime')
             }
-          ],
-          "sport:score": {
-            "sport:homeScore": $.get('fixture', {}).get('score', {}).get('fulltime', {}).get('home'),
-            "sport:awayScore": $.get('fixture', {}).get('score', {}).get('fulltime', {}).get('away'),
-            "sport:halfTime": $.get('fixture', {}).get('score', {}).get('halftime')
           }
-        }
+          for f in $.get('fixtures', [])
+        ]
