@@ -1,0 +1,207 @@
+{
+  "generated_at": "2025-09-07T15:59:58+00:00",
+  "sport_event": {
+    "channels": [
+      {
+        "country": "United States",
+        "country_code": "USA",
+        "name": "ESPN Deportes"
+      },
+      {
+        "country": "United States",
+        "country_code": "USA",
+        "name": "ESPN+",
+        "url": "https://www.espn.com/where-to-watch/leagues/ger.1~eng.1~esp.1/_/dates/20240901"
+      },
+      {
+        "country": "United States",
+        "country_code": "USA",
+        "name": "ESPN 2"
+      },
+      {
+        "country": "United States",
+        "country_code": "USA",
+        "name": "Fubo TV",
+        "url": "https://www.livesoccertv.com/channels/fubo-tv/"
+      }
+    ],
+    "competitors": [
+      {
+        "abbreviation": "ESP",
+        "country": "Spain",
+        "country_code": "ESP",
+        "gender": "male",
+        "id": "sr:competitor:2814",
+        "name": "Espanyol Barcelona",
+        "qualifier": "home"
+      },
+      {
+        "abbreviation": "ATM",
+        "country": "Spain",
+        "country_code": "ESP",
+        "gender": "male",
+        "id": "sr:competitor:2836",
+        "name": "Atletico Madrid",
+        "qualifier": "away"
+      }
+    ],
+    "id": "sr:sport_event:61623432",
+    "sport_event_conditions": {
+      "attendance": {
+        "count": 29612
+      },
+      "ground": {
+        "neutral": false
+      },
+      "lineups": {
+        "confirmed": true
+      },
+      "referees": [
+        {
+          "country_code": "ESP",
+          "id": "sr:referee:1281638",
+          "name": "Busquets Ferrer, Mateo",
+          "nationality": "Spain",
+          "type": "main_referee"
+        },
+        {
+          "country_code": "ESP",
+          "id": "sr:referee:177969",
+          "name": "Garcia Gonzalez, Gonzalo",
+          "nationality": "Spain",
+          "type": "first_assistant_referee"
+        },
+        {
+          "country_code": "ESP",
+          "id": "sr:referee:178029",
+          "name": "Diaz Gonzalez, Adrian",
+          "nationality": "Spain",
+          "type": "second_assistant_referee"
+        },
+        {
+          "country_code": "ESP",
+          "id": "sr:referee:2111620",
+          "name": "Angelov Ivaylov, Aleksandar",
+          "nationality": "Spain",
+          "type": "fourth_official"
+        },
+        {
+          "country_code": "ESP",
+          "id": "sr:referee:90413",
+          "name": "Figueroa Vazquez, Jorge",
+          "nationality": "Spain",
+          "type": "video_assistant_referee"
+        }
+      ],
+      "weather": {
+        "overall_conditions": "medium",
+        "pitch_conditions": "good"
+      }
+    },
+    "sport_event_context": {
+      "category": {
+        "country_code": "ESP",
+        "id": "sr:category:32",
+        "name": "Spain"
+      },
+      "competition": {
+        "gender": "men",
+        "id": "sr:competition:8",
+        "name": "LaLiga"
+      },
+      "groups": [
+        {
+          "id": "sr:league:95812",
+          "name": "LaLiga 25/26"
+        }
+      ],
+      "round": {
+        "number": 1
+      },
+      "season": {
+        "competition_id": "sr:competition:8",
+        "end_date": "2026-05-24",
+        "id": "sr:season:130805",
+        "name": "LaLiga 25/26",
+        "start_date": "2025-08-15",
+        "year": "25/26"
+      },
+      "sport": {
+        "id": "sr:sport:1",
+        "name": "Soccer"
+      },
+      "stage": {
+        "end_date": "2026-05-24",
+        "order": 1,
+        "phase": "regular season",
+        "start_date": "2025-08-15",
+        "type": "league",
+        "year": "25/26"
+      }
+    },
+    "start_time": "2025-08-17T19:30:00+00:00",
+    "start_time_confirmed": true,
+    "venue": {
+      "capacity": 40500,
+      "city_name": "Cornella",
+      "country_code": "ESP",
+      "country_name": "Spain",
+      "id": "sr:venue:1307",
+      "map_coordinates": "41.347860,2.075622",
+      "name": "RCDE Stadium",
+      "timezone": "Europe/Madrid"
+    }
+  },
+  "sport_event_status": {
+    "away_score": 1,
+    "ball_locations": [
+      {
+        "order": 4,
+        "qualifier": "away",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "order": 3,
+        "qualifier": "away",
+        "x": 58,
+        "y": 26
+      },
+      {
+        "order": 2,
+        "qualifier": "home",
+        "x": 58,
+        "y": 26
+      },
+      {
+        "order": 1,
+        "qualifier": "home",
+        "x": 64,
+        "y": 24
+      }
+    ],
+    "home_score": 2,
+    "match_situation": {
+      "qualifier": "away",
+      "status": "safe",
+      "updated_at": "2025-08-17T21:26:21+00:00"
+    },
+    "match_status": "ended",
+    "period_scores": [
+      {
+        "away_score": 1,
+        "home_score": 0,
+        "number": 1,
+        "type": "regular_period"
+      },
+      {
+        "away_score": 0,
+        "home_score": 2,
+        "number": 2,
+        "type": "regular_period"
+      }
+    ],
+    "status": "closed",
+    "winner_id": "sr:competitor:2814"
+  }
+}

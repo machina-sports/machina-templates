@@ -1,0 +1,59 @@
+mappings:
+
+  # iptc-sportradar-event-mapping
+  - type: mapping
+    title: "IPTC | Sportradar Event Mapping"
+    name: "iptc-sportradar-event-mapping"
+    description: "Mapping data from sportradar to sportschema event"
+    outputs:
+      sport_schema_event: |
+        {
+          "@context": {
+            "sport": "https://www.sportschema.org/ontologies/sport#",
+            "schema": "https://schema.org/"
+          },
+          "@id": f"urn:sportradar:sport_event:{$.get('event', {}).get('sport_event', {}).get('id')}",
+          "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+          "name": f"{$.get('event', {}).get('sport_event', {}).get('competitors', [])[0].get('name')} vs {$.get('event', {}).get('sport_event', {}).get('competitors', [])[1].get('name')} - {$.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name')}",
+          "schema:startDate": $.get('event', {}).get('sport_event', {}).get('start_time'),
+          "sport:status": $.get('event', {}).get('sport_event_status', {}).get('status'),
+          "sport:competition": {
+            "@id": f"urn:sportradar:competition:{$.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id')}",
+            "@type": "sport:Competition",
+            "name": $.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name'),
+            "sport:season": {
+              "@id": f"urn:sportradar:season:{$.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id')}",
+              "@type": "sport:Season",
+              "name": f"{$.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name')} {$.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name')}",
+              "sport:year": $.get('event', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('year')
+            }
+          },
+          "sport:venue": {
+            "@type": "sport:Venue",
+            "@id": f"urn:sportradar:venue:{$.get('event', {}).get('sport_event', {}).get('venue', {}).get('id')}",
+            "name": $.get('event', {}).get('sport_event', {}).get('venue', {}).get('name'),
+            "schema:addressLocality": $.get('event', {}).get('sport_event', {}).get('venue', {}).get('city_name')
+          },
+          "sport:competitors": [
+            {
+              "@type": "sport:Team",
+              "@id": f"urn:sportradar:team:{$.get('event', {}).get('sport_event', {}).get('competitors', [])[0].get('id')}",
+              "name": $.get('event', {}).get('sport_event', {}).get('competitors', [])[0].get('name'),
+              "sport:qualifier": $.get('event', {}).get('sport_event', {}).get('competitors', [])[0].get('qualifier')
+            },
+            {
+              "@type": "sport:Team",
+              "@id": f"urn:sportradar:team:{$.get('event', {}).get('sport_event', {}).get('competitors', [])[1].get('id')}",
+              "name": $.get('event', {}).get('sport_event', {}).get('competitors', [])[1].get('name'),
+              "sport:qualifier": $.get('event', {}).get('sport_event', {}).get('competitors', [])[1].get('qualifier')
+            }
+          ],
+          "sport:score": {
+            "sport:homeScore": $.get('event', {}).get('sport_event_status', {}).get('home_score'),
+            "sport:awayScore": $.get('event', {}).get('sport_event_status', {}).get('away_score'),
+            "sport:halfTime": {
+              "home": $.get('event', {}).get('sport_event_status', {}).get('period_scores', [])[0].get('home_score'),
+              "away": $.get('event', {}).get('sport_event_status', {}).get('period_scores', [])[0].get('away_score')
+            }
+          }
+        }

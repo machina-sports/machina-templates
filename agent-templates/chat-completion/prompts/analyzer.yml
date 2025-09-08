@@ -1,0 +1,48 @@
+prompts:
+
+  # chat-completion-prompt-analyzer
+  - type: prompt
+    name: chat-completion-prompt-analyzer
+    title: "Chat | Prompt Analyzer"
+    description: "Analyzes user messages to determine intent and extract event information"
+    instruction: |
+      Analyze the user's messages to determine if they want to search for events or create a new event.
+      
+      IMPORTANT FOR SEARCH_QUERY:
+      - Extract team names from the conversation and format as a proper match title
+      - Use full team names, no abbreviations or nicknames
+      - Format as "Team A vs Team B - Competition" when possible
+      - If competition is not mentioned, format as "Team A vs Team B"
+      - If a team name is not clear or complete, omit it entirely rather than using placeholders
+      - Maintain proper capitalization and team name formatting
+      - If no teams are mentioned, return empty string
+      
+      CONTEXT-AWARE EVENT DETECTION:
+      - If user mentions a specific team AND there's information about that team's matches in the context, extract that match info
+      - Look for matches, schedules, or fixture information in the provided context
+      - Always prioritize the NEXT/UPCOMING match for the mentioned team when searching
+      - For event creation, extract complete match information including scores
+      - Never use placeholders like "Unknown Team" - if a team is unknown, omit it
+    schema:
+      title: "EventAnalyzer"
+      description: "Analyzes user intent and extracts event information"
+      type: "object"
+      required: [
+        "is_search_request",
+        "is_creation_request",
+        "has_complete_info",
+        "search_query"
+      ]
+      properties:
+        is_search_request:
+          type: "boolean"
+          description: "True if user is looking for existing events"
+        is_creation_request:
+          type: "boolean"
+          description: "True if user wants to create a new event"
+        has_complete_info:
+          type: "boolean"
+          description: "True if all required information for the operation is present"
+        search_query:
+          type: "string"
+          description: "Extracted match title formatted as 'Team A vs Team B' or 'Team A vs Team B - Competition'"

@@ -1,0 +1,66 @@
+workflow:
+
+  # chat-completion-event-search
+  name: chat-completion-event-search
+  title: "Chat Completion | Event Search"
+  description: "Chat Completion Event Search"
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    search-query: "$.get('search-query') or None"
+  outputs:
+    parsed-documents: "$.get('parsed_documents', [])"
+    workflow-status: "'executed' if $.get('parsed_objects') is not None else 'skipped'"
+  tasks:
+
+    # load-similar-documents
+    - type: document
+      name: load-similar-documents
+      description: "Load similar documents"
+      config:
+        action: "search"
+        threshold-docs: 5
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "'sport:SportsEvent'"
+        search-query: "$.get('search-query')"
+      outputs:
+        parsed_documents: "$.get('documents', [])"
+        parsed_objects: |
+          [
+            {
+              "id": d.get('metadata', {}).get('event_code', ''),
+              "title": d.get('value', {}).get('title', '')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # chat-completion-event-selector
+    - type: prompt
+      name: chat-completion-event-selector
+      condition: "$.get('parsed_objects') is not None"
+      connector:
+        command: "invoke_prompt"
+        # name: "google-genai"
+        # model: "gemini-2.5-pro"
+        name: "machina-ai"
+        model: "gpt-4.1"
+      inputs:
+        _1-events-parsed: "$.get('parsed_objects')"
+        _2-instruction: f"Select the event equivalent to {$.get('search-query')}"
+      outputs:
+        event_id: "$.get('code')"
+        event_title: "$.get('title')"
+        other_events: "$.get('other_events')"
+        has_found_event: "$.get('has_found_event')"

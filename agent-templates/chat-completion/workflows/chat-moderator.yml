@@ -1,0 +1,215 @@
+workflow:
+  name: "chat-moderator"
+  title: "Chat Moderator"
+  description: "Workflow to execute a chat completion."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    machina-ai-fast:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+  inputs:
+    messages: "str($.get('messages', []))"
+  outputs:
+    documents: "$.get('output_documents', [])"
+    message: "$.get('message')"
+    workflow-status: "$.get('message') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # CHAT ANALYZER
+
+    # chat-completion-prompt-analyzer
+    - type: prompt
+      name: chat-completion-prompt-analyzer
+      condition: "$.get('messages') is not None"
+      connector:
+        command: "invoke_prompt"
+        name: "machina-ai"
+        model: "gpt-4.1"
+      inputs:
+        _1-messages-parsed: "str($.get('messages'))"
+      outputs:
+        is_search_request: "$.get('is_search_request')"
+        is_creation_request: "$.get('is_creation_request')"
+        has_complete_info: "$.get('has_complete_info')"
+        search_query: "$.get('search_query')"
+
+    # EVENT SEARCH
+
+    # load-similar-documents
+    - type: document
+      name: load-similar-documents
+      description: "Load similar documents"
+      condition: "$.get('search_query') is not None and $.get('is_search_request') is True"
+      config:
+        action: "search"
+        threshold-docs: 5
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "'sport:SportsEvent'"
+        search-query: "$.get('search_query')"
+      outputs:
+        output_documents: "$.get('documents', [])"
+        parsed_objects: |
+          [
+            {
+              "id": d.get('_id'),
+              "title": d.get('value', {}).get('title', '')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # chat-completion-event-selector
+    - type: prompt
+      name: chat-completion-event-selector
+      condition: "$.get('parsed_objects') is not None and $.get('is_search_request') is True"
+      connector:
+        command: "invoke_prompt"
+        # name: "google-genai"
+        # model: "gemini-2.5-pro"
+        name: "machina-ai"
+        model: "gpt-4.1"
+      inputs:
+        _1-events-parsed: "$.get('parsed_objects')"
+        _2-instruction: f"Select the event equivalent to {$.get('search_query')}"
+      outputs:
+        event_id: "$.get('event_id')"
+        event_title: "$.get('event_title')"
+        other_events: "$.get('other_events')"
+        has_found_event: "$.get('has_found_event')"
+
+    # load-event-selected
+    - type: document
+      name: load-event-selected
+      description: "Load similar documents"
+      condition: "$.get('event_id') is not None and $.get('is_search_request') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'sport:SportsEvent'"
+      filters:
+        document_id: "$.get('event_id')"
+      outputs:
+        selected_event: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+        output_documents: "$.get('documents', [])"
+        has_event: "len($.get('documents', [])) > 0"
+
+    # EVENT CREATION
+
+    # iptc-custom-event-prompt
+    - type: prompt
+      name: iptc-custom-event-prompt
+      description: "Generate simple event data from text input"
+      condition: "$.get('search_query') is not None and $.get('is_creation_request') is True"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        _event-title: "$.get('search_query')"
+        _custom-instruction: "$.get('messages')"
+      outputs:
+        simple-event-data: "$"
+
+    # iptc-custom-event-mapping
+    - type: mapping
+      name: iptc-custom-event-mapping
+      description: "Map simple event data to IPTC format"
+      condition: "$.get('simple-event-data') is not None and $.get('is_creation_request') is True"
+      inputs:
+        competition: "$.get('simple-event-data', {}).get('competition', {})"
+        teams: "$.get('simple-event-data', {}).get('teams', {})"
+        datetime: "$.get('simple-event-data', {}).get('datetime')"
+        status: "$.get('simple-event-data', {}).get('status')"
+        score: "$.get('simple-event-data', {}).get('score', {})"
+      outputs:
+        sport-schema-event: "$.get('sport_schema_event', {})"
+
+    # bulk-content-custom-event
+    - type: document
+      name: bulk-content-custom-event
+      description: "Bulk save the event."
+      condition: "$.get('sport-schema-event') is not None and $.get('is_creation_request') is True"
+      config:
+        action: "bulk-save"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:SportsEvent'"
+      documents:
+        items: "$.get('parsed_event', [])"
+      inputs:
+        parsed_event: |
+          [
+            {
+              **c,
+              "metadata": {
+                "event_code": c.get('@id')
+              },
+              "title": c.get('name')
+            }
+            for c in [$.get('sport-schema-event', {})]
+          ]
+      outputs:
+        output_documents: "$.get('documents', [])"
+        saved_events: |
+          [
+            {
+              "id": c.get('metadata', {}).get('event_code', ''),
+              "title": c.get('title', '')
+            }
+            for c in $.get('documents', [])
+          ]
+        selected_event: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+
+    # CHAT MODERATOR PROMPT
+    
+    # iptc-event-selector
+    - type: mapping
+      name: iptc-event-selector
+      description: "Select the event equivalent to the search query"
+      condition: "$.get('selected_event') is not None"
+      inputs:
+        event: "$.get('selected_event', {}).get('value', {})"
+      outputs:
+        event_id: "$.get('event_id')"
+        event_title: "$.get('event_title')"
+        event_date: "$.get('event_date')"
+        event_score: "$.get('event_score')"
+
+    # chat-moderator-prompt
+    - type: "prompt"
+      name: "chat-moderator-prompt"
+      description: "Chat Moderator."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        event_title: "$.get('event_title')"
+        event_date: "$.get('event_date')"
+        event_score: "$.get('event_score')"
+        has_found_event: "$.get('has_found_event')"
+        has_event_info: "$.get('has_event_info')"
+        operation_type: "$.get('operation_type')"
+        saved_events: "$.get('saved_events', [])"
+        user_message: "$.get('messages')"
+      outputs:
+        message: "$.get('message')"
+
+    

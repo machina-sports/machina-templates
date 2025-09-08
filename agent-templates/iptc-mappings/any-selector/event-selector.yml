@@ -1,0 +1,12 @@
+mappings:
+
+  # iptc-event-selector
+  - type: mapping
+    name: iptc-event-selector
+    title: "IPTC | Event Selector"
+    description: "Selects the event equivalent to the search query"
+    outputs:
+      event_id: "$.get('event', {}).get('@id')"
+      event_title: "$.get('event', {}).get('name')"
+      event_date: "$.get('event', {}).get('schema:startDate')"
+      event_score: "$.get('event', {}).get('sport:score', {})"

@@ -1,0 +1,76 @@
+workflow:
+
+  # iptc-custom-event-test
+  name: iptc-custom-event-test
+  title: "IPTC | Custom Event Test"
+  description: "IPTC Custom Event Test"
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    custom-instruction: "$.get('custom_instruction') or None"
+  outputs:
+    sport-schema-event: "$.get('sport-schema-event', {})"
+    workflow-status: "'executed'"
+  tasks:
+
+    # iptc-custom-event-prompt
+    - type: prompt
+      name: iptc-custom-event-prompt
+      description: "Generate simple event data from text input"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        _custom-instruction: "$.get('custom-instruction')"
+      outputs:
+        simple-event-data: "$"
+
+    # iptc-custom-event-mapping
+    - type: mapping
+      name: iptc-custom-event-mapping
+      description: "Map simple event data to IPTC format"
+      condition: "$.get('simple-event-data', {}) is not None"
+      inputs:
+        competition: "$.get('simple-event-data', {}).get('competition', {})"
+        teams: "$.get('simple-event-data', {}).get('teams', {})"
+        datetime: "$.get('simple-event-data', {}).get('datetime')"
+        status: "$.get('simple-event-data', {}).get('status')"
+        score: "$.get('simple-event-data', {}).get('score', {})"
+      outputs:
+        sport-schema-event: "$.get('sport_schema_event', {})"
+
+    # bulk-content-custom-event
+    - type: document
+      name: bulk-content-custom-event
+      description: "Bulk save the event."
+      condition: "$.get('sport-schema-event', {}) is not None"
+      config:
+        action: "bulk-save"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:SportsEvent'"
+      documents:
+        items: "$.get('parsed_event', [])"
+      inputs:
+        parsed_event: |
+          [
+            {
+              **c,
+              "metadata": {
+                "event_code": c.get('@id')
+              },
+              "title": c.get('name')
+            }
+            for c in [$.get('sport-schema-event', {})]
+          ]

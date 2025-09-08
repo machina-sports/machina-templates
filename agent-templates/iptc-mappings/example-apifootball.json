@@ -1,0 +1,70 @@
+{
+  "fixture": {
+    "date": "2025-08-17T19:30:00+00:00",
+    "id": 1390823,
+    "periods": {
+      "first": 1755459000,
+      "second": 1755462600
+    },
+    "referee": "Mateo Busquets Ferrer",
+    "status": {
+      "elapsed": 90,
+      "extra": 7,
+      "long": "Match Finished",
+      "short": "FT"
+    },
+    "timestamp": 1755459000,
+    "timezone": "UTC",
+    "venue": {
+      "city": "Cornella de Llobregat",
+      "id": 1474,
+      "name": "RCDE Stadium"
+    }
+  },
+  "goals": {
+    "away": 1,
+    "home": 2
+  },
+  "league": {
+    "country": "Spain",
+    "flag": "https://media.api-sports.io/flags/es.svg",
+    "id": 140,
+    "logo": "https://media.api-sports.io/football/leagues/140.png",
+    "name": "La Liga",
+    "round": "Regular Season - 1",
+    "season": 2025,
+    "standings": true
+  },
+  "score": {
+    "extratime": {
+      "away": null,
+      "home": null
+    },
+    "fulltime": {
+      "away": 1,
+      "home": 2
+    },
+    "halftime": {
+      "away": 1,
+      "home": 0
+    },
+    "penalty": {
+      "away": null,
+      "home": null
+    }
+  },
+  "teams": {
+    "away": {
+      "id": 530,
+      "logo": "https://media.api-sports.io/football/teams/530.png",
+      "name": "Atletico Madrid",
+      "winner": false
+    },
+    "home": {
+      "id": 540,
+      "logo": "https://media.api-sports.io/football/teams/540.png",
+      "name": "Espanyol",
+      "winner": true
+    }
+  }
+}
