@@ -1,0 +1,8 @@
+connector:
+  name: "google-storage"
+  description: "This connector is the google-storage"
+  filename: "google-storage.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Upload"
+      value: "invoke_upload"

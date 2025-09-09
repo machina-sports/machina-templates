@@ -1,0 +1,23 @@
+setup:
+  title: Google Storage
+  description: Connect to the Google Storage API to get AI responses.
+  category:
+    - special-templates
+  estimatedTime: 1 minute
+  features:
+    - Real-time file upload
+    - Real-time file download
+    - Real-time file deletion
+  integrations:
+    - google
+  status: available
+  value: connectors/google-storage
+  version: 1.0.0
+
+datasets:
+  
+  - type: "connector"
+    path: "google-storage.yml"
+
+  - type: "workflow"
+    path: "test-upload.yml"
