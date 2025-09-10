@@ -20,7 +20,13 @@ def invoke_upload(request_data):
     if not image_path:
         return {"status": "error", "message": "image_path is required."}
     
-    remote = "static/test-screenshot.png"
+    # Get filename from image_path or use default
+    filename = params.get("filename")
+    if not filename:
+        import os
+        filename = os.path.basename(image_path)
+    
+    remote = f"static/{filename}"
 
     if not api_key:
         return {"status": "error", "message": "API key is required."}

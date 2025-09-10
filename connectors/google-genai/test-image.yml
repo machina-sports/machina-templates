@@ -1,0 +1,47 @@
+workflow:
+  name: "google-genai-test-image"
+  title: "Google Gemini Test Image"
+  description: "Workflow to test the Google Gemini image processing."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY"
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    model_name: "$.get('model_name', 'gemini-2.5-flash-image-preview')"
+    prompt: "$.get('prompt')"
+    image_path: "$.get('image_path')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    
+    # 1 test-image
+    - type: "connector"
+      name: "test-image"
+      description: "Test the Google Gemini image processing."
+      connector:
+        name: "google-genai"
+        command: "invoke_image"
+      inputs:
+        model_name: "$.get('model_name')"
+        prompt: "$.get('prompt')"
+        image_path: "$.get('image_path')"
+      outputs:
+        data: "$"
+        image_path: "$.get('image_path')"
+    
+    # 2 save-image
+    - type: "connector"
+      name: "save-image"
+      description: "Save the image to the Google Storage."
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('image_path')"
+      outputs:
+        data: "$"
+        workflow-status: "'executed'"

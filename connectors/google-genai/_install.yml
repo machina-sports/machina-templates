@@ -19,3 +19,6 @@ setup:
 datasets:
   - type: "connector"
     path: "google-genai.yml"
+
+  - type: "workflow"
+    path: "test-image.yml"
