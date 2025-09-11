@@ -19,6 +19,9 @@ datasets:
     path: "any-selector/event-selector.yml"
 
   - type: "mappings"
+    path: "any-selector/events-selector.yml"
+
+  - type: "mappings"
     path: "any-source/custom-event-mapping.yml"
 
   - type: "prompts"

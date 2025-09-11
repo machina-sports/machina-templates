@@ -93,7 +93,7 @@ workflow:
         _2-instruction: f"Select the event equivalent to {$.get('search_query')}"
       outputs:
         events: "$.get('events', [])"
-        event_ids: "[ObjectId(event.get('id')) for event in $.get('events', []) if event.get('id') is not None]"
+        event_ids: "[event.get('id') for event in $.get('events', []) if event.get('id') is not None]"
         other_events: "$.get('other_events', [])"
         has_found_event: "$.get('has_found_event')"
 
@@ -195,21 +195,13 @@ workflow:
     # iptc-events-selector
     - type: mapping
       name: iptc-events-selector
-      description: "Process selected events data"
+      title: "IPTC | Events Selector"
+      description: "Selects multiple events equivalent to the search query"
       condition: "$.get('selected_events') is not None and len($.get('selected_events', [])) > 0"
       inputs:
         events: "$.get('selected_events', [])"
       outputs:
-        events_data: |
-          [
-            {
-              "event_id": event.get('_id'),
-              "event_title": event.get('value', {}).get('title', ''),
-              "event_date": event.get('value', {}).get('schema:startDate', ''),
-              "event_score": event.get('value', {}).get('score', {})
-            }
-            for event in $.get('selected_events', [])
-          ]
+        events: "$.get('events', [])"
         events_count: "len($.get('selected_events', []))"
 
     # chat-moderator-prompt
@@ -221,11 +213,9 @@ workflow:
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
       inputs:
-        events_data: "$.get('events_data', [])"
+        events_data: "$.get('events', [])"
         events_count: "$.get('events_count', 0)"
-        has_found_events: "$.get('has_found_events')"
         has_events: "$.get('has_events')"
-        operation_type: "$.get('operation_type')"
         saved_events: "$.get('saved_events', [])"
         user_message: "$.get('messages')"
       outputs:

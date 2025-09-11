@@ -1,0 +1,20 @@
+mappings:
+
+  # iptc-events-selector
+  - type: mapping
+    name: iptc-events-selector
+    title: "IPTC | Events Selector"
+    description: "Selects multiple events equivalent to the search query"
+    inputs:
+      events: "$.get('events', [])"
+    outputs:
+      events: |
+        [
+          {
+            "event_id": event.get('value').get('@id'),
+            "event_title": event.get('value').get('name'),
+            "event_date": event.get('value').get('schema:startDate'),
+            "event_score": event.get('value').get('sport:score', {})
+          }
+          for event in $.get('events', [])
+        ]
