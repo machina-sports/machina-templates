@@ -6,45 +6,49 @@ prompts:
     title: "Chat Completion | Event Selector"
     description: "Chat Completion Event Selector"
     instruction: |
-      Select the correct event from the provided list based on the instruction.
+      Select events from the provided list based on the instruction.
 
-      SELECTION RULES:
-      - When instruction mentions a team name, find events containing that EXACT team name
-      - Match team names as substrings of event titles
-      - Return event_id and event_title when found
-      - Set has_found_event to true when match is found
-      - Include unselected events in other_events array
+      RULES:
+      - If instruction mentions team names: find events containing those team names
+      - If instruction mentions time (yesterday, today, tomorrow): match events by date
+      - Return matched events in the events array
+      - Put unmatched events in other_events array
+      - Set has_found_event to true if any matches found
 
-      MATCHING PROCESS:
-      1. Take the team/event name from instruction
-      2. Search for it within each event title
-      3. If found, use that event's ID and title
-      4. Put remaining events in other_events
-      5. Set has_found_event based on match success
+      HOW TO MATCH:
+      1. Team names: Search for team names in event titles (case-insensitive)
+      2. Time-based: Compare event startDate with current date
+        - "yesterday" = events from day before current date
+        - "today" = events from current date  
+        - "tomorrow" = events from day after current date
 
-      IMPORTANT:
-      - Substring matching is case-insensitive
-      - Keep original event titles exactly as provided
-      - Never return empty when a match exists
-      - Never modify event titles or IDs
-      - Always check both home and away teams
+      OUTPUT:
+      - events: Array of matched events with id and title
+      - other_events: Array of unmatched event titles
+      - has_found_event: true if matches found, false if no matches
     schema:
       title: "ChatCompletionEventSelector"
       description: "Selects events based on instruction criteria"
       type: "object"
       required: [
-        "event_id",
-        "event_title",
+        "events",
         "other_events",
         "has_found_event"
       ]
       properties:
-        event_id:
-          type: "string"
-          description: "ID of the matched event, empty if no match"
-        event_title:
-          type: "string"
-          description: "Title of the matched event, empty if no match"
+        events:
+          type: "array"
+          description: "Array of matched events with id and title"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+                description: "ID of the matched event"
+              title:
+                type: "string"
+                description: "Title of the matched event"
+            required: ["id", "title"]
         other_events:
           type: "array"
           description: "List of unselected event titles"
@@ -52,4 +56,4 @@ prompts:
             type: "string"
         has_found_event:
           type: "boolean"
-          description: "True if exact match was found"
+          description: "True if at least one match was found"

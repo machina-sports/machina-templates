@@ -30,33 +30,30 @@ prompts:
       - If user mentions a specific date, extract it in ISO format (YYYY-MM-DD)
       - If user mentions a date range, extract both start and end dates
       - If user mentions relative time (e.g., "this week", "next month"), calculate approximate date range
-      - If no date information is mentioned, return null for date_interval
+      - If no date information is mentioned, ALWAYS provide a default date range:
+        * For search requests: Use current date as start_date and 30 days from now as end_date
+        * For creation requests: Use current date as both start_date and end_date
+      - NEVER return null for search_date_interval - always provide a valid date range
     schema:
       title: "EventAnalyzer"
       description: "Analyzes user intent and extracts event information"
       type: "object"
       required: [
-        "is_search_request",
         "is_creation_request",
-        "has_complete_info",
-        "search_query"
+        "is_search_request",
+        "search_date_interval",
+        "search_query",
       ]
       properties:
-        is_search_request:
-          type: "boolean"
-          description: "True if user is looking for existing events"
         is_creation_request:
           type: "boolean"
           description: "True if user wants to create a new event"
-        has_complete_info:
+        is_search_request:
           type: "boolean"
-          description: "True if all required information for the operation is present"
-        search_query:
-          type: "string"
-          description: "Extracted match title formatted as 'Team A vs Team B' or 'Team A vs Team B - Competition'"
-        date_interval:
+          description: "True if user is looking for existing events"
+        search_date_interval:
           type: "object"
-          description: "Date range for filtering events, null if no date information provided"
+          description: "Date range for filtering events, always provided with default values if not specified by user"
           properties:
             start_date:
               type: "string"
@@ -66,4 +63,8 @@ prompts:
               type: "string"
               format: "date"
               description: "End date in YYYY-MM-DD format"
-          nullable: true
+          required: ["start_date", "end_date"]
+        search_query:
+          type: "string"
+          description: "Extracted search query that can be either a specific match (e.g. 'Team A vs Team B' or 'Team A vs Team B - Competition') or a generic search like 'today's matches', 'upcoming matches', 'Premier League matches'"
+        

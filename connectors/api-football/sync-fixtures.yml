@@ -63,7 +63,7 @@ workflow:
       description: "Mapping data from api-football to IPTC events"
       condition: "$.get('fixtures') is not None"
       inputs:
-        fixtures: "$.get('fixtures', [])[:10]"
+        fixtures: "$.get('fixtures', [])"
       outputs:
         fixtures: "$.get('sport_schema_events')"
 

@@ -35,8 +35,8 @@ workflow:
         is_search_request: "$.get('is_search_request')"
         is_creation_request: "$.get('is_creation_request')"
         has_complete_info: "$.get('has_complete_info')"
+        search_date_interval: "$.get('search_date_interval')"
         search_query: "$.get('search_query') if $.get('search_query') is not None and $.get('search_query') != '' else None"
-        date_interval: "$.get('date_interval')"
 
     # EVENT SEARCH
 
@@ -61,43 +61,16 @@ workflow:
       filters:
         "value.schema:startDate": |
           {
-            "$gt": $.get('date_interval', {}).get('start_date') + "T00:00:00+00:00" if $.get('date_interval', {}).get('start_date') else None,
-            "$lt": $.get('date_interval', {}).get('end_date') + "T23:59:59+00:00" if $.get('date_interval', {}).get('end_date') else None
-          } if $.get('date_interval') is not None else None
+            "$gt": $.get('search_date_interval', {}).get('start_date') + "T00:00:00+00:00" if $.get('search_date_interval', {}).get('start_date') else None,
+            "$lt": $.get('search_date_interval', {}).get('end_date') + "T23:59:59+00:00" if $.get('search_date_interval', {}).get('end_date') else None
+          } if $.get('search_date_interval') is not None else None
       outputs:
         output_documents: "$.get('documents', [])"
         parsed_objects: |
           [
             {
               "id": d.get('_id'),
-              "title": d.get('value', {}).get('title', '')
-            }
-            for d in $.get('documents', [])
-          ]
-
-    # load-documents-by-date-interval
-    - type: document
-      name: load-documents-by-date-interval
-      description: "Load similar documents"
-      condition: "$.get('search_query') is None and $.get('date_interval') is not None and $.get('is_search_request') is True"
-      config:
-        action: "search"
-        search-limit: 1000
-        search-vector: false
-      inputs:
-        name: "'sport:SportsEvent'"
-      filters:
-        "value.schema:startDate": |
-          {
-            "$gt": $.get('date_interval', {}).get('start_date') + "T00:00:00+00:00" if $.get('date_interval', {}).get('start_date') else None,
-            "$lt": $.get('date_interval', {}).get('end_date') + "T23:59:59+00:00" if $.get('date_interval', {}).get('end_date') else None
-          } if $.get('date_interval') is not None else None
-      outputs:
-        output_documents: "$.get('documents', [])"
-        parsed_objects: |
-          [
-            {
-              "id": d.get('_id'),
+              "startDate": d.get('value', {}).get('schema:startDate', ''),
               "title": d.get('value', {}).get('title', '')
             }
             for d in $.get('documents', [])
@@ -115,31 +88,35 @@ workflow:
         # name: "machina-ai"
         # model: "gpt-4.1"
       inputs:
+        _0-date-time-now: "datetime.now().isoformat()"
         _1-events-parsed: "$.get('parsed_objects')"
         _2-instruction: f"Select the event equivalent to {$.get('search_query')}"
       outputs:
-        event_id: "$.get('event_id')"
-        event_title: "$.get('event_title')"
-        other_events: "$.get('other_events')"
+        events: "$.get('events', [])"
+        event_ids: "[ObjectId(event.get('id')) for event in $.get('events', []) if event.get('id') is not None]"
+        other_events: "$.get('other_events', [])"
         has_found_event: "$.get('has_found_event')"
 
-    # load-event-selected
+    # load-events-selected
     - type: document
-      name: load-event-selected
-      description: "Load similar documents"
-      condition: "$.get('event_id') is not None and $.get('is_search_request') is True"
+      name: load-events-selected
+      description: "Load selected events by IDs"
+      condition: "$.get('events') is not None and len($.get('events', [])) > 0 and $.get('is_search_request') is True"
       config:
         action: "search"
-        search-limit: 1
+        search-limit: 100
         search-vector: false
       inputs:
         name: "'sport:SportsEvent'"
       filters:
-        document_id: "$.get('event_id')"
+        document_id: |
+          {
+            '$in': $.get('event_ids')
+          }
       outputs:
-        selected_event: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+        selected_events: "$.get('documents', [])"
         output_documents: "$.get('documents', [])"
-        has_event: "len($.get('documents', [])) > 0"
+        has_events: "len($.get('documents', [])) > 0"
 
     # EVENT CREATION
 
@@ -215,18 +192,25 @@ workflow:
 
     # CHAT MODERATOR PROMPT
     
-    # iptc-event-selector
+    # iptc-events-selector
     - type: mapping
-      name: iptc-event-selector
-      description: "Select the event equivalent to the search query"
-      condition: "$.get('selected_event') is not None"
+      name: iptc-events-selector
+      description: "Process selected events data"
+      condition: "$.get('selected_events') is not None and len($.get('selected_events', [])) > 0"
       inputs:
-        event: "$.get('selected_event', {}).get('value', {})"
+        events: "$.get('selected_events', [])"
       outputs:
-        event_id: "$.get('event_id')"
-        event_title: "$.get('event_title')"
-        event_date: "$.get('event_date')"
-        event_score: "$.get('event_score')"
+        events_data: |
+          [
+            {
+              "event_id": event.get('_id'),
+              "event_title": event.get('value', {}).get('title', ''),
+              "event_date": event.get('value', {}).get('schema:startDate', ''),
+              "event_score": event.get('value', {}).get('score', {})
+            }
+            for event in $.get('selected_events', [])
+          ]
+        events_count: "len($.get('selected_events', []))"
 
     # chat-moderator-prompt
     - type: prompt
@@ -237,11 +221,10 @@ workflow:
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
       inputs:
-        event_title: "$.get('event_title')"
-        event_date: "$.get('event_date')"
-        event_score: "$.get('event_score')"
-        has_found_event: "$.get('has_found_event')"
-        has_event_info: "$.get('has_event_info')"
+        events_data: "$.get('events_data', [])"
+        events_count: "$.get('events_count', 0)"
+        has_found_events: "$.get('has_found_events')"
+        has_events: "$.get('has_events')"
         operation_type: "$.get('operation_type')"
         saved_events: "$.get('saved_events', [])"
         user_message: "$.get('messages')"
