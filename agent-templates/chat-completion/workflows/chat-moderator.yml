@@ -27,15 +27,16 @@ workflow:
       condition: "$.get('messages') is not None"
       connector:
         command: "invoke_prompt"
-        name: "machina-ai"
-        model: "gpt-4.1"
+        name: "google-genai"
+        model: "gemini-2.5-flash-lite"
       inputs:
         _1-messages-parsed: "str($.get('messages'))"
       outputs:
         is_search_request: "$.get('is_search_request')"
         is_creation_request: "$.get('is_creation_request')"
         has_complete_info: "$.get('has_complete_info')"
-        search_query: "$.get('search_query')"
+        search_query: "$.get('search_query') if $.get('search_query') is not None and $.get('search_query') != '' else None"
+        date_interval: "$.get('date_interval')"
 
     # EVENT SEARCH
 
@@ -57,6 +58,40 @@ workflow:
       inputs:
         name: "'sport:SportsEvent'"
         search-query: "$.get('search_query')"
+      filters:
+        "value.schema:startDate": |
+          {
+            "$gt": $.get('date_interval', {}).get('start_date') + "T00:00:00+00:00" if $.get('date_interval', {}).get('start_date') else None,
+            "$lt": $.get('date_interval', {}).get('end_date') + "T23:59:59+00:00" if $.get('date_interval', {}).get('end_date') else None
+          } if $.get('date_interval') is not None else None
+      outputs:
+        output_documents: "$.get('documents', [])"
+        parsed_objects: |
+          [
+            {
+              "id": d.get('_id'),
+              "title": d.get('value', {}).get('title', '')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # load-documents-by-date-interval
+    - type: document
+      name: load-documents-by-date-interval
+      description: "Load similar documents"
+      condition: "$.get('search_query') is None and $.get('date_interval') is not None and $.get('is_search_request') is True"
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      inputs:
+        name: "'sport:SportsEvent'"
+      filters:
+        "value.schema:startDate": |
+          {
+            "$gt": $.get('date_interval', {}).get('start_date') + "T00:00:00+00:00" if $.get('date_interval', {}).get('start_date') else None,
+            "$lt": $.get('date_interval', {}).get('end_date') + "T23:59:59+00:00" if $.get('date_interval', {}).get('end_date') else None
+          } if $.get('date_interval') is not None else None
       outputs:
         output_documents: "$.get('documents', [])"
         parsed_objects: |
@@ -74,10 +109,11 @@ workflow:
       condition: "$.get('parsed_objects') is not None and $.get('is_search_request') is True"
       connector:
         command: "invoke_prompt"
-        # name: "google-genai"
+        name: "google-genai"
         # model: "gemini-2.5-pro"
-        name: "machina-ai"
-        model: "gpt-4.1"
+        model: "gemini-2.5-flash-lite"
+        # name: "machina-ai"
+        # model: "gpt-4.1"
       inputs:
         _1-events-parsed: "$.get('parsed_objects')"
         _2-instruction: f"Select the event equivalent to {$.get('search_query')}"
@@ -193,7 +229,7 @@ workflow:
         event_score: "$.get('event_score')"
 
     # chat-moderator-prompt
-    - type: "prompt"
+    - type: prompt
       name: "chat-moderator-prompt"
       description: "Chat Moderator."
       connector:

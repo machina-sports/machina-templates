@@ -23,6 +23,14 @@ prompts:
       - Always prioritize the NEXT/UPCOMING match for the mentioned team when searching
       - For event creation, extract complete match information including scores
       - Never use placeholders like "Unknown Team" - if a team is unknown, omit it
+      
+      DATE INTERVAL EXTRACTION:
+      - Extract date information from user messages to filter events by time range
+      - Look for specific dates, date ranges, or relative time references (today, tomorrow, this week, next month, etc.)
+      - If user mentions a specific date, extract it in ISO format (YYYY-MM-DD)
+      - If user mentions a date range, extract both start and end dates
+      - If user mentions relative time (e.g., "this week", "next month"), calculate approximate date range
+      - If no date information is mentioned, return null for date_interval
     schema:
       title: "EventAnalyzer"
       description: "Analyzes user intent and extracts event information"
@@ -46,3 +54,16 @@ prompts:
         search_query:
           type: "string"
           description: "Extracted match title formatted as 'Team A vs Team B' or 'Team A vs Team B - Competition'"
+        date_interval:
+          type: "object"
+          description: "Date range for filtering events, null if no date information provided"
+          properties:
+            start_date:
+              type: "string"
+              format: "date"
+              description: "Start date in YYYY-MM-DD format"
+            end_date:
+              type: "string"
+              format: "date"
+              description: "End date in YYYY-MM-DD format"
+          nullable: true
