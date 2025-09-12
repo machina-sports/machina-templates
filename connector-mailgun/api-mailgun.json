@@ -1,0 +1,119 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Mailgun API",
+    "description": "API for sending emails using Mailgun",
+    "version": "1.0.0",
+    "contact": {
+      "email": "support@mailgun.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.mailgun.net/v3/{domain}",
+      "description": "Mailgun API Server",
+      "variables": {
+        "domain": {
+          "default": "your-domain.com",
+          "description": "Mailgun domain for sending emails"
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/messages": {
+      "post": {
+        "summary": "Send an email",
+        "description": "Sends an email through Mailgun's API",
+        "operationId": "sendEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "description": "Email address of the sender",
+                    "example": "you@your-domain.com"
+                  },
+                  "to": {
+                    "type": "string",
+                    "description": "Recipient email address",
+                    "example": "recipient@example.com"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "description": "Subject of the email",
+                    "example": "Hello from Mailgun"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Plain text content of the email",
+                    "example": "This is a test email sent using Mailgun!"
+                  }
+                },
+                "required": ["from", "to", "subject", "html"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Queued. Thank you."
+                    },
+                    "id": {
+                      "type": "string",
+                      "example": "<20111114174239.25659.5817@samples.mailgun.org>"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Bad Request - Domain not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "in": "header",
+        "name": "Authorization",
+        "scheme": "basic"
+      }
+    }
+  }
+}
