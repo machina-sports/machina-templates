@@ -1,0 +1,157 @@
+workflow:
+  name: "american-football-folders"
+  title: "Setup Folders"
+  description: "Setup Folders"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # documents-structure
+    - type: "document"
+      name: "install-documents"
+      description: "Install documents."
+      condition: "$.get('setup-register') is not True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-register: |
+          {
+            "setup": True
+          }
+        site-structure: |
+          [
+            {
+              "title": "API Docs",
+              "url": "https://docs.machina.gg/api-reference/introduction",
+              "icon": "globe"
+            }
+          ]
+        doc-structure: |
+          [
+            {
+              "title": "Catalogue",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "american-football-league",
+                  "title": "Leagues",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["american-football-league"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "american-football-game",
+                  "title": "Games",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["american-football-game"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "games-events",
+                  "title": "Games Events",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["games-events"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "games-statistics",
+                  "title": "Games Statistics",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["games-statistics"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "games-statistics-summary",
+                  "title": "Games Statistics Summary",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["games-statistics-summary"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "teams-statistics",
+                  "title": "Teams Statistics",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["teams-statistics"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "players",
+                  "title": "Players",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["players"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "teams",
+                  "title": "Teams",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["teams"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "leagues",
+                  "title": "Leagues Data",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["leagues"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "Content",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "content-quizzes",
+                  "title": "Quizzes",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-quiz"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-snippets",
+                  "title": "Snippets",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-snippet"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]

@@ -1,0 +1,66 @@
+mappings:
+
+  # iptc-american-football-event-mapping
+  - type: mapping
+    name: iptc-american-football-event-mapping
+    title: "IPTC | American Football Event Mapping"
+    description: "Mapping data from american-football to sportschema event"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:americanfootball:game:{f.get('game', {}).get('id')}",
+            "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+            "name": f"{f.get('teams', {}).get('home', {}).get('name')} vs {f.get('teams', {}).get('away', {}).get('name')} - {f.get('league', {}).get('name')}",
+            "schema:startDate": f.get('game', {}).get('date') if isinstance(f.get('game', {}).get('date'), str) else f"{f.get('game', {}).get('date', {}).get('date', '')}T{f.get('game', {}).get('date', {}).get('time', '')}+00:00" if f.get('game', {}).get('date', {}).get('date') else f.get('game', {}).get('date'),
+            "sport:status": f.get('game', {}).get('status', {}).get('short'),
+            "sport:competition": {
+              "@id": f"urn:americanfootball:league:{f.get('league', {}).get('id')}",
+              "@type": "sport:Competition",
+              "name": f.get('league', {}).get('name'),
+              "sport:season": {
+                "@id": f"urn:americanfootball:season:{f.get('league', {}).get('id')}:{f.get('league', {}).get('season')}",
+                "@type": "sport:Season",
+                "name": f"{f.get('league', {}).get('country')} {f.get('league', {}).get('name')} {f.get('league', {}).get('season')}",
+                "sport:year": f"{f.get('league', {}).get('season')}"
+              }
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:americanfootball:venue:{f.get('game', {}).get('venue', {}).get('id')}",
+              "name": f.get('game', {}).get('venue', {}).get('name'),
+              "schema:addressLocality": f.get('game', {}).get('venue', {}).get('city')
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:americanfootball:team:{f.get('teams', {}).get('home', {}).get('id')}",
+                "name": f.get('teams', {}).get('home', {}).get('name'),
+                "sport:qualifier": "home",
+                "schema:logo": f.get('teams', {}).get('home', {}).get('logo')
+              },
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:americanfootball:team:{f.get('teams', {}).get('away', {}).get('id')}",
+                "name": f.get('teams', {}).get('away', {}).get('name'),
+                "sport:qualifier": "away",
+                "schema:logo": f.get('teams', {}).get('away', {}).get('logo')
+              }
+            ],
+            "sport:score": {
+              "sport:homeScore": f.get('scores', {}).get('home', {}).get('total'),
+              "sport:awayScore": f.get('scores', {}).get('away', {}).get('total'),
+              "sport:halfTime": f.get('scores', {}).get('halftime')
+            },
+            "sport:gameInfo": {
+              "stage": f.get('game', {}).get('stage'),
+              "week": f.get('game', {}).get('week'),
+              "timezone": f.get('game', {}).get('timezone')
+            }
+          }
+          for f in $.get('games', [])
+        ]
