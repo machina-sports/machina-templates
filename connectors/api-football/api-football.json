@@ -1536,6 +1536,212 @@
         }
       }
     },
+    "/fixtures/players": {
+      "get": {
+        "summary": "Get fixture players statistics",
+        "description": "Get detailed statistics for all players in a specific fixture",
+        "operationId": "get-fixtures/players",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fixture",
+            "in": "query",
+            "description": "Fixture ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 215662
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID to filter players by team",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 33
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": {
+                      "type": "string",
+                      "description": "Endpoint name"
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "description": "Request parameters"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "results": {
+                      "type": "integer",
+                      "description": "Number of results"
+                    },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "player": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Player ID"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Player name"
+                              },
+                              "pos": {
+                                "type": "string",
+                                "description": "Player position"
+                              },
+                              "number": {
+                                "type": "integer",
+                                "description": "Jersey number"
+                              },
+                              "photo": {
+                                "type": "string",
+                                "description": "Player photo URL"
+                              }
+                            }
+                          },
+                          "statistics": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "games": {
+                                  "type": "object",
+                                  "properties": {
+                                    "minutes": {
+                                      "type": "integer"
+                                    },
+                                    "rating": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "goals": {
+                                  "type": "object",
+                                  "properties": {
+                                    "total": {
+                                      "type": "integer"
+                                    },
+                                    "assists": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                },
+                                "shots": {
+                                  "type": "object",
+                                  "properties": {
+                                    "total": {
+                                      "type": "integer"
+                                    },
+                                    "on": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                },
+                                "passes": {
+                                  "type": "object",
+                                  "properties": {
+                                    "total": {
+                                      "type": "integer"
+                                    },
+                                    "accuracy": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "tackles": {
+                                  "type": "object",
+                                  "properties": {
+                                    "total": {
+                                      "type": "integer"
+                                    },
+                                    "interceptions": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                },
+                                "fouls": {
+                                  "type": "object",
+                                  "properties": {
+                                    "committed": {
+                                      "type": "integer"
+                                    },
+                                    "drawn": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                },
+                                "cards": {
+                                  "type": "object",
+                                  "properties": {
+                                    "yellow": {
+                                      "type": "integer"
+                                    },
+                                    "red": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                },
+                                "dribbles": {
+                                  "type": "object",
+                                  "properties": {
+                                    "attempts": {
+                                      "type": "integer"
+                                    },
+                                    "success": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                },
+                                "duels": {
+                                  "type": "object",
+                                  "properties": {
+                                    "total": {
+                                      "type": "integer"
+                                    },
+                                    "won": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/teams/statistics": {
       "get": {
         "summary": "Get team statistics",

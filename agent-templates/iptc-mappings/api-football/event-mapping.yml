@@ -13,8 +13,8 @@ mappings:
               "sport": "https://www.sportschema.org/ontologies/sport#",
               "schema": "https://schema.org/"
             },
-            "@id": f"urn:apifootball:fixture:{f.get('fixture', {}).get('id')}",
-            "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+            "@id": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{f.get('teams', {}).get('home', {}).get('name')} vs {f.get('teams', {}).get('away', {}).get('name')} - {f.get('league', {}).get('name')}",
             "schema:startDate": f.get('fixture', {}).get('date'),
             "sport:status": f.get('fixture', {}).get('status', {}).get('short'),
@@ -68,12 +68,14 @@ mappings:
     outputs:
       original_ids: |
         [
-          f.get('@id', '').replace('urn:apifootball:fixture:', '') if f.get('@id', '').startswith('urn:apifootball:fixture:') else f.get('@id', '')
+          f.get('@id', '').replace('urn:apifootball:sport_event:', '') if f.get('@id', '').startswith('urn:apifootball:sport_event:') else (
+            f.get('@id', '').replace('urn:apifootball:fixture:', '') if f.get('@id', '').startswith('urn:apifootball:fixture:') else f.get('@id', '')
+          )
           for f in $.get('iptc_schema_events', [])
         ]
       iptc_schema_ids: |
         [
-          f.get('@id', '') if f.get('@id', '').startswith('urn:apifootball:') else f'urn:apifootball:fixture:{f.get("@id", "")}'
+          f.get('@id', '') if f.get('@id', '').startswith('urn:apifootball:') else f'urn:apifootball:sport_event:{f.get("@id", "")}'
           for f in $.get('iptc_schema_events', [])
         ]
 

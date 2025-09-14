@@ -33,7 +33,7 @@ workflow:
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       inputs:
-        name: "'sport:SportsEvent'"
+        name: "'sport:Event'"
         search-query: "$.get('search-query')"
       outputs:
         parsed_documents: "$.get('documents', [])"

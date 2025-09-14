@@ -14,7 +14,7 @@ mappings:
               "schema": "https://schema.org/"
             },
             "@id": f"urn:sportradar:sport_event:{f.get('sport_event', {}).get('id')}",
-            "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+            "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{f.get('sport_event', {}).get('competitors', [{}])[0].get('name', 'TBD')} vs {f.get('sport_event', {}).get('competitors', [{}])[1].get('name', 'TBD')} - {f.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name')}",
             "schema:startDate": f.get('sport_event', {}).get('start_time'),
             "sport:status": f.get('sport_event_status', {}).get('match_status'),

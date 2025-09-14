@@ -6,7 +6,7 @@
     },
     "@id": "urn:sportradar:sport_event:sr:sport_event:61623432",
     "@type": [
-      "sport:SportsEvent",
+      "sport:Event",
       "schema:SportsEvent"
     ],
     "name": "Espanyol Barcelona vs Atletico Madrid - LaLiga",

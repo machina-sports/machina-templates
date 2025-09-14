@@ -14,7 +14,7 @@ mappings:
               "schema": "https://schema.org/"
             },
             "@id": f"urn:americanfootball:game:{f.get('game', {}).get('id')}",
-            "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+            "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{f.get('teams', {}).get('home', {}).get('name')} vs {f.get('teams', {}).get('away', {}).get('name')} - {f.get('league', {}).get('name')}",
             "schema:startDate": f.get('game', {}).get('date') if isinstance(f.get('game', {}).get('date'), str) else f"{f.get('game', {}).get('date', {}).get('date', '')}T{f.get('game', {}).get('date', {}).get('time', '')}+00:00" if f.get('game', {}).get('date', {}).get('date') else f.get('game', {}).get('date'),
             "sport:status": f.get('game', {}).get('status', {}).get('short'),

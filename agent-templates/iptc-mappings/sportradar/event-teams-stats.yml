@@ -1,0 +1,71 @@
+mappings:
+
+  # iptc-sportradar-event-teams-stats
+  - type: mapping
+    title: "IPTC | Sportradar Event Teams Statistics Mapping"
+    name: "iptc-sportradar-event-teams-stats"
+    description: "Maps Sportradar event teams statistics to IPTC Soccer Statistics schema format"
+    outputs:
+      iptc_match_statistics: |
+        {
+          "@context": {
+            "sport": "https://sportschema.org/ontologies/main/",
+            "spsocstat": "https://sportschema.org/ontologies/soccer/",
+            "spstat": "https://sportschema.org/ontologies/corestatistics/"
+          },
+          "@id": f"urn:sportradar:event:{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('id', '')}",
+          "@type": "sport:Event",
+          "rdfs:label": f"{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('name', 'Home')} vs {$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('name', 'Away') if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 'Away'}",
+          "sport:participation": [
+            {
+              "@id": f"urn:sportradar:team-participation:{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('id', '')}",
+              "@type": "sport:TeamParticipation",
+              "rdfs:label": f"{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('name', '')} participation",
+              "sport:participationBy": {
+                "@id": f"urn:sportradar:team:{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('id', '')}",
+                "@type": "sport:Team",
+                "rdfs:label": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('name', '')
+              },
+              "sport:alignment": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('qualifier', 'home'),
+              "spstat:timeOfPossessionPercentage": str($.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('ball_possession', 0)),
+              "spsocstat:shotsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('shots_total', 0),
+              "spsocstat:shotsOnGoalTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('shots_on_target', 0),
+              "spsocstat:shotsBlocked": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('shots_blocked', 0),
+              "spsocstat:cornerKicks": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('corner_kicks', 0),
+              "spsocstat:freeKicks": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('free_kicks', 0),
+              "spsocstat:foulsCommited": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('fouls', 0),
+              "spsocstat:offsides": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('offsides', 0),
+              "spsocstat:cautionsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('yellow_cards', 0),
+              "spsocstat:ejectionsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('red_cards', 0),
+              "spsocstat:saves": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('shots_saved', 0),
+              "spsocstat:substitutions": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('substitutions', 0),
+              "spsocstat:throwIns": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('throw_ins', 0),
+              "spsocstat:goalsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[0].get('statistics', {}).get('goal_kicks', 0)
+            },
+            {
+              "@id": f"urn:sportradar:team-participation:{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('id', '') if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else ''}",
+              "@type": "sport:TeamParticipation",
+              "rdfs:label": f"{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('name', '') if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else ''} participation",
+              "sport:participationBy": {
+                "@id": f"urn:sportradar:team:{$.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('id', '') if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else ''}",
+                "@type": "sport:Team",
+                "rdfs:label": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('name', '') if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else ''
+              },
+              "sport:alignment": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('qualifier', 'away') if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 'away',
+              "spstat:timeOfPossessionPercentage": str($.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('ball_possession', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0),
+              "spsocstat:shotsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('shots_total', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:shotsOnGoalTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('shots_on_target', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:shotsBlocked": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('shots_blocked', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:cornerKicks": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('corner_kicks', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:freeKicks": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('free_kicks', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:foulsCommited": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('fouls', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:offsides": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('offsides', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:cautionsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('yellow_cards', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:ejectionsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('red_cards', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:saves": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('shots_saved', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:substitutions": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('substitutions', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:throwIns": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('throw_ins', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0,
+              "spsocstat:goalsTotal": $.get('event_statistics', {}).get('totals', {}).get('competitors', [{}])[1].get('statistics', {}).get('goal_kicks', 0) if len($.get('event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else 0
+            }
+          ]
+        }

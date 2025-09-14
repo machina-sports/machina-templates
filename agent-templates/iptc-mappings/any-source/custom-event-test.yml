@@ -59,7 +59,7 @@ workflow:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "'sport:SportsEvent'"
+      document_name: "'sport:Event'"
       documents:
         items: "$.get('parsed_event', [])"
       inputs:

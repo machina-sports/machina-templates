@@ -4,7 +4,7 @@
     "schema": "https://schema.org/"
   },
   "@id": "urn:apifootball:fixture:1377885",
-  "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+  "@type": ["sport:Event", "schema:SportsEvent"],
   "name": "Cagliari vs Parma - Serie A",
   "schema:startDate": "2025-09-13T13:00:00+00:00",
   "sport:status": "NS",

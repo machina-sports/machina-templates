@@ -71,7 +71,7 @@ datasets:
     path: "workflows/sync-competitors.yml"
 
   - type: "workflow"
-    path: "workflows/sync-fixtures-events.yml"
+    path: "workflows/sync-events-stats.yml"
   
   - type: "workflow"
     path: "workflows/sync-schedules.yml"

@@ -12,7 +12,7 @@ mappings:
             "sport": "https://www.sportschema.org/ontologies/sport#",
             "schema": "https://schema.org/"
           },
-          "@type": ["sport:SportsEvent", "schema:SportsEvent"],
+          "@type": ["sport:Event", "schema:SportsEvent"],
           "@id": f"urn:custom:event:{$.get('competition', {}).get('name').replace(' ', '-')}:{$.get('datetime', '').split('T')[0].replace('-', '')}:{$.get('teams', {}).get('home').replace(' ', '-')}:{$.get('teams', {}).get('away').replace(' ', '-')}",
           "name": f"{$.get('teams', {}).get('home')} vs {$.get('teams', {}).get('away')} - {$.get('competition', {}).get('name')}",
           "schema:startDate": $.get('datetime'),

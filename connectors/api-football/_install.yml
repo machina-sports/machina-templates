@@ -23,6 +23,10 @@ setup:
 
 
 datasets:
+
+  - type: "workflow"
+    path: "_folders.yml"
+
   - type: "connector" 
     path: "api-football.yml"
 
@@ -33,22 +37,22 @@ datasets:
     path: "get-leagues.yml"
 
   - type: "workflow"
-    path: "sync-leagues.yml"
-
-  - type: "workflow"
-    path: "sync-fixtures.yml"
-
-  - type: "workflow"
     path: "get-teams-statistics.yml"
-
-  - type: "workflow"
-    path: "sync-teams-statistics.yml"
-
-  - type: "workflow"
-    path: "sync-fixtures-statistics.yml"
 
   - type: "workflow"
     path: "sync-fixtures-events.yml"
 
   - type: "workflow"
-    path: "_folders.yml"
+    path: "sync-fixtures-players-statistics.yml"
+
+  - type: "workflow"
+    path: "sync-fixtures-teams-statistics.yml"
+
+  - type: "workflow"
+    path: "sync-fixtures.yml"
+
+  - type: "workflow"
+    path: "sync-leagues.yml"
+
+  - type: "workflow"
+    path: "sync-teams-statistics.yml"

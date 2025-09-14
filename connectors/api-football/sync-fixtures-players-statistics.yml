@@ -1,0 +1,77 @@
+workflow:
+
+  # api-football-sync-fixtures-players-statistics
+  name: "api-football-sync-fixtures-players-statistics"
+  title: "API Football - Sync Fixtures Players Statistics"
+  description: "Workflow to sync fixtures players statistics from API Football with detailed individual player performance data."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture: "$.get('fixture')"
+    team: "$.get('team', None)"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # iptc-api-football-id-conversion-mapping
+    - type: mapping
+      name: iptc-api-football-id-conversion-mapping
+      title: "IPTC | API Football ID Conversion Mapping"
+      description: "Convert IPTC URN IDs to original API Football IDs"
+      condition: "$.get('fixture') is not None"
+      inputs:
+        iptc_schema_events: "[{'@id': $.get('fixture')}]"
+      outputs:
+        original_fixture_id: "$.get('original_ids', [''])[0]"
+        iptc_schema_id: "$.get('iptc_schema_ids', [''])[0]"
+
+    # api-football-get-fixtures-players-statistics
+    - type: "connector"
+      name: "api-football-get-fixtures-players-statistics"
+      description: "Get fixtures players statistics from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures/players"
+      inputs:
+        fixture: "$.get('original_fixture_id', $.get('fixture'))"
+        team: "$.get('team')"
+      outputs:
+        fixtures-players-statistics: "$.get('response')"
+        players-count: "len($.get('response', []))"
+
+    # iptc-api-football-event-players-stats
+    - type: mapping
+      name: iptc-api-football-event-players-stats
+      title: "Convert to IPTC Players Statistics"
+      description: "Convert API Football players statistics to IPTC Soccer Statistics format"
+      condition: "len($.get('fixtures-players-statistics', [])) > 0"
+      inputs:
+        fixtures_players_statistics: "$.get('fixtures-players-statistics', [])"
+        fixture: "$.get('original_fixture_id', $.get('fixture'))"
+        team: "$.get('team')"
+      outputs:
+        iptc_players_statistics: "$.get('iptc_players_statistics', {})"
+
+    # task-update-fixtures-players-statistics
+    - type: "document"
+      name: "task-update-fixtures-players-statistics"
+      description: "Update the fixtures players statistics document with IPTC format."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        fixtures-players-statistics: |
+          {
+            'iptc_data': $.get('iptc_players_statistics', []),
+            'original_data': $.get('fixtures-players-statistics', []),
+            'title': f"{$.get('original_fixture_id', $.get('fixture'))} - Players Statistics ({$.get('players-count', 0)} players)",
+            'summary': f"Individual player statistics for fixture {$.get('original_fixture_id', $.get('fixture'))} in IPTC format"
+          }
+      metadata:
+        document_type: "'iptc-players-statistics'"
+        document_name: "'sport:IndividualParticipation'"
+        event_code: "$.get('iptc_schema_id', $.get('fixture'))"

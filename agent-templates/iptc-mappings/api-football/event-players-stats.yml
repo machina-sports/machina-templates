@@ -1,0 +1,61 @@
+mappings:
+
+  # iptc-api-football-event-players-stats
+  - type: mapping
+    title: "IPTC | API Football Players Statistics Mapping"
+    name: "iptc-api-football-event-players-stats"
+    description: "Maps API Football players statistics to IPTC Soccer Statistics schema format"
+    outputs:
+      iptc_players_statistics: |
+        [
+          {
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/",
+              "spsocstat": "https://sportschema.org/ontologies/soccer/",
+              "spstat": "https://sportschema.org/ontologies/corestatistics/"
+            },
+            "@id": f"urn:apifootball:player-participation:{player.get('player', {}).get('id', '')}:{$.get('fixture', '')}",
+            "@type": "sport:IndividualParticipation",
+            "rdfs:label": f"{player.get('player', {}).get('name', '')} participation in fixture {$.get('fixture', '')}",
+            "sport:participationBy": {
+              "@id": f"urn:apifootball:player:{player.get('player', {}).get('id', '')}",
+              "@type": "sport:Athlete",
+              "rdfs:label": player.get('player', {}).get('name', ''),
+              "sport:position": player.get('statistics', [{}])[0].get('games', {}).get('position', player.get('player', {}).get('pos', '')),
+              "sport:jerseyNumber": str(player.get('statistics', [{}])[0].get('games', {}).get('number', player.get('player', {}).get('number', ''))),
+              "schema:image": player.get('player', {}).get('photo', '')
+            },
+            "sport:playerStatus": f"http://cv.iptc.org/newscodes/spplayerstatus/{'starter' if not player.get('statistics', [{}])[0].get('games', {}).get('substitute', True) else 'bench'}",
+            "sport:captain": player.get('statistics', [{}])[0].get('games', {}).get('captain', False),
+            "sport:substitute": player.get('statistics', [{}])[0].get('games', {}).get('substitute', False),
+            "sport:minutesPlayed": int(player.get('statistics', [{}])[0].get('games', {}).get('minutes', 0) or 0),
+            "sport:rating": float(player.get('statistics', [{}])[0].get('games', {}).get('rating', 0.0) or 0.0),
+            "spsocstat:goalsTotal": int(player.get('statistics', [{}])[0].get('goals', {}).get('total', 0) or 0),
+            "spsocstat:assistsTotal": int(player.get('statistics', [{}])[0].get('goals', {}).get('assists', 0) or 0),
+            "spsocstat:shotsTotal": int(player.get('statistics', [{}])[0].get('shots', {}).get('total', 0) or 0),
+            "spsocstat:shotsOnGoalTotal": int(player.get('statistics', [{}])[0].get('shots', {}).get('on', 0) or 0),
+            "spsocstat:passesTotal": int(player.get('statistics', [{}])[0].get('passes', {}).get('total', 0) or 0),
+            "spsocstat:passesComplete": int(player.get('statistics', [{}])[0].get('passes', {}).get('accuracy', 0) or 0),
+            "spsocstat:passesCompletePercentage": str(player.get('statistics', [{}])[0].get('passes', {}).get('accuracy', '0%') or '0%').replace('%', ''),
+            "spsocstat:tacklesTotal": int(player.get('statistics', [{}])[0].get('tackles', {}).get('total', 0) or 0),
+            "spsocstat:interceptions": int(player.get('statistics', [{}])[0].get('tackles', {}).get('interceptions', 0) or 0),
+            "spsocstat:foulsCommited": int(player.get('statistics', [{}])[0].get('fouls', {}).get('committed', 0) or 0),
+            "spsocstat:foulsSuffered": int(player.get('statistics', [{}])[0].get('fouls', {}).get('drawn', 0) or 0),
+            "spsocstat:cautionsTotal": int(player.get('statistics', [{}])[0].get('cards', {}).get('yellow', 0) or 0),
+            "spsocstat:ejectionsTotal": int(player.get('statistics', [{}])[0].get('cards', {}).get('red', 0) or 0),
+            "spsocstat:dribblesAttempted": int(player.get('statistics', [{}])[0].get('dribbles', {}).get('attempts', 0) or 0),
+            "spsocstat:dribblesSuccessful": int(player.get('statistics', [{}])[0].get('dribbles', {}).get('success', 0) or 0),
+            "spsocstat:duelsTotal": int(player.get('statistics', [{}])[0].get('duels', {}).get('total', 0) or 0),
+            "spsocstat:duelsWon": int(player.get('statistics', [{}])[0].get('duels', {}).get('won', 0) or 0),
+            "spsocstat:passesKey": int(player.get('statistics', [{}])[0].get('passes', {}).get('key', 0) or 0),
+            "spsocstat:offsides": int(player.get('statistics', [{}])[0].get('offsides', 0) or 0),
+            "spsocstat:shotsBlocked": int(player.get('statistics', [{}])[0].get('shots', {}).get('blocked', 0) or 0),
+            **({
+              "spsocstat:saves": int(player.get('statistics', [{}])[0].get('penalty', {}).get('saved', 0) or 0),
+              "spsocstat:goalsAgainstTotal": int(player.get('statistics', [{}])[0].get('goals', {}).get('conceded', 0) or 0)
+            } if player.get('player', {}).get('pos', '') == 'Goalkeeper' else {})
+          }
+          for team_data in $.get('fixtures_players_statistics', [])
+          for player in team_data.get('players', [])
+          if player.get('player', {}).get('id') is not None
+        ]

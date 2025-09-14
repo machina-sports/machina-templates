@@ -5,7 +5,7 @@
   },
   "@id": "urn:apifootball:fixture:1390823",
   "@type": [
-    "sport:SportsEvent",
+    "sport:Event",
     "schema:SportsEvent"
   ],
   "name": "Espanyol vs Atletico Madrid - La Liga",

@@ -5,7 +5,7 @@
   },
   "@id": "urn:custom:event:La-Liga:Espanyol:Atletico-Madrid",
   "@type": [
-    "sport:SportsEvent",
+    "sport:Event",
     "schema:SportsEvent"
   ],
   "name": "Espanyol vs Atletico Madrid - La Liga",

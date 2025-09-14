@@ -68,6 +68,28 @@ workflow:
       outputs:
         iptc_events: "$.get('iptc_events', [])"
 
+    # iptc-sportradar-event-teams-stats
+    - type: mapping
+      name: iptc-sportradar-event-teams-stats
+      title: "IPTC | Sportradar Event Statistics Mapping"
+      description: "Convert Sportradar statistics to IPTC format"
+      condition: "$.get('event-statistics', {}) is not None"
+      inputs:
+        event_statistics: "$.get('event-statistics', {})"
+      outputs:
+        iptc_teams_statistics: "$.get('iptc_match_statistics', {})"
+
+    # iptc-sportradar-event-players-stats
+    - type: mapping
+      name: iptc-sportradar-event-players-stats
+      title: "IPTC | Sportradar Event Statistics Mapping"
+      description: "Convert Sportradar statistics to IPTC format"
+      condition: "$.get('event-statistics', {}) is not None"
+      inputs:
+        event_statistics: "$.get('event-statistics', {})"
+      outputs:
+        iptc_players_statistics: "$.get('iptc_players_statistics', {})"
+
     # task-update-fixtures-events
     - type: "document"
       name: "task-update-fixtures-events"
@@ -81,9 +103,8 @@ workflow:
           {
             'data': {
               'iptc_events': $.get('iptc_events', []),
-              'statistics': $.get('event-statistics', {}),
-              'events_count': $.get('events-count', 0),
-              'statistics_count': $.get('statistics-count', 0)
+              'teams_statistics': $.get('iptc_teams_statistics', {}),
+              'players_statistics': $.get('iptc_players_statistics', {}),
             },
             'title': f"Event {$.get('original_event_id', $.get('event_code'))} - Timeline Events ({$.get('events-count', 0)} events)",
             'summary': f"Match timeline events for event {$.get('original_event_id', $.get('event_code'))} including goals, cards, substitutions and other key moments in IPTC format"

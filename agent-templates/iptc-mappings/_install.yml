@@ -30,14 +30,30 @@ datasets:
   - type: "workflow"
     path: "any-source/custom-event-test.yml"
 
+  # api-football
+
   - type: "workflow"
     path: "api-football/event-mapping-test.yml"
 
   - type: "mappings"
     path: "api-football/event-mapping.yml"
 
+  - type: "mappings"
+    path: "api-football/event-players-stats.yml"
+
+  - type: "mappings"
+    path: "api-football/event-teams-stats.yml"
+
+  # sportradar
+
   - type: "workflow"
     path: "sportradar/event-mapping-test.yml"
 
   - type: "mappings"
     path: "sportradar/event-mapping.yml"
+  
+  - type: "mappings"
+    path: "sportradar/event-players-stats.yml"
+
+  - type: "mappings"
+    path: "sportradar/event-teams-stats.yml"

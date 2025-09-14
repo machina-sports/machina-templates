@@ -1,0 +1,79 @@
+mappings:
+
+  # iptc-sportradar-event-players-stats
+  - type: mapping
+    title: "IPTC | Sportradar Event Players Statistics Mapping"
+    name: "iptc-sportradar-event-players-stats"
+    description: "Maps Sportradar player statistics to IPTC Soccer Statistics schema format"
+    outputs:
+      iptc_players_statistics: |
+        [
+          {
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/",
+              "spsocstat": "https://sportschema.org/ontologies/soccer/",
+              "rdfs": "http://www.w3.org/2000/01/rdf-schema#"
+            },
+            "@id": f"urn:sportradar:participation:{player.get('id', '')}",
+            "@type": "sport:IndividualParticipation",
+            "rdfs:label": f"Player {player.get('name', '')} participation in Event",
+            "sport:participationBy": {
+              "@id": f"urn:sportradar:player:{player.get('id', '')}",
+              "@type": "sport:Athlete",
+              "rdfs:label": player.get('name', ''),
+              "sport:jerseyNumber": player.get('jersey_number', ''),
+              "sport:position": player.get('type', '')
+            },
+            "sport:minutesPlayed": player.get('statistics', {}).get('minutes_played', 0),
+            "sport:playerStatus": f"http://cv.iptc.org/newscodes/spplayerstatus/{'starter' if player.get('starter', False) else 'bench'}",
+            "spsocstat:goalsTotal": player.get('statistics', {}).get('goals_scored', 0),
+            "spsocstat:goalsOwn": player.get('statistics', {}).get('own_goals', 0),
+            "spsocstat:assistsTotal": player.get('statistics', {}).get('assists', 0),
+            "spsocstat:shotsTotal": player.get('statistics', {}).get('shots_total', 0),
+            "spsocstat:shotsOnGoalTotal": player.get('statistics', {}).get('shots_on_target', 0),
+            "spsocstat:shotsOffGoalTotal": player.get('statistics', {}).get('shots_off_target', 0),
+            "spsocstat:shotsBlocked": player.get('statistics', {}).get('shots_blocked', 0),
+            "spsocstat:passesTotal": player.get('statistics', {}).get('passes', 0),
+            "spsocstat:passesComplete": player.get('statistics', {}).get('passes_accurate', 0),
+            "spsocstat:passesCompletePercentage": player.get('statistics', {}).get('pass_accuracy_percentage', 0),
+            "spsocstat:foulsCommited": player.get('statistics', {}).get('fouls_committed', 0),
+            "spsocstat:foulsSuffered": player.get('statistics', {}).get('fouls_drawn', 0),
+            "spsocstat:cautionsTotal": player.get('statistics', {}).get('yellow_cards', 0),
+            "spsocstat:ejectionsTotal": player.get('statistics', {}).get('red_cards', 0),
+            "spsocstat:cautionsSecondYellow": player.get('statistics', {}).get('yellow_red_cards', 0),
+            "spsocstat:tacklesTotal": player.get('statistics', {}).get('tackles', 0),
+            "spsocstat:interceptions": player.get('statistics', {}).get('interceptions', 0),
+            "spsocstat:clearancesSuccessful": player.get('statistics', {}).get('clearances', 0),
+            "spsocstat:blocksDefensive": player.get('statistics', {}).get('blocks', 0),
+            "spsocstat:touches": player.get('statistics', {}).get('touches', 0),
+            "spsocstat:dribblesAttempted": player.get('statistics', {}).get('dribbles_attempted', 0),
+            "spsocstat:dribblesSuccessful": player.get('statistics', {}).get('dribbles_successful', 0),
+            "spsocstat:duelsTotal": player.get('statistics', {}).get('duels_total', 0),
+            "spsocstat:duelsWon": player.get('statistics', {}).get('duels_won', 0),
+            "spsocstat:cornerKicks": player.get('statistics', {}).get('corner_kicks', 0),
+            "spsocstat:offsides": player.get('statistics', {}).get('offsides', 0),
+            "spsocstat:substitutedIn": 1 if player.get('statistics', {}).get('substituted_in', 0) > 0 else 0,
+            "spsocstat:substitutedOut": 1 if player.get('statistics', {}).get('substituted_out', 0) > 0 else 0,
+            **({
+              "spsocstat:saves": player.get('statistics', {}).get('saves', 0),
+              "spsocstat:goalsAgainstTotal": player.get('statistics', {}).get('goals_conceded', 0),
+              "spsocstat:savesParried": player.get('statistics', {}).get('saves_parried', 0),
+              "spsocstat:savesCaught": player.get('statistics', {}).get('saves_caught', 0),
+              "spsocstat:savesFromPenalty": player.get('statistics', {}).get('penalty_saves', 0),
+              "spsocstat:distributionKicks": player.get('statistics', {}).get('distribution_kicks', 0),
+              "spsocstat:distributionThrows": player.get('statistics', {}).get('distribution_throws', 0)
+            } if player.get('type') == 'goalkeeper' else {}),
+            "spsocstat:crossesSuccessful": player.get('statistics', {}).get('crosses_successful', 0),
+            "spsocstat:crossesTotal": player.get('statistics', {}).get('crosses_total', 0),
+            "spsocstat:longBalls": player.get('statistics', {}).get('long_balls', 0),
+            "spsocstat:throughBalls": player.get('statistics', {}).get('through_balls', 0),
+            "spsocstat:ballsRecovered": player.get('statistics', {}).get('balls_recovered', 0),
+            "spsocstat:ballsLost": player.get('statistics', {}).get('balls_lost', 0),
+            "spsocstat:aerialDuelsWon": player.get('statistics', {}).get('aerial_duels_won', 0),
+            "spsocstat:aerialDuelsTotal": player.get('statistics', {}).get('aerial_duels_total', 0)
+          }
+          for team in $.get('event_statistics', {}).get('totals', {}).get('competitors', [])
+          for player in team.get('players', [])
+          if player.get('id')
+        ]
+
