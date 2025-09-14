@@ -1,5 +1,0 @@
-datasets:
-  - type: "prompts"
-    path: "prompt-reporter-quizzes-es.yml"
-  - type: "workflow"
-    path: "workflow-reporter-quizzes-es.yml"

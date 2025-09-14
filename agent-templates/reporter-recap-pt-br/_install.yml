@@ -1,6 +1,0 @@
-datasets:
-  - type: "prompts"
-    path: "prompt-reporter-recap-br.yml"
-  - type: "workflow"
-    path: "workflow-reporter-recap-br.yml"
-  - type: "workflow"

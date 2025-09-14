@@ -1,3 +1,0 @@
-datasets:
-  - type: "workflow"
-    path: "workflow-reporter-websearch.yml"
