@@ -6,3 +6,6 @@ connector:
   commands:
     - name: "Prompt"
       value: "invoke_prompt"
+
+    - name: "Image"
+      value: "invoke_image"

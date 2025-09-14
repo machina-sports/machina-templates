@@ -9,9 +9,7 @@ setup:
     - Real-time content generation
     - Real-time image generation
   integrations:
-    - chat-completion
-    - content-generation
-    - image-generation
+    - google
   status: available
   value: connectors/google-genai
   version: 1.0.0
@@ -19,3 +17,6 @@ setup:
 datasets:
   - type: "connector"
     path: "google-genai.yml"
+
+  - type: "workflow"
+    path: "test-image.yml"

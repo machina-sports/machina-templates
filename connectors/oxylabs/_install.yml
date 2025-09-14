@@ -16,7 +16,7 @@ setup:
     - Get the title of the web page
 
   integrations:
-    - web-scraping
+    - oxylabs
   status: available
   value: connectors/oxylabs
   version: 1.0.0

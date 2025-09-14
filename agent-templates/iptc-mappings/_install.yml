@@ -7,6 +7,7 @@ setup:
   features:
     - AI Agents to map events from API Football and Sportradar to IPTC.
   integrations:
+    - iptc
     - api-football
     - sportradar
   status: available

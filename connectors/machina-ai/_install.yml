@@ -9,9 +9,7 @@ setup:
     - Real-time content generation
     - Real-time image generation
   integrations:
-    - chat-completion
-    - content-generation
-    - image-generation
+    - machina-ai
   status: available
   value: connectors/machina-ai
   version: 1.0.0
