@@ -1,26 +1,26 @@
 workflow:
-  name: "workflow-sync-schedules"
-  title: "Sync Schedules"
-  description: "Workflow to synchronize a season schedules from SportRadar API to Machina."
+  name: "sportradar-soccer-sync-competitors"
+  title: "Soccer - Competitors"
+  description: "Workflow to synchronize a season competitors from SportRadar API to Machina."
   context-variables:
     sportradar-soccer:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
     season_id: "$.get('season_id')"
   outputs:
-    schedules: "$.get('schedules')"
+    competitors: "$.get('competitors')"
     workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
   tasks:
     # check-document-timedelta
     - type: "document"
       name: "check-document-timedelta"
-      description: "Check if the schedules document has expired."
+      description: "Check if the competitors document has expired."
       config:
         action: "search"
         search-limit: 1
         search-vector: false
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       filters:
@@ -28,7 +28,7 @@ workflow:
         value.execution: "{'$gte': datetime.utcnow() - timedelta(days=0)}"
         value.status: "'active'"
       inputs:
-        name: "'schedules'"
+        name: "'competitors'"
       outputs:
         documents: "$.get('documents')"
         should_update: "len($.get('documents')) == 0"
@@ -42,7 +42,7 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       condition: "$.get('should_update') == True"
@@ -53,58 +53,56 @@ workflow:
       outputs:
         season: "$.get('documents')[0] if $.get('documents') else None"
 
-    # load-schedules
+    # load-competitors
     - type: "connector"
-      name: "load-schedules"
-      description: "Get a season schedules from SportRadar"
+      name: "load-competitors"
+      description: "Get a season competitors from SportRadar"
       connector:
         name: "sportradar-soccer"
         command: "get-seasons/{season_id}/{data_type}"
         command_attribute:
           season_id: "$.get('season_id')"
-          data_type: "'schedules.json'"
+          data_type: "'competitors.json'"
       condition: "$.get('should_update') == True and $.get('season') is not None"
       inputs:
         api_key: "$.get('api_key')"
       outputs:
-        schedules: "$.get('schedules')"
-        schedules_parsed: |
+        competitors: "$.get('season_competitors')"
+        competitors_parsed: |
           [
             {
               **c,
               'metadata': {
-                'event_code': c.get('sport_event', {}).get('id', '')
+                'team_code': c.get('id', '')
               },
               'version_control': {
-                **c.get('value', {}).get('version_control', {}),
                 'updated': datetime.utcnow()
               },
-              'start_time': datetime.fromisoformat(c.get('sport_event', {}).get('start_time', '')),
-              'title': f"{c.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', '')} {c.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')}: {c.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', '')} - {c.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {c.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}",
+              'title': f"{c.get('name', {})}",
               'selected': False
             }
-            for c in $.get('schedules')
+            for c in $.get('season_competitors')
           ]
 
-    # update-schedules
+    # update-competitors
     - type: "document"
-      name: "update-schedules"
-      description: "Update the schedules document."
+      name: "update-competitors"
+      description: "Update the competitors document."
       config:
         action: "update"
         embed-vector: false
         force-update: true
       condition: "$.get('should_update') == True and $.get('season') is not None"
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       documents:
-        schedules: |
+        competitors: |
           {
             'sid': $.get('season_id'),
-            'data': $.get('schedules'),
-            'title': f"{$.get('season', {}).get('value', {}).get('title', '')} - All Schedules",
+            'data': $.get('competitors'),
+            'title': f"{$.get('season', {}).get('value', {}).get('title', '')} - All Competitors",
             'execution': datetime.utcnow(),
             'status': 'active'
           }
@@ -116,17 +114,17 @@ workflow:
     - type: "document"
       name: "bulk-save-schedules"
       condition: "$.get('should_update') == True and $.get('season') is not None"
-      description: "Bulk save the schedules."
+      description: "Bulk save the competitors."
       config:
         action: "bulk-update"
         embed-vector: false
         force-update: true
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "schedule"
+      document_name: "'soccer-team'"
       documents:
-        items: "$.get('schedules_parsed')"
+        items: "$.get('competitors_parsed')"
       inputs:
-        schedules_parsed: "$.get('schedules_parsed')"
+        competitors_parsed: "$.get('competitors_parsed')"

@@ -1,0 +1,97 @@
+workflow:
+  name: "sportradar-soccer-sync-schedules"
+  title: "Soccer - Schedules"
+  description: "Workflow to synchronize a season schedules from SportRadar API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    should_update: "$.get('should_update', True)"
+    season_id: "$.get('season_id')"
+    start: "$.get('start', '0')"
+  outputs:
+    schedules: "$.get('schedules')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # task-check-document-get-season
+    - type: "document"
+      name: "get-season"
+      description: "Get the season document."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      condition: "$.get('should_update') == True"
+      filters:
+        value.id: "$.get('season_id')"
+      inputs:
+        name: "'season'"
+      outputs:
+        season: "$.get('documents')[0] if $.get('documents') else None"
+
+    # load-schedules
+    - type: "connector"
+      name: "load-schedules"
+      description: "Get a season schedules from SportRadar"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('season_id')"
+          data_type: "'schedules.json'"
+      condition: "$.get('should_update') == True and $.get('season') is not None"
+      inputs:
+        api_key: "$.get('api_key')"
+        start: "$.get('start')"
+      outputs:
+        schedules: "$.get('schedules')"
+
+    # iptc-api-football-event-mapping
+    - type: mapping
+      name: iptc-sportradar-event-mapping
+      title: "IPTC | Sportradar Event Mapping"
+      description: "Mapping data from sportradar to IPTC events"
+      condition: "$.get('should_update') == True and $.get('season') is not None"
+      inputs:
+        schedules: "$.get('schedules', [])"
+      outputs:
+        fixtures: "$.get('sport_schema_events')"
+
+    # task-bulk-save-fixtures
+    - type: "document"
+      name: "task-bulk-save-fixtures"
+      description: "Bulk save the individual fixtures."
+      condition: "$.get('should_update') == True and $.get('season') is not None"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:SportsEvent'"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+              },
+              'title': f.get('name', '')
+            }
+            for f in $.get('fixtures', [])
+          ]
+      metadata:
+        document_type: "'fixture'"

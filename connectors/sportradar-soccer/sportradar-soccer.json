@@ -332,6 +332,95 @@
         }
       }
     },
+    "/competitors/{competitor_id}/versus/{competitor2_id}/summaries.json": {
+      "get": {
+        "summary": "Get summaries of matches between two competitors",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "competitor_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the first competitor (e.g. sr:competitor:44)"
+          },
+          {
+            "in": "path",
+            "name": "competitor2_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the second competitor (e.g. sr:competitor:45)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/competitors/{competitor1_id}/versus/{competitor2_id}/{data_type}": {
       "get": {
         "summary": "Get a season data",
@@ -422,55 +511,6 @@
                 "schema": {
                   "type": "object"
                 } 
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sport_events/{sport_event_id}/fun_facts.json": {
-      "get": {
-        "summary": "Get fun facts about a specific sport event",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "sport_event_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": { 
-                "schema": {
-                  "type": "object"
-                }
               }
             }
           }
@@ -658,6 +698,55 @@
             "description": "Internal Server Error",
             "content": {
               "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sport_events/{sport_event_id}/fun_facts.json": {
+      "get": {
+        "summary": "Get fun facts about a specific sport event",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": { 
                 "schema": {
                   "type": "object"
                 }

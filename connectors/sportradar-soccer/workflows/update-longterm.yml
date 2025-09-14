@@ -1,0 +1,248 @@
+workflow:
+
+  # sportradar-soccer-update-longter
+  name: "sportradar-soccer-update-longterm"
+  title: "Soccer - Update Long-Term"
+  description: "Workflow to update a soccer game from SportRadar API by event code."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    event_code: "$.get('event_code')"
+  outputs:
+    event_data: "$.get('event_data')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+
+    # 1 load-event-by-schedule (prelive)
+    - type: "document"
+      name: "load-event-by-schedule-prelive"
+      description: "Search for schedule events (sportradar)."
+      condition: |
+        (
+          $.get('event_exists') is not True
+        )
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.updated", 1]
+      filters:
+        value.start_time: "{'$gt': datetime.utcnow() + timedelta(hours=8), '$lt': datetime.utcnow() + timedelta(hours=72)}"
+        value.sport_event_status.status: "'not_started'"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        updated: "{'$lt': datetime.utcnow() - timedelta(hours=3)}"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_code: "$.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None"
+        event_value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+
+    # 2 mapping-soccer-version-control
+    - type: "mapping"
+      name: "mapping-soccer-version-control"
+      description: "Transform the sportradar soccer data"
+      # condition: "$.get('event_exists') is True"
+      inputs:
+        item: "$.get('event_value', [])"
+      outputs:
+        have_lineups: "$.get('have_lineups')"
+        have_last_home_matches: "$.get('have_last_home_matches')"
+        have_last_away_matches: "$.get('have_last_away_matches')"
+        have_timeline: "$.get('have_timeline')"
+        update_home_last_matches_count: "$.get('update_home_last_matches_count')"
+        update_away_last_matches_count: "$.get('update_away_last_matches_count')"
+        update_event_summary_count: "$.get('update_event_summary_count')" 
+        update_event_lineups_count: "$.get('update_event_lineups_count')"
+        update_event_statistics_count: "$.get('update_event_statistics_count')"
+        update_event_timeline_count: "$.get('update_event_timeline_count')"
+        version_control: "$.get('version_control')"
+
+    # 3 version-control-update
+    - type: "document"
+      name: "version-control-update"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('version_control', {}),
+              'processing': True,
+              'update_event_summary_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 4 fetch-event-summary
+    - type: "connector"
+      name: "fetch-event-summary"
+      description: "Get a event summary from SportRadar"
+      condition: "$.get('event_code') is not None"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-sport_events/{event_code}/{data_type}"
+        command_attribute:
+          event_code: "$.get('event_code')"
+          data_type: "'summary.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        event_data: "$"
+        event_exists: "'status' in $.get('sport_event_status')"
+        event_start: |
+          datetime.fromisoformat($.get('sport_event', {}).get('start_time', ''))
+        event_start_brt: |
+          (datetime.fromisoformat($.get('sport_event', {}).get('start_time', '')) - timedelta(hours=3)).strftime('%d/%m/%y %H:%M')
+        event_title: |
+          f"{$.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {$.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}"
+        event_status: "$.get('sport_event_status').get('status')"
+        update_event_summary_status: "'processed'"
+        update_event_summary_count: |
+          $.context('version_control', {}).get('update_event_summary_count', 0) + 1
+
+    # 5 mapping-soccer-event-summary
+    - type: "mapping"
+      name: "mapping-soccer-event-summary"
+      description: "Transform the sportradar soccer data"
+      condition: "$.get('event_data') is not None"
+      inputs:
+        event_selected: "$.get('event_data')"
+      outputs:
+        season: "$.get('season')"
+        season_title: "$.get('season_title')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 8 fetch-competitor (home)
+    - type: "connector"
+      name: "fetch-competitor-home"
+      description: "Get a competitor data from SportRadar" 
+      condition: "$.get('event_code') is not None and $.get('have_last_home_matches') is not True"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitors/{competitor_id}/{data_type}"
+        command_attribute:
+          competitor_id: "$.get('team_home_id')"
+          data_type: "'summaries.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        home_last_matches: |
+          [
+            {
+              'sport_event': c.get('sport_event', ''),
+              'sport_event_status': c.get('sport_event_status', '')
+            }
+            for c in $.get('summaries', [])[:3]
+          ]
+        update_home_last_matches_status: "len($.get('summaries', [])) > 0 and 'processed' or 'pending'"
+        update_home_last_matches_count: |
+          $.context('version_control', {}).get('update_home_last_matches_count', 0) + 1
+    
+    # 9 fetch-competitor (away)
+    - type: "connector"
+      name: "fetch-competitor-away"
+      description: "Get a competitor data from SportRadar" 
+      condition: "$.get('event_code') is not None and $.get('have_last_away_matches') is not True"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitors/{competitor_id}/{data_type}"
+        command_attribute:
+          competitor_id: "$.get('team_away_id')"
+          data_type: "'summaries.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        away_last_matches: |
+          [
+            {
+              'sport_event': c.get('sport_event', ''),
+              'sport_event_status': c.get('sport_event_status', '')
+            }
+            for c in $.get('summaries', [])[:3]
+          ]
+        update_away_last_matches_status: "len($.get('summaries', [])) > 0 and 'processed' or 'pending'"
+        update_away_last_matches_count: |
+          $.context('version_control', {}).get('update_away_last_matches_count', 0) + 1
+
+    # 10 version-control-success
+    - type: "document"
+      name: "version-control-success"
+      description: "Update the events document version control."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_value', {}),
+            **$.get('event_data', {}),
+            'statistics': None,
+            'competitors_home_last_matches': $.get('home_last_matches', []) or $.get('event_value', {}).get('competitors_home_last_matches', []),
+            'competitors_away_last_matches': $.get('away_last_matches', []) or $.get('event_value', {}).get('competitors_away_last_matches', []),
+            'event_live': {
+              **$.get('event_value', {}).get('event_live', {}),
+              'lineups': $.get('prompt-output-lineups') or $.get('event_value', {}).get('event_live', {}).get('lineups', {}),
+            },
+            'sport_event_lineups': $.get('result-event-lineups') or $.get('event_value', {}).get('sport_event_lineups', {}),
+            'sport_event_statistics': $.get('result-event-statistics') or $.get('event_value', {}).get('sport_event_statistics', {}),
+            'sport_event_timeline': $.get('result-event-timeline') or $.get('event_value', {}).get('sport_event_timeline', {}),
+            'start_time': $.get('event_start'),
+            'start_time_brt': $.get('event_start_brt'),
+            'title': $.get('event_title'),
+            'version_control': {
+              **$.get('version_control', {}),
+              'processing': False,
+              'update_home_last_matches_count': $.get('update_home_last_matches_count') or $.get('version_control', {}).get('update_home_last_matches_count', 0),
+              'update_home_last_matches_status': $.get('update_home_last_matches_status') or $.get('version_control', {}).get('update_home_last_matches_status', 'pending'),
+              'update_away_last_matches_count': $.get('update_away_last_matches_count') or $.get('version_control', {}).get('update_away_last_matches_count', 0),
+              'update_away_last_matches_status': $.get('update_away_last_matches_status') or $.get('version_control', {}).get('update_away_last_matches_status', 'pending'),
+              'update_event_summary_count': $.get('update_event_summary_count') or $.get('version_control', {}).get('update_event_summary_count', 0),
+              'update_event_summary_status': $.get('update_event_summary_status') or $.get('version_control', {}).get('update_event_summary_status', 'pending'),
+              'update_event_lineups_count': $.get('update_event_lineups_count') or $.get('version_control', {}).get('update_event_lineups_count', 0),
+              'update_event_lineups_status': $.get('update_event_lineups_status') or $.get('version_control', {}).get('update_event_lineups_status', 'pending'),
+              'update_event_statistics_count': $.get('update_event_statistics_count') or $.get('version_control', {}).get('update_event_statistics_count', 0),
+              'update_event_statistics_status': $.get('update_event_statistics_status') or $.get('version_control', {}).get('update_event_statistics_status', 'pending'),
+              'update_event_timeline_count': $.get('update_event_timeline_count') or $.get('version_control', {}).get('update_event_timeline_count', 0),
+              'update_event_timeline_status': $.get('update_event_timeline_status') or $.get('version_control', {}).get('update_event_timeline_status', 'pending'),
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

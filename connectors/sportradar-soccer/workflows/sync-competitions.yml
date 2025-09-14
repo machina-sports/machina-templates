@@ -1,6 +1,6 @@
 workflow:
   name: "sportradar-soccer-sync-competitions"
-  title: "Soccer - Sync Competitions"
+  title: "Soccer - Competitions"
   description: "Workflow to synchronize competitions from SportRadar API to Machina."
   context-variables:
     sportradar-soccer:
@@ -79,7 +79,7 @@ workflow:
         name: "openai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "competition"
+      document_name: "'competition'"
       documents:
         items: |
           [

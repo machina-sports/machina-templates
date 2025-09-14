@@ -1,0 +1,89 @@
+workflow:
+  name: "sportradar-soccer-search-event"
+  title: "Soccer - Search"
+  description: "Workflow to search a event from SportRadar API."
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    competition_id: "$.get('competition_id')"
+    save_event: "$.get('save_event') == 'true'"
+    team_home: "$.get('team_home')"
+    team_away: "$.get('team_away')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "task-load-seasons"
+      description: "Get Seasons from SportRadar"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitions/{competition_id}/seasons.json"
+        command_attribute:
+          competition_id: "$.get('competition_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        seasons: "$.get('seasons')"
+        current_season: "$.get('seasons')[-1]"
+
+    - type: "connector"
+      name: "load-schedules"
+      description: "Get a season schedules from SportRadar"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('current_season', {}).get('id')"
+          data_type: "'schedules.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+        start: "$.get('start')"
+      outputs:
+        schedules: "$.get('schedules')"
+        filtered_events: |
+          [
+            e for e in $.get('schedules')
+            if '$.(team_home)' in e.get('sport_event', {}).get('competitors', [])[0].get('name', '') and '$.(team_away)' in e.get('sport_event', {}).get('competitors', [])[1].get('name', '')
+          ]
+        schedules_parsed: |
+          [
+            {
+              **e,
+              'metadata': {
+                'event_code': e.get('sport_event', {}).get('id', '')
+              },
+              'version_control': {
+                **e.get('value', {}).get('version_control', {}),
+                'updated': datetime.utcnow()
+              },
+              'start_time': datetime.fromisoformat(e.get('sport_event', {}).get('start_time', '')),
+              'title': f"{e.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', '')} {e.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')}: {e.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', '')} - {e.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} v {e.get('sport_event', {}).get('competitors', [{}])[1].get('name', '')}",
+              'selected': False
+            }
+            for e in $.get('schedules')
+            if '$.(team_home)' in e.get('sport_event', {}).get('competitors', [])[0].get('name', '') and '$.(team_away)' in e.get('sport_event', {}).get('competitors', [])[1].get('name', '')
+          ]
+
+    # bulk-save-schedules
+    - type: "document"
+      name: "bulk-save-schedules"
+      condition: "$.get('save_event') == True and $.get('schedules_parsed') is not None"
+      description: "Bulk save the schedules."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'soccer-game'"
+      documents:
+        items: "$.get('schedules_parsed')"
+      inputs:
+        schedules_parsed: "$.get('schedules_parsed')"

@@ -1,0 +1,106 @@
+mappings:
+
+  - type: "mapping"
+    title: "Soccer - Event Summary Statistics"
+    name: "mapping-soccer-event-summary-statistics"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      away_status: "$.get('item').get('totals').get('competitors', {})[0].get('statistics')"
+      home_status: "$.get('item').get('totals').get('competitors', {})[1].get('statistics')"
+      away_players_stats: "$.get('item').get('totals').get('competitors', {})[0].get('players')"
+      home_players_stats: "$.get('item').get('totals').get('competitors', {})[1].get('players')"
+
+  - type: "mapping"
+    title: "Soccer - Player Statistics Mapping"
+    name: "mapping-soccer-player-stats"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      player_stats: |
+        [
+          {
+            **player,
+          }
+          for player in $.get('_players', [])
+          if player.get('id') == $.('_player_id')
+        ]
+
+  - type: mapping
+    title: "Soccer - Event Statistics Mapping"
+    name: "mapping-soccer-event-statistics"
+    outputs:
+      game-stats-mapped: |
+        [
+          " ".join([
+            f"{event.get('sport_event', {}).get('competitors', [])[0].get('name')} Stats: " if len(event.get('sport_event_statistics', {}).get('totals').get('competitors', [])) > 1 else '',
+            "; ".join([
+              f"Posse {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('ball_possession', '')}",
+              f"Chutes {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('shots_total', '')}",
+              f"No gol {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('shots_on_target', '')}",
+              f"Pra fora {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('shots_off_target', '')}",
+              f"Free kicks {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('free_kicks', '')}",
+              f"Faltas {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('fouls', '')}",
+              f"Amarelos {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('yellow_cards', '')}",
+              f"Vermelhos {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('red_cards', 0) + event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('yellow_red_cards', 0)}",
+              f"Escanteios {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('corners', '')}",
+              f"Offsides {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('statistics', {}).get('offsides', '')}"
+            ]) if len(event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else '',
+            f"{event.get('sport_event', {}).get('competitors', [])[1].get('name')} Stats: " if len(event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else '',
+            "; ".join([
+              f"Posse {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('ball_possession', '')}",
+              f"Chutes {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('shots_total', '')}",
+              f"No gol {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('shots_on_target', '')}",
+              f"Pra fora {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('shots_off_target', '')}",
+              f"Free kicks {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('free_kicks', '')}",
+              f"Faltas {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('fouls', '')}",
+              f"Amarelos {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('yellow_cards', '')}",
+              f"Vermelhos {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('red_cards', 0) + event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('yellow_red_cards', 0)}",
+              f"Escanteios {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('corners', '')}",
+              f"Offsides {event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('statistics', {}).get('offsides', '')}"
+            ]) if len(event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else ''
+          ])
+          for event in $.get('_items', [])
+        ]
+      players-stats-mapped: |
+        [
+          " ## ".join([
+            f"{event.get('sport_event', {}).get('competitors', [])[0].get('name')} Stats: " if len(event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else '',
+            "; ".join([
+              " | ".join(filter(None, [
+                f"{player.get('name', '')}",
+                f"Gols {player.get('statistics', {}).get('goals_scored', '')}" if player.get('statistics', {}).get('goals_scored', 0) > 0 else '',
+                f"Assist {player.get('statistics', {}).get('assists', '')}" if player.get('statistics', {}).get('assists', 0) > 0 else '',
+                f"Corners {player.get('statistics', {}).get('corner_kicks', '')}" if player.get('statistics', {}).get('corner_kicks', 0) > 0 else '',
+                f"Offsides {player.get('statistics', {}).get('offsides', '')}" if player.get('statistics', {}).get('offsides', 0) > 0 else '',
+                f"Chutes {player.get('statistics', {}).get('shots_total', '')}" if player.get('statistics', {}).get('shots_total', 0) > 0 else '',
+                f"No gol {player.get('statistics', {}).get('shots_on_target', '')}" if player.get('statistics', {}).get('shots_on_target', 0) > 0 else '',
+                f"Pra fora {player.get('statistics', {}).get('shots_off_target', '')}" if player.get('statistics', {}).get('shots_off_target', 0) > 0 else '',
+                f"Substituído {player.get('statistics', {}).get('substituted_in', 0)}" if player.get('statistics', {}).get('substituted_in', 0) > 0 else '',
+                f"Substituiu {player.get('statistics', {}).get('substituted_out', 0)}" if player.get('statistics', {}).get('substituted_out', 0) > 0 else '',
+                f"Amarelos {player.get('statistics', {}).get('yellow_cards', '')}" if player.get('statistics', {}).get('yellow_cards', 0) > 0 else '',
+                f"Vermelhos {player.get('statistics', {}).get('red_cards', 0) + player.get('statistics', {}).get('yellow_red_cards', 0)}" if player.get('statistics', {}).get('red_cards', 0) + player.get('statistics', {}).get('yellow_red_cards', 0) > 0 else ''
+              ]))
+              for player in event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0].get('players', [])
+              if player.get('starter', False) is True or player.get('statistics', {}).get('substituted_in', 0) > 0
+            ]) if len(event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else '',
+            f"{event.get('sport_event', {}).get('competitors', [])[1].get('name')} Stats: " if len(event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])) > 1 else '',
+            "; ".join([
+              " | ".join(filter(None, [
+                f"{player.get('name', '')}",
+                f"Gols {player.get('statistics', {}).get('goals_scored', '')}" if player.get('statistics', {}).get('goals_scored', 0) > 0 else '',
+                f"Assist {player.get('statistics', {}).get('assists', '')}" if player.get('statistics', {}).get('assists', 0) > 0 else '',
+                f"Corners {player.get('statistics', {}).get('corner_kicks', '')}" if player.get('statistics', {}).get('corner_kicks', 0) > 0 else '',
+                f"Offsides {player.get('statistics', {}).get('offsides', '')}" if player.get('statistics', {}).get('offsides', 0) > 0 else '',
+                f"Chutes {player.get('statistics', {}).get('shots_total', '')}" if player.get('statistics', {}).get('shots_total', 0) > 0 else '',
+                f"No gol {player.get('statistics', {}).get('shots_on_target', '')}" if player.get('statistics', {}).get('shots_on_target', 0) > 0 else '',
+                f"Pra fora {player.get('statistics', {}).get('shots_off_target', '')}" if player.get('statistics', {}).get('shots_off_target', 0) > 0 else '',
+                f"Substituído {player.get('statistics', {}).get('substituted_in', 0)}" if player.get('statistics', {}).get('substituted_in', 0) > 0 else '',
+                f"Substituiu {player.get('statistics', {}).get('substituted_out', 0)}" if player.get('statistics', {}).get('substituted_out', 0) > 0 else '',
+                f"Amarelos {player.get('statistics', {}).get('yellow_cards', '')}" if player.get('statistics', {}).get('yellow_cards', 0) > 0 else '',
+                f"Vermelhos {player.get('statistics', {}).get('red_cards', 0) + player.get('statistics', {}).get('yellow_red_cards', 0)}" if player.get('statistics', {}).get('red_cards', 0) + player.get('statistics', {}).get('yellow_red_cards', 0) > 0 else ''
+              ]))
+              for player in event.get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1].get('players', [])
+              if player.get('starter', False) is True or player.get('statistics', {}).get('substituted_in', 0) > 0
+            ])
+          ])
+          for event in $.get('_items', [])
+        ]

@@ -1,10 +1,12 @@
 workflow:
   name: "sportradar-soccer-sync-standings"
-  title: "Soccer - Sync Standings"
+  title: "Soccer - Standings"
   description: "Workflow to synchronize a season standings from SportRadar API to Machina."
   context-variables:
+    debugger:
+      enabled: false
     sportradar-soccer:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
     season_id: "$.get('season_id')"
   outputs:
@@ -21,7 +23,7 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       filters:
@@ -43,12 +45,12 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       condition: "$.get('should_update') == True"
       filters:
-        value.id: "$.get('season_id')"
+        metadata.season_id: "$.get('season_id')"
       inputs:
         name: "'season'"
       outputs:
@@ -80,7 +82,7 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       documents:

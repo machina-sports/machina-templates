@@ -59,3 +59,74 @@ mappings:
           }
           for f in $.get('fixtures', [])
         ]
+
+  # iptc-api-football-id-conversion-mapping
+  - type: mapping
+    title: "IPTC | API Football ID Conversion Mapping"
+    name: "iptc-api-football-id-conversion-mapping"
+    description: "Convert IPTC URN IDs to original API Football IDs and preserve URN"
+    outputs:
+      original_ids: |
+        [
+          f.get('@id', '').replace('urn:apifootball:fixture:', '') if f.get('@id', '').startswith('urn:apifootball:fixture:') else f.get('@id', '')
+          for f in $.get('iptc_schema_events', [])
+        ]
+      iptc_schema_ids: |
+        [
+          f.get('@id', '') if f.get('@id', '').startswith('urn:apifootball:') else f'urn:apifootball:fixture:{f.get("@id", "")}'
+          for f in $.get('iptc_schema_events', [])
+        ]
+
+  # iptc-api-football-events-mapping
+  - type: mapping
+    title: "IPTC | API Football Events Mapping"
+    name: "iptc-api-football-events-mapping"
+    description: "Convert API Football match events to IPTC Sports Schema format"
+    outputs:
+      iptc_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/"
+            },
+            "@id": f"urn:apifootball:action:{event.get('time', {}).get('elapsed', 0)}:{event.get('type', '').replace(' ', '-')}:{event.get('team', {}).get('id', '')}",
+            "@type": "sport:Action",
+            "sport:label": f"{event.get('type', '')} - {event.get('detail', '')} at {event.get('time', {}).get('elapsed', 0)}'",
+            "sport:actionType": f"http://cv.iptc.org/newscodes/spsocaction/{event.get('type', '').lower().replace(' ', '-')}",
+            "sport:minutesElapsed": str(event.get('time', {}).get('elapsed', 0)),
+            "sport:actionDateTime": event.get('time', {}).get('extra') and f"{event.get('time', {}).get('elapsed', 0)}+{event.get('time', {}).get('extra')}" or str(event.get('time', {}).get('elapsed', 0)),
+            "sport:comment": event.get('comments', ''),
+            "sport:participation": [
+              {
+                "@id": f"urn:apifootball:team-participation:{event.get('team', {}).get('id')}",
+                "@type": "sport:TeamParticipation",
+                "sport:participationBy": {
+                  "@id": f"urn:apifootball:team:{event.get('team', {}).get('id')}",
+                  "@type": "sport:Team",
+                  "sport:label": event.get('team', {}).get('name', '')
+                }
+              }
+            ] + ([
+              {
+                "@id": f"urn:apifootball:player-participation:{event.get('player', {}).get('id')}",
+                "@type": "sport:IndividualParticipation",
+                "sport:participationBy": {
+                  "@id": f"urn:apifootball:player:{event.get('player', {}).get('id')}",
+                  "@type": "sport:Athlete",
+                  "sport:label": event.get('player', {}).get('name', '')
+                }
+              }
+            ] if event.get('player', {}).get('id') else []) + ([
+              {
+                "@id": f"urn:apifootball:assist-participation:{event.get('assist', {}).get('id')}",
+                "@type": "sport:IndividualParticipation",
+                "sport:participationBy": {
+                  "@id": f"urn:apifootball:player:{event.get('assist', {}).get('id')}",
+                  "@type": "sport:Athlete",
+                  "sport:label": event.get('assist', {}).get('name', '')
+                }
+              }
+            ] if event.get('assist', {}).get('id') else [])
+          }
+          for event in $.get('match_events', [])
+        ]

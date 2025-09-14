@@ -1,10 +1,10 @@
 workflow:
   name: "sportradar-soccer-sync-seasons"
-  title: "Soccer - Sync Seasons"
+  title: "Soccer - Seasons"
   description: "Workflow to synchronize seasons from SportRadar API to Machina."
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     sportradar-soccer:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:

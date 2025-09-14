@@ -1,0 +1,93 @@
+workflow:
+
+  # sportradar-soccer-sync-fixtures-events
+  name: "sportradar-soccer-sync-fixtures-events"
+  title: "Sportradar Soccer - Sync Fixtures Events"
+  description: "Workflow to sync fixtures events from Sportradar Soccer with detailed match events like goals, cards, substitutions using timeline endpoint."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    event_code: "$.get('event_code')"
+  outputs:
+    workflow-status: "'executed'"
+    iptc_schema_id: "$.get('iptc_schema_id')"
+  tasks:
+
+    # iptc-sportradar-id-conversion-mapping
+    - type: mapping
+      name: iptc-sportradar-id-conversion-mapping
+      title: "IPTC | Sportradar ID Conversion Mapping"
+      description: "Convert IPTC URN IDs to original Sportradar IDs"
+      condition: "$.get('event_code') is not None"
+      inputs:
+        iptc_schema_events: "[{'@id': $.get('event_code')}]"
+      outputs:
+        original_event_id: "$.get('original_ids', [''])[0]"
+        iptc_schema_id: "$.get('iptc_schema_ids', [''])[0]"
+
+    # sportradar-soccer-get-fixtures-events
+    - type: "connector"
+      name: "sportradar-soccer-get-fixtures-events"
+      description: "Get fixtures events from Sportradar Soccer using timeline endpoint."
+      condition: |
+        (
+          "$.get('original_event_id')" != None
+          and "$.get('original_event_id')" != ""
+        )
+      connector:
+        name: "sportradar-soccer"
+        command: "get-sport_events/{event_code}/{data_type}"
+        command_attribute:
+          event_code: "$.get('original_event_id')"
+          data_type: "'timeline.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        fixtures-events: "$.get('timeline', [])"
+        events-count: "len($.get('timeline', []))"
+        event-statistics: "$.get('statistics', {})"
+        statistics-count: "len($.get('statistics', {}).keys())"
+        event-context: "$.get('statistics', {})"
+        home-team: "[comp for comp in $.get('statistics', {}).get('totals', {}).get('competitors', []) if comp.get('qualifier') == 'home'][0] if [comp for comp in $.get('statistics', {}).get('totals', {}).get('competitors', []) if comp.get('qualifier') == 'home'] else {}"
+        away-team: "[comp for comp in $.get('statistics', {}).get('totals', {}).get('competitors', []) if comp.get('qualifier') == 'away'][0] if [comp for comp in $.get('statistics', {}).get('totals', {}).get('competitors', []) if comp.get('qualifier') == 'away'] else {}"
+
+    # iptc-sportradar-events-mapping
+    - type: mapping
+      name: iptc-sportradar-events-mapping
+      title: "IPTC | Sportradar Events Mapping"
+      description: "Convert Sportradar timeline events to IPTC format"
+      condition: "len($.get('fixtures-events', [])) > 0"
+      inputs:
+        timeline_events: "$.get('fixtures-events', [])"
+        event_context: "$.get('event-context', {})"
+        home_team: "$.get('home-team', {})"
+        away_team: "$.get('away-team', {})"
+      outputs:
+        iptc_events: "$.get('iptc_events', [])"
+
+    # task-update-fixtures-events
+    - type: "document"
+      name: "task-update-fixtures-events"
+      description: "Update the fixtures events document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        fixtures-events: |
+          {
+            'data': {
+              'iptc_events': $.get('iptc_events', []),
+              'statistics': $.get('event-statistics', {}),
+              'events_count': $.get('events-count', 0),
+              'statistics_count': $.get('statistics-count', 0)
+            },
+            'title': f"Event {$.get('original_event_id', $.get('event_code'))} - Timeline Events ({$.get('events-count', 0)} events)",
+            'summary': f"Match timeline events for event {$.get('original_event_id', $.get('event_code'))} including goals, cards, substitutions and other key moments in IPTC format"
+          }
+      metadata:
+        document_type: "'fixture-events'"
+        event_code: "$.get('iptc_schema_id', $.get('event_code'))"

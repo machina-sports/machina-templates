@@ -1,0 +1,11 @@
+mappings:
+
+  - type: "mapping"
+    title: "Soccer - Team Summary Mapping"
+    name: "mapping-soccer-team-summary"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      team_code: "$.get('team-value').get('id', '')"
+      team_name: "$.get('team-value').get('short_name', '')"
+      team_id: "$.get('team-value').get('id', '')"
+      team_abbreviation: "$.get('team-value').get('abbreviation', '')"

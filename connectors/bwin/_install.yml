@@ -21,7 +21,7 @@ setup:
     - Bwin-AccessId
     - Bwin-AccessIdToken
   status: available
-  value: bwin
+  value: connectors/bwin
   version: 1.0.0
 
 datasets:

@@ -18,6 +18,19 @@ workflow:
     workflow-status: "'executed'"
   tasks:
 
+    # iptc-api-football-id-conversion-mapping
+    - type: mapping
+      name: iptc-api-football-id-conversion-mapping
+      title: "IPTC | API Football ID Conversion Mapping"
+      description: "Convert IPTC URN IDs to original API Football IDs"
+      condition: "$.get('fixture') is not None"
+      inputs:
+        iptc_schema_events: "[{'@id': $.get('fixture')}]"
+      outputs:
+        original_fixture_id: "$.get('original_ids', [''])[0]"
+        iptc_schema_id: "$.get('iptc_schema_ids', [''])[0]"
+
+    # api-football-get-fixtures-events
     - type: "connector"
       name: "api-football-get-fixtures-events"
       description: "Get fixtures events from API Football."
@@ -25,13 +38,24 @@ workflow:
         name: "api-football"
         command: "get-fixtures/events"
       inputs:
-        fixture: "$.get('fixture')"
+        fixture: "$.get('original_fixture_id', $.get('fixture'))"
         team: "$.get('team')"
         player: "$.get('player')"
         type: "$.get('type')"
       outputs:
         fixtures-events: "$.get('response')"
         events-count: "len($.get('response', []))"
+
+    # iptc-api-football-events-mapping
+    - type: mapping
+      name: iptc-api-football-events-mapping
+      title: "IPTC | API Football Events Mapping"
+      description: "Convert API Football match events to IPTC format"
+      condition: "len($.get('fixtures-events', [])) > 0"
+      inputs:
+        match_events: "$.get('fixtures-events', [])"
+      outputs:
+        iptc_events: "$.get('iptc_events', [])"
 
     # task-update-fixtures-events
     - type: "document"
@@ -44,10 +68,13 @@ workflow:
       documents:
         fixtures-events: |
           {
-            'data': $.get('fixtures-events', {}),
-            'title': f"Fixture {$.get('fixture')} - Events ({$.get('events-count', 0)} events)",
-            'summary': f"Match events for fixture {$.get('fixture')} including goals, cards, substitutions and other key moments"
+            'data': {
+              'iptc_events': $.get('iptc_events', []),
+              'events_count': $.get('events-count', 0)
+            },
+            'title': f"Fixture {$.get('original_fixture_id', $.get('fixture'))} - Events ({$.get('events-count', 0)} events)",
+            'summary': f"Match events for fixture {$.get('original_fixture_id', $.get('fixture'))} including goals, cards, substitutions and other key moments in IPTC format"
           }
       metadata:
-        document_type: "'synchronization'"
-        event_code: "$.get('fixture')"
+        document_type: "'fixture-events'"
+        event_code: "$.get('iptc_schema_id', $.get('fixture'))"

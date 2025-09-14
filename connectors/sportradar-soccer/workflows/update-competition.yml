@@ -1,0 +1,100 @@
+workflow:
+
+  # sportradar-soccer-update-competition
+  name: "sportradar-soccer-update-competition"
+  title: "Soccer - Update Competition"
+  description: "Workflow to update a soccer competition from SportRadar API by event code."
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    event_data: "$.get('event_data')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # 1 load-competition-by-code
+    - type: "document"
+      name: "load-competition-by-code"
+      description: "Search competition (sportradar) by code."
+      condition: "$.get('season_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        metadata.season_id: "$.get('season_id')"
+      inputs:
+        name: "{'$in': ['season']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+
+    # 2 version-control-update
+    - type: "document"
+      name: "version-control-update"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        season: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('version_control', {}),
+              'processing': True,
+              'update_competition_info_status': 'processing'
+            }
+          }
+      metadata:
+        season_id: "$.get('season_id')"
+
+    # 3 fetch-competition-info
+    - type: "connector"
+      name: "fetch-competition-info"
+      description: "Get a competition info from SportRadar"
+      condition: "$.get('season_id') is not None"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('season_id')"
+          data_type: "'info.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        competition_data: "$"
+        competition_title: "$.get('season', {}).get('name', '')"
+
+    # 4 version-control-success
+    - type: "document"
+      name: "version-control-success"
+      description: "Update the events document version control."
+      condition: "$.get('season_id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        season: |
+          {
+            **$.get('event_value', {}),
+            'competition_info': $.get('competition_data', {}),
+            'title': $.get('competition_title'),
+            'version_control': {
+              **$.get('version_control', {}),
+              'processing': False,
+              'update_competition_info_count': $.get('update_competition_info_count') or $.get('version_control', {}).get('update_competition_info_count', 0),
+              'update_competition_info_status': $.get('update_competition_info_status') or $.get('version_control', {}).get('update_competition_info_status', 'pending'),
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        season_id: "$.get('season_id')"

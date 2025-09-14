@@ -1,0 +1,109 @@
+mappings:
+
+  - type: "mapping"
+    title: "Soccer - Event Summary Mapping"
+    name: "mapping-soccer-event-summary"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      article_count: "$.get('event_selected', {}).get('version_control', {}).get('article_count', 0)"
+      event_code: "$.get('event_selected', {}).get('sport_event', {}).get('id')"
+      event_date_brt: "$.get('event_selected', {}).get('start_time_brt')"
+      event_datetime: "$.get('event_selected', {}).get('sport_event', {}).get('start_time')"
+      image_count: "$.get('event_selected', {}).get('version_control', {}).get('image_count', 0)"
+      last_home: "$.get('event_selected', {}).get('competitors_home_last_matches', [])"
+      last_away: "$.get('event_selected', {}).get('competitors_away_last_matches', [])"
+      live_lineups: "$.get('event_selected', {}).get('event_live', {}).get('lineups', {}).get('snippets', [])"
+      match_status: "$.get('event_selected', {}).get('sport_event_status', {}).get('status')"
+      research_news_count: "$.get('event_selected', {}).get('version_control', {}).get('research_news_count', 0)"
+      research_odds_count: "$.get('event_selected', {}).get('version_control', {}).get('research_odds_count', 0)"
+      research_stats_count: "$.get('event_selected', {}).get('version_control', {}).get('research_stats_count', 0)"
+      research_team_count: "$.get('event_selected', {}).get('version_control', {}).get('research_team_count', 0)"
+      season: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id')"
+      season_title: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name')"
+      sport_event: "$.get('event_selected', {}).get('sport_event', {})"
+      sport_event_lineups: "$.get('event_selected', {}).get('sport_event_lineups', {})"
+      sport_event_statistics: "$.get('event_selected', {}).get('sport_event_statistics', {})"
+      sport_event_status: "$.get('event_selected', {}).get('sport_event_status', {})"
+      sport_event_timeline: "$.get('event_selected', {}).get('sport_event_timeline', {})"
+      team_home_abbreviation: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('abbreviation')"
+      team_home_name: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('name')"
+      team_away_abbreviation: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('abbreviation')"
+      team_away_name: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('name')"
+      team_home_id: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('id')"
+      team_away_id: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('id')"
+      team_home_stats: "$.get('event_selected', {}).get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[0] if $.get('event_selected', {}).get('sport_event_statistics', {}).get('totals', {}).get('competitors', []) else {}"
+      team_away_stats: "$.get('event_selected', {}).get('sport_event_statistics', {}).get('totals', {}).get('competitors', [])[1] if $.get('event_selected', {}).get('sport_event_statistics', {}).get('totals', {}).get('competitors', []) else {}"
+      short_title: f"{$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('abbreviation')}-X-{$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('abbreviation')}".upper()
+      title: "$.get('event_selected', {}).get('title')"
+      version_control: "$.get('event_selected', {}).get('version_control', {})"
+      venue_title: f"{$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('name')} - {$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('city_name')}"
+      match_prelive_lineups: "$.get('event_selected', {}).get('event_live', {}).get('lineups', {}).get('snippets', [])"
+      match_service_summary: |
+        " | ".join([
+          f"Evento: {$.get('event_selected', {}).get('title')}",
+          f"Data: {$.get('event_selected', {}).get('start_time_brt')}",
+          f"Estadio: {$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('name')} - {$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('city_name')}",
+        ])
+      match_timeline: |
+        [
+          " ".join([
+            f"{c.get('match_clock', '00:00')} {c.get('type', '')}",
+            " ".join([
+              f"{c.get('text', '')}"
+              for c in c.get('commentaries', [])
+            ])
+          ])
+          for c in $.get('event_selected', {}).get('sport_event_timeline', [])[-10:]
+        ]
+
+  - type: "mapping"
+    title: "Soccer - Event Summary Status"
+    name: "mapping-soccer-event-summary-status"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      away_score: "$.get('item').get('away_score')"
+      home_score: "$.get('item').get('home_score')"
+      ball_locations: "$.get('item').get('ball_locations')"
+      match_status: "$.get('item').get('match_status')"
+      match_situation: "$.get('item').get('match_situation')"
+      played: "$.get('item').get('clock', {}).get('played')"
+      period_scores: "$.get('item').get('period_scores')"
+      status: "$.get('item').get('status')"
+      match_status_summary: |
+        " | ".join([
+          f"Played: {$.get('item').get('clock', {}).get('played')}",
+          f"Score: {$.get('item').get('home_score')} x {$.get('item').get('away_score')}",
+          f"Match Status: {$.get('item').get('match_status')}",
+          f"Match situation: {$.get('item').get('match_situation')}",
+          f"Ball Locations: {$.get('item').get('ball_locations')}",
+          f"Period Scores: {$.get('item').get('period_scores')}",
+          f"Status: {$.get('item').get('status')}",
+        ])
+
+  - type: mapping
+    title: "Soccer - Event Summary Event List"
+    name: "mapping-soccer-event-summary-event-list"
+    description: "Mapping data from sportradar soccer data"
+    outputs:
+      event-list-mapped: |
+        [
+          "; ".join([
+            f"{event.get('start_time_brt')}: {event.get('title')}: {event.get('sport_event_status', {}).get('home_score', '-')} x {event.get('sport_event_status', {}).get('away_score', '-')} ",
+            f"Estadio: {event.get('sport_event', {}).get('venue', {}).get('name')} - {event.get('sport_event', {}).get('venue', {}).get('city_name')}",
+            f"Status: {event.get('sport_event_status', {}).get('status', '').capitalize()} {event.get('sport_event_status', {}).get('match_status', '').capitalize()} {event.get('sport_event_status', {}).get('clock', {}).get('period', '')} {event.get('sport_event_status', {}).get('clock', {}).get('played', '')}",
+            f"{event.get('sport_event', {}).get('competitors', [])[0].get('name')} Players: " if len(event.get('sport_event_lineups', {}).get('competitors', [])) > 1 else '',
+            ", ".join([
+              f"{player.get('name', '').replace(',', '')}"
+              for player in event.get('sport_event_lineups', {}).get('competitors', [])[0].get('players', [])
+              if player.get('starter', False) is True
+            ]) if len(event.get('sport_event_lineups', {}).get('competitors', [])) > 1 else '',
+            f"{event.get('sport_event', {}).get('competitors', [])[1].get('name')} Players: " if len(event.get('sport_event_lineups', {}).get('competitors', [])) > 1 else '',
+            ", ".join([
+              f"{player.get('name', '').replace(',', '')}"
+              for player in event.get('sport_event_lineups', {}).get('competitors', [])[1].get('players', []) 
+              if player.get('starter', False) is True
+            ]) if len(event.get('sport_event_lineups', {}).get('competitors', [])) > 1 else ''
+          ])
+          for event in $.get('_items', [])
+        ]
+        

@@ -37,11 +37,64 @@ setup:
   integrations:
     - sportradar
   status: available
-  value: agent-templates/sportradar-soccer
+  value: connectors/sportradar-soccer
   version: 4.0.0
 
 datasets:
+
   - type: "connector"
     path: "sportradar-soccer.yml"
 
+  # mappings
 
+  - type: "mappings"
+    path: "mappings/event-summary.yml"
+
+  - type: "mappings"
+    path: "mappings/event-statistics.yml"
+
+  - type: "mappings"
+    path: "mappings/last-match.yml"
+  
+  - type: "mappings"
+    path: "mappings/team-summary.yml"
+
+  - type: "mappings"
+    path: "mappings/version-control.yml"
+  
+  # sync workflows
+
+  - type: "workflow"
+    path: "workflows/sync-competitions.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-competitors.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-fixtures-events.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-schedules.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-seasons.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-standings.yml"
+
+  # update workflows
+  
+  - type: "workflow"
+    path: "workflows/update-competition.yml"
+  
+  - type: "workflow"
+    path: "workflows/update-live.yml"
+  
+  - type: "workflow"
+    path: "workflows/update-longterm.yml"
+  
+  - type: "workflow"
+    path: "workflows/update-postlive.yml"
+  
+  - type: "workflow"
+    path: "workflows/update-prelive.yml"
