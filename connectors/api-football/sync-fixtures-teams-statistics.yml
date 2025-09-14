@@ -9,6 +9,8 @@ workflow:
       enabled: true
     api-football:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
     fixture: "$.get('fixture')"
   outputs:
@@ -55,22 +57,33 @@ workflow:
       outputs:
         iptc_teams_statistics: "$.get('iptc_teams_statistics', {})"
 
-    # task-update-fixtures-statistics
+    # task-bulk-save-fixtures-teams-statistics
     - type: "document"
-      name: "task-update-fixtures-statistics"
-      description: "Update the fixtures statistics document with IPTC format."
+      name: "task-bulk-save-fixtures-teams-statistics"
+      description: "Bulk save the individual fixtures teams statistics."
+      condition: "len($.get('fixtures-statistics', [])) > 0"
       config:
-        action: "update"
-        embed-vector: false
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
         force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:TeamParticipation'"
       documents:
-        fixtures-statistics: |
-          {
-            'iptc_data': $.get('iptc_teams_statistics', {}),
-            'original_data': $.get('fixtures-statistics', {}),
-            'title': f"{$.get('original_fixture_id', $.get('fixture'))} - {$.get('fixture-team-home-name')} vs {$.get('fixture-team-away-name')} - IPTC Statistics",
-          }
-      metadata:
-        document_type: "'iptc-statistics'"
-        document_name: "'sport:Event'"
-        event_code: "$.get('iptc_schema_id', $.get('fixture'))"
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'action_code': str(f.get('@id', '')),
+                'document_type': 'sport:IndividualParticipation',
+                'event_code': '$.(iptc_schema_id)',
+                'team_code': f.get('sport:participationBy', {}).get('@id', '')
+              },
+              'title': f.get('rdfs:label', '')
+            }
+            for f in $.get('iptc_teams_statistics', []).get('sport:participation', [])
+          ]

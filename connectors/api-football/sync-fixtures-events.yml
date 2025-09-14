@@ -9,6 +9,8 @@ workflow:
       enabled: true
     api-football:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
     fixture: "$.get('fixture')"
     team: "$.get('team', None)"
@@ -57,24 +59,32 @@ workflow:
       outputs:
         iptc_events: "$.get('iptc_events', [])"
 
-    # task-update-fixtures-events
+    # task-bulk-save-fixtures
     - type: "document"
-      name: "task-update-fixtures-events"
-      description: "Update the fixtures events document."
+      name: "task-bulk-save-fixtures-events"
+      description: "Bulk save the individual fixtures events."
+      condition: "len($.get('fixtures-events', [])) > 0"
       config:
-        action: "update"
-        embed-vector: false
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
         force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Action'"
       documents:
-        fixtures-events: |
-          {
-            'data': {
-              'iptc_events': $.get('iptc_events', []),
-              'events_count': $.get('events-count', 0)
-            },
-            'title': f"Fixture {$.get('original_fixture_id', $.get('fixture'))} - Events ({$.get('events-count', 0)} events)",
-            'summary': f"Match events for fixture {$.get('original_fixture_id', $.get('fixture'))} including goals, cards, substitutions and other key moments in IPTC format"
-          }
-      metadata:
-        document_type: "'fixture-events'"
-        event_code: "$.get('iptc_schema_id', $.get('fixture'))"
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'action_code': str(f.get('@id', '')),
+                'document_type': 'sport:Action',
+                'event_code': '$.(iptc_schema_id)'
+              },
+              'title': f.get('sport:label', '')
+            }
+            for f in $.get('iptc_events', [])
+          ]
