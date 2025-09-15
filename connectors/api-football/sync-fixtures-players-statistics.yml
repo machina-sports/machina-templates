@@ -78,10 +78,9 @@ workflow:
             {
               **f,
               'metadata': {
+                **f.get('metadata', {}),
                 'action_code': str(f.get('@id', '')),
-                'document_type': 'sport:IndividualParticipation',
                 'event_code': '$.(iptc_schema_id)',
-                'player_code': f.get('sport:participationBy', {}).get('@id', '')
               },
               'title': f.get('rdfs:label', '')
             }

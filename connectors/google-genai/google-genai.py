@@ -45,55 +45,99 @@ def invoke_image(request_data):
         return {"status": "error", "message": "API key is required."}
 
     # Get parameters
-    image_path = params.get("image_path")
+    image_paths = params.get("image_paths", [])  # Accept array of image paths
+    image_path = params.get("image_path")  # Keep backward compatibility
+    
+    # Collect individual image_path_N fields and add to array
+    i = 1
+    while True:
+        field_name = f"image_path_{i}"
+        field_value = params.get(field_name)
+        if field_value:
+            image_paths.append(field_value)
+            print(f"📎 Adicionado {field_name}: {field_value}")
+            i += 1
+        else:
+            break
+    
+    # If single image_path is provided, convert to array
+    if image_path and image_path not in image_paths:
+        image_paths.append(image_path)
+    
     prompt = params.get("prompt", "Um gato fofo brincando com uma bola de lã")
     model_name = params.get("model-name", "gemini-2.5-flash-image-preview")
 
     try:
         client = genai.Client(api_key=api_key)
 
-        # Prepare image part if image_path is provided
-        image_part = None
-        if image_path:
-            if image_path.startswith(('http://', 'https://')):
-                # Download image from URL
-                print(f"🌐 Baixando imagem de URL: {image_path}")
-                try:
-                    response = requests.get(image_path)
-                    response.raise_for_status()
-                    image_data = response.content
-                    print(f"📊 Tamanho da imagem baixada: {len(image_data)} bytes")
-                except Exception as e:
-                    print(f"❌ Erro ao baixar imagem: {e}")
-                    image_data = None
-            elif os.path.exists(image_path):
-                # Read local file
-                print(f"📁 Lendo imagem local: {image_path}")
-                with open(image_path, "rb") as image_file:
-                    image_data = image_file.read()
-                print(f"📊 Tamanho da imagem: {len(image_data)} bytes")
-            else:
-                print(f"❌ Imagem não encontrada: {image_path}")
+        # Prepare image parts if image_paths are provided
+        image_parts = []
+        if image_paths:
+            print(f"🖼️ Processando {len(image_paths)} imagens")
+            for i, img_path in enumerate(image_paths):
+                print(f"📷 Processando imagem {i+1}/{len(image_paths)}: {img_path}")
+                
                 image_data = None
-            
-            if image_data:
-                image_part = types.Part(
-                    inline_data=types.Blob(
-                        data=image_data,
-                        mime_type="image/jpeg"
+                if img_path.startswith(('http://', 'https://')):
+                    # Download image from URL
+                    print(f"🌐 Baixando imagem de URL: {img_path}")
+                    try:
+                        response = requests.get(img_path)
+                        response.raise_for_status()
+                        image_data = response.content
+                        print(f"📊 Tamanho da imagem baixada: {len(image_data)} bytes")
+                    except Exception as e:
+                        print(f"❌ Erro ao baixar imagem {i+1}: {e}")
+                        continue
+                elif os.path.exists(img_path):
+                    # Read local file
+                    print(f"📁 Lendo imagem local: {img_path}")
+                    try:
+                        with open(img_path, "rb") as image_file:
+                            image_data = image_file.read()
+                        print(f"📊 Tamanho da imagem: {len(image_data)} bytes")
+                    except Exception as e:
+                        print(f"❌ Erro ao ler imagem {i+1}: {e}")
+                        continue
+                else:
+                    print(f"❌ Imagem não encontrada: {img_path}")
+                    continue
+                
+                if image_data:
+                    # Detect MIME type based on file extension or content
+                    mime_type = "image/jpeg"  # default
+                    if img_path.lower().endswith('.png'):
+                        mime_type = "image/png"
+                    elif img_path.lower().endswith('.gif'):
+                        mime_type = "image/gif"
+                    elif img_path.lower().endswith('.webp'):
+                        mime_type = "image/webp"
+                    
+                    image_part = types.Part(
+                        inline_data=types.Blob(
+                            data=image_data,
+                            mime_type=mime_type
+                        )
                     )
-                )
-                print("✅ Imagem preparada com sucesso")
+                    image_parts.append(image_part)
+                    print(f"✅ Imagem {i+1} preparada com sucesso ({mime_type})")
+            
+            print(f"✅ Total de {len(image_parts)} imagens preparadas com sucesso")
 
         # Decide contents based on available inputs
-        if image_part is not None or prompt is not None:
+        if image_parts or prompt is not None:
             parts = []
-            if image_part is not None:
-                parts.append(image_part)
-                print("🖼️ Adicionando imagem aos parts")
+            
+            # Add all image parts
+            if image_parts:
+                parts.extend(image_parts)
+                print(f"🖼️ Adicionando {len(image_parts)} imagens aos parts")
+            
+            # Add text prompt
             if prompt is not None:
                 parts.append(types.Part(text=prompt))
                 print("📝 Adicionando prompt aos parts")
+            
             contents = [types.Content(role="user", parts=parts)]
             print(f"📦 Contents preparado com {len(parts)} parts")
         else:
@@ -102,8 +146,8 @@ def invoke_image(request_data):
             print("⚠️ Usando prompt padrão")
 
         print(f"Gerando imagem com prompt: {prompt}")
-        if image_part:
-            print("✅ Usando imagem de entrada junto com o prompt")
+        if image_parts:
+            print(f"✅ Usando {len(image_parts)} imagens de entrada junto com o prompt")
 
         response = client.models.generate_content(model=model_name, contents=contents)
 
@@ -132,8 +176,10 @@ def invoke_image(request_data):
                                     "image_format": "JPEG",
                                     "prompt": prompt,
                                     "model": model_name,
+                                    "input_images_count": len(image_parts),
+                                    "input_image_paths": image_paths if image_paths else [],
                                 },
-                                "message": "Image generated successfully.",
+                                "message": f"Image generated successfully using {len(image_parts)} input images.",
                             }
             else:
                 return {"status": "error", "message": "No image was generated"}

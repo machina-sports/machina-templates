@@ -1,7 +1,7 @@
 workflow:
   name: "google-genai-test-image"
   title: "Google Gemini Test Image"
-  description: "Workflow to test the Google Gemini image processing."
+  description: "Workflow to test the Google Gemini image processing. Supports: single image (image_path), array of images (image_paths), or individual fields (image_path_1, image_path_2, etc.)."
   context-variables:
     debugger:
       enabled: true
@@ -13,7 +13,13 @@ workflow:
   inputs:
     model_name: "$.get('model_name', 'gemini-2.5-flash-image-preview')"
     prompt: "$.get('prompt')"
-    image_path: "$.get('image_path')"
+    image_path: "$.get('image_path')"  # For backward compatibility
+    image_paths: "$.get('image_paths', [])"  # Array of image paths
+    image_path_1: "$.get('image_path_1')"  # Individual image fields
+    image_path_2: "$.get('image_path_2')"
+    image_path_3: "$.get('image_path_3')"
+    image_path_4: "$.get('image_path_4')"
+    image_path_5: "$.get('image_path_5')"
   outputs:
     workflow-status: "$.get('workflow-status', 'skipped')"
   tasks:
@@ -28,7 +34,13 @@ workflow:
       inputs:
         model_name: "$.get('model_name')"
         prompt: "$.get('prompt')"
-        image_path: "$.get('image_path')"
+        image_path: "$.get('image_path')"  # For backward compatibility
+        image_paths: "$.get('image_paths')"  # Array of image paths
+        image_path_1: "$.get('image_path_1')"  # Individual image fields
+        image_path_2: "$.get('image_path_2')"
+        image_path_3: "$.get('image_path_3')"
+        image_path_4: "$.get('image_path_4')"
+        image_path_5: "$.get('image_path_5')"
       outputs:
         data: "$"
         image_path: "$.get('image_path')"
