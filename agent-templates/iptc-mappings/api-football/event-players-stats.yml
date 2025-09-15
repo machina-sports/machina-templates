@@ -9,6 +9,12 @@ mappings:
       iptc_players_statistics: |
         [
           {
+            "metadata": {
+              "document_type": "sport:IndividualParticipation",
+              "event_code": f"urn:apifootball:fixture:{$.get('fixture', '')}",
+              "player_code": f"urn:apifootball:player:{player.get('player', {}).get('id', '')}",
+              "team_code": f"urn:apifootball:team:{team_data.get('team', {}).get('id', '')}"
+            },
             "@context": {
               "sport": "https://sportschema.org/ontologies/main/",
               "spsocstat": "https://sportschema.org/ontologies/soccer/",
@@ -23,7 +29,9 @@ mappings:
               "rdfs:label": player.get('player', {}).get('name', ''),
               "sport:position": player.get('statistics', [{}])[0].get('games', {}).get('position', player.get('player', {}).get('pos', '')),
               "sport:jerseyNumber": str(player.get('statistics', [{}])[0].get('games', {}).get('number', player.get('player', {}).get('number', ''))),
-              "schema:image": player.get('player', {}).get('photo', '')
+              "schema:image": player.get('player', {}).get('photo', ''),
+              "schema:teamName": team_data.get('team', {}).get('name', ''),
+              "schema:teamLogo": team_data.get('team', {}).get('logo', '')
             },
             "sport:playerStatus": f"http://cv.iptc.org/newscodes/spplayerstatus/{'starter' if not player.get('statistics', [{}])[0].get('games', {}).get('substitute', True) else 'bench'}",
             "sport:captain": player.get('statistics', [{}])[0].get('games', {}).get('captain', False),
