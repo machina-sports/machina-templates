@@ -16,3 +16,6 @@ setup:
 datasets:
   - type: connector
     path: elevenlabs.yml
+
+  - type: workflow
+    path: workflow_test.yml
