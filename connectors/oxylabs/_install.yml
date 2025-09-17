@@ -16,7 +16,7 @@ setup:
     - Get the title of the web page
 
   integrations:
-    - oxylabs
+    - web-scraping
   status: available
   value: connectors/oxylabs
   version: 1.0.0
@@ -24,6 +24,9 @@ setup:
 datasets:
   - type: "connector"
     path: "web-scraping.yml"
+
+  - type: "workflow"
+    path: "searching.yml"
 
   - type: "workflow"
     path: "scraping.yml"
@@ -34,5 +37,15 @@ datasets:
   - type: "mappings"
     path: "mapping.yml"
 
-  - type: "prompts"
-    path: "prompts.yml"
+  # consumer
+  - type: "workflow"
+    path: "consumer/searching.yml"
+
+  - type: "workflow"
+    path: "consumer/scraping.yml"
+
+  - type: "workflow"
+    path: "consumer/update.yml"
+
+  - type: "agent"
+    path: "consumer/agent.yml"
