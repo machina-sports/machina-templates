@@ -1,7 +1,7 @@
 from google.cloud import storage
 
 import json
-
+import mimetypes
 import tempfile
 
 # BUCKET = "machina-templates-bucket-default"
@@ -50,8 +50,14 @@ def invoke_upload(request_data):
 
         blob = bucket.blob(remote)
 
+        # Detect content type based on file extension
+        content_type, _ = mimetypes.guess_type(image_path)
+        if not content_type:
+            # Default to image/png if unable to detect
+            content_type = "image/png"
+
         with open(image_path, "rb") as f:
-            blob.upload_from_file(f, content_type="image/png")
+            blob.upload_from_file(f, content_type=content_type)
 
         blob.reload()
 
