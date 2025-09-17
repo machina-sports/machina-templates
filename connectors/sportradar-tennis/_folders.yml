@@ -1,0 +1,70 @@
+workflow:
+  name: "sportradar-tennis-folders"
+  title: "Setup Tennis Folders"
+  description: "Setup Folders"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # documents-structure
+    - type: "document"
+      name: "install-documents"
+      description: "Install documents."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        site-structure: |
+          [
+            {
+              "title": "API Docs",
+              "url": "https://docs.machina.gg/api-reference/introduction",
+              "icon": "globe"
+            },
+            {
+              "title": "TENNIS Docs",
+              "url": "https://developer.sportradar.com/tennis/reference/overview",
+              "icon": "globe"
+            }
+          ]
+        doc-structure: |
+          [
+            {
+              "title": "Catalogue",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "tennis-competition",
+                  "title": "Competitions",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-competition"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "tennis-competition-info",
+                  "title": "Competition Info",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-competition-info"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "tennis-season",
+                  "title": "Seasons",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-season"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]

@@ -7,28 +7,9 @@ workflow:
       x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   outputs:
     competitions: "$.get('competitions')"
-    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+    workflow-status: "$.get('competitions') is not None and 'executed' or 'skipped'"
   tasks:
-    # task-check-document-timedelta
-    - type: "document"
-      name: "task-check-document-timedelta"
-      description: "Check if the tennis competitions document has expired."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "openai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      filters:
-        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
-        value.status: "'active'"
-      inputs:
-        name: "'tennis-competitions'"
-      outputs:
-        documents: "$.get('documents')"
-        should_update: "len($.get('documents')) == 0"
+   
 
     # task-load-competitions
     - type: "connector"
@@ -37,39 +18,11 @@ workflow:
       connector:
         name: "sportradar-tennis"
         command: "get-en/competitions.json"
-      condition: "$.get('should_update') == True"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: "$.get('x-api-key')"
       outputs:
         competitions_response: "$"
         competitions: "$.get('competitions', [])"
-
-    # task-update-competitions
-    - type: "document"
-      name: "task-update-competitions"
-      description: "Update the tennis competitions document."
-      config:
-        action: "update"
-        embed-vector: false
-        force-update: true
-      condition: "$.get('should_update') == True"
-      connector:
-        name: "openai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      documents:
-        tennis-competitions: |
-          {
-            'data': $.get('competitions'),
-            'title': 'All Tennis Competitions',
-            'execution': datetime.utcnow(),
-            'status': 'active',
-            'generated_at': $.get('competitions_response', {}).get('generated_at'),
-            'total_competitions': len($.get('competitions', []))
-          }
-      metadata:
-        document_type: "'synchronization'"
-        sport: "'tennis'"
 
     # task-bulk-save-competitions
     - type: "document"
