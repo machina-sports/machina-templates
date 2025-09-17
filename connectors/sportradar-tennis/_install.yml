@@ -1,0 +1,46 @@
+setup:
+  title: Sportradar Tennis v3
+  description: Connect to the SportRadar Tennis API to get live and historical tennis data.
+  category:
+    - data-acquisition
+    - tennis
+  estimatedTime: 1 minute
+  features:
+    - Real-time tennis match updates
+    - Comprehensive database of tennis statistics
+    - Data collected via Sportradar on-venue scouts and in-house operators
+    - Coverage of ATP, WTA, Challenger, and other major tennis tournaments
+    - Consistent structure, format and behavior with other Sportradar Sport APIs
+    - Primary feeds return competitions, tournaments, player data and real-time scores
+    - Additional feeds provide complementary stats, including
+      - Live match scores and statistics
+      - Player rankings and profiles
+      - Head-to-head statistics
+      - Tournament draws and schedules
+      - Match results and statistics
+      - Player performance metrics
+    - Support for singles, doubles, and mixed competitions
+    - Coverage of men's, women's, and mixed gender categories
+    - Tournament hierarchy with parent-child relationships
+    - Competition levels (ATP 250, WTA Championships, etc.)
+
+  integrations:
+    - sportradar
+  status: available
+  value: connectors/sportradar-tennis
+  version: 3.0.0
+
+datasets:
+
+  - type: "connector"
+    path: "sportradar-tennis.yml"
+
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/competition.yml"
+  
+  # sync workflows
+
+  - type: "workflow"
+    path: "workflows/sync-competitions.yml"
