@@ -1,7 +1,7 @@
 mappings:
 
   - type: "mapping"
-    title: "Soccer - Event Summary Mapping"
+    title: "Sportradar Soccer - Event Summary Mapping"
     name: "mapping-soccer-event-summary"
     description: "Mapping data from sportradar soccer data"
     outputs:
@@ -57,7 +57,7 @@ mappings:
         ]
 
   - type: "mapping"
-    title: "Soccer - Event Summary Status"
+    title: "Sportradar Soccer - Event Summary Status"
     name: "mapping-soccer-event-summary-status"
     description: "Mapping data from sportradar soccer data"
     outputs:
@@ -81,7 +81,7 @@ mappings:
         ])
 
   - type: mapping
-    title: "Soccer - Event Summary Event List"
+    title: "Sportradar Soccer - Event Summary Event List"
     name: "mapping-soccer-event-summary-event-list"
     description: "Mapping data from sportradar soccer data"
     outputs:

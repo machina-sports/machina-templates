@@ -13,14 +13,35 @@ setup:
     - In-depth subjective statistics
     - All game data feeds update in real-time as games are played
     - All NFL games - including preseason - feature full play-by-play coverage
+    - Daily transactions tracking for player movements and status changes
+    - Weekly injury reports and practice status updates
   integrations:
     - sportradar
   status: available
-  value: sportradar-nfl
+  value: connectors/sportradar-nfl
   version: 7.0.0
 
 datasets:
   - type: "connector"
     path: "sportradar-nfl.yml"
 
+  - type: "workflow"
+    path: "sync-games.yml"
 
+  - type: "workflow"
+    path: "sync-teams.yml"
+
+  - type: "workflow"
+    path: "sync-players.yml"
+
+  - type: "workflow"
+    path: "sync-profile.yml"
+
+  - type: "workflow"
+    path: "sync-transactions.yml"
+
+  - type: "workflow"
+    path: "sync-injuries.yml"
+
+  - type: "workflow"
+    path: "sync-weekly.yml"

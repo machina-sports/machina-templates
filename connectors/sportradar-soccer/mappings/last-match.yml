@@ -2,7 +2,7 @@ mappings:
 
   # mapping-soccer-last-match
   - type: "mapping"
-    title: "Soccer - Last Match Mapping"
+    title: "Sportradar Soccer - Last Match Mapping"
     name: "mapping-soccer-last-match"
     description: "Mapping data from last match"
     outputs:

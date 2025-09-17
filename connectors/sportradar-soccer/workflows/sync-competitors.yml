@@ -1,6 +1,6 @@
 workflow:
   name: "sportradar-soccer-sync-competitors"
-  title: "Soccer - Competitors"
+  title: "Sportradar Soccer - Competitors"
   description: "Workflow to synchronize a season competitors from SportRadar API to Machina."
   context-variables:
     sportradar-soccer:

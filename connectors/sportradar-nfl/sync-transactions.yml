@@ -1,0 +1,106 @@
+workflow:
+  name: "sportradar-nfl-sync-transactions"
+  title: "Sportradar NFL Sync Transactions"
+  description: "Workflow to sync NFL daily transactions."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    year: "$.get('year', datetime.now().strftime('%Y'))"
+    month: "$.get('month', datetime.now().strftime('%m'))"
+    day: "$.get('day', datetime.now().strftime('%d'))"
+  outputs:
+    workflow-status: "len($.get('all_transactions_ids', [])) > len($.get('existing_transactions_ids', [])) and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-transactions
+    - type: "connector"
+      name: "task-load-transactions"
+      description: "Get daily transactions from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-league/{year}/{month}/{day}/{data_type}"
+        command_attribute:
+          year: "$.get('year')"
+          month: "$.get('month')"
+          day: "$.get('day')"
+          data_type: "'transactions.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        all_transactions_ids: |
+          [f"urn:sportradar:transaction:{transaction.get('id', '')}" for player in $.get('players', []) for transaction in player.get('transactions', [])]
+        transactions: "$"
+        new_transactions_list: |
+          [
+            {
+              'id': f"urn:sportradar:transaction:{transaction.get('id', '')}",
+              'metadata': {
+                'player_id': player.get('id', ''),
+                'transaction_id': transaction.get('id', ''),
+                'transaction_date': transaction.get('effective_date', '') if transaction.get('effective_date') else None
+              },
+              'player': {
+                'id': player.get('id', ''),
+                'name': player.get('name', ''),
+                'position': player.get('position', ''),
+                'sr_id': player.get('sr_id', '')
+              },
+              'title': transaction.get('desc', '') if transaction.get('desc') else f"{player.get('name', '')} - {transaction.get('transaction_type', 'Unknown Transaction')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              },
+              'transaction': transaction,
+              'effective_date': datetime.strptime(transaction.get('effective_date', ''), '%Y-%m-%d') if transaction.get('effective_date') else None,
+              'transaction_type': transaction.get('transaction_type', ''),
+              'from_team': transaction.get('from_team', {}),
+              'to_team': transaction.get('to_team', {})
+            }
+            for player in $.get('players', [])
+            for transaction in player.get('transactions', [])
+          ]
+
+    # load-transactions-by-ids
+    - type: document
+      name: load-transactions-by-ids
+      condition: "$.get('all_transactions_ids') is not None"
+      description: "Load transactions by IDs."
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        value.id: |
+          {'$in': $.(all_transactions_ids)}
+      inputs:
+        name: "'nfl-transaction'"
+      outputs:
+        existing_transactions_ids: |
+          [
+            transaction.get('value', {}).get('id', '')
+            for transaction in $.get('documents', [])
+          ]
+
+    # bulk-save-transactions
+    - type: document
+      name: bulk-save-transactions
+      condition: "$.get('all_transactions_ids') is not None and len($.get('all_transactions_ids', [])) > len($.get('existing_transactions_ids', []))"
+      description: "Bulk save individual player transactions."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'nfl-transaction'"
+      documents:
+        items: "$.get('final_transactions_list')"
+      inputs:
+        final_transactions_list: |
+          [
+            transaction for transaction in $.get('new_transactions_list', [])
+            if transaction.get('id', '') not in $.(existing_transactions_ids)
+          ]

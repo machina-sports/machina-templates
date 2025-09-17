@@ -2,7 +2,7 @@ mappings:
 
   # mapping-soccer-last-match
   - type: "mapping"
-    title: "Soccer - Version Control Mapping"
+    title: "Sportradar Soccer - Version Control Mapping"
     name: "mapping-soccer-version-control"
     description: "Mapping data from version control"
     outputs:

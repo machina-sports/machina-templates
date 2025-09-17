@@ -2,7 +2,7 @@ workflow:
 
   # sportradar-soccer-update-competition
   name: "sportradar-soccer-update-competition"
-  title: "Soccer - Update Competition"
+  title: "Sportradar Soccer - Update Competition"
   description: "Workflow to update a soccer competition from SportRadar API by event code."
   context-variables:
     debugger:

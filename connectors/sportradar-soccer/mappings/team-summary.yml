@@ -1,7 +1,7 @@
 mappings:
 
   - type: "mapping"
-    title: "Soccer - Team Summary Mapping"
+    title: "Sportradar Soccer - Team Summary Mapping"
     name: "mapping-soccer-team-summary"
     description: "Mapping data from sportradar soccer data"
     outputs:

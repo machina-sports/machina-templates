@@ -1,7 +1,7 @@
 mappings:
 
   - type: "mapping"
-    title: "Soccer - Event Summary Statistics"
+    title: "Sportradar Soccer - Event Summary Statistics"
     name: "mapping-soccer-event-summary-statistics"
     description: "Mapping data from sportradar soccer data"
     outputs:
@@ -11,7 +11,7 @@ mappings:
       home_players_stats: "$.get('item').get('totals').get('competitors', {})[1].get('players')"
 
   - type: "mapping"
-    title: "Soccer - Player Statistics Mapping"
+    title: "Sportradar Soccer - Player Statistics Mapping"
     name: "mapping-soccer-player-stats"
     description: "Mapping data from sportradar soccer data"
     outputs:
@@ -25,7 +25,7 @@ mappings:
         ]
 
   - type: mapping
-    title: "Soccer - Event Statistics Mapping"
+    title: "Sportradar Soccer - Event Statistics Mapping"
     name: "mapping-soccer-event-statistics"
     outputs:
       game-stats-mapped: |

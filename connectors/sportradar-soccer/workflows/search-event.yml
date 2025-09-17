@@ -1,6 +1,6 @@
 workflow:
   name: "sportradar-soccer-search-event"
-  title: "Soccer - Search"
+  title: "Sportradar Soccer - Search"
   description: "Workflow to search a event from SportRadar API."
   context-variables:
     debugger:

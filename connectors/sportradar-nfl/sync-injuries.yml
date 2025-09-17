@@ -1,0 +1,129 @@
+workflow:
+  name: "sportradar-nfl-sync-injuries"
+  title: "Sportradar NFL Sync Injuries"
+  description: "Workflow to sync NFL weekly injuries."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', datetime.now().strftime('%Y'))"
+    season_type: "$.get('season_type', 'REG')"
+    nfl_season_week: "$.get('nfl_season_week', '1')"
+  outputs:
+    workflow-status: "len($.get('all_injuries_ids', [])) > len($.get('existing_injuries_ids', [])) and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-injuries
+    - type: connector
+      name: task-load-injuries
+      description: "Get weekly injuries from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-seasons/{season_year}/{season_type}/{nfl_season_week}/injuries.json"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          nfl_season_week: "$.get('nfl_season_week')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        all_injuries_ids: |
+          [f"urn:sportradar:injury:week-{$.get('week', {}).get('sequence', '')}:{player.get('id', '')}" for team in $.get('teams', []) for player in team.get('players', []) if player.get('injuries', [])]
+        injuries: "$"
+        new_injuries_list: |
+          [
+            {
+              'id': f"urn:sportradar:injury:week-{$.get('week', {}).get('sequence', '')}:{player.get('id', '')}",
+              'metadata': {
+                'player_id': player.get('id', ''),
+                'season_year': $.get('season', {}).get('year', ''),
+                'team_id': team.get('id', ''),
+                'week_sequence': $.get('week', {}).get('sequence', '')
+              },
+              'player': {
+                'id': player.get('id', ''),
+                'name': player.get('name', ''),
+                'jersey': player.get('jersey', ''),
+                'position': player.get('position', ''),
+                'sr_id': player.get('sr_id', '')
+              },
+              'team': {
+                'id': team.get('id', ''),
+                'name': team.get('name', ''),
+                'market': team.get('market', ''),
+                'alias': team.get('alias', ''),
+                'sr_id': team.get('sr_id', '')
+              },
+              'season': {
+                'id': $.get('season', {}).get('id', ''),
+                'year': $.get('season', {}).get('year', ''),
+                'type': $.get('season', {}).get('type', ''),
+                'name': $.get('season', {}).get('name', '')
+              },
+              'week': {
+                'id': $.get('week', {}).get('id', ''),
+                'sequence': $.get('week', {}).get('sequence', ''),
+                'title': $.get('week', {}).get('title', '')
+              },
+              'injuries': [
+                {
+                  'status_date': datetime.strptime(injury.get('status_date', '').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ') if injury.get('status_date') else None,
+                  'practice_status': injury.get('practice', {}).get('status', ''),
+                  'primary': injury.get('primary', '')
+                }
+                for injury in player.get('injuries', [])
+              ],
+              'title': f"{player.get('name', '')} - {', '.join([injury.get('primary', '') for injury in player.get('injuries', [])])} - Week {$.get('week', {}).get('sequence', '')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for team in $.get('teams', [])
+            for player in team.get('players', [])
+            if player.get('injuries', [])
+          ]
+
+    # load-injuries-by-ids
+    - type: document
+      name: load-injuries-by-ids
+      condition: "$.get('all_injuries_ids') is not None"
+      description: "Load injuries by IDs."
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        value.id: |
+          {'$in': $.(all_injuries_ids)}
+      inputs:
+        name: "'nfl-injury'"
+      outputs:
+        existing_injuries_ids: |
+          [
+            injury.get('value', {}).get('id', '')
+            for injury in $.get('documents', [])
+          ]
+
+    # bulk-save-individual-injuries
+    - type: document
+      name: bulk-save-individual-injuries
+      condition: "$.get('all_injuries_ids') is not None and len($.get('all_injuries_ids', [])) > len($.get('existing_injuries_ids', []))"
+      description: "Bulk save individual player injuries."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'nfl-injury'"
+      documents:
+        items: "$.get('final_injuries_list')"
+      inputs:
+        final_injuries_list: |
+          [
+            injury for injury in $.get('new_injuries_list', [])
+            if injury.get('id', '') not in $.(existing_injuries_ids)
+          ]

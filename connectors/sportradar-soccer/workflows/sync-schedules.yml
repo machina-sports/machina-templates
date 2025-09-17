@@ -1,6 +1,6 @@
 workflow:
   name: "sportradar-soccer-sync-schedules"
-  title: "Soccer - Schedules"
+  title: "Sportradar Soccer - Schedules"
   description: "Workflow to synchronize a season schedules from SportRadar API to Machina."
   context-variables:
     debugger:
