@@ -430,6 +430,45 @@
           }
         },
         "required": ["generated_at", "competitor"]
+      },
+      "SeasonCompetitor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the competitor"
+          },
+          "name": {
+            "type": "string",
+            "description": "Full name of the competitor"
+          },
+          "short_name": {
+            "type": "string",
+            "description": "Short name of the competitor"
+          },
+          "abbreviation": {
+            "type": "string",
+            "description": "Three-letter abbreviation of the competitor"
+          }
+        },
+        "required": ["id", "name", "abbreviation"]
+      },
+      "SeasonCompetitorsResponse": {
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the data was generated"
+          },
+          "season_competitors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeasonCompetitor"
+            }
+          }
+        },
+        "required": ["generated_at", "season_competitors"]
       }
     }
   },
@@ -794,6 +833,91 @@
           }
         },
         "tags": ["Competitors"]
+      }
+    },
+    "/en/seasons/{season_id}/competitors.json": {
+      "get": {
+        "summary": "Get Season Competitors",
+        "description": "Retrieve all competitors participating in a specific tennis season",
+        "operationId": "getSeasonCompetitors",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the season (e.g., sr:season:107797)"
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeasonCompetitorsResponse"
+                },
+                "example": {
+                  "generated_at": "2025-09-17T22:15:40+00:00",
+                  "season_competitors": [
+                    {
+                      "id": "sr:competitor:14414",
+                      "name": "Gasquet, Richard",
+                      "short_name": "Gasquet, Richard",
+                      "abbreviation": "GAS"
+                    },
+                    {
+                      "id": "sr:competitor:14548",
+                      "name": "Wawrinka, Stan",
+                      "short_name": "Wawrinka, Stan",
+                      "abbreviation": "WAW"
+                    },
+                    {
+                      "id": "sr:competitor:14844",
+                      "name": "Monfils, Gael",
+                      "short_name": "Monfils, Gael",
+                      "abbreviation": "MON"
+                    },
+                    {
+                      "id": "sr:competitor:14882",
+                      "name": "Djokovic, Novak",
+                      "short_name": "Djokovic, Novak",
+                      "abbreviation": "DJO"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Season not found"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": ["Seasons"]
       }
     }
   },

@@ -74,6 +74,16 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "tennis-season-competitors",
+                  "title": "Season Competitors",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-season-competitors"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             }
