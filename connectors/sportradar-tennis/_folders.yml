@@ -64,6 +64,16 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "tennis-competitor-profile",
+                  "title": "Competitor profile",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-competitor-profile"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             }

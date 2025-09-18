@@ -203,6 +203,233 @@
           }
         },
         "required": ["generated_at", "seasons"]
+      },
+      "Competitor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the competitor"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the competitor"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country of the competitor"
+          },
+          "abbreviation": {
+            "type": "string",
+            "description": "Abbreviation of the competitor name"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["male", "female"],
+            "description": "Gender of the competitor"
+          }
+        },
+        "required": ["id", "name", "country", "gender"]
+      },
+      "CompetitorInfo": {
+        "type": "object",
+        "properties": {
+          "pro_year": {
+            "type": "integer",
+            "description": "Year the competitor turned professional"
+          },
+          "handedness": {
+            "type": "string",
+            "enum": ["left", "right"],
+            "description": "Handedness of the competitor"
+          },
+          "highest_singles_ranking": {
+            "type": "integer",
+            "description": "Highest singles ranking achieved"
+          },
+          "highest_doubles_ranking": {
+            "type": "integer",
+            "description": "Highest doubles ranking achieved"
+          },
+          "weight": {
+            "type": "integer",
+            "description": "Weight of the competitor in kg"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Height of the competitor in cm"
+          },
+          "date_of_birth": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of birth of the competitor"
+          },
+          "highest_singles_ranking_date": {
+            "type": "string",
+            "description": "Date when highest singles ranking was achieved"
+          },
+          "highest_doubles_ranking_date": {
+            "type": "string",
+            "description": "Date when highest doubles ranking was achieved"
+          }
+        }
+      },
+      "CompetitorRanking": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "description": "Current ranking position"
+          },
+          "movement": {
+            "type": "integer",
+            "description": "Movement in ranking since last update"
+          },
+          "points": {
+            "type": "integer",
+            "description": "Ranking points"
+          },
+          "competitor_id": {
+            "type": "string",
+            "description": "Competitor identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the ranking system (e.g., WTA, ATP)"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["singles", "doubles"],
+            "description": "Type of ranking"
+          },
+          "race_ranking": {
+            "type": "boolean",
+            "description": "Whether this is a race ranking"
+          }
+        },
+        "required": ["rank", "points", "competitor_id", "name", "type"]
+      },
+      "SurfaceStatistics": {
+        "type": "object",
+        "properties": {
+          "competitions_played": {
+            "type": "integer",
+            "description": "Number of competitions played"
+          },
+          "competitions_won": {
+            "type": "integer",
+            "description": "Number of competitions won"
+          },
+          "matches_played": {
+            "type": "integer",
+            "description": "Number of matches played"
+          },
+          "matches_won": {
+            "type": "integer",
+            "description": "Number of matches won"
+          }
+        },
+        "required": ["competitions_played", "competitions_won", "matches_played", "matches_won"]
+      },
+      "Surface": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["hardcourt_outdoor", "hardcourt_indoor", "grass", "red_clay", "red_clay_indoor", "unknown"],
+            "description": "Type of surface"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/SurfaceStatistics"
+          }
+        },
+        "required": ["type", "statistics"]
+      },
+      "PeriodStatistics": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "description": "Year of the statistics"
+          },
+          "surfaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Surface"
+            }
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/SurfaceStatistics"
+          }
+        },
+        "required": ["year", "surfaces", "statistics"]
+      },
+      "CompetitionPlayed": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Competition identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Competition name"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "Parent competition identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["singles", "doubles", "mixed"],
+            "description": "Competition type"
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["men", "women", "mixed"],
+            "description": "Competition gender"
+          },
+          "level": {
+            "type": "string",
+            "description": "Competition level"
+          }
+        },
+        "required": ["id", "name", "type", "gender"]
+      },
+      "CompetitorProfileResponse": {
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the data was generated"
+          },
+          "competitor": {
+            "$ref": "#/components/schemas/Competitor"
+          },
+          "info": {
+            "$ref": "#/components/schemas/CompetitorInfo"
+          },
+          "competitor_rankings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitorRanking"
+            }
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodStatistics"
+            }
+          },
+          "competitions_played": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompetitionPlayed"
+            }
+          }
+        },
+        "required": ["generated_at", "competitor"]
       }
     }
   },
@@ -448,6 +675,126 @@
         },
         "tags": ["Seasons"]
       }
+    },
+    "/en/competitors/{competitor_id}/profile.json": {
+      "get": {
+        "summary": "Get Competitor Profile",
+        "description": "Retrieve detailed profile information for a specific tennis competitor including rankings, statistics, and career information",
+        "operationId": "getCompetitorProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "competitor_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the competitor (e.g., sr:competitor:157754)"
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitorProfileResponse"
+                },
+                "example": {
+                  "generated_at": "2025-09-17T06:38:10+00:00",
+                  "competitor": {
+                    "id": "sr:competitor:157754",
+                    "name": "Sabalenka, Aryna",
+                    "country": "Neutral",
+                    "abbreviation": "SAB",
+                    "gender": "female"
+                  },
+                  "info": {
+                    "pro_year": 2015,
+                    "handedness": "right",
+                    "highest_singles_ranking": 1,
+                    "highest_doubles_ranking": 1,
+                    "weight": 80,
+                    "height": 182,
+                    "date_of_birth": "1998-05-05",
+                    "highest_singles_ranking_date": "09.2023",
+                    "highest_doubles_ranking_date": "02.2021"
+                  },
+                  "competitor_rankings": [
+                    {
+                      "rank": 1,
+                      "movement": 0,
+                      "points": 11225,
+                      "competitor_id": "sr:competitor:157754",
+                      "name": "WTA",
+                      "type": "singles",
+                      "race_ranking": false
+                    }
+                  ],
+                  "periods": [
+                    {
+                      "year": 2025,
+                      "surfaces": [
+                        {
+                          "type": "hardcourt_outdoor",
+                          "statistics": {
+                            "competitions_played": 8,
+                            "competitions_won": 3,
+                            "matches_played": 35,
+                            "matches_won": 30
+                          }
+                        }
+                      ],
+                      "statistics": {
+                        "competitions_played": 14,
+                        "competitions_won": 4,
+                        "matches_played": 64,
+                        "matches_won": 54
+                      }
+                    }
+                  ],
+                  "competitions_played": [
+                    {
+                      "id": "sr:competition:2559",
+                      "name": "Wimbledon Women Singles",
+                      "parent_id": "sr:competition:2553",
+                      "type": "singles",
+                      "gender": "women",
+                      "level": "grand_slam"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Competitor not found"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": ["Competitors"]
+      }
     }
   },
   "tags": [
@@ -458,6 +805,10 @@
     {
       "name": "Seasons",
       "description": "Tennis seasons and tournament editions"
+    },
+    {
+      "name": "Competitors",
+      "description": "Tennis players and their profiles"
     }
   ]
 }
