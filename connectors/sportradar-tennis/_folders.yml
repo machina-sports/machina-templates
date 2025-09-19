@@ -94,6 +94,16 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "tennis-match-summary",
+                  "title": "Season Summaries",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-match-summary"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             }

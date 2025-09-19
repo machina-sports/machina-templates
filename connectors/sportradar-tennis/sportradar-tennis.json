@@ -671,6 +671,195 @@
           }
         },
         "required": ["generated_at", "season"]
+      },
+      "SportEventContext": {
+        "type": "object",
+        "properties": {
+          "sport": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"}
+            }
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "competition": {
+            "$ref": "#/components/schemas/Competition"
+          },
+          "season": {
+            "$ref": "#/components/schemas/Season"
+          },
+          "stage": {
+            "type": "object",
+            "properties": {
+              "order": {"type": "integer"},
+              "type": {"type": "string"},
+              "phase": {"type": "string"},
+              "start_date": {"type": "string", "format": "date"},
+              "end_date": {"type": "string", "format": "date"},
+              "year": {"type": "string"}
+            }
+          },
+          "round": {
+            "type": "object",
+            "properties": {
+              "number": {"type": "integer"},
+              "name": {"type": "string"}
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "name": {"type": "string"}
+              }
+            }
+          },
+          "mode": {
+            "type": "object",
+            "properties": {
+              "best_of": {"type": "integer"}
+            }
+          }
+        }
+      },
+      "SportEventCoverage": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "sport_event_properties": {
+            "type": "object",
+            "properties": {
+              "enhanced_stats": {"type": "boolean"},
+              "detailed_serve_outcomes": {"type": "boolean"},
+              "play_by_play": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "SportEventCompetitor": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "country": {"type": "string"},
+          "country_code": {"type": "string"},
+          "abbreviation": {"type": "string"},
+          "qualifier": {"type": "string", "enum": ["home", "away"]},
+          "seed": {"type": "integer"},
+          "bracket_number": {"type": "integer"}
+        },
+        "required": ["id", "name", "country", "abbreviation", "qualifier"]
+      },
+      "Venue": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "city_name": {"type": "string"},
+          "country_name": {"type": "string"},
+          "country_code": {"type": "string"},
+          "timezone": {"type": "string"}
+        }
+      },
+      "Channel": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"}
+        }
+      },
+      "SportEvent": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "start_time": {"type": "string", "format": "date-time"},
+          "start_time_confirmed": {"type": "boolean"},
+          "sport_event_context": {
+            "$ref": "#/components/schemas/SportEventContext"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/SportEventCoverage"
+          },
+          "competitors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SportEventCompetitor"
+            }
+          },
+          "venue": {
+            "$ref": "#/components/schemas/Venue"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            }
+          },
+          "estimated": {"type": "boolean"}
+        },
+        "required": ["id", "start_time", "sport_event_context", "competitors"]
+      },
+      "PeriodScore": {
+        "type": "object",
+        "properties": {
+          "home_score": {"type": "integer"},
+          "away_score": {"type": "integer"},
+          "type": {"type": "string"},
+          "number": {"type": "integer"},
+          "home_tiebreak_score": {"type": "integer"},
+          "away_tiebreak_score": {"type": "integer"}
+        },
+        "required": ["home_score", "away_score", "type", "number"]
+      },
+      "SportEventStatus": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "match_status": {"type": "string"},
+          "home_score": {"type": "integer"},
+          "away_score": {"type": "integer"},
+          "period_scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeriodScore"
+            }
+          },
+          "winner_id": {"type": "string"}
+        },
+        "required": ["status", "match_status"]
+      },
+      "SportEventSummary": {
+        "type": "object",
+        "properties": {
+          "sport_event": {
+            "$ref": "#/components/schemas/SportEvent"
+          },
+          "sport_event_status": {
+            "$ref": "#/components/schemas/SportEventStatus"
+          }
+        },
+        "required": ["sport_event", "sport_event_status"]
+      },
+      "SeasonSummariesResponse": {
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the data was generated"
+          },
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SportEventSummary"
+            }
+          }
+        },
+        "required": ["generated_at", "summaries"]
       }
     }
   },
@@ -1215,6 +1404,187 @@
                           ]
                         }
                       ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Season not found"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": ["Seasons"]
+      }
+    },
+    "/en/seasons/{season_id}/summaries.json": {
+      "get": {
+        "summary": "Get Season Summaries",
+        "description": "Retrieve all match summaries for a specific tennis season including results, scores, and match details",
+        "operationId": "getSeasonSummaries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the season (e.g., sr:season:107797)"
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeasonSummariesResponse"
+                },
+                "example": {
+                  "generated_at": "2025-09-16T20:08:48+00:00",
+                  "summaries": [
+                    {
+                      "sport_event": {
+                        "id": "sr:sport_event:50990069",
+                        "start_time": "2024-06-24T10:00:00+00:00",
+                        "start_time_confirmed": true,
+                        "sport_event_context": {
+                          "sport": {
+                            "id": "sr:sport:5",
+                            "name": "Tennis"
+                          },
+                          "category": {
+                            "id": "sr:category:3",
+                            "name": "ATP"
+                          },
+                          "competition": {
+                            "id": "sr:competition:2555",
+                            "name": "Wimbledon Men Singles",
+                            "parent_id": "sr:competition:2553",
+                            "type": "singles",
+                            "gender": "men",
+                            "level": "grand_slam"
+                          },
+                          "season": {
+                            "id": "sr:season:107797",
+                            "name": "Wimbledon Men Singles 2024",
+                            "start_date": "2024-06-24",
+                            "end_date": "2024-07-14",
+                            "year": "2024",
+                            "competition_id": "sr:competition:2555"
+                          },
+                          "stage": {
+                            "order": 1,
+                            "type": "cup",
+                            "phase": "qualification",
+                            "start_date": "2024-06-24",
+                            "end_date": "2024-06-26",
+                            "year": "2024"
+                          },
+                          "round": {
+                            "number": 1,
+                            "name": "qualification_round_1"
+                          },
+                          "groups": [
+                            {
+                              "id": "sr:cup:155116",
+                              "name": "2024 Wimbledon, London, GB, Qualifying, 1st - 2nd Round"
+                            }
+                          ],
+                          "mode": {
+                            "best_of": 3
+                          }
+                        },
+                        "coverage": {
+                          "type": "sport_event",
+                          "sport_event_properties": {
+                            "enhanced_stats": false,
+                            "detailed_serve_outcomes": false,
+                            "play_by_play": false
+                          }
+                        },
+                        "competitors": [
+                          {
+                            "id": "sr:competitor:113979",
+                            "name": "Ficovich, Juan Pablo",
+                            "country": "Argentina",
+                            "country_code": "ARG",
+                            "abbreviation": "FIC",
+                            "qualifier": "home",
+                            "bracket_number": 87
+                          },
+                          {
+                            "id": "sr:competitor:603096",
+                            "name": "Riedi, Leandro",
+                            "country": "Switzerland",
+                            "country_code": "CHE",
+                            "abbreviation": "RIE",
+                            "qualifier": "away",
+                            "seed": 32,
+                            "bracket_number": 88
+                          }
+                        ],
+                        "venue": {
+                          "id": "sr:venue:64323",
+                          "name": "Court 18",
+                          "city_name": "London",
+                          "country_name": "England",
+                          "country_code": "ENG",
+                          "timezone": "Europe/London"
+                        },
+                        "channels": [
+                          {
+                            "name": "SRF zwei HD - Hot Bird 1/2/3/4/6 (13.0E)"
+                          }
+                        ],
+                        "estimated": true
+                      },
+                      "sport_event_status": {
+                        "status": "closed",
+                        "match_status": "ended",
+                        "home_score": 0,
+                        "away_score": 2,
+                        "period_scores": [
+                          {
+                            "home_score": 0,
+                            "away_score": 6,
+                            "type": "set",
+                            "number": 1
+                          },
+                          {
+                            "home_score": 6,
+                            "away_score": 7,
+                            "type": "set",
+                            "number": 2,
+                            "home_tiebreak_score": 1,
+                            "away_tiebreak_score": 7
+                          }
+                        ],
+                        "winner_id": "sr:competitor:603096"
+                      }
                     }
                   ]
                 }
