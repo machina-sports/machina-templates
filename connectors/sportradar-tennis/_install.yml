@@ -58,6 +58,9 @@ datasets:
   - type: "workflow"
     path: "workflows/sync-season-summaries.yml"
 
+  - type: "workflow"
+    path: "workflows/sync-sport-event-summary.yml"
+
   # folders
   - type: "workflow"
     path: "_folders.yml"

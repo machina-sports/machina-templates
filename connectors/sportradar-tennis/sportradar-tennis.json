@@ -1612,6 +1612,177 @@
         },
         "tags": ["Seasons"]
       }
+    },
+    "/en/sport_events/{sport_event_id}/summary.json": {
+      "get": {
+        "summary": "Get Sport Event Summary",
+        "description": "Retrieve detailed summary information for a specific tennis sport event including match results, scores, and event details",
+        "operationId": "getSportEventSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the sport event (e.g., sr:sport_event:51041587)"
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SportEventSummary"
+                },
+                "example": {
+                  "generated_at": "2025-09-17T20:47:36+00:00",
+                  "sport_event": {
+                    "id": "sr:sport_event:51041587",
+                    "start_time": "2024-07-04T11:05:00+00:00",
+                    "start_time_confirmed": true,
+                    "sport_event_context": {
+                      "sport": {
+                        "id": "sr:sport:5",
+                        "name": "Tennis"
+                      },
+                      "category": {
+                        "id": "sr:category:3",
+                        "name": "ATP"
+                      },
+                      "competition": {
+                        "id": "sr:competition:2555",
+                        "name": "Wimbledon Men Singles",
+                        "parent_id": "sr:competition:2553",
+                        "type": "singles",
+                        "gender": "men",
+                        "level": "grand_slam"
+                      },
+                      "season": {
+                        "id": "sr:season:107797",
+                        "name": "Wimbledon Men Singles 2024",
+                        "start_date": "2024-06-24",
+                        "end_date": "2024-07-14",
+                        "year": "2024",
+                        "competition_id": "sr:competition:2555"
+                      },
+                      "stage": {
+                        "order": 2,
+                        "type": "cup",
+                        "phase": "stage_1_playoff",
+                        "start_date": "2024-07-01",
+                        "end_date": "2024-07-14",
+                        "year": "2024"
+                      },
+                      "round": {
+                        "name": "round_of_64"
+                      },
+                      "groups": [
+                        {
+                          "id": "sr:cup:150657",
+                          "name": "2024 Wimbledon, London, Great Britain"
+                        }
+                      ],
+                      "mode": {
+                        "best_of": 5
+                      }
+                    },
+                    "coverage": {
+                      "type": "sport_event",
+                      "sport_event_properties": {
+                        "enhanced_stats": true,
+                        "detailed_serve_outcomes": false,
+                        "play_by_play": false
+                      }
+                    },
+                    "competitors": [
+                      {
+                        "id": "sr:competitor:157808",
+                        "name": "Harris, Lloyd",
+                        "country": "South Africa",
+                        "country_code": "ZAF",
+                        "abbreviation": "HAR",
+                        "qualifier": "home",
+                        "bracket_number": 13
+                      },
+                      {
+                        "id": "sr:competitor:808628",
+                        "name": "Shelton, Ben",
+                        "country": "USA",
+                        "country_code": "USA",
+                        "abbreviation": "SHE",
+                        "qualifier": "away",
+                        "seed": 14,
+                        "bracket_number": 16
+                      }
+                    ],
+                    "venue": {
+                      "id": "sr:venue:1894",
+                      "name": "Court 18",
+                      "city_name": "London",
+                      "country_name": "England",
+                      "country_code": "ENG",
+                      "timezone": "Europe/London"
+                    },
+                    "estimated": true
+                  },
+                  "sport_event_status": {
+                    "status": "closed",
+                    "match_status": "ended",
+                    "home_score": 2,
+                    "away_score": 3,
+                    "period_scores": [
+                      {
+                        "home_score": 6,
+                        "away_score": 4,
+                        "type": "set",
+                        "number": 1
+                      },
+                      {
+                        "home_score": 6,
+                        "away_score": 7,
+                        "type": "set",
+                        "number": 2,
+                        "home_tiebreak_score": 5,
+                        "away_tiebreak_score": 7
+                      }
+                    ],
+                    "winner_id": "sr:competitor:808628"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Sport Event not found"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": ["Sport Events"]
+      }
     }
   },
   "tags": [
@@ -1626,6 +1797,10 @@
     {
       "name": "Competitors",
       "description": "Tennis players and their profiles"
+    },
+    {
+      "name": "Sport Events",
+      "description": "Individual tennis matches and events"
     }
   ]
 }

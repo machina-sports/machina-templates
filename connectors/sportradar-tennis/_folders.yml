@@ -104,6 +104,16 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "tennis-sport-event-summary",
+                  "title": "Sport Event Summaries",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-sport-event-summary"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             }
