@@ -61,6 +61,9 @@ datasets:
   - type: "workflow"
     path: "workflows/sync-sport-event-summary.yml"
 
+  - type: "workflow"
+    path: "workflows/sync-sport-event-timeline.yml"
+
   # folders
   - type: "workflow"
     path: "_folders.yml"

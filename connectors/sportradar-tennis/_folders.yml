@@ -114,6 +114,16 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "tennis-sport-event-timeline",
+                  "title": "Sport Event Timelines",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-sport-event-timeline"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             }
