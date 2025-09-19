@@ -84,6 +84,16 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "tennis-season-info",
+                  "title": "Season Info",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["tennis-season-info"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             }

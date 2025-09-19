@@ -52,6 +52,9 @@ datasets:
   - type: "workflow"
     path: "workflows/sync-season-competitors.yml"
 
+  - type: "workflow"
+    path: "workflows/sync-season-info.yml"
+
   # folders
   - type: "workflow"
     path: "_folders.yml"

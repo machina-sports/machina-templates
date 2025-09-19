@@ -469,6 +469,208 @@
           }
         },
         "required": ["generated_at", "season_competitors"]
+      },
+      "SeasonInfo": {
+        "type": "object",
+        "properties": {
+          "prize_currency": {
+            "type": "string",
+            "description": "Currency of the prize money"
+          },
+          "prize_money": {
+            "type": "number",
+            "description": "Total prize money for the season"
+          },
+          "surface": {
+            "type": "string",
+            "description": "Surface type (e.g., grass, clay, hard)"
+          },
+          "complex": {
+            "type": "string",
+            "description": "Name of the complex/venue"
+          },
+          "complex_id": {
+            "type": "string",
+            "description": "Unique identifier for the complex"
+          },
+          "number_of_competitors": {
+            "type": "integer",
+            "description": "Total number of competitors"
+          },
+          "number_of_qualified_competitors": {
+            "type": "integer",
+            "description": "Number of qualified competitors"
+          },
+          "number_of_scheduled_matches": {
+            "type": "integer",
+            "description": "Number of scheduled matches"
+          }
+        }
+      },
+      "StageGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the group"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the group"
+          },
+          "competitors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Competitor identifier"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Competitor name"
+                },
+                "country": {
+                  "type": "string",
+                  "description": "Competitor country"
+                },
+                "country_code": {
+                  "type": "string",
+                  "description": "Competitor country code"
+                },
+                "abbreviation": {
+                  "type": "string",
+                  "description": "Competitor abbreviation"
+                },
+                "seed": {
+                  "type": "integer",
+                  "description": "Seed number if applicable"
+                },
+                "bracket_number": {
+                  "type": "integer",
+                  "description": "Bracket number"
+                },
+                "qualification_path": {
+                  "type": "string",
+                  "description": "Path to qualification (e.g., seeded)"
+                }
+              },
+              "required": ["id", "name", "country", "abbreviation"]
+            }
+          }
+        },
+        "required": ["id", "name", "competitors"]
+      },
+      "SeasonStage": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "type": "integer",
+            "description": "Order of the stage"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of stage (e.g., cup)"
+          },
+          "phase": {
+            "type": "string",
+            "description": "Phase of the stage (e.g., qualification, stage_1_playoff)"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date of the stage"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date of the stage"
+          },
+          "year": {
+            "type": "string",
+            "description": "Year of the stage"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageGroup"
+            }
+          }
+        },
+        "required": ["order", "type", "phase", "start_date", "end_date", "year", "groups"]
+      },
+      "SeasonDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the season"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the season"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Start date of the season"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "End date of the season"
+          },
+          "year": {
+            "type": "string",
+            "description": "Year of the season"
+          },
+          "competition_id": {
+            "type": "string",
+            "description": "ID of the parent competition"
+          },
+          "sport": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "competition": {
+            "$ref": "#/components/schemas/Competition"
+          },
+          "info": {
+            "$ref": "#/components/schemas/SeasonInfo"
+          }
+        },
+        "required": ["id", "name", "start_date", "end_date", "year", "competition_id"]
+      },
+      "SeasonInfoResponse": {
+        "type": "object",
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the data was generated"
+          },
+          "season": {
+            "$ref": "#/components/schemas/SeasonDetail"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeasonStage"
+            }
+          }
+        },
+        "required": ["generated_at", "season"]
       }
     }
   },
@@ -892,6 +1094,127 @@
                       "name": "Djokovic, Novak",
                       "short_name": "Djokovic, Novak",
                       "abbreviation": "DJO"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Season not found"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        },
+        "tags": ["Seasons"]
+      }
+    },
+    "/en/seasons/{season_id}/info.json": {
+      "get": {
+        "summary": "Get Season Information",
+        "description": "Retrieve detailed information about a specific tennis season including stages, competitors, and tournament details",
+        "operationId": "getSeasonInfo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the season (e.g., sr:season:107797)"
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeasonInfoResponse"
+                },
+                "example": {
+                  "generated_at": "2025-09-13T12:12:23+00:00",
+                  "season": {
+                    "id": "sr:season:107797",
+                    "name": "Wimbledon Men Singles 2024",
+                    "start_date": "2024-06-24",
+                    "end_date": "2024-07-14",
+                    "year": "2024",
+                    "competition_id": "sr:competition:2555",
+                    "sport": {
+                      "id": "sr:sport:5",
+                      "name": "Tennis"
+                    },
+                    "category": {
+                      "id": "sr:category:3",
+                      "name": "ATP"
+                    },
+                    "competition": {
+                      "id": "sr:competition:2555",
+                      "name": "Wimbledon Men Singles",
+                      "parent_id": "sr:competition:2553",
+                      "type": "singles",
+                      "gender": "men",
+                      "level": "grand_slam"
+                    },
+                    "info": {
+                      "prize_currency": "£",
+                      "prize_money": 19414000,
+                      "surface": "grass",
+                      "complex": "All England Lawn Tennis and Croquet Club",
+                      "complex_id": "sr:complex:33190",
+                      "number_of_competitors": 235,
+                      "number_of_qualified_competitors": 128,
+                      "number_of_scheduled_matches": 246
+                    }
+                  },
+                  "stages": [
+                    {
+                      "order": 1,
+                      "type": "cup",
+                      "phase": "qualification",
+                      "start_date": "2024-06-24",
+                      "end_date": "2024-06-27",
+                      "year": "2024",
+                      "groups": [
+                        {
+                          "id": "sr:cup:155116",
+                          "name": "2024 Wimbledon, London, GB, Qualifying, 1st - 2nd Round",
+                          "competitors": [
+                            {
+                              "id": "sr:competitor:14414",
+                              "name": "Gasquet, Richard",
+                              "country": "France",
+                              "country_code": "FRA",
+                              "abbreviation": "GAS",
+                              "seed": 20,
+                              "bracket_number": 128,
+                              "qualification_path": "seeded"
+                            }
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
