@@ -4,7 +4,7 @@ workflow:
   description: "Workflow to synchronize tennis season match summaries from SportRadar API to Machina."
   context-variables:
     sportradar-tennis:
-      x-api-key: "8ByBzDhjetbX6v3WAyfMvA1MsgXfABzgZZ8qJckF"
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
     season_id: "$.get('season_id')"
   outputs:
