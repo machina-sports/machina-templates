@@ -1,3 +1,19 @@
+setup:
+  title: Machina AI Fast
+  description: Connect to the Machina AI API to get AI responses.
+  category:
+    - special-templates
+  estimatedTime: 1 minute
+  features:
+    - Real-time chat completion
+    - Real-time content generation
+    - Real-time image generation
+  integrations:
+    - machina-ai
+  status: available
+  value: connectors/machina-ai-fast
+  version: 1.0.0
+
 datasets:
   - type: "connector"
     path: "machina-ai-fast.yml"
