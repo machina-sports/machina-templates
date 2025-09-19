@@ -1,0 +1,73 @@
+workflow:
+  name: "sportradar-tennis-sync-season-info"
+  title: "Tennis - Season Info"
+  description: "Workflow to synchronize detailed tennis season information from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    season_info: "$.get('season_info_parsed')"
+    workflow-status: "$.get('season_info_parsed') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-season-info
+    - type: "connector"
+      name: "task-load-season-info"
+      description: "Get Season Info from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/seasons/{season_id}/info.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        season_id: "$.get('season_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        season_info_response: "$"
+        season_info_parsed: |
+          [
+            {
+              **$.get('season', {}),
+              'title': f"{$.get('season', {}).get('name', '')}",
+              'surface': $.get('season', {}).get('info', {}).get('surface', ''),
+              'complex_name': $.get('season', {}).get('info', {}).get('complex', ''),
+              'prize_money': $.get('season', {}).get('info', {}).get('prize_money', 0),
+              'prize_currency': $.get('season', {}).get('info', {}).get('prize_currency', ''),
+              'total_competitors': $.get('season', {}).get('info', {}).get('number_of_competitors', 0),
+              'qualified_competitors': $.get('season', {}).get('info', {}).get('number_of_qualified_competitors', 0),
+              'scheduled_matches': $.get('season', {}).get('info', {}).get('number_of_scheduled_matches', 0),
+              'sport_name': $.get('season', {}).get('sport', {}).get('name', 'Tennis'),
+              'category_name': $.get('season', {}).get('category', {}).get('name', ''),
+              'competition_name': $.get('season', {}).get('competition', {}).get('name', ''),
+              'competition_type': $.get('season', {}).get('competition', {}).get('type', ''),
+              'competition_gender': $.get('season', {}).get('competition', {}).get('gender', ''),
+              'competition_level': $.get('season', {}).get('competition', {}).get('level', ''),
+              'stages': $.get('stages', []),
+              'selected': False,
+              'sport': 'tennis',
+              'has_stages': len($.get('stages', [])) > 0,
+              'total_stages': len($.get('stages', [])),
+              'document_type': 'tennis-season-info'
+            }
+          ]
+
+    # task-bulk-save-season-info
+    - type: "document"
+      name: "task-bulk-save-season-info"
+      description: "Bulk save the tennis season information."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'tennis-season-info'"
+      documents:
+        items: "$.get('season_info_parsed')"
+      metadata:
+        document_type: "'tennis-season-info'"
+        sport: "'tennis'"

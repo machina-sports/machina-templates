@@ -1,0 +1,58 @@
+workflow:
+  name: "sportradar-tennis-sync-sport-event-summary"
+  title: "Tennis - Sport Event Summary"
+  description: "Workflow to synchronize detailed tennis sport event summary from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    sport_event_id: "$.get('sport_event_id')"
+  outputs:
+    sport_event_summary: "$.get('sport_event_summary_response')"
+    workflow-status: "$.get('sport_event_summary_response') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-sport-event-summary
+    - type: "connector"
+      name: "task-load-sport-event-summary"
+      description: "Get Sport Event Summary from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/sport_events/{sport_event_id}/summary.json"
+        command_attribute:
+          sport_event_id: "$.get('sport_event_id')"
+      inputs:
+        sport_event_id: "$.get('sport_event_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        sport_event_summary_response: "$"
+
+
+    # task-save-sport-event-summary
+    - type: "document"
+      name: "task-save-sport-event-summary"
+      description: "Save the tennis sport event summary."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'tennis-sport-event-summary'"
+      documents:
+        items: |
+          [
+            {
+              **$.get('sport_event_summary_response', {}),
+              'sport_event_id': $.get('sport_event_summary_response', {}).get('sport_event', {}).get('id', ''),
+              'title': 'Tennis Match Summary - ' + $.get('sport_event_summary_response', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', ''),
+              'selected': False,
+              'sport': 'tennis',
+              'document_type': 'tennis-sport-event-summary'
+            }
+          ]
+      metadata:
+        document_type: "'tennis-sport-event-summary'"
+        sport: "'tennis'"

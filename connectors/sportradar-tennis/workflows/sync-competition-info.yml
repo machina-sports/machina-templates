@@ -1,0 +1,62 @@
+workflow:
+  name: "sportradar-tennis-sync-competition-info"
+  title: "Tennis - Competition Info"
+  description: "Workflow to synchronize detailed tennis competition information from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    competition_id: "$.get('competition_id')"
+  outputs:
+    competition_info: "$.get('competition_info')"
+    children_competitions: "$.get('children_competitions')"
+    workflow-status: "$.get('competition_info') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-competition-info
+    - type: "connector"
+      name: "task-load-competition-info"
+      description: "Get Competition Info from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/competitions/{competition_id}/info.json"
+        command_attribute:
+          competition_id: "$.get('competition_id')"
+      inputs:
+        competition_id: "$.get('competition_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        competition_response: "$"
+        competition_info: "$.get('competition', {})"
+
+    # task-save-competition-info
+    - type: "document"
+      name: "task-save-competition-info"
+      description: "Save the detailed competition information."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        tennis-competition-info: |
+          {
+            **$.get('competition_info', {}),
+            'title': f"{$.get('competition_info', {}).get('category', {}).get('name', '')} - {$.get('competition_info', {}).get('name', '')}",
+            'sport': 'tennis',
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'generated_at': $.get('competition_response', {}).get('generated_at'),
+            'has_children': len($.get('children_competitions', [])) > 0,
+            'children_count': len($.get('children_competitions', [])),
+            'is_parent_competition': $.get('competition_info', {}).get('children') is not None,
+            'alternative_name': $.get('competition_info', {}).get('alternative_name', ''),
+            'level': $.get('competition_info', {}).get('level', 'unknown')
+          }
+      metadata:
+        document_type: "'competition-info'"
+        sport: "'tennis'"
+        competition_id: "$.get('competition_id')"
