@@ -1,0 +1,121 @@
+workflow:
+  name: "sportradar-soccer-sync-transfers"
+  title: "Sportradar Soccer Sync Transfers"
+  description: "Workflow to sync soccer player transfers."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    season_id: "$.get('season_id', 'sr:season:118689')"
+  outputs:
+    workflow-status: "len($.get('all_transfers_ids', [])) > len($.get('existing_transfers_ids', [])) and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-transfers
+    - type: "connector"
+      name: "task-load-transfers"
+      description: "Get transfers from SportRadar Soccer"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/transfers.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        all_transfers_ids: |
+          [f"urn:sportradar:transfer:{transfer.get('player', {}).get('id', '')}:{transfer.get('transfer_date', '')}" for transfer in $.get('transfers', [])]
+        transfers: "$"
+        new_transfers_list: |
+          [
+            {
+              'id': f"urn:sportradar:transfer:{transfer.get('player', {}).get('id', '')}:{transfer.get('transfer_date', '')}",
+              'metadata': {
+                'player_id': transfer.get('player', {}).get('id', ''),
+                'transfer_date': transfer.get('transfer_date', ''),
+                'role_type': transfer.get('role_type', ''),
+                'to_competitor_id': transfer.get('to_competitor', ''),
+                'generated_at': $.get('generated_at', '')
+              },
+              'player': {
+                'id': transfer.get('player', {}).get('id', ''),
+                'name': transfer.get('player', {}).get('name', ''),
+                'type': transfer.get('player', {}).get('type', ''),
+                'date_of_birth': transfer.get('player', {}).get('date_of_birth', ''),
+                'nationality': transfer.get('player', {}).get('nationality', ''),
+                'country_code': transfer.get('player', {}).get('country_code', ''),
+                'height': transfer.get('player', {}).get('height', ''),
+                'weight': transfer.get('player', {}).get('weight', ''),
+                'jersey_number': transfer.get('player', {}).get('jersey_number', ''),
+                'preferred_foot': transfer.get('player', {}).get('preferred_foot', ''),
+                'place_of_birth': transfer.get('player', {}).get('place_of_birth', ''),
+                'sr_id': transfer.get('player', {}).get('id', '')
+              },
+              'to_competitor': {
+                'id': transfer.get('to_competitor', ''),
+                'name': next((comp.get('name', '') for comp in transfer.get('competitors', []) if comp.get('id') == transfer.get('to_competitor')), ''),
+                'country': next((comp.get('country', '') for comp in transfer.get('competitors', []) if comp.get('id') == transfer.get('to_competitor')), ''),
+                'country_code': next((comp.get('country_code', '') for comp in transfer.get('competitors', []) if comp.get('id') == transfer.get('to_competitor')), ''),
+                'abbreviation': next((comp.get('abbreviation', '') for comp in transfer.get('competitors', []) if comp.get('id') == transfer.get('to_competitor')), ''),
+                'gender': next((comp.get('gender', '') for comp in transfer.get('competitors', []) if comp.get('id') == transfer.get('to_competitor')), ''),
+                'sr_id': transfer.get('to_competitor', '')
+              },
+              'transfer_info': {
+                'transfer_date': datetime.strptime(transfer.get('transfer_date', ''), '%Y-%m-%d') if transfer.get('transfer_date') else None,
+                'role_type': transfer.get('role_type', ''),
+                'to_competitor': transfer.get('to_competitor', ''),
+                'is_player_transfer': transfer.get('role_type', '') == 'player'
+              },
+              'generated_at': datetime.strptime($.get('generated_at', '').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ') if $.get('generated_at') else None,
+              'title': f"{transfer.get('player', {}).get('name', '')} → {next((comp.get('name', '') for comp in transfer.get('competitors', []) if comp.get('id') == transfer.get('to_competitor')), 'Unknown Team')} ({transfer.get('transfer_date', '')})",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for transfer in $.get('transfers', [])
+          ]
+
+    # load-transfers-by-ids
+    - type: document
+      name: load-transfers-by-ids
+      condition: "$.get('all_transfers_ids') is not None"
+      description: "Load transfers by IDs."
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        value.id: |
+          {'$in': $.(all_transfers_ids)}
+      inputs:
+        name: "'soccer-transfer'"
+      outputs:
+        existing_transfers_ids: |
+          [
+            transfer.get('value', {}).get('id', '')
+            for transfer in $.get('documents', [])
+          ]
+
+    # bulk-save-transfers
+    - type: document
+      name: bulk-save-transfers
+      condition: "$.get('all_transfers_ids') is not None and len($.get('all_transfers_ids', [])) > len($.get('existing_transfers_ids', []))"
+      description: "Bulk save player transfers."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'soccer-transfer'"
+      documents:
+        items: "$.get('final_transfers_list')"
+      inputs:
+        final_transfers_list: |
+          [
+            transfer for transfer in $.get('new_transfers_list', [])
+            if transfer.get('id', '') not in $.(existing_transfers_ids)
+          ]

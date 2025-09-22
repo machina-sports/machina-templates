@@ -82,6 +82,12 @@ datasets:
   - type: "workflow"
     path: "workflows/sync-standings.yml"
 
+  - type: "workflow"
+    path: "workflows/sync-transfers.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-missing-players.yml"
+
   # update workflows
   
   - type: "workflow"

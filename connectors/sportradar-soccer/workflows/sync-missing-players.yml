@@ -1,0 +1,113 @@
+workflow:
+  name: "sportradar-soccer-sync-missing-players"
+  title: "Sportradar Soccer Sync Missing Players"
+  description: "Workflow to sync soccer missing players (injuries/suspensions)."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    season_id: "$.get('season_id', 'sr:season:118689')"
+  outputs:
+    workflow-status: "len($.get('all_missing_players_ids', [])) > len($.get('existing_missing_players_ids', [])) and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-missing-players
+    - type: connector
+      name: task-load-missing-players
+      description: "Get missing players from SportRadar Soccer"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/missing_players.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        all_missing_players_ids: |
+          [f"urn:sportradar:missing-player:{player.get('id', '')}" for competitor in $.get('competitors', []) for player in competitor.get('players', [])]
+        missing_players: "$"
+        new_missing_players_list: |
+          [
+            {
+              'id': f"urn:sportradar:missing-player:{player.get('id', '')}",
+              'metadata': {
+                'player_id': player.get('id', ''),
+                'competitor_id': competitor.get('id', ''),
+                'reason': player.get('reason', ''),
+                'status': player.get('status', ''),
+                'start_date': player.get('start_date', ''),
+                'generated_at': $.get('generated_at', '')
+              },
+              'player': {
+                'id': player.get('id', ''),
+                'name': player.get('name', ''),
+                'sr_id': player.get('id', '')
+              },
+              'competitor': {
+                'id': competitor.get('id', ''),
+                'name': competitor.get('name', ''),
+                'abbreviation': competitor.get('abbreviation', ''),
+                'sr_id': competitor.get('id', '')
+              },
+              'missing_info': {
+                'start_date': datetime.strptime(player.get('start_date', '').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ') if player.get('start_date') else None,
+                'reason': player.get('reason', ''),
+                'status': player.get('status', ''),
+                'is_injured': player.get('reason', '') == 'injured',
+                'is_missing': player.get('status', '') == 'missing',
+                'is_doubtful': player.get('status', '') == 'doubtful'
+              },
+              'generated_at': datetime.strptime($.get('generated_at', '').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ') if $.get('generated_at') else None,
+              'title': f"{player.get('name', '')} - {player.get('reason', '').title()} ({player.get('status', '').title()}) - {competitor.get('name', '')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for competitor in $.get('competitors', [])
+            for player in competitor.get('players', [])
+          ]
+
+    # load-missing-players-by-ids
+    - type: document
+      name: load-missing-players-by-ids
+      condition: "$.get('all_missing_players_ids') is not None"
+      description: "Load missing players by IDs."
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        value.id: |
+          {'$in': $.(all_missing_players_ids)}
+      inputs:
+        name: "'soccer-missing-player'"
+      outputs:
+        existing_missing_players_ids: |
+          [
+            missing_player.get('value', {}).get('id', '')
+            for missing_player in $.get('documents', [])
+          ]
+
+    # bulk-save-missing-players
+    - type: document
+      name: bulk-save-missing-players
+      condition: "$.get('all_missing_players_ids') is not None and len($.get('all_missing_players_ids', [])) > len($.get('existing_missing_players_ids', []))"
+      description: "Bulk save missing players."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'soccer-missing-player'"
+      documents:
+        items: "$.get('final_missing_players_list')"
+      inputs:
+        final_missing_players_list: |
+          [
+            missing_player for missing_player in $.get('new_missing_players_list', [])
+            if missing_player.get('id', '') not in $.(existing_missing_players_ids)
+          ]
