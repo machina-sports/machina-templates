@@ -34,7 +34,7 @@ workflow:
               }
             ],
             "model": $.get('model'),
-            "stream": false,
+            "stream": False,
             "temperature": $.get('temperature'),
             "max_tokens": $.get('max_tokens')
           }
