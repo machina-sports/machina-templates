@@ -8,19 +8,19 @@ workflow:
     grok:
       authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
-    user_message: "$.get('user_message', 'Testing. Just say hi and hello world and nothing else.')"
+    user_message: "$.get('user_message', 'Search for recent tweets about 49ers')"
     model: "$.get('model', 'grok-4-latest')"
     temperature: "$.get('temperature', 0)"
-    max_tokens: "$.get('max_tokens', 100)"
+    max_tokens: "$.get('max_tokens', 500)"
   outputs:
     data: "$.get('data')"
     workflow-status: "'executed'"
   tasks:
 
-    # 1 test-chat-completion
+    # 1 test-live-search
     - type: "connector"
-      name: "test-chat-completion"
-      description: "Test the xAI Grok API chat completion."
+      name: "test-live-search"
+      description: "Test the xAI Grok API live search on X platform."
       connector:
         name: "grok"
         command: "post-chat/completions"
@@ -36,7 +36,17 @@ workflow:
             "model": $.get('model'),
             "stream": False,
             "temperature": $.get('temperature'),
-            "max_tokens": $.get('max_tokens')
+            "max_tokens": $.get('max_tokens'),
+            "search_parameters": {
+              "mode": "on",
+              "sources": [
+                {
+                  "type": "x"
+                }
+              ],
+              "from_date": datetime.now().subtract(days=3).format('YYYY-MM-DD'),
+              "to_date": datetime.now().add(days=3).format('YYYY-MM-DD')
+            }
           }
       outputs:
         data: "$"
