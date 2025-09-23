@@ -25,16 +25,19 @@ workflow:
         name: "grok"
         command: "post-chat/completions"
       inputs:
-        body:
-          messages:
-            - role: "system"
-              content: "You are a test assistant."
-            - role: "user"
-              content: "$.get('user_message')"
-          model: "$.get('model')"
-          stream: false
-          temperature: "$.get('temperature')"
-          max_tokens: "$.get('max_tokens')"
+        body: |
+          {
+            "messages": [
+              {
+                "role": "user",
+                "content": $.get('user_message')
+              }
+            ],
+            "model": $.get('model'),
+            "stream": false,
+            "temperature": $.get('temperature'),
+            "max_tokens": $.get('max_tokens')
+          }
       outputs:
         data: "$"
         workflow-status: "'executed'"
