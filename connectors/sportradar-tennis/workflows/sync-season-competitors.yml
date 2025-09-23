@@ -1,0 +1,64 @@
+workflow:
+  name: "sportradar-tennis-sync-season-competitors"
+  title: "Tennis - Season Competitors"
+  description: "Workflow to synchronize tennis season competitors from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    season_competitors: "$.get('season_competitors')"
+    competitors_count: "$.get('competitors_count')"
+    workflow-status: "$.get('season_competitors') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-season-competitors
+    - type: "connector"
+      name: "task-load-season-competitors"
+      description: "Get Season Competitors from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/seasons/{season_id}/competitors.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        season_id: "$.get('season_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        season_competitors_response: "$"
+        season_competitors: "$.get('season_competitors', [])"
+        competitors_count: "len($.get('season_competitors', []))"
+
+    # task-save-season-competitors
+    - type: "document"
+      name: "task-save-season-competitors"
+      description: "Save the season competitors information."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        tennis-season-competitors: |
+          {
+            'season_id': $.get('season_id'),
+            'title': f"Tennis Season Competitors - {$.get('season_id')}",
+            'sport': 'tennis',
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'generated_at': $.get('season_competitors_response', {}).get('generated_at'),
+            'competitors_count': $.get('competitors_count', 0),
+            'season_competitors': $.get('season_competitors', []),
+            'competitor_ids': [comp.get('id') for comp in $.get('season_competitors', [])],
+            'competitor_names': [comp.get('name') for comp in $.get('season_competitors', [])],
+            'competitor_abbreviations': [comp.get('abbreviation') for comp in $.get('season_competitors', [])]
+          }
+      metadata:
+        document_type: "'season-competitors'"
+        sport: "'tennis'"
+        season_id: "$.get('season_id')"
+        competitors_count: "$.get('competitors_count', 0)"

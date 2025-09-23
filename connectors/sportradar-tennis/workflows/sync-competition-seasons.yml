@@ -1,0 +1,58 @@
+workflow:
+  name: "sportradar-tennis-sync-competition-seasons"
+  title: "Tennis - Competition Seasons"
+  description: "Workflow to synchronize tennis competition seasons from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    competition_id: "$.get('competition_id')"
+  outputs:
+    seasons: "$.get('seasons_parsed')"
+    workflow-status: "$.get('seasons_parsed') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-competition-seasons
+    - type: "connector"
+      name: "task-load-competition-seasons"
+      description: "Get Competition Seasons from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/competitions/{competition_id}/seasons.json"
+        command_attribute:
+          competition_id: "$.get('competition_id')"
+      inputs:
+        competition_id: "$.get('competition_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        seasons_response: "$"
+        seasons_parsed: |
+          [
+            {
+              **season,
+              'title': f"{season.get('name', '')}",
+              'metadata': {
+                'competition_id': '$.(competition_id)',
+                'document_type': 'tennis-season',
+                'season_id': season.get('id', ''),
+                'sport': 'tennis'
+              }
+            }
+            for season in $.get('seasons', [])
+          ]
+
+    # task-bulk-save-seasons
+    - type: "document"
+      name: "task-bulk-save-seasons"
+      description: "Bulk save the competition seasons."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'tennis-season'"
+      documents:
+        items: "$.get('seasons_parsed')"
