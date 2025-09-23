@@ -1,0 +1,5 @@
+connector:
+  name: "grok"
+  description: "This connector is the xAI Grok API connector for chat completions and embeddings."
+  filename: "grok.json"
+  filetype: "restapi"

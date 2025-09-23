@@ -1,0 +1,254 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "xAI Grok API",
+    "description": "API for xAI's Grok language models, providing chat completions and embeddings functionality.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "xAI",
+      "url": "https://x.ai/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.x.ai/v1",
+      "description": "xAI Production Server"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token authentication using xAI API key (format: xai-...)"
+      }
+    },
+    "schemas": {
+      "Message": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["system", "user", "assistant"],
+            "description": "The role of the message sender"
+          },
+          "content": {
+            "type": "string",
+            "description": "The content of the message"
+          }
+        },
+        "required": ["role", "content"]
+      },
+      "ChatCompletionRequest": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "description": "List of messages comprising the conversation so far"
+          },
+          "model": {
+            "type": "string",
+            "description": "ID of the model to use",
+            "example": "grok-4-latest",
+            "enum": ["grok-4-latest", "grok-beta", "grok-vision-beta"]
+          },
+          "stream": {
+            "type": "boolean",
+            "description": "If set, partial message deltas will be sent",
+            "default": false
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "What sampling temperature to use, between 0 and 2",
+            "default": 1
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The maximum number of tokens to generate in the chat completion"
+          },
+          "top_p": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "An alternative to sampling with temperature, called nucleus sampling"
+          },
+          "frequency_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2,
+            "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency"
+          },
+          "presence_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2,
+            "description": "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far"
+          }
+        },
+        "required": ["messages", "model"]
+      },
+      "ChatCompletionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "A unique identifier for the chat completion"
+          },
+          "object": {
+            "type": "string",
+            "description": "The object type, which is always 'chat.completion'"
+          },
+          "created": {
+            "type": "integer",
+            "description": "The Unix timestamp (in seconds) of when the chat completion was created"
+          },
+          "model": {
+            "type": "string",
+            "description": "The model used for the chat completion"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "description": "The index of the choice in the list of choices"
+                },
+                "message": {
+                  "$ref": "#/components/schemas/Message"
+                },
+                "finish_reason": {
+                  "type": "string",
+                  "enum": ["stop", "length", "content_filter"],
+                  "description": "The reason the model stopped generating tokens"
+                }
+              }
+            }
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "prompt_tokens": {
+                "type": "integer",
+                "description": "Number of tokens in the prompt"
+              },
+              "completion_tokens": {
+                "type": "integer",
+                "description": "Number of tokens in the generated completion"
+              },
+              "total_tokens": {
+                "type": "integer",
+                "description": "Total number of tokens used in the request"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "A human-readable error message"
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of error"
+              },
+              "code": {
+                "type": "string",
+                "description": "An error code identifying the error type"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/chat/completions": {
+      "post": {
+        "summary": "Create a chat completion",
+        "description": "Creates a model response for the given chat conversation using Grok models.",
+        "operationId": "createChatCompletion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
