@@ -21,13 +21,6 @@
     }
   ],
   "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Bearer token authentication using xAI API key (format: xai-...)"
-      }
-    },
     "schemas": {
       "Message": {
         "type": "object",
@@ -178,6 +171,13 @@
           }
         }
       }
+    }
+  },
+  "securitySchemes": {
+    "bearerAuth": {
+      "type": "http",
+      "scheme": "bearer",
+      "description": "Bearer token authentication using xAI API key (format: xai-...)"
     }
   },
   "paths": {
