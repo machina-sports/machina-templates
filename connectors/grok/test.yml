@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     grok:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
+      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
     user_message: "$.get('user_message', 'Testing. Just say hi and hello world and nothing else.')"
     model: "$.get('model', 'grok-4-latest')"
