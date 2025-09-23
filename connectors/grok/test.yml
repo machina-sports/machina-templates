@@ -46,6 +46,25 @@ workflow:
               ],
               "from_date": (datetime.utcnow() - timedelta(days=3)).strftime('%Y-%m-%d'),
               "to_date": (datetime.utcnow() + timedelta(days=3)).strftime('%Y-%m-%d')
+            },
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "sentiment_analysis",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sentiment_rating": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5,
+                      "description": "Sentiment rating from 1 (very negative) to 5 (very positive)"
+                    }
+                  },
+                  "required": ["sentiment_rating"],
+                  "additionalProperties": False
+                }
+              }
             }
           }
       outputs:
