@@ -1,0 +1,14 @@
+connector:
+  name: "wordpress"
+  description: "WordPress connector for creating posts, uploading media, and managing content"
+  filename: "api-wordpress.json"
+  filetype: "restapi"
+  commands:
+    - name: "upload_media"
+      description: "Upload media to WordPress"
+    - name: "create_draft_post"
+      description: "Create a draft post in WordPress"
+    - name: "refresh_wpcom_access_token"
+      description: "Refresh WordPress.com access token"
+    - name: "render_contract_card"
+      description: "Render contract card as a WordPress block"

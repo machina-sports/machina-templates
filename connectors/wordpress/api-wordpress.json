@@ -1,0 +1,74 @@
+{
+  "name": "wordpress",
+  "description": "WordPress connector for creating posts, uploading media, and managing content",
+  "filetype": "restapi",
+  "commands": [
+    {
+      "name": "upload_media",
+      "description": "Upload media to WordPress",
+      "method": "POST",
+      "path": "/wp/v2/media",
+      "headers": {
+        "Content-Type": "image/jpeg",
+        "Content-Disposition": "attachment; filename=${filename}"
+      },
+      "auth": {
+        "type": "bearer"
+      }
+    },
+    {
+      "name": "create_draft_post",
+      "description": "Create a draft post in WordPress",
+      "method": "POST",
+      "path": "/wp/v2/posts",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "auth": {
+        "type": "bearer"
+      },
+      "body": {
+        "title": "${title}",
+        "content": "${content_html}",
+        "excerpt": "${excerpt}",
+        "status": "draft",
+        "featured_media": "${featured_media_id}",
+        "categories": "${categories}",
+        "tags": "${tags}"
+      }
+    },
+    {
+      "name": "refresh_wpcom_access_token",
+      "description": "Refresh WordPress.com access token",
+      "method": "POST",
+      "path": "/oauth2/token",
+      "base_url": "https://public-api.wordpress.com",
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      "body": {
+        "client_id": "${client_id}",
+        "client_secret": "${client_secret}",
+        "grant_type": "refresh_token",
+        "refresh_token": "${refresh_token}"
+      }
+    },
+    {
+      "name": "render_contract_card",
+      "description": "Render contract card as a WordPress block",
+      "method": "POST",
+      "path": "/wp/v2/posts",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "auth": {
+        "type": "bearer"
+      },
+      "body": {
+        "title": "${title}",
+        "content": "${content}",
+        "status": "draft"
+      }
+    }
+  ]
+}

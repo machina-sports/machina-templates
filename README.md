@@ -98,6 +98,9 @@ The repository includes connectors for various services:
 - `exa-search`: Search functionality
 - `docling`: Document processing
 
+### Publishing
+- `wordpress`: Push draft posts and media to WordPress
+
 ## Usage Examples
 
 ### Basic Workflow Structure
@@ -118,6 +121,73 @@ workflow:
   tasks:
     # Task definitions
 ```
+
+### OpenAPI (WordPress)
+
+We include a minimal OpenAPI 3 spec for WordPress draft posts and media uploads at `openapi/wordpress.yaml` supporting both self-hosted (Basic) and WordPress.com (Bearer).
+
+Generate a typed Python client (optional):
+```bash
+pip install openapi-python-client
+openapi-python-client generate --path openapi/wordpress.yaml --meta --config "{}"
+```
+
+You can then replace direct requests in a connector or keep using the existing `wordpress` connector and treat the spec as a contract for validation/testing.
+
+### WordPress Connector
+
+The `wordpress` connector allows pushing draft posts and uploading images to a WordPress site using the REST API (with Application Passwords).
+
+Setup:
+- In WordPress, create an Application Password for the target user with permissions to create posts and upload media.
+- Add these context variables in your environment:
+  - `$MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL` (e.g., `https://example.com`)
+  - `$MACHINA_CONTEXT_VARIABLE_WORDPRESS_USERNAME`
+  - `$MACHINA_CONTEXT_VARIABLE_WORDPRESS_APP_PASSWORD`
+
+Commands:
+- `create_draft_post`: Creates a draft post and optionally uploads images, sets `featured_media`, and appends images to content if missing.
+- `upload_media`: Uploads a single image/file to the Media Library.
+
+Minimal test workflow:
+```yaml
+workflow:
+  name: "wordpress-push-draft-test"
+  title: "WordPress Push Draft Test"
+  description: "Push a sample article with images as a draft to WordPress."
+  context-variables:
+    wordpress:
+      site_url: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_SITE_URL"
+      username: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_USERNAME"
+      application_password: "$MACHINA_CONTEXT_VARIABLE_WORDPRESS_APP_PASSWORD"
+  inputs:
+    title: "$.get('title', 'Sample Draft From Machina')"
+    content_html: "$.get('content_html', '<p>Hello from Machina!</p>')"
+    excerpt: "$.get('excerpt', 'Short summary of the sample post')"
+    image_url: "$.get('image_url')"
+  tasks:
+    - type: "connector"
+      name: "create draft post"
+      connector:
+        name: "wordpress"
+        command: "create_draft_post"
+      inputs:
+        title: "$['title']"
+        content_html: "$['content_html']"
+        excerpt: "$['excerpt']"
+        images: "[$['image_url'] is not None and {'url': $['image_url'], 'title': 'Sample Image'} or None]"
+```
+
+How to test:
+- Run the test workflow, passing `title`, `content_html`, and an `image_url`.
+- Verify a new draft appears in WordPress with the image uploaded and optionally appended.
+- Confirm the draft is editable for manual review; publishing remains manual.
+
+Troubleshooting:
+- Ensure the site URL is correct and accessible (no trailing slash).
+- Verify the user has capabilities: upload_files, edit_posts.
+- Check that Application Password authentication is enabled for your WordPress version.
+- Inspect error messages returned by the connector for HTTP status and WordPress responses.
 
 ## Contributing
 

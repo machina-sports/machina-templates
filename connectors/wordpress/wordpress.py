@@ -1,0 +1,507 @@
+import base64
+import mimetypes
+import os
+from typing import Any, Dict, List, Tuple
+
+import requests
+from urllib.parse import urlparse
+
+
+def create_draft_post(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create a draft post and optionally upload and attach images.
+
+    headers: expects site_url, username, application_password
+    params:
+      - title: required
+      - content_html: optional HTML content
+      - excerpt: optional
+      - categories: optional list of category IDs
+      - tags: optional list of tag IDs
+      - images: optional list of image dicts. Each item can include:
+          {file_path|url, filename?, title?, alt_text?, caption?, description?}
+      - set_featured_image: bool, default True
+      - auto_append_images: bool, default True. If content_html doesn't include these images, append them at the end.
+    """
+    headers = request_data.get("headers", {})
+    params = request_data.get("params", {})
+
+    # Local helpers to avoid missing global references in restricted runtimes
+    def _normalize_site_url(site_url: str) -> str:
+        if not site_url:
+            return site_url
+        return site_url.rstrip("/")
+
+    def _get_site_domain(site_url: str) -> str:
+        parsed = urlparse(site_url if "://" in site_url else f"https://{site_url}")
+        domain = parsed.netloc or parsed.path
+        return domain.rstrip("/")
+
+    def _detect_mode_local(h: Dict[str, Any], p: Dict[str, Any]) -> str:
+        if (h.get("bearer_token") or p.get("bearer_token")):
+            return "wpcom"
+        return "selfhosted"
+
+    def _get_credentials_and_base_local(h: Dict[str, Any], p: Dict[str, Any]) -> Tuple[str, Dict[str, str], str]:
+        site_url = h.get("site_url") or p.get("site_url")
+        if not site_url:
+            raise ValueError("Missing WordPress 'site_url'.")
+
+        # Check for authorization header first (Bearer token from workflow)
+        auth_header = h.get("authorization") or p.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            domain = _get_site_domain(site_url)
+            api_base = f"https://public-api.wordpress.com/wp/v2/sites/{domain}"
+            return "wpcom", {"Authorization": auth_header}, api_base
+
+        mode = _detect_mode_local(h, p)
+        if mode == "wpcom":
+            token = h.get("bearer_token") or p.get("bearer_token")
+            if not token:
+                raise ValueError("Missing WordPress.com 'bearer_token'.")
+            domain = _get_site_domain(site_url)
+            api_base = f"https://public-api.wordpress.com/wp/v2/sites/{domain}"
+            return mode, {"Authorization": f"Bearer {token}"}, api_base
+
+        username = h.get("username") or p.get("username")
+        application_password = h.get("application_password") or p.get("application_password")
+        if not username:
+            raise ValueError("Missing WordPress 'username'.")
+        if not application_password:
+            raise ValueError("Missing WordPress 'application_password'.")
+        base = _normalize_site_url(site_url)
+        api_base = f"{base}/wp-json/wp/v2"
+        token = base64.b64encode(f"{username}:{application_password}".encode("utf-8")).decode("utf-8")
+        return mode, {"Authorization": f"Basic {token}"}, api_base
+
+    def _safe_filename(path_or_name: str) -> str:
+        name = os.path.basename(path_or_name)
+        return name or "upload.bin"
+
+    def _guess_mime_type(filename: str) -> str:
+        mime, _ = mimetypes.guess_type(filename)
+        return mime or "application/octet-stream"
+
+    def _download_file_to_bytes(url: str, timeout: int = 30, headers: Dict[str, str] | None = None) -> bytes:
+        resp = requests.get(url, timeout=timeout, headers=headers or {})
+        resp.raise_for_status()
+        return resp.content
+
+    # Completely standalone upload_media function
+    def _upload_media_standalone(req_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Upload a media asset to WordPress Media Library.
+
+        headers: expects site_url, username, application_password
+        params:
+          - file_path: local path to the file (optional if url provided)
+          - url: remote URL to download and upload (optional if file_path provided)
+          - filename: override filename (optional)
+          - title: media title (optional)
+          - alt_text: alternative text (optional)
+          - caption: caption HTML/text (optional)
+          - description: description (optional)
+        """
+        h = req_data.get("headers", {})
+        p = req_data.get("params", {})
+
+        try:
+            mode, auth_header, api_base = _get_credentials_and_base_local(h, p)
+        except Exception as e:
+            return {"status": False, "message": str(e)}
+
+        file_path = p.get("file_path")
+        remote_url = p.get("url")
+        override_filename = p.get("filename")
+        title = p.get("title")
+        alt_text = p.get("alt_text")
+        caption = p.get("caption")
+        description = p.get("description")
+
+        if not file_path and not remote_url:
+            return {"status": False, "message": "Either 'file_path' or 'url' must be provided."}
+
+        try:
+            if remote_url:
+                # Build download headers with a compliant User-Agent for sources like Wikimedia
+                default_ua = "machina-templates-wordpress-connector/1.0 (+https://machina.ai)"
+                download_user_agent = (
+                    h.get("download_user_agent")
+                    or p.get("download_user_agent")
+                    or default_ua
+                )
+                extra_download_headers = p.get("download_headers") or {}
+                dl_headers = {"User-Agent": download_user_agent, **extra_download_headers}
+                file_bytes = _download_file_to_bytes(remote_url, headers=dl_headers)
+                filename = override_filename or _safe_filename(remote_url)
+            else:
+                filename = override_filename or _safe_filename(file_path)
+                with open(file_path, "rb") as f:
+                    file_bytes = f.read()
+
+            mime_type = _guess_mime_type(filename)
+
+            api_url = f"{api_base}/media"
+
+            files = {"file": (filename, file_bytes, mime_type)}
+            data: Dict[str, Any] = {}
+            if title:
+                data["title"] = title
+            if caption:
+                data["caption"] = caption
+            if description:
+                data["description"] = description
+            if alt_text:
+                data["alt_text"] = alt_text
+
+            resp = requests.post(api_url, headers=auth_header, files=files, data=data, timeout=60)
+            if resp.status_code == 401 and mode == "wpcom":
+                # Fallback to WP.com v1.1 endpoint
+                v11_url = f"https://public-api.wordpress.com/rest/v1.1/sites/{_get_site_domain(h.get('site_url') or p.get('site_url'))}/media/new"
+                files_v11 = {"media[]": (filename, file_bytes, mime_type)}
+                resp_v11 = requests.post(v11_url, headers=auth_header, files=files_v11, data=data, timeout=60)
+                if resp_v11.status_code >= 400:
+                    return {"status": False, "message": f"Media upload failed (v1.1): {resp_v11.status_code} - {resp_v11.text}"}
+                media = resp_v11.json()
+                return {"status": True, "data": media, "message": "Media uploaded (v1.1)."}
+
+            if resp.status_code >= 400:
+                return {"status": False, "message": f"Media upload failed: {resp.status_code} - {resp.text}"}
+
+            media = resp.json()
+            return {"status": True, "data": media, "message": "Media uploaded."}
+
+        except Exception as e:
+            return {"status": False, "message": f"Exception during media upload: {e}"}
+
+    try:
+        mode, auth_header, api_base = _get_credentials_and_base_local(headers, params)
+    except Exception as e:
+        return {"status": False, "message": str(e)}
+
+    title = params.get("title")
+    if not title:
+        return {"status": False, "message": "Missing required 'title'."}
+
+    content_html = params.get("content_html", "")
+    excerpt = params.get("excerpt")
+    categories = params.get("categories") or []
+    tags = params.get("tags") or []
+    images = params.get("images") or []
+    set_featured_image = params.get("set_featured_image", True)
+    auto_append_images = params.get("auto_append_images", True)
+
+    # Optionally append a shortcode (wrapped in a Shortcode block) and raw Gutenberg block markup
+    shortcode = params.get("shortcode")
+    if shortcode:
+        content_html = f"{content_html}\n\n<!-- wp:shortcode -->\n{shortcode}\n<!-- /wp:shortcode -->\n"
+    raw_block = params.get("block")
+    raw_blocks = params.get("blocks") or []
+    # If both 'block' and 'blocks' are present, place single block first
+    if raw_block:
+        raw_blocks = [raw_block] + list(raw_blocks)
+    if raw_blocks:
+        content_html = f"{content_html}\n\n" + "\n\n".join(str(b) for b in raw_blocks if b)
+
+    uploaded_media: List[Dict[str, Any]] = []
+
+    # 1) Upload images if provided
+    for img in images:
+        try:
+            media_payload = {
+                "headers": headers,
+                "params": {
+                    "file_path": img.get("file_path"),
+                    "url": img.get("url"),
+                    "filename": img.get("filename"),
+                    "title": img.get("title"),
+                    "alt_text": img.get("alt_text"),
+                    "caption": img.get("caption"),
+                    "description": img.get("description"),
+                    # allow per-image download headers/user-agent
+                    "download_user_agent": img.get("download_user_agent"),
+                    "download_headers": img.get("download_headers"),
+                },
+            }
+            # Use the standalone version of upload_media
+            result = _upload_media_standalone(media_payload)
+            if not result.get("status"):
+                return {"status": False, "message": f"Image upload failed: {result.get('message')}"}
+            uploaded_media.append(result.get("data", {}))
+        except Exception as e:
+            return {"status": False, "message": f"Exception uploading image: {e}"}
+
+    # 2) Optionally append uploaded images to the content
+    if auto_append_images and uploaded_media:
+        appended_html_parts: List[str] = []
+        for media in uploaded_media:
+            src = media.get("source_url")
+            alt = media.get("alt_text") or ""
+            if src and (src not in content_html):
+                appended_html_parts.append(
+                    f'<figure class="wp-block-image"><img src="{src}" alt="{alt}" /></figure>'
+                )
+        if appended_html_parts:
+            content_html = f"{content_html}\n\n" + "\n".join(appended_html_parts)
+
+    # 3) Create the draft post
+    post_endpoint = f"{api_base}/posts"
+    post_body: Dict[str, Any] = {
+        "title": title,
+        "content": content_html,
+        "status": "draft",
+    }
+    if excerpt is not None:
+        post_body["excerpt"] = excerpt
+    if categories:
+        post_body["categories"] = categories
+    if tags:
+        post_body["tags"] = tags
+
+    # Set featured image to first uploaded media if requested
+    if set_featured_image and uploaded_media:
+        first_media_id = uploaded_media[0].get("id")
+        if first_media_id:
+            post_body["featured_media"] = first_media_id
+
+    try:
+        resp = requests.post(post_endpoint, headers=auth_header, json=post_body, timeout=60)
+        if resp.status_code == 401 and mode == "wpcom":
+            # Fallback to WP.com v1.1 endpoint (form data)
+            v11_url = f"https://public-api.wordpress.com/rest/v1.1/sites/{_get_site_domain(headers.get('site_url') or params.get('site_url'))}/posts/new"
+            form: Dict[str, Any] = {
+                "title": title,
+                "content": content_html,
+                "status": "draft",
+            }
+            if excerpt is not None:
+                form["excerpt"] = excerpt
+            if post_body.get("featured_media"):
+                form["featured_image"] = post_body.get("featured_media")
+            resp_v11 = requests.post(
+                v11_url,
+                headers={**auth_header},
+                data=form,
+                timeout=60,
+            )
+            if resp_v11.status_code >= 400:
+                return {"status": False, "message": f"Create post failed (v1.1): {resp_v11.status_code} - {resp_v11.text}"}
+            post = resp_v11.json()
+            return {
+                "status": True,
+                "data": {
+                    "post": post,
+                    "uploaded_media": uploaded_media,
+                },
+                "message": "Draft post created (v1.1).",
+            }
+
+        if resp.status_code >= 400:
+            return {"status": False, "message": f"Create post failed: {resp.status_code} - {resp.text}"}
+        post = resp.json()
+        return {
+            "status": True,
+            "data": {
+                "post": post,
+                "uploaded_media": uploaded_media,
+            },
+            "message": "Draft post created.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Exception creating post: {e}"}
+
+
+def upload_media(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Upload a media asset to WordPress Media Library.
+
+    headers: expects site_url, username, application_password
+    params:
+      - file_path: local path to the file (optional if url provided)
+      - url: remote URL to download and upload (optional if file_path provided)
+      - filename: override filename (optional)
+      - title: media title (optional)
+      - alt_text: alternative text (optional)
+      - caption: caption HTML/text (optional)
+      - description: description (optional)
+    """
+    headers = request_data.get("headers", {})
+    params = request_data.get("params", {})
+
+    # Local helpers to avoid missing global references in restricted runtimes
+    def _normalize_site_url(site_url: str) -> str:
+        if not site_url:
+            return site_url
+        return site_url.rstrip("/")
+
+    def _get_site_domain(site_url: str) -> str:
+        parsed = urlparse(site_url if "://" in site_url else f"https://{site_url}")
+        domain = parsed.netloc or parsed.path
+        return domain.rstrip("/")
+
+    def _detect_mode_local(h: Dict[str, Any], p: Dict[str, Any]) -> str:
+        if (h.get("bearer_token") or p.get("bearer_token")):
+            return "wpcom"
+        return "selfhosted"
+
+    def _get_credentials_and_base_local(h: Dict[str, Any], p: Dict[str, Any]) -> Tuple[str, Dict[str, str], str]:
+        site_url = h.get("site_url") or p.get("site_url")
+        if not site_url:
+            raise ValueError("Missing WordPress 'site_url'.")
+
+        # Check for authorization header first (Bearer token from workflow)
+        auth_header = h.get("authorization") or p.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            domain = _get_site_domain(site_url)
+            api_base = f"https://public-api.wordpress.com/wp/v2/sites/{domain}"
+            return "wpcom", {"Authorization": auth_header}, api_base
+
+        mode = _detect_mode_local(h, p)
+        if mode == "wpcom":
+            token = h.get("bearer_token") or p.get("bearer_token")
+            if not token:
+                raise ValueError("Missing WordPress.com 'bearer_token'.")
+            domain = _get_site_domain(site_url)
+            api_base = f"https://public-api.wordpress.com/wp/v2/sites/{domain}"
+            return mode, {"Authorization": f"Bearer {token}"}, api_base
+
+        username = h.get("username") or p.get("username")
+        application_password = h.get("application_password") or p.get("application_password")
+        if not username:
+            raise ValueError("Missing WordPress 'username'.")
+        if not application_password:
+            raise ValueError("Missing WordPress 'application_password'.")
+        base = _normalize_site_url(site_url)
+        api_base = f"{base}/wp-json/wp/v2"
+        token = base64.b64encode(f"{username}:{application_password}".encode("utf-8")).decode("utf-8")
+        return mode, {"Authorization": f"Basic {token}"}, api_base
+
+    def _safe_filename(path_or_name: str) -> str:
+        name = os.path.basename(path_or_name)
+        return name or "upload.bin"
+
+    def _guess_mime_type(filename: str) -> str:
+        mime, _ = mimetypes.guess_type(filename)
+        return mime or "application/octet-stream"
+
+    def _download_file_to_bytes(url: str, timeout: int = 30, headers: Dict[str, str] | None = None) -> bytes:
+        resp = requests.get(url, timeout=timeout, headers=headers or {})
+        resp.raise_for_status()
+        return resp.content
+
+    try:
+        mode, auth_header, api_base = _get_credentials_and_base_local(headers, params)
+    except Exception as e:
+        return {"status": False, "message": str(e)}
+
+    file_path = params.get("file_path")
+    remote_url = params.get("url")
+    override_filename = params.get("filename")
+    title = params.get("title")
+    alt_text = params.get("alt_text")
+    caption = params.get("caption")
+    description = params.get("description")
+
+    if not file_path and not remote_url:
+        return {"status": False, "message": "Either 'file_path' or 'url' must be provided."}
+
+    try:
+        if remote_url:
+            # Build download headers with a compliant User-Agent for sources like Wikimedia
+            default_ua = "machina-templates-wordpress-connector/1.0 (+https://machina.ai)"
+            download_user_agent = (
+                headers.get("download_user_agent")
+                or params.get("download_user_agent")
+                or default_ua
+            )
+            extra_download_headers = params.get("download_headers") or {}
+            dl_headers = {"User-Agent": download_user_agent, **extra_download_headers}
+            file_bytes = _download_file_to_bytes(remote_url, headers=dl_headers)
+            filename = override_filename or _safe_filename(remote_url)
+        else:
+            filename = override_filename or _safe_filename(file_path)
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+
+        mime_type = _guess_mime_type(filename)
+
+        api_url = f"{api_base}/media"
+
+        files = {"file": (filename, file_bytes, mime_type)}
+        data: Dict[str, Any] = {}
+        if title:
+            data["title"] = title
+        if caption:
+            data["caption"] = caption
+        if description:
+            data["description"] = description
+        if alt_text:
+            data["alt_text"] = alt_text
+
+        resp = requests.post(api_url, headers=auth_header, files=files, data=data, timeout=60)
+        if resp.status_code == 401 and mode == "wpcom":
+            # Fallback to WP.com v1.1 endpoint
+            v11_url = f"https://public-api.wordpress.com/rest/v1.1/sites/{_get_site_domain(headers.get('site_url') or params.get('site_url'))}/media/new"
+            files_v11 = {"media[]": (filename, file_bytes, mime_type)}
+            resp_v11 = requests.post(v11_url, headers=auth_header, files=files_v11, data=data, timeout=60)
+            if resp_v11.status_code >= 400:
+                return {"status": False, "message": f"Media upload failed (v1.1): {resp_v11.status_code} - {resp_v11.text}"}
+            media = resp_v11.json()
+            return {"status": True, "data": media, "message": "Media uploaded (v1.1)."}
+
+        if resp.status_code >= 400:
+            return {"status": False, "message": f"Media upload failed: {resp.status_code} - {resp.text}"}
+
+        media = resp.json()
+        return {"status": True, "data": media, "message": "Media uploaded."}
+
+    except Exception as e:
+        return {"status": False, "message": f"Exception during media upload: {e}"}
+
+
+def refresh_wpcom_access_token(params: Dict[str, Any]) -> Dict[str, Any]:
+    client_id = params.get("client_id")
+    client_secret = params.get("client_secret")
+    refresh_token = params.get("refresh_token")
+    if not client_id or not client_secret or not refresh_token:
+        return {"status": False, "message": "Missing client_id, client_secret or refresh_token for refresh."}
+    try:
+        body = {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        }
+        resp = requests.post(
+            "https://public-api.wordpress.com/oauth2/token",
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if resp.status_code >= 400:
+            return {"status": False, "message": f"Refresh failed: {resp.status_code} - {resp.text}"}
+        payload = resp.json()
+        return {"status": True, "data": payload}
+    except Exception as e:
+        return {"status": False, "message": f"Exception refreshing token: {e}"}
+
+
+def render_contract_card(request_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Render a Gutenberg block card for a player/team contract using core blocks only.
+
+    headers: optional (only needed if upload_logo=True with team_logo_url)
+      - site_url, username/application_password OR bearer_token
+
+    params can include either a 'contract' dict or individual fields:
+      - contract: {name, team, length, salary, contract_type, total, date, team_logo_url?, team_logo_alt?}
+      - name, team, length, salary, contract_type, total, date
+      - team_logo_url: optional remote image URL
+      - team_logo_alt: optional
+      - upload_logo: bool (default True). If True and team_logo_url provided and headers available, uploads to Media Library first
+
+    Returns: {status, data: {block}}
+    """
+    # This function should be reimplemented with the same standalone approach as create_draft_post
+    # For now, we'll return a stub response
+    return {"status": False, "message": "This function should be reimplemented with the same standalone approach as create_draft_post."}
