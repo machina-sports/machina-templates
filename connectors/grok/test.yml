@@ -9,7 +9,7 @@ workflow:
       authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
     user_message: "$.get('user_message', 'Search for recent tweets about 49ers')"
-    model: "$.get('model', 'grok-4-latest')"
+    model: "$.get('model', 'grok-4-fast')"
     temperature: "$.get('temperature', 0)"
     max_tokens: "$.get('max_tokens', 500)"
   outputs:
