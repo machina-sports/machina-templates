@@ -54,6 +54,10 @@ workflow:
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "analysis": {
+                      "type": "string",
+                      "description": "The analysis of the tweets about the subject"
+                    },
                     "sentiment_rating": {
                       "type": "integer",
                       "minimum": 1,
@@ -61,7 +65,7 @@ workflow:
                       "description": "Sentiment rating from 1 (very negative) to 5 (very positive)"
                     }
                   },
-                  "required": ["sentiment_rating"],
+                  "required": ["analysis", "sentiment_rating"],
                   "additionalProperties": False
                 }
               }
