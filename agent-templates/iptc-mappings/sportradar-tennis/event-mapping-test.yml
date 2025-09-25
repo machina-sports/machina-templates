@@ -1,0 +1,320 @@
+workflow:
+
+  # iptc-sportradar-tennis-event-mapping-test
+  name: iptc-sportradar-tennis-event-mapping-test
+  title: "IPTC | Sportradar Tennis Event Mapping Test"
+  description: "Workflow to test mapping tennis competitions from Sportradar to IPTC Sports Schema."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    competition_id: "$.get('competition_id', 'sr:competition:1')"
+    season_id: "$.get('season_id', 'sr:season:123456')"
+    test_type: "$.get('test_type', 'competitions')"  # 'competitions' or 'seasons'
+    use_mock_data: "$.get('use_mock_data', true)"
+  outputs:
+    workflow-status: "$.get('has-data') is True and 'executed' or 'skipped'"
+    sport-schema-events: "$.get('sport-schema-events')"
+    sport-schema-seasons: "$.get('sport-schema-seasons')"
+    test-results: "$.get('test-results')"
+  tasks:
+
+    # mock-tennis-competition-data
+    - type: "connector"
+      name: mock-tennis-competition-data
+      description: "Create mock tennis competition data for testing"
+      condition: "$.get('use_mock_data') is True and $.get('test_type') == 'competitions'"
+      connector:
+        name: "python"
+        command: "execute"
+      inputs:
+        code: |
+          # Mock tennis competition data similar to Sportradar structure
+          competitions = [
+            {
+              "id": "sr:competition:1",
+              "name": "Wimbledon Championships",
+              "alternative_name": "The Championships",
+              "type": "singles",
+              "gender": "men",
+              "level": "grand_slam",
+              "parent_id": None,
+              "category": {
+                "id": "sr:category:1",
+                "name": "ATP",
+                "country_code": "GBR"
+              }
+            },
+            {
+              "id": "sr:competition:2", 
+              "name": "Wimbledon Championships Women",
+              "alternative_name": "The Championships Women",
+              "type": "singles",
+              "gender": "women",
+              "level": "grand_slam",
+              "parent_id": "sr:competition:1",
+              "category": {
+                "id": "sr:category:2",
+                "name": "WTA",
+                "country_code": "GBR"
+              }
+            },
+            {
+              "id": "sr:competition:3",
+              "name": "US Open",
+              "alternative_name": "US Open Tennis Championships",
+              "type": "singles", 
+              "gender": "men",
+              "level": "grand_slam",
+              "parent_id": None,
+              "category": {
+                "id": "sr:category:3",
+                "name": "ATP",
+                "country_code": "USA"
+              }
+            }
+          ]
+          
+          result = {"competitions": competitions}
+      outputs:
+        mock-competitions: "$.get('competitions', [])"
+        has-competition: "len($.get('competitions', [])) > 0"
+
+    # mock-tennis-season-data
+    - type: "connector"
+      name: mock-tennis-season-data
+      description: "Create mock tennis season data for testing"
+      condition: "$.get('use_mock_data') is True and $.get('test_type') == 'seasons'"
+      connector:
+        name: "python"
+        command: "execute"
+      inputs:
+        code: |
+          # Mock tennis season data similar to Sportradar structure
+          season_info_parsed = [
+            {
+              "id": "sr:season:123456",
+              "name": "Wimbledon Championships 2024",
+              "start_date": "2024-07-01",
+              "end_date": "2024-07-14",
+              "year": "2024",
+              "competition_id": "sr:competition:1",
+              "title": "Wimbledon Championships 2024",
+              "surface": "grass",
+              "complex_name": "All England Lawn Tennis Club",
+              "prize_money": 44700000,
+              "prize_currency": "GBP",
+              "total_competitors": 128,
+              "qualified_competitors": 120,
+              "scheduled_matches": 127,
+              "sport_name": "Tennis",
+              "category_name": "ATP",
+              "competition_name": "Wimbledon Championships",
+              "competition_type": "singles",
+              "competition_gender": "men",
+              "competition_level": "grand_slam",
+              "stages": [
+                {
+                  "order": 1,
+                  "type": "cup",
+                  "phase": "qualification",
+                  "start_date": "2024-06-28",
+                  "end_date": "2024-06-30",
+                  "year": "2024",
+                  "groups": [
+                    {"id": "sr:group:q1", "name": "Qualification Round 1"},
+                    {"id": "sr:group:q2", "name": "Qualification Round 2"}
+                  ]
+                }
+              ],
+              "selected": False,
+              "sport": "tennis",
+              "has_stages": True,
+              "total_stages": 1,
+              "document_type": "tennis-season-info",
+              "category": {"id": "sr:category:1", "country_code": "GBR"},
+              "info": {"complex_id": "sr:venue:1001"}
+            }
+          ]
+          
+          result = {"season_info_parsed": season_info_parsed}
+      outputs:
+        mock-season-info: "$.get('season_info_parsed', [])"
+        has-season: "len($.get('season_info_parsed', [])) > 0"
+
+    # search-tennis-competition (alternative to mock data)
+    - type: document
+      name: search-tennis-competition
+      description: "Search for real tennis competition data"
+      condition: "$.get('use_mock_data') is False and $.get('test_type') == 'competitions'"
+      config:
+        action: "search"
+        search-limit: 3
+        search-vector: false
+      filters:
+        metadata.sport: "'tennis'"
+        value.id: "$.get('competition_id')"
+      inputs:
+        name: "'tennis-competition'"
+      outputs:
+        real-competitions: "$.get('documents', [])"
+        has-competition: "len($.get('documents', [])) > 0"
+        selected-competitions: "[doc.get('value', {}) for doc in $.get('documents', [])]"
+
+    # search-tennis-season (alternative to mock data)
+    - type: document
+      name: search-tennis-season
+      description: "Search for real tennis season data"
+      condition: "$.get('use_mock_data') is False and $.get('test_type') == 'seasons'"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.sport: "'tennis'"
+        value.id: "$.get('season_id')"
+      inputs:
+        name: "'tennis-season-info'"
+      outputs:
+        real-seasons: "$.get('documents', [])"
+        has-season: "len($.get('documents', [])) > 0"
+        selected-seasons: "[doc.get('value', {}) for doc in $.get('documents', [])]"
+
+    # set-has-data-flag
+    - type: "connector"
+      name: set-has-data-flag
+      description: "Set unified has-data flag"
+      connector:
+        name: "python"
+        command: "execute"
+      inputs:
+        code: |
+          has_competition = $.get('has-competition', False)
+          has_season = $.get('has-season', False)
+          test_type = $.get('test_type', 'competitions')
+          
+          has_data = has_competition if test_type == 'competitions' else has_season
+          result = {"has_data": has_data}
+      outputs:
+        has-data: "$.get('has_data')"
+
+    # iptc-sportradar-tennis-event-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-event-mapping
+      title: "IPTC | Sportradar Tennis Event Mapping"
+      description: "Test mapping data from sportradar tennis competitions to IPTC sports schema"
+      condition: "$.get('has-data') is True and $.get('test_type') == 'competitions'"
+      inputs:
+        competitions: "$.get('mock-competitions', []) if $.get('use_mock_data') else $.get('selected-competitions', [])"
+      outputs:
+        sport-schema-events: "$.get('sport_schema_events')"
+
+    # iptc-sportradar-tennis-season-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-season-mapping
+      title: "IPTC | Sportradar Tennis Season Mapping"
+      description: "Test mapping data from sportradar tennis season info to IPTC sports schema"
+      condition: "$.get('has-data') is True and $.get('test_type') == 'seasons'"
+      inputs:
+        season_info_parsed: "$.get('mock-season-info', []) if $.get('use_mock_data') else $.get('selected-seasons', [])"
+      outputs:
+        sport-schema-seasons: "$.get('sport_schema_seasons')"
+
+    # validate-mapping-results
+    - type: "connector"
+      name: validate-mapping-results
+      description: "Validate the mapping results"
+      condition: "$.get('has-data') is True"
+      connector:
+        name: "python"
+        command: "execute"
+      inputs:
+        code: |
+          test_type = $.get('test_type', 'competitions')
+          events = $.get('sport-schema-events', []) if test_type == 'competitions' else $.get('sport-schema-seasons', [])
+          
+          test_results = {
+            "test_type": test_type,
+            "total_events": len(events),
+            "validation_errors": [],
+            "validation_warnings": [],
+            "test_passed": True
+          }
+          
+          for i, event in enumerate(events):
+            event_id = f"Event {i+1}"
+            
+            # Test required IPTC fields
+            if not event.get('@id'):
+              test_results["validation_errors"].append(f"{event_id}: Missing @id")
+              
+            if not event.get('@type') or 'sport:Event' not in event.get('@type', []):
+              test_results["validation_errors"].append(f"{event_id}: Missing or incorrect @type")
+              
+            if not event.get('name'):
+              test_results["validation_errors"].append(f"{event_id}: Missing name")
+              
+            # Test tennis-specific fields
+            if not event.get('sport:competitionType'):
+              test_results["validation_warnings"].append(f"{event_id}: Missing sport:competitionType")
+              
+            if not event.get('sport:genderCategory'):
+              test_results["validation_warnings"].append(f"{event_id}: Missing sport:genderCategory")
+              
+            # Test competition structure
+            competition = event.get('sport:competition', {})
+            if not competition:
+              test_results["validation_errors"].append(f"{event_id}: Missing sport:competition")
+            elif not competition.get('@type') or 'sport:Competition' not in competition.get('@type', ''):
+              test_results["validation_errors"].append(f"{event_id}: Incorrect competition @type")
+              
+            # Test URN format
+            event_id_val = event.get('@id', '')
+            if not event_id_val.startswith('urn:sportradar:tennis:competition:'):
+              test_results["validation_errors"].append(f"{event_id}: Incorrect URN format: {event_id_val}")
+          
+          # Overall test result
+          test_results["test_passed"] = len(test_results["validation_errors"]) == 0
+          
+          result = {"test_results": test_results}
+      outputs:
+        test-results: "$.get('test_results')"
+
+    # log-test-results
+    - type: "connector"
+      name: log-test-results
+      description: "Log test results for review"
+      condition: "$.get('has-data') is True"
+      connector:
+        name: "python"
+        command: "execute"
+      inputs:
+        code: |
+          import json
+          
+          test_results = $.get('test_results', {})
+          test_type = test_results.get('test_type', 'competitions')
+          events = $.get('sport-schema-events', []) if test_type == 'competitions' else $.get('sport-schema-seasons', [])
+          
+          print(f"=== TENNIS {test_type.upper()} MAPPING TEST RESULTS ===")
+          print(f"Total Events Mapped: {test_results.get('total_events', 0)}")
+          print(f"Test Type: {test_type}")
+          print(f"Test Passed: {'✅ YES' if test_results.get('test_passed') else '❌ NO'}")
+          
+          if test_results.get('validation_errors'):
+            print(f"\n❌ ERRORS ({len(test_results['validation_errors'])}):")
+            for error in test_results['validation_errors']:
+              print(f"  - {error}")
+          
+          if test_results.get('validation_warnings'):
+            print(f"\n⚠️  WARNINGS ({len(test_results['validation_warnings'])}):")
+            for warning in test_results['validation_warnings']:
+              print(f"  - {warning}")
+          
+          if events:
+            print(f"\n📋 SAMPLE MAPPED EVENT:")
+            print(json.dumps(events[0], indent=2)[:500] + "..." if len(json.dumps(events[0], indent=2)) > 500 else json.dumps(events[0], indent=2))
+          
+          result = {"log_complete": True}
+      outputs:
+        log-complete: "$.get('log_complete')"

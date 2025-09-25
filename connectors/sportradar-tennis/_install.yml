@@ -35,6 +35,17 @@ datasets:
   - type: "connector"
     path: "sportradar-tennis.yml"
 
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/competition-summary.yml"
+
+  - type: "mappings"
+    path: "mappings/season-summary.yml"
+
+  - type: "mappings"
+    path: "mappings/event-summary.yml"
+
   # sync workflows
 
   - type: "workflow"
