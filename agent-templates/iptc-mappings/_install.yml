@@ -58,3 +58,8 @@ datasets:
 
   - type: "mappings"
     path: "sportradar/event-teams-stats.yml"
+
+  # sportradar-tennis
+
+  - type: "mappings"
+    path: "sportradar-tennis/event-mapping.yml"

@@ -26,32 +26,27 @@ workflow:
         x-api-key: "$.get('x-api-key')"
       outputs:
         season_info_response: "$"
-        season_info_parsed: |
-          [
-            {
-              **$.get('season', {}),
-              'title': f"{$.get('season', {}).get('name', '')}",
-              'surface': $.get('season', {}).get('info', {}).get('surface', ''),
-              'complex_name': $.get('season', {}).get('info', {}).get('complex', ''),
-              'prize_money': $.get('season', {}).get('info', {}).get('prize_money', 0),
-              'prize_currency': $.get('season', {}).get('info', {}).get('prize_currency', ''),
-              'total_competitors': $.get('season', {}).get('info', {}).get('number_of_competitors', 0),
-              'qualified_competitors': $.get('season', {}).get('info', {}).get('number_of_qualified_competitors', 0),
-              'scheduled_matches': $.get('season', {}).get('info', {}).get('number_of_scheduled_matches', 0),
-              'sport_name': $.get('season', {}).get('sport', {}).get('name', 'Tennis'),
-              'category_name': $.get('season', {}).get('category', {}).get('name', ''),
-              'competition_name': $.get('season', {}).get('competition', {}).get('name', ''),
-              'competition_type': $.get('season', {}).get('competition', {}).get('type', ''),
-              'competition_gender': $.get('season', {}).get('competition', {}).get('gender', ''),
-              'competition_level': $.get('season', {}).get('competition', {}).get('level', ''),
-              'stages': $.get('stages', []),
-              'selected': False,
-              'sport': 'tennis',
-              'has_stages': len($.get('stages', [])) > 0,
-              'total_stages': len($.get('stages', [])),
-              'document_type': 'tennis-season-info'
-            }
-          ]
+
+    # mapping-tennis-season-info-parsing
+    - type: mapping
+      name: mapping-tennis-season-info-parsing
+      title: "Tennis - Season Info Parsing"
+      description: "Parse season info data from sportradar tennis API response"
+      inputs:
+        season: "$.get('season', {})"
+        stages: "$.get('stages', [])"
+      outputs:
+        season_info_parsed: "$.get('season_info_parsed')"
+
+    # iptc-sportradar-tennis-season-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-season-mapping
+      title: "IPTC | Sportradar Tennis Season Mapping"
+      description: "Mapping data from sportradar tennis season info to IPTC sports schema"
+      inputs:
+        season_info_parsed: "$.get('season_info_parsed', [])"
+      outputs:
+        tennis_seasons: "$.get('sport_schema_seasons')"
 
     # task-bulk-save-season-info
     - type: "document"
@@ -71,3 +66,38 @@ workflow:
       metadata:
         document_type: "'tennis-season-info'"
         sport: "'tennis'"
+
+    # task-bulk-save-iptc-seasons
+    - type: "document"
+      name: "task-bulk-save-iptc-seasons"
+      description: "Bulk save the IPTC-formatted tennis season events."
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('name')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: |
+          [
+            {
+              **s,
+              'metadata': {
+                'event_code': str(s.get('@id', '')),
+                'sport': 'tennis',
+                'season_id': s.get('sport:season', {}).get('@id', '').replace('urn:sportradar:tennis:season:', ''),
+                'competition_id': s.get('sport:competition', {}).get('@id', '').replace('urn:sportradar:tennis:competition:', ''),
+                'surface_type': s.get('sport:venue', {}).get('sport:surfaceType', 'unknown'),
+                'prize_money': s.get('sport:tournamentInfo', {}).get('sport:prizeMoneyTotal', 0),
+                'total_competitors': s.get('sport:tournamentInfo', {}).get('sport:totalCompetitors', 0)
+              },
+              'title': s.get('name', '')
+            }
+            for s in $.get('tennis_seasons', [])
+          ]
+      metadata:
+        document_type: "'tennis-iptc-season'"
