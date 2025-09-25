@@ -1,0 +1,61 @@
+mappings:
+
+  - type: "mapping"
+    title: "Tennis - Season Summary Mapping"
+    name: "mapping-tennis-season-summary"
+    description: "Mapping data from sportradar tennis season data"
+    outputs:
+      season_code: "$.get('season_selected', {}).get('id')"
+      season_name: "$.get('season_selected', {}).get('name')"
+      season_start_date: "$.get('season_selected', {}).get('start_date')"
+      season_end_date: "$.get('season_selected', {}).get('end_date')"
+      season_year: "$.get('season_selected', {}).get('year')"
+      competition_id: "$.get('season_selected', {}).get('competition_id')"
+      competition_name: "$.get('season_selected', {}).get('competition_name', '')"
+      competition_type: "$.get('season_selected', {}).get('competition_type', 'singles')"
+      competition_gender: "$.get('season_selected', {}).get('competition_gender', 'mixed')"
+      competition_level: "$.get('season_selected', {}).get('competition_level', 'unknown')"
+      surface_type: "$.get('season_selected', {}).get('surface', 'unknown')"
+      complex_name: "$.get('season_selected', {}).get('complex_name', '')"
+      prize_money: "$.get('season_selected', {}).get('prize_money', 0)"
+      prize_currency: "$.get('season_selected', {}).get('prize_currency', '')"
+      total_competitors: "$.get('season_selected', {}).get('total_competitors', 0)"
+      qualified_competitors: "$.get('season_selected', {}).get('qualified_competitors', 0)"
+      scheduled_matches: "$.get('season_selected', {}).get('scheduled_matches', 0)"
+      category_name: "$.get('season_selected', {}).get('category_name', '')"
+      sport_name: "$.get('season_selected', {}).get('sport_name', 'Tennis')"
+      has_stages: "$.get('season_selected', {}).get('has_stages', False)"
+      total_stages: "$.get('season_selected', {}).get('total_stages', 0)"
+      season_title: f"{$.get('season_selected', {}).get('competition_name', '')} {$.get('season_selected', {}).get('year', '')}"
+
+  - type: "mapping"
+    title: "Tennis - Season Info Parsing"
+    name: "mapping-tennis-season-info-parsing"
+    description: "Parse season info data from sportradar tennis API response"
+    outputs:
+      season_info_parsed: |
+        [
+          {
+            **$.get('season', {}),
+            'title': f"{$.get('season', {}).get('name', '')}",
+            'surface': $.get('season', {}).get('info', {}).get('surface', ''),
+            'complex_name': $.get('season', {}).get('info', {}).get('complex', ''),
+            'prize_money': $.get('season', {}).get('info', {}).get('prize_money', 0),
+            'prize_currency': $.get('season', {}).get('info', {}).get('prize_currency', ''),
+            'total_competitors': $.get('season', {}).get('info', {}).get('number_of_competitors', 0),
+            'qualified_competitors': $.get('season', {}).get('info', {}).get('number_of_qualified_competitors', 0),
+            'scheduled_matches': $.get('season', {}).get('info', {}).get('number_of_scheduled_matches', 0),
+            'sport_name': $.get('season', {}).get('sport', {}).get('name', 'Tennis'),
+            'category_name': $.get('season', {}).get('category', {}).get('name', ''),
+            'competition_name': $.get('season', {}).get('competition', {}).get('name', ''),
+            'competition_type': $.get('season', {}).get('competition', {}).get('type', ''),
+            'competition_gender': $.get('season', {}).get('competition', {}).get('gender', ''),
+            'competition_level': $.get('season', {}).get('competition', {}).get('level', ''),
+            'stages': $.get('stages', []),
+            'selected': False,
+            'sport': 'tennis',
+            'has_stages': len($.get('stages', [])) > 0,
+            'total_stages': len($.get('stages', [])),
+            'document_type': 'tennis-season-info'
+          }
+        ]

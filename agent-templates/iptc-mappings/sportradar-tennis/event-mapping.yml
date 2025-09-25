@@ -1,0 +1,95 @@
+mappings:
+
+  # iptc-sportradar-tennis-event-mapping
+  - type: mapping
+    title: "IPTC | Sportradar Tennis Event Mapping"
+    name: "iptc-sportradar-tennis-event-mapping"
+    description: "Mapping data from sportradar tennis competitions to IPTC sports schema"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:sportradar:tennis:competition:{c.get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": c.get('name', ''),
+            "schema:alternativeName": c.get('alternative_name', ''),
+            "sport:competitionType": c.get('type', 'singles'),
+            "sport:genderCategory": c.get('gender', 'mixed'),
+            "sport:level": c.get('level', 'unknown'),
+            "sport:competition": {
+              "@id": f"urn:sportradar:tennis:competition:{c.get('id')}",
+              "@type": "sport:Competition",
+              "name": c.get('name', ''),
+              "sport:category": {
+                "@id": f"urn:sportradar:tennis:category:{c.get('category', {}).get('id', '')}",
+                "@type": "sport:Category",
+                "name": c.get('category', {}).get('name', ''),
+                "sport:countryCode": c.get('category', {}).get('country_code', ''),
+                "schema:addressCountry": c.get('category', {}).get('country_code', '')
+              }
+            },
+            "sport:parentCompetition": {
+              "@id": f"urn:sportradar:tennis:competition:{c.get('parent_id')}",
+              "@type": "sport:Competition"
+            } if c.get('parent_id') else None,
+            "sport:hasChildren": c.get('parent_id') is None,
+            "sport:isChildCompetition": c.get('parent_id') is not None,
+            "sport:sport": {
+              "@id": "urn:iptc:sport:tennis",
+              "@type": "sport:Sport",
+              "name": "Tennis"
+            },
+            "sport:competitionFormat": {
+              "sport:matchType": c.get('type', 'singles'),
+              "sport:surfaceType": "unknown",
+              "sport:indoor": None
+            }
+          }
+          for c in $.get('competitions', [])
+          if c.get('id') and c.get('name')
+        ]
+
+  # iptc-sportradar-tennis-event-id-conversion-mapping
+  - type: mapping
+    title: "IPTC | Sportradar Tennis Event ID Conversion Mapping"
+    name: "iptc-sportradar-tennis-event-id-conversion-mapping"
+    description: "Convert IPTC URN Event IDs to original Sportradar IDs and preserve URN"
+    outputs:
+      original_competition_ids: |
+        [
+          c.get('@id', '').replace('urn:sportradar:tennis:competition:', '') if c.get('@id', '').startswith('urn:sportradar:tennis:competition:') else c.get('@id', '')
+          for c in $.get('sport_schema_events', [])
+        ]
+      iptc_competition_ids: |
+        [
+          c.get('@id', '') if c.get('@id', '').startswith('urn:sportradar:tennis:competition:') else f'urn:sportradar:tennis:competition:{c.get("@id", "")}'
+          for c in $.get('sport_schema_events', [])
+        ]
+
+  # iptc-sportradar-tennis-event-hierarchy-mapping
+  - type: mapping
+    title: "IPTC | Sportradar Tennis Event Hierarchy Mapping"
+    name: "iptc-sportradar-tennis-event-hierarchy-mapping"
+    description: "Map tennis event hierarchies and relationships"
+    outputs:
+      competition_hierarchy: |
+        [
+          {
+            "@id": c.get('@id'),
+            "sport:parentCompetitions": [
+              comp.get('@id') for comp in $.get('sport_schema_events', [])
+              if comp.get('@id') == f"urn:sportradar:tennis:competition:{c.get('sport:parentCompetition', {}).get('@id', '').replace('urn:sportradar:tennis:competition:', '')}"
+            ] if c.get('sport:parentCompetition') else [],
+            "sport:childCompetitions": [
+              comp.get('@id') for comp in $.get('sport_schema_events', [])
+              if comp.get('sport:parentCompetition', {}).get('@id') == c.get('@id')
+            ],
+            "sport:competitionLevel": "parent" if not c.get('sport:isChildCompetition', False) else "child",
+            "sport:competitionDepth": 0 if not c.get('sport:isChildCompetition', False) else 1
+          }
+          for c in $.get('sport_schema_events', [])
+        ]
