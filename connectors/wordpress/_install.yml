@@ -1,0 +1,23 @@
+setup:
+  title: WordPress API
+  description: Connect to WordPress API to manage posts and media.
+  category:
+    - content-management
+    - blogging
+  estimatedTime: 1 minute
+  features:
+    - Create and manage posts
+    - Upload media files
+    - Manage media metadata
+  integrations:
+    - wordpress
+  status: available
+  value: connectors/wordpress
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "wordpress.yml"
+
+  - type: "workflow"
+    path: "test-workflow.yml"

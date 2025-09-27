@@ -1,0 +1,146 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "WordPress API",
+    "description": "This API allows you to manage WordPress posts and media.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://public-api.wordpress.com"
+    }
+  ],
+  "paths": {
+    "/wp/v2/sites/{site_id}/posts": {
+      "post": {
+        "summary": "Create a new post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The site identifier (e.g., wpmachinatest.wordpress.com)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string",
+                    "description": "URL-friendly name for the post"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["post"],
+                    "default": "post"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Post title"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Post content in HTML format"
+                  },
+                  "excerpt": {
+                    "type": "string",
+                    "description": "Post excerpt in HTML format"
+                  },
+                  "featured_media": {
+                    "type": "integer",
+                    "description": "ID of the featured media"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["publish", "draft", "private"],
+                    "default": "publish"
+                  }
+                },
+                "required": ["title", "content"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Post created successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/rest/v1.1/sites/{site_id}/media/new": {
+      "post": {
+        "summary": "Upload media",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The site identifier (e.g., wpmachinatest.wordpress.com)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "media[]": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The media file to upload"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Title for the media"
+                  },
+                  "alt_text": {
+                    "type": "string",
+                    "description": "Alternative text for the media"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "Caption for the media"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description for the media"
+                  }
+                },
+                "required": ["media[]"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media uploaded successfully"
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  }
+}
