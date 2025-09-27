@@ -21,15 +21,13 @@ setup:
   requirements:
     - Tallysight-ApiKey
   status: available
-  value: tallysight
+  value: "connectors/tallysight"
   version: 1.0.0
 
 datasets:
   - type: "connector"
     path: "tallysight.yml" 
 
-workflows:
   - type: "workflow"
-    path: "sync-widgets.yml"
-
+    path: "load-leagues.yml"
 
