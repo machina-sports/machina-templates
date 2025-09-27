@@ -21,10 +21,15 @@ setup:
     - Bwin-AccessId
     - Bwin-AccessIdToken
   status: available
-  value: connectors/bwin
+  value: "connectors/bwin"
   version: 1.0.0
 
 datasets:
   - type: "connector"
     path: "bwin.yml" 
 
+  - type: "workflow"
+    path: "workflows/sync-markets.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-odds.yml"
