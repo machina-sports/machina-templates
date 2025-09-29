@@ -1,0 +1,142 @@
+mappings:
+
+  - type: mapping
+    name: kalshi-market-mapping
+    title: Kalshi Market Data Mapping
+    description: "Mapping data from Kalshi market API responses"
+    outputs:
+      mapped-markets: |
+        [
+          {
+            'id': market.get('ticker', ''),
+            'eventId': market.get('event_ticker', ''),
+            'title': market.get('title', ''),
+            'subtitle': market.get('subtitle', ''),
+            'marketType': market.get('market_type', ''),
+            'status': market.get('status', ''),
+            'yesBid': market.get('yes_bid', 0),
+            'yesAsk': market.get('yes_ask', 0),
+            'noBid': market.get('no_bid', 0),
+            'noAsk': market.get('no_ask', 0),
+            'lastPrice': market.get('last_price', 0),
+            'volume': market.get('volume', 0),
+            'volume24h': market.get('volume_24h', 0),
+            'liquidity': market.get('liquidity', 0),
+            'openInterest': market.get('open_interest', 0),
+            'openTime': market.get('open_time', ''),
+            'closeTime': market.get('close_time', ''),
+            'expirationTime': market.get('expiration_time', ''),
+            'notionalValue': market.get('notional_value', 0),
+            'tickSize': market.get('tick_size', 0),
+            'category': market.get('category', ''),
+            'canCloseEarly': market.get('can_close_early', False),
+            'result': market.get('result', ''),
+            'metadata': {
+              'risk_limit_cents': market.get('risk_limit_cents', 0),
+              'rules_primary': market.get('rules_primary', ''),
+              'rules_secondary': market.get('rules_secondary', ''),
+              'response_price_units': market.get('response_price_units', ''),
+              'settlement_timer_seconds': market.get('settlement_timer_seconds', 0)
+            }
+          }
+          for market in $.get('markets', [])
+        ]
+
+  - type: mapping
+    name: kalshi-event-mapping
+    title: Kalshi Event Data Mapping
+    description: "Mapping data from Kalshi event API responses"
+    outputs:
+      mapped-events: |
+        [
+          {
+            'id': event.get('event_ticker', ''),
+            'seriesId': event.get('series_ticker', ''),
+            'title': event.get('title', ''),
+            'subtitle': event.get('sub_title', ''),
+            'category': event.get('category', ''),
+            'mutuallyExclusive': event.get('mutually_exclusive', False),
+            'availableOnBrokers': event.get('available_on_brokers', False),
+            'strikeDate': event.get('strike_date', {}).get('ts', '') if event.get('strike_date') else '',
+            'strikePeriod': event.get('strike_period', ''),
+            'collateralReturnType': event.get('collateral_return_type', ''),
+            'metadata': {
+              'price_level_structure': event.get('price_level_structure', ''),
+              'markets_count': len(event.get('markets', [])) if 'markets' in event else 0
+            }
+          }
+          for event in $.get('events', [])
+        ]
+
+  - type: mapping
+    name: kalshi-series-mapping
+    title: Kalshi Series Data Mapping
+    description: "Mapping data from Kalshi series API responses"
+    outputs:
+      mapped-series: |
+        [
+          {
+            'id': series.get('ticker', ''),
+            'title': series.get('title', ''),
+            'category': series.get('category', ''),
+            'frequency': series.get('frequency', ''),
+            'feeType': series.get('fee_type', ''),
+            'feeMultiplier': series.get('fee_multiplier', 1.0),
+            'contractTermsUrl': series.get('contract_terms_url', ''),
+            'contractUrl': series.get('contract_url', ''),
+            'settlementSources': [
+              {
+                'name': source.get('name', ''),
+                'url': source.get('url', '')
+              }
+              for source in series.get('settlement_sources', [])
+            ],
+            'additionalProhibitions': series.get('additional_prohibitions', []),
+            'metadata': series.get('product_metadata', {})
+          }
+          for series in $.get('series', [])
+        ]
+
+  - type: mapping
+    name: kalshi-trades-mapping
+    title: Kalshi Trades Data Mapping
+    description: "Mapping data from Kalshi trades API responses"
+    outputs:
+      mapped-trades: |
+        [
+          {
+            'id': trade.get('trade_id', ''),
+            'marketId': trade.get('ticker', ''),
+            'count': trade.get('count', 0),
+            'yesPrice': trade.get('yes_price', 0),
+            'noPrice': trade.get('no_price', 0),
+            'takerSide': trade.get('taker_side', ''),
+            'createdTime': trade.get('created_time', {}).get('ts', '') if trade.get('created_time') else '',
+            'isTaker': False  # This field isn't in the API response, would need to be calculated
+          }
+          for trade in $.get('trades', [])
+        ]
+
+  - type: mapping
+    name: kalshi-orderbook-mapping
+    title: Kalshi Orderbook Data Mapping
+    description: "Mapping data from Kalshi orderbook API responses"
+    outputs:
+      mapped-orderbook: |
+        {
+          'marketId': $.get('ticker', ''),
+          'yesLevels': [
+            {
+              'price': level[0],
+              'quantity': level[1]
+            }
+            for level in $.get('yes', [])
+          ],
+          'noLevels': [
+            {
+              'price': level[0],
+              'quantity': level[1]
+            }
+            for level in $.get('no', [])
+          ]
+        }

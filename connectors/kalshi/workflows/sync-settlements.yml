@@ -1,0 +1,62 @@
+workflow:
+  name: "kalshi-sync-settlements"
+  title: "Kalshi - Sync Settlements"
+  description: "Workflow to synchronize settlement data from Kalshi API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    kalshi:
+      Kalshi-API-Key: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
+      Kalshi-User-Id: "$TEMP_CONTEXT_VARIABLE_KALSHI_USER_ID"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    ticker: "$.get('ticker')"
+    event_ticker: "$.get('event_ticker')"
+    min_ts: "$.get('min_ts')"
+    max_ts: "$.get('max_ts')"
+    force-update: "($.get('force-update') == 'true')"
+    limit: "$.get('limit', 100)"
+    cursor: "$.get('cursor')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 load-settlements
+    - type: "connector"
+      name: "load-settlements"
+      description: "Get settlements from Kalshi API"
+      connector:
+        name: "kalshi"
+        command: "get-settlements"
+        command_attribute:
+          limit: "$.get('limit')"
+          cursor: "$.get('cursor')"
+          ticker: "$.get('ticker')"
+          event_ticker: "$.get('event_ticker')"
+          min_ts: "$.get('min_ts')"
+          max_ts: "$.get('max_ts')"
+      outputs:
+        settlement_data: "$.get('settlements', [])"
+        next_cursor: "$.get('cursor')"
+        workflow-status: "'executed'"
+
+    # 2 bulk-save-settlements
+    - type: "document"
+      name: "bulk-save-settlements"
+      description: "Bulk save the settlement data."
+      condition: "$.get('settlement_data') is not None and len($.get('settlement_data', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('ticker')"
+        embed-vector: true
+        force-update: "$.get('force-update')"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'kalshi-settlement'"
+      documents:
+        items: "$.get('parsedItems', [])"
+      inputs:
+        parsedItems: "$.get('settlement_data', [])"

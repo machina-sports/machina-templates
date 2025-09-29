@@ -1,0 +1,1614 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Kalshi Trade API",
+    "version": "2.0.6",
+    "description": "Kalshi Prediction Markets API - Access to events, markets, and trading data"
+  },
+  "servers": [
+    {
+      "url": "https://api.elections.kalshi.com/trade-api/v2",
+      "description": "Production Server"
+    }
+  ],
+  "paths": {
+    "/events": {
+      "get": {
+        "summary": "Get Events",
+        "description": "Endpoint for getting data about all events. An event represents a real-world occurrence that can be traded on, such as an election, sports game, or economic indicator release.",
+        "operationId": "GetEvents",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Parameter to specify the number of results per page. Defaults to 100. Maximum value is 200.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Parameter to specify the pagination cursor. Use the cursor value returned from the previous response to get the next page of results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "with_nested_markets",
+            "in": "query",
+            "description": "Parameter to specify if nested markets should be included in the response.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by event status. Possible values: 'open', 'closed', 'settled'.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "series_ticker",
+            "in": "query",
+            "description": "Filter events by series ticker. Returns only events belonging to the specified series.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_close_ts",
+            "in": "query",
+            "description": "Filter events with at least one market with close timestamp greater than this Unix timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetEventsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/events/{event_ticker}": {
+      "get": {
+        "summary": "Get Event",
+        "description": "Endpoint for getting data about an event by its ticker.",
+        "operationId": "GetEvent",
+        "parameters": [
+          {
+            "name": "event_ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "with_nested_markets",
+            "in": "query",
+            "description": "If true, markets are included within the event object. If false (default), markets are returned as a separate top-level field in the response.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetEventResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/markets": {
+      "get": {
+        "summary": "Get Markets",
+        "description": "Endpoint for listing and discovering markets on Kalshi. A market represents a specific binary outcome within an event that users can trade on.",
+        "operationId": "GetMarkets",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results per page. Defaults to 100. Maximum value is 1000.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Pagination cursor. Use the cursor value returned from the previous response to get the next page of results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Filter markets by event ticker. Returns only markets belonging to the specified event.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "series_ticker",
+            "in": "query",
+            "description": "Filter markets by series ticker. Returns only markets belonging to events in the specified series.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "max_close_ts",
+            "in": "query",
+            "description": "Filter markets that close before this Unix timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "min_close_ts",
+            "in": "query",
+            "description": "Filter markets that close after this Unix timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by market status. Comma-separated list. Possible values: 'unopened', 'open', 'closed', 'settled'.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tickers",
+            "in": "query",
+            "description": "Filter by specific market tickers. Comma-separated list of market tickers to retrieve.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetMarketsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/markets/{ticker}": {
+      "get": {
+        "summary": "Get Market",
+        "description": "Endpoint for getting data about a specific market by its ticker.",
+        "operationId": "GetMarket",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetMarketResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/markets/{ticker}/orderbook": {
+      "get": {
+        "summary": "Get Market Order Book",
+        "description": "Endpoint for getting the current order book for a specific market.",
+        "operationId": "GetMarketOrderbook",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "description": "Maximum number of price levels to return per side (yes bids/no bids). Defaults to all levels. Maximum value is 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetMarketOrderbookResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/portfolio/balance": {
+      "get": {
+        "summary": "Get Balance",
+        "description": "Endpoint for getting the balance of a member. The balance value is returned in cents.",
+        "operationId": "GetBalance",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetBalanceResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/portfolio/orders": {
+      "get": {
+        "summary": "Get Orders",
+        "description": "Endpoint for getting all orders for the member.",
+        "operationId": "GetOrders",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "query",
+            "description": "Restricts the response to orders in a single market.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Restricts the response to orders in a single event.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_ts",
+            "in": "query",
+            "description": "Restricts the response to orders after a timestamp, formatted as a Unix Timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "max_ts",
+            "in": "query",
+            "description": "Restricts the response to orders before a timestamp, formatted as a Unix Timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Restricts the response to orders that have a certain status: resting, canceled, or executed.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Parameter to specify the number of results per page. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetOrdersResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portfolio"
+        ]
+      },
+      "post": {
+        "summary": "Create Order",
+        "description": "Endpoint for submitting orders in a market.",
+        "operationId": "CreateOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.CreateOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.CreateOrderResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/portfolio/positions": {
+      "get": {
+        "summary": "Get Positions",
+        "description": "Endpoint for getting all market positions for the member.",
+        "operationId": "GetPositions",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Parameter to specify the number of results per page. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "count_filter",
+            "in": "query",
+            "description": "Restricts the positions to those with any of following fields with non-zero values, as a comma separated list.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "settlement_status",
+            "in": "query",
+            "description": "Settlement status of the markets to return. Defaults to unsettled.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ticker",
+            "in": "query",
+            "description": "Ticker of desired positions.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Event ticker of desired positions.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetPositionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/markets/trades": {
+      "get": {
+        "summary": "Get Trades",
+        "description": "Endpoint for getting all trades for all markets. A trade represents a completed transaction between two users on a specific market.",
+        "operationId": "GetTrades",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results per page. Defaults to 100. Maximum value is 1000.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Pagination cursor. Use the cursor value returned from the previous response to get the next page of results.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ticker",
+            "in": "query",
+            "description": "Filter trades by market ticker. Returns only trades for the specified market.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_ts",
+            "in": "query",
+            "description": "Filter trades that occurred after this Unix timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "max_ts",
+            "in": "query",
+            "description": "Filter trades that occurred before this Unix timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.PublicTradesGetResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/series": {
+      "get": {
+        "summary": "Get Series List",
+        "description": "Endpoint for getting data about multiple series with specified filters. A series represents a template for recurring events.",
+        "operationId": "GetSeriesList",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter series by category. Returns only series belonging to the specified category.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_product_metadata",
+            "in": "query",
+            "description": "Include additional product metadata in the response for each series.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Comma separated list of tags to filter series by.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetSeriesListResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/series/{series_ticker}": {
+      "get": {
+        "summary": "Get Series",
+        "description": "Endpoint for getting data about a specific series by its ticker.",
+        "operationId": "GetSeries",
+        "parameters": [
+          {
+            "name": "series_ticker",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetSeriesResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/exchange/status": {
+      "get": {
+        "summary": "Get Exchange Status",
+        "description": "Endpoint for getting the exchange status.",
+        "operationId": "GetExchangeStatus",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.ExchangeStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exchange/announcements": {
+      "get": {
+        "summary": "Get Exchange Announcements",
+        "description": "Endpoint for getting all exchange-wide announcements.",
+        "operationId": "GetExchangeAnnouncements",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetExchangeAnnouncementsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/portfolio/fills": {
+      "get": {
+        "summary": "Get Fills",
+        "description": "Endpoint for getting all fills for the member. A fill is when a trade you have is matched.",
+        "operationId": "GetFills",
+        "parameters": [
+          {
+            "name": "ticker",
+            "in": "query",
+            "description": "Restricts the response to trades in a specific market.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "description": "Restricts the response to trades related to a specific order.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_ts",
+            "in": "query",
+            "description": "Restricts the response to trades after a timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "max_ts",
+            "in": "query",
+            "description": "Restricts the response to trades before a timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Parameter to specify the number of results per page. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetFillsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/portfolio/settlements": {
+      "get": {
+        "summary": "Get Settlements",
+        "description": "Endpoint for getting the member's settlements historical track.",
+        "operationId": "GetSettlements",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Parameter to specify the number of results per page. Defaults to 100.",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "ticker",
+            "in": "query",
+            "description": "Restricts the response to settlements in a specific market.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Restricts the response to settlements in a single event.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "min_ts",
+            "in": "query",
+            "description": "Restricts the response to settlements after a timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "max_ts",
+            "in": "query",
+            "description": "Restricts the response to settlements before a timestamp.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.GetSettlementsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "portfolio"
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetEventsResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor for the next page. Empty if there are no more results."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.EventData"
+            },
+            "description": "Array of events matching the query criteria."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetEventResponse": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.EventData"
+          },
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubComKalshiExchangeInfraSvcApi2ModelMarket"
+            }
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetMarketsResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GithubComKalshiExchangeInfraSvcApi2ModelMarket"
+            }
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetMarketResponse": {
+        "type": "object",
+        "properties": {
+          "market": {
+            "$ref": "#/components/schemas/GithubComKalshiExchangeInfraSvcApi2ModelMarket"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetMarketOrderbookResponse": {
+        "type": "object",
+        "properties": {
+          "orderbook": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OrderBook"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Member's available balance in cents."
+          },
+          "updated_ts": {
+            "type": "integer",
+            "description": "Timestamp of the last update to the balance."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetOrdersResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination."
+          },
+          "orders": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OrderList"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetPositionsResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination."
+          },
+          "event_positions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.EventPosition"
+            }
+          },
+          "market_positions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.MarketPosition"
+            }
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.EventData": {
+        "type": "object",
+        "properties": {
+          "event_ticker": {
+            "type": "string",
+            "description": "Unique identifier for this event."
+          },
+          "series_ticker": {
+            "type": "string",
+            "description": "Unique identifier for the series this event belongs to."
+          },
+          "title": {
+            "type": "string",
+            "description": "Full title of the event."
+          },
+          "sub_title": {
+            "type": "string",
+            "description": "Shortened descriptive title for the event."
+          },
+          "category": {
+            "type": "string",
+            "description": "Event category."
+          },
+          "mutually_exclusive": {
+            "type": "boolean",
+            "description": "If true, only one market in this event can resolve to 'yes'."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.EventPosition": {
+        "type": "object",
+        "properties": {
+          "event_ticker": {
+            "type": "string",
+            "description": "Unique identifier for events."
+          },
+          "event_exposure": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cost of the aggregate event position in cents."
+          },
+          "event_exposure_dollars": {
+            "type": "string",
+            "description": "Cost of the aggregate event position in dollars."
+          },
+          "resting_order_count": {
+            "type": "integer",
+            "description": "Aggregate size of resting orders in contract units."
+          },
+          "total_cost": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total spent on this event in cents."
+          },
+          "total_cost_dollars": {
+            "type": "string",
+            "description": "Total spent on this event in dollars."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.MarketPosition": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Unique identifier for the market."
+          },
+          "position": {
+            "type": "integer",
+            "description": "Number of contracts bought in this market."
+          },
+          "market_exposure": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Cost of the aggregate market position in cents."
+          },
+          "market_exposure_dollars": {
+            "type": "string",
+            "description": "Cost of the aggregate market position in dollars."
+          },
+          "resting_orders_count": {
+            "type": "integer",
+            "description": "Aggregate size of resting orders in contract units."
+          },
+          "total_traded": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total spent on this market in cents."
+          },
+          "total_traded_dollars": {
+            "type": "string",
+            "description": "Total spent on this market in dollars."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.OrderBook": {
+        "type": "object",
+        "properties": {
+          "yes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.PriceLevel"
+            },
+            "description": "Array of price levels for yes orders."
+          },
+          "no": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.PriceLevel"
+            },
+            "description": "Array of price levels for no orders."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.PriceLevel": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        },
+        "description": "Array of 2 integers representing [cents, contract_count]."
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.OrderList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Order"
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.Order": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Unique identifier for orders."
+          },
+          "ticker": {
+            "type": "string",
+            "description": "Unique identifier for markets."
+          },
+          "side": {
+            "type": "string",
+            "description": "Representing direction of the order; currently supports yes and no."
+          },
+          "count": {
+            "type": "integer",
+            "description": "The initial size of the order (contract units)."
+          },
+          "remaining_count": {
+            "type": "integer",
+            "description": "The size of the remaining resting orders (contract units)."
+          },
+          "yes_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The yes price for this order in cents."
+          },
+          "no_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The no price for this order in cents."
+          },
+          "status": {
+            "type": "string",
+            "description": "The current status of this order."
+          },
+          "type": {
+            "type": "string",
+            "description": "Representing order type; currently supports 'market' and 'limit'."
+          },
+          "created_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          },
+          "last_update_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime": {
+        "type": "object"
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.CreateOrderRequest": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "The ticker of the market the order will be placed in."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["buy", "sell"],
+            "description": "Specifies if this is a buy or sell order."
+          },
+          "side": {
+            "type": "string",
+            "enum": ["yes", "no"],
+            "description": "Specifies if this is a 'yes' or 'no' order."
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of contracts to be bought or sold."
+          },
+          "yes_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Submitting price of the Yes side of the trade, in cents."
+          },
+          "no_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Submitting price of the No side of the trade, in cents."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["market", "limit"],
+            "description": "Representing order type; currently supports 'market' and 'limit'."
+          },
+          "expiration_ts": {
+            "type": "integer",
+            "description": "Expiration time of the order, in unix seconds."
+          },
+          "client_order_id": {
+            "type": "string",
+            "description": "Member-provided ID to attach to the order."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.CreateOrderResponse": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OrderConfirmation"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.OrderConfirmation": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "Unique identifier for orders."
+          },
+          "ticker": {
+            "type": "string",
+            "description": "Unique identifier for markets."
+          },
+          "side": {
+            "type": "string",
+            "description": "Representing direction of the order."
+          },
+          "status": {
+            "type": "string",
+            "description": "The current status of a given order."
+          },
+          "type": {
+            "type": "string",
+            "description": "Representing order type."
+          },
+          "created_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          }
+        }
+      },
+      "GithubComKalshiExchangeInfraSvcApi2ModelMarket": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Unique identifier for markets"
+          },
+          "event_ticker": {
+            "type": "string",
+            "description": "Unique identifier for events"
+          },
+          "market_type": {
+            "type": "string",
+            "description": "Type of market (binary, scalar)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Full title describing this market"
+          },
+          "subtitle": {
+            "type": "string",
+            "description": "Shortened title for this market"
+          },
+          "yes_sub_title": {
+            "type": "string",
+            "description": "Shortened title for the yes side"
+          },
+          "no_sub_title": {
+            "type": "string",
+            "description": "Shortened title for the no side"
+          },
+          "open_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time when trading begins"
+          },
+          "close_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time when trading ends"
+          },
+          "expiration_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Time when market expires"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current market status"
+          },
+          "yes_bid": {
+            "type": "integer",
+            "description": "Highest YES buy offer price"
+          },
+          "yes_ask": {
+            "type": "integer",
+            "description": "Lowest YES sell offer price"
+          },
+          "no_bid": {
+            "type": "integer",
+            "description": "Highest NO buy offer price"
+          },
+          "no_ask": {
+            "type": "integer",
+            "description": "Lowest NO sell offer price"
+          },
+          "last_price": {
+            "type": "integer",
+            "description": "Last traded price"
+          },
+          "volume": {
+            "type": "integer",
+            "description": "Trading volume"
+          },
+          "open_interest": {
+            "type": "integer",
+            "description": "Open interest"
+          }
+        },
+        "required": [
+          "ticker",
+          "event_ticker",
+          "market_type",
+          "subtitle",
+          "yes_sub_title",
+          "no_sub_title",
+          "open_time",
+          "close_time",
+          "expiration_time",
+          "status",
+          "yes_bid",
+          "yes_ask",
+          "no_bid",
+          "no_ask",
+          "last_price",
+          "volume",
+          "open_interest"
+        ]
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.PublicTradesGetResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination."
+          },
+          "trades": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.PublicTradeList"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.PublicTradeList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.PublicTrade"
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.PublicTrade": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of contracts bought or sold in this trade."
+          },
+          "created_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          },
+          "no_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "No price for this trade in cents."
+          },
+          "taker_side": {
+            "type": "string",
+            "description": "Side for the taker of this trade."
+          },
+          "ticker": {
+            "type": "string",
+            "description": "Unique identifier for the market."
+          },
+          "trade_id": {
+            "type": "string",
+            "description": "Unique identifier for this trade."
+          },
+          "yes_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Yes price for this trade in cents."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetSeriesListResponse": {
+        "type": "object",
+        "properties": {
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Series"
+            },
+            "description": "List of series data."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetSeriesResponse": {
+        "type": "object",
+        "properties": {
+          "series": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Series"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.Series": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Ticker that identifies this series."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title describing the series."
+          },
+          "category": {
+            "type": "string",
+            "description": "Category specifies the category which this series belongs to."
+          },
+          "frequency": {
+            "type": "string",
+            "description": "Description of the frequency of the series."
+          },
+          "settlement_sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.SettlementSource"
+            }
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.SettlementSource": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The official name of the settlement source."
+          },
+          "url": {
+            "type": "string",
+            "description": "The URL of the settlement source."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.ExchangeStatus": {
+        "type": "object",
+        "properties": {
+          "exchange_active": {
+            "type": "boolean",
+            "description": "False if the core Kalshi exchange is no longer taking any state changes at all."
+          },
+          "exchange_estimated_resume_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          },
+          "trading_active": {
+            "type": "boolean",
+            "description": "True if we are currently permitting trading on the exchange."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetExchangeAnnouncementsResponse": {
+        "type": "object",
+        "properties": {
+          "announcements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Announcement"
+            },
+            "description": "A list of exchange-wide announcements."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.Announcement": {
+        "type": "object",
+        "properties": {
+          "delivery_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The time the announcement was delivered."
+          },
+          "message": {
+            "type": "string",
+            "description": "The message contained within the announcement."
+          },
+          "status": {
+            "type": "string",
+            "description": "The current status of this announcement."
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the announcement."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetFillsResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination."
+          },
+          "fills": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Fills"
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.Fills": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Fill"
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.Fill": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "description": "Number of contracts bought or sold in this fill."
+          },
+          "created_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          },
+          "is_taker": {
+            "type": "boolean",
+            "description": "If true, this fill was a taker (removed liquidity from the order book)."
+          },
+          "no_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Fill price for the no side in cents."
+          },
+          "order_id": {
+            "type": "string",
+            "description": "Unique identifier for the order that resulted in this fill."
+          },
+          "purchased_side": {
+            "type": "string",
+            "description": "Side of the purchased contracts."
+          },
+          "ticker": {
+            "type": "string",
+            "description": "Unique identifier for the market."
+          },
+          "trade_id": {
+            "type": "string",
+            "description": "Unique identifier for this fill."
+          },
+          "yes_price": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Fill price for the yes side in cents."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.GetSettlementsResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "description": "The Cursor represents a pointer to the next page of records in the pagination."
+          },
+          "settlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.Settlement"
+            },
+            "description": "Settlement summaries for all markets the user participated in."
+          }
+        }
+      },
+      "github.com.Kalshi.exchange-infra.svc-api2.model.Settlement": {
+        "type": "object",
+        "properties": {
+          "market_result": {
+            "type": "string",
+            "description": "The outcome of the market settlement."
+          },
+          "no_count": {
+            "type": "integer",
+            "description": "Number of NO contracts owned at the time of settlement."
+          },
+          "no_total_cost": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total cost basis of all NO contracts in cents."
+          },
+          "revenue": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total revenue earned from this settlement in cents."
+          },
+          "settled_time": {
+            "$ref": "#/components/schemas/github.com.Kalshi.exchange-infra.svc-api2.model.OutputTime"
+          },
+          "ticker": {
+            "type": "string",
+            "description": "The ticker symbol of the market that was settled."
+          },
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Payout of a single yes contract in cents."
+          },
+          "yes_count": {
+            "type": "integer",
+            "description": "Number of YES contracts owned at the time of settlement."
+          },
+          "yes_total_cost": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total cost basis of all YES contracts in cents."
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "API key authentication for Kalshi API"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ]
+}
