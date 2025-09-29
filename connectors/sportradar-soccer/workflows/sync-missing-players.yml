@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     sportradar-soccer:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
@@ -25,7 +25,7 @@ workflow:
         command_attribute:
           season_id: "$.get('season_id')"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: "$.get('x-api-key')"
       outputs:
         all_missing_players_ids: |
           [f"urn:sportradar:missing-player:{player.get('id', '')}" for competitor in $.get('competitors', []) for player in competitor.get('players', [])]

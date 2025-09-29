@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     sportradar-nfl:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
@@ -18,8 +18,8 @@ workflow:
   tasks:
 
     # task-load-transactions
-    - type: "connector"
-      name: "task-load-transactions"
+    - type: connector
+      name: task-load-transactions
       description: "Get daily transactions from SportRadar"
       connector:
         name: "sportradar-nfl"
@@ -30,7 +30,7 @@ workflow:
           day: "$.get('day')"
           data_type: "'transactions.json'"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: "$.get('x-api-key')"
       outputs:
         all_transactions_ids: |
           [f"urn:sportradar:transaction:{transaction.get('id', '')}" for player in $.get('players', []) for transaction in player.get('transactions', [])]

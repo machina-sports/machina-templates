@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     sportradar-nfl:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
@@ -29,7 +29,7 @@ workflow:
           season_type: "$.get('season_type')"
           nfl_season_week: "$.get('nfl_season_week')"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: "$.get('x-api-key')"
       outputs:
         all_injuries_ids: |
           [f"urn:sportradar:injury:week-{$.get('week', {}).get('sequence', '')}:{player.get('id', '')}" for team in $.get('teams', []) for player in team.get('players', []) if player.get('injuries', [])]
