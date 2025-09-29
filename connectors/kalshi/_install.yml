@@ -1,0 +1,51 @@
+setup:
+  title: Kalshi API
+  description: Connect to the Kalshi prediction markets API to access comprehensive event data, markets, trading information, portfolio management, and settlement data.
+  category:
+    - data-acquisition
+    - prediction-markets
+    - trading
+    - portfolio-management
+  estimatedTime: 1 minute
+  features:
+    - Event Markets & Series
+    - Market Data & Order Books
+    - Trading Information & History
+    - Portfolio Management
+    - Settlement Tracking
+    - Real-time Market Updates
+    - Series Organization
+    - Exchange Status Monitoring
+  integrations:
+    - kalshi
+  requirements:
+    - Kalshi-API-Key
+    - Kalshi-User-Id
+  status: draft
+  value: "connectors/kalshi"
+  version: 0.2.0
+
+datasets:
+  - type: "connector"
+    path: "kalshi.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-events.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-markets.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-series.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-trades.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-fills.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-settlements.yml"
+
+  - type: "mappings"
+    path: "mappings/markets.yml"

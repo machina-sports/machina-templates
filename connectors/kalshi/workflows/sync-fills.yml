@@ -1,0 +1,62 @@
+workflow:
+  name: "kalshi-sync-fills"
+  title: "Kalshi - Sync Fills"
+  description: "Workflow to synchronize fill data from Kalshi API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    kalshi:
+      Kalshi-API-Key: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
+      Kalshi-User-Id: "$TEMP_CONTEXT_VARIABLE_KALSHI_USER_ID"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    ticker: "$.get('ticker')"
+    order_id: "$.get('order_id')"
+    min_ts: "$.get('min_ts')"
+    max_ts: "$.get('max_ts')"
+    force-update: "($.get('force-update') == 'true')"
+    limit: "$.get('limit', 100)"
+    cursor: "$.get('cursor')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 load-fills
+    - type: "connector"
+      name: "load-fills"
+      description: "Get fills from Kalshi API"
+      connector:
+        name: "kalshi"
+        command: "get-fills"
+        command_attribute:
+          limit: "$.get('limit')"
+          cursor: "$.get('cursor')"
+          ticker: "$.get('ticker')"
+          order_id: "$.get('order_id')"
+          min_ts: "$.get('min_ts')"
+          max_ts: "$.get('max_ts')"
+      outputs:
+        fill_data: "$.get('fills', [])"
+        next_cursor: "$.get('cursor')"
+        workflow-status: "'executed'"
+
+    # 2 bulk-save-fills
+    - type: "document"
+      name: "bulk-save-fills"
+      description: "Bulk save the fill data."
+      condition: "$.get('fill_data') is not None and len($.get('fill_data', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('ticker')"
+        embed-vector: true
+        force-update: "$.get('force-update')"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'kalshi-fill'"
+      documents:
+        items: "$.get('parsedItems', [])"
+      inputs:
+        parsedItems: "$.get('fill_data', [])"
