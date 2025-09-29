@@ -4,7 +4,7 @@ workflow:
   description: "Workflow to synchronize a season schedules from Bwin API to Machina."
   context-variables:
     debugger:
-      enabled: false
+      enabled: true
     bwin:
       Bwin-AccessId: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID"
       Bwin-AccessIdToken: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN"
@@ -33,7 +33,7 @@ workflow:
       inputs:
         competitionIds: "$.get('competitionIds')" 
       outputs:
-        bulk-markets: |
+        selected_events: |
           [
             {
               **f,
@@ -47,6 +47,17 @@ workflow:
           ]
         workflow-status: "'executed'"
 
+    # bwin-market-event-mapping
+    - type: mapping
+      name: bwin-market-event-mapping
+      title: "BWIN - Market Event Mapping"
+      description: "Mapping data from event documents"
+      condition: "$.get('selected_events') is not None"
+      inputs:
+        events: "$.get('selected_events', [])"
+      outputs:
+        bulk-markets: "$.get('mapped-event', [])"
+
     # 2 bulk-save-fixtures
     - type: "document"
       name: "bulk-save-fixtures"
@@ -54,6 +65,7 @@ workflow:
       condition: "$.get('competitionIds') is not None"
       config:
         action: "bulk-update"
+        embed-selector: "$.get('title')"
         embed-vector: true
         force-update: true
       connector:

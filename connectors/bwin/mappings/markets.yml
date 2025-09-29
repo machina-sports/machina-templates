@@ -1,0 +1,73 @@
+mappings:
+
+  - type: mapping
+    name: bwin-market-event-mapping
+    title: Market Event Mapping
+    description: "Mapping data from event documents"
+    outputs:
+      mapped-event: |
+        [
+          {
+            'id': event.get('id', {}).get('entityId', ''),
+            'marketType': event.get('type', ''),
+            'title': f"{event.get('competition', {}).get('name', {}).get('text', '')} - {event.get('name', {}).get('text', '')}",
+            'competition': event.get('competition', {}).get('name', {}).get('text', ''),
+            'participants': [
+              {
+                'id': p.get('id', ''),
+                'name': p.get('name', {}).get('text', ''),
+                'tag': p.get('participantTag', '')
+              }
+              for p in event.get('participants', [])
+            ],
+            'startDate': event.get('startDateUtc', ''),
+            'isOpenForBetting': event.get('isOpenForBetting', False),
+            'metadata': event.get('metadata', {})
+          }
+          for event in $.get('events', [])
+        ]
+
+  - type: mapping
+    name: bwin-market-odds-mapping
+    title: Market Odds Mapping
+    description: "Mapping data from market-odds"
+    outputs:
+      mapped-odds: |
+        [
+          {
+            'id': m.get('id'),
+            'marketType': m.get('marketType'),
+            'title': m.get('title'),
+            'options': [
+              {
+                'id': option.get('id'),
+                'name': option.get('name', {}).get('text', ''),
+                'price': option.get('price', {}).get('odds', '')
+              }
+              for option in m.get('options', [])
+              if option.get('isOpenForBetting', False)
+            ],
+            'period': m.get('period'),
+            'subPeriod': m.get('subPeriod')
+          }
+          for m in $.get('market-odds', [])
+        ]
+      mapped-runners: |
+        [
+          {
+            'id': o.get('id'),
+            'id-linked': f"{str(m.get('id', ''))}-{str(o.get('id', '')).lstrip('-')}",
+            'marketType': m.get('marketType'),
+            'name': o.get('name', {}).get('text', ''),
+            'price': o.get('price', {}).get('odds', ''),
+            'title': f"{m.get('title')} {o.get('name', {}).get('text', '')}: {o.get('price', {}).get('odds', '')}",
+          }
+          for m in $.get('market-odds', [])
+          for o in m.get('options', [])
+          if o.get('isOpenForBetting', False)
+        ]
+      market-types: |
+        list(set([
+          m.get('marketType')
+          for m in $.get('market-odds', [])
+        ]))
