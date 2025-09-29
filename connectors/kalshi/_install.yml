@@ -21,7 +21,7 @@ setup:
   requirements:
     - Kalshi-API-Key
     - Kalshi-User-Id
-  status: draft
+  status: available
   value: "connectors/kalshi"
   version: 0.2.0
 
