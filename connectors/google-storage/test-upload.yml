@@ -11,7 +11,7 @@ workflow:
     openai:
       api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
   inputs:
-    image_path: "$.get('image_path')"
+    image_path: "$.get('image_path')" # Can be a local file path or HTTP/HTTPS URL
   outputs:
     data: "$.get('data')"
     url: "$.get('data.url')"
@@ -23,7 +23,7 @@ workflow:
     # 1 test-upload
     - type: "connector"
       name: "test-upload"
-      description: "Test the Google Storage upload."
+      description: "Test the Google Storage upload (supports both local file paths and HTTP/HTTPS URLs)."
       connector:
         name: "google-storage"
         command: "invoke_upload"
