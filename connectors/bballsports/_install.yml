@@ -30,3 +30,5 @@ datasets:
     path: "bballsports-play-predict.yml"
   - type: "prompts"
     path: "bballsports-play-predict-prompt.yml"
+  - type: "mappings"
+    path: "bballsports-play-mapping.yml"

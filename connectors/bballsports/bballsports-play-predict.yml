@@ -67,6 +67,14 @@ workflow:
       outputs:
         played-games: "$"
 
+    # bballsports-play-mapping
+    - type: mapping
+      name: "bballsports-play-mapping"
+      description: "Mapping data from bballsports play data."
+      inputs:
+        played-games: "$.get('played-games')"
+      outputs:
+        played-games-mapped: "$.get('played-games-mapped', {}).get('data', [])"
 
     # bballsports-get-box-scores-foreach
     - type: connector
@@ -75,10 +83,10 @@ workflow:
       connector:
         name: "bballsports"
         command: "post-get_raw_box_scores.php"
-      #foreach:
-      #  name: "game_info"
-      #  expr: "$"
-      #  value: "$.get('played-games').get('data', [])"
+      foreach:
+        name: "game_info"
+        expr: "$"
+        value: "$.get('played-games-mapped', [])"
       inputs:
         body: |
           {
@@ -87,13 +95,7 @@ workflow:
           }
         authorization: "$.get('authorization')"
       outputs:
-        all-box-scores: |
-          [
-            {
-              'game_number': $.get('game_info').get('game_number'),
-              'box_scores_data': $.get('data', [])
-            }
-          ]
+        all-box-scores: "$"
 
     - type: "prompt"
       name: "prompt-bballsports-play-predict"
@@ -103,9 +105,9 @@ workflow:
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
       inputs:
-        simulation-results: "$.get('simulation-results')"
-        played-games: "$.get('played-games')"
+        played-games: "$.get('played-games-mapped')"
         all-box-scores: "$.get('all-box-scores')"
+        # simulation-results: "$.get('simulation-results')"
         #consolidated-box-scores: "$.get('consolidated-box-scores')"
         #total-simulated-games: "$.get('number_of_games')"
         #analysis-context: "$.get('consolidated-box-scores').get('analysis_context')"
