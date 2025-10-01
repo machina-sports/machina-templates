@@ -28,4 +28,7 @@ datasets:
     path: "workflows/crm-ingestion.yml"
 
   - type: "workflow"
+    path: "workflows/crm-process.yml"
+
+  - type: "workflow"
     path: "workflows/xai-search.yml"

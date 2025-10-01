@@ -1,0 +1,40 @@
+workflow:
+  name: template-newsletter-crm-process
+  title: "Template Newsletter | CRM Process"
+  description: "Workflow to process data from the CRM."
+  context-variables:
+    debugger:
+      enabled: true
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # load-crm-custom-fan-data
+    - type: document
+      name: load-crm-custom-fan-data
+      description: "Process CRM custom fan data."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'crm-custom-fan-data'"
+      outputs:
+        crm-custom-fan-data: "$.get('documents')[0].get('value', {}).get('items', [])"
+
+    # update-snippets
+    - type: document
+      name: update-snippets
+      description: "Update CRM custom fan data snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "content-custom-fan-data"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('crm-custom-fan-data', []),
+          ]
