@@ -1,0 +1,91 @@
+workflow:
+  name: template-newsletter-xai-search
+  title: "Template Newsletter | XAI Search"
+  description: "Workflow to test the xAI Grok API chat completion functionality."
+  context-variables:
+    debugger:
+      enabled: true
+    grok:
+      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
+  inputs:
+    user_message: "$.get('user_message', \"Analyze recent tweets about the upcoming Ferencvaros game. Create an engaging narrative from a researcher's perspective that builds anticipation for fans, highlights key insights, captures the emotional sentiment, and includes a bold prediction about the outcome. Make it exciting and fan-focused!\")"
+    model: "$.get('model', 'grok-4-fast')"
+    temperature: "$.get('temperature', 0)"
+    max_tokens: "$.get('max_tokens', 1500)"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # 1 test-live-search
+    - type: "connector"
+      name: "test-live-search"
+      description: "Test the xAI Grok API live search on X platform."
+      connector:
+        name: "grok"
+        command: "post-chat/completions"
+      inputs:
+        body: |
+          {
+            "messages": [
+              {
+                "role": "user",
+                "content": $.get('user_message')
+              }
+            ],
+            "model": $.get('model'),
+            "stream": False,
+            "temperature": $.get('temperature'),
+            "max_tokens": $.get('max_tokens'),
+            "search_parameters": {
+              "mode": "on",
+              "sources": [
+                {
+                  "type": "x"
+                }
+              ],
+              "from_date": (datetime.utcnow() - timedelta(days=3)).strftime('%Y-%m-%d'),
+              "to_date": (datetime.utcnow() + timedelta(days=3)).strftime('%Y-%m-%d')
+            },
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "xai_search",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event_narrative": {
+                      "type": "string",
+                      "description": "A compelling narrative from the researcher's perspective about the upcoming event, building anticipation and excitement for fans"
+                    },
+                    "fan_expectations": {
+                      "type": "string",
+                      "description": "What fans can expect from this event based on the social media buzz and analysis"
+                    },
+                    "key_insights": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Key insights and trends discovered from the tweet analysis"
+                    },
+                    "sentiment_analysis": {
+                      "type": "string",
+                      "description": "Overall sentiment and emotional temperature from the fan community"
+                    },
+                    "prediction": {
+                      "type": "string",
+                      "description": "Bold prediction or expectation for the event outcome based on the research"
+                    },
+                    "call_to_action": {
+                      "type": "string",
+                      "description": "Engaging call to action for fans to get involved or stay tuned"
+                    }
+                  },
+                  "required": ["event_narrative", "fan_expectations", "key_insights", "sentiment_analysis"],
+                  "additionalProperties": False
+                }
+              }
+            }
+          }
+      outputs:
+        data: "$"

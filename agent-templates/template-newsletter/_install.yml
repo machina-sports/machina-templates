@@ -1,0 +1,31 @@
+setup:
+  title: "Personalized Newsletter"
+  description: "Generate a personalized newsletter based on the user's interests and preferences."
+  category:
+    - special-templates
+  estimatedTime: 1 minute
+  features:
+    - AI Agent to generate a personalized newsletter.
+    - AI Reporter to generate a personalized newsletter.
+  integrations:
+    - machina-ai
+    - machina-ai-fast
+    - groq
+    - openai
+    - google-vertex
+  status: available
+  value: "agent-templates/template-newsletter"
+  version: 1.0.0
+
+datasets:
+  
+  # populate-folders
+  # - type: "workflow"
+  #   path: "_folders.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "workflows/crm-ingestion.yml"
+
+  - type: "workflow"
+    path: "workflows/xai-search.yml"
