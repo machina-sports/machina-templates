@@ -26,3 +26,7 @@ datasets:
     path: "bballsports-player-stats.yml" 
   - type: "prompts"
     path: "bballsports-player-stats-prompt.yml"
+  - type: "workflow"
+    path: "bballsports-play-predict.yml"
+  - type: "prompts"
+    path: "bballsports-play-predict-prompt.yml"

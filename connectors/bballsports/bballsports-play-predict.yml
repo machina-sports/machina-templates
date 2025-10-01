@@ -1,0 +1,113 @@
+workflow:
+  name: "bballsports-play-predict"
+  title: "Simulate Basketball Games"
+  description: "Workflow to simulate basketball games using BBallSports API."
+  context-variables:
+    debugger:
+      enabled: true
+    bballsports:
+      apikey: "$TEMP_CONTEXT_VARIABLE_BBALLSPORTS_API_KEY"
+      authorization: "$TEMP_CONTEXT_VARIABLE_BBALLSPORTS_AUTHORIZATION"
+      gamemode: "predict"
+      keeppbp: "N"
+      numgames: "normal"
+      homeaway: "both"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    league_name: "$.get('league_name')"
+    home_team: "$.get('home_team')"
+    away_team: "$.get('away_team')"
+    number_of_games: "$.get('number_of_games')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # bballsports-play-predict
+    - type: connector
+      name: "bballsports-play-predict"
+      description: "Simulate basketball games using BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-play_predict.php"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey'),
+            "league_name": $.get('league_name'),
+            "numgames": $.get('numgames'),
+            "homeaway": $.get('homeaway'),
+            "gamemode": $.get('gamemode'),
+            "keeppbp": $.get('keeppbp'),
+            "gamearray": [
+              {
+                "predicthome": $.get('home_team'),
+                "predictaway": $.get('away_team'),
+                "predictgames": $.get('number_of_games')
+              }
+            ]
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        simulation-results: "$"
+
+    # bballsports-get-played-games
+    - type: connector
+      name: "bballsports-get-played-games"
+      description: "Get played game list from BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-get_played_game_list.php"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey')
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        played-games: "$"
+
+
+    # bballsports-get-box-scores-foreach
+    - type: connector
+      name: "bballsports-get-box-scores-foreach"
+      description: "Get raw box scores for each simulated game from BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-get_raw_box_scores.php"
+      #foreach:
+      #  name: "game_info"
+      #  expr: "$"
+      #  value: "$.get('played-games').get('data', [])"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey'),
+            "game_number": $.get('game_info').get('game_number')
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        all-box-scores: |
+          [
+            {
+              'game_number': $.get('game_info').get('game_number'),
+              'box_scores_data': $.get('data', [])
+            }
+          ]
+
+    - type: "prompt"
+      name: "prompt-bballsports-play-predict"
+      description: "Prompt to analyze game simulation results from BBallSports with context about total vs analyzed games."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        simulation-results: "$.get('simulation-results')"
+        played-games: "$.get('played-games')"
+        all-box-scores: "$.get('all-box-scores')"
+        #consolidated-box-scores: "$.get('consolidated-box-scores')"
+        #total-simulated-games: "$.get('number_of_games')"
+        #analysis-context: "$.get('consolidated-box-scores').get('analysis_context')"
+      outputs:
+        simulation-analysis: "$"
