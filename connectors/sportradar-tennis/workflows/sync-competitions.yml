@@ -9,7 +9,6 @@ workflow:
     competitions: "$.get('competitions')"
     workflow-status: "$.get('competitions') is not None and 'executed' or 'skipped'"
   tasks:
-   
 
     # task-load-competitions
     - type: "connector"
@@ -23,16 +22,6 @@ workflow:
       outputs:
         competitions_response: "$"
         competitions: "$.get('competitions', [])"
-
-    # iptc-sportradar-tennis-event-mapping
-    - type: mapping
-      name: iptc-sportradar-tennis-event-mapping
-      title: "IPTC | Sportradar Tennis Event Mapping"
-      description: "Mapping data from sportradar tennis competitions to IPTC sports schema"
-      inputs:
-        competitions: "$.get('competitions', [])"
-      outputs:
-        tennis_events: "$.get('sport_schema_events')"
 
     # task-bulk-save-competitions
     - type: "document"
@@ -66,40 +55,3 @@ workflow:
       metadata:
         document_type: "'tennis-competition'"
         sport: "'tennis'"
-
-    # task-bulk-save-iptc-events
-    - type: "document"
-      name: "task-bulk-save-iptc-events"
-      description: "Bulk save the IPTC-formatted tennis competition events."
-      condition: "len($.get('tennis_events', [])) > 0"
-      config:
-        action: "bulk-save"
-        embed-vector: false
-        force-update: true
-      connector:
-        name: "openai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      document_name: "'sport:Event'"
-      documents:
-        items: |
-          [
-            {
-              '@id': c.get('@id', ''),
-              'name': c.get('name', ''),
-              'sport_type': c.get('@type', []),
-              'competition_info': c.get('sport:competition', {}),
-              'metadata': {
-                'event_code': str(c.get('@id', '')),
-                'sport': 'tennis',
-                'competition_type': c.get('sport:competitionType', 'singles'),
-                'gender_category': c.get('sport:genderCategory', 'mixed'),
-                'level': c.get('sport:level', 'unknown')
-              },
-              'title': c.get('name', '')
-            }
-            for c in $.get('tennis_events', [])
-            if c.get('@id') and c.get('name')
-          ]
-      metadata:
-        document_type: "'tennis-iptc-event'"
