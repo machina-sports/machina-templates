@@ -23,7 +23,6 @@ workflow:
     - type: "connector"
       name: "load-fixtures"
       description: "Get a season fixtures from Bwin"
-      condition: "$.get('competitionIds') is not None"
       connector:
         name: "bwin"
         command: "get-offer/api/{sportId}/{country}/fixtureIndex"
@@ -62,7 +61,6 @@ workflow:
     - type: "document"
       name: "bulk-save-fixtures"
       description: "Bulk save the fixtures."
-      condition: "$.get('competitionIds') is not None"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
