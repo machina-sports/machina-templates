@@ -23,12 +23,33 @@ datasets:
   # - type: "workflow"
   #   path: "_folders.yml"
 
+  # agents
+
+  - type: "agent"
+    path: "agents/generate.yml"
+
+  - type: "connector"
+    path: "data/template-compose.yml"
+
+  # prompts
+  - type: "prompts"
+    path: "prompts/user-analysis.yml"
+
+  - type: "prompts"
+    path: "prompts/news-content.yml"
+
   # workflows
   - type: "workflow"
     path: "workflows/crm-ingestion.yml"
 
   - type: "workflow"
     path: "workflows/crm-process.yml"
+
+  - type: "workflow"
+    path: "workflows/news-content.yml"
+
+  - type: "workflow"
+    path: "workflows/user-analysis.yml"
 
   - type: "workflow"
     path: "workflows/xai-search.yml"

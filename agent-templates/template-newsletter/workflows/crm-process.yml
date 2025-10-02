@@ -20,7 +20,17 @@ workflow:
       inputs:
         name: "'crm-custom-fan-data'"
       outputs:
-        crm-custom-fan-data: "$.get('documents')[0].get('value', {}).get('items', [])"
+        crm-custom-fan-data: |
+          [
+            {
+              **item,
+              'metadata': {
+                'fan_id': item.get('fan_id')
+              },
+              'title': item.get('supporter_profile', {}).get('name')
+            }
+            for item in $.get('documents')[0].get('value', {}).get('items', [])
+          ]
 
     # update-snippets
     - type: document

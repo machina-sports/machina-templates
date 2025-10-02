@@ -13,6 +13,7 @@ workflow:
     temperature: "$.get('temperature', 0)"
     max_tokens: "$.get('max_tokens', 1500)"
   outputs:
+    output-response: "$.get('output-response')"
     workflow-status: "'executed'"
   tasks:
 
@@ -88,4 +89,5 @@ workflow:
             }
           }
       outputs:
-        data: "$"
+        complete-response: "$"
+        output-response: "$.get('choices', [])[0].get('message', {}).get('content', '')"

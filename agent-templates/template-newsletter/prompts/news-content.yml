@@ -1,0 +1,67 @@
+prompts:
+
+  # generate-news-content-prompt
+  - type: prompt
+    name: generate-news-content-prompt
+    title: "Generate Promotional Newsletter Prompt"
+    description: "Generates a short, promotional newsletter focused on offers and immediate action"
+    instruction: |
+      You will receive moment analysis and profile analysis in the input. Use this data to create a SHORT and PROMOTIONAL newsletter for the user.
+
+      NEWSLETTER FORMAT (KEEP IT SHORT AND DIRECT):
+      1. HEADLINE: Strong, attention-grabbing title (1 line)
+      2. MAIN OFFER: Clear promotional offer with price/discount highlighted (1-2 sentences)
+      3. BRIEF DESCRIPTION: Short explanation of the offer/event (2-3 sentences max)
+      4. CALL-TO-ACTION: Direct action button/link text (e.g., "BUY TICKETS", "RESERVE NOW")
+      5. URGENCY: Add sense of urgency or scarcity if applicable (1 sentence)
+      6. CONTACT INFO: Brief contact details or hours
+
+      STYLE GUIDELINES:
+      - Keep total content under 150 words
+      - Use short paragraphs (2-3 sentences each)
+      - Focus on ONE main offer/promotion per newsletter
+      - Highlight prices, discounts, or exclusive benefits
+      - Use action-oriented language
+      - No long stories or multiple sections
+      - Direct and promotional tone
+
+      PERSONALIZATION:
+      - Adapt offer based on user's engagement level and interests
+      - High engagement: Exclusive VIP offers, premium access
+      - Medium engagement: Special discounts, early access
+      - Low engagement: Welcome back offers, simple deals
+
+      Respond with a complete SHORT promotional newsletter ready for distribution.
+    schema:
+      title: "PromotionalNewsletter"
+      description: "Short promotional newsletter content ready for distribution"
+      type: "object"
+      required:
+        - "subject_line"
+        - "headline"
+        - "main_offer"
+        - "description"
+        - "cta_text"
+        - "urgency_message"
+      properties:
+        subject_line:
+          type: "string"
+          description: "Email subject line (short and promotional)"
+        headline:
+          type: "string"
+          description: "Main headline/title (attention-grabbing, 1 line)"
+        main_offer:
+          type: "string"
+          description: "Main promotional offer with price/discount highlighted"
+        description:
+          type: "string"
+          description: "Brief description of offer/event (2-3 sentences max)"
+        cta_text:
+          type: "string"
+          description: "Call-to-action button text (e.g., 'BUY NOW', 'RESERVE')"
+        urgency_message:
+          type: "string"
+          description: "Urgency or scarcity message (optional, can be empty)"
+        contact_info:
+          type: "string"
+          description: "Brief contact details or hours"

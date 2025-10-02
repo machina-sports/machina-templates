@@ -1,0 +1,8 @@
+connector:
+  name: "template-newsletter-compose"
+  description: "This connector is the template-newsletter-compose"
+  filename: "template-compose.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Compose"
+      value: "invoke_compose"
