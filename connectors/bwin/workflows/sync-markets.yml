@@ -13,6 +13,7 @@ workflow:
   inputs:
     country: "$.get('country')"
     competitionIds: "$.get('competitionIds')"
+    fixtureIds: "$.get('fixtureIds')"
     force-update: "($.get('force-update') == 'true')"
     sportId: "$.get('sportId')"
   outputs:
@@ -31,6 +32,7 @@ workflow:
           sportId: "$.get('sportId')"
       inputs:
         competitionIds: "$.get('competitionIds')" 
+        fixtureIds: "$.get('fixtureIds')"
       outputs:
         selected_events: |
           [
