@@ -1,0 +1,103 @@
+workflow:
+  name: "sportradar-tennis-sync-season-info"
+  title: "Tennis - Season Info"
+  description: "Workflow to synchronize detailed tennis season information from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    season_info: "$.get('season_info_parsed')"
+    workflow-status: "$.get('season_info_parsed') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-season-info
+    - type: "connector"
+      name: "task-load-season-info"
+      description: "Get Season Info from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/seasons/{season_id}/info.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        season_id: "$.get('season_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        season_info_response: "$"
+
+    # mapping-tennis-season-info-parsing
+    - type: mapping
+      name: mapping-tennis-season-info-parsing
+      title: "Tennis - Season Info Parsing"
+      description: "Parse season info data from sportradar tennis API response"
+      inputs:
+        season: "$.get('season', {})"
+        stages: "$.get('stages', [])"
+      outputs:
+        season_info_parsed: "$.get('season_info_parsed')"
+
+    # iptc-sportradar-tennis-season-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-season-mapping
+      title: "IPTC | Sportradar Tennis Season Mapping"
+      description: "Mapping data from sportradar tennis season info to IPTC sports schema"
+      inputs:
+        season_info_parsed: "$.get('season_info_parsed', [])"
+      outputs:
+        tennis_seasons: "$.get('sport_schema_seasons')"
+
+    # task-bulk-save-season-info
+    - type: "document"
+      name: "task-bulk-save-season-info"
+      description: "Bulk save the tennis season information."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'tennis-season-info'"
+      documents:
+        items: "$.get('season_info_parsed')"
+      metadata:
+        document_type: "'tennis-season-info'"
+        sport: "'tennis'"
+
+    # task-bulk-save-iptc-seasons
+    - type: "document"
+      name: "task-bulk-save-iptc-seasons"
+      description: "Bulk save the IPTC-formatted tennis season events."
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('name')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: |
+          [
+            {
+              **s,
+              'metadata': {
+                'event_code': str(s.get('@id', '')),
+                'sport': 'tennis',
+                'season_id': s.get('sport:season', {}).get('@id', '').replace('urn:sportradar:tennis:season:', ''),
+                'competition_id': s.get('sport:competition', {}).get('@id', '').replace('urn:sportradar:tennis:competition:', ''),
+                'surface_type': s.get('sport:venue', {}).get('sport:surfaceType', 'unknown'),
+                'prize_money': s.get('sport:tournamentInfo', {}).get('sport:prizeMoneyTotal', 0),
+                'total_competitors': s.get('sport:tournamentInfo', {}).get('sport:totalCompetitors', 0)
+              },
+              'title': s.get('name', '')
+            }
+            for s in $.get('tennis_seasons', [])
+          ]
+      metadata:
+        document_type: "'tennis-iptc-season'"

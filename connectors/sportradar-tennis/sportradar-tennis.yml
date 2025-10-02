@@ -1,0 +1,5 @@
+connector:
+  name: "sportradar-tennis"
+  description: "Sportradar Tennis API v3"
+  filename: "sportradar-tennis.json"
+  filetype: "restapi"
