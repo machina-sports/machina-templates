@@ -1,0 +1,176 @@
+mappings:
+
+  # iptc-sportradar-tennis-event-mapping
+  - type: mapping
+    title: "IPTC | Sportradar Tennis Event Mapping"
+    name: "iptc-sportradar-tennis-event-mapping"
+    description: "Mapping data from sportradar tennis matches to IPTC sports schema"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:sportradar:tennis:match:{m.get('sport_event_id', m.get('sport_event', {}).get('id', 'unknown'))}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"{next((c.get('name', 'Unknown') for c in m.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), 'Unknown')} vs {next((c.get('name', 'Unknown') for c in m.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), 'Unknown')} - {m.get('competition_name', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Unknown Competition'))}",
+            "schema:startDate": m.get('match_date', m.get('sport_event', {}).get('start_time')),
+            "sport:status": m.get('match_status', m.get('sport_event_status', {}).get('match_status')),
+            "sport:competition": {
+              "@id": f"urn:sportradar:tennis:competition:{m.get('competition_id', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id', 'unknown'))}",
+              "@type": "sport:Competition",
+              "name": m.get('competition_name', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Unknown Competition')),
+              "sport:season": {
+                "@id": f"urn:sportradar:tennis:season:{m.get('season_id', m.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id', 'unknown'))}",
+                "@type": "sport:Season",
+                "name": m.get('season_name', m.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', 'Unknown Season')),
+                "sport:year": m.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('year', 'Unknown')
+              }
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:sportradar:tennis:venue:{m.get('sport_event', {}).get('venue', {}).get('id', 'unknown')}",
+              "name": m.get('sport_event', {}).get('venue', {}).get('name', 'Unknown Venue'),
+              "schema:addressLocality": m.get('sport_event', {}).get('venue', {}).get('city_name', 'Unknown City'),
+              "schema:addressCountry": m.get('sport_event', {}).get('venue', {}).get('country_name', 'Unknown Country'),
+              "sport:timezone": m.get('sport_event', {}).get('venue', {}).get('timezone', 'UTC')
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Competitor",
+                "@id": f"urn:sportradar:tennis:competitor:{comp.get('id', 'unknown')}",
+                "name": comp.get('name', 'Unknown Player'),
+                "sport:qualifier": comp.get('qualifier', 'unknown'),
+                "sport:country": comp.get('country', 'Unknown'),
+                "sport:countryCode": comp.get('country_code', 'UNK'),
+                "sport:abbreviation": comp.get('abbreviation', 'UNK'),
+                "sport:seed": comp.get('seed'),
+                "sport:bracketNumber": comp.get('bracket_number')
+              }
+              for comp in m.get('sport_event', {}).get('competitors', [])
+            ],
+            "sport:score": {
+              "sport:homeScore": m.get('home_score', 0),
+              "sport:awayScore": m.get('away_score', 0),
+              "sport:periodScores": [
+                {
+                  "sport:periodNumber": period.get('number', 0),
+                  "sport:homeScore": period.get('home_score', 0),
+                  "sport:awayScore": period.get('away_score', 0),
+                  "sport:periodType": period.get('type', 'set')
+                }
+                for period in m.get('sport_event_status', {}).get('period_scores', [])
+              ]
+            },
+            "sport:gameInfo": {
+              "sport:round": m.get('round_name', m.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('name', 'Unknown Round')),
+              "sport:roundNumber": m.get('round_number', m.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', 0)),
+              "sport:stagePhase": m.get('stage_phase', m.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('phase', 'Unknown Phase')),
+              "sport:bestOf": m.get('best_of', m.get('sport_event', {}).get('sport_event_context', {}).get('mode', {}).get('best_of', 3)),
+              "sport:totalSets": m.get('total_sets', 0),
+              "sport:isFinished": m.get('is_finished', False),
+              "sport:hasWinner": m.get('has_winner', False),
+              "sport:winnerId": m.get('winner_id', m.get('sport_event_status', {}).get('winner_id')),
+              "sport:status": m.get('sport_event_status', {}).get('status', 'unknown')
+            },
+            "sport:sport": {
+              "@id": "urn:iptc:sport:tennis",
+              "@type": "sport:Sport",
+              "name": "Tennis"
+            },
+            "sport:competitionFormat": {
+              "sport:matchType": m.get('competition_type', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('type', 'singles')),
+              "sport:genderCategory": m.get('competition_gender', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('gender', 'mixed')),
+              "sport:level": m.get('competition_level', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('level', 'unknown'))
+            },
+            "sport:stage": {
+              "@type": "sport:Stage",
+              "sport:phase": m.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('phase', 'unknown'),
+              "sport:type": m.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('type', 'unknown'),
+              "sport:order": m.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('order', 0),
+              "sport:startDate": m.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('start_date', 'unknown'),
+              "sport:endDate": m.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('end_date', 'unknown')
+            },
+            "sport:coverage": {
+              "sport:detailedServeOutcomes": m.get('sport_event', {}).get('coverage', {}).get('sport_event_properties', {}).get('detailed_serve_outcomes', False),
+              "sport:enhancedStats": m.get('sport_event', {}).get('coverage', {}).get('sport_event_properties', {}).get('enhanced_stats', False),
+              "sport:playByPlay": m.get('sport_event', {}).get('coverage', {}).get('sport_event_properties', {}).get('play_by_play', False),
+              "sport:scores": m.get('sport_event', {}).get('coverage', {}).get('sport_event_properties', {}).get('scores', 'unknown')
+            },
+            "sport:statistics": {
+              "sport:competitorStats": [
+                {
+                  "sport:competitorId": stat.get('id', 'unknown'),
+                  "sport:competitorName": stat.get('name', 'Unknown Player'),
+                  "sport:qualifier": stat.get('qualifier', 'unknown'),
+                  "sport:abbreviation": stat.get('abbreviation', 'UNK'),
+                  "sport:statistics": {
+                    "sport:aces": stat.get('statistics', {}).get('aces', 0),
+                    "sport:breakpointsWon": stat.get('statistics', {}).get('breakpoints_won', 0),
+                    "sport:doubleFaults": stat.get('statistics', {}).get('double_faults', 0),
+                    "sport:firstServePointsWon": stat.get('statistics', {}).get('first_serve_points_won', 0),
+                    "sport:firstServeSuccessful": stat.get('statistics', {}).get('first_serve_successful', 0),
+                    "sport:gamesWon": stat.get('statistics', {}).get('games_won', 0),
+                    "sport:maxGamesInARow": stat.get('statistics', {}).get('max_games_in_a_row', 0),
+                    "sport:maxPointsInARow": stat.get('statistics', {}).get('max_points_in_a_row', 0),
+                    "sport:pointsWon": stat.get('statistics', {}).get('points_won', 0),
+                    "sport:pointsWonFromLast10": stat.get('statistics', {}).get('points_won_from_last_10', 0),
+                    "sport:secondServePointsWon": stat.get('statistics', {}).get('second_serve_points_won', 0),
+                    "sport:secondServeSuccessful": stat.get('statistics', {}).get('second_serve_successful', 0),
+                    "sport:serviceGamesWon": stat.get('statistics', {}).get('service_games_won', 0),
+                    "sport:servicePointsLost": stat.get('statistics', {}).get('service_points_lost', 0),
+                    "sport:servicePointsWon": stat.get('statistics', {}).get('service_points_won', 0),
+                    "sport:tiebreaksWon": stat.get('statistics', {}).get('tiebreaks_won', 0),
+                    "sport:totalBreakpoints": stat.get('statistics', {}).get('total_breakpoints', 0)
+                  }
+                }
+                for stat in m.get('statistics', {}).get('totals', {}).get('competitors', [])
+              ]
+            },
+            "sport:channels": [
+              {
+                "sport:channelName": channel.get('name', 'Unknown Channel')
+              }
+              for channel in m.get('sport_event', {}).get('channels', [])
+            ],
+            "sport:groups": [
+              {
+                "sport:groupId": group.get('id', 'unknown'),
+                "sport:groupName": group.get('name', 'Unknown Group')
+              }
+              for group in m.get('sport_event', {}).get('sport_event_context', {}).get('groups', [])
+            ],
+            "sport:mode": {
+              "sport:bestOf": m.get('sport_event', {}).get('sport_event_context', {}).get('mode', {}).get('best_of', 3)
+            },
+            "sport:round": {
+              "sport:roundName": m.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('name', 'Unknown Round'),
+              "sport:roundNumber": m.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', 0)
+            },
+            "sport:category": {
+              "sport:categoryId": m.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('id', 'unknown'),
+              "sport:categoryName": m.get('sport_event', {}).get('sport_event_context', {}).get('category', {}).get('name', 'Unknown Category')
+            },
+            "sport:competitionContext": {
+              "sport:parentId": m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('parent_id', 'unknown'),
+              "sport:competitionGender": m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('gender', 'mixed'),
+              "sport:competitionLevel": m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('level', 'unknown'),
+              "sport:competitionType": m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('type', 'singles')
+            },
+            "sport:seasonContext": {
+              "sport:seasonStartDate": m.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('start_date', 'unknown'),
+              "sport:seasonEndDate": m.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('end_date', 'unknown')
+            },
+            "sport:eventDetails": {
+              "sport:estimated": m.get('sport_event', {}).get('estimated', False),
+              "sport:startTimeConfirmed": m.get('sport_event', {}).get('start_time_confirmed', False),
+              "sport:startTime": m.get('sport_event', {}).get('start_time', 'unknown'),
+              "sport:documentType": m.get('document_type', 'unknown'),
+              "sport:selected": m.get('selected', False),
+              "sport:title": m.get('title', 'Unknown Title')
+            }
+          }
+          for m in $.get('summaries', [])
+        ]
