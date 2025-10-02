@@ -55,8 +55,9 @@ mappings:
       mapped-runners: |
         [
           {
-            'id': o.get('id'),
-            'id-linked': f"{str(m.get('id', ''))}-{str(o.get('id', '')).lstrip('-')}",
+            'event-id': m.get('metadata', {}).get('market_code', ''),
+            'market-id': m.get('id'),
+            'option-id': o.get('id'),
             'marketType': m.get('marketType'),
             'name': o.get('name', {}).get('text', ''),
             'price': o.get('price', {}).get('odds', ''),
