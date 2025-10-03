@@ -1,0 +1,18 @@
+setup:
+  title: "File Upload"
+  description: AI-powered agents for file upload.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agents to upload files to Google Storage.
+  integrations:
+    - google-storage
+  status: available
+  value: "agent-templates/file-upload"
+  version: 1.0.0
+
+datasets:
+
+  - type: "workflow"
+    path: "test-upload.yml"
