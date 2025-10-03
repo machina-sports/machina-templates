@@ -1,0 +1,44 @@
+workflow:
+  name: "file-upload-test"
+  title: "File Upload Test"
+  description: "Workflow to test the file upload."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    machina-ai-fast:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GCS_SERVICE_ACCOUNT_JSON"
+  inputs:
+    image_path:
+      type: "file"
+      value: "$.get('image_path')"
+    bucket_name:
+      type: "string"
+      value: "$.get('bucket_name')"
+      description: "GCS bucket name for file upload"
+    folder_path:
+      type: "string"
+      value: "$.get('folder_path')"
+      description: "Folder path within the bucket (optional, defaults to 'uploads')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 test-upload
+    - type: "connector"
+      name: "test-upload"
+      description: "Test the file upload."
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        api_key: "$.get('google-storage.api_key')"
+        image_path: "$.get('image_path')"
+        bucket_name: "$.get('bucket_name')"
+        folder_path: "$.get('folder_path')"
+      outputs:
+        data: "$"
+        workflow-status: "'executed'"
