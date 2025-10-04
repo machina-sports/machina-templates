@@ -78,3 +78,7 @@ datasets:
   # folders
   - type: "workflow"
     path: "_folders.yml"
+
+  # mappings
+  - type: "mappings"
+    path: "mappings/iptc-event-mapping.yml"

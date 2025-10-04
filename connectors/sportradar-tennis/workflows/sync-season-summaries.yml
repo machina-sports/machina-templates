@@ -3,13 +3,16 @@ workflow:
   title: "Tennis - Season Summaries"
   description: "Workflow to synchronize tennis season match summaries from SportRadar API to Machina."
   context-variables:
+    debugger: 
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
     sportradar-tennis:
       x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
     season_id: "$.get('season_id')"
   outputs:
-    summaries: "$.get('summaries_parsed')"
-    workflow-status: "$.get('summaries_parsed') is not None and 'executed' or 'failed'"
+    workflow-status: "$.get('summaries_response') is not None and 'executed' or 'failed'"
   tasks:
     
     # task-load-season-summaries
@@ -25,60 +28,43 @@ workflow:
         season_id: "$.get('season_id')"
         x-api-key: "$.get('x-api-key')"
       outputs:
-        summaries_response: "$"
-        summaries_parsed: |
-          [
-            {
-              **summary,
-              'sport_event_id': summary.get('sport_event', {}).get('id', ''),
-              'title': f"{summary.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '')} - {summary.get('sport_event', {}).get('competitors', [{}])[0].get('name', '')} vs {summary.get('sport_event', {}).get('competitors', [{}])[1].get('name', '') if len(summary.get('sport_event', {}).get('competitors', [])) > 1 else 'TBD'}",
-              'match_date': summary.get('sport_event', {}).get('start_time', ''),
-              'match_status': summary.get('sport_event_status', {}).get('match_status', ''),
-              'status': summary.get('sport_event_status', {}).get('status', ''),
-              'home_competitor': summary.get('sport_event', {}).get('competitors', [{}])[0].get('name', '') if len(summary.get('sport_event', {}).get('competitors', [])) > 0 else '',
-              'away_competitor': summary.get('sport_event', {}).get('competitors', [{}])[1].get('name', '') if len(summary.get('sport_event', {}).get('competitors', [])) > 1 else '',
-              'home_score': summary.get('sport_event_status', {}).get('home_score', 0),
-              'away_score': summary.get('sport_event_status', {}).get('away_score', 0),
-              'winner_id': summary.get('sport_event_status', {}).get('winner_id', ''),
-              'season_id': summary.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id', ''),
-              'season_name': summary.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', ''),
-              'competition_id': summary.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id', ''),
-              'competition_name': summary.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', ''),
-              'competition_type': summary.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('type', ''),
-              'competition_gender': summary.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('gender', ''),
-              'competition_level': summary.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('level', ''),
-              'stage_phase': summary.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('phase', ''),
-              'round_number': summary.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number', 0),
-              'round_name': summary.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('name', ''),
-              'venue_name': summary.get('sport_event', {}).get('venue', {}).get('name', ''),
-              'venue_city': summary.get('sport_event', {}).get('venue', {}).get('city_name', ''),
-              'venue_country': summary.get('sport_event', {}).get('venue', {}).get('country_name', ''),
-              'best_of': summary.get('sport_event', {}).get('sport_event_context', {}).get('mode', {}).get('best_of', 0),
-              'has_winner': summary.get('sport_event_status', {}).get('winner_id') is not None,
-              'is_finished': summary.get('sport_event_status', {}).get('match_status', '') == 'ended',
-              'total_sets': len(summary.get('sport_event_status', {}).get('period_scores', [])),
-              'selected': False,
-              'sport': 'tennis',
-              'document_type': 'tennis-match-summary'
-            }
-            for summary in $.get('summaries', [])
-          ]
+        summaries_response: "$.get('summaries', [])"
+
+    # iptc-sportradar-tennis-event-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-event-mapping
+      title: "IPTC | Sportradar Tennis Event Mapping"
+      description: "Mapping data from sportradar tennis season summaries to IPTC events"
+      inputs:
+        summaries: "$.get('summaries_response', [])"
+      outputs:
+        iptc-events: "$.get('sport_schema_events')"
 
     # task-bulk-save-season-summaries
     - type: "document"
       name: "task-bulk-save-season-summaries"
       description: "Bulk save the tennis season summaries."
       config:
-        action: "bulk-save"
-        embed-vector: false
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "'tennis-match-summary'"
+      document_name: "'sport:Event'"
       documents:
-        items: "$.get('summaries_parsed')"
-      metadata:
-        document_type: "'tennis-match-summary'"
-        sport: "'tennis'"
+        items: |
+          [
+            {
+              **e,
+              'metadata': {
+                'event_code': str(e.get('@id', '')),
+                'sport': 'tennis'
+              },
+              'title': e.get('name', '')
+            }
+            for e in $.get('iptc-events', [])
+          ]
+        

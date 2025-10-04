@@ -38,16 +38,6 @@ workflow:
       outputs:
         season_info_parsed: "$.get('season_info_parsed')"
 
-    # iptc-sportradar-tennis-season-mapping
-    - type: mapping
-      name: iptc-sportradar-tennis-season-mapping
-      title: "IPTC | Sportradar Tennis Season Mapping"
-      description: "Mapping data from sportradar tennis season info to IPTC sports schema"
-      inputs:
-        season_info_parsed: "$.get('season_info_parsed', [])"
-      outputs:
-        tennis_seasons: "$.get('sport_schema_seasons')"
-
     # task-bulk-save-season-info
     - type: "document"
       name: "task-bulk-save-season-info"
