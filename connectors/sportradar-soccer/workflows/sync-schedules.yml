@@ -15,12 +15,12 @@ workflow:
     start: "$.get('start', '0')"
   outputs:
     schedules: "$.get('schedules')"
-    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+    workflow-status: "len($.get('all_fixtures_ids', [])) > len($.get('existing_fixtures_ids', [])) and 'executed' or 'skipped'"
   tasks:
 
     # task-check-document-get-season
-    - type: "document"
-      name: "get-season"
+    - type: document
+      name: get-season
       description: "Get the season document."
       config:
         action: "search"
@@ -39,8 +39,8 @@ workflow:
         season: "$.get('documents')[0] if $.get('documents') else None"
 
     # load-schedules
-    - type: "connector"
-      name: "load-schedules"
+    - type: connector
+      name: load-schedules
       description: "Get a season schedules from SportRadar"
       connector:
         name: "sportradar-soccer"
@@ -65,12 +65,35 @@ workflow:
         schedules: "$.get('schedules', [])"
       outputs:
         fixtures: "$.get('sport_schema_events')"
+        all_fixtures_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-fixtures-by-ids
+    - type: document
+      name: load-fixtures-by-ids
+      condition: "$.get('should_update') == True and $.get('season') is not None and $.get('all_fixtures_ids') is not None"
+      description: "Load existing fixtures by IDs."
+      config:
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.(all_fixtures_ids)}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_fixtures_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
 
     # task-bulk-save-fixtures
-    - type: "document"
-      name: "task-bulk-save-fixtures"
+    - type: document
+      name: task-bulk-save-fixtures
       description: "Bulk save the individual fixtures."
-      condition: "$.get('should_update') == True and $.get('season') is not None"
+      condition: "$.get('should_update') == True and $.get('season') is not None and $.get('all_fixtures_ids') is not None and len($.get('all_fixtures_ids', [])) > len($.get('existing_fixtures_ids', []))"
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
@@ -82,7 +105,9 @@ workflow:
         model: "text-embedding-3-small"
       document_name: "'sport:Event'"
       documents:
-        items: |
+        items: "$.get('new_fixtures_list')"
+      inputs:
+        new_fixtures_list: |
           [
             {
               **f,
@@ -92,6 +117,5 @@ workflow:
               'title': f.get('name', '')
             }
             for f in $.get('fixtures', [])
+            if str(f.get('@id', '')) not in $.(existing_fixtures_ids)
           ]
-      metadata:
-        document_type: "'fixture'"
