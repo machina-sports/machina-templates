@@ -1,0 +1,55 @@
+agent:
+  name: agent-sportradar-event-live-update
+  title: Sportradar Event Live Update
+  description: Workflow to consume Sportradar.
+  context:
+    config-frequency: 0.1
+  context-agent:
+    event_code: $.get('event_code')
+  workflows:
+
+    # Workflow Event Consumer
+    - name: sportradar-soccer-event-consumer
+      description: Soccer Event Consumer
+      inputs:
+        event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('event_document_id')
+        event_exists: $.get('event_exists')
+        event-consumer-status: $.get('workflow-status', False)
+
+    # Workflow Event Synchronize
+    - name: sportradar-soccer-event-synchronize
+      description: Soccer Event Synchronize
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-synchronize-status: $.get('workflow-status', False)
+
+    # Workflow Event Update
+    - name: sportradar-soccer-event-update
+      description: Soccer Event Update
+      condition: $.get('event_exists') is True
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-update-status: $.get('workflow-status', False)
+        
+    # # Workflow Event Update Pre-Live
+    # - name: sportradar-soccer-update-prelive
+    #   description: Soccer Event Update Pre-Live
+    #   outputs:
+    #     soccer-event-update: "$.get('workflow-status', False)"
+
+    # # Workflow Event Update Live
+    # - name: sportradar-soccer-update-live
+    #   description: Soccer Event Update Live
+    #   outputs:
+    #     soccer-event-update: "$.get('workflow-status', False)"
+
+    # # Workflow Event Update Post-Live
+    # - name: sportradar-soccer-update-postlive
+    #   description: Soccer Event Update Post-Live
+    #   outputs:
+    #     soccer-event-update: "$.get('workflow-status', False)"
+        

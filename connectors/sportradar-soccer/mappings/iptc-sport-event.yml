@@ -15,9 +15,11 @@ mappings:
             },
             "@id": f"urn:sportradar:sport_event:{f.get('sport_event', {}).get('id')}",
             "@type": ["sport:Event", "schema:SportsEvent"],
-            "name": f"{f.get('sport_event', {}).get('competitors', [{}])[0].get('name', 'TBD')} vs {f.get('sport_event', {}).get('competitors', [{}])[1].get('name', 'TBD')} - {f.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name')}",
+            "name": f"{f.get('sport_event', {}).get('competitors', [{}])[0].get('name', 'TBD')} vs {f.get('sport_event', {}).get('competitors', [{}])[1].get('name', 'TBD')}",
             "schema:startDate": f.get('sport_event', {}).get('start_time'),
-            "sport:status": f.get('sport_event_status', {}).get('match_status'),
+            "schema:sportName": "football",
+            "sport:status": f.get('sport_event_status', {}).get('status'),
+            "sport:matchStatus": f.get('sport_event_status', {}).get('match_status'),
             "sport:competition": {
               "@id": f"urn:sportradar:competition:{f.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id')}",
               "@type": "sport:Competition",

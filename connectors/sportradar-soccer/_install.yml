@@ -42,8 +42,15 @@ setup:
 
 datasets:
 
+  # connectors
+
   - type: "connector"
     path: "sportradar-soccer.yml"
+
+  # agents
+
+  - type: "agent"
+    path: "agents/event-live-update.yml"
 
   # mappings
 
@@ -52,6 +59,9 @@ datasets:
 
   - type: "mappings"
     path: "mappings/event-statistics.yml"
+
+  - type: "mappings"
+    path: "mappings/iptc-sport-event.yml"
 
   - type: "mappings"
     path: "mappings/last-match.yml"
@@ -89,7 +99,16 @@ datasets:
     path: "workflows/sync-missing-players.yml"
 
   # update workflows
-  
+
+  - type: "workflow"
+    path: "workflows/event-consumer.yml"
+
+  - type: "workflow"
+    path: "workflows/event-synchronize.yml"
+
+  - type: "workflow"
+    path: "workflows/event-update.yml"
+
   - type: "workflow"
     path: "workflows/update-competition.yml"
   

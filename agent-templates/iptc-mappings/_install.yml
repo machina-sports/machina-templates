@@ -51,9 +51,6 @@ datasets:
     path: "sportradar/event-mapping-test.yml"
 
   - type: "mappings"
-    path: "sportradar/event-mapping.yml"
-  
-  - type: "mappings"
     path: "sportradar/event-players-stats.yml"
 
   - type: "mappings"

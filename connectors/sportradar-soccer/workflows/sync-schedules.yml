@@ -1,121 +1,103 @@
 workflow:
-  name: "sportradar-soccer-sync-schedules"
-  title: "Sportradar Soccer - Schedules"
-  description: "Workflow to synchronize a season schedules from SportRadar API to Machina."
+
+  # sportradar-soccer-sync-schedules
+  name: sportradar-soccer-sync-schedules
+  title: Sportradar Soccer - Schedules
+  description: Workflow to synchronize a season schedules from SportRadar API to Machina.
   context-variables:
     debugger:
       enabled: true
     machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     sportradar-soccer:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
-    should_update: "$.get('should_update', True)"
-    season_id: "$.get('season_id')"
-    start: "$.get('start', '0')"
+    season_id: $.get('season_id')
+    start: $.get('start', '0')
   outputs:
-    schedules: "$.get('schedules')"
-    workflow-status: "len($.get('all_fixtures_ids', [])) > len($.get('existing_fixtures_ids', [])) and 'executed' or 'skipped'"
+    schedules: $.get('schedules')
+    workflow-status: len($.get('all_events_ids', [])) > len($.get('existing_events_ids', [])) and 'executed' or 'skipped'
   tasks:
-
-    # task-check-document-get-season
-    - type: document
-      name: get-season
-      description: "Get the season document."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      condition: "$.get('should_update') == True"
-      filters:
-        value.id: "$.get('season_id')"
-      inputs:
-        name: "'season'"
-      outputs:
-        season: "$.get('documents')[0] if $.get('documents') else None"
 
     # load-schedules
     - type: connector
       name: load-schedules
-      description: "Get a season schedules from SportRadar"
+      description: Get a season schedules from SportRadar
       connector:
-        name: "sportradar-soccer"
-        command: "get-seasons/{season_id}/{data_type}"
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/{data_type}
         command_attribute:
-          season_id: "$.get('season_id')"
+          season_id: $.get('season_id')
           data_type: "'schedules.json'"
-      condition: "$.get('should_update') == True and $.get('season') is not None"
+      condition: $.get('season_id') is not None
       inputs:
-        api_key: "$.get('api_key')"
-        start: "$.get('start')"
+        api_key: $.get('api_key')
+        start: $.get('start')
       outputs:
-        schedules: "$.get('schedules')"
+        schedules: $.get('schedules')
 
     # iptc-api-football-event-mapping
     - type: mapping
       name: iptc-sportradar-event-mapping
-      title: "IPTC | Sportradar Event Mapping"
-      description: "Mapping data from sportradar to IPTC events"
-      condition: "$.get('should_update') == True and $.get('season') is not None"
+      title: IPTC | Sportradar Event Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: $.get('season_id') is not None
       inputs:
-        schedules: "$.get('schedules', [])"
+        schedules: $.get('schedules', [])
       outputs:
-        fixtures: "$.get('sport_schema_events')"
-        all_fixtures_ids: |
+        all_events: $.get('sport_schema_events')
+        all_events_ids: |
           [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
 
-    # load-fixtures-by-ids
+    # load-events-by-ids
     - type: document
-      name: load-fixtures-by-ids
-      condition: "$.get('should_update') == True and $.get('season') is not None and $.get('all_fixtures_ids') is not None"
-      description: "Load existing fixtures by IDs."
+      name: load-events-by-ids
+      condition: $.get('season_id') is not None and $.get('all_events_ids') is not None
+      description: Load existing events by IDs.
       config:
-        action: "search"
+        action: search
         search-limit: 10000
         search-vector: false
       filters:
         metadata.event_code: |
-          {'$in': $.(all_fixtures_ids)}
+          {'$in': $.(all_events_ids)}
       inputs:
         name: "'sport:Event'"
       outputs:
-        existing_fixtures_ids: |
+        existing_events_ids: |
           [
             fixture.get('metadata', {}).get('event_code', '')
             for fixture in $.get('documents', [])
           ]
 
-    # task-bulk-save-fixtures
+    # task-bulk-save-events
     - type: document
-      name: task-bulk-save-fixtures
-      description: "Bulk save the individual fixtures."
-      condition: "$.get('should_update') == True and $.get('season') is not None and $.get('all_fixtures_ids') is not None and len($.get('all_fixtures_ids', [])) > len($.get('existing_fixtures_ids', []))"
+      name: task-bulk-save-events
+      description: Bulk save the individual events.
+      condition: $.get('season_id') is not None and $.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))
       config:
-        action: "bulk-update"
-        embed-selector: "$.get('title')"
+        action: bulk-update
+        embed-selector: $.get('title')
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
       document_name: "'sport:Event'"
       documents:
-        items: "$.get('new_fixtures_list')"
+        items: $.get('new_events_list')
       inputs:
-        new_fixtures_list: |
+        new_events_list: |
           [
             {
               **f,
               'metadata': {
                 'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
               },
-              'title': f.get('name', '')
+              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
             }
-            for f in $.get('fixtures', [])
-            if str(f.get('@id', '')) not in $.(existing_fixtures_ids)
+            for f in $.get('all_events', [])
+            if str(f.get('@id', '')) not in $.(existing_events_ids)
           ]

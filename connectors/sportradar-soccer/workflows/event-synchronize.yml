@@ -1,0 +1,120 @@
+workflow:
+
+  # sportradar-soccer-event-synchronize
+  name: sportradar-soccer-event-synchronize
+  title: Sportradar Soccer - Event Synchronize
+  description: Workflow to synchronize a soccer game from SportRadar API by event code.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    event_document_id: $.get('event_document_id')
+  outputs:
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (sportradar) by code.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
+
+    # iptc-sportradar-id-conversion-mapping
+    - type: mapping
+      name: iptc-sportradar-id-conversion-mapping
+      description: Convert IPTC URN IDs to original Sportradar IDs and preserve URN
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_schema_events: |
+          [
+            $.get('event_value')
+          ]
+      outputs:
+        original_event_id: $.get('original_ids', [''])[0]
+
+    # fetch-event-summary
+    - type: connector
+      name: fetch-event-summary
+      description: Get a event summary from SportRadar
+      condition: $.get('event_exists') is True
+      connector:
+        name: sportradar-soccer
+        command: get-sport_events/{event_code}/{data_type}
+        command_attribute:
+          event_code: $.get('original_event_id')
+          data_type: "'summary.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        event_data: $
+        event_exists: "'status' in $.get('sport_event_status')"
+
+    # iptc-api-football-event-mapping
+    - type: mapping
+      name: iptc-sportradar-event-mapping
+      title: IPTC | Sportradar Event Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: $.get('event_exists') is True
+      inputs:
+        schedules: |
+          [
+            $.get('event_data', {})
+          ]
+      outputs:
+        event_updated: $.get('sport_schema_events', [])[0] if $.get('sport_schema_events', []) else None
+        event_updated_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # fetch-event-timeline
+    - type: connector
+      name: fetch-event-timeline
+      description: Get a event timeline from SportRadar
+      condition: $.get('event_exists') is True
+      connector:
+        name: sportradar-soccer
+        command: get-sport_events/{event_code}/{data_type}
+        command_attribute:
+          event_code: $.get('original_event_id')
+          data_type: "'timeline.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        result-event-statistics: $.get('statistics', {})
+        result-event-timeline: $.get('timeline', [])
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            **$.get('event_updated', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'processing': True
+            }
+          }
+      
