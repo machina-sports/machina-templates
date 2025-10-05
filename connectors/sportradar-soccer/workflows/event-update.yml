@@ -22,7 +22,7 @@ workflow:
     - type: document
       name: load-event-by-code
       description: Search event (sportradar) by code.
-      condition: $.get('event_code') is not None
+      condition: $.get('event_document_id') is not None
       config:
         action: search
         search-limit: 1

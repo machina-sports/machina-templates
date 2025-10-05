@@ -22,3 +22,23 @@ mappings:
           ])
           for event in $.get('events', [])
         ]
+
+  # iptc-events-summary-timeline
+  - type: mapping
+    name: iptc-events-summary-timeline
+    title: "IPTC | Events Summary Timeline"
+    description: "Summarizes timeline events from IPTC sport actions"
+    outputs:
+      events_summary_timeline: |
+        [
+          " | ".join(filter(None, [
+            event.get('sport:actionType', '').split('/')[-1].replace('-', ' ').title() if event.get('sport:actionType') else event.get('type', 'N/A'),
+            f"Team: {next((p.get('sport:participationBy', {}).get('sport:label') for p in event.get('sport:participation', []) if p.get('@type') == 'sport:TeamParticipation'), 'Unknown')}" if event.get('sport:participation') else None,
+            f"Player: {', '.join([p.get('sport:participationBy', {}).get('sport:label', 'Unknown') for p in event.get('sport:participation', []) if p.get('@type') == 'sport:IndividualParticipation'])}" if any(p.get('@type') == 'sport:IndividualParticipation' for p in event.get('sport:participation', [])) else None,
+            f"Time: {event.get('sport:minutesElapsed')}'" if event.get('sport:minutesElapsed') else None,
+            f"Period: {event.get('sport:periodValue')}" if event.get('sport:periodValue') else None,
+            f"Location: ({event.get('sport:fieldLocation')})" if event.get('sport:fieldLocation') else None,
+            event.get('commentaries', [{}])[0].get('text', '') if event.get('commentaries') else None
+          ]))
+          for event in $.get('events_timeline', [])
+        ]

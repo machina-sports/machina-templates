@@ -77,13 +77,13 @@ mappings:
           for f in $.get('iptc_schema_events', [])
         ]
 
-  # iptc-sportradar-events-mapping
+  # iptc-sportradar-events-timeline-mapping
   - type: mapping
-    title: "IPTC | Sportradar Events Mapping"
-    name: "iptc-sportradar-events-mapping"
-    description: "Convert Sportradar timeline events to IPTC Sports Schema format"
+    name: iptc-sportradar-events-timeline-mapping
+    title: IPTC | Sportradar Events Timeline Mapping
+    description: Convert Sportradar timeline events to IPTC Sports Schema format
     outputs:
-      iptc_events: |
+      iptc_events_timeline: |
         [
           {
             "@context": {
@@ -91,34 +91,44 @@ mappings:
             },
             "@id": f"urn:sportradar:action:{event.get('id')}",
             "@type": "sport:Action",
-            "sport:label": f"{event.get('type', '')} by {$.get('home_team', {}).get('name') if event.get('competitor') == 'home' else ($.get('away_team', {}).get('name') if event.get('competitor') == 'away' else event.get('competitor', ''))} at {event.get('match_time', 0)}' - Period {event.get('period', 0)}",
+            "type": event.get('type', ''),
+            "competitor": event.get('competitor', ''),
+            "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('match_time', 0)}' - Period {event.get('period', 0)}",
             "sport:actionType": f"http://cv.iptc.org/newscodes/spsocaction/{event.get('type', '').lower().replace('_', '-')}",
             "sport:minutesElapsed": str(event.get('match_time', 0)),
             "sport:actionDateTime": event.get('time'),
             "sport:periodValue": str(event.get('period', 0)),
             "sport:fieldLocation": f"{event.get('x', 0)},{event.get('y', 0)}" if event.get('x') is not None and event.get('y') is not None else None,
-            "sport:participation": [
-              {
-                "@id": f"urn:sportradar:team-participation:{$.get('home_team', {}).get('id') if event.get('competitor') == 'home' else $.get('away_team', {}).get('id')}",
-                "@type": "sport:TeamParticipation",
-                "sport:participationBy": {
-                  "@id": f"urn:sportradar:team:{$.get('home_team', {}).get('id') if event.get('competitor') == 'home' else $.get('away_team', {}).get('id')}",
-                  "@type": "sport:Team",
-                  "sport:label": $.get('home_team', {}).get('name') if event.get('competitor') == 'home' else ($.get('away_team', {}).get('name') if event.get('competitor') == 'away' else event.get('competitor', ''))
+            "commentaries": event.get('commentaries', []),
+            "sport:participation": (
+              ([
+                {
+                  "@id": f"urn:sportradar:team-participation:{$.get('home_team', {}).get('id') if event.get('competitor') == 'home' else $.get('away_team', {}).get('id')}",
+                  "@type": "sport:TeamParticipation",
+                  "sport:participationBy": {
+                    "@id": f"urn:sportradar:team:{$.get('home_team', {}).get('id') if event.get('competitor') == 'home' else $.get('away_team', {}).get('id')}",
+                    "@type": "sport:Team",
+                    "sport:label": $.get('home_team', {}).get('name') if event.get('competitor') == 'home' else $.get('away_team', {}).get('name')
+                  }
                 }
-              }
-            ] + ([
-              {
-                "@id": f"urn:sportradar:player-participation:{player.get('id')}",
-                "@type": "sport:IndividualParticipation",
-                "sport:participationBy": {
-                  "@id": f"urn:sportradar:player:{player.get('id')}",
-                  "@type": "sport:Athlete",
-                  "sport:label": player.get('name', '')
+              ] if (
+                event.get('competitor') and 
+                ((event.get('competitor') == 'home' and $.get('home_team', {}).get('id')) or 
+                 (event.get('competitor') == 'away' and $.get('away_team', {}).get('id')))
+              ) else []) + 
+              ([
+                {
+                  "@id": f"urn:sportradar:player-participation:{player.get('id')}",
+                  "@type": "sport:IndividualParticipation",
+                  "sport:participationBy": {
+                    "@id": f"urn:sportradar:player:{player.get('id')}",
+                    "@type": "sport:Athlete",
+                    "sport:label": player.get('name', 'Unknown Player')
+                  }
                 }
-              }
-              for player in event.get('players', [])
-            ] if event.get('players') else []) if event.get('competitor') else []
+                for player in event.get('players', [])
+              ] if event.get('players') else [])
+            )
           }
-          for event in $.get('timeline_events', [])
+          for event in $.get('iptc_events_timeline', [])
         ]

@@ -96,6 +96,17 @@ workflow:
         result-event-statistics: $.get('statistics', {})
         result-event-timeline: $.get('timeline', [])
 
+    # iptc-sportradar-events-timeline-mapping
+    - type: mapping
+      name: iptc-sportradar-events-timeline-mapping
+      title: IPTC | Sportradar Events Timeline Mapping
+      description: Convert Sportradar timeline events to IPTC Sports Schema format
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_events_timeline: $.get('result-event-timeline')
+      outputs:
+        iptc_events_timeline: $.get('iptc_events_timeline', [])
+
     # version-control-update
     - type: document
       name: version-control-update
@@ -112,6 +123,7 @@ workflow:
           {
             **$.get('event_value', {}),
             **$.get('event_updated', {}),
+            'schema:timeline': $.get('iptc_events_timeline', []),
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
               'processing': True

@@ -1,9 +1,11 @@
+# deprecated
 mappings:
 
-  - type: "mapping"
-    title: "Sportradar Soccer - Event Summary Mapping"
-    name: "mapping-soccer-event-summary"
-    description: "Mapping data from sportradar soccer data"
+  # mapping-soccer-event-summary
+  - type: mapping
+    name: mapping-soccer-event-summary
+    title: Sportradar Soccer - Event Summary Mapping
+    description: Mapping data from IPTC Sports Schema format
     outputs:
       article_count: "$.get('event_selected', {}).get('version_control', {}).get('article_count', 0)"
       event_code: "$.get('event_selected', {}).get('sport_event', {}).get('id')"
@@ -56,10 +58,11 @@ mappings:
           for c in $.get('event_selected', {}).get('sport_event_timeline', [])[-10:]
         ]
 
-  - type: "mapping"
-    title: "Sportradar Soccer - Event Summary Status"
-    name: "mapping-soccer-event-summary-status"
-    description: "Mapping data from sportradar soccer data"
+  # mapping-soccer-event-summary-status
+  - type: mapping
+    name: mapping-soccer-event-summary-status
+    title: Sportradar Soccer - Event Summary Status
+    description: Mapping data from IPTC Sports Schema format
     outputs:
       away_score: "$.get('item').get('away_score')"
       home_score: "$.get('item').get('home_score')"
@@ -80,10 +83,11 @@ mappings:
           f"Status: {$.get('item').get('status')}",
         ])
 
+  # mapping-soccer-event-summary-timeline
   - type: mapping
-    title: "Sportradar Soccer - Event Summary Event List"
-    name: "mapping-soccer-event-summary-event-list"
-    description: "Mapping data from sportradar soccer data"
+    name: mapping-soccer-event-summary-timeline
+    title: Sportradar Soccer - Event Summary Timeline
+    description: Mapping data from IPTC Sports Schema format
     outputs:
       event-list-mapped: |
         [
