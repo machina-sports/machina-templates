@@ -21,6 +21,9 @@ datasets:
 
   - type: "mappings"
     path: "any-selector/events-selector.yml"
+  
+  - type: "mappings"
+    path: "any-selector/events-summary.yml"
 
   - type: "mappings"
     path: "any-source/custom-event-mapping.yml"
