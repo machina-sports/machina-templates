@@ -1,5 +1,5 @@
 agent:
-  name: agent-sportradar-event-live-update
+  name: sportradar-event-live-update
   title: Sportradar Event Live Update
   description: Workflow to consume Sportradar.
   context:
