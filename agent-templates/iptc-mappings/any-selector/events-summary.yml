@@ -22,7 +22,23 @@ mappings:
           ])
           for event in $.get('events', [])
         ]
-
+        
+  # iptc-events-summary-statistics
+  - type: mapping
+    name: iptc-events-summary-statistics
+    title: IPTC | Events Summary Statistics
+    description: Summarizes team statistics from IPTC sport statistics
+    outputs:
+      events_summary_statistics: |
+        " | ".join([
+          f"{stat.get('sport:statParticipant', {}).get('name', 'N/A')} ({stat.get('sport:statParticipant', {}).get('sport:qualifier', 'N/A').upper()}): " + 
+          ", ".join([
+            f"{s.get('sport:statLabel')}: {s.get('sport:statValue')}" 
+            for s in stat.get('sport:statistics', [])
+          ])
+          for stat in $.get('events_statistics', [])
+        ])
+  
   # iptc-events-summary-timeline
   - type: mapping
     name: iptc-events-summary-timeline

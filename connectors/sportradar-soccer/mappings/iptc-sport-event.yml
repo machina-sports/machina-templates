@@ -77,6 +77,43 @@ mappings:
           for f in $.get('iptc_schema_events', [])
         ]
 
+  # iptc-sportradar-events-statistics-mapping
+  - type: mapping
+    name: iptc-sportradar-events-statistics-mapping
+    title: IPTC | Sportradar Events Statistics Mapping
+    description: Convert Sportradar statistics to IPTC Sports Schema format
+    outputs:
+      iptc_events_statistics: |
+        [
+          {
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/",
+              "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+              "spstat": "http://cv.iptc.org/newscodes/spstat/"
+            },
+            "@id": f"urn:sportradar:team-statistics:{competitor.get('id')}",
+            "@type": "sport:TeamStatistics",
+            "sport:statParticipant": {
+              "@id": f"urn:sportradar:team:{competitor.get('id')}",
+              "@type": "sport:Team",
+              "name": competitor.get('name'),
+              "sport:qualifier": competitor.get('qualifier'),
+              "abbreviation": competitor.get('abbreviation')
+            },
+            "sport:statistics": [
+              {
+                "@type": "sport:Statistic",
+                "sport:statType": f"spsocstat:{stat_key.replace('_', '-')}",
+                "sport:statValue": str(stat_value),
+                "sport:statLabel": stat_key.replace('_', ' ').title()
+              }
+              for stat_key, stat_value in competitor.get('statistics', {}).items()
+              if stat_value is not None
+            ]
+          }
+          for competitor in $.get('iptc_events_statistics', {}).get('totals', {}).get('competitors', [])
+        ]
+
   # iptc-sportradar-events-timeline-mapping
   - type: mapping
     name: iptc-sportradar-events-timeline-mapping
