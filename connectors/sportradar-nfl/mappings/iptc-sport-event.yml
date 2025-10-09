@@ -1,0 +1,171 @@
+mappings:
+
+  # iptc-sportradar-event-mapping
+  - type: mapping
+    title: "IPTC | Sportradar Event NFL Mapping"
+    name: "iptc-sportradar-event-nfl-mapping"
+    description: "Mapping data from sportradar to sportschema event"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:sportradar:sport_event:{f.get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"{f.get('home', {}).get('name', 'TBD')} vs {f.get('away', {}).get('name', 'TBD')}",
+            "schema:startDate": f.get('scheduled') or f.get('start_time'),
+            "schema:sportName": "nfl",
+            "sport:status": f.get('status'),
+            "sport:matchStatus": f.get('status'),
+            "sport:competition": {
+              "@id": f"urn:sportradar:competition:nfl",
+              "@type": "sport:Competition",
+              "name": "NFL",
+              "sport:season": {
+                "@id": f"urn:sportradar:season:2025",
+                "@type": "sport:Season",
+                "name": "NFL 2025",
+                "sport:year": "2025"
+              }
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:sportradar:venue:{f.get('venue', {}).get('id')}",
+              "name": f.get('venue', {}).get('name'),
+              "schema:addressLocality": f.get('venue', {}).get('city')
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:sportradar:team:{f.get('home', {}).get('id')}",
+                "name": f.get('home', {}).get('name'),
+                "sport:qualifier": "home"
+              },
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:sportradar:team:{f.get('away', {}).get('id')}",
+                "name": f.get('away', {}).get('name'),
+                "sport:qualifier": "away"
+              }
+            ],
+            "sport:score": {
+              "sport:homeScore": f.get('scoring', {}).get('home_points'),
+              "sport:awayScore": f.get('scoring', {}).get('away_points'),
+              "sport:halfTime": f.get('scoring', {}).get('periods', [{}])[0] if f.get('scoring', {}).get('periods', []) else {}
+            }
+          }
+          for f in $.get('schedules', [])
+        ]
+
+  # iptc-sportradar-id-conversion-mapping
+  - type: mapping
+    title: "IPTC | Sportradar ID Conversion Mapping"
+    name: "iptc-sportradar-id-conversion-mapping"
+    description: "Convert IPTC URN IDs to original Sportradar IDs and preserve URN"
+    outputs:
+      original_ids: |
+        [
+          f.get('@id', '').replace('urn:sportradar:sport_event:', '') if f.get('@id', '').startswith('urn:sportradar:sport_event:') else f.get('@id', '')
+          for f in $.get('iptc_schema_events', [])
+        ]
+      iptc_schema_ids: |
+        [
+          f.get('@id', '') if f.get('@id', '').startswith('urn:sportradar:') else f'urn:sportradar:sport_event:{f.get("@id", "")}'
+          for f in $.get('iptc_schema_events', [])
+        ]
+
+  # iptc-sportradar-events-statistics-mapping
+  - type: mapping
+    name: iptc-sportradar-events-statistics-mapping
+    title: IPTC | Sportradar Events Statistics Mapping
+    description: Convert Sportradar statistics to IPTC Sports Schema format
+    outputs:
+      iptc_events_statistics: |
+        [
+          {
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/",
+              "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+              "spstat": "http://cv.iptc.org/newscodes/spstat/"
+            },
+            "@id": f"urn:sportradar:team-statistics:{competitor.get('id')}",
+            "@type": "sport:TeamStatistics",
+            "sport:statParticipant": {
+              "@id": f"urn:sportradar:team:{competitor.get('id')}",
+              "@type": "sport:Team",
+              "name": competitor.get('name'),
+              "sport:qualifier": competitor.get('qualifier'),
+              "abbreviation": competitor.get('abbreviation')
+            },
+            "sport:statistics": [
+              {
+                "@type": "sport:Statistic",
+                "sport:statType": f"spsocstat:{stat_key.replace('_', '-')}",
+                "sport:statValue": str(stat_value),
+                "sport:statLabel": stat_key.replace('_', ' ').title()
+              }
+              for stat_key, stat_value in competitor.get('statistics', {}).items()
+              if stat_value is not None
+            ]
+          }
+          for competitor in $.get('iptc_events_statistics', {}).get('totals', {}).get('competitors', [])
+        ]
+
+  # iptc-sportradar-events-timeline-mapping
+  - type: mapping
+    name: iptc-sportradar-events-timeline-mapping
+    title: IPTC | Sportradar Events Timeline Mapping
+    description: Convert Sportradar timeline events to IPTC Sports Schema format
+    outputs:
+      iptc_events_timeline: |
+        [
+          {
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/"
+            },
+            "@id": f"urn:sportradar:action:{event.get('id')}",
+            "@type": "sport:Action",
+            "type": event.get('type', ''),
+            "competitor": event.get('competitor', ''),
+            "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('match_time', 0)}' - Period {event.get('period', 0)}",
+            "sport:actionType": f"http://cv.iptc.org/newscodes/spsocaction/{event.get('type', '').lower().replace('_', '-')}",
+            "sport:minutesElapsed": str(event.get('match_time', 0)),
+            "sport:actionDateTime": event.get('time'),
+            "sport:periodValue": str(event.get('period', 0)),
+            "sport:fieldLocation": f"{event.get('x', 0)},{event.get('y', 0)}" if event.get('x') is not None and event.get('y') is not None else None,
+            "commentaries": event.get('commentaries', []),
+            "sport:participation": (
+              ([
+                {
+                  "@id": f"urn:sportradar:team-participation:{$.get('home_team', {}).get('id') if event.get('competitor') == 'home' else $.get('away_team', {}).get('id')}",
+                  "@type": "sport:TeamParticipation",
+                  "sport:participationBy": {
+                    "@id": f"urn:sportradar:team:{$.get('home_team', {}).get('id') if event.get('competitor') == 'home' else $.get('away_team', {}).get('id')}",
+                    "@type": "sport:Team",
+                    "sport:label": $.get('home_team', {}).get('name') if event.get('competitor') == 'home' else $.get('away_team', {}).get('name')
+                  }
+                }
+              ] if (
+                event.get('competitor') and 
+                ((event.get('competitor') == 'home' and $.get('home_team', {}).get('id')) or 
+                 (event.get('competitor') == 'away' and $.get('away_team', {}).get('id')))
+              ) else []) + 
+              ([
+                {
+                  "@id": f"urn:sportradar:player-participation:{player.get('id')}",
+                  "@type": "sport:IndividualParticipation",
+                  "sport:participationBy": {
+                    "@id": f"urn:sportradar:player:{player.get('id')}",
+                    "@type": "sport:Athlete",
+                    "sport:label": player.get('name', 'Unknown Player')
+                  }
+                }
+                for player in event.get('players', [])
+              ] if event.get('players') else [])
+            )
+          }
+          for event in $.get('iptc_events_timeline', [])
+        ]

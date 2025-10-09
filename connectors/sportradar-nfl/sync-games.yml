@@ -62,3 +62,69 @@ workflow:
         items: "$.get('games_parsed')"
       inputs:
         games_parsed: "$.get('games_parsed')"
+
+    # iptc-sportradar-event-nfl-mapping
+    - type: mapping
+      name: iptc-sportradar-event-nfl-mapping
+      title: IPTC | Sportradar Event NFL Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: len($.get('games_parsed')) > 0
+      inputs:
+        schedules: $.get('games_parsed')
+      outputs:
+        all_events: $.get('sport_schema_events')
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-events-by-ids
+    - type: document
+      name: load-events-by-ids
+      condition: $.get('all_events_ids') is not None
+      description: Load existing events by IDs.
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.(all_events_ids)}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+
+    # task-bulk-save-events
+    - type: document
+      name: task-bulk-save-events
+      description: Bulk save the individual events.
+      condition: len($.get('games_parsed')) > 0 and $.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'sport:Event'"
+      documents:
+        items: $.get('new_events_list')
+      inputs:
+        new_events_list: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
+              },
+              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
+            }
+            for f in $.get('all_events', [])
+            if str(f.get('@id', '')) not in $.(existing_events_ids)
+          ]

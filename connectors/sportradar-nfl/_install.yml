@@ -25,6 +25,9 @@ datasets:
   - type: "connector"
     path: "sportradar-nfl.yml"
 
+  - type: "mappings"
+    path: "mappings/iptc-sport-event.yml"
+
   - type: "workflow"
     path: "sync-games.yml"
 

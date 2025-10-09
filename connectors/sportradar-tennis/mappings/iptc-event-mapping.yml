@@ -17,6 +17,7 @@ mappings:
             "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{next((c.get('name', 'Unknown') for c in m.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), 'Unknown')} vs {next((c.get('name', 'Unknown') for c in m.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), 'Unknown')} - {m.get('competition_name', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Unknown Competition'))}",
             "schema:startDate": m.get('match_date', m.get('sport_event', {}).get('start_time')),
+            "schema:sportName": "tennis",
             "sport:status": m.get('match_status', m.get('sport_event_status', {}).get('match_status')),
             "sport:competition": {
               "@id": f"urn:sportradar:tennis:competition:{m.get('competition_id', m.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id', 'unknown'))}",
