@@ -1,7 +1,7 @@
 workflow:
   name: "bballsports-play-predict"
-  title: "Simulate Basketball Games"
-  description: "Workflow to simulate basketball games using BBallSports API."
+  title: "Simulate Basketball Games with Audio"
+  description: "Workflow to simulate basketball games using BBallSports API and generate audio analysis."
   context-variables:
     debugger:
       enabled: true
@@ -14,13 +14,23 @@ workflow:
       homeaway: "both"
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     league_name: "$.get('league_name')"
     home_team: "$.get('home_team')"
     away_team: "$.get('away_team')"
     number_of_games: "$.get('number_of_games')"
+    voice_id: "$.get('voice_id')"
+    personality: "$.get('personality', 'neutral')"
+    language: "$.get('language', 'en')"
+    duration: "$.get('duration', '90')"
   outputs:
-    workflow-status: "'executed'"
+    simulation-analysis: "$.get('simulation-analysis')"
+    audio_path: "$.get('audio_path')"
+    workflow-status: "$.get('audio_path') is not None and 'executed' or 'skipped'"
   tasks:
 
     # bballsports-play-predict
@@ -113,3 +123,54 @@ workflow:
         #analysis-context: "$.get('consolidated-box-scores').get('analysis_context')"
       outputs:
         simulation-analysis: "$"
+
+    # generate-audio-content-prompt
+    - type: "prompt"
+      name: "generate-audio-content-prompt"
+      description: "Generate audio content from basketball simulation analysis."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+      inputs:
+        simulation-analysis: "$.get('simulation-analysis')"
+        home_team: "$.get('home_team')"
+        away_team: "$.get('away_team')"
+        number_of_games: "$.get('number_of_games')"
+        personality: "$.get('personality')"
+        language: "$.get('language')"
+        duration: "$.get('duration')"
+      outputs:
+        audio_content: "$.get('content')"
+
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('audio_content')"
+          voice_id: "$.get('voice_id')"
+          model_id: "$.get('model_id')"
+          optimize_streaming_latency: "$.get('optimize_streaming_latency')"
+          output_format: "$.get('output_format')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"bballsports-analysis-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"
