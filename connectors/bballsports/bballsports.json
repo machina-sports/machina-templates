@@ -1,0 +1,571 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BBallSports Basketball API",
+    "description": "This API allows you to retrieve information about basketball games, teams, and players.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.bballsports.com/simulationAPI"
+    }
+  ],
+  "paths": {
+    "/get_actual_player_stats.php": {
+      "post": {
+        "summary": "Get actual player statistics",
+        "description": "Retrieve current player statistics for a specific team in a league",
+        "security": [
+          {
+            "authorization": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apikey": {
+                    "type": "string",
+                    "description": "API key for authentication",
+                    "example": "7acfca7442404d6c8cd8322a06671b79"
+                  },
+                  "league_name": {
+                    "type": "string",
+                    "description": "Name of the league",
+                    "example": "PRO2015-16"
+                  },
+                  "team_name": {
+                    "type": "string",
+                    "description": "Name of the team",
+                    "example": "Cleveland Cavaliers"
+                  }
+                },
+                "required": ["apikey", "league_name", "team_name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success - Player statistics retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates if request was successful"
+                    },
+                    "players": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "player_name": {
+                            "type": "string",
+                            "description": "Name of the player"
+                          },
+                          "team": {
+                            "type": "string",
+                            "description": "Team name"
+                          },
+                          "league": {
+                            "type": "string",
+                            "description": "League name"
+                          },
+                          "stats": {
+                            "type": "object",
+                            "description": "Player statistics object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the issue"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the authentication failure"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/play_predict.php": {
+      "post": {
+        "summary": "Simulate basketball games",
+        "description": "Simulate basketball games between teams with customizable parameters",
+        "security": [
+          {
+            "authorization": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apikey": {
+                    "type": "string",
+                    "description": "API key for authentication",
+                    "example": "7acfca7442404d6c8cd8322a06671b79"
+                  },
+                  "league_name": {
+                    "type": "string",
+                    "description": "Name of the league",
+                    "example": "PRO2018-19"
+                  },
+                  "numgames": {
+                    "type": "string",
+                    "description": "Number of games to simulate",
+                    "example": "normal"
+                  },
+                  "homeaway": {
+                    "type": "string",
+                    "description": "Home/away configuration",
+                    "example": "both"
+                  },
+                  "gamemode": {
+                    "type": "string",
+                    "description": "Game mode for simulation",
+                    "example": "predict"
+                  },
+                  "keeppbp": {
+                    "type": "string",
+                    "description": "Keep play-by-play data",
+                    "example": "N"
+                  },
+                  "gamearray": {
+                    "type": "array",
+                    "description": "Array of games to simulate",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "predicthome": {
+                          "type": "string",
+                          "description": "Home team name",
+                          "example": "Atlanta Hawks"
+                        },
+                        "predictaway": {
+                          "type": "string",
+                          "description": "Away team name",
+                          "example": "Brooklyn Nets"
+                        },
+                        "predictgames": {
+                          "type": "string",
+                          "description": "Number of games to predict",
+                          "example": "20"
+                        }
+                      },
+                      "required": ["predicthome", "predictaway", "predictgames"]
+                    }
+                  }
+                },
+                "required": ["apikey", "league_name", "numgames", "homeaway", "gamemode", "keeppbp", "gamearray"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success - Game simulation completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates if request was successful"
+                    },
+                    "simulation_results": {
+                      "type": "object",
+                      "description": "Simulation results data"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the issue"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the authentication failure"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_played_game_list.php": {
+      "post": {
+        "summary": "Get played game list",
+        "description": "Retrieve list of played/simulated games",
+        "security": [
+          {
+            "authorization": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apikey": {
+                    "type": "string",
+                    "description": "API key for authentication",
+                    "example": "7acfca7442404d6c8cd8322a06671b79"
+                  }
+                },
+                "required": ["apikey"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success - Game list retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates if request was successful"
+                    },
+                    "games": {
+                      "type": "array",
+                      "description": "List of played games",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "game_number": {
+                            "type": "string",
+                            "description": "Game identifier"
+                          },
+                          "game_info": {
+                            "type": "object",
+                            "description": "Game information"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the issue"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the authentication failure"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_raw_box_scores.php": {
+      "post": {
+        "summary": "Get raw box scores",
+        "description": "Retrieve detailed box scores for a specific game",
+        "security": [
+          {
+            "authorization": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apikey": {
+                    "type": "string",
+                    "description": "API key for authentication",
+                    "example": "7acfca7442404d6c8cd8322a06671b79"
+                  },
+                  "game_number": {
+                    "type": "string",
+                    "description": "Game number to retrieve box scores for",
+                    "example": "1"
+                  }
+                },
+                "required": ["apikey", "game_number"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success - Box scores retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates if request was successful"
+                    },
+                    "box_scores": {
+                      "type": "object",
+                      "description": "Detailed box scores data"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the issue"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the authentication failure"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "description": "Indicates request failed"
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "Error message describing the server error"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "authorization": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "security": [
+    {
+      "authorization": []
+    }
+  ]
+} 
