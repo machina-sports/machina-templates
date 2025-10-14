@@ -1,0 +1,23 @@
+setup:
+  title: Temporary File Downloader
+  description: A simple connector to download files from the web and store them temporarily for use in subsequent workflows.
+  category:
+    - data-acquisition
+    - file-management
+    - utilities
+  estimatedTime: 1 minute
+  features:
+    - Web File Download
+    - Temporary File Storage
+    - Content Type Detection
+    - File Size Information
+  integrations:
+    - temp-downloader
+  requirements: []
+  status: available
+  value: "connectors/temp-downloader"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "temp-downloader.yml"

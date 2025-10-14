@@ -1,0 +1,8 @@
+connector:
+  name: "temp-downloader"
+  description: "A simple connector to download images from the web using temporary files"
+  filename: "temp-downloader.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Download"
+      value: "invoke_download"
