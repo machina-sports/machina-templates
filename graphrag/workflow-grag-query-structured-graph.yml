@@ -1,0 +1,31 @@
+workflow:
+  name: "workflow-grag-query-structured"
+  title: "Graph Rag Query Structured"
+  description: "Allow to query an specific knowledge graph with structured data (Entity or Relationship)."
+  context-variables:
+    neo4j-driver:
+      uri: "neo4j://192.168.88.207:7687"
+      username: "neo4j"
+      password: "sofia-maximum-tape-maestro-story-3965"
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    entity: "$.get('entity', [])" # Entity to search
+    # relationships: "$.get('relationships', [])" # List of relationships to search
+    limit: "$.get('limit', 100)" # Maximum number of results to return
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    # 0 query graph
+    - type: "connector"
+      name: "query_graph"
+      description: "Query graph"
+      connector:
+        name: "neo4j-driver"
+        command: "query_graph"
+      inputs:
+        entity: "$.get('entity')"
+        # relationships: "$.get('relationships')"
+        limit: "$.get('limit')"
+      outputs:
+        records: "$"
