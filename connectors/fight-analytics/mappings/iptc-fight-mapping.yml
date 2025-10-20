@@ -1,0 +1,114 @@
+mappings:
+
+  # iptc-fight-analytics-fight-mapping
+  - type: mapping
+    title: "IPTC | Fight Analytics Fight Mapping"
+    name: "iptc-fight-analytics-fight-mapping"
+    description: "Mapping data from fight-analytics fights to sportschema fight"
+    outputs:
+      sport_schema_fights: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:fightanalytics:fight:{f.get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"Fight {f.get('order', '')} - {f.get('weightClass', '')} {f.get('sport', '')}",
+            "schema:startDate": f.get('finishedAt') if f.get('finishedAt') else None,
+            "schema:sportName": f.get('sport', '').lower() if f.get('sport') else 'combat-sports',
+            "sport:status": "finished" if f.get('winner') else "scheduled",
+            "sport:competition": {
+              "@id": f"urn:fightanalytics:event:{f.get('eventId')}",
+              "@type": "sport:Competition",
+              "name": f"Event {f.get('eventId')}"
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Person",
+                "@id": f"urn:fightanalytics:fighter:{f.get('redCornerId')}",
+                "name": f"Red Corner Fighter {f.get('redCornerId')}",
+                "sport:qualifier": "red",
+                "sport:winner": f.get('winner') == f.get('redCornerId')
+              },
+              {
+                "@type": "sport:Person",
+                "@id": f"urn:fightanalytics:fighter:{f.get('blueCornerId')}",
+                "name": f"Blue Corner Fighter {f.get('blueCornerId')}",
+                "sport:qualifier": "blue",
+                "sport:winner": f.get('winner') == f.get('blueCornerId')
+              }
+            ],
+            "sport:gameInfo": {
+              "fight_type": "combat-sports",
+              "weight_class": f.get('weightClass'),
+              "sport": f.get('sport'),
+              "total_rounds": f.get('totalRound'),
+              "round_time": f.get('roundTime'),
+              "fight_order": f.get('order'),
+              "card_type": f.get('card'),
+              "finished_at_round": f.get('finishedAtRound')
+            },
+            "metadata": {
+              "fight_id": f.get('id'),
+              "legacy_id": f.get('legacyId'),
+              "event_id": f.get('eventId'),
+              "red_corner_id": f.get('redCornerId'),
+              "blue_corner_id": f.get('blueCornerId'),
+              "winner_id": f.get('winner'),
+              "weight_class": f.get('weightClass'),
+              "sport": f.get('sport'),
+              "card": f.get('card'),
+              "total_rounds": f.get('totalRound'),
+              "round_time": f.get('roundTime'),
+              "finished_at": f.get('finishedAt'),
+              "finished_at_round": f.get('finishedAtRound')
+            }
+          }
+          for f in $.get('fights', [])
+        ]
+
+  # fight-analysis-data-mapping
+  - type: mapping
+    title: "Fight Analysis Data Mapping"
+    name: "fight-analysis-data-mapping"
+    description: "Prepare fight data for AI analysis"
+    outputs:
+      analysis_data: |
+        {
+          "fights_summary": {
+            "total_fights": len($.get('fights', [])),
+            "sports_distribution": {
+              sport: len([f for f in $.get('fights', []) if f.get('sport') == sport])
+              for sport in set([f.get('sport') for f in $.get('fights', []) if f.get('sport')])
+            },
+            "weight_classes_distribution": {
+              weight_class: len([f for f in $.get('fights', []) if f.get('weightClass') == weight_class])
+              for weight_class in set([f.get('weightClass') for f in $.get('fights', []) if f.get('weightClass')])
+            },
+            "card_distribution": {
+              card: len([f for f in $.get('fights', []) if f.get('card') == card])
+              for card in set([f.get('card') for f in $.get('fights', []) if f.get('card')])
+            },
+            "finished_fights": len([f for f in $.get('fights', []) if f.get('winner')]),
+            "scheduled_fights": len([f for f in $.get('fights', []) if not f.get('winner')])
+          },
+          "fights_details": [
+            {
+              "fight_id": f.get('id'),
+              "event_id": f.get('eventId'),
+              "sport": f.get('sport'),
+              "weight_class": f.get('weightClass'),
+              "card": f.get('card'),
+              "red_corner": f.get('redCornerId'),
+              "blue_corner": f.get('blueCornerId'),
+              "winner": f.get('winner'),
+              "total_rounds": f.get('totalRound'),
+              "finished_at_round": f.get('finishedAtRound'),
+              "finished_at": f.get('finishedAt'),
+              "fight_order": f.get('order')
+            }
+            for f in $.get('fights', [])
+          ]
+        }

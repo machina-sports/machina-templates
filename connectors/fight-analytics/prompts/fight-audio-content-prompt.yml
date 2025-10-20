@@ -1,0 +1,65 @@
+prompts:
+
+  # generate-fight-audio-content-prompt
+  - type: prompt
+    name: generate-fight-audio-content-prompt
+    title: "Fight Analytics Audio Content Generation"
+    description: "Generate simple text content for audio from fight analysis data"
+    instruction: |
+            You are a combat sports analyst creating an audio podcast segment about fight analysis data. 
+            
+            FIGHT DATA:
+            {{ $.get('fights_data') }}
+
+            FIGHT DETAILS:
+            - Event ID: {{ $.get('event_id') }}
+            - Event Name: {{ $.get('event_name') }}
+            - Location: {{ $.get('location', 'Unknown Location') }}
+            - Total Fights Analyzed: {{ $.get('total_fights') }}
+
+            AUDIO CONFIGURATION:
+            - Target Duration: {{ $.get('duration') }} seconds (max 120 seconds)
+            - Voice Personality: {{ $.get('personality') }}
+            - Language: {{ $.get('language') }}
+
+            Create a conversational, engaging audio script that:
+            1. Welcomes listeners and introduces the fight analysis
+            2. Explains what fights are being analyzed and why
+            3. Breaks down the key findings from the fight analysis
+            4. Highlights interesting statistics and patterns
+            5. Provides insights about fighter performance and fight outcomes
+            6. Concludes with a summary and what to watch for
+
+            PERSONALITY GUIDELINES:
+            - NEUTRAL & PROFESSIONAL: Use a balanced, informative tone with clear explanations
+            - BOLD & HYPE: Use energetic language, exclamations, and exciting expressions
+            - CLEVER & FUNNY: Use witty observations, clever analogies, and light humor
+
+            LANGUAGE REQUIREMENTS:
+            - PORTUGUESE: Use Brazilian Portuguese terminology and expressions
+            - ENGLISH: Use American English combat sports terminology
+            - SPANISH: Use Spanish combat sports terminology and expressions
+
+            DURATION CONTROL:
+            - Target EXACTLY {{ $.get('duration') }} seconds of speaking time
+            - For 60 seconds or less: Be very concise, focus only on key points
+            - For 90 seconds: Include main analysis and some details
+            - For 120 seconds: Include comprehensive analysis with examples
+            - Count words: approximately 150-160 words per minute of speech
+            - For {{ $.get('duration') }} seconds: write approximately {{ (int($.get('duration')) * 2.5) | int }} words maximum
+            - If time is limited, prioritize: 1) Fight results, 2) Key stats, 3) Main insight, 4) Conclusion
+
+            Make it sound natural and conversational, as if you're talking directly to combat sports fans. 
+            Use appropriate fighting terminology for the selected language and maintain the specified personality tone.
+    schema:
+      title: "FightAnalyticsAudioContent"
+      description: "Generate audio content for fight analysis data"
+      type: "object"
+      properties:
+        content:
+          type: "string"
+          description: "The conversational audio script explaining the fight analysis data"
+        summary:
+          type: "string"
+          description: "A brief summary of the key points covered in the audio content"
+      required: ["content", "summary"]

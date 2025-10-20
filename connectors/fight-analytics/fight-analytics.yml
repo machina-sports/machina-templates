@@ -1,0 +1,5 @@
+connector:
+  name: "fight-analytics"
+  description: "Fight Analytics API v2"
+  filename: "fight-analytics.json"
+  filetype: "restapi"

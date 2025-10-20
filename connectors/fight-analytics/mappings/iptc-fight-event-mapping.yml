@@ -1,0 +1,53 @@
+mappings:
+
+  # iptc-fight-analytics-event-mapping
+  - type: mapping
+    title: "IPTC | Fight Analytics Event Mapping"
+    name: "iptc-fight-analytics-event-mapping"
+    description: "Mapping data from fight-analytics to sportschema event"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:fightanalytics:event:{f.get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f.get('name', ''),
+            "schema:startDate": f.get('time') if f.get('time') else f"{f.get('date')}T00:00:00Z" if f.get('date') else None,
+            "schema:sportName": "combat-sports",
+            "sport:status": "scheduled",
+            "sport:competition": {
+              "@id": f"urn:fightanalytics:promotion:{f.get('promotionId')}",
+              "@type": "sport:Competition",
+              "name": f"Promotion {f.get('promotionId')}" if f.get('promotionId') else "Unknown Promotion"
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:fightanalytics:venue:{f.get('venueId')}",
+              "name": f"Venue {f.get('venueId')}" if f.get('venueId') else "Unknown Venue",
+              "schema:addressLocality": f.get('location', ''),
+              "schema:addressCountry": f.get('country', '')
+            },
+            "sport:competitors": [],
+            "sport:gameInfo": {
+              "event_type": "fight",
+              "legacy_id": f.get('legacyId'),
+              "promotion_id": f.get('promotionId'),
+              "venue_id": f.get('venueId')
+            },
+            "metadata": {
+              "event_id": f.get('id'),
+              "legacy_id": f.get('legacyId'),
+              "promotion_id": f.get('promotionId'),
+              "venue_id": f.get('venueId'),
+              "location": f.get('location'),
+              "country": f.get('country'),
+              "date": f.get('date'),
+              "time": f.get('time')
+            }
+          }
+          for f in $.get('events', [])
+        ]

@@ -1,0 +1,92 @@
+workflow:
+  name: "fight-analytics-sync-events"
+  title: "Fight Analytics - Sync Events"
+  description: "Workflow to sync fight events from Fight Analytics API;"
+  context-variables:
+    debugger:
+      enabled: true
+    fight-analytics:
+      authorization: "$TEMP_CONTEXT_VARIABLE_FIGHT_ANALYTICS_API_KEY"
+      per_page: "$.get('per_page', '4000')"
+      page: "$.get('page', '1')"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    per_page: "$.get('per_page', '4000')"
+    page: "$.get('page', '1')"
+  outputs:
+    workflow-status: "'executed'"
+    total_events: "len($.get('events', []))"
+    pagination_info: "$.get('pagination', {})"
+    debug_pagination: "$.get('debug_pagination', {})"
+    pagination_debug: "$.get('pagination_debug', {})"
+    events_count: "len($.get('events', []))"
+  tasks:
+    # Get events with configurable pagination
+    - type: "connector"
+      name: "fight-analytics-get-events"
+      description: "Get fight events from Fight Analytics API with configurable pagination."
+      connector:
+        name: "fight-analytics"
+        command: "get-events"
+      inputs:
+        per_page: "str($.get('per_page', 4000))"
+        page: "str($.get('page', 1))"
+      outputs:
+        events: "$.get('data', [])"
+        pagination: "$.get('pagination', {})"
+        debug_pagination: |
+          {
+            'requested_per_page': $.get('per_page'),
+            'requested_page': $.get('page'),
+            'received_events_count': len($.get('data', [])),
+            'pagination_info': $.get('pagination', {}),
+            'api_response_keys': list($.keys()) if $.get('data') else []
+          }
+
+    - type: mapping
+      name: iptc-fight-analytics-event-mapping
+      title: "IPTC | Fight Analytics Event Mapping"
+      description: "Mapping data from fight-analytics to IPTC events"
+      condition: "$.get('events') is not None and len($.get('events', [])) > 0"
+      inputs:
+        events: "$.get('events', [])"
+      outputs:
+        mapped_events: "$.get('sport_schema_events')"
+
+    - type: "document"
+      name: "task-bulk-save-events"
+      description: "Bulk save ALL fight events."
+      condition: "$.get('mapped_events') is not None and len($.get('mapped_events', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('name')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'event_id': f.get('metadata', {}).get('event_id', ''),
+                'legacy_id': f.get('metadata', {}).get('legacy_id', ''),
+                'promotion_id': f.get('metadata', {}).get('promotion_id', ''),
+                'venue_id': f.get('metadata', {}).get('venue_id', ''),
+                'location': f.get('metadata', {}).get('location', ''),
+                'country': f.get('metadata', {}).get('country', ''),
+                'sport_type': 'combat-sports'
+              },
+              'title': f.get('name', '')
+            }
+            for f in $.get('mapped_events', [])
+          ]
+      metadata:
+        document_type: "'fight-event'"
+        source: "'fight-analytics'"

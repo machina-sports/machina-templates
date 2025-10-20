@@ -1,0 +1,463 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Fight Analytics API v2",
+    "description": "API for retrieving fight events data including event details, locations, promotions, and venues.",
+    "version": "2.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://fight-api-v2.herokuapp.com"
+    }
+  ],
+  "paths": {
+    "/events": {
+      "get": {
+        "summary": "List Events",
+        "description": "Retrieve all fight events from the API. Returns all events without any filters.",
+        "parameters": [
+          {
+            "name": "per_page",
+            "in": "header",
+            "description": "Number of records per page",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "4000"
+            }
+          },
+          {
+            "name": "page",
+            "in": "header",
+            "description": "Page number",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "1"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Event"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fights": {
+      "get": {
+        "summary": "List Fights",
+        "description": "Retrieve fights from the API with optional filters.",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "description": "Event ID to filter fights",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "promotionId",
+            "in": "query",
+            "description": "Promotion ID to filter fights",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fighterId",
+            "in": "query",
+            "description": "Fighter ID to filter fights",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "weightClass",
+            "in": "query",
+            "description": "Weight class to filter fights",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sport",
+            "in": "query",
+            "description": "Sport type to filter fights",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "card",
+            "in": "query",
+            "description": "Card type to filter fights",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "result",
+            "in": "query",
+            "description": "Fight result to filter fights",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "header",
+            "description": "Number of records per page",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "4000"
+            }
+          },
+          {
+            "name": "page",
+            "in": "header",
+            "description": "Page number",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fights": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Fight"
+                      }
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/Pagination"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "authorization": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "authorization",
+        "description": "Security token for API authentication"
+      }
+    },
+    "schemas": {
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Event ID",
+            "example": "evt_123456"
+          },
+          "legacyId": {
+            "type": "integer",
+            "description": "Event ID in legacy API",
+            "example": 123456
+          },
+          "name": {
+            "type": "string",
+            "description": "Event name",
+            "example": "UFC 300: Pereira vs Hill"
+          },
+          "time": {
+            "type": "string",
+            "description": "Event time",
+            "example": "2024-04-13T19:00:00Z"
+          },
+          "location": {
+            "type": "string",
+            "description": "The location where the event will take place",
+            "example": "Las Vegas, NV"
+          },
+          "venueId": {
+            "type": "integer",
+            "description": "The id of venue where the event will take place",
+            "example": 1
+          },
+          "promotionId": {
+            "type": "integer",
+            "description": "The id of promotion organizing the event",
+            "example": 1
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Event date",
+            "example": "2024-04-13"
+          },
+          "country": {
+            "type": "string",
+            "description": "Event country",
+            "example": "United States"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "Fight": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Fight ID",
+            "example": "fight_123456"
+          },
+          "legacyId": {
+            "type": "integer",
+            "description": "Fight ID in legacy API",
+            "example": 123456
+          },
+          "eventId": {
+            "type": "string",
+            "description": "Event ID this fight belongs to",
+            "example": "evt_123456"
+          },
+          "redCornerId": {
+            "type": "string",
+            "description": "Red corner fighter ID",
+            "example": "fighter_123"
+          },
+          "blueCornerId": {
+            "type": "string",
+            "description": "Blue corner fighter ID",
+            "example": "fighter_456"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Fight order in the event",
+            "example": 1
+          },
+          "totalRound": {
+            "type": "integer",
+            "description": "Total number of rounds",
+            "example": 3
+          },
+          "sport": {
+            "type": "string",
+            "description": "Sport type",
+            "example": "MMA"
+          },
+          "weightClass": {
+            "type": "string",
+            "description": "Weight class",
+            "example": "Lightweight"
+          },
+          "roundTime": {
+            "type": "integer",
+            "description": "Round time in minutes",
+            "example": 5
+          },
+          "winner": {
+            "type": "string",
+            "description": "Winner fighter ID",
+            "example": "fighter_123"
+          },
+          "finishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the fight finished",
+            "example": "2024-04-13T21:30:00Z"
+          },
+          "finishedAtRound": {
+            "type": "integer",
+            "description": "Round when fight finished",
+            "example": 2
+          },
+          "card": {
+            "type": "string",
+            "description": "Card type",
+            "example": "MAIN"
+          },
+          "result": {
+            "type": "string",
+            "description": "Fight result",
+            "example": "KO"
+          }
+        },
+        "required": ["id", "eventId"]
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "currentPage": {
+            "type": "string",
+            "example": "1"
+          },
+          "per_page": {
+            "type": "string",
+            "example": "20"
+          },
+          "total": {
+            "type": "string",
+            "example": "100"
+          },
+          "lastPage": {
+            "type": "string",
+            "example": "5"
+          },
+          "nextPage": {
+            "type": "string",
+            "example": "2"
+          },
+          "prevPage": {
+            "type": "string",
+            "example": null
+          }
+        }
+      }
+    }
+  }
+}

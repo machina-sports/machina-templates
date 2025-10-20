@@ -1,0 +1,54 @@
+setup:
+  title: Fight Analytics API v2
+  description: Connect to the Fight Analytics API to get fight events data including event details, locations, promotions, and venues.
+  category:
+    - data-acquisition
+    - combat-sports
+    - mma
+    - boxing
+  estimatedTime: 1 minute
+  features:
+    - Comprehensive fight events database
+    - Event filtering by name, location, promotion, venue, date, and country
+    - Support for multiple combat sports (MMA, Boxing, etc.)
+    - Real-time event data updates
+    - Historical event information
+    - Venue and promotion details
+    - Geographic filtering by country
+    - Pagination support for large datasets
+    - RESTful API with JSON responses
+    - Secure authentication via API key
+
+  integrations:
+    - fight-analytics
+  status: available
+  value: connectors/fight-analytics
+  version: 2.0.0
+
+datasets:
+
+  # connectors
+
+  - type: "connector"
+    path: "fight-analytics.yml"
+
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/iptc-fight-event-mapping.yml"
+
+  - type: "mappings"
+    path: "mappings/iptc-fight-mapping.yml"
+
+  # prompts
+
+  - type: "prompts"
+    path: "prompts/fight-audio-content-prompt.yml"
+
+  # sync workflows
+
+  - type: "workflow"
+    path: "workflows/sync-events.yml"
+
+  - type: "workflow"
+    path: "workflows/fight-analysis-audio.yml"

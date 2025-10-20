@@ -1,0 +1,103 @@
+workflow:
+  name: "fight-analytics-analysis-audio"
+  title: "Fight Analytics - AI Analysis & Audio Generation"
+  description: "Workflow to fetch fight data, generate AI analysis, and convert to audio using ElevenLabs."
+  context-variables:
+    debugger:
+      enabled: true
+    fight-analytics:
+      authorization: "$TEMP_CONTEXT_VARIABLE_FIGHT_ANALYTICS_API_KEY"
+      per_page: "$.get('per_page', '4000')"
+      page: "$.get('page', '1')"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    eventId: "$.get('eventId')"
+    personality: "$.get('personality', 'NEUTRAL & PROFESSIONAL')"
+    language: "$.get('language', 'ENGLISH')"
+    duration: "$.get('duration', 90)"
+    voice_id: "$.get('voice_id', 'pNInz6obpgDQGcFmaJgB')"
+    model_id: "$.get('model_id', 'eleven_monolingual_v1')"
+    optimize_streaming_latency: "$.get('optimize_streaming_latency', 0)"
+    output_format: "$.get('output_format', 'mp3_44100_128')"
+  outputs:
+    workflow-status: "'executed'"
+    fights_count: "len($.get('fights', []))"
+    audio_content: "$.get('audio_content')"
+    final_filename: "$.get('final_filename')"
+    audio_path: "$.get('audio_path')"
+  tasks:
+
+    - type: "connector"
+      name: "fight-analytics-get-fights"
+      description: "Get fight data from Fight Analytics API using eventId from saved events."
+      connector:
+        name: "fight-analytics"
+        command: "get-fights"
+      inputs:
+        eventId: "$.get('eventId')"
+        per_page: "str($.get('per_page', 4000))"
+        page: "str($.get('page', 1))"
+      outputs:
+        fights:  "$"
+
+
+    # generate-audio-content-prompt
+    - type: "prompt"
+      name: "generate-fight-audio-content-prompt"
+      description: "Generate audio content from fight analysis data."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+      inputs:
+        fights_data: "$.get('fights', [])"
+        event_id: "$.get('fights', [{}])[0].get('event', {}).get('id', 'Unknown Event ID') if $.get('fights') and len($.get('fights', [])) > 0 else 'Unknown Event ID'"
+        event_name: "$.get('fights', [{}])[0].get('event', {}).get('name', 'Unknown Event') if $.get('fights') and len($.get('fights', [])) > 0 else 'Unknown Event'"
+        location: "$.get('fights', [{}])[0].get('event', {}).get('location', 'Unknown Location') if $.get('fights') and len($.get('fights', [])) > 0 else 'Unknown Location'"
+        event_date: "$.get('fights', [{}])[0].get('event', {}).get('date', 'Unknown Date') if $.get('fights') and len($.get('fights', [])) > 0 else 'Unknown Date'"
+        event_time: "$.get('fights', [{}])[0].get('event', {}).get('time', 'Unknown Time') if $.get('fights') and len($.get('fights', [])) > 0 else 'Unknown Time'"
+        event_country: "$.get('fights', [{}])[0].get('event', {}).get('country', 'Unknown Country') if $.get('fights') and len($.get('fights', [])) > 0 else 'Unknown Country'"
+        total_fights: "len($.get('fights', []))"
+        personality: "$.get('personality')"
+        language: "$.get('language')"
+        duration: "$.get('duration')"
+      outputs:
+        audio_content: "$.get('content')"
+
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('audio_content')"
+          voice_id: "$.get('voice_id')"
+          model_id: "$.get('model_id')"
+          optimize_streaming_latency: "$.get('optimize_streaming_latency')"
+          output_format: "$.get('output_format')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"fight-analytics-analysis-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"
+
