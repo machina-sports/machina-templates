@@ -22,30 +22,31 @@ setup:
   version: 1.0.0
 
 datasets:
-  - type: "connector"
-    path: "web-scraping.yml"
+  
+  - type: connector
+    path: web-scraping.yml
 
-  - type: "workflow"
-    path: "searching.yml"
+  # - type: "workflow"
+  #   path: "searching.yml"
 
-  - type: "workflow"
-    path: "scraping.yml"
+  # - type: "workflow"
+  #   path: "scraping.yml"
 
-  - type: "workflow"
-    path: "transcript.yml"
+  # - type: "workflow"
+  #   path: "transcript.yml"
 
-  - type: "mappings"
-    path: "mapping.yml"
+  # - type: "mappings"
+  #   path: "mapping.yml"
 
-  # consumer
-  - type: "workflow"
-    path: "consumer/searching.yml"
+  # # consumer
+  # - type: "workflow"
+  #   path: "consumer/searching.yml"
 
-  - type: "workflow"
-    path: "consumer/scraping.yml"
+  # - type: "workflow"
+  #   path: "consumer/scraping.yml"
 
-  - type: "workflow"
-    path: "consumer/update.yml"
+  # - type: "workflow"
+  #   path: "consumer/update.yml"
 
-  - type: "agent"
-    path: "consumer/agent.yml"
+  # - type: "agent"
+  #   path: "consumer/agent.yml"
