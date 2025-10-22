@@ -1,0 +1,56 @@
+mappings:
+
+  # assistant-find-markets-mapping
+  - type: mapping
+    name: assistant-find-markets-mapping
+    title: Assistant - Mapping Markets
+    description: Mapping data from markets
+    outputs:
+      markets-mapping: $.get('selected_markets_parsed')
+
+  # assistant-find-markets-odds-mapping
+  - type: mapping
+    name: assistant-find-markets-odds-mapping
+    title: Assistant - Market Odds Mapping
+    description: Mapping data from market-runners
+    outputs:
+      mapped-odds: |
+        [
+          {
+            'id': m.get('id'),
+            'marketType': m.get('marketType'),
+            'title': m.get('title'),
+            'options': [
+              {
+                'id': option.get('id'),
+                'name': option.get('name', {}).get('text', ''),
+                'price': option.get('price', {}).get('odds', '')
+              }
+              for option in m.get('options', [])
+              if option.get('isOpenForBetting', False)
+            ],
+            'period': m.get('period'),
+            'subPeriod': m.get('subPeriod')
+          }
+          for m in $.get('market-odds', [])
+        ]
+      mapped-runners: |
+        [
+          {
+            'event-id': m.get('metadata', {}).get('market_code', ''),
+            'market-id': m.get('id'),
+            'option-id': o.get('id'),
+            'marketType': m.get('marketType'),
+            'name': o.get('name', {}).get('text', ''),
+            'price': o.get('price', {}).get('odds', ''),
+            'title': f"{m.get('title')} {o.get('name', {}).get('text', '')}: {o.get('price', {}).get('odds', '')}",
+          }
+          for m in $.get('market-odds', [])
+          for o in m.get('options', [])
+          if o.get('isOpenForBetting', False)
+        ]
+      market-types: |
+        list(set([
+          m.get('marketType')
+          for m in $.get('market-odds', [])
+        ]))

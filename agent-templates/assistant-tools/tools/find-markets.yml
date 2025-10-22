@@ -1,0 +1,297 @@
+workflow:
+  
+  # assistant-tools-find-markets 
+  name: assistant-tools-find-markets
+  title: Assistant - Tools Find Markets
+  description: Workflow to execute a chat completion for events.
+  context-variables:
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  inputs:
+    country: $.get('country', 'br')
+    document_id: $.get('document_id')
+    market-query: $.get('market-query')
+    runner-query: $.get('runner_query')
+    onlyMainMarkets: $.get('onlyMainMarkets', 'true')
+    search_date_interval: $.get('search_date_interval', {})
+    search_query: $.get('search_query')
+    sport_id: $.get('sport_id', '4')
+  outputs:
+    step_find_markets_docs: $.get('selected-runners-parsed', [])
+    step_find_markets_objects: $.get('selected-runners-parsed', [])
+    workflow-status: len($.get('selected-runners-parsed', [])) > 0 and 'executed' or 'skipped'
+  tasks:
+
+    # Load chat history (thread document)
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+        name: "'thread'"
+      outputs:
+        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    # assistant-prepare-message-history
+    - type: mapping
+      name: assistant-prepare-message-history
+      condition: $.get('document_id') is not None
+      inputs:
+        message-history: $.get('messages')[-3:]
+      outputs:
+        message-history: $.get('message-history')
+
+    # assistant-prepare-reasoning
+    - type: mapping
+      name: assistant-prepare-reasoning
+      condition: $.get('document_id') is not None
+      inputs:
+        document_value: $.get('document_value')
+      outputs:
+        market-query: $.get('market_query')
+        runner-query: $.get('runner_query')
+        search_date_interval: $.get('search_date_interval')
+        search_query: $.get('search_query')
+        search_sort: $.get('search_sort')
+        sport_id: $.get('sport_id')
+        vector_query: $.get('vector_query')
+        vector_search: $.get('vector_search')
+
+    # EVENT SEARCH
+
+    # load-similar-documents
+    - type: document
+      name: load-similar-documents
+      description: Load similar documents
+      condition: $.get('search_query') is not None
+      config:
+        action: search
+        threshold-docs: 3
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-sorters: ["value.startDate", 1]
+        search-vector: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      filters:
+        '$or': "[{'value.startDate':{'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}, {'value.startDateUtc': {'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}]"
+      inputs:
+        name: "'game-market'"
+        search-query: |
+          f"{$.get('search_query')}"
+      outputs:
+        events-parsed: |
+          [
+            f.get('value', {}).get('title', '')
+            for f in $.get('documents', [])
+          ]
+        output_documents: |
+          [
+            {
+              **f.get('value', {}),
+              'parsed_id': f.get('value', {}).get('id', {}).get('entityId') if isinstance(f.get('value', {}).get('id', {}), dict) else f.get('value', {}).get('id', '')
+            }
+            for f in $.get('documents', [])
+          ]
+    
+    # assistant-grade-first-selection
+    - type: prompt
+      name: assistant-grade-first-selection
+      condition: $.get('events-parsed') is not None and len($.get('events-parsed', [])) > 0
+      continue_on_error: true
+      connector:
+        command: invoke_prompt
+        name: machina-ai-fast
+        model: llama-3.3-70b-versatile
+        # name: google-genai
+        # model: gemini-2.5-flash
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _1-events-to-analyze: $.get('events-parsed')[0]
+        _2-query-to-select: $.get('vector_query') or $.get('search_query')
+      outputs:
+        events_index: "[0]"
+        grade_selected_market: $.get('grade_selected_market', False)
+        has_events: $.get('grade_selected_market', False)
+
+    # assistant-find-markets-events (fallback)
+    - type: prompt
+      name: assistant-find-markets-events
+      condition: $.get('events-parsed') is not None and $.get('grade_selected_market') is not True
+      connector:
+        command: invoke_prompt
+        # name: google-genai
+        # model: gemini-2.5-flash
+        name: machina-ai-fast
+        model: llama-3.3-70b-versatile
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _1-events-to-analyze: $.get('events-parsed')
+        _2-query-to-select: $.get('vector_query') or $.get('search_query')
+      outputs:
+        events_index: |
+          [
+            index
+            for index in $.get('selected_events', [])
+            if len($.get('events-parsed', [])) > index + 1
+          ]
+        has_events: len($.get('selected_events', [])) > 0
+        selected_events: $.get('selected_events', [])
+    
+    # assistant-prepare-market-finder-verification
+    - type: mapping
+      name: assistant-prepare-market-finder-verification
+      condition: $.get('has_events') is True
+      inputs:
+        events_docs: $.get('output_documents')
+        selected_events: $.get('events_index', [])
+      outputs:
+        selected_events_ids: $.get('selected_events_ids', [])
+        selected_events_parsed: $.get('selected_events_parsed', [])
+
+    # load-fixtures
+    - type: connector
+      name: load-fixtures
+      description: Load fixtures from Bwin
+      condition: $.get('has_events') is True and len($.get('selected_events_ids', [])) > 0
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          country: $.get('country')
+          sportId: $.get('sport_id')
+      inputs:
+        competitionIds: $.get('competitionIds') 
+        fixtureIds: |
+          [
+            event_id
+            for event_id in $.get('selected_events_ids', [])
+          ]
+        # marketsFilterCriteria: $.get('marketsFilterCriteria', 'Visible')
+        onlyMainMarkets: $.get('onlyMainMarkets', 'false')
+        isInPlay: $.get('isInPlay', 'false')
+      outputs:
+        payload: "$"
+        bulk-odds: |
+          [
+            {
+              **m,
+              'id': m.get('id'),
+              'name': m.get('name', {}).get('text', ''),
+              'metadata': {
+                'market_code': str(f.get('id', {}).get('full', '')),
+                'market_id': str(m.get('id', {}))
+              },
+              'competition_name': f.get('competition', {}).get('name', {}).get('text', ''),
+              'title': f"{f.get('name', {}).get('text', '')} | {m.get('name', {}).get('text', '')}"
+            }
+            for f in $.get('items', [])
+            for m in f.get('markets', [])
+          ]
+        bulk-odds-parsed: |
+          [
+            {
+              **m,
+              'id': m.get('id'),
+              'name': m.get('name', {}).get('text', ''),
+              'metadata': {
+                'market_code': str(m.get('id', {}).get('full', '')),
+                'market_id': str(m.get('id', {}))
+              },
+              'title': f"{m.get('name', {}).get('text', '')}"
+            }
+            for m in $.get('items', [])
+          ]
+
+    # assistant-find-markets-odds-mapping
+    - type: mapping
+      name: assistant-find-markets-odds-mapping
+      description: Mapping market-odds
+      condition: len($.get('bulk-odds', [])) > 0
+      inputs:
+        market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
+        market-query: $.get('market-query')
+      outputs:
+        mapped-odds: $.get('mapped-odds')
+        mapped-runners: $.get('mapped-runners')
+        market-types: $.get('market-types')
+
+    # assistant-find-markets-map-markets (connector/mapping)
+    - type: connector
+      name: assistant-find-markets-map-markets
+      condition: len($.get('bulk-odds', [])) > 0
+      connector:
+        name: assistant-tools-map-markets
+        command: invoke_map_markets
+      inputs:
+        mapped-runners: $.get('mapped-runners')
+        # market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
+        market-query: $.get('market-query')
+        sport-id: $.get('sport_id')
+      outputs:
+        selected-market-runners-names: $.get('selected-market-runners-names', [])
+        selected-runners-parsed: $.get('selected-market-runners', [])
+
+    # assistant-find-markets-selection
+    - type: prompt
+      name: assistant-find-markets-selection
+      condition: $.get('market-types') is not None and len($.get('selected-runners-parsed', [])) == 0
+      connector:
+        command: invoke_prompt
+        # name: google-genai
+        # model: gemini-2.5-flash
+        name: machina-ai-fast
+        model: llama-3.3-70b-versatile
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _1-market-types-parsed: $.get('market-types')
+        _2-sport-id: $.get('sport_id')
+        _3-user_query: |
+          f"Select the most relevant market type from the user query: {$.get('market-query')}"
+      outputs:
+        selected-market-raw: $.get('selected_markets')
+        selected-market-types: "[context.get('market-types')[int(i)] for i in $.get('selected_markets',[])]"
+        selected-market-runners: "[runner for runner in context.get('mapped-runners') if runner.get('marketType') in [context.get('market-types')[int(i)] for i in $.get('selected_markets',[])]]"
+        selected-market-runners-names: "[runner.get('title') for runner in context.get('mapped-runners') if runner.get('marketType') in [context.get('market-types')[int(i)] for i in $.get('selected_markets',[])]]"
+
+    # assistant-find-markets-runners
+    - type: prompt
+      name: assistant-find-markets-runners
+      condition: $.get('selected-market-runners-names') is not None and len($.get('selected-runners-parsed', [])) == 0
+      connector:
+        command: invoke_prompt
+        # name: google-genai
+        # model: gemini-2.5-flash
+        name: machina-ai-fast
+        model: llama-3.3-70b-versatile
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _1-events-parsed: $.get('selected-market-runners-names')
+        _2-user_query: |
+          f"Select the most relevant runners from the runner query: {$.get('runner-query')}"
+      outputs:
+        selected-runners-ids: $.get('selected_runners')
+        selected-runners-parsed: "[context.get('selected-market-runners')[int(i)] if int(i) < len(context.get('selected-market-runners')) else None for i in $.get('selected_runners',[])]"

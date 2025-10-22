@@ -1,0 +1,143 @@
+workflow:
+  
+  # assistant-chat-response 
+  name: assistant-chat-response
+  title: Assistant - Chat Response
+  description: Workflow to execute a chat completion for Assistant.
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  inputs:
+    document_id: $.get('document_id')
+    step_find_events_docs: $.get('step_find_events_docs', [])
+    step_find_events_objects: $.get('step_find_events_objects', [])
+    step_find_faq_docs: $.get('step_find_faq_docs', [])
+    step_find_insights_docs: $.get('step_find_insights_docs', [])
+    step_find_markets_docs: $.get('step_find_markets_docs', [])
+    step_find_markets_objects: $.get('step_find_markets_objects', [])
+    step_websearch_docs: $.get('step_websearch_docs', [])
+  outputs:
+    document_content: |
+      [
+        {
+          'content': $.get('content'),
+          'objects': [
+            *context.get('step_find_events_objects'),
+            *context.get('step_find_markets_objects'),
+          ],
+          'role': 'assistant',
+          'suggestions': $.get('suggestions'),
+          'timestamp': datetime.now().isoformat()
+        }
+      ]
+    workflow-status: $.get('content') is not None and 'executed' or 'skipped'
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('document_id')
+      outputs:
+        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+        search_query: $.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else ''
+
+    # assistant-prepare-message-history
+    - type: mapping
+      name: assistant-prepare-message-history
+      inputs:
+        message-history: $.get('messages')[-3:]
+      outputs:
+        message-history: $.get('message-history')
+
+    # assistant-prepare-market-docs
+    - type: mapping
+      name: assistant-prepare-market-docs
+      inputs:
+        market-docs: $.get('step_find_markets_docs')
+      outputs:
+        market-docs: $.get('market-docs')
+
+    # load-character-document
+    - type: document
+      name: load-character-document
+      description: Load the SportingBOT character document from database.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'sportingbot-character'"
+      outputs:
+        character_data: $.get('documents')[0]['value'] if len($.get('documents', [])) > 0 else {}
+        character_loaded: len($.get('documents', [])) > 0
+
+    # assistant-persona-randomizer
+    - type: connector
+      name: assistant-persona-randomizer
+      description: Build a random persona prompt from character data.
+      condition: $.get('character_loaded') == True
+      connector:
+        name: sbot-persona-randomizer
+        command: create_persona_prompt
+      inputs:
+        character_data: $.get('character_data')
+      outputs:
+        persona_prompt: $.get('persona_prompt', '')
+        persona_meta: $.get('persona_meta', '')
+
+    # sportingbot-chat-response-prompt
+    - type: prompt
+      name: sportingbot-chat-response-prompt
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        stream: true
+        # name: machina-ai-fast
+        # model: llama-3.3-70b-versatile
+        # model: gemini-2.5-pro
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _0-persona-prompt: $.get('persona_prompt')
+        _1-message-history: $.get('message-history')
+        _2-found_events_docs: $.get('step_find_events_docs') if len($.get('step_find_events_docs', [])) > 0 else None
+        _4-found_faq_docs: $.get('step_find_faq_docs') if len($.get('step_find_faq_docs', [])) > 0 else None
+        _5-found_insights_docs: $.get('step_find_insights_docs') if len($.get('step_find_insights_docs', [])) > 0 else None
+        _6-found_markets_docs: $.get('market-docs') if len($.get('market-docs', [])) > 0 else None
+        _7-websearched_docs: $.get('step_websearch_docs') if len($.get('step_websearch_docs', [])) > 0 else None
+      outputs:
+        content: $
+
+    # sportingbot-chat-response-questions
+    - type: prompt
+      name: sportingbot-chat-response-questions
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash-lite
+        # name: machina-ai-fast
+        # model: llama-3.3-70b-versatile
+        # model: gemini-2.5-pro
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _1-message-content: $.get('content')
+      outputs:
+        suggestions: $.get('suggestions', [])

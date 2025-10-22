@@ -1,0 +1,103 @@
+workflow:
+  name: assistant-tools-folders
+  title: Assistant Tools - Folders
+  description: Assistant Tools - Folders
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # documents-structure
+    - type: document
+      name: install-documents
+      description: Install documents.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-playground: |
+          [
+            {
+              "title": "Assistant Chat",
+              "name": "assistant-chat-executor",
+              "type": "agent"
+            }
+          ]
+        site-structure: |
+          []
+        doc-structure: |
+          [
+            {
+              "title": "Catalogue",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "content-article",
+                  "title": "Content Article",
+                  "description": "The content articles available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-article"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-snippet",
+                  "title": "Content Snippet",
+                  "description": "The content snippets available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-snippet"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-story",
+                  "title": "Content Story",
+                  "description": "The content stories available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-story"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "marketlist",
+                  "title": "Market List",
+                  "description": "The market list available in the BWIN API.",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["game-market"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "sport-event",
+                  "title": "Sport Event",
+                  "description": "The sport events available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["sport:Event"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "threads",
+                  "title": "Thread",
+                  "description": "The threads available in the Conversation API.",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["thread"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]

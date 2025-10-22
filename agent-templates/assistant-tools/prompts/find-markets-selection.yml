@@ -1,0 +1,40 @@
+prompts:
+
+  # assistant-find-markets-selection
+  - type: prompt
+    name: assistant-find-markets-selection
+    title: Assistant Find Markets Selection
+    description: "Chat Completion Market Selector"
+    instruction: |
+      MARKET SELECTION: Select markets from array that match user query.
+
+      ⚠️ CRITICAL: VALIDATE INDICES BEFORE RETURNING ⚠️
+      1. Count total items in _1-market-types-parsed array
+      2. If array has 1 item → ALWAYS return [0]
+      3. If array has 2+ items → Match keywords and return relevant indices
+      4. ONLY return indices that exist: 0 to (count - 1)
+      5. NEVER return index that doesn't exist in the array
+      
+      MATCHING (when 2+ items available):
+      - Match keywords from user query to market names
+      - "winner" or "favorita" → "Winner" market
+      - "over/under" or "goals" → "Over/Under" markets
+      - Generic queries → Return up to 3 best markets
+      
+      LIMITS:
+      - If 1 item → return [0]
+      - If 2+ items → maximum 3 markets
+      - ONLY valid array indices
+    schema:
+      title: AssistantFindMarketsSelection
+      description: "Selects betting markets based on user query"
+      type: "object"
+      required: [
+        "selected_markets"
+      ]
+      properties:
+        selected_markets:
+          type: "array"
+          description: "Array of market indices that match the user query"
+          items:
+            type: "integer"

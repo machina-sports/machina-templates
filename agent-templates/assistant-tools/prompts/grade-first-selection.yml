@@ -1,0 +1,23 @@
+prompts:
+
+  # assistant-grade-first-selection
+  - type: prompt
+    name: assistant-grade-first-selection
+    title: Assistant Grade First Selection
+    description: Prompt to grade the first selection of markets.
+    instruction: |
+      MARKET SELECTION: Grade the selected market.
+
+      True: The selected market is what is expected by the user query.
+      False: The selected market is not what is expected by the user query.
+    schema:
+      title: AssistantGradeFirstSelection
+      description: Grades the selected market.
+      type: object
+      required: [
+        "grade_selected_market"
+      ]
+      properties:
+        grade_selected_market:
+          type: boolean
+          description: Grade the selected market.

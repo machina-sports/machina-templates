@@ -1,0 +1,113 @@
+workflow:
+
+  # assistant-chat-reasoning
+  name: assistant-chat-reasoning
+  title: Assistant - Chat Reasoning
+  description: Workflow to execute a reasoning for a Assistant chat.
+  
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  inputs:
+    event_doc_id: $.get('event_doc_id')
+    input_message: $.get('input_message')
+    thread_id: $.get('thread_id')
+  outputs:
+    chat_reasoning: $.get('chat_reasoning', {})
+    document_id: $.get('document_id', None)
+    workflow-status: $.get('document_exists') is True and 'executed' or 'skipped'
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      condition: $.get('thread_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('thread_id')
+      outputs:
+        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    # Load event object (sport:Event)
+    - type: document
+      name: load-event-object
+      description: Load event object
+      condition: $.get('event_doc_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('event_doc_id')
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if len($.get('documents', [])) > 0 else None
+        # event_doc_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        event_doc_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+
+    # assistant-prepare-message-history
+    - type: mapping
+      name: assistant-prepare-message-history
+      condition: $.get('document_id') is not None
+      inputs:
+        message-history: $.get('messages')[-3:]
+      outputs:
+        message-history: $.get('message-history')
+
+    # assistant-chat-reasoning-prompt
+    - type: prompt
+      name: assistant-chat-reasoning-prompt
+      condition: $.get('document_id') is not None
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        # model: gemini-2.5-pro
+        # name: machina-ai-fast
+        # model: llama-3.3-70b-versatile
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _1-message-history: $.get('message-history')
+        _2-user-question: $.get('input_message')
+      outputs:
+        chat_reasoning: $
+
+    # Update thread status
+    - type: document
+      name: update-thread-status
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      condition: $.get('document_id') is not None
+      documents:
+        thread: |
+          {
+            **$.get('document_value'),
+            'messages': [
+              *$.get('document_value').get('messages', []),
+              *$.get('input_message')
+            ],
+            'selected-event': $.get('event_code'),
+            'status': 'processing',
+            'status-reasoning': $.get('chat_reasoning'),
+            'status_message': $.get('chat_reasoning', {}).get('short_message', '')
+          }
+      filters:
+        document_id: $.get('document_id')

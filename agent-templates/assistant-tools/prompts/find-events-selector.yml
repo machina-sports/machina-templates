@@ -1,0 +1,35 @@
+prompts:
+
+  # assistant-find-events-selector
+  - type: prompt
+    name: assistant-find-events-selector
+    title: Assistant Find Events Selector
+    description: Selects relevant events from search results based on user query and time context
+    instruction: |
+      Select events by index that MATCH the user query. Extract team/player names from user query and compare against event descriptions.
+
+      MATCHING RULES:
+      - If user mentions team name, ONLY select events containing that exact team
+      - Compare team names case-insensitively
+      - Verify each selected index actually contains relevant teams/keywords
+      - If no events match, return []
+
+      QUANTITY:
+      SINGULAR ("match", "game", "the next"): Return ONLY index 0 (most relevant matching event)
+      PLURAL ("matches", "games", "show me"): Return all matching indices up to 3 max
+      EXPLICIT ALL ("all matches", "list all"): Return all matching indices up to 5 max
+      
+      CRITICAL: Only return indices that exist and match the query.
+    schema:
+      title: AssistantFindEventsSelector
+      description: Selects events by array index based on user query
+      type: object
+      required: [
+        "selected_events"
+      ]
+      properties:
+        selected_events:
+          type: array
+          description: Array of event indices that match the user query. Conservative selection - typically 1-2 events for specific questions, up to 3-4 for broader searches.
+          items:
+            type: integer

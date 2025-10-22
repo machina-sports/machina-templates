@@ -1,0 +1,128 @@
+workflow:
+  
+  # assistant-tools-find-upcoming 
+  name: assistant-tools-find-upcoming
+  title: Assistant - Tools Find Upcoming
+  description: Workflow to execute a chat completion for events.
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  inputs:
+    document_id: $.get('document_id')
+  outputs:
+    step_find_events_docs: $.get('events_summary', [])
+    step_find_events_objects: $.get('selected_events_parsed', [])
+    workflow-status: $.get('has_events') is True and 'executed' or 'skipped'
+  tasks:
+
+    # Load chat history (thread document)
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+        name: "'thread'"
+      outputs:
+        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    # assistant-prepare-message-history
+    - type: mapping
+      name: assistant-prepare-message-history
+      condition: $.get('document_id') is not None
+      inputs:
+        message-history: $.get('messages')[-3:]
+      outputs:
+        message-history: $.get('message-history')
+
+    # assistant-prepare-reasoning
+    - type: mapping
+      name: assistant-prepare-reasoning
+      condition: $.get('document_id') is not None
+      inputs:
+        document_value: $.get('document_value')
+      outputs:
+        search_date_interval: $.get('search_date_interval')
+        search_query: $.get('search_query')
+        search_sort: $.get('search_sort')
+        vector_search: $.get('vector_search')
+
+    # EVENT SEARCH BY SIMILARITY
+
+    # load-similar-events (sport:Event) future
+    - type: document
+      name: load-similar-events
+      description: Load similar events.
+      condition: $.get('messages') is not None and $.get('search_query') is not None and $.get('search_sort') == "future"
+      config:
+        action: search
+        threshold-docs: 5
+        threshold-similarity: 0.20
+        search-limit: 20
+        search-sorters: ["value.schema:startDate", 1]
+        search-vector: context.get('vector_search')
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      filters:
+        "value.schema:startDate": |
+          {
+            "$gt": $.get('search_date_interval', {}).get('start_date') + "T07:00:00+00:00" if $.get('search_date_interval', {}).get('start_date') else None,
+            "$lt": $.get('search_date_interval', {}).get('end_date') + "T06:59:59+00:00" if $.get('search_date_interval', {}).get('end_date') else None
+          } if $.get('search_date_interval') is not None else None
+      inputs:
+        name: "'sport:Event'"
+        search-query: $.get('search_query')
+      outputs:
+        events-response: $.get('documents', [])
+        events-parsed: |
+          [
+            f"{f.get('value', {}).get('schema:startDate', '')}: {f.get('value', {}).get('title', '')}"
+            for f in $.get('documents', [])
+          ]
+
+    # EVENT SEARCH SELECTOR
+
+    # assistant-find-events-selector
+    - type: prompt
+      name: assistant-find-events-selector
+      condition: $.get('messages') is not None and $.get('events-parsed') is not None
+      connector:
+        command: invoke_prompt
+        # name: google-genai
+        # model: gemini-2.5-flash-lite
+        name: machina-ai-fast
+        model: llama-3.3-70b-versatile
+        # name: machina-ai-fast
+        # model: openai/gpt-oss-20b
+      inputs:
+        _0-date-time-now: datetime.now().isoformat()
+        _1-events-parsed: $.get('events-parsed')
+        _2-user_query: $.get('search_query')
+      outputs:
+        events_index: $.get('selected_events', [])
+        has_events: len($.get('selected_events', [])) > 0
+        selected_events_ids: "[context.get('events-response')[int(i)].get('value', {}).get('@id') for i in $.get('selected_events',[])]"
+        selected_events_parsed: "[{'id': context.get('events-response')[int(i)].get('_id'), **context.get('events-response')[int(i)].get('value', {})} for i in $.get('selected_events',[])]"
+    
+    # iptc-mapping
+    - type: mapping
+      name: iptc-events-summary
+      condition: $.get('messages') is not None and $.get('selected_events_ids') is not None
+      inputs:
+        events: $.get('selected_events_parsed')
+      outputs:
+        events_summary: $.get('events_summary')

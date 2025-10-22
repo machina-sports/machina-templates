@@ -1,0 +1,73 @@
+workflow:
+  
+  # assistant-tools-find-insights
+  name: assistant-tools-find-insights
+  title: Assistant - Tools Find Insights
+  description: Workflow to find and retrieve content snippets.
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  inputs:
+    document_id: $.get('document_id')
+    event_code: $.get('event_code')
+  outputs:
+    step_find_insights_docs: $.get('snippets-parsed', [])
+    workflow-status: $.get('has_snippets') is True and 'executed' or 'skipped'
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('document_id')
+      outputs:
+        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+        search_query: $.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else ''
+
+    # SNIPPET SEARCH BY SIMILARITY
+
+    # load-similar-snippets (content-snippet)
+    - type: document
+      name: load-similar-snippets
+      description: Load similar snippets.
+      condition: $.get('search_query') is not None
+      config:
+        action: search
+        threshold-docs: 3
+        threshold-similarity: 0.20
+        search-limit: 10000
+        search-vector: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      filters:
+        "metadata.event_code": |
+          $.get('event_code') if $.get('event_code') is not None else None
+      inputs:
+        name: "'content-snippet'"
+        search-query: $.get('search_query')
+      outputs:
+        snippets-response: $.get('documents', [])
+        snippets-parsed: |
+          [
+            f"{doc.get('value', {}).get('title', '')} - {doc.get('value', {}).get('subject', '')}: {doc.get('value', {}).get('content', '')}"
+            for doc in $.get('documents', [])
+          ]
+        has_snippets: len($.get('documents', [])) > 0
+

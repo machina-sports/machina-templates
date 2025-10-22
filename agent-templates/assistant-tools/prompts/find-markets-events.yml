@@ -1,0 +1,43 @@
+prompts:
+
+  # assistant-find-markets-events
+  - type: prompt
+    name: assistant-find-markets-events
+    title: Assistant Find Markets Events
+    description: "Chat Completion Events Selector"
+    instruction: |
+      Select event indices matching the user query. Return valid indices only (0 to array length - 1).
+      
+      TEAM MATCHING RULES:
+      - Match ANY significant word overlap between query and event teams
+      - "Atletico Mineiro" matches "CA Mineiro" (same team, different prefix)
+      - "Man United" matches "Manchester United" (abbreviation)
+      - Ignore: FC, CF, CA, EC, MG, CE, and location suffixes
+      - If query has 2 teams and event has those teams → MATCH
+      
+      PRIORITY ORDER:
+      
+      1. OUTRIGHT MARKETS: Query mentions "winner", "top scorer", "champion" + competition name → return ONLY outright events (not team matches)
+      
+      2. TEAM MATCH: Query has 2 team names → return indices of events with BOTH teams (use fuzzy matching)
+      
+      3. COMPETITION: Query has competition name only → return all events from that competition (max 5)
+      
+      4. GENERIC: "next/upcoming games" → [0,1,2,3,4], "next game" → [0]
+      
+      5. NO MATCH: []
+      
+      BE GENEROUS with team name matching. Focus on core team identity, not exact spelling.
+    schema:
+      title: AssistantFindMarketsEvents
+      description: "Selects events by array index based on user query"
+      type: "object"
+      required: [
+        "selected_events"
+      ]
+      properties:
+        selected_events:
+          type: "array"
+          description: "Array of event indices that match the user query"
+          items:
+            type: "integer"

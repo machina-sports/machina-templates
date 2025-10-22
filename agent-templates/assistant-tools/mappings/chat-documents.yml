@@ -1,0 +1,53 @@
+mappings:
+
+  # assistant-prepare-message-history
+  - type: mapping
+    name: assistant-prepare-message-history
+    title: Assistant - Prepare Message History
+    description: Prepare message history
+    outputs:
+      message-history: |
+        '; '.join([
+          f"{'User' if msg.get('role') == 'user' else 'Assistant'}: {msg.get('content', '')}"
+          for msg in $.get('message-history', [])
+        ])
+
+  # assistant-prepare-reasoning
+  - type: mapping
+    name: assistant-prepare-reasoning
+    title: Assistant - Prepare Reasoning
+    description: Prepare reasoning
+    outputs:
+      market_query: $.get('document_value', {}).get('status-reasoning', {}).get('market_query', None)
+      runner_query: $.get('document_value', {}).get('status-reasoning', {}).get('runner_query', None)
+      search_date_interval: |
+        $.get('document_value', {}).get('status-reasoning', {}).get('search_date_interval', None) or {
+          'start_date': datetime.now().strftime('%Y-%m-%d'),
+          'end_date': (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d')
+        }
+      search_query: $.get('document_value', {}).get('status-reasoning', {}).get('search_query', None)
+      search_sort: $.get('document_value', {}).get('status-reasoning', {}).get('search_sort', 'future')
+      sport_id: $.get('document_value', {}).get('status-reasoning', {}).get('sport_id', '4')
+      vector_query: $.get('document_value', {}).get('status-reasoning', {}).get('vector_query', False)
+      vector_search: $.get('document_value', {}).get('status-reasoning', {}).get('vector_search', False)
+
+  # assistant-prepare-market-docs
+  - type: mapping
+    name: assistant-prepare-market-docs
+    title: Assistant - Prepare Market Docs
+    description: Prepare market docs
+    outputs:
+      market-docs: |
+        '; '.join([
+          market.get('title', '')
+          for market in $.get('market-docs', [])
+        ])
+
+  # assistant-prepare-market-finder-verification
+  - type: mapping
+    name: assistant-prepare-market-finder-verification
+    title: Assistant - Prepare Market Finder Verification
+    description: Prepare market finder verification
+    outputs:
+      selected_events_ids: "[$.get('events_docs')[int(i)].get('parsed_id') for i in $.get('selected_events',[])]"
+      selected_events_parsed: "[$.get('events_docs')[int(i)] for i in $.get('selected_events',[])]"

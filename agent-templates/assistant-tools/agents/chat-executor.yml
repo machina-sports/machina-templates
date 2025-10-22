@@ -1,0 +1,117 @@
+agent:
+
+  # assistant-chat-executor
+  name: assistant-chat-executor
+  title: Assistant - Chat Executor
+  description: Assistant Executor Agent.
+  context-agent:
+    event_document_id: $.get('event_document_id', None)
+    messages: $.get('messages', [])
+    thread_id: $.get('thread_id', None)
+  workflows:
+
+    # assistant-chat-reasoning
+    - name: assistant-chat-reasoning
+      description: Assistant Chat Reasoning
+      condition: $.get('thread_id') is not None
+      inputs:
+        event_doc_id: $.get('event_document_id', None)
+        input_message: $.get('messages', [])
+        thread_id: $.get('thread_id')
+      outputs:
+        chat_reasoning: $.get('chat_reasoning')
+        document_id: $.get('document_id')
+        reasoning-status: $.get('workflow-status') == 'executed'
+
+    # assistant-tools-find-faq
+    - name: assistant-tools-find-faq
+      description: Assistant Find FAQ
+      condition: $.get('document_id') is not None and $.get('chat_reasoning', {}).get('is_find_faq') is True
+      inputs:
+        document_id: $.get('document_id')
+      outputs:
+        step_find_faq_docs: $.get('step_find_faq_docs')
+        step_find_faq_status: $.get('workflow-status')
+
+    # assistant-tools-find-historical
+    - name: assistant-tools-find-historical
+      description: Assistant Find Historical Events
+      condition: $.get('document_id') is not None and $.get('chat_reasoning', {}).get('search_sort') == 'past'
+      inputs:
+        document_id: $.get('document_id')
+      outputs:
+        step_find_events_docs: $.get('step_find_events_docs')
+        step_find_events_objects: $.get('step_find_events_objects')
+        step_find_events_status: $.get('workflow-status')
+        thread_context: $.get('thread_context')
+        thread_title: $.get('thread_title')
+
+    # assistant-tools-find-upcoming
+    - name: assistant-tools-find-upcoming
+      description: Assistant Find Upcoming Events
+      condition: $.get('document_id') is not None and $.get('chat_reasoning', {}).get('search_sort') == 'future'
+      inputs:
+        document_id: $.get('document_id')
+      outputs:
+        step_find_events_docs: $.get('step_find_events_docs')
+        step_find_events_objects: $.get('step_find_events_objects')
+        step_find_events_status: $.get('workflow-status')
+        thread_context: $.get('thread_context')
+        thread_title: $.get('thread_title')
+
+    # assistant-tools-find-insights
+    - name: assistant-tools-find-insights
+      description: Assistant Find Insights
+      condition: $.get('document_id') is not None and $.get('chat_reasoning', {}).get('is_find_insights') is True
+      inputs:
+        document_id: $.get('document_id')
+      outputs:
+        step_find_insights_docs: $.get('step_find_insights_docs')
+        step_find_insights_status: $.get('workflow-status')
+
+    # assistant-tools-find-markets
+    - name: assistant-tools-find-markets
+      description: Assistant Find Markets
+      condition: $.get('document_id') is not None and $.get('chat_reasoning', {}).get('is_find_markets') is True and $.get('chat_reasoning', {}).get('market_query') is not None
+      inputs:
+        document_id: $.get('document_id')
+        onlyMainMarkets: "'true'"
+      outputs:
+        step_find_markets_docs: $.get('step_find_markets_docs')
+        step_find_markets_objects: $.get('step_find_markets_objects')
+        step_find_markets_status: $.get('workflow-status')
+        thread_context: $.get('thread_context')
+        thread_title: $.get('thread_title')
+
+    # assistant-chat-response
+    - name: assistant-chat-response
+      description: Assistant Chat Response
+      condition: $.get('document_id') is not None
+      inputs:
+        document_id: $.get('document_id')
+        event_code: $.get('event_code')
+        step_find_events_docs: $.get('step_find_events_docs')
+        step_find_events_objects: $.get('step_find_events_objects')
+        step_find_faq_docs: $.get('step_find_faq_docs')
+        step_find_insights_docs: $.get('step_find_insights_docs')
+        step_find_markets_docs: $.get('step_find_markets_docs')
+        step_find_markets_objects: $.get('step_find_markets_objects')
+        step_websearch_docs: $.get('step_websearch_docs')
+      outputs:
+        document_content: $.get('document_content')
+        workflow-status: $.get('workflow-status')
+
+    # assistant-chat-update
+    - name: assistant-chat-update
+      description: Assistant Chat Update
+      condition: $.get('document_id') is not None
+      inputs:
+        document_id: $.get('document_id')
+        document_content: $.get('document_content')
+        output_status: "'idle'"
+        status_message: "'Informacion procesada'"
+        # thread_context: $.get('thread_context')
+        # thread_title: $.get('thread_title')
+      outputs:
+        thread_id: $.get('document_id')
+        workflow-status: $.get('workflow-status')

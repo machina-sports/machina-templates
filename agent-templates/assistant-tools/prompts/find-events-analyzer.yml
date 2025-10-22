@@ -1,0 +1,68 @@
+prompts:
+
+  # assistant-find-events-analyzer
+  - type: prompt
+    name: assistant-find-events-analyzer
+    title: Assistant Find Events Analyzer
+    description: Analyzes user messages to determine intent and extract event information
+    instruction: |
+      Analyze conversation history and current message. Review previous messages to resolve references, pronouns, and maintain context continuity.
+      
+      SEARCH: Extract full team/player names as "Team A vs Team B - Competition". Omit unknown teams.
+      
+      SORT: Use "future" for upcoming queries, "past" for history queries.
+      
+      DATES: end_date must be NEXT DAY to cover full 24h.
+      
+      SPECIFIC TEAM (asking about particular team): -3d to +4d
+      
+      RECENT/PAST ("latest", "recent", "results"): -7d to +1d
+      
+      UPCOMING/FUTURE ("next", "upcoming", "scheduled"): 0d to +15d
+      
+      BROAD ("all games", "show matches"): -7d to +31d
+
+      VECTOR SEARCH: Only return true when player, competition, or team name is present in the user's query. If none of these are found, return false.
+      
+      Never return null ranges.
+    schema:
+      title: AssistantFindEventsAnalyzer
+      description: Analyzes user intent and extracts event information
+      type: object
+      required: [
+        "search_date_interval",
+        "search_query",
+        "search_sort",
+        "thread_context",
+        "thread_title",
+      ]
+      properties:
+        search_date_interval:
+          type: object
+          description: Date range for filtering events, always provided with default values if not specified by user
+          properties:
+            start_date:
+              type: string
+              format: date
+              description: "Start date in YYYY-MM-DD format"
+            end_date:
+              type: string
+              format: date
+              description: "End date in YYYY-MM-DD format"
+          required: ["start_date", "end_date"]
+        search_sort:
+          type: string
+          enum: ["future", "past"]
+          description: "Sort direction for search results: 'future' for upcoming events first, 'past' for recent events first"
+        thread_context:
+          type: string
+          description: Summary of current conversation topic including event, teams, players, competition, and key information being discussed
+        thread_title:
+          type: string
+          description: "Brief title for thread navigation menu (max 50 chars) - format: 'Team A vs Team B - Competition'"
+        search_query:
+          type: string
+          description: "Extracted search query that can be either a specific match (e.g. 'Team A vs Team B' or 'Team A vs Team B - Competition') or a generic search like 'today's matches', 'upcoming matches', 'Premier League matches'"
+        vector_search:
+          type: boolean
+          description: "True if the search should be done using vector similarity, false otherwise"

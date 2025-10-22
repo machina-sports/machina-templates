@@ -1,0 +1,106 @@
+setup:
+  title: Assistant Tools
+  description: AI-powered assistant for Chat Tools.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agent to assist moderators to create content for Chat Tools.
+  status: available
+  integrations:
+    - machina-ai
+  value: agent-templates/assistant-tools
+  version: 1.0.0
+
+datasets:
+
+  # agents
+
+  - type: agent
+    path: agents/chat-executor.yml
+
+  # competitions
+
+  - type: agent
+    path: competitions/bw-markets-br.yml
+
+  - type: agent
+    path: competitions/sr-schedule-br.yml
+
+  # mappings
+
+  - type: mappings
+    path: mappings/chat-documents.yml
+
+  - type: mappings
+    path: mappings/find-markets-odds.yml
+
+  # prompts
+
+  - type: prompts
+    path: prompts/chat-reasoning.yml
+
+  - type: prompts
+    path: prompts/chat-response.yml
+
+  - type: prompts
+    path: prompts/find-events-analyzer.yml
+
+  - type: prompts
+    path: prompts/find-events-selector.yml
+
+  - type: prompts
+    path: prompts/find-markets-analyzer.yml
+
+  - type: prompts
+    path: prompts/find-markets-events.yml
+
+  - type: prompts
+    path: prompts/find-markets-runners.yml
+
+  - type: prompts
+    path: prompts/find-markets-selection.yml
+
+  - type: prompts
+    path: prompts/grade-first-selection.yml
+
+  # scripts
+  
+  - type: connector
+    path: scripts/map_markets.yml
+
+  - type: connector
+    path: scripts/map_stories.yml
+
+  # tools
+
+  - type: workflow
+    path: tools/find-faq.yml
+
+  - type: workflow
+    path: tools/find-historical.yml
+
+  - type: workflow
+    path: tools/find-insights.yml
+
+  - type: workflow
+    path: tools/find-markets.yml
+
+  - type: workflow
+    path: tools/find-upcoming.yml
+
+  # workflows
+
+  - type: workflow
+    path: workflows/chat-reasoning.yml
+
+  - type: workflow
+    path: workflows/chat-response.yml
+
+  - type: workflow
+    path: workflows/chat-update.yml
+
+  # config folders
+
+  - type: workflow
+    path: _folders.yml

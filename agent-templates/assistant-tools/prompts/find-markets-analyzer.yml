@@ -1,0 +1,67 @@
+prompts:
+
+  # assistant-find-markets-analyzer
+  - type: prompt
+    name: assistant-find-markets-analyzer
+    title: Assistant Find Markets Analyzer
+    description: "Analyzes user messages to determine intent and extract event information"
+    instruction: |
+      Analyze conversation history and current message to extract event information.
+      
+      SEARCH: Extract full team/player names as "Team A vs Team B - Competition". Omit unknowns.
+
+      MARKET QUERY: Extract the most relevant market type from the user query. Default is 3way for Football, Winner for Tennis.
+
+      RUNNER QUERY: Extract the most relevant runner type from the user query. Default is team names for Football, Player names for Tennis.
+      
+      DATES: Always use -1d to +15d range. End date must be NEXT DAY to cover full 24h.
+    schema:
+      title: AssistantFindMarketsAnalyzer
+      description: "Analyzes user intent and extracts event information"
+      type: "object"
+      required: [
+        "market-query",
+        "runner-query",
+        "search_date_interval",
+        "search_query",
+        "sport_id",
+        "thread_context",
+        "thread_title",
+      ]
+      properties:
+        runner-query:
+          type: string
+          description: "Extract betting selection intent: team names, outcome preferences (favorite/underdog), draw, score predictions, or specific result types"
+        search_date_interval:
+          type: object
+          description: Date range for filtering events, always provided with default values if not specified by user
+          properties:
+            start_date:
+              type: string
+              format: date
+              description: "Start date in YYYY-MM-DD format"
+            end_date:
+              type: string
+              format: date
+              description: "End date in YYYY-MM-DD format"
+          required: ["start_date", "end_date"]
+        thread_context:
+          type: string
+          description: Summary of current conversation topic including event, teams, players, competition, and key information being discussed
+        thread_title:
+          type: string
+          description: "Brief title for thread navigation menu (max 50 chars) - format: 'Team A vs Team B - Competition'"
+        market-query:
+          type: string
+          description: "Extract market type intent from query. Default: 3way for Football, Winner for Tennis"
+        search_query:
+          type: string
+          description: "Extracted search query that can be either a specific match (e.g. 'Team A vs Team B' or 'Team A vs Team B - Competition') or a generic search like 'today's matches', 'upcoming matches', 'Premier League matches'"
+        sport_id:
+          type: "string"
+          description: "Sport ID, 4: Football, 5: Tennis, 11: NFL"
+          enum: [
+            "4",
+            "5",
+            "11"
+          ]

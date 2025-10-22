@@ -1,0 +1,127 @@
+prompts:
+
+  # assistant-chat-reasoning-prompt
+  - type: prompt
+    name: assistant-chat-reasoning-prompt
+    title: Assistant Chat | Reasoning Prompt
+    description: Analyzes user messages to determine intent and extract all necessary information
+    instruction: |
+      Analyze conversation history and current message. Review previous messages to resolve references, pronouns, and maintain context continuity.
+      
+      INTENT CLASSIFICATION:
+      - MULTIPLE commands can be true at once - they work together to provide complete information.
+      - Use is_find_event for finding/listing events.
+      - Use is_find_markets when user asks about odds, betting markets, specific betting information, predictions, tips, prognoses, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results.
+      - Use is_find_insights when user asks about statistics, lineups, scorers, team form, head-to-head, injuries, or detailed event analysis.
+      - Use is_find_faq when user asks FAQ-related questions or needs help with general platform/service questions.
+      - When ALL is_find_* flags are FALSE: Set all flags to false and provide a brief loading/thinking message in short_message.
+      - When ANY is_find_* flag is TRUE: Provide a brief status message in short_message informing what will be searched.
+      
+      COMBINED EXECUTION:
+      - When is_find_markets=true, ALWAYS set is_find_event=true as well.
+      - When is_find_insights=true, ALWAYS set is_find_event=true as well.
+      - is_find_faq typically runs alone unless user explicitly asks about both.
+      
+      SEARCH QUERY: Extract full team/player names with competition when available. Omit unknown teams.
+      
+      DATES & SORT (for is_find_event):
+      - end_date must be NEXT DAY to cover full 24h.
+      - SPECIFIC TEAM: -3d to +4d
+      - RECENT/PAST: -7d to +1d, sort="past"
+      - UPCOMING/FUTURE: 0d to +15d, sort="future"
+      - BROAD: -7d to +31d
+      - Never return null ranges.
+      
+      DATES (for is_find_markets):
+      - Always use -1d to +15d range. End date must be NEXT DAY to cover full 24h.
+      
+      VECTOR SEARCH: Only return true when player, competition, or team name is present in the user's query. If none of these are found, return false.
+      
+      OPTIONAL FIELDS:
+      - Only populate market_query and runner_query when is_find_markets is true. Omit these fields entirely otherwise.
+      - Populate sport_id when is_find_event or is_find_markets is true.
+      - Only populate search_date_interval, search_query, search_sort, vector_query, vector_search when is_find_event is true.
+      
+      SHORT_MESSAGE (ALWAYS REQUIRED):
+      - When searching: Brief status message about what will be searched.
+      - When not searching: Brief loading or thinking message indicating processing is happening.
+    schema:
+      title: AssistantChatReasoning
+      description: Analyzes user intent and extracts all necessary information for events and markets
+      type: object
+      required: [
+        "is_find_event",
+        "is_find_faq",
+        "is_find_insights",
+        "is_find_markets",
+        "search_date_interval",
+        "search_query",
+        "search_sort",
+        "vector_query",
+        "vector_search",
+        "short_message",
+        "sport_id",
+        "market_query",
+        "runner_query",
+      ]
+      properties:
+        is_find_event:
+          type: boolean
+          description: User wants to find or list events. Should ALWAYS be true when is_find_markets or is_find_insights is true.
+        is_find_faq:
+          type: boolean
+          description: User asks FAQ-related questions or needs help with general platform/service questions.
+        is_find_insights:
+          type: boolean
+          description: User asks about statistics, lineups, scorers, team form, head-to-head records, injuries, or detailed event analysis.
+        is_find_markets:
+          type: boolean
+          description: User asks about odds, betting markets, specific betting information, predictions, tips, prognoses, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results. When true, is_find_event should also be true.
+        
+        # Common fields (populate when is_find_event OR is_find_markets is true, otherwise omit)
+        search_date_interval:
+          type: object
+          description: Date range for filtering events/markets. Only populate when is_find_event or is_find_markets is true.
+          properties:
+            start_date:
+              type: string
+              format: date
+              description: "Start date in YYYY-MM-DD format"
+            end_date:
+              type: string
+              format: date
+              description: "End date in YYYY-MM-DD format"
+          required: ["start_date", "end_date"]
+        search_query:
+          type: string
+          description: "Extracted search query. Only populate when is_find_event or is_find_markets is true. Can be either a specific match with team names and competition, or a generic search."
+        
+        # Event-specific fields (populate when is_find_event is true, otherwise omit)
+        search_sort:
+          type: string
+          enum: ["future", "past"]
+          description: "Sort direction for search results. Only populate when is_find_event is true: 'future' for upcoming events first, 'past' for recent events first."
+        vector_query:
+          type: string
+          description: "Vector query for search results. Only populate when is_find_event is true and vector_search is true."
+        vector_search:
+          type: boolean
+          description: "True if the search should be done using vector similarity when player, competition, or team name is present in query, false otherwise. Only populate when is_find_event is true."
+        
+        # Sport identification (populate when is_find_event or is_find_markets is true)
+        sport_id:
+          type: string
+          description: "Sport ID. Populate when is_find_event or is_find_markets is true."
+          enum: ["4", "5", "11"]
+        
+        # Market-specific fields (populate only when is_find_markets is true, otherwise omit)
+        market_query:
+          type: string
+          description: "Extract market type intent from query. Default: 3way for Football, Winner for Tennis. Only populate when is_find_markets is true."
+        runner_query:
+          type: string
+          description: "Extract betting selection intent: team names, outcome preferences, draw, score predictions, or specific result types. Only populate when is_find_markets is true."
+        
+        short_message:
+          type: string
+          description: "ALWAYS populated. When ANY is_find_* flag is TRUE: Brief status message informing user what will be searched. When ALL is_find_* flags are FALSE: Brief loading or thinking message indicating processing is happening."
