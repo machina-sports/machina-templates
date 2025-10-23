@@ -25,6 +25,7 @@ workflow:
     search_date_interval: $.get('search_date_interval', {})
     search_query: $.get('search_query')
     sport_id: $.get('sport_id', '4')
+    vector_query: $.get('vector_query')
   outputs:
     step_find_markets_docs: $.get('selected-runners-parsed', [])
     step_find_markets_objects: $.get('selected-runners-parsed', [])
@@ -127,17 +128,17 @@ workflow:
         # name: machina-ai-fast
         # model: openai/gpt-oss-20b
       inputs:
-        _1-events-to-analyze: $.get('events-parsed')[0]
-        _2-query-to-select: $.get('vector_query') or $.get('search_query')
+        _1-selected-event: $.get('events-parsed')[0]
+        _2-searched-event: $.get('vector_query') or $.get('search_query')
       outputs:
         events_index: "[0]"
-        grade_selected_market: $.get('grade_selected_market', False)
-        has_events: $.get('grade_selected_market', False)
+        grade_selected_event: $.get('grade_selected_event', False)
+        has_events: $.get('grade_selected_event', False)
 
     # assistant-find-markets-events (fallback)
     - type: prompt
       name: assistant-find-markets-events
-      condition: $.get('events-parsed') is not None and $.get('grade_selected_market') is not True
+      condition: $.get('events-parsed') is not None and $.get('grade_selected_event') is not True
       connector:
         command: invoke_prompt
         # name: google-genai
@@ -147,14 +148,13 @@ workflow:
         # name: machina-ai-fast
         # model: openai/gpt-oss-20b
       inputs:
-        _1-events-to-analyze: $.get('events-parsed')
-        _2-query-to-select: $.get('vector_query') or $.get('search_query')
+        _1-selected-events: $.get('events-parsed')
+        _2-searched-event: $.get('vector_query') or $.get('search_query')
       outputs:
         events_index: |
           [
             index
             for index in $.get('selected_events', [])
-            if len($.get('events-parsed', [])) > index + 1
           ]
         has_events: len($.get('selected_events', [])) > 0
         selected_events: $.get('selected_events', [])

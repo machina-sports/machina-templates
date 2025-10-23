@@ -17,7 +17,8 @@ workflow:
     document_id: $.get('document_id')
     event_code: $.get('event_code')
   outputs:
-    step_find_insights_docs: $.get('snippets-parsed', [])
+    step_find_insights_docs: $.get('snippets-parsed', []) + $.get('articles-snippets', [])
+    step_find_insights_objects: $.get('articles-parsed', [])
     workflow-status: $.get('has_snippets') is True and 'executed' or 'skipped'
   tasks:
 
@@ -70,4 +71,47 @@ workflow:
             for doc in $.get('documents', [])
           ]
         has_snippets: len($.get('documents', [])) > 0
+
+    # load-articles (content-article)
+    - type: document
+      name: load-articles
+      description: Load articles.
+      condition: $.get('search_query') is not None
+      config:
+        action: search
+        threshold-docs: 3
+        threshold-similarity: 0.20
+        search-limit: 10000
+        search-vector: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      filters:
+        "metadata.event_code": |
+          $.get('event_code') if $.get('event_code') is not None else None
+      inputs:
+        name: "'content-article'"
+        search-query: $.get('search_query')
+      outputs:
+        articles-response: $.get('documents', [])
+        articles-snippets: |
+          [
+            f"{doc.get('value', {}).get('title', '')} - {doc.get('value', {}).get('section_1_content', '')} {doc.get('value', {}).get('section_2_content', '')} {doc.get('value', {}).get('section_3_content', '')} {doc.get('value', {}).get('section_4_content', '')} {doc.get('value', {}).get('section_5_content', '')}"
+            for doc in $.get('documents', [])
+          ]
+        articles-parsed: |
+          [
+            {
+              'article_id': doc.get('_id'),
+              'article_index': index,
+              'image_path': doc.get('value', {}).get('image_path', ''),
+              'title': doc.get('value', {}).get('title', ''),
+              'subtitle': doc.get('value', {}).get('subtitle', ''),
+              'slug': doc.get('value', {}).get('slug', ''),
+              'metadata': doc.get('metadata', {}),
+            }
+            for index, doc in enumerate($.get('documents', []))
+          ]
+        has_articles: len($.get('documents', [])) > 0
 

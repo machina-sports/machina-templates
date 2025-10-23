@@ -1,8 +1,8 @@
 workflow:
 
-  # assistant-thread-update
-  name: assistant-thread-update
-  title: Assistant - Thread Update
+  # assistant-chat-update
+  name: assistant-chat-update
+  title: Assistant - Chat Update
   description: Workflow to consume a Assistant thread.
   context-variables:
     debugger:

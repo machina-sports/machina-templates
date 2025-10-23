@@ -107,7 +107,7 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash
+        model: gemini-2.5-pro
         stream: true
         # name: machina-ai-fast
         # model: llama-3.3-70b-versatile

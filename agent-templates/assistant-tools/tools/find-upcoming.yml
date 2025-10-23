@@ -16,6 +16,7 @@ workflow:
   inputs:
     document_id: $.get('document_id')
   outputs:
+    selected_events_ids: $.get('selected_events_ids', [])
     step_find_events_docs: $.get('events_summary', [])
     step_find_events_objects: $.get('selected_events_parsed', [])
     workflow-status: $.get('has_events') is True and 'executed' or 'skipped'

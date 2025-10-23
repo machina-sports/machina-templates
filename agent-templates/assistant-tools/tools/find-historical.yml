@@ -16,6 +16,7 @@ workflow:
   inputs:
     document_id: $.get('document_id')
   outputs:
+    selected_events_ids: $.get('selected_events_ids', [])
     step_find_events_docs: $.get('events_summary', [])
     step_find_events_objects: $.get('selected_events_parsed', [])
     workflow-status: $.get('has_events') is True and 'executed' or 'skipped'
@@ -104,7 +105,7 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash
+        model: gemini-2.5-pro
         # name: machina-ai-fast
         # model: llama-3.3-70b-versatile
         # name: machina-ai-fast
@@ -162,7 +163,7 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash
+        model: gemini-2.5-pro
         # name: machina-ai-fast
         # model: llama-3.3-70b-versatile
       inputs:

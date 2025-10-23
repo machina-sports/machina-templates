@@ -6,18 +6,20 @@ prompts:
     title: Assistant Grade First Selection
     description: Prompt to grade the first selection of markets.
     instruction: |
-      MARKET SELECTION: Grade the selected market.
+      MARKET SELECTION: Grade the selected event.
 
-      True: The selected market is what is expected by the user query.
-      False: The selected market is not what is expected by the user query.
+      True: The selected event is what is expected by the searched event.
+      False: The selected event is not what is expected by the searched event.
+
+      CA Mineiro MG = Clube Atlético Mineiro
     schema:
       title: AssistantGradeFirstSelection
-      description: Grades the selected market.
+      description: Grades the selected event.
       type: object
       required: [
-        "grade_selected_market"
+        "grade_selected_event"
       ]
       properties:
-        grade_selected_market:
+        grade_selected_event:
           type: boolean
-          description: Grade the selected market.
+          description: Grade the selected event.
