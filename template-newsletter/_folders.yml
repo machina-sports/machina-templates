@@ -1,0 +1,78 @@
+workflow:
+  name: "_folders"
+  title: "Setup Folders"
+  description: "Setup Folders"
+  outputs:
+    setup-register: "$.get('setup-register')"
+    workflow-status: "$.get('setup-register') is True and 'skipped' or 'executed'"
+  tasks:
+
+    # load-setup-register
+    - type: "document"
+      name: "load-setup-register"
+      description: "Search for setup-register"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'setup-register'"
+      outputs:
+        setup-register: "$.get('documents')[0].get('value').get('setup', False) if $.get('documents') else False"
+
+    # documents-structure
+    - type: "document"
+      name: "install-documents"
+      description: "Install documents."
+      condition: "$.get('setup-register') is not True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-register: |
+          {
+            "setup": True
+          }
+        site-structure: |
+          []
+        doc-structure: |
+          [
+            {
+              "title": "Content",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "newsletter-contents",
+                  "title": "Newsletters",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["newsletter"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-snippets",
+                  "title": "Snippets",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["snippets"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "newsletter-subscribers",
+                  "title": "Subscribers",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["user"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
