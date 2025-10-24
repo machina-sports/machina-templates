@@ -16,6 +16,7 @@ import requests
 
 def invoke_prompt(params):
     """Standard prompt invocation using langchain"""
+    api_base = params.get("api_base")
     api_key = params.get("api_key")
     model_name = params.get("model_name")
 
@@ -26,9 +27,14 @@ def invoke_prompt(params):
         return {"status": "error", "message": "Model name is required."}
 
     try:
-        llm = ChatGoogleGenerativeAI(model=model_name, api_key=api_key)
-
+        llm_params = {"model": model_name, "api_key": api_key}
+        if api_base:
+            llm_params["client_options"] = {"api_endpoint": api_base}
+        
+        llm = ChatGoogleGenerativeAI(**llm_params)
+        
     except Exception as e:
+        print(f"[DEBUG] Exception creating model: {e}")
         return {"status": "error", "message": f"Exception when creating model: {e}"}
 
     return {"status": True, "data": llm, "message": "Model loaded."}
