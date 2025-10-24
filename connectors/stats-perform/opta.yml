@@ -1,0 +1,11 @@
+connector:
+  name: opta
+  description: This connector is the Opta API connector.
+  filename: opta.py
+  filetype: pyscript
+  commands:
+    - name: Authorization
+      value: authorization
+
+    - name: Request
+      value: invoke_request
