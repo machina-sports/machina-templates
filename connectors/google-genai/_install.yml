@@ -1,18 +1,21 @@
 setup:
   title: Google GenAI
-  description: Connect to the Google GenAI API to get AI responses.
+  description: Connect to Google GenAI via AI Studio or Vertex AI for AI responses.
   category:
     - special-templates
   estimatedTime: 1 minute
   features:
-    - Real-time chat completion
-    - Real-time content generation
-    - Real-time image generation
+    - Real-time chat completion (AI Studio & Vertex AI)
+    - Real-time content generation (AI Studio & Vertex AI)
+    - Real-time image generation (AI Studio)
+    - Vertex AI Global Endpoint support
+    - Enterprise-grade Vertex AI integration
   integrations:
     - google
+    - google-cloud
   status: available
   value: connectors/google-genai
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
   - type: "connector"

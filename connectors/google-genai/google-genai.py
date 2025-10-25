@@ -4,6 +4,10 @@ from google.genai import types
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from langchain_google_vertexai import ChatVertexAI
+
+from google.oauth2 import service_account
+
 from io import BytesIO
 
 from PIL import Image
@@ -12,26 +16,106 @@ import base64
 import os
 import tempfile
 import requests
+import json
 
 
 def invoke_prompt(params):
-    """Standard prompt invocation using langchain"""
-    api_key = params.get("api_key")
+    """
+    Standard prompt invocation using langchain.
+    
+    Supports both AI Studio (default) and Vertex AI providers.
+    
+    Parameters:
+    - provider: "ai_studio" (default) or "vertex_ai"
+    - model_name: Model name (e.g., "gemini-2.5-flash", "gemini-pro")
+    
+    AI Studio Parameters:
+    - api_key: Required - Get from https://aistudio.google.com/apikey
+    
+    Vertex AI Parameters:
+    - project_id: Required - Your GCP Project ID (find with: gcloud config get-value project)
+    - location: Optional (default: "us-central1") - Use "global" for Global Endpoint
+    - credential: Optional - Service account JSON (string or dict). If not provided, uses ADC.
+    
+    IMPORTANT: Vertex AI does NOT support API keys - use OAuth2 credentials only!
+    
+    Vertex AI Credentials (in order of precedence):
+    1. credential parameter (service account JSON)
+    2. GOOGLE_APPLICATION_CREDENTIALS env var (auto-detected)
+    3. ADC from `gcloud auth application-default login` (auto-detected)
+    4. Attached service account if running on GCP (auto-detected)
+    """
+    provider = params.get("provider", "ai_studio").lower()
     model_name = params.get("model_name")
-
-    if not api_key:
-        return {"status": "error", "message": "API key is required."}
-
+    
     if not model_name:
-        return {"status": "error", "message": "Model name is required."}
+        return {"status": False, "message": "Model name is required."}
+    
+    # AI Studio Implementation (default)
+    if provider == "ai_studio":
+        api_key = params.get("api_key")
+        
+        if not api_key:
+            return {"status": False, "message": "API key is required for AI Studio."}
+        
+        try:
+            llm = ChatGoogleGenerativeAI(model=model_name, api_key=api_key)
+            return {
+                "status": True, 
+                "data": llm, 
+                "message": f"Model loaded via AI Studio: {model_name}"
+            }
+        except Exception as e:
+            return {"status": False, "message": f"Exception when creating AI Studio model: {e}"}
+    
+    # Vertex AI Implementation
+    elif provider == "vertex_ai":
+        project_id = params.get("project_id")
+        location = params.get("location", "us-central1")  # Default to us-central1, supports "global"
+        credential = params.get("credential")  # JSON string or dict
+        
+        if not project_id:
+            return {"status": False, "message": "project_id is required for Vertex AI."}
+        
+        try:
+            # Handle credentials (Vertex AI does NOT support API keys!)
+            credentials = None
+            credentials_source = "Application Default Credentials (ADC)"
+            
+            if credential:
+                # Parse credential if it's a JSON string
+                if isinstance(credential, str):
+                    try:
+                        credential = json.loads(credential)
+                    except json.JSONDecodeError:
+                        return {"status": False, "message": "credential must be valid JSON"}
+                
+                # Create credentials from service account info
+                credentials = service_account.Credentials.from_service_account_info(credential)
+                credentials_source = "provided service account credentials"
+            
+            llm = ChatVertexAI(
+                model_name=model_name,
+                project=project_id,
+                location=location,
+                credentials=credentials
+            )
 
-    try:
-        llm = ChatGoogleGenerativeAI(model=model_name, api_key=api_key)
+            endpoint_info = "Global Endpoint" if location == "global" else f"Regional Endpoint ({location})"
 
-    except Exception as e:
-        return {"status": "error", "message": f"Exception when creating model: {e}"}
-
-    return {"status": True, "data": llm, "message": "Model loaded."}
+            return {
+                "status": True,
+                "data": llm,
+                "message": f"Model loaded via Vertex AI: {model_name} using {endpoint_info} (Auth: {credentials_source})"
+            }
+        except Exception as e:
+            return {"status": False, "message": f"Exception when creating Vertex AI model: {e}"}
+    
+    else:
+        return {
+            "status": False, 
+            "message": f"Invalid provider: {provider}. Must be 'ai_studio' or 'vertex_ai'."
+        }
 
 
 def invoke_image(request_data):
@@ -42,7 +126,7 @@ def invoke_image(request_data):
     api_key = headers.get("api_key")
 
     if not api_key:
-        return {"status": "error", "message": "API key is required."}
+        return {"status": False, "message": "API key is required."}
 
     # Get parameters
     image_paths = params.get("image_paths", [])  # Accept array of image paths
@@ -182,9 +266,9 @@ def invoke_image(request_data):
                                 "message": f"Image generated successfully using {len(image_parts)} input images.",
                             }
             else:
-                return {"status": "error", "message": "No image was generated"}
+                return {"status": False, "message": "No image was generated"}
         else:
-            return {"status": "error", "message": "Error generating image"}
+            return {"status": False, "message": "Error generating image"}
 
     except Exception as e:
-        return {"status": "error", "message": f"Exception when generating image: {e}"}
+        return {"status": False, "message": f"Exception when generating image: {e}"}
