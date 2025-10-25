@@ -8,7 +8,8 @@ workflow:
     debugger:
       enabled: true
     google-genai:
-      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     machina-ai-fast:

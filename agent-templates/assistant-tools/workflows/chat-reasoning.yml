@@ -4,12 +4,12 @@ workflow:
   name: assistant-chat-reasoning
   title: Assistant - Chat Reasoning
   description: Workflow to execute a reasoning for a Assistant chat.
-  
   context-variables:
     debugger:
       enabled: true
     google-genai:
-      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_IDNERATIVE_AI_API_KEY
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     machina-ai-fast:
@@ -76,12 +76,9 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash-lite
-        # model: gemini-2.5-pro
-        # name: machina-ai-fast
-        # model: llama-3.3-70b-versatile
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-message-history: $.get('message-history')
         _2-user-question: $.get('input_message')

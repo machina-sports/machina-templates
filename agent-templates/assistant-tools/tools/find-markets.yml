@@ -11,7 +11,8 @@ workflow:
     debugger:
       enabled: true
     google-genai:
-      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     machina-ai-fast:
@@ -121,12 +122,10 @@ workflow:
       continue_on_error: true
       connector:
         command: invoke_prompt
-        name: machina-ai-fast
-        model: llama-3.3-70b-versatile
-        # name: google-genai
-        # model: gemini-2.5-flash
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-selected-event: $.get('events-parsed')[0]
         _2-searched-event: $.get('vector_query') or $.get('search_query')
@@ -141,12 +140,10 @@ workflow:
       condition: $.get('events-parsed') is not None and $.get('grade_selected_event') is not True
       connector:
         command: invoke_prompt
-        # name: google-genai
-        # model: gemini-2.5-flash
-        name: machina-ai-fast
-        model: llama-3.3-70b-versatile
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-selected-events: $.get('events-parsed')
         _2-searched-event: $.get('vector_query') or $.get('search_query')
@@ -259,12 +256,10 @@ workflow:
       condition: $.get('market-types') is not None and len($.get('selected-runners-parsed', [])) == 0
       connector:
         command: invoke_prompt
-        # name: google-genai
-        # model: gemini-2.5-flash
-        name: machina-ai-fast
-        model: llama-3.3-70b-versatile
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-market-types-parsed: $.get('market-types')
         _2-sport-id: $.get('sport_id')
@@ -282,12 +277,10 @@ workflow:
       condition: $.get('selected-market-runners-names') is not None and len($.get('selected-runners-parsed', [])) == 0
       connector:
         command: invoke_prompt
-        # name: google-genai
-        # model: gemini-2.5-flash
-        name: machina-ai-fast
-        model: llama-3.3-70b-versatile
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-events-parsed: $.get('selected-market-runners-names')
         _2-user_query: |

@@ -8,7 +8,8 @@ workflow:
     debugger:
       enabled: true
     google-genai:
-      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     machina-ai-fast:
@@ -107,13 +108,10 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-pro
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
         stream: true
-        # name: machina-ai-fast
-        # model: llama-3.3-70b-versatile
-        # model: gemini-2.5-pro
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
       inputs:
         _0-persona-prompt: $.get('persona_prompt')
         _1-message-history: $.get('message-history')
@@ -131,12 +129,9 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash-lite
-        # name: machina-ai-fast
-        # model: llama-3.3-70b-versatile
-        # model: gemini-2.5-pro
-        # name: machina-ai-fast
-        # model: openai/gpt-oss-20b
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-message-content: $.get('content')
       outputs:
