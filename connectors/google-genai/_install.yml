@@ -23,3 +23,6 @@ datasets:
 
   - type: "workflow"
     path: "test-image.yml"
+
+  - type: "workflow"
+    path: "test-search.yml"

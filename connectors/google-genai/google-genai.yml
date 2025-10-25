@@ -1,11 +1,14 @@
 connector:
-  name: "google-genai"
-  description: "This connector is the google-genai"
-  filename: "google-genai.py"
-  filetype: "pyscript"
+  name: google-genai
+  description: This connector is the google-genai
+  filename: google-genai.py
+  filetype: pyscript
   commands:
-    - name: "Prompt"
-      value: "invoke_prompt"
+    - name: Prompt
+      value: invoke_prompt
 
-    - name: "Image"
-      value: "invoke_image"
+    - name: Image
+      value: invoke_image
+
+    - name: Web Search
+      value: invoke_search
