@@ -72,6 +72,9 @@ datasets:
   - type: connector
     path: scripts/map_stories.yml
 
+  - type: connector
+    path: scripts/persona-randomizer.yml
+
   # tools
 
   - type: workflow

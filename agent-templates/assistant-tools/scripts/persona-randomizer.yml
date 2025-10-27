@@ -1,0 +1,8 @@
+connector:
+  name: assistant-tools-persona-randomizer
+  description: Generate a randomized persona prompt from a persona JSON
+  filename: persona-randomizer.py
+  filetype: pyscript
+  commands:
+    - name: create_persona_prompt
+      value: create_persona_prompt
