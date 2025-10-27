@@ -35,7 +35,7 @@ workflow:
         document_id: $.get('document_id')
         name: "'thread'"
       outputs:
-        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
         document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
         document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
         messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []

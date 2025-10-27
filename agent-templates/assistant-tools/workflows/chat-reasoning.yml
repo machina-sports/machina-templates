@@ -9,7 +9,7 @@ workflow:
       enabled: true
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_IDNERATIVE_AI_API_KEY
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     machina-ai-fast:
@@ -37,7 +37,7 @@ workflow:
         name: "'thread'"
         document_id: $.get('thread_id')
       outputs:
-        document_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
         document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
         document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
         messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
@@ -57,7 +57,7 @@ workflow:
         name: "{'$in': ['sport:Event']}"
       outputs:
         event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if len($.get('documents', [])) > 0 else None
-        # event_doc_id: $.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None
+        # event_doc_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
         event_doc_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
 
     # assistant-prepare-message-history
