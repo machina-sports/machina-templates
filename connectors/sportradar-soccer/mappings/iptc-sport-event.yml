@@ -31,6 +31,10 @@ mappings:
                 "sport:year": f.get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('year')
               }
             },
+            "sport:round": {
+              "@type": "sport:Round",
+              "sport:number": f.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number')
+            },
             "sport:venue": {
               "@type": "sport:Venue",
               "@id": f"urn:sportradar:venue:{f.get('sport_event', {}).get('venue', {}).get('id')}",
