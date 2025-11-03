@@ -1,0 +1,69 @@
+mappings:
+
+  # iptc-opta-event-mapping
+  - type: mapping
+    title: "IPTC | Stats Perform Opta Event Mapping"
+    name: "iptc-opta-event-mapping"
+    description: "Mapping data from Stats Perform Opta to IPTC Sport Schema event format"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:opta:sport_event:{match.get('id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"{match.get('homeContestantName', 'TBD')} vs {match.get('awayContestantName', 'TBD')}",
+            "schema:startDate": f"{match.get('date')}T{match.get('time', '00:00:00Z')}",
+            "schema:sportName": "football",
+            "sport:localDate": match.get('localDate'),
+            "sport:localTime": match.get('localTime'),
+            "sport:coverageLevel": match.get('coverageLevel'),
+            "sport:optaBetting": match.get('optaBetting'),
+            "sport:var": match.get('var'),
+            "sport:competition": {
+              "@id": f"urn:opta:competition:{$.get('schedules_raw', {}).get('competition', {}).get('id')}",
+              "@type": "sport:Competition",
+              "name": $.get('schedules_raw', {}).get('competition', {}).get('name'),
+              "sport:knownName": $.get('schedules_raw', {}).get('competition', {}).get('knownName'),
+              "sport:competitionCode": $.get('schedules_raw', {}).get('competition', {}).get('competitionCode'),
+              "sport:competitionFormat": $.get('schedules_raw', {}).get('competition', {}).get('competitionFormat'),
+              "sport:season": {
+                "@id": f"urn:opta:season:{$.get('schedules_raw', {}).get('tournamentCalendar', {}).get('id')}",
+                "@type": "sport:Season",
+                "name": $.get('schedules_raw', {}).get('tournamentCalendar', {}).get('name'),
+                "sport:startDate": $.get('schedules_raw', {}).get('tournamentCalendar', {}).get('startDate'),
+                "sport:endDate": $.get('schedules_raw', {}).get('tournamentCalendar', {}).get('endDate')
+              }
+            },
+            "sport:competitors": [
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:opta:team:{match.get('homeContestantId')}",
+                "name": match.get('homeContestantName'),
+                "sport:officialName": match.get('homeContestantOfficialName'),
+                "sport:shortName": match.get('homeContestantShortName'),
+                "sport:code": match.get('homeContestantCode'),
+                "sport:qualifier": "home"
+              },
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:opta:team:{match.get('awayContestantId')}",
+                "name": match.get('awayContestantName'),
+                "sport:officialName": match.get('awayContestantOfficialName'),
+                "sport:shortName": match.get('awayContestantShortName'),
+                "sport:code": match.get('awayContestantCode'),
+                "sport:qualifier": "away"
+              }
+            ],
+            "sport:matchInfo": {
+              "sport:numberOfPeriods": match.get('numberOfPeriods'),
+              "sport:periodLength": match.get('periodLength')
+            }
+          }
+          for match_date in $.get('schedules_raw', {}).get('matchDate', [])
+          for match in match_date.get('match', [])
+        ]
+

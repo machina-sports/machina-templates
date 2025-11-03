@@ -1,0 +1,237 @@
+# Stats Perform Opta Connector
+
+This connector provides integration with the Stats Perform Opta Soccer API, enabling you to fetch competitions, seasons, schedules, and match data.
+
+## Overview
+
+The Stats Perform Opta API provides comprehensive soccer data including:
+- Tournament Calendars (Competitions and Seasons)
+- Match Schedules and Fixtures
+- Live Match Data
+- Player Statistics
+- Team Information
+- And much more...
+
+## Prerequisites
+
+Before using this connector, you need:
+
+1. **Opta Outlet ID** - Your unique outlet authentication key
+2. **Opta Secret** - Your API secret for OAuth authentication
+
+Set these as environment variables:
+- `MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET`
+- `MACHINA_CONTEXT_VARIABLE_OPTA_SECRET`
+
+## Components
+
+### Connector (`opta.yml`)
+
+The base connector with two main commands:
+- `authorization` - Get OAuth access token
+- `invoke_request` - Make authenticated API requests
+
+### Workflows
+
+#### 1. **invoke-request.yml** (`sp-opta-invoke-request`)
+Basic workflow to invoke any Opta API endpoint.
+
+**Inputs:**
+- `competition_id` (optional): Competition ID
+- `endpoint` (default: 'tournamentcalendar'): API endpoint name
+- `query_params` (optional): Additional query parameters
+
+**Example Usage:**
+```yaml
+inputs:
+  competition_id: "2kwbbcootiqqgmrzs6o5inle5"  # Premier League
+  endpoint: "tournamentcalendar"
+  query_params: {}
+```
+
+#### 2. **sync-competitions.yml** (`sp-opta-sync-competitions`)
+Synchronize all tournament calendars (competitions) to Machina documents.
+
+**Features:**
+- Checks for expired data (7-day cache)
+- Fetches all competitions from Opta
+- Saves to document store for querying
+
+**Outputs:**
+- `competitions`: Array of competition objects
+- `workflow-status`: 'executed' or 'skipped'
+
+#### 3. **sync-seasons.yml** (`sp-opta-sync-seasons`)
+Synchronize seasons for a specific competition.
+
+**Inputs:**
+- `competition_id` (required): The competition ID
+
+**Features:**
+- Checks for expired data (7-day cache)
+- Fetches seasons for specified competition
+- Links to competition document
+- Saves individual season documents
+
+**Outputs:**
+- `seasons`: Array of season objects
+- `workflow-status`: 'executed' or 'skipped'
+
+#### 4. **sync-schedules.yml** (`sp-opta-sync-schedules`)
+Synchronize match schedules for a competition/season.
+
+**Inputs:**
+- `competition_id` (required): The competition ID
+- `season_id` (optional): Specific season ID to filter
+
+**Features:**
+- Fetches match schedules from Tournament Schedule endpoint
+- Creates standardized `sport:Event` documents
+- De-duplicates existing events
+- Supports semantic search via embeddings
+
+**Outputs:**
+- `schedules`: Array of match objects
+- `workflow-status`: 'executed' or 'skipped'
+
+#### 5. **example-sync-all.yml** (`sp-opta-example-sync-all`)
+Example workflow showing how to use all sync workflows together.
+
+### Agent (`agents/sp-opta-sync.yml`)
+
+**Agent Name:** `sp-opta-sync-agent`
+
+Orchestrates multiple sync operations in sequence:
+1. Sync all competitions
+2. Sync seasons for a competition (if `competition_id` provided)
+3. Sync schedules for a competition/season (if `competition_id` provided)
+
+**Context Inputs:**
+- `competition_id`: Optional competition to sync
+- `season_id`: Optional season to filter schedules
+
+## Usage Examples
+
+### Example 1: Test Basic API Connection
+
+```yaml
+workflow:
+  name: test-connection
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-invoke-request
+      inputs:
+        endpoint: "tournamentcalendar"
+        competition_id: "2kwbbcootiqqgmrzs6o5inle5"
+```
+
+### Example 2: Sync Premier League Data
+
+```yaml
+workflow:
+  name: sync-premier-league
+  inputs:
+    competition_id: "2kwbbcootiqqgmrzs6o5inle5"  # Premier League
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-seasons
+      inputs:
+        competition_id: $.get('competition_id')
+    
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-schedules
+      inputs:
+        competition_id: $.get('competition_id')
+```
+
+### Example 3: Use the Sync Agent
+
+Execute the agent using the Machina API:
+
+```python
+from machina import execute_agent
+
+result = execute_agent(
+    agent_id="sp-opta-sync-agent",
+    messages=[
+        {
+            "role": "user",
+            "content": {
+                "competition_id": "2kwbbcootiqqgmrzs6o5inle5"  # Premier League
+            }
+        }
+    ]
+)
+```
+
+## API Endpoints Reference
+
+Common Opta Soccer API endpoints you can use with `invoke-request`:
+
+| Endpoint | Description | Common Parameters |
+|----------|-------------|-------------------|
+| `tournamentcalendar` | Tournament calendars and seasons | `comp={competition_id}` |
+| `tournamentschedule` | Match schedules | `comp={competition_id}`, `seasonId={season_id}` |
+| `match` | Fixtures and results | `comp={competition_id}` |
+| `matchstats` | Match statistics | `matchId={match_id}` |
+| `matchevent` | Match events | `matchId={match_id}` |
+| `standings` | Team standings | `comp={competition_id}` |
+| `squads` | Team squads | `tmcl={team_id}` |
+
+For a complete list, see the [Stats Perform Opta API Documentation](https://developer.statsperform.com/).
+
+## Common Competition IDs
+
+| Competition | ID |
+|-------------|-----|
+| Premier League | `2kwbbcootiqqgmrzs6o5inle5` |
+| La Liga | `34pl8szyvrbwcmfkuocjm3r6t` |
+| Bundesliga | `6by3h89i2eykc341oz7lv1ddd` |
+| Serie A | `1r097lpxe0xn03ihb7wi98kao` |
+| Ligue 1 | `dm5ka0os1e3dxcp3vh05kmp33` |
+
+## Document Types
+
+The sync workflows create the following document types:
+
+- `sp-competition`: Individual competition/tournament
+- `sp-season`: Individual season within a competition
+- `sport:Event`: Match/fixture events (standardized format)
+- `synchronization`: Metadata documents for sync tracking
+
+## Authentication Flow
+
+1. The `authorization` command generates an OAuth token using:
+   - Outlet ID
+   - Secret
+   - Timestamp
+   - SHA512 hash
+2. Token is valid for the session
+3. All subsequent requests use `Bearer {token}` authentication
+
+## Error Handling
+
+All workflows include:
+- Token expiration handling
+- API rate limit awareness
+- Data validation
+- Graceful skipping when data is cached
+
+## Version
+
+Current version: `0.2.0`
+
+## Support
+
+For issues or questions:
+1. Check the [Stats Perform Developer Portal](https://developer.statsperform.com/)
+2. Review the API documentation
+3. Contact your Stats Perform account manager
+
+## License
+
+This connector is part of the Machina Templates repository.
+
