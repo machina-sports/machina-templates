@@ -28,12 +28,31 @@ agent:
     # id: "scf9p4y91yjvqvg5jndxzhxj"
     # season id: "9pqtmpr3w8jm73y0eb8hmum8k"
 
-    - name: sp-opta-sync-schedules
-      description: Sync schedules for a competition/season
+    # - name: sp-opta-sync-schedules
+    #   description: Sync schedules for a competition/season
+    #   inputs:
+    #     competition_id: "'scf9p4y91yjvqvg5jndxzhxj'"
+    #     season_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
+    #   outputs:
+    #     schedules: "$.get('schedules')"
+    #     sync-schedules-status: "$.get('workflow-status', False)"
+
+    # sp-opta-sync-transfers (Test)
+    # Greuther Fürth: "9dlxuym0eab00j9ggrdr87soj"
+    # Grêmio: "1yd80wg4djlmtgkei51x0x4t6"
+    # São Paulo: "5p301ikmaba9gesscss3zo745"
+    # Cruzeiro: "bd6vujl7jfv4wtc8gvo1o1t5y"
+    # Atlético Mineiro: "1f6qzkdjh8fih5ii1eyqmkolq"
+    
+    - name: sp-opta-sync-transfers
+      description: Test transfers endpoint for 2025 transfers
       inputs:
+        contestant_id: "'1yd80wg4djlmtgkei51x0x4t6'"
         competition_id: "'scf9p4y91yjvqvg5jndxzhxj'"
-        season_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
+        strt_dt: "'2025-10-01'"
+        end_dt: "'2025-12-31'"
       outputs:
-        schedules: "$.get('schedules')"
-        sync-schedules-status: "$.get('workflow-status', False)"
+        transfers: "$.get('transfers')"
+        transfers_raw: "$.get('transfers_raw')"
+        sync-transfers-status: "$.get('workflow-status', False)"
 

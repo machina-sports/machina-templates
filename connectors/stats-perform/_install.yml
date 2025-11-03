@@ -38,5 +38,8 @@ datasets:
   - type: workflow
     path: workflows/sync-schedules.yml
 
+  - type: workflow
+    path: workflows/sync-transfers.yml
+
   - type: agent
     path: agents/sp-opta-sync.yml

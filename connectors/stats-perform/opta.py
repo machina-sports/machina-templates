@@ -104,6 +104,7 @@ def invoke_request(request_data):
     # Known Opta API error codes
     OPTA_ERROR_CODES = {
         "10201": "Access denied or invalid parameters. Check: 1) Outlet has access to this competition/season, 2) Competition ID and Season ID are valid, 3) Endpoint is available for your subscription",
+        "10203": "Invalid or missing required parameters. Check parameter names (e.g., strtDt not strDt) and format",
         "10001": "Authentication failed - invalid credentials",
         "10002": "Invalid or expired access token",
         "10003": "Missing required parameters",
@@ -164,8 +165,17 @@ def invoke_request(request_data):
         
         api_url = f"{base_url}?{'&'.join(query_parts)}"
         
+        # Debug logging
+        print(f"[DEBUG] Making request to: {api_url}")
+        print(f"[DEBUG] Endpoint: {endpoint}")
+        print(f"[DEBUG] Competition ID: {competition_id}")
+        print(f"[DEBUG] Query params dict: {query_params}")
+        print(f"[DEBUG] Query parts: {query_parts}")
+        
         # Make API request
         response = requests.get(api_url, headers={'Authorization': f'Bearer {access_token}'})
+        
+        print(f"[DEBUG] Response status code: {response.status_code}")
         
         if response.status_code != 200:
             error_details = {
@@ -190,8 +200,11 @@ def invoke_request(request_data):
                     decoded_message = OPTA_ERROR_CODES.get(error_code, f"Unknown error code: {error_code}")
                     error_details["decoded_error"] = decoded_message
                     error_message = f"Error {error_code}: {decoded_message}"
+                    print(f"[ERROR] Opta Error Code: {error_code} - {decoded_message}")
             except:
                 pass
+            
+            print(f"[ERROR] Response text: {response.text[:500]}")
             
             return {
                 "status": False,
@@ -201,6 +214,9 @@ def invoke_request(request_data):
         
         # Parse response
         response_data = response.json()
+        
+        print(f"[DEBUG] Successfully fetched data from {endpoint}")
+        print(f"[DEBUG] Response keys: {list(response_data.keys()) if isinstance(response_data, dict) else 'Not a dict'}")
         
         return {
             "status": True,
