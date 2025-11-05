@@ -20,5 +20,26 @@ datasets:
   - type: connector
     path: opta.yml
 
+  - type: mappings
+    path: mappings/combine-pages.yml
+
+  - type: mappings
+    path: mappings/iptc-sport-event.yml
+
   - type: workflow
-    path: test.yml
+    path: workflows/invoke-request.yml
+
+  - type: workflow
+    path: workflows/sync-competitions.yml
+
+  - type: workflow
+    path: workflows/sync-seasons.yml
+
+  - type: workflow
+    path: workflows/sync-schedules.yml
+
+  - type: workflow
+    path: workflows/sync-transfers.yml
+
+  - type: agent
+    path: agents/sp-opta-sync.yml

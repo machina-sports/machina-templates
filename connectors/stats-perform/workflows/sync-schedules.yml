@@ -1,0 +1,113 @@
+workflow:
+  name: "sp-opta-sync-schedules"
+  title: "Stats Perform Opta - Schedules"
+  description: "Workflow to synchronize match schedules from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    competition_id: "$.get('competition_id')"
+    season_id: "$.get('season_id', None)"
+  outputs:
+    schedules: "$.get('schedules')"
+    workflow-status: "len($.get('all_events_ids', [])) > len($.get('existing_events_ids', [])) and 'executed' or 'skipped'"
+  tasks:
+
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('competition_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        raw_data: "$"
+        access_token: "$.get('access_token')"
+
+    # load-schedules-from-tournament-schedule
+    - type: "connector"
+      name: "load-schedules"
+      description: "Get tournament schedules from Stats Perform Opta"
+      condition: "$.get('competition_id') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_bearer: "$.get('access_token')"
+        endpoint: "'tournamentschedule'"
+        competition_id: "$.get('competition_id')"
+        query_params: "{'seasonId': $.get('season_id')}"
+      outputs:
+        schedules_raw: "$"
+
+    # iptc-opta-event-mapping
+    - type: "mapping"
+      name: "iptc-opta-event-mapping"
+      title: "IPTC | Stats Perform Opta Event Mapping"
+      description: "Mapping data from Stats Perform Opta to IPTC events"
+      condition: "$.get('schedules_raw') is not None"
+      inputs:
+        schedules_raw: "$.get('schedules_raw')"
+      outputs:
+        all_events: "$.get('sport_schema_events')"
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-events-by-ids
+    - type: "document"
+      name: "load-events-by-ids"
+      condition: "$.get('all_events_ids') is not None"
+      description: "Load existing events by IDs."
+      config:
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.(all_events_ids)}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+
+    # task-bulk-save-events
+    - type: "document"
+      name: "task-bulk-save-events"
+      description: "Bulk save the individual events."
+      condition: "$.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: "$.get('new_events_list')"
+      inputs:
+        new_events_list: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
+              },
+              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
+            }
+            for f in $.get('all_events', [])
+            if str(f.get('@id', '')) not in $.(existing_events_ids)
+          ]

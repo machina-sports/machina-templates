@@ -1,0 +1,10 @@
+mappings:
+
+  # sp-combine-competition-pages
+  - type: mapping
+    name: sp-combine-competition-pages
+    title: "Stats Perform | Combine Competition Pages"
+    description: "Combine all competition pages into single list"
+    outputs:
+      competitions: "$.get('competitions_page_1', []) + $.get('competitions_page_2', []) + $.get('competitions_page_3', [])"
+

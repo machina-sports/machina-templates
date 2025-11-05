@@ -1,0 +1,58 @@
+agent:
+  name: sp-opta-sync-agent
+  title: Stats Perform Opta - Sync Agent
+  description: Agent to synchronize competitions, seasons, and schedules from Stats Perform Opta API.
+  context-agent:
+    competition_id: "$.get('competition_id', None)"
+    season_id: "$.get('season_id', None)"
+  workflows:
+
+    # # sp-opta-sync-competitions
+    # - name: sp-opta-sync-competitions
+    #   description: Sync all competitions from Stats Perform Opta
+    #   outputs:
+    #     competitions: "$.get('competitions')"
+    #     sync-competitions-status: "$.get('workflow-status', False)"
+
+    # # sp-opta-sync-seasons
+    # - name: sp-opta-sync-seasons
+    #   description: Sync seasons for a competition
+    #   condition: "$.get('competition_id') is not None"
+    #   inputs:
+    #     competition_id: "$.get('competition_id')"
+    #   outputs:
+    #     seasons: "$.get('seasons')"
+    #     sync-seasons-status: "$.get('workflow-status', False)"
+
+    # sp-opta-sync-schedules (BR Serie A)
+    # id: "scf9p4y91yjvqvg5jndxzhxj"
+    # season id: "9pqtmpr3w8jm73y0eb8hmum8k"
+
+    # - name: sp-opta-sync-schedules
+    #   description: Sync schedules for a competition/season
+    #   inputs:
+    #     competition_id: "'scf9p4y91yjvqvg5jndxzhxj'"
+    #     season_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
+    #   outputs:
+    #     schedules: "$.get('schedules')"
+    #     sync-schedules-status: "$.get('workflow-status', False)"
+
+    # sp-opta-sync-transfers (Test)
+    # Greuther Fürth: "9dlxuym0eab00j9ggrdr87soj"
+    # Grêmio: "1yd80wg4djlmtgkei51x0x4t6"
+    # São Paulo: "5p301ikmaba9gesscss3zo745"
+    # Cruzeiro: "bd6vujl7jfv4wtc8gvo1o1t5y"
+    # Atlético Mineiro: "1f6qzkdjh8fih5ii1eyqmkolq"
+    
+    - name: sp-opta-sync-transfers
+      description: Test transfers endpoint for 2025 transfers
+      inputs:
+        contestant_id: "'1yd80wg4djlmtgkei51x0x4t6'"
+        competition_id: "'scf9p4y91yjvqvg5jndxzhxj'"
+        strt_dt: "'2025-10-01'"
+        end_dt: "'2025-12-31'"
+      outputs:
+        transfers: "$.get('transfers')"
+        transfers_raw: "$.get('transfers_raw')"
+        sync-transfers-status: "$.get('workflow-status', False)"
+
