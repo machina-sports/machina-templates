@@ -9,7 +9,8 @@ workflow:
       username: "$DSG_SOCCER_USERNAME"
       password: "$DSG_SOCCER_PASSWORD"
       authkey: "$DSG_SOCCER_AUTHKEY"
-      client: "'machinasports'"
+      client: "machinasports"
+      ftype: "json"
   inputs:
     comp_id: "$.get('comp_id', '2')"
   outputs:
@@ -22,12 +23,12 @@ workflow:
       description: "Get Seasons from DSG API"
       connector:
         name: "dsg-soccer"
-        command: "get-seasons"
+        command: "get-get_seasons"
       inputs:
         comp_id: "$.get('comp_id')"
         client: "$.get('client')"
         authkey: "$.get('authkey')"
-        ftype: "'json'"
+        ftype: "$.get('ftype')"
       outputs:
         seasons_data: "$.get('datasportsgroup', {}).get('competition', {}).get('season', [])"
         competition_info: "$.get('datasportsgroup', {}).get('competition', {})"

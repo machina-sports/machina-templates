@@ -10,6 +10,7 @@ workflow:
       password: "$DSG_SOCCER_PASSWORD"
       authkey: "$DSG_SOCCER_AUTHKEY"
       client: "machinasports"
+      ftype: "json"
   outputs:
     competition: "$.get('competition')"
     workflow-status: "'executed'"
@@ -24,7 +25,7 @@ workflow:
       inputs:
         client: "$.get('client')"
         authkey: "$.get('authkey')"
-        ftype: "'json'"
+        ftype: "$.get('ftype')"
       outputs:
         competition: "$"
 
