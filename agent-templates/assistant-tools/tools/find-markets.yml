@@ -96,6 +96,7 @@ workflow:
         model: text-embedding-3-small
       filters:
         '$or': "[{'value.startDate':{'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}, {'value.startDateUtc': {'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}]"
+        value.isOpenForBetting: "{'$eq': True}"
       inputs:
         name: "'game-market'"
         search-query: |
