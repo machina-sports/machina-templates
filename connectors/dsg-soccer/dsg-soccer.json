@@ -20,14 +20,14 @@
       "basicAuth": []
     }
   ],
-  "securitySchemes": {
-    "basicAuth": {
-      "type": "http",
-      "scheme": "basic",
-      "description": "Basic Authentication using username and password"
-    }
-  },
   "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Basic Authentication using username and password"
+      }
+    },
     "schemas": {
       "Competition": {
         "type": "object",

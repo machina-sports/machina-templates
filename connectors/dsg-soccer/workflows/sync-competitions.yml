@@ -9,7 +9,7 @@ workflow:
       username: "$DSG_SOCCER_USERNAME"
       password: "$DSG_SOCCER_PASSWORD"
       authkey: "$DSG_SOCCER_AUTHKEY"
-      client: "'machinasports'"
+      client: "machinasports"
   outputs:
     competition: "$.get('competition')"
     workflow-status: "'executed'"
