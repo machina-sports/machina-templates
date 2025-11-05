@@ -1,0 +1,473 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Data Sports Group (DSG) Soccer API",
+    "description": "DSG Soccer API providing comprehensive football data including competitions, teams, fixtures, and results.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Data Sports Group",
+      "url": "https://dsg-api.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://dsg-api.com/clients/machinasports/soccer",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "securitySchemes": {
+    "basicAuth": {
+      "type": "http",
+      "scheme": "basic",
+      "description": "Basic Authentication using username and password"
+    }
+  },
+  "components": {
+    "schemas": {
+      "Competition": {
+        "type": "object",
+        "properties": {
+          "competition_id": {
+            "type": "string",
+            "description": "Competition ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Competition name"
+          },
+          "gender": {
+            "type": "string",
+            "description": "Gender (male/female)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Competition type (club/national)"
+          },
+          "format": {
+            "type": "string",
+            "description": "Competition format (domestic_league, cup, etc.)"
+          },
+          "area_id": {
+            "type": "string",
+            "description": "Area/Country ID"
+          },
+          "area_name": {
+            "type": "string",
+            "description": "Area/Country name"
+          },
+          "last_updated": {
+            "type": "string",
+            "description": "Last update timestamp"
+          }
+        }
+      },
+      "CompetitionsResponse": {
+        "type": "object",
+        "properties": {
+          "datasportsgroup": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "sport": {
+                "type": "string"
+              },
+              "lang": {
+                "type": "string"
+              },
+              "generated_utc": {
+                "type": "string"
+              },
+              "method": {
+                "type": "object",
+                "properties": {
+                  "method_id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              },
+              "competition": {
+                "$ref": "#/components/schemas/Competition"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/get_competitions": {
+      "get": {
+        "summary": "Get competitions",
+        "description": "Retrieve all available football competitions from DSG API",
+        "operationId": "get-competitions",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "client",
+            "in": "query",
+            "description": "Client identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "machinasports"
+            }
+          },
+          {
+            "name": "authkey",
+            "in": "query",
+            "description": "Authentication key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ftype",
+            "in": "query",
+            "description": "Response format type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          },
+          {
+            "name": "competition_id",
+            "in": "query",
+            "description": "Filter by specific competition ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Filter by season year",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitionsResponse"
+                },
+                "example": {
+                  "datasportsgroup": {
+                    "version": "2.16.3",
+                    "sport": "soccer",
+                    "lang": "en",
+                    "generated_utc": "2025-11-05T00:44:00+00:00",
+                    "method": {
+                      "method_id": "16",
+                      "name": "get_competitions"
+                    },
+                    "competition": {
+                      "competition_id": "2",
+                      "name": "Premier League",
+                      "gender": "male",
+                      "type": "club",
+                      "format": "domestic_league",
+                      "area_id": "68",
+                      "area_name": "England",
+                      "last_updated": "2025-07-30 17:39:30"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - Invalid authkey",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_seasons": {
+      "get": {
+        "summary": "Get seasons",
+        "description": "Retrieve all available seasons for a specific competition",
+        "operationId": "get-seasons",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "comp_id",
+            "in": "query",
+            "description": "Competition ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "description": "Client identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "machinasports"
+            }
+          },
+          {
+            "name": "authkey",
+            "in": "query",
+            "description": "Authentication key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ftype",
+            "in": "query",
+            "description": "Response format type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "datasportsgroup": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string"
+                        },
+                        "sport": {
+                          "type": "string"
+                        },
+                        "competition": {
+                          "type": "object",
+                          "properties": {
+                            "competition_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "season": {
+                              "type": "array",
+                              "description": "Array of seasons",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "season_id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "start_date": {
+                                    "type": "string"
+                                  },
+                                  "end_date": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden - Invalid authkey"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/get_matches": {
+      "get": {
+        "summary": "Get matches",
+        "description": "Retrieve matches by season or get detailed information for a specific match including events, referees, and injuries",
+        "operationId": "get-matches",
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Type of query: 'season' to get all matches of a season, or 'match' to get details of a specific match",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["season", "match"],
+              "example": "season"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Season ID (when type=season) or Match ID (when type=match)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "76035"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "description": "Client identifier",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "machinasports"
+            }
+          },
+          {
+            "name": "authkey",
+            "in": "query",
+            "description": "Authentication key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ftype",
+            "in": "query",
+            "description": "Response format type",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "datasportsgroup": {
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "string"
+                        },
+                        "sport": {
+                          "type": "string"
+                        },
+                        "tour": {
+                          "type": "object",
+                          "description": "Contains competition, season, round and match data"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden - Invalid authkey"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+workflow:
+  name: "dsg-soccer-sync-fixtures"
+  title: "DSG Soccer - Sync Fixtures"
+  description: "Workflow to synchronize fixtures/matches from DSG API for a specific season."
+  context-variables:
+    debugger:
+      enabled: true
+    dsg-soccer:
+      username: "$DSG_SOCCER_USERNAME"
+      password: "$DSG_SOCCER_PASSWORD"
+      authkey: "$DSG_SOCCER_AUTHKEY"
+      client: "'machinasports'"
+  inputs:
+    season_id: "$.get('season_id', '76035')"
+  outputs:
+    fixtures: "$.get('fixtures')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-fixtures
+    - type: "connector"
+      name: "task-load-fixtures"
+      description: "Get Fixtures from DSG API"
+      connector:
+        name: "dsg-soccer"
+        command: "get-matches"
+      inputs:
+        type: "'season'"
+        id: "$.get('season_id')"
+        client: "$.get('client')"
+        authkey: "$.get('authkey')"
+        ftype: "'json'"
+      outputs:
+        fixtures_data: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('discipline', {}).get('gender', {}).get('round', {}).get('list', {}).get('match', [])"
+        season_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {})"
+        competition_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {})"
+
+    # task-update-fixtures
+    - type: "document"
+      name: "task-update-fixtures"
+      description: "Update the fixtures document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        dsg-fixtures: |
+          {
+            'data': $.get('fixtures_data'),
+            'season': $.get('season_info'),
+            'competition': $.get('competition_info'),
+            'title': f"DSG - Fixtures for {$.get('competition_info', {}).get('name', 'Competition')} {$.get('season_info', {}).get('title', '')}",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'total_matches': len($.get('fixtures_data', []))
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-fixtures
+    - type: "document"
+      name: "task-bulk-save-fixtures"
+      description: "Bulk save the fixtures."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'fixture'"
+      documents:
+        items: |
+          [
+            {
+              **m,
+              'season_id': $.get('season_info', {}).get('season_id'),
+              'season_title': $.get('season_info', {}).get('title'),
+              'competition_id': $.get('competition_info', {}).get('competition_id'),
+              'competition_name': $.get('competition_info', {}).get('name'),
+              'title': f"{m.get('team_a_name', 'TBD')} vs {m.get('team_b_name', 'TBD')} - {m.get('date', '')}",
+              'match_date': m.get('date'),
+              'match_time': m.get('time'),
+              'match_status': m.get('status'),
+              'home_team': m.get('team_a_name'),
+              'away_team': m.get('team_b_name'),
+              'home_score': m.get('score_a'),
+              'away_score': m.get('score_b'),
+              'gameweek': m.get('match_extra', {}).get('gameweek') if m.get('match_extra') else None,
+              'venue': m.get('match_extra', {}).get('venue', {}).get('venue_name') if m.get('match_extra') else None,
+              'provider': 'dsg'
+            }
+            for m in $.get('fixtures_data', [])
+          ]
+      metadata:
+        document_type: "'fixture'"
+        provider: "'dsg'"
+      outputs:
+        fixtures: "$.get('fixtures_data')"
+

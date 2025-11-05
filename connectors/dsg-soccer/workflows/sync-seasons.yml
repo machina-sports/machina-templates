@@ -1,0 +1,90 @@
+workflow:
+  name: "dsg-soccer-sync-seasons"
+  title: "DSG Soccer - Sync Seasons"
+  description: "Workflow to synchronize seasons from DSG API for a specific competition."
+  context-variables:
+    debugger:
+      enabled: true
+    dsg-soccer:
+      username: "$DSG_SOCCER_USERNAME"
+      password: "$DSG_SOCCER_PASSWORD"
+      authkey: "$DSG_SOCCER_AUTHKEY"
+      client: "'machinasports'"
+  inputs:
+    comp_id: "$.get('comp_id', '2')"
+  outputs:
+    seasons: "$.get('seasons')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-seasons
+    - type: "connector"
+      name: "task-load-seasons"
+      description: "Get Seasons from DSG API"
+      connector:
+        name: "dsg-soccer"
+        command: "get-seasons"
+      inputs:
+        comp_id: "$.get('comp_id')"
+        client: "$.get('client')"
+        authkey: "$.get('authkey')"
+        ftype: "'json'"
+      outputs:
+        seasons_data: "$.get('datasportsgroup', {}).get('competition', {}).get('season', [])"
+        competition_info: "$.get('datasportsgroup', {}).get('competition', {})"
+
+    # task-update-seasons
+    - type: "document"
+      name: "task-update-seasons"
+      description: "Update the seasons document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        dsg-seasons: |
+          {
+            'data': $.get('seasons_data'),
+            'competition': $.get('competition_info'),
+            'title': f"DSG - Seasons for {$.get('competition_info', {}).get('name', 'Competition')}",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-seasons
+    - type: "document"
+      name: "task-bulk-save-seasons"
+      description: "Bulk save the seasons."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'season'"
+      documents:
+        items: |
+          [
+            {
+              **s,
+              'competition_id': $.get('competition_info', {}).get('competition_id'),
+              'competition_name': $.get('competition_info', {}).get('name'),
+              'title': f"{$.get('competition_info', {}).get('name', '')} - {s.get('title', s.get('season_id', ''))}",
+              'selected': False,
+              'provider': 'dsg'
+            }
+            for s in $.get('seasons_data', [])
+          ]
+      metadata:
+        document_type: "'season'"
+        provider: "'dsg'"
+      outputs:
+        seasons: "$.get('seasons_data')"
+

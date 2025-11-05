@@ -1,0 +1,7 @@
+connector:
+  name: "dsg-soccer"
+  description: "Data Sports Group Soccer API"
+  filename: "dsg-soccer.json"
+  filetype: "restapi"
+
+
