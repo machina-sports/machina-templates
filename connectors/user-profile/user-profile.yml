@@ -1,0 +1,4 @@
+connector:
+  name: "user-profile"
+  description: "This connector handles user profile data storage using document operations"
+  filetype: "document"

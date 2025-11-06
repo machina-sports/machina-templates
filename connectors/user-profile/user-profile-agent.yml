@@ -1,0 +1,59 @@
+agent:
+  name: "user-profile-agent"
+  title: "User Profile Agent"
+  description: "Agent to manage user profile workflows: store profile, generate personalized content, and send email"
+  context-agent:
+        name: $.get('name')
+        favorite_sport: $.get('favorite_sport')
+        favorite_team: $.get('favorite_team')
+        podcast_mood_tone: $.get('podcast_mood_tone')
+        sports_knowledge: $.get('sports_knowledge')
+        email_address: $.get('email_address')
+        from_email: $.get('from_email')
+        mailgun_domain: $.get('mailgun_domain')
+  workflows:
+
+    # Store user profile from frontend
+    - name: store-user-profile
+      description: "Store user profile information from frontend application"
+      inputs:
+        name: "$.get('name')"
+        favorite_sport: "$.get('favorite_sport')"
+        favorite_team: "$.get('favorite_team')"
+        podcast_mood_tone: "$.get('podcast_mood_tone')"
+        sports_knowledge: "$.get('sports_knowledge')"
+        email_address: "$.get('email_address')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        document_id: "$.get('document_id')"
+        profile_id: "$.get('profile_id')"
+        email_address: "$.get('email_address')"
+
+    # Generate personalized content
+    - name: generate-personalized-content
+      description: "Generate personalized podcast content based on user profile"
+      condition: "$.get('email_address') is not None"
+      inputs:
+        email_address: "$.get('email_address')"
+        max_queries: "$.get('max_queries', 3)"
+        voice_id: "$.get('voice_id')"
+        model_id: "$.get('model_id', 'eleven_flash_v2_5')"
+        duration: "$.get('duration', 120)"
+        language: "$.get('language', 'en')"
+        from_email: "$.get('from_email')"
+        mailgun_domain: "$.get('mailgun_domain')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        audio_path: "$.get('audio_path')"
+        audio_content: "$.get('audio_content')"
+        user_profile: "$.get('user_profile')"
+        email_address: "$.get('email_address')"
+        favorite_team: "$.get('favorite_team')"
+        favorite_sport: "$.get('favorite_sport')"
+        user_name: "$.get('user_name')"
+        podcast-email-html: "$.get('podcast-email-html')"
+        podcast-email-html-path: "$.get('podcast-email-html-path')"
+        podcast-email-html-content: "$.get('podcast-email-html-content')"
+        email-sent: "$.get('email-sent')"
+        email-status: "$.get('email-status')"
+        email-id: "$.get('email-id')"

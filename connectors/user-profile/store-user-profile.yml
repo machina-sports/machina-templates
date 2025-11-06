@@ -1,0 +1,60 @@
+workflow:
+  name: "store-user-profile"
+  title: "Store User Profile"
+  description: "Workflow to receive user profile inputs and store them as documents in the database"
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    name: "$.get('name')"
+    favorite_sport: "$.get('favorite_sport')"
+    favorite_team: "$.get('favorite_team')"
+    podcast_mood_tone: "$.get('podcast_mood_tone')"
+    sports_knowledge: "$.get('sports_knowledge')"
+    email_address: "$.get('email_address')"
+  outputs:
+    workflow-status: "'executed'"
+    document_id: "$.get('document_id')"
+    profile_id: "$.get('profile_id')"
+    user_data: "$.get('user_data')"
+    debug_logs: "$.get('debug_logs')"
+  tasks:
+    # Store user profile as document
+    - type: "document"
+      name: "task-bulk-save-user-profile"
+      description: "Bulk save user profile."
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('name')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'user-profile'"
+      documents:
+        items: |
+          [
+            {
+              **{
+                'name': $.get('name'),
+                'favorite_sport': $.get('favorite_sport'),
+                'favorite_team': $.get('favorite_team'),
+                'podcast_mood_tone': $.get('podcast_mood_tone'),
+                'sports_knowledge': $.get('sports_knowledge'),
+                'email_address': $.get('email_address'),
+                'created_at': datetime.now().isoformat()
+              },
+              'metadata': {
+                'user_id': $.get('email_address'),
+                'profile_type': 'user_profile'
+              },
+              'title': $.get('name')
+            }
+          ]
+      metadata:
+        document_type: "'user-profile'"
+        source: "'user-input'"
