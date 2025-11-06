@@ -44,43 +44,59 @@ workflow:
       inputs:
         fixtures_data: "$.get('fixtures_data')"
       outputs:
-        sport_schema_events: "$.get('sport_schema_events', [])"
+        all_events: "$.get('sport_schema_events')"
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
 
-    # task-bulk-save-fixtures
+    # load-events-by-ids
     - type: "document"
-      name: "task-bulk-save-fixtures"
-      description: "Bulk save the fixtures."
+      name: "load-events-by-ids"
+      condition: "$.get('all_events_ids') is not None"
+      description: "Load existing events by IDs."
       config:
-        action: "bulk-save"
-        embed-vector: false
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.(all_events_ids)}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+
+    # task-bulk-save-events
+    - type: "document"
+      name: "task-bulk-save-events"
+      description: "Bulk save the individual events."
+      condition: "$.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "'fixture'"
+      document_name: "'sport:Event'"
       documents:
-        items: "$.get('fixtures_to_save')"
+        items: "$.get('new_events_list')"
       inputs:
-        fixtures_to_save: |
+        new_events_list: |
           [
             {
               **f,
               'metadata': {
                 'event_code': str(f.get('@id', '')),
-                'sport_name': 'soccer',
-                'provider': 'dsg',
-                'competition_id': f.get('sport:competition', {}).get('@id', ''),
-                'season_id': f.get('sport:season', {}).get('@id', '')
+                'sport_name': str(f.get('schema:sportName', ''))
               },
-              'title': f"{f.get('sport:competition', {}).get('name', 'Competition')} - {f.get('name', '')}",
-              'selected': True
+              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
             }
-            for f in $.get('sport_schema_events', [])
+            for f in $.get('all_events', [])
+            if str(f.get('@id', '')) not in $.(existing_events_ids)
           ]
-      metadata:
-        document_type: "'fixture'"
-        provider: "'dsg'"
-      outputs:
-        fixtures: "$.get('fixtures_data')"
-
