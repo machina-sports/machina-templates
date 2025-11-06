@@ -12,6 +12,8 @@ workflow:
       client: "machinasports"
       ftype: "json"
       type: "season"
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
     season_id: "$.get('season_id', '76035')"
   outputs:

@@ -102,9 +102,9 @@ workflow:
         persona_prompt: $.get('persona_prompt', '')
         persona_meta: $.get('persona_meta', '')
 
-    # sportingbot-chat-response-prompt
+    # assistant-chat-response-prompt
     - type: prompt
-      name: sportingbot-chat-response-prompt
+      name: assistant-chat-response-prompt
       connector:
         command: invoke_prompt
         name: google-genai
@@ -123,9 +123,9 @@ workflow:
       outputs:
         content: $
 
-    # sportingbot-chat-response-questions
+    # assistant-chat-response-questions
     - type: prompt
-      name: sportingbot-chat-response-questions
+      name: assistant-chat-response-questions
       connector:
         command: invoke_prompt
         name: google-genai

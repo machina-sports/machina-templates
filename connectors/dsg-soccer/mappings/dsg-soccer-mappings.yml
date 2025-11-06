@@ -16,7 +16,7 @@ mappings:
             "@id": f"urn:dsg:sport_event:{m.get('match_id')}",
             "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{m.get('team_a_name', 'TBD')} vs {m.get('team_b_name', 'TBD')}",
-            "schema:startDate": f"{m.get('date')} {m.get('time', '00:00')}",
+            "schema:startDate": f"{m.get('date')}T{m.get('time', '00:00:00')}+00:00",
             "sport:status": m.get('status', 'unknown'),
             "sport:round": m.get('round_name'),
             "sport:matchday": m.get('match_extra', {}).get('gameweek') if m.get('match_extra') else None,
