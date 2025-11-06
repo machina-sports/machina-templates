@@ -46,33 +46,6 @@ workflow:
       outputs:
         sport_schema_events: "$.get('sport_schema_events', [])"
 
-    # task-update-fixtures
-    - type: "document"
-      name: "task-update-fixtures"
-      description: "Update the fixtures document."
-      config:
-        action: "update"
-        embed-vector: false
-        force-update: true
-      connector:
-        name: "openai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      documents:
-        dsg-fixtures: |
-          {
-            'data': $.get('fixtures_data'),
-            'season': $.get('season_info'),
-            'competition': $.get('competition_info'),
-            'sport_schema_events': $.get('sport_schema_events', []),
-            'title': f"DSG - Fixtures for {$.get('competition_info', {}).get('name', 'Competition')} {$.get('season_info', {}).get('title', '')}",
-            'execution': datetime.utcnow(),
-            'status': 'active',
-            'total_matches': len($.get('fixtures_data', []))
-          }
-      metadata:
-        document_type: "'synchronization'"
-
     # task-bulk-save-fixtures
     - type: "document"
       name: "task-bulk-save-fixtures"
