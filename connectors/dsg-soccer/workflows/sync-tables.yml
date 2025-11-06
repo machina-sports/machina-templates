@@ -1,0 +1,125 @@
+workflow:
+  name: "dsg-soccer-sync-tables"
+  title: "DSG Soccer - Sync Tables"
+  description: "Workflow to synchronize championship standings/tables from DSG API for a specific round."
+  context-variables:
+    debugger:
+      enabled: true
+    dsg-soccer:
+      username: "$DSG_SOCCER_USERNAME"
+      password: "$DSG_SOCCER_PASSWORD"
+      authkey: "$DSG_SOCCER_AUTHKEY"
+      client: "machinasports"
+      ftype: "json"
+      type: "round"
+  inputs:
+    round_id: "$.get('round_id', '125229')"
+  outputs:
+    standings: "$.get('standings')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-tables
+    - type: "connector"
+      name: "task-load-tables"
+      description: "Get Championship Tables/Standings from DSG API"
+      connector:
+        name: "dsg-soccer"
+        command: "get-get_tables"
+      inputs:
+        type: "$.get('type')"
+        id: "$.get('round_id')"
+        client: "$.get('client')"
+        authkey: "$.get('authkey')"
+        ftype: "$.get('ftype')"
+      outputs:
+        round_data: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {})"
+        season_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {})"
+        competition_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {})"
+        total_table: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {}).get('total', {}).get('table', [])"
+        home_table: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {}).get('home', {}).get('table', [])"
+        away_table: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {}).get('away', {}).get('table', [])"
+
+    # task-update-standings-summary
+    - type: "document"
+      name: "task-update-standings-summary"
+      description: "Update the standings summary document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        dsg-standings: |
+          {
+            'total_table': $.get('total_table'),
+            'home_table': $.get('home_table'),
+            'away_table': $.get('away_table'),
+            'round': $.get('round_data'),
+            'season': $.get('season_info'),
+            'competition': $.get('competition_info'),
+            'title': f"DSG - Standings for {$.get('competition_info', {}).get('name', 'Competition')} {$.get('season_info', {}).get('title', '')}",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'total_teams': len($.get('total_table', []))
+          }
+      metadata:
+        document_type: "'standings'"
+        provider: "'dsg'"
+
+    # task-bulk-save-team-standings
+    - type: "document"
+      name: "task-bulk-save-team-standings"
+      description: "Bulk save individual team standings from the total table."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        items: "$.get('team_standings_list')"
+      inputs:
+        team_standings_list: |
+          [
+            {
+              **team,
+              'round_id': $.get('round_data', {}).get('round_id'),
+              'round_name': $.get('round_data', {}).get('name'),
+              'season_id': $.get('season_info', {}).get('season_id'),
+              'season_title': $.get('season_info', {}).get('title'),
+              'competition_id': $.get('competition_info', {}).get('competition_id'),
+              'competition_name': $.get('competition_info', {}).get('name'),
+              'title': f"{team.get('position')}. {team.get('team_name', 'Unknown')} - {$.get('competition_info', {}).get('name', '')} {$.get('season_info', {}).get('title', '')}",
+              'position': int(team.get('position', 0)),
+              'team_id': team.get('team_id'),
+              'team_name': team.get('team_name'),
+              'short_name': team.get('short_name'),
+              'zone': team.get('zone'),
+              'zone_id': team.get('zone_id'),
+              'form': team.get('form'),
+              'matches_played': int(team.get('values', {}).get('matches_total', 0)),
+              'matches_won': int(team.get('values', {}).get('matches_won', 0)),
+              'matches_draw': int(team.get('values', {}).get('matches_draw', 0)),
+              'matches_lost': int(team.get('values', {}).get('matches_lost', 0)),
+              'goals_for': int(team.get('values', {}).get('score_for', 0)),
+              'goals_against': int(team.get('values', {}).get('score_against', 0)),
+              'goal_difference': int(team.get('values', {}).get('score_difference', 0)),
+              'points': int(team.get('values', {}).get('points', 0)),
+              'next_match_id': team.get('next_match_id'),
+              'next_opponent_team_id': team.get('next_opponent_team_id'),
+              'next_opponent_name': team.get('next_opponent_name'),
+              'provider': 'dsg',
+              'table_type': 'total'
+            }
+            for team in $.get('total_table', [])
+            if team is not None
+          ]
+      metadata:
+        document_type: "'team_standing'"
+        provider: "'dsg'"
+

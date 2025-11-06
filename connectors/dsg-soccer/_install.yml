@@ -10,6 +10,7 @@ setup:
     - Competition information (get_competitions)
     - Season data for current and past 2 seasons (get_seasons)
     - All matches per season with detailed information (get_matches)
+    - Championship tables/standings with home, away, and total statistics (get_tables)
     - Match-specific details including referees, injuries, and events
     - IPTC Sports Schema normalization for compatibility with Machina agents
     - Basic Authentication for secure access
@@ -42,4 +43,7 @@ datasets:
   
   - type: "workflow"
     path: "workflows/sync-fixtures.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-tables.yml"
 
