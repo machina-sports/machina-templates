@@ -10,23 +10,28 @@
   },
   "servers": [
     {
-      "url": "https://api.mailgun.net/v3/{domain}",
-      "description": "Mailgun API Server",
-      "variables": {
-        "domain": {
-          "default": "mg.machina.gg",
-          "description": "Mailgun domain for sending emails"
-        }
-      }
+      "url": "https://api.mailgun.net/v3",
+      "description": "Mailgun API Server"
     }
   ],
   "paths": {
-    "/messages": {
+    "/{domain}/messages": {
       "post": {
         "summary": "Send an email",
         "description": "Sends an email through Mailgun's API",
         "operationId": "sendEmail",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "domain",
+            "in": "path",
+            "required": true,
+            "description": "Mailgun domain for sending emails",
+            "schema": {
+              "type": "string",
+              "default": "mg.machina.gg"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -60,7 +65,7 @@
                     "example": "This is a test email sent using Mailgun!"
                   }
                 },
-                "required": ["from", "to", "subject", "html"]
+                "required": ["from", "to", "subject"]
               }
             }
           }

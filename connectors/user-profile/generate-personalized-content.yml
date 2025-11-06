@@ -19,7 +19,6 @@ workflow:
     api-mailgun:
       username: "api"
       password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
-      mailgun_domain: "$TEMP_CONTEXT_VARIABLE_MAILGUN_DOMAIN or 'mg.machina.gg'"
   inputs:
     email_address: "$.get('email_address')"
     max_queries: "$.get('max_queries', 3)"
@@ -191,13 +190,17 @@ workflow:
       condition: "$.get('podcast-email-html-content') is not None and ($.get('email_address') is not None or $.get('profile_email_address') is not None)"
       connector:
         name: "api-mailgun"
-        command: "post-messages"
+        command: "post-{domain}/messages"
+        command_attribute:
+          domain: "$.get('mailgun_domain') or 'mg.machina.gg'"
       inputs:
-        from: "$.get('from_email') or 'noreply@mg.machina.gg'"
-        to: "$.get('email_address') or $.get('profile_email_address')"
-        subject: "'Your Personalized Podcast is Ready!'"
-        html: "$.get('podcast-email-html-content')"
-        text: "'Your personalized podcast is ready! Click the link in the email to listen.'"
+        body: |
+          {
+            "from": $.get('from_email', 'noreply@mg.machina.gg'), 
+            "to": $.get('profile_email_address'),
+            "subject": "Your Personalized Podcast is Ready!",
+            "text": "Your personalized podcast is ready! Click the link in the email to listen."
+          }
       outputs:
         email-sent: "$.get('message') is not None"
         email-status: "$.get('message')"

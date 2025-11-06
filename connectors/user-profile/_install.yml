@@ -13,6 +13,11 @@ setup:
   version: 1.0.0
 
 datasets:
+
+  # storage
+  - type: "connector"
+    path: "../../connectors/storage/storage.yml"
+
   # connectors
   - type: "connector"
     path: "user-profile.yml"
