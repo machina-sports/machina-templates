@@ -12,6 +12,11 @@ workflow:
       client: "machinasports"
       ftype: "json"
       type: "round"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
     round_id: "$.get('round_id', '125229')"
   outputs:
@@ -69,57 +74,51 @@ workflow:
         document_type: "'standings'"
         provider: "'dsg'"
 
-    # task-bulk-save-team-standings
+    # standings-summary-generator
+    - type: prompt
+      name: dsg-standings-summary
+      description: "Generate a summary of the standings."
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _0-date-time-now: datetime.now().isoformat()
+        _1-total_table: $.get('total_table')
+        _2-home_table: $.get('home_table')
+        _3-away_table: $.get('away_table')
+        _4-round: $.get('round_data')
+        _5-season: $.get('season_info')
+        _6-competition: $.get('competition_info')
+      outputs:
+        standings_summary: $.get('standings_summary')
+    
+    # task-bulk-save-standings-summary
     - type: "document"
-      name: "task-bulk-save-team-standings"
-      description: "Bulk save individual team standings from the total table."
+      name: "task-bulk-save-standings-summary"
+      description: "Bulk save the standings summary."
       config:
-        action: "bulk-save"
-        embed-vector: false
+        action: "bulk-update"
+        embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
+      document_name: "'standings-summary'"
       documents:
-        items: "$.get('team_standings_list')"
-      inputs:
-        team_standings_list: |
+        items: |
           [
             {
-              **team,
-              'round_id': $.get('round_data', {}).get('round_id'),
-              'round_name': $.get('round_data', {}).get('name'),
-              'season_id': $.get('season_info', {}).get('season_id'),
-              'season_title': $.get('season_info', {}).get('title'),
-              'competition_id': $.get('competition_info', {}).get('competition_id'),
-              'competition_name': $.get('competition_info', {}).get('name'),
-              'title': f"{team.get('position')}. {team.get('team_name', 'Unknown')} - {$.get('competition_info', {}).get('name', '')} {$.get('season_info', {}).get('title', '')}",
-              'position': int(team.get('position', 0)),
-              'team_id': team.get('team_id'),
-              'team_name': team.get('team_name'),
-              'short_name': team.get('short_name'),
-              'zone': team.get('zone'),
-              'zone_id': team.get('zone_id'),
-              'form': team.get('form'),
-              'matches_played': int(team.get('values', {}).get('matches_total', 0)),
-              'matches_won': int(team.get('values', {}).get('matches_won', 0)),
-              'matches_draw': int(team.get('values', {}).get('matches_draw', 0)),
-              'matches_lost': int(team.get('values', {}).get('matches_lost', 0)),
-              'goals_for': int(team.get('values', {}).get('score_for', 0)),
-              'goals_against': int(team.get('values', {}).get('score_against', 0)),
-              'goal_difference': int(team.get('values', {}).get('score_difference', 0)),
-              'points': int(team.get('values', {}).get('points', 0)),
-              'next_match_id': team.get('next_match_id'),
-              'next_opponent_team_id': team.get('next_opponent_team_id'),
-              'next_opponent_name': team.get('next_opponent_name'),
-              'provider': 'dsg',
-              'table_type': 'total'
+              'content': $.get('standings_summary', {}),
+              'title': f"DSG - Standings Summary",
+              'execution': datetime.utcnow(),
+              'status': 'active',
+              'provider': 'dsg'
             }
-            for team in $.get('total_table', [])
-            if team is not None
           ]
       metadata:
-        document_type: "'team_standing'"
+        document_type: "'standings-summary'"
         provider: "'dsg'"
-

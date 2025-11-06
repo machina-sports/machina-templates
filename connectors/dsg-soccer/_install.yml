@@ -32,6 +32,11 @@ datasets:
 
   - type: "mappings"
     path: "mappings/dsg-soccer-mappings.yml"
+
+  # prompts
+
+  - type: "prompts"
+    path: "prompts/standings-summary.yml"
   
   # workflows
 
