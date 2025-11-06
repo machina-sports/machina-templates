@@ -27,6 +27,11 @@ datasets:
   - type: "connector"
     path: "dsg-soccer.yml"
   
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/dsg-soccer-mappings.yml"
+  
   # workflows
 
   - type: "workflow"

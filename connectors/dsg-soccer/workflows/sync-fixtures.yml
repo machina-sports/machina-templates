@@ -16,6 +16,7 @@ workflow:
     season_id: "$.get('season_id', '76035')"
   outputs:
     fixtures: "$.get('fixtures')"
+    sport_schema_events: "$.get('sport_schema_events', [])"
     workflow-status: "'executed'"
   tasks:
     # task-load-fixtures
@@ -36,6 +37,15 @@ workflow:
         season_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {})"
         competition_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {})"
 
+    # task-map-to-iptc-schema
+    - type: "mapping"
+      name: "dsg-soccer-event-mapping"
+      description: "Map fixtures to IPTC Sport Schema format"
+      inputs:
+        fixtures_data: "$.get('fixtures_data')"
+      outputs:
+        sport_schema_events: "$.get('sport_schema_events', [])"
+
     # task-update-fixtures
     - type: "document"
       name: "task-update-fixtures"
@@ -54,6 +64,7 @@ workflow:
             'data': $.get('fixtures_data'),
             'season': $.get('season_info'),
             'competition': $.get('competition_info'),
+            'sport_schema_events': $.get('sport_schema_events', []),
             'title': f"DSG - Fixtures for {$.get('competition_info', {}).get('name', 'Competition')} {$.get('season_info', {}).get('title', '')}",
             'execution': datetime.utcnow(),
             'status': 'active',
@@ -76,27 +87,23 @@ workflow:
         model: "text-embedding-3-small"
       document_name: "'fixture'"
       documents:
-        items: |
+        items: "$.get('fixtures_to_save')"
+      inputs:
+        fixtures_to_save: |
           [
             {
-              **m,
-              'season_id': $.get('season_info', {}).get('season_id'),
-              'season_title': $.get('season_info', {}).get('title'),
-              'competition_id': $.get('competition_info', {}).get('competition_id'),
-              'competition_name': $.get('competition_info', {}).get('name'),
-              'title': f"{m.get('team_a_name', 'TBD')} vs {m.get('team_b_name', 'TBD')} - {m.get('date', '')}",
-              'match_date': m.get('date'),
-              'match_time': m.get('time'),
-              'match_status': m.get('status'),
-              'home_team': m.get('team_a_name'),
-              'away_team': m.get('team_b_name'),
-              'home_score': m.get('score_a'),
-              'away_score': m.get('score_b'),
-              'gameweek': m.get('match_extra', {}).get('gameweek') if m.get('match_extra') else None,
-              'venue': m.get('match_extra', {}).get('venue', {}).get('venue_name') if m.get('match_extra') else None,
-              'provider': 'dsg'
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': 'soccer',
+                'provider': 'dsg',
+                'competition_id': f.get('sport:competition', {}).get('@id', ''),
+                'season_id': f.get('sport:season', {}).get('@id', '')
+              },
+              'title': f"{f.get('sport:competition', {}).get('name', 'Competition')} - {f.get('name', '')}",
+              'selected': True
             }
-            for m in $.get('fixtures_data', [])
+            for f in $.get('sport_schema_events', [])
           ]
       metadata:
         document_type: "'fixture'"
