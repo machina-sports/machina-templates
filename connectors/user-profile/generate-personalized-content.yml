@@ -199,6 +199,7 @@ workflow:
             "from": $.get('from_email', 'noreply@mg.machina.gg'), 
             "to": $.get('profile_email_address'),
             "subject": "Your Personalized Podcast is Ready!",
+            "html": $.get('podcast-email-html-content'),
             "text": "Your personalized podcast is ready! Click the link in the email to listen."
           }
       outputs:
