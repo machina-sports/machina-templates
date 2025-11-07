@@ -1,6 +1,6 @@
 agent:
-  name: "user-profile-agent"
-  title: "User Profile Agent"
+  name: personalized-podcast-agent
+  title: Personalized Podcast Agent
   description: "Agent to manage user profile workflows: store profile, generate personalized content, and send email"
   context-agent:
         name: $.get('name')
@@ -13,8 +13,8 @@ agent:
         mailgun_domain: $.get('mailgun_domain')
   workflows:
 
-    # Store user profile from frontend
-    - name: store-user-profile
+    # personalized-podcast-store-user-profile
+    - name: personalized-podcast-store-user-profile
       description: "Store user profile information from frontend application"
       inputs:
         name: "$.get('name')"
@@ -29,8 +29,8 @@ agent:
         profile_id: "$.get('profile_id')"
         email_address: "$.get('email_address')"
 
-    # Generate personalized content
-    - name: generate-personalized-content
+    # personalized-podcast-generate-content
+    - name: personalized-podcast-generate-content
       description: "Generate personalized podcast content based on user profile"
       condition: "$.get('email_address') is not None"
       inputs:

@@ -1,6 +1,6 @@
 prompt:
-  name: "generate-search-queries"
-  title: "Generate Search Queries"
+  name: personalized-podcast-generate-search-queries
+  title: Personalized Podcast Generate Search Queries
   description: "Generate search queries based on user's favorite sport and team"
   instructions: |
     You are a sports content specialist. Based on the user's preferences, generate highly targeted Google Search queries to retrieve up-to-date and actionable information.
@@ -25,7 +25,7 @@ prompt:
 
     Return only the queries (no explanations), ready for web search.
   schema:
-    title: GenerateSearchQueries
+    title: PersonalizedPodcastGenerateSearchQueries
     description: Extracts precise search queries for comprehensive sports data retrieval based on user preferences
     type: object
     required: [ "search_queries" ]

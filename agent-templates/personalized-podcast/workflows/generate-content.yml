@@ -1,7 +1,6 @@
 workflow:
-
-  name: generate-personalized-content
-  title: Generate Personalized Content
+  name: personalized-podcast-generate-content
+  title: Personalized Podcast Generate Content
   description: Workflow to generate personalized podcast content based on user profile stored in documents
   context-variables:
     debugger:
@@ -71,9 +70,9 @@ workflow:
         user_name: "$.get('documents', [])[0].get('value', {}).get('name') if len($.get('documents', [])) > 0 else None"
         profile_email_address: "$.get('documents', [])[0].get('value', {}).get('email_address') if len($.get('documents', [])) > 0 else None"
   
-    # Generate search queries based on user preferences
+    # personalized-podcast-generate-search-queries
     - type: prompt
-      name: generate-search-queries
+      name: personalized-podcast-generate-search-queries
       description: Generate search queries based on user's favorite sport and team
       condition: "$.get('favorite_sport') is not None and $.get('favorite_team') is not None"
       connector:
@@ -111,9 +110,9 @@ workflow:
             $.get('answer', '')
           ]
 
-    # user-profile-personalized-podcast-prompt
+    # personalized-podcast-generate-podcast-prompt
     - type: "prompt"
-      name: "user-profile-personalized-podcast-prompt"
+      name: "personalized-podcast-generate-podcast-prompt"
       description: "Generate personalized podcast script from web search results about user's favorite team."
       connector:
         name: "google-genai"
@@ -172,7 +171,7 @@ workflow:
         name: "user-profile-podcast-compose"
         command: "invoke_compose"
       inputs:
-        template_path: "'/app/machina-templates/connectors/user-profile/data/template-podcast-email.html'"
+        template_path: "'/app/machina-templates/agent-templates/personalized-podcast/data/template-podcast-email.html'"
         audio_url: "$.get('audio_path')"
         user_name: "$.get('user_name')"
         favorite_sport: "$.get('favorite_sport')"

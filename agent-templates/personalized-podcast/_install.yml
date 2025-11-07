@@ -1,0 +1,52 @@
+setup:
+  title: Personalized Podcast
+  description: AI-powered personalized podcast generator for user profiles.
+  category:
+    - fan-engagement
+  estimatedTime: 1 minute
+  features:
+    - AI Agent to generate personalized podcast content based on user profile.
+    - AI Reporter to generate personalized podcast content based on user profile.
+  integrations:
+    - machina-ai
+    - google-genai
+    - elevenlabs
+    - storage
+    - api-mailgun
+  status: available
+  value: agent-templates/personalized-podcast
+  version: 1.0.0
+
+datasets:
+
+  # agent
+
+  - type: agent
+    path: agents/podcast-agent.yml
+
+  # connectors
+  
+  - type: connector
+    path: connectors/api-mailgun.yml
+
+  - type: connector
+    path: scripts/podcast-compose.yml
+  
+  - type: connector
+    path: ../../connectors/storage/storage.yml
+
+  # prompts
+
+  - type: prompt
+    path: prompts/generate-search-queries.yml
+
+  - type: prompts
+    path: prompts/generate-podcast.yml
+
+  # workflows
+
+  - type: workflow
+    path: workflows/generate-content.yml
+
+  - type: workflow
+    path: workflows/store-user-profile.yml

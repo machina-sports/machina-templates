@@ -1,9 +1,9 @@
 prompts:
 
-  # user-profile-personalized-podcast-prompt
+  # personalized-podcast-generate-podcast-prompt
   - type: prompt
-    name: user-profile-personalized-podcast-prompt
-    title: "User Profile Personalized Podcast from Web Search"
+    name: personalized-podcast-generate-podcast-prompt
+    title: Personalized Podcast Generate Podcast from Web Search
     description: "Generate personalized podcast script based on web search results about user's favorite team - NO BASKETBALL CONTENT"
     instructions: |
       CONTEXT: This is a personalized podcast generation task for user profiles. You are creating a podcast script about {{favorite_team}} in the sport {{favorite_sport}} based on web search results.

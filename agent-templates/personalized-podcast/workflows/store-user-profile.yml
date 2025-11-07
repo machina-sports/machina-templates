@@ -1,6 +1,6 @@
 workflow:
-  name: "store-user-profile"
-  title: "Store User Profile"
+  name: personalized-podcast-store-user-profile
+  title: Personalized Podcast Store User Profile
   description: "Workflow to receive user profile inputs and store them as documents in the database"
   context-variables:
     debugger:
