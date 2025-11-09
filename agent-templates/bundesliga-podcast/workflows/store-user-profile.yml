@@ -15,11 +15,8 @@ workflow:
     sports_knowledge: "$.get('sports_knowledge')"
     email_address: "$.get('email_address')"
   outputs:
-    workflow-status: "'executed'"
     document_id: "$.get('document_id')"
-    profile_id: "$.get('profile_id')"
-    user_data: "$.get('user_data')"
-    debug_logs: "$.get('debug_logs')"
+    workflow-status: "'executed'"
   tasks:
     
     # Store user profile as document
@@ -59,3 +56,5 @@ workflow:
       metadata:
         document_type: "'user-profile'"
         source: "'user-input'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if len($.get('documents', [])) > 0 else None"

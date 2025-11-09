@@ -19,7 +19,7 @@ workflow:
     storage:
       api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
-    email_address: "$.get('email_address')"
+    document_id: "$.get('document_id')"
     max_queries: "$.get('max_queries', 3)"
     voice_id: "$.get('voice_id')"
     model_id: "$.get('model_id', 'eleven_flash_v2_5')"
@@ -29,27 +29,14 @@ workflow:
     mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
     newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-email.html')"
   outputs:
-    step_websearch_docs: $.get('search_response', [])
-    audio_content: "$.get('audio_content')"
-    audio_path: "$.get('audio_path')"
-    user_profile: "$.get('user_profile')"
-    favorite_sport: "$.get('favorite_sport')"
-    favorite_team: "$.get('favorite_team')"
-    user_name: "$.get('user_name')"
-    podcast-email-html: "$.get('podcast-email-html')"
-    podcast-email-html-path: "$.get('podcast-email-html-path')"
-    podcast-email-html-content: "$.get('podcast-email-html-content')"
-    email-sent: "$.get('email-sent')"
-    email-status: "$.get('email-status')"
-    email-id: "$.get('email-id')"
-    workflow-status: "$.get('audio_path') is not None and 'executed' or 'skipped'"
+    workflow-status: "'executed'"
   tasks:
 
     # Load user profile from documents
     - type: document
       name: load-user-profile
       description: "Load user profile from documents by email address"
-      condition: "$.get('email_address') is not None"
+      condition: "$.get('document_id') is not None"
       config:
         action: "search"
         search-limit: 1
@@ -59,8 +46,7 @@ workflow:
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       filters:
-        "metadata.user_id": "$.get('email_address')"
-        "metadata.profile_type": "'user_profile'"
+        document_id: $.get('document_id')
       inputs:
         name: "'user-profile'"
       outputs:
