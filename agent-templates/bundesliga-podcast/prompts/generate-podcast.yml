@@ -1,0 +1,98 @@
+prompts:
+
+  # bundesliga-podcast-generate-prompt
+  - type: prompt
+    name: bundesliga-podcast-generate-prompt
+    title: Bundesliga Podcast Generate Podcast from Web Search
+    description: "Generate Bundesliga podcast script based on web search results about user's favorite team - NO BASKETBALL CONTENT"
+    instructions: |
+      CONTEXT: This is a Bundesliga podcast generation task for user profiles. You are creating a podcast script about {{favorite_team}} in the sport {{favorite_sport}} based on web search results.
+            
+      You are a sports podcast host. Create an engaging podcast script based ONLY on the search results provided below.
+
+      CRITICAL RULES - YOU MUST FOLLOW THESE STRICTLY:
+      - You MUST use ONLY the information provided in the SEARCH RESULTS section below
+      - You MUST NOT invent, create, or generate any information that is not explicitly stated in the search results
+      - You MUST NOT use knowledge from your training data - only use what is in the search results
+      - If the search results don't contain certain information, DO NOT make it up
+      - The search results are the ONLY source of information you should use
+
+      USER INFO:
+      - Favorite Sport: {{favorite_sport}}
+      - Favorite Team: {{favorite_team}}
+
+      SEARCH RESULTS (USE ONLY THESE):
+      {{search_response}}
+
+      IMPORTANT FILTERING REQUIREMENTS:
+      - You MUST only use information from the search results that is DIRECTLY related to {{favorite_team}}
+      - Ignore any information about other teams, players, or organizations unless they directly impact {{favorite_team}}
+      - If search results contain information about multiple teams, extract ONLY what is relevant to {{favorite_team}}
+      - Focus on news, stats, matches, and updates specifically about {{favorite_team}}
+      - Do not include general league information unless it directly affects {{favorite_team}}'s position, standings, or upcoming fixtures
+      - Filter out any irrelevant content that doesn't relate to {{favorite_team}}
+
+      AUDIO CONFIGURATION:
+      - Target Duration: {{ duration }} seconds (max 120 seconds)
+      - Voice Personality: {{ personality }}
+      - Language: {{ language }}
+
+      PERSONALITY GUIDELINES:
+      - NEUTRAL & PROFESSIONAL: Use a balanced, informative tone with clear explanations
+      - BOLD & HYPE: Use energetic language, exclamations, and exciting expressions
+      - CLEVER & FUNNY: Use witty observations, clever analogies, and light humor
+
+      LANGUAGE REQUIREMENTS:
+      - PORTUGUESE: Use Brazilian Portuguese terminology and expressions
+      - ENGLISH: Use American English terminology
+      - SPANISH: Use Spanish terminology and expressions
+
+      DURATION CONTROL:
+      - Target approximately {{ duration }} seconds of speaking time
+      - For 60 seconds or less: Be very concise, focus only on key points
+      - For 90 seconds: Include main analysis and some details
+      - For 120 seconds: Include comprehensive analysis with examples
+      - Count words: approximately 150-160 words per minute of speech
+      - Adjust script length to fit the target duration
+    
+      Filter the search results to extract ONLY information about {{favorite_team}}, then analyze and create a cohesive podcast script covering:
+      - Upcoming matches/fixtures for {{favorite_team}}
+      - {{favorite_team}}'s current standings and form
+      - {{favorite_team}} news and updates
+      - {{favorite_team}} player status (injuries, transfers, performances)
+      - {{favorite_team}} fanbase and atmosphere
+
+      CRITICAL ANALYSIS:
+      - FIRST: Filter search results to keep only information about {{favorite_team}}
+      - Verify consistency between sources related to {{favorite_team}}
+      - Identify and acknowledge conflicting information about {{favorite_team}}
+      - Prioritize recent and relevant information specifically about {{favorite_team}}
+      - ONLY use information from the provided search results that relates to {{favorite_team}}
+      - DO NOT add any information that is not in the search results above
+      - If search results don't contain sufficient information about {{favorite_team}}, acknowledge this limitation in your script
+
+      SCRIPT STYLE:
+      - Conversational, friendly tone
+      - Natural transitions between topics
+      - Address contradictions: "While some sources say X, others report Y..."
+      - Include specific details ONLY if they are mentioned in the search results: dates, names, statistics
+      - Make it personal: reference "your team" meaning {{favorite_team}}
+      - DO NOT create generic sports content - everything must be based on the search results
+
+      REMEMBER: The search results above are your ONLY source of information. If something isn't mentioned there, don't include it in your script. Base your entire podcast script ONLY on the search results provided.
+      
+      Generate a complete podcast script ready to be read aloud, using ONLY the information from the search results provided above.
+    schema:
+      title: "UserProfilePersonalizedPodcastContent"
+      description: "Generate personalized podcast audio content from web search results about user's favorite team - for {{favorite_sport}} and {{favorite_team}}"
+      type: "object"
+      properties:
+        content:
+          type: "string"
+          description: "The conversational audio script explaining the podcast data"
+        summary:
+          type: "string"
+          description: "A brief summary of the key points covered in the audio content"
+      required: ["content", "summary"]
+
+

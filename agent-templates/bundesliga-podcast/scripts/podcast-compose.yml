@@ -1,0 +1,9 @@
+connector:
+  name: "bundesliga-podcast-compose"
+  description: "This connector composes HTML email template for Bundesliga podcast content"
+  filename: "podcast-compose.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Compose"
+      value: "invoke_compose"
+
