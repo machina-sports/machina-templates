@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{subject_line}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0;
+            text-align: center;
+            color: #ffffff;
+        }
+        .header img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            padding: 30px 20px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 15px;
+        }
+        .headline {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+            line-height: 1.3;
+            text-align: center;
+        }
+        .podcast-info {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+        .podcast-info p {
+            font-size: 16px;
+            color: #212529;
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+        .podcast-info strong {
+            color: #667eea;
+        }
+        .description {
+            font-size: 16px;
+            color: #495057;
+            line-height: 1.8;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .description p {
+            margin-bottom: 15px;
+        }
+        .audio-player-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .audio-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        .audio-title {
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .audio-duration {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .cta-button {
+            text-align: center;
+            margin: 25px 0;
+        }
+        .cta-button a {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            padding: 16px 50px;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .cta-button a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        .download-button {
+            text-align: center;
+            margin: 15px 0;
+        }
+        .download-button a {
+            display: inline-block;
+            background: #ffffff;
+            color: #667eea;
+            padding: 12px 40px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            border: 2px solid #667eea;
+            transition: all 0.2s;
+        }
+        .download-button a:hover {
+            background: #667eea;
+            color: #ffffff;
+        }
+        .footer-image {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .contact-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-top: 30px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .contact-info p {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 0;
+        }
+        .footer {
+            background-color: #212529;
+            color: #adb5bd;
+            padding: 30px 20px;
+            text-align: center;
+            font-size: 13px;
+        }
+        .footer p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #dee2e6 50%, transparent 100%);
+            margin: 20px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                border-radius: 0;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+            .headline {
+                font-size: 24px;
+            }
+            .podcast-info p {
+                font-size: 14px;
+            }
+            .cta-button a {
+                padding: 14px 40px;
+                font-size: 16px;
+            }
+            .audio-player-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- HEADER -->
+        <div class="header">
+            {{header_image_tag}}
+            <h1>{{header_title}}</h1>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <!-- Greeting -->
+            <div class="greeting">
+                Hello {{user_name}}!
+            </div>
+
+            <!-- Headline -->
+            <h2 class="headline">{{headline}}</h2>
+
+            <!-- Podcast Info -->
+            <div class="podcast-info">
+                <p><strong>Sport:</strong> {{favorite_sport}}</p>
+                <p><strong>Team:</strong> {{favorite_team}}</p>
+                {{podcast_duration_tag}}
+            </div>
+
+            <!-- Description -->
+            <div class="description">
+                {{description}}
+            </div>
+
+            <!-- Audio Player Container -->
+            <div class="audio-player-container">
+                <span class="audio-icon">🎧</span>
+                <div class="audio-title">Your Personalized Podcast</div>
+                <div class="audio-duration">Listen to your custom {{favorite_sport}} content</div>
+            </div>
+
+            <!-- Call to Action - Listen -->
+            <div class="cta-button">
+                <a href="{{audio_url}}" target="_blank">▶️ Listen Now</a>
+            </div>
+
+            <!-- Download Button -->
+            {{download_button}}
+            {{footer_image_tag}}
+
+            <div class="divider"></div>
+
+            <!-- Contact Info -->
+            <div class="contact-info">
+                <p>{{contact_info}}</p>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p><strong>Thank you for being a valued listener!</strong></p>
+            <p>© 2025 All rights reserved.</p>
+            <div class="divider" style="background: linear-gradient(90deg, transparent 0%, #495057 50%, transparent 100%); margin: 15px 40px;"></div>
+            <p>
+                You are receiving this email because you subscribed to personalized podcast content.<br>
+                <a href="#">Manage Preferences</a> | <a href="#">Unsubscribe</a>
+            </p>
+            <p style="margin-top: 15px; font-size: 11px; color: #6c757d;">
+                This is an automated email. Please do not reply directly to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+
