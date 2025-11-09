@@ -27,6 +27,7 @@ workflow:
     language: "$.get('language', 'en')"
     from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
     mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
+    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-email.html')"
   outputs:
     step_websearch_docs: $.get('search_response', [])
     audio_content: "$.get('audio_content')"
@@ -162,6 +163,18 @@ workflow:
       outputs:
         audio_path: "$.get('data')"
 
+    # downlaod the newsletter template
+    - type: connector
+      name: downlaod the newsletter template
+      description: Download the newsletter template.
+      connector:
+        name: temp-downloader
+        command: invoke_download
+      inputs:
+        image_url: $.get('newsletter_template_path')
+      outputs:
+        temp_newsletter_template_path: $.get('temp_path')
+
     # compose podcast email HTML
     - type: "connector"
       name: "compose-podcast-email"
@@ -171,12 +184,12 @@ workflow:
         name: "user-profile-podcast-compose"
         command: "invoke_compose"
       inputs:
-        template_path: "'/app/machina-templates/agent-templates/personalized-podcast/data/template-podcast-email.html'"
         audio_url: "$.get('audio_path')"
         user_name: "$.get('user_name')"
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
         podcast_duration: "$.get('duration')"
+        template_path: "$.get('temp_newsletter_template_path')"
       outputs:
         podcast-email-html-path: "$.get('output_path')"
         podcast-email-html: "$.get('html_content')"
