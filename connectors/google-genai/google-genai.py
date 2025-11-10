@@ -356,3 +356,158 @@ def invoke_search(request_data):
 
     except Exception as e:
         return {"status": False, "message": f"Exception during search: {e}"}
+
+
+def invoke_tts(request_data):
+    """
+    Text to speech using Gemini TTS via Vertex AI.
+
+    Expected request_data format:
+    {
+        "headers": {
+            "project_id": "...",                 # required
+            "credential": "{...}"               # optional JSON string or dict (service account)
+        },
+        "params": {
+            "text": "Hello, Machina Sports fans!",   # required
+            "model_name": "gemini-2.5-pro-tts",  # optional
+            "voice_name": "Orus"                      # optional - any Gemini TTS voice
+        }
+    }
+
+    Returns:
+    {
+        "status": True,
+        "data": {
+            "audio_path": "/tmp/....wav",
+            "filename": "....wav",
+            "audio_format": "WAV",
+            "text": "...",
+            "model": "...",
+            "voice_name": "...",
+        },
+        "message": "TTS audio generated successfully via Vertex AI."
+    }
+    """
+    import wave  # local import to avoid polluting global namespace
+
+    params = request_data.get("params", {}) or {}
+    headers = request_data.get("headers", {}) or {}
+
+    project_id = headers.get("project_id")
+    credential = headers.get("credential")
+
+    text = params.get("text")
+    model_name = params.get("model_name", "gemini-2.5-pro-tts")
+    voice_name = params.get("voice_name", "Orus")
+    location = params.get("location", "global")
+
+    if not project_id:
+        return {"status": False, "message": "project_id is required for Vertex AI TTS."}
+
+    if not text:
+        return {"status": False, "message": "text is required for TTS."}
+
+    # Build credentials if a service account was passed
+    credentials = None
+    try:
+        if credential:
+            if isinstance(credential, str):
+                try:
+                    credential = json.loads(credential)
+                except json.JSONDecodeError:
+                    return {
+                        "status": False,
+                        "message": "credential must be valid JSON string",
+                    }
+
+            # Use cloud-platform scope so it works with Vertex AI
+            scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+            credentials = service_account.Credentials.from_service_account_info(
+                credential, scopes=scopes
+            )
+    except Exception as e:
+        return {
+            "status": False,
+            "message": f"Exception when building credentials for TTS: {e}",
+        }
+
+    try:
+        # Init Gen AI client against Vertex AI backend
+        client_kwargs = {
+            "vertexai": True,
+            "project": project_id,
+            "location": location,
+        }
+
+        if credentials is not None:
+            client_kwargs["credentials"] = credentials
+
+        client = genai.Client(**client_kwargs)
+
+        # Call Gemini TTS
+        response = client.models.generate_content(
+            model=model_name,
+            contents=text,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=voice_name
+                        )
+                    )
+                ),
+            ),
+        )
+
+        # Extract raw PCM audio bytes
+        if (
+            not hasattr(response, "candidates")
+            or not response.candidates
+            or not response.candidates[0].content.parts
+        ):
+            return {
+                "status": False,
+                "message": "No audio candidates returned from TTS model.",
+            }
+
+        part = response.candidates[0].content.parts[0]
+        if not getattr(part, "inline_data", None) or not part.inline_data.data:
+            return {
+                "status": False,
+                "message": "TTS response did not contain inline audio data.",
+            }
+
+        audio_pcm = part.inline_data.data  # 16-bit PCM at 24kHz
+
+        # Save to a temporary WAV file (mono, 24kHz, 16-bit)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        temp_file.close()
+
+        with wave.open(temp_file.name, "wb") as wf:
+            wf.setnchannels(1)       # mono
+            wf.setsampwidth(2)       # 16-bit
+            wf.setframerate(24000)   # 24 kHz
+            wf.writeframes(audio_pcm)
+
+        filename = os.path.basename(temp_file.name)
+
+        return {
+            "status": True,
+            "data": {
+                "audio_path": temp_file.name,
+                "filename": filename,
+                "audio_format": "WAV",
+                "text": text,
+                "model": model_name,
+                "voice_name": voice_name,
+            },
+            "message": "TTS audio generated successfully via Vertex AI.",
+        }
+
+    except Exception as e:
+        return {
+            "status": False,
+            "message": f"Exception when generating TTS audio: {e}",
+        }

@@ -12,3 +12,6 @@ connector:
 
     - name: Web Search
       value: invoke_search
+
+    - name: TTS
+      value: invoke_tts
