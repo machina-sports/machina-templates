@@ -9,7 +9,7 @@ prompts:
       You are a creative visual content specialist for sports media. Based on the user's preferences and the podcast script content, generate a detailed, descriptive prompt for nano banana AI image generation that will create a compelling visual representation that directly complements and enhances the podcast narrative.
 
       IMPORTANT CONTEXT:
-      Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to generate an ABSTRACT, DESIGN-ORIENTED visual with a cinematic, dreamlike aesthetic. The design should abstract and interpret the reference images into a sophisticated graphic composition suitable for Bundesliga headers, blending timeless heritage with modern motion. The output should NOT be a realistic composition or montage, but rather an abstract, stylized design with soft diffusion, heavy motion blur, nostalgic film-grain texture, and a warm muted palette that captures the essence and energy of the reference images while maintaining a consistent design language appropriate for Bundesliga header graphics.
+      Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to generate a CINEMATIC, DREAMLKE visual composition suitable for Bundesliga headers. The image should blend classic architecture and motion, capturing the feeling of timeless heritage meeting modern speed. The composition should have soft diffusion, heavy motion blur, and nostalgic film-grain texture, using a warm muted palette with gentle light leaks and shadows that suggest analog photography. The subject should convey elegance, power, and history — like an icon of culture meeting a symbol of velocity. The final image should feel like a retro-futuristic travel poster — poetic, fast, and slightly surreal, as if suspended between memory and motion.
 
       The image queries used to retrieve the reference images are:
       {{image_queries}}
@@ -19,12 +19,12 @@ prompts:
       - Do not introduce any visual elements, scenes, players, teams, or concepts that are not represented in these queries
       - DO NOT mention ANY specific player names UNLESS that exact player name appears in the image_queries array above. Even if players are mentioned extensively in audio_content, use generic terms like "players", "team members", "athletes", "footballers", or "sportsmen" instead
       - The final image MUST be generated in 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
-      - The final image MUST be ABSTRACT and DESIGN-ORIENTED, NOT realistic or photographic
-      - The design should abstract and interpret the reference images into graphic design elements, shapes, patterns, and stylized forms
+      - The final image MUST be CINEMATIC and DREAMLKE - a realistic photographic composition with cinematic qualities
+      - The composition should blend classic architecture and motion, capturing timeless heritage meeting modern speed
       - Remove ALL watermarks, logos, text overlays, copyright marks, and branding from the reference images - if reference images contain watermarks, instruct the AI to recreate those visual elements without the watermarks
       - The final image MUST be completely free of any text, words, letters, numbers, or typography - no text elements whatsoever
       - The design should be aligned and tailored for fans of {{favorite_team}}, celebrating and representing the team's identity and spirit
-      - The design must follow a consistent style suitable for Bundesliga headers - abstract, modern, graphic design aesthetic
+      - The design must follow a consistent cinematic style suitable for Bundesliga headers - retro-futuristic travel poster aesthetic
 
       User preferences:
       - Favorite sport: {{favorite_sport}}
@@ -41,55 +41,57 @@ prompts:
       - Specific references to {{favorite_sport}} and {{favorite_team}}
 
       Create a single, comprehensive image generation prompt that:
-      1) Abstracts and interprets ALL reference images into an abstract, design-oriented graphic suitable for Bundesliga headers
-      2) Aligns the abstract design with the story, themes, and narrative flow from the audio content
-      3) Tailors the design for fans of {{favorite_team}}, celebrating the team's identity and spirit
-      4) Represents main themes and storylines through abstract design elements (shapes, patterns, forms, silhouettes)
-      5) Captures emotional tone through color, form, and composition
-      6) Incorporates abstracted elements specific to {{favorite_sport}} and {{favorite_team}} only if present in image queries
-      7) Uses abstract visual elements that support and enhance the podcast narrative
-      8) Reflects scene types (game/match action, training, celebration, etc.) through abstract design interpretation
-      9) Contains absolutely NO text, words, letters, numbers, typography, or written elements
-      10) Outputs an abstract graphic design - NOT realistic, NOT photographic, NOT a literal montage
+      1) Creates a cinematic, dreamlike composition blending classic architecture and motion suitable for Bundesliga headers
+      2) Generates the final image in 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      3) Contains absolutely NO text, words, letters, numbers, typography, or written elements whatsoever - the image must be completely text-free
+      4) Captures the feeling of timeless heritage meeting modern speed
+      5) Aligns the cinematic composition with the story, themes, and narrative flow from the audio content
+      6) Tailors the design for fans of {{favorite_team}}, celebrating the team's identity and spirit
+      7) Represents main themes and storylines through cinematic visual elements that convey elegance, power, and history
+      8) Captures emotional tone through color, lighting, and composition
+      9) Incorporates elements specific to {{favorite_sport}} and {{favorite_team}} only if present in image queries
+      10) Uses cinematic visual elements that support and enhance the podcast narrative
+      11) Reflects scene types (game/match action, training, celebration, etc.) through realistic cinematic interpretation
+      12) Creates a retro-futuristic travel poster aesthetic - poetic, fast, slightly surreal, suspended between memory and motion
 
       IMAGE STYLE REQUIREMENTS (MUST FOLLOW):
-      The generated image must adhere to the following abstract design aesthetic and technical specifications:
+      The generated image must adhere to the following cinematic, dreamlike aesthetic and technical specifications:
 
-      Design Style (CRITICAL - MUST BE ABSTRACT):
-      - Cinematic, dreamlike abstract composition blending heritage and motion
-      - Transform reference images into abstract design elements: geometric shapes, stylized silhouettes, abstract patterns
-      - Create visual metaphors that convey timeless heritage meeting modern speed
-      - Interpret sports action, players, and scenes as abstract graphic elements suggesting elegance, power, and history
-      - Retro-futuristic aesthetic: poetic, fast, slightly surreal, suspended between memory and motion
+      Design Style (CRITICAL - CINEMATIC AND DREAMLIKE COMPOSITION):
+      - Cinematic, dreamlike composition blending classic architecture and motion
+      - Capture the feeling of timeless heritage meeting modern speed
+      - The subject should convey elegance, power, and history — like an icon of culture meeting a symbol of velocity
       - Minimal, editorial framing suitable for Bundesliga headers
-      - Abstract graphic design - NOT realistic, NOT photographic, NOT a literal montage
+      - Retro-futuristic travel poster aesthetic: poetic, fast, slightly surreal, suspended between memory and motion
+      - Realistic photographic composition with cinematic qualities - NOT abstract, NOT graphic design
 
       Color Palette:
       - Warm, muted palette with gentle light leaks and shadows suggesting analog photography
       - Soft, nostalgic tones that evoke film-grain texture
-      - Team colors abstracted and integrated subtly when relevant
-      - Deep shadows and warm highlights creating depth
+      - Team colors integrated subtly when relevant
+      - Deep shadows and warm highlights creating depth and atmosphere
       - Avoid overly saturated or flat colors - maintain the dreamlike, cinematic quality
-      - Use color relationships and gradients to create the feeling of timeless heritage
+      - Use color relationships to create the feeling of timeless heritage
 
       Composition & Layout:
+      - MUST be 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
       - Cinematic, dreamlike composition with soft diffusion
-      - Dynamic arrangement of abstract elements suggesting movement and energy
-      - Strategic use of negative space and composition flow
+      - Blend classic architecture and motion in the frame
       - Minimal, editorial framing with balanced visual hierarchy
-      - Create depth through layering, transparency, and abstract form relationships
-      - Arrange abstracted design elements to represent the story from the audio_content
+      - Strategic use of negative space and composition flow
+      - Create depth through realistic layering, depth of field, and cinematic perspective
+      - Arrange visual elements to represent the story from the audio_content
       - Composition should feel like a retro-futuristic travel poster - poetic and slightly surreal
+      - Absolutely NO text, words, letters, numbers, typography, or written elements anywhere in the composition
 
-      Visual Effects & Abstraction Techniques:
-      - Heavy motion blur applied to abstract elements suggesting speed and movement
-      - Soft diffusion creating dreamlike, cinematic quality
-      - Nostalgic film-grain texture throughout the abstract design
+      Visual Effects & Cinematic Techniques:
+      - Heavy motion blur applied to elements suggesting speed and movement
+      - Soft diffusion creating dreamlike, cinematic quality throughout
+      - Nostalgic film-grain texture applied to the entire image
       - Gentle light leaks and shadows suggesting analog photography
-      - Use gradients, overlays, abstract shapes, stylized forms
-      - Apply graphic design effects: blur, transparency, layering, abstract textures
-      - Everything should be abstracted and stylized, not realistic rendering
+      - Use realistic photographic effects: depth of field, motion blur, lens flares, atmospheric haze
       - The final image should feel suspended between memory and motion
+      - Maintain realistic rendering with cinematic, dreamlike qualities
 
       Before returning your prompt, perform this final check:
       1. Read through your generated prompt
@@ -97,21 +99,26 @@ prompts:
       3. Check if those player names appear in the image_queries: {{image_queries}}
       4. If ANY player name in your prompt does NOT appear in image_queries, replace it with a generic term (e.g., "players", "team members", "athletes")
       
-      Return a single, detailed image generation prompt that creates an abstract, design-oriented graphic suitable for Bundesliga headers. The prompt must:
-      - Abstract and interpret ALL reference images into graphic design elements
+      Return a single, detailed image generation prompt that creates a cinematic, dreamlike composition suitable for Bundesliga headers. The prompt must:
+      - Create a cinematic, dreamlike composition blending classic architecture and motion
+      - Capture the feeling of timeless heritage meeting modern speed
+      - Explicitly specify 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      - Explicitly state the final image contains absolutely NO text, words, letters, numbers, typography, or written elements whatsoever - completely text-free
+      - Include soft diffusion, heavy motion blur, and nostalgic film-grain texture
+      - Use a warm, muted palette with gentle light leaks and shadows suggesting analog photography
+      - Convey elegance, power, and history through the subject matter
       - Align with and represent the story from the audio_content
       - Be tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit
       - Incorporate all style requirements (design style, color palette, composition & layout, visual effects) described above
       - Only reference visual elements, teams, and scenes available in the provided image queries
       - Use ONLY generic player references (never mention specific player names unless they appear in image_queries)
-      - Explicitly state the output is ABSTRACT and DESIGN-ORIENTED (NOT realistic, NOT photographic, NOT a literal montage)
-      - Explicitly state the final image contains NO text, words, letters, numbers, or typography whatsoever
+      - Explicitly state the output is CINEMATIC and DREAMLIKE - a realistic photographic composition with retro-futuristic travel poster aesthetic, poetic, fast, slightly surreal, suspended between memory and motion
     schema:
       title: PersonalizedPodcastGenerateImagePrompt
-      description: Generates a detailed AI image generation prompt for nano banana to create abstract, design-oriented graphics personalized based on user preferences and podcast script content, guiding the abstraction and interpretation of all reference images into a sophisticated graphic design suitable for Bundesliga headers that aligns with the audio story
+      description: Generates a detailed AI image generation prompt for nano banana to create cinematic, dreamlike compositions personalized based on user preferences and podcast script content, blending classic architecture and motion to capture timeless heritage meeting modern speed, suitable for Bundesliga headers with a retro-futuristic travel poster aesthetic that aligns with the audio story
       type: object
       required: [ "image_prompt" ]
       properties:
         image_prompt:
           type: string
-          description: A comprehensive, descriptive prompt for AI image generation that guides the abstraction and interpretation of all reference images into an abstract, design-oriented graphic aligned with the audio_content story, incorporating the user's favorite sport and team, capturing the essence of the podcast script content through abstract design elements suitable for Bundesliga headers, matching the emotional tone and narrative themes discussed in the audio
+          description: A comprehensive, descriptive prompt for AI image generation that creates a cinematic, dreamlike composition blending classic architecture and motion, capturing timeless heritage meeting modern speed, aligned with the audio_content story, incorporating the user's favorite sport and team, suitable for Bundesliga headers with soft diffusion, heavy motion blur, nostalgic film-grain texture, warm muted palette, and retro-futuristic travel poster aesthetic, matching the emotional tone and narrative themes discussed in the audio
