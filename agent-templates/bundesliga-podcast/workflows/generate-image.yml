@@ -138,6 +138,7 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
+        audio_content: $.get('audio_content')
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
       outputs:
