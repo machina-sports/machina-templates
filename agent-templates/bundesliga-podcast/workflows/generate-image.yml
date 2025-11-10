@@ -168,6 +168,22 @@ workflow:
         data: "$"
         image_path: "$.get('image_path')"
 
+    # transform-image-to-landscape
+    - type: connector
+      name: transform-image-to-landscape
+      description: "Transform the generated image to landscape orientation."
+      condition: "$.get('image_path') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_image"
+      inputs:
+        image_paths: "[$.get('image_path')]"
+        model_name: "'gemini-2.5-flash-image-preview'"
+        prompt: "'transform this image in landscape'"
+      outputs:
+        data: "$"
+        landscape_image_path: "$.get('image_path')"
+
     # upload image to google storage
     - type: connector
       name: upload-image-to-google-storage
@@ -181,6 +197,20 @@ workflow:
         image_path: $.get('image_path')
       outputs:
         uploaded_image_path: "$.get('url')"
+
+    # upload landscape image to google storage
+    - type: connector
+      name: upload-landscape-image-to-google-storage
+      description: Upload the landscape image to Google Storage.
+      condition: $.get('landscape_image_path') is not None
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        api_key: $.get('api_key')
+        image_path: $.get('landscape_image_path')
+      outputs:
+        uploaded_landscape_image_path: "$.get('url')"
 
     # version-control-update
     - type: document
@@ -199,5 +229,6 @@ workflow:
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
             "image_path": $.get('uploaded_image_path'),
+            "landscape_image_path": $.get('uploaded_landscape_image_path'),
           }
       
