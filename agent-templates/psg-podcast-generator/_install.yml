@@ -1,0 +1,38 @@
+setup:
+  title: "PSG Podcast Generator"
+  description: AI-powered podcast generator for PSG.
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to generate PSG podcasts.
+    - AI Reporter to generate PSG podcasts.
+  integrations:
+    - elevenlabs
+    - google-genai
+    - machina-ai
+    - machina-ai-fast
+    - storage
+  status: available
+  value: "agent-templates/psg-podcast-generator"
+  version: 1.0.0
+
+datasets:
+
+  - type: "agent"
+    path: "thread-agent.yml"
+
+  - type: "workflow"
+    path: "thread-executor.yml"
+
+  - type: "prompts"
+    path: "_prompts.yml"
+
+  - type: "workflow"
+    path: "generate-content.yml"
+
+  - type: "workflow"
+    path: "generate-speech.yml"
+
+  - type: "connector"
+    path: "../../connectors/storage/storage.yml"
