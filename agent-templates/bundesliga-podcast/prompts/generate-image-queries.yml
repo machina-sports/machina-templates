@@ -4,41 +4,61 @@ prompts:
   - type: prompt
     name: bundesliga-podcast-generate-image-queries
     title: Bundesliga Podcast Generate Image Queries
-    description: "Generate image queries based on user's favorite team"
+    description: "Generate personalized image queries based on user's favorite team and podcast script content"
     instructions: |
-      You are a sports content specialist. Based on the user's preferences, generate highly targeted image queries to retrieve up-to-date and actionable information.
+      You are a sports content specialist. Based on the user's preferences and the podcast script content, generate highly targeted image queries to retrieve up-to-date and actionable information that will complement the podcast audio.
 
       User preferences:
       - Favorite sport: {{favorite_sport}}
       - Favorite team: {{favorite_team}}
 
-      Focus your queries on:
-      1) Images of {{favorite_team}} players
-      2) Images of {{favorite_team}} stadium
-      3) Images of {{favorite_team}} training
-      4) Images of {{favorite_team}} matches
-      5) Images of {{favorite_team}} fans
-      6) Images of {{favorite_team}} coach
-      7) Images of {{favorite_team}} board/management
+      Podcast script content:
+      {{audio_content}}
+
+      Analyze the podcast script above to identify:
+      - Specific players mentioned in the script
+      - Key events, matches, or moments discussed
+      - Important locations (stadiums, training grounds) referenced
+      - Notable figures (coaches, management) highlighted
+      - Current storylines or narratives featured
+
+      Generate image queries that:
+      1) Directly relate to the specific content discussed in the podcast script
+      2) Complement the narrative and topics covered in the audio
+      3) Focus on the most relevant visual elements mentioned in the script
+      4) Prioritize specific players, events, or moments that are highlighted in the podcast
+
+      Focus areas (prioritize based on what's mentioned in the script):
+      - Images of specific {{favorite_team}} players mentioned in the podcast
+      - Images of {{favorite_team}} stadium or venues referenced
+      - Images of {{favorite_team}} training sessions if discussed
+      - Images of {{favorite_team}} matches or events highlighted in the script
+      - Images of {{favorite_team}} fans if fan culture is mentioned
+      - Images of {{favorite_team}} coach or management if discussed
+      - Images related to specific storylines or news items covered in the podcast
 
       Rules:
       - Generate {{max_queries}} short, specific image queries (2-3 total)
+      - Personalize queries based on the actual content of the podcast script, not just generic team information
+      - Include specific player names, match dates, or events mentioned in the script when relevant
       - Include the club name and, when useful, the competition/season and the current year
-      - Use terms like "{{favorite_team}} players", "{{favorite_team}} stadium", "{{favorite_team}} training", "{{favorite_team}} matches", "{{favorite_team}} fans", "{{favorite_team}} coach", "{{favorite_team}} board/management"
-      - Avoid generic image queries; be concise and action-oriented
+      - If the script mentions specific players, prioritize queries for those players
+      - If the script focuses on a particular match or event, create queries related to that specific event
+      - Avoid generic image queries; be concise, action-oriented, and directly tied to the podcast content
+      - Ensure queries will retrieve images that visually support the podcast narrative
 
       Return only the image queries (no explanations), ready for image search.
     schema:
       title: PersonalizedPodcastGenerateImageQueries
-      description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences
+      description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences and podcast script content
       type: object
       required: [ "image_queries" ]
       properties:
         image_queries:
           type: array
-          description: Array of targeted image queries for retrieving relevant sports data and insights about the user's favorite sport and team
+          description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team
           minItems: 1
           maxItems: 3
           items:
             type: string
-            description: Specific image query focused on retrieving actionable sports information about the user's favorite sport and team (e.g., "{{favorite_team}} players" not just "{{favorite_sport}} players")
+            description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script)
