@@ -4,54 +4,37 @@ prompts:
   - type: prompt
     name: bundesliga-podcast-generate-image-queries
     title: Bundesliga Podcast Generate Image Queries
-    description: "Generate personalized image queries based on user's favorite team and podcast script content"
+    description: "Generate image queries for favorite team's logo, stadium, and mascot"
     instructions: |
-      You are a sports content specialist. Based on the user's preferences and the podcast script content, generate highly targeted image queries to retrieve up-to-date and actionable information that will complement the podcast audio.
+      You are a sports content specialist. Generate exactly 3 image queries for the user's favorite team.
 
       User preferences:
       - Favorite sport: {{favorite_sport}}
       - Favorite team: {{favorite_team}}
 
-      Podcast script content:
-      {{audio_content}}
-
-      Analyze the podcast script above to identify:
-      - Specific players mentioned in the script
-      - Key events, matches, or moments discussed
-      - Important locations (stadiums, training grounds) referenced
-      - Notable figures (coaches, management) highlighted
-      - Current storylines or narratives featured
-
-      Generate image queries that:
-      1) Are extracted directly from the specific content discussed in the podcast script
-      2) Reflect only the actual topics, players, events, and storylines mentioned in the audio content
-      3) Prioritize the most prominent visual elements that are explicitly referenced in the script
-      4) Focus on concrete details from the audio content (specific player names, match dates, events, locations, etc.)
+      Generate exactly 3 image queries for {{favorite_team}}:
+      1) Team logo
+      2) Team stadium
+      3) Team mascot
 
       Rules:
-      - Extract queries exclusively from what is actually mentioned in the podcast script content
-      - Generate short, specific image queries based on concrete details found in the audio content
-      - Only include queries for players, events, locations, or topics that are explicitly referenced in the script
-      - Include specific player names, match dates, events, or locations only if they appear in the audio content
-      - Include the club name and, when useful, the competition/season and the current year
-      - Do not create queries based on assumptions or generic team information - only use what's in the script
-      - If the script doesn't mention specific players, don't create player queries
-      - If the script doesn't mention specific matches, don't create match queries
-      - Be concise, action-oriented, and directly tied to the actual podcast content
-      - Ensure queries will retrieve images that visually support the specific narrative told in the podcast
+      - Generate exactly 3 queries: one for the logo, one for the stadium, and one for the mascot
+      - Include the team name in each query
+      - Be concise and specific
+      - Format queries as: "[team name] logo", "[team name] stadium", "[team name] mascot"
 
       Return only the image queries (no explanations), ready for image search.
     schema:
       title: PersonalizedPodcastGenerateImageQueries
-      description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences and podcast script content
+      description: Generates exactly 3 image queries for the favorite team's logo, stadium, and mascot
       type: object
       required: [ "image_queries" ]
       properties:
         image_queries:
           type: array
-          description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team
+          description: Array of exactly 3 image queries for the favorite team's logo, stadium, and mascot
           minItems: 3
-          maxItems: 5
+          maxItems: 3
           items:
             type: string
-            description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script)
+            description: Image query for the favorite team's logo, stadium, or mascot (e.g., "[team name] logo", "[team name] stadium", "[team name] mascot")
