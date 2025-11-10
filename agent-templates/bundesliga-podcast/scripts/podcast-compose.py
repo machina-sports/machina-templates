@@ -20,6 +20,9 @@ def invoke_compose(request_data):
                 - user-data: User data object containing 'id' for podcast page URL generation
                 - favorite_sport: User's favorite sport
                 - favorite_team: User's favorite team
+                - language: User's preferred language
+                - podcast_mood_tone: User's preferred podcast mood/tone
+                - sports_knowledge: User's sports knowledge level
                 - header_image: Optional header image path/URL (fallback if image_path not provided)
                 - footer_image: Optional footer image path/URL
                 - podcast_duration: Optional podcast duration in seconds
@@ -39,6 +42,9 @@ def invoke_compose(request_data):
     user_name = params.get("user_name")
     favorite_sport = params.get("favorite_sport")
     favorite_team = params.get("favorite_team")
+    language = params.get("language")
+    podcast_mood_tone = params.get("podcast_mood_tone")
+    sports_knowledge = params.get("sports_knowledge")
     header_image = params.get("header_image")
     footer_image = params.get("footer_image")
     podcast_duration = params.get("podcast_duration")
@@ -62,6 +68,12 @@ def invoke_compose(request_data):
         variables['favorite_sport'] = favorite_sport
     if favorite_team:
         variables['favorite_team'] = favorite_team
+    if language:
+        variables['language'] = language
+    if podcast_mood_tone:
+        variables['podcast_mood_tone'] = podcast_mood_tone
+    if sports_knowledge:
+        variables['sports_knowledge'] = sports_knowledge
     if audio_url:
         variables['audio_url'] = audio_url
     if podcast_duration:

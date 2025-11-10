@@ -54,6 +54,7 @@ workflow:
         favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
         language: "$.get('documents', [])[0].get('value', {}).get('language') if len($.get('documents', [])) > 0 else None"
         podcast_mood_tone: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone') if len($.get('documents', [])) > 0 else None"
+        sports_knowledge: "$.get('documents', [])[0].get('value', {}).get('sports_knowledge') if len($.get('documents', [])) > 0 else None"
         user_name: "$.get('documents', [])[0].get('value', {}).get('name') if len($.get('documents', [])) > 0 else None"
 
     # download the newsletter template
@@ -83,7 +84,10 @@ workflow:
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
         image_path: "$.get('image_path', '')"
+        language: "$.get('language')"
         podcast_duration: "$.get('duration')"
+        podcast_mood_tone: "$.get('podcast_mood_tone')"
+        sports_knowledge: "$.get('sports_knowledge')"
         template_path: "$.get('temp_newsletter_template_path')"
         user_name: "$.get('user_name')"
       outputs:

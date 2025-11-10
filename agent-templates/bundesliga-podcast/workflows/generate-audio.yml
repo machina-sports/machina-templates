@@ -96,7 +96,6 @@ workflow:
         user-profile: |
           {
             **$.get('document-value', {}),
-            "audio_content": $.get('audio_content'),
             "audio_path": $.get('uploaded_audio_path'),
           }
       

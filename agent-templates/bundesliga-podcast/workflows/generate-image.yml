@@ -51,6 +51,7 @@ workflow:
         document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
         favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
         favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
+        audio_content: "$.get('documents', [])[0].get('value', {}).get('audio_content') if len($.get('documents', [])) > 0 else None"
   
     # bundesliga-podcast-generate-image-queries
     - type: prompt
@@ -64,6 +65,7 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
+        audio_content: $.get('audio_content')
         favorite_sport: $.get('favorite_sport')
         favorite_team: $.get('favorite_team')
       outputs:
