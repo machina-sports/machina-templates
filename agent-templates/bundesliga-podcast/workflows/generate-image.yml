@@ -104,7 +104,7 @@ workflow:
             "source": $.get('source'),
           }
       outputs:
-        image_urls: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:3] if $.get('results', [])[0].get('content') else []
+        image_urls: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:5] if $.get('results', [])[0].get('content') else []
 
     # save-to-tmp
     - type: connector
