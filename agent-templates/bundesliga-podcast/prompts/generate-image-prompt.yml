@@ -9,7 +9,7 @@ prompts:
       You are a creative visual content specialist for sports media. Based on the user's preferences and the podcast script content, generate a detailed, descriptive prompt for nano banana AI image generation that will create a compelling visual representation that directly complements and enhances the podcast narrative.
 
       IMPORTANT CONTEXT:
-      Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to compose all reference images into a well-designed, aesthetic, sophisticated montage that aligns with and tells the story from the audio content.
+      Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to generate an ABSTRACT, DESIGN-ORIENTED visual with a cinematic, dreamlike aesthetic. The design should abstract and interpret the reference images into a sophisticated graphic composition suitable for Bundesliga headers, blending timeless heritage with modern motion. The output should NOT be a realistic composition or montage, but rather an abstract, stylized design with soft diffusion, heavy motion blur, nostalgic film-grain texture, and a warm muted palette that captures the essence and energy of the reference images while maintaining a consistent design language appropriate for Bundesliga header graphics.
 
       The image queries used to retrieve the reference images are:
       {{image_queries}}
@@ -19,9 +19,12 @@ prompts:
       - Do not introduce any visual elements, scenes, players, teams, or concepts that are not represented in these queries
       - DO NOT mention ANY specific player names UNLESS that exact player name appears in the image_queries array above. Even if players are mentioned extensively in audio_content, use generic terms like "players", "team members", "athletes", "footballers", or "sportsmen" instead
       - The final image MUST be generated in 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      - The final image MUST be ABSTRACT and DESIGN-ORIENTED, NOT realistic or photographic
+      - The design should abstract and interpret the reference images into graphic design elements, shapes, patterns, and stylized forms
       - Remove ALL watermarks, logos, text overlays, copyright marks, and branding from the reference images - if reference images contain watermarks, instruct the AI to recreate those visual elements without the watermarks
       - The final image MUST be completely free of any text, words, letters, numbers, or typography - no text elements whatsoever
       - The design should be aligned and tailored for fans of {{favorite_team}}, celebrating and representing the team's identity and spirit
+      - The design must follow a consistent style suitable for Bundesliga headers - abstract, modern, graphic design aesthetic
 
       User preferences:
       - Favorite sport: {{favorite_sport}}
@@ -38,70 +41,55 @@ prompts:
       - Specific references to {{favorite_sport}} and {{favorite_team}}
 
       Create a single, comprehensive image generation prompt that:
-      1) Guides the composition of ALL reference images into a well-designed, aesthetic, sophisticated montage
-      2) Aligns the montage composition with the story, themes, and narrative flow from the audio content
-      3) Creates a design tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit
-      4) Visually represents the main themes and storylines from the podcast script
-      5) Captures the emotional tone and atmosphere discussed in the audio
-      6) Incorporates elements specific to {{favorite_sport}} and {{favorite_team}} only if present in the image queries
-      7) Uses visual elements that directly support and enhance the podcast narrative
-      8) Reflects the type of scene described (game/match action, training, celebration, etc.)
-      9) Ensures the final image contains NO text, words, letters, numbers, or typography whatsoever
-
-      Focus areas (prioritize based on podcast content):
-      - Create a design that resonates with and celebrates fans of {{favorite_team}}
-      - If the script discusses a game/match, visualize relevant {{favorite_sport}} action
-      - Incorporate visual elements that represent {{favorite_team}} when relevant and present in image queries
-      - Match the visual mood to the narrative tone (celebratory, intense, dramatic, etc.)
-      - If venue/arena/stadium atmosphere is mentioned, emphasize crowd and venue
-
-      Rules for image generation prompts:
-      - Create ONE detailed, descriptive prompt
-      - Guide the AI to compose ALL reference images into a well-designed, aesthetic, sophisticated montage
-      - The montage must align with and tell the story from the audio_content, with visual flow that matches the narrative progression
-      - The design must be tailored for fans of {{favorite_team}}, celebrating the team's identity, spirit, and fan culture
-      - Use sophisticated design principles: thoughtful composition, balanced layout, visual hierarchy, and seamless integration of all reference images
-      - Use vivid, visual language describing composition, lighting, mood, and style that matches the podcast narrative
-      - Match the visual mood to the emotional tone of the podcast (energetic, contemplative, celebratory, intense, etc.)
-      - The final image should be a cohesive, well-designed montage that composes all reference images in a sophisticated, aesthetic way
-      - Ensure the generated image will visually complement and enhance the podcast content
-      - The final image must contain absolutely NO text, words, letters, numbers, typography, or written elements of any kind
+      1) Abstracts and interprets ALL reference images into an abstract, design-oriented graphic suitable for Bundesliga headers
+      2) Aligns the abstract design with the story, themes, and narrative flow from the audio content
+      3) Tailors the design for fans of {{favorite_team}}, celebrating the team's identity and spirit
+      4) Represents main themes and storylines through abstract design elements (shapes, patterns, forms, silhouettes)
+      5) Captures emotional tone through color, form, and composition
+      6) Incorporates abstracted elements specific to {{favorite_sport}} and {{favorite_team}} only if present in image queries
+      7) Uses abstract visual elements that support and enhance the podcast narrative
+      8) Reflects scene types (game/match action, training, celebration, etc.) through abstract design interpretation
+      9) Contains absolutely NO text, words, letters, numbers, typography, or written elements
+      10) Outputs an abstract graphic design - NOT realistic, NOT photographic, NOT a literal montage
 
       IMAGE STYLE REQUIREMENTS (MUST FOLLOW):
-      The generated image must adhere to the following aesthetic and technical specifications:
+      The generated image must adhere to the following abstract design aesthetic and technical specifications:
 
-      Aesthetic:
-      - Sophisticated, well-designed montage composition
-      - Edgy, cinematic, slightly retro-futuristic feel
-      - Deep shadows and high contrast throughout
-      - Raw, authentic feel over polished perfection
-      - Film photography aesthetic with subtle grain
-      - Thoughtful composition with a sense of 'cool' without being overtly commercial
-      - Moody lighting that enhances the narrative atmosphere
-      - Seamless integration of all reference images into a cohesive visual story
+      Design Style (CRITICAL - MUST BE ABSTRACT):
+      - Cinematic, dreamlike abstract composition blending heritage and motion
+      - Transform reference images into abstract design elements: geometric shapes, stylized silhouettes, abstract patterns
+      - Create visual metaphors that convey timeless heritage meeting modern speed
+      - Interpret sports action, players, and scenes as abstract graphic elements suggesting elegance, power, and history
+      - Retro-futuristic aesthetic: poetic, fast, slightly surreal, suspended between memory and motion
+      - Minimal, editorial framing suitable for Bundesliga headers
+      - Abstract graphic design - NOT realistic, NOT photographic, NOT a literal montage
 
       Color Palette:
-      - Rich, desaturated yet vibrant tones
-      - Deep blacks and cool grays (from equipment, surfaces, and environments)
-      - Warm, muted highlights (e.g., arena/stadium lights, skin tones, uniforms)
-      - Emphasize textural contrast on surfaces, equipment, and athletic gear
-      - Avoid overly saturated or flat colors
+      - Warm, muted palette with gentle light leaks and shadows suggesting analog photography
+      - Soft, nostalgic tones that evoke film-grain texture
+      - Team colors abstracted and integrated subtly when relevant
+      - Deep shadows and warm highlights creating depth
+      - Avoid overly saturated or flat colors - maintain the dreamlike, cinematic quality
+      - Use color relationships and gradients to create the feeling of timeless heritage
 
-      Camera Technique:
-      - Sophisticated montage composition with visual hierarchy and balanced layout
-      - Dynamic composition capturing pivotal moments of high-intensity action
-      - Aggressive, close-up angles (e.g., low angles, tight shots on key action, through equipment or barriers when applicable)
-      - Utilize subtle motion blur to convey explosive power, speed, and movement
-      - Keep central figures and key subjects sharp and focused
-      - Use creative perspectives that enhance the drama and intensity of the scene
-      - Arrange all reference images in a way that tells the story from the audio_content
+      Composition & Layout:
+      - Cinematic, dreamlike composition with soft diffusion
+      - Dynamic arrangement of abstract elements suggesting movement and energy
+      - Strategic use of negative space and composition flow
+      - Minimal, editorial framing with balanced visual hierarchy
+      - Create depth through layering, transparency, and abstract form relationships
+      - Arrange abstracted design elements to represent the story from the audio_content
+      - Composition should feel like a retro-futuristic travel poster - poetic and slightly surreal
 
-      Lighting:
-      - Hard, directional lighting creating dramatic shadows and highlights
-      - Emphasize athleticism, movement, and the visceral nature of sports action
-      - Use strong spotlights or a single powerful light source to sculpt athletes and add to the moody atmosphere
-      - Create depth through strategic use of light and shadow
-      - Avoid flat, even illumination - the lighting should be dramatic and purposeful
+      Visual Effects & Abstraction Techniques:
+      - Heavy motion blur applied to abstract elements suggesting speed and movement
+      - Soft diffusion creating dreamlike, cinematic quality
+      - Nostalgic film-grain texture throughout the abstract design
+      - Gentle light leaks and shadows suggesting analog photography
+      - Use gradients, overlays, abstract shapes, stylized forms
+      - Apply graphic design effects: blur, transparency, layering, abstract textures
+      - Everything should be abstracted and stylized, not realistic rendering
+      - The final image should feel suspended between memory and motion
 
       Before returning your prompt, perform this final check:
       1. Read through your generated prompt
@@ -109,13 +97,21 @@ prompts:
       3. Check if those player names appear in the image_queries: {{image_queries}}
       4. If ANY player name in your prompt does NOT appear in image_queries, replace it with a generic term (e.g., "players", "team members", "athletes")
       
-      Return a single, detailed image generation prompt that creates a well-designed, aesthetic, sophisticated montage composing ALL reference images in a way that aligns with and tells the story from the audio_content. The montage should be tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit. The prompt must explicitly incorporate all image style requirements (aesthetic, color palette, camera technique, and lighting) described above, must only reference visual elements, teams, and scenes available in the provided image queries, must use ONLY generic player references and NEVER mention specific player names unless they explicitly appear in the image_queries array above, must emphasize sophisticated design principles with seamless integration of all reference images, and must explicitly instruct that the final image contains NO text, words, letters, numbers, or typography whatsoever.
+      Return a single, detailed image generation prompt that creates an abstract, design-oriented graphic suitable for Bundesliga headers. The prompt must:
+      - Abstract and interpret ALL reference images into graphic design elements
+      - Align with and represent the story from the audio_content
+      - Be tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit
+      - Incorporate all style requirements (design style, color palette, composition & layout, visual effects) described above
+      - Only reference visual elements, teams, and scenes available in the provided image queries
+      - Use ONLY generic player references (never mention specific player names unless they appear in image_queries)
+      - Explicitly state the output is ABSTRACT and DESIGN-ORIENTED (NOT realistic, NOT photographic, NOT a literal montage)
+      - Explicitly state the final image contains NO text, words, letters, numbers, or typography whatsoever
     schema:
       title: PersonalizedPodcastGenerateImagePrompt
-      description: Generates a detailed AI image generation prompt for nano banana to create compelling sports visuals personalized based on user preferences and podcast script content, guiding the composition of all reference images into a well-designed, aesthetic, sophisticated montage that aligns with the audio story
+      description: Generates a detailed AI image generation prompt for nano banana to create abstract, design-oriented graphics personalized based on user preferences and podcast script content, guiding the abstraction and interpretation of all reference images into a sophisticated graphic design suitable for Bundesliga headers that aligns with the audio story
       type: object
       required: [ "image_prompt" ]
       properties:
         image_prompt:
           type: string
-          description: A comprehensive, descriptive prompt for AI image generation that guides the composition of all reference images into a well-designed, aesthetic, sophisticated montage aligned with the audio_content story, incorporating the user's favorite sport and team, capturing the essence of the podcast script content with relevant sports imagery, matching the emotional tone and narrative themes discussed in the audio
+          description: A comprehensive, descriptive prompt for AI image generation that guides the abstraction and interpretation of all reference images into an abstract, design-oriented graphic aligned with the audio_content story, incorporating the user's favorite sport and team, capturing the essence of the podcast script content through abstract design elements suitable for Bundesliga headers, matching the emotional tone and narrative themes discussed in the audio
