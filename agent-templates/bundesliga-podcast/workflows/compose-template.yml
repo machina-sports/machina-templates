@@ -78,6 +78,8 @@ workflow:
         command: "invoke_compose"
       inputs:
         audio_url: "$.get('audio_path')"
+        document_id: "$.get('document_id')"
+        podcast_base_url: "$.get('podcast_base_url', 'https://podcast.machina.gg')"
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
         image_path: "$.get('image_path', '')"

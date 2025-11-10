@@ -14,10 +14,11 @@ workflow:
       credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
       project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    google-storage:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
+      bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
-    storage:
-      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     document_id: "$.get('document_id')"
     model_id: "$.get('model_id', 'eleven_flash_v2_5')"
@@ -70,15 +71,15 @@ workflow:
     # store audio
     - type: connector
       name: store audio
+      description: "Upload audio file to Google Cloud Storage and get public URL"
       condition: "$.get('full_filepath') is not None"
       connector:
-        name: "storage"
-        command: "store_image"
+        name: "google-storage"
+        command: "invoke_upload"
       inputs:
-        final_filename: "$.get('final_filename')"
-        full_filepath: "$.get('full_filepath')"
+        image_path: "$.get('full_filepath')"
       outputs:
-        audio_path: "$.get('data')"
+        uploaded_audio_path: "$.get('url')"
 
     # version-control-update
     - type: document
@@ -96,6 +97,6 @@ workflow:
           {
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
-            "audio_path": $.get('audio_path'),
+            "audio_path": $.get('uploaded_audio_path'),
           }
       

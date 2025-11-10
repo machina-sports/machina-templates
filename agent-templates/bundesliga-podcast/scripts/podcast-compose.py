@@ -14,9 +14,10 @@ def invoke_compose(request_data):
             params:
                 - template_path: Path to HTML template (URL or local file path)
                 - podcast-content: Podcast content with all fields
-                - audio_url: URL or path to the podcast audio file
+                - audio_url: URL or path to the podcast audio file (overridden by podcast page if user-data.id exists)
                 - image_path: Primary header image path/URL (takes precedence over header_image)
                 - user_name: Name of the user
+                - user-data: User data object containing 'id' for podcast page URL generation
                 - favorite_sport: User's favorite sport
                 - favorite_team: User's favorite team
                 - header_image: Optional header image path/URL (fallback if image_path not provided)
@@ -32,6 +33,8 @@ def invoke_compose(request_data):
     template_path = params.get("template_path")
     podcast_content = params.get("podcast-content", {})
     audio_url = params.get("audio_url")
+    document_id = params.get("document_id")
+    podcast_base_url = params.get("podcast_base_url", "https://podcast.machina.gg")
     image_path = params.get("image_path")
     user_name = params.get("user_name")
     favorite_sport = params.get("favorite_sport")
@@ -39,6 +42,7 @@ def invoke_compose(request_data):
     header_image = params.get("header_image")
     footer_image = params.get("footer_image")
     podcast_duration = params.get("podcast_duration")
+    user_data = params.get("user-data", {}) or params.get("user_data", {})
     
     if not template_path:
         return {"status": "error", "message": "template_path is required."}
@@ -53,6 +57,7 @@ def invoke_compose(request_data):
     # Add user information
     if user_name:
         variables['user_name'] = user_name
+        variables['name'] = user_name  # Also set 'name' for template compatibility
     if favorite_sport:
         variables['favorite_sport'] = favorite_sport
     if favorite_team:
@@ -61,6 +66,17 @@ def invoke_compose(request_data):
         variables['audio_url'] = audio_url
     if podcast_duration:
         variables['podcast_duration'] = str(podcast_duration)
+    
+    # Create podcast page URL from document_id
+    # Support both new document_id parameter and legacy user_data.id
+    user_id = document_id or (user_data.get("id") if isinstance(user_data, dict) else None)
+    if user_id:
+        variables['podcast_page_url'] = f"{podcast_base_url}/podcast/{user_id}"
+        variables['podcast_url'] = variables['podcast_page_url']  # New variable name for template
+        variables['audio_url'] = variables['podcast_page_url']  # Override audio_url with page URL (legacy)
+    else:
+        variables['podcast_page_url'] = audio_url or ""
+        variables['podcast_url'] = audio_url or ""  # New variable name for template
     
     # Add optional images
     # Use image_path as primary source for header, fallback to header_image
@@ -88,11 +104,19 @@ def invoke_compose(request_data):
     else:
         variables['podcast_duration_tag'] = ""
     
-    # Add download button
-    if audio_url:
-        variables['download_button'] = f'<div class="download-button"><a href="{audio_url}" download>📥 Download Podcast</a></div>'
+    # Add podcast button (links to podcast page if user_id exists, otherwise direct download)
+    if variables.get('podcast_page_url'):
+        if user_id:
+            # Link to podcast page
+            variables['download_button'] = f'<div class="download-button"><a href="{variables["podcast_page_url"]}">🎧 Listen to Your Podcast</a></div>'
+            variables['podcast_button'] = f'<a href="{variables["podcast_page_url"]}">Listen Now</a>'
+        else:
+            # Direct download if no user_id
+            variables['download_button'] = f'<div class="download-button"><a href="{variables["podcast_page_url"]}" download>📥 Download Podcast</a></div>'
+            variables['podcast_button'] = f'<a href="{variables["podcast_page_url"]}" download>Download</a>'
     else:
         variables['download_button'] = ""
+        variables['podcast_button'] = ""
     
     # Set default values if not provided
     if 'subject_line' not in variables:

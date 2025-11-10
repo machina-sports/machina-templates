@@ -14,7 +14,9 @@ def invoke_compose(request_data):
             params:
                 - template_path: Path to HTML template (URL or local file path)
                 - podcast-content: Podcast content with all fields
-                - audio_url: URL or path to the podcast audio file
+                - document_id: Document ID for generating podcast page URL (required for podcast access)
+                - podcast_base_url: Base URL for podcast pages (default: https://podcast.machina.gg)
+                - audio_url: Optional audio URL (for reference only, not used in email links)
                 - user_name: Name of the user
                 - favorite_sport: User's favorite sport
                 - favorite_team: User's favorite team
@@ -31,6 +33,8 @@ def invoke_compose(request_data):
     template_path = params.get("template_path")
     podcast_content = params.get("podcast-content", {})
     audio_url = params.get("audio_url")
+    document_id = params.get("document_id")
+    podcast_base_url = params.get("podcast_base_url", "https://podcast.machina.gg")
     user_name = params.get("user_name")
     favorite_sport = params.get("favorite_sport")
     favorite_team = params.get("favorite_team")
@@ -60,6 +64,12 @@ def invoke_compose(request_data):
     if podcast_duration:
         variables['podcast_duration'] = str(podcast_duration)
     
+    # Create podcast_url from document_id and base URL
+    if document_id:
+        variables['podcast_url'] = f"{podcast_base_url}/podcast/{document_id}"
+    else:
+        variables['podcast_url'] = "#"
+    
     # Add optional images
     if header_image:
         variables['header_image'] = header_image
@@ -81,11 +91,13 @@ def invoke_compose(request_data):
     else:
         variables['podcast_duration_tag'] = ""
     
-    # Add download button
-    if audio_url:
-        variables['download_button'] = f'<div class="download-button"><a href="{audio_url}" download>📥 Download Podcast</a></div>'
+    # Add podcast button - links to podcast page
+    if document_id:
+        variables['download_button'] = f'<div class="download-button"><a href="{variables["podcast_url"]}">🎧 Listen to Your Podcast</a></div>'
+        variables['podcast_button'] = f'<a href="{variables["podcast_url"]}">Listen Now</a>'
     else:
         variables['download_button'] = ""
+        variables['podcast_button'] = ""
     
     # Set default values if not provided
     if 'subject_line' not in variables:
