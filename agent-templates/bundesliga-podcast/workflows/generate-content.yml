@@ -107,6 +107,7 @@ workflow:
         audio_content: "$.get('content')"
         podcast_headline: "$.get('headline')"
         podcast_summary: "$.get('summary')"
+        newsletter_markdown: "$.get('newsletter-markdown')"
 
     # bundesliga-podcast-translate-prompt
     - type: prompt
@@ -123,12 +124,14 @@ workflow:
         content: "$.get('audio_content')"
         headline: "$.get('podcast_headline')"
         summary: "$.get('podcast_summary')"
+        newsletter-markdown: "$.get('newsletter_markdown')"
         language: "$.get('document-value', {}).get('language', 'en')"
         user_name: "$.get('document-value', {}).get('name')"
       outputs:
         audio_content: "$.get('content')"
         podcast_headline: "$.get('headline')"
         podcast_summary: "$.get('summary')"
+        newsletter_markdown: "$.get('newsletter-markdown')"
 
     # version-control-update
     - type: document
@@ -148,5 +151,6 @@ workflow:
             "audio_content": $.get('audio_content'),
             "podcast_headline": $.get('podcast_headline'),
             "podcast_summary": $.get('podcast_summary'),
+            "newsletter_markdown": $.get('newsletter_markdown'),
           }
       

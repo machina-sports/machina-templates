@@ -4,7 +4,7 @@ prompts:
   - type: prompt
     name: bundesliga-podcast-generate-prompt
     title: Bundesliga Podcast Generate Podcast from Web Search
-    description: "Generate Bundesliga podcast script based on web search results about user's favorite team - NO BASKETBALL CONTENT"
+    description: "Generate Bundesliga podcast script based on web search results about user's favorite team"
     instructions: |
       You are creating a podcast script about the user's favorite team based on web search results.
 
@@ -70,6 +70,19 @@ prompts:
       - Structure: Introduction → 3-5 themed sections → Closing
       - Make it visually scannable with clear sections and emphasis
 
+      NEWSLETTER REQUIREMENTS:
+      - Create a reader-friendly newsletter article that tells the story of the podcast content
+      - Do NOT simply replicate the podcast script - transform it into engaging written content
+      - Use a narrative style that flows naturally for reading (not speaking)
+      - Structure with clear sections, subheadings, and well-organized paragraphs
+      - Include bullet points or numbered lists where appropriate for readability
+      - Use engaging transitions and storytelling elements
+      - Make it scannable with clear visual hierarchy
+      - Include context and background information that enhances understanding
+      - Use markdown formatting: headings (##, ###), **bold**, *italic*, lists, and proper spacing
+      - Write in a style suitable for email newsletters or blog posts
+      - Length should be comprehensive enough to tell the full story (typically 400-800 words)
+
       Generate a complete podcast script ready to be read aloud, formatted with clear paragraph breaks, using ONLY the information from the search results provided above.
     schema:
       title: "UserProfilePersonalizedPodcastContent"
@@ -85,13 +98,16 @@ prompts:
         summary:
           type: "string"
           description: "A brief summary of the key points covered in the audio content"
-      required: ["content", "headline", "summary"]
+        newsletter-markdown:
+          type: "string"
+          description: "A reader-friendly newsletter article that tells the story of the podcast content in written form. This should be a narrative, well-structured article suitable for email newsletters or blog posts, not a replication of the podcast script. Use markdown formatting with clear sections, headings, and engaging storytelling."
+      required: ["content", "headline", "summary", "newsletter-markdown"]
 
   # bundesliga-podcast-translate-prompt
   - type: prompt
     name: bundesliga-podcast-translate-prompt
     title: Bundesliga Podcast Translate Podcast from Web Search
-    description: "Translate Bundesliga podcast script based on web search results about user's favorite team - NO BASKETBALL CONTENT"
+    description: "Translate Bundesliga podcast script based on web search results about user's favorite team"
     instructions: |
       You are translating a podcast script to the target language specified in the inputs.
 
@@ -106,7 +122,15 @@ prompts:
       - Ensure the translated content remains natural and engaging for native speakers
       - The introduction paragraph MUST begin with a personal greeting using the user's name (e.g., "Hey [user_name]," or "Hello [user_name],") in the target language.
 
-      Translate the entire podcast script while maintaining its format and structure.
+      NEWSLETTER TRANSLATION:
+      - Translate the newsletter-markdown content to the target language
+      - Maintain the reader-friendly, narrative style in the target language
+      - Preserve all markdown formatting (headings, lists, bold, italic)
+      - Keep the newsletter structure and visual hierarchy intact
+      - Adapt the storytelling style naturally to the target language
+      - Ensure the translated newsletter reads naturally for native speakers
+
+      Translate the entire podcast script and newsletter content while maintaining their formats and structures.
     schema:
       title: "UserProfilePersonalizedPodcastContent"
       description: "Generate personalized podcast audio content from web search results about user's favorite team"
@@ -121,6 +145,9 @@ prompts:
         summary:
           type: "string"
           description: "A brief summary of the key points covered in the audio content"
-      required: ["content", "headline", "summary"]
+        newsletter-markdown:
+          type: "string"
+          description: "A reader-friendly newsletter article that tells the story of the podcast content in written form. This should be a narrative, well-structured article suitable for email newsletters or blog posts, not a replication of the podcast script. Use markdown formatting with clear sections, headings, and engaging storytelling."
+      required: ["content", "headline", "summary", "newsletter-markdown"]
 
 
