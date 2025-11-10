@@ -35,8 +35,8 @@ prompts:
         search_queries:
           type: array
           description: Array of targeted search queries for retrieving relevant sports data and insights about the user's favorite sport and team
-          minItems: 1
-          maxItems: 3
+          minItems: 5
+          maxItems: 5
           items:
             type: string
             description: Specific search query focused on retrieving actionable sports information about the user's favorite sport and team (e.g., "{{favorite_team}} latest news" not just "{{favorite_sport}} news")
