@@ -15,10 +15,11 @@ def invoke_compose(request_data):
                 - template_path: Path to HTML template (URL or local file path)
                 - podcast-content: Podcast content with all fields
                 - audio_url: URL or path to the podcast audio file
+                - image_path: Primary header image path/URL (takes precedence over header_image)
                 - user_name: Name of the user
                 - favorite_sport: User's favorite sport
                 - favorite_team: User's favorite team
-                - header_image: Optional header image path/URL
+                - header_image: Optional header image path/URL (fallback if image_path not provided)
                 - footer_image: Optional footer image path/URL
                 - podcast_duration: Optional podcast duration in seconds
     
@@ -31,6 +32,7 @@ def invoke_compose(request_data):
     template_path = params.get("template_path")
     podcast_content = params.get("podcast-content", {})
     audio_url = params.get("audio_url")
+    image_path = params.get("image_path")
     user_name = params.get("user_name")
     favorite_sport = params.get("favorite_sport")
     favorite_team = params.get("favorite_team")
@@ -61,12 +63,17 @@ def invoke_compose(request_data):
         variables['podcast_duration'] = str(podcast_duration)
     
     # Add optional images
-    if header_image:
-        variables['header_image'] = header_image
-        variables['header_image_tag'] = f'<img src="{header_image}" alt="Header" style="width: 100%; height: auto; display: block;">'
+    # Use image_path as primary source for header, fallback to header_image
+    actual_header_image = image_path or header_image
+    
+    if actual_header_image:
+        variables['header_image'] = actual_header_image
+        variables['header_background_image'] = actual_header_image  # For CSS background-image
+        variables['header_image_tag'] = f'<img src="{actual_header_image}" alt="Header" style="width: 100%; height: auto; display: block;">'
         variables['header_title'] = ""
     else:
         variables['header_image_tag'] = ""
+        variables['header_background_image'] = ""  # Empty if no image
         variables['header_title'] = "🎙️ Your Personalized Podcast"
     
     if footer_image:

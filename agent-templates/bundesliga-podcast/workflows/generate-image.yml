@@ -6,20 +6,20 @@ workflow:
     debugger:
       enabled: true
     google-genai:
-      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
-      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
-      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
     google-storage:
-      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
-      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
+      bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
     machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     oxylabs:
       username: $TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME
       password: $TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD
   inputs:
-    document_id: "$.get('document_id')"
-    geo_location: "$.get('geo_location', 'Brazil')"
+    document_id: $.get('document_id')
+    geo_location: $.get('geo_location', 'Brazil')
     limit: $.get('limit', 10)
     parser: ($.get('parser', 'true') == 'true') and True or False
     query: $.get('query')
@@ -69,8 +69,6 @@ workflow:
       outputs:
         image_queries: "$.get('image_queries', [])"
 
-    ## SEARCH IMAGE ON WEBSEARCH
-
     # oxylabs-post-queries
     - type: connector
       name: oxylabs-post-queries
@@ -105,7 +103,6 @@ workflow:
           }
       outputs:
         image_urls: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:3] if $.get('results', [])[0].get('content') else []
-        # selected-image-base64: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[0] if len($.get('results', [])[0].get('content').get('results', {}).get('organic', [])) > 0 else None
 
     # save-to-tmp
     - type: connector
