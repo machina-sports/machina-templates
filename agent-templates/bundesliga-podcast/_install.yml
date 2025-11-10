@@ -46,6 +46,12 @@ datasets:
   # workflows
 
   - type: workflow
+    path: workflows/compose-template.yml
+
+  - type: workflow
+    path: workflows/generate-audio.yml
+
+  - type: workflow
     path: workflows/generate-content.yml
 
   - type: workflow

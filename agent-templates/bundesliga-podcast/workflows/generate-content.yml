@@ -20,14 +20,6 @@ workflow:
       api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     document_id: "$.get('document_id')"
-    max_queries: "$.get('max_queries', 3)"
-    voice_id: "$.get('voice_id')"
-    model_id: "$.get('model_id', 'eleven_flash_v2_5')"
-    duration: "$.get('duration', 120)"
-    language: "$.get('language', 'en')"
-    from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
-    mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
-    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-email.html')"
   outputs:
     workflow-status: "'executed'"
   tasks:
@@ -50,12 +42,10 @@ workflow:
       inputs:
         name: "'user-profile'"
       outputs:
-        user_profile: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else {}"
+        document-exists: len($.get('documents', [])) > 0
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
         favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
         favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
-        personality: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone', 'friendly') if len($.get('documents', [])) > 0 else 'friendly'"
-        user_name: "$.get('documents', [])[0].get('value', {}).get('name') if len($.get('documents', [])) > 0 else None"
-        profile_email_address: "$.get('documents', [])[0].get('value', {}).get('email_address') if len($.get('documents', [])) > 0 else None"
   
     # bundesliga-podcast-generate-search-queries
     - type: prompt
@@ -71,7 +61,6 @@ workflow:
       inputs:
         favorite_sport: $.get('favorite_sport')
         favorite_team: $.get('favorite_team')    
-        max_queries: $.get('max_queries')
       outputs:
         search_queries: "$.get('search_queries', [])"
 
@@ -109,99 +98,30 @@ workflow:
         location: "global"
         provider: "vertex_ai"
       inputs:
-        favorite_sport: "$.get('favorite_sport')"
-        favorite_team: "$.get('favorite_team')"
+        duration: "$.get('document-value', {}).get('duration')"
+        favorite_sport: "$.get('document-value', {}).get('favorite_sport')"
+        favorite_team: "$.get('document-value', {}).get('favorite_team')"
+        language: "$.get('document-value', {}).get('language', 'en')"
+        personality: "$.get('document-value', {}).get('podcast_mood_tone')"
         search_response: "$.get('search_response', [])"
-        personality: "$.get('personality')"
-        language: "$.get('language')"
-        duration: "$.get('duration')"
       outputs:
         audio_content: "$.get('content')"
 
-    # get text to speech
-    - type: connector
-      name: get text to speech
-      description: "Get a text to speech from ElevenLabs"
-      connector:
-        name: "elevenlabs"
-        command: "get_text_to_speech"
-        command_attribute:
-          text: "$.get('audio_content')"
-          voice_id: "$.get('voice_id')"
-          model_id: "$.get('model_id', 'eleven_flash_v2_5')"
-          optimize_streaming_latency: "$.get('optimize_streaming_latency', '0')"
-          output_format: "$.get('output_format', 'mp3_22050_32')"
-      inputs:
-        api_key: "$.get('api_key')"
-      outputs:
-        final_filename: f"podcast-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
-        full_filepath: "$.get('file_path')"
-
-    # store audio
-    - type: connector
-      name: store audio
-      condition: "$.get('full_filepath') is not None"
-      connector:
-        name: "storage"
-        command: "store_image"
-      inputs:
-        final_filename: "$.get('final_filename')"
-        full_filepath: "$.get('full_filepath')"
-      outputs:
-        audio_path: "$.get('data')"
-
-    # download the newsletter template
-    - type: connector
-      name: download the newsletter template
-      description: Download the newsletter template.
-      connector:
-        name: temp-downloader
-        command: invoke_download
-      inputs:
-        image_url: $.get('newsletter_template_path')
-      outputs:
-        temp_newsletter_template_path: $.get('temp_path')
-
-    # compose podcast email HTML
-    - type: connector
-      name: compose-podcast-email
-      description: "Compose HTML email template for podcast"
-      condition: "$.get('audio_path') is not None"
-      connector:
-        name: "bundesliga-podcast-compose"
-        command: "invoke_compose"
-      inputs:
-        audio_url: "$.get('audio_path')"
-        user_name: "$.get('user_name')"
-        favorite_sport: "$.get('favorite_sport')"
-        favorite_team: "$.get('favorite_team')"
-        podcast_duration: "$.get('duration')"
-        template_path: "$.get('temp_newsletter_template_path')"
-      outputs:
-        podcast-email-html-path: "$.get('output_path')"
-        podcast-email-html: "$.get('html_content')"
-        podcast-email-html-content: "$.get('html_content')"
-
-    # send podcast email via Mailgun
-    - type: connector
-      name: send-podcast-email
-      description: "Send HTML email with podcast using Mailgun"
-      condition: "$.get('podcast-email-html-content') is not None and ($.get('email_address') is not None or $.get('profile_email_address') is not None)"
-      connector:
-        name: "api-mailgun"
-        command: "post-{domain}/messages"
-        command_attribute:
-          domain: "$.get('mailgun_domain') or 'mg.machina.gg'"
-      inputs:
-        body: |
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the user profile document version control.
+      condition: $.get('document-exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('document_id')
+      documents:
+        user-profile: |
           {
-            "from": $.get('from_email', 'noreply@mg.machina.gg'), 
-            "to": $.get('profile_email_address'),
-            "subject": "Your Personalized Podcast is Ready!",
-            "html": $.get('podcast-email-html-content'),
-            "text": "Your personalized podcast is ready! Click the link in the email to listen."
+            **$.get('document-value', {}),
+            "audio_content": $.get('audio_content'),
           }
-      outputs:
-        email-sent: "$.get('message') is not None"
-        email-status: "$.get('message')"
-        email-id: "$.get('id')"
+      
