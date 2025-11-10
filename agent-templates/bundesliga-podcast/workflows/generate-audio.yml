@@ -48,11 +48,12 @@ workflow:
         document-exists: len($.get('documents', [])) > 0
         document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
         audio_content: "$.get('documents', [])[0].get('value', {}).get('audio_content') if len($.get('documents', [])) > 0 else None"
+        language: "$.get('documents', [])[0].get('value', {}).get('language', 'en') if len($.get('documents', [])) > 0 else 'en'"
 
     # get text to speech
     - type: connector
       name: get text to speech
-      description: "Get a text to speech from ElevenLabs"
+      description: "Get a text to speech from ElevenLabs with user's language"
       connector:
         name: "elevenlabs"
         command: "get_text_to_speech"
@@ -60,6 +61,7 @@ workflow:
           text: "$.get('audio_content')"
           model_id: "$.get('model_id', 'eleven_flash_v2_5')"
           voice_id: "$.get('voice_id')"
+          language: "$.get('language', 'en')"
           optimize_streaming_latency: "$.get('optimize_streaming_latency', '0')"
           output_format: "$.get('output_format', 'mp3_22050_32')"
       inputs:

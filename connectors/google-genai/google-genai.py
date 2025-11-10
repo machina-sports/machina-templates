@@ -254,10 +254,42 @@ def invoke_image(request_data):
 
         response = client.models.generate_content(model=model_name, contents=contents)
 
+        # Debug: Log the response structure
+        print(f"📋 Response object type: {type(response)}")
+        print(f"📋 Response has candidates: {hasattr(response, 'candidates')}")
+        if hasattr(response, "candidates"):
+            print(f"📋 Number of candidates: {len(response.candidates) if response.candidates else 0}")
+        
+        # Check for prompt feedback (safety filters, etc.)
+        if hasattr(response, "prompt_feedback"):
+            print(f"⚠️ Prompt feedback: {response.prompt_feedback}")
+            if hasattr(response.prompt_feedback, "block_reason"):
+                return {
+                    "status": False,
+                    "message": f"Request blocked: {response.prompt_feedback.block_reason}",
+                    "details": str(response.prompt_feedback),
+                }
+
         if hasattr(response, "candidates") and response.candidates:
-            for candidate in response.candidates:
+            for idx, candidate in enumerate(response.candidates):
+                print(f"📋 Candidate {idx}: has content = {hasattr(candidate, 'content')}")
+                
+                # Check for finish reason
+                if hasattr(candidate, "finish_reason"):
+                    print(f"📋 Candidate {idx} finish_reason: {candidate.finish_reason}")
+                
+                # Check for safety ratings
+                if hasattr(candidate, "safety_ratings"):
+                    print(f"📋 Candidate {idx} safety_ratings: {candidate.safety_ratings}")
+                
                 if hasattr(candidate, "content") and candidate.content:
-                    for part in candidate.content.parts:
+                    print(f"📋 Candidate {idx} has {len(candidate.content.parts)} parts")
+                    
+                    for part_idx, part in enumerate(candidate.content.parts):
+                        print(f"📋 Part {part_idx}: has inline_data = {hasattr(part, 'inline_data')}")
+                        if hasattr(part, "text"):
+                            print(f"📋 Part {part_idx} has text: {part.text[:200] if part.text else 'None'}")
+                        
                         if hasattr(part, "inline_data") and part.inline_data:
                             image_data = part.inline_data.data
                             image = Image.open(BytesIO(image_data))
@@ -286,10 +318,20 @@ def invoke_image(request_data):
                                 },
                                 "message": f"Image generated successfully using {len(image_parts)} input images.",
                             }
-            else:
-                return {"status": False, "message": "No image was generated"}
+                else:
+                    print(f"❌ Candidate {idx} has no content")
+            
+            return {
+                "status": False,
+                "message": "No image was generated - candidates exist but contain no image data",
+                "debug_info": f"Response had {len(response.candidates)} candidates but none contained inline_data",
+            }
         else:
-            return {"status": False, "message": "Error generating image"}
+            return {
+                "status": False,
+                "message": "Error generating image - no candidates in response",
+                "debug_info": str(response) if response else "Response is None",
+            }
 
     except Exception as e:
         return {"status": False, "message": f"Exception when generating image: {e}"}

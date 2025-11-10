@@ -9,6 +9,8 @@ agent:
     podcast_mood_tone: $.get('podcast_mood_tone')
     sports_knowledge: $.get('sports_knowledge')
     email_address: $.get('email_address')
+    country: $.get('country')
+    language: $.get('language')
     from_email: $.get('from_email')
     mailgun_domain: $.get('mailgun_domain')
   workflows:
@@ -17,12 +19,14 @@ agent:
     - name: bundesliga-podcast-store-user-profile
       description: Store user profile information from frontend application
       inputs:
-        name: "$.get('name')"
+        country: "$.get('country')"
+        email_address: "$.get('email_address')"
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
+        language: "$.get('language')"
+        name: "$.get('name')"
         podcast_mood_tone: "$.get('podcast_mood_tone')"
         sports_knowledge: "$.get('sports_knowledge')"
-        email_address: "$.get('email_address')"
       outputs:
         document_id: "$.get('document_id')"
         workflow-status: "$.get('workflow-status')"
@@ -38,12 +42,12 @@ agent:
 
     # bundesliga-podcast-generate-audio
     - name: bundesliga-podcast-generate-audio
-      description: Generate Bundesliga podcast audio based on user profile
+      description: Generate Bundesliga podcast audio based on user profile with user's language
       condition: "$.get('document_id') is not None"
       inputs:
         document_id: "$.get('document_id')"
         duration: "$.get('duration', 120)"
-        language: "$.get('language', 'en')"
+        language: "$.get('language', 'en')"  # User's preferred language for TTS
         model_id: "$.get('model_id', 'eleven_flash_v2_5')"
         voice_id: "$.get('voice_id')"
       outputs:

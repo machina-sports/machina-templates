@@ -101,9 +101,29 @@ workflow:
         duration: "$.get('document-value', {}).get('duration')"
         favorite_sport: "$.get('document-value', {}).get('favorite_sport')"
         favorite_team: "$.get('document-value', {}).get('favorite_team')"
-        language: "$.get('document-value', {}).get('language', 'en')"
         personality: "$.get('document-value', {}).get('podcast_mood_tone')"
         search_response: "$.get('search_response', [])"
+      outputs:
+        audio_content: "$.get('content')"
+        podcast_headline: "$.get('headline')"
+        podcast_summary: "$.get('summary')"
+
+    # bundesliga-podcast-translate-prompt
+    - type: prompt
+      name: bundesliga-podcast-translate-prompt
+      description: "Translate personalized podcast script to the target language."
+      condition: "$.get('document-value', {}).get('language') is not None and $.get('document-value', {}).get('language') != 'en'"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        content: "$.get('audio_content')"
+        headline: "$.get('podcast_headline')"
+        summary: "$.get('podcast_summary')"
+        language: "$.get('document-value', {}).get('language', 'en')"
       outputs:
         audio_content: "$.get('content')"
         podcast_headline: "$.get('headline')"
