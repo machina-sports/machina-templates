@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<!-- saved from url=(0120)https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-email.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{subject_line}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px 0;
+            line-height: 1.6;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 50px 20px 40px;
+            text-align: center;
+            color: #ffffff;
+            border-bottom: 3px solid #dc2626;
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            z-index: 1;
+        }
+        .header-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+        }
+        .header-logo {
+            max-width: 220px;
+            height: auto;
+            display: block;
+            margin: 0 auto 20px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+            transition: transform 0.3s ease;
+        }
+        .header-logo:hover {
+            transform: scale(1.05);
+        }
+        .header img {
+            max-width: 220px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            padding: 0;
+            letter-spacing: 0.3px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+            position: relative;
+            z-index: 2;
+        }
+        .content {
+            padding: 40px 35px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .headline {
+            font-size: 32px;
+            font-weight: 700;
+            color: #dc2626;
+            margin-bottom: 30px;
+            line-height: 1.2;
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+        
+        /* Podcast Hero Card - Clickable */
+        .podcast-hero {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            border-radius: 16px;
+            padding: 40px 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.25);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: block;
+        }
+        .podcast-hero:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(220, 38, 38, 0.35);
+            background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%);
+        }
+        .podcast-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .podcast-hero:hover::before {
+            opacity: 0.8;
+        }
+        .podcast-hero::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            transition: left 0.5s;
+        }
+        .podcast-hero:hover::after {
+            left: 100%;
+        }
+        .podcast-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 16px;
+            display: block;
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s ease;
+        }
+        .podcast-icon svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .podcast-hero:hover .podcast-icon {
+            transform: scale(1.1);
+        }
+        .podcast-hero-title {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+            letter-spacing: 0.3px;
+        }
+        .podcast-hero-subtitle {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 16px;
+            margin-bottom: 0;
+            position: relative;
+            z-index: 1;
+            font-weight: 400;
+        }
+        
+        /* Podcast Info Card */
+        .podcast-info {
+            background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #dc2626;
+            padding: 28px 24px;
+            margin: 30px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .podcast-info-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            font-size: 15px;
+            color: #374151;
+            line-height: 1.6;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #1f2937;
+            min-width: 140px;
+            margin-right: 12px;
+        }
+        .info-value {
+            color: #4b5563;
+            flex: 1;
+        }
+        .podcast-info p {
+            font-size: 15px;
+            color: #374151;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .podcast-info strong {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        
+        /* Description Section */
+        .description {
+            font-size: 16px;
+            color: #4b5563;
+            line-height: 1.8;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .description p {
+            margin-bottom: 16px;
+        }
+        .description p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .download-button {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .download-button a {
+            display: inline-block;
+            background: #ffffff;
+            color: #dc2626;
+            padding: 14px 36px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 50px;
+            border: 2px solid #dc2626;
+            transition: all 0.2s ease;
+        }
+        .download-button a:hover {
+            background: #dc2626;
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+        }
+        .footer-image {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .contact-info {
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            padding: 24px;
+            margin-top: 35px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+        .contact-info p {
+            font-size: 14px;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .footer {
+            background-color: #000000;
+            color: #9ca3af;
+            padding: 35px 25px;
+            text-align: center;
+            font-size: 13px;
+            border-top: 3px solid #dc2626;
+        }
+        .footer-logo {
+            margin-bottom: 20px;
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }
+        .footer-logo:hover {
+            opacity: 0.9;
+        }
+        .footer-logo a {
+            display: inline-block;
+            text-decoration: none;
+        }
+        .footer-logo img {
+            max-width: 180px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        .footer p {
+            margin: 10px 0;
+            line-height: 1.7;
+        }
+        .footer a {
+            color: #dc2626;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+            color: #f87171;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
+            margin: 25px 0;
+        }
+        .footer-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #dc2626 50%, transparent 100%);
+            margin: 20px 40px;
+            opacity: 0.3;
+        }
+        
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 0;
+            }
+            .email-container {
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .header {
+                padding: 40px 15px 30px;
+                min-height: 180px;
+            }
+            .header-logo,
+            .header img {
+                max-width: 160px;
+                margin-bottom: 16px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+            .greeting {
+                font-size: 17px;
+                margin-bottom: 18px;
+            }
+            .headline {
+                font-size: 26px;
+                margin-bottom: 25px;
+            }
+            .podcast-hero {
+                padding: 32px 24px;
+                margin: 25px 0;
+                border-radius: 12px;
+            }
+            .podcast-icon {
+                width: 70px;
+                height: 70px;
+            }
+            .podcast-hero-title {
+                font-size: 22px;
+            }
+            .podcast-hero-subtitle {
+                font-size: 15px;
+            }
+            .podcast-info {
+                padding: 24px 20px;
+                margin: 25px 0;
+            }
+            .info-item {
+                font-size: 14px;
+                flex-direction: column;
+            }
+            .info-label {
+                min-width: auto;
+                margin-bottom: 4px;
+                margin-right: 0;
+            }
+            .podcast-info p {
+                font-size: 14px;
+            }
+            .description {
+                font-size: 15px;
+                margin: 25px 0;
+            }
+            .contact-info {
+                padding: 20px;
+                margin-top: 30px;
+            }
+            .footer {
+                padding: 30px 20px;
+            }
+            .footer-logo {
+                margin-bottom: 18px;
+            }
+            .footer-logo img {
+                max-width: 150px;
+            }
+            .footer-divider {
+                margin: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- HEADER -->
+        <div class="header" style="background-image: url('{{header_background_image}}');">
+            <div class="header-content">
+                <img src="machina-logo.png" alt="Machina Sports" class="header-logo" />
+                <h1>{{header_title}}</h1>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+            <!-- Greeting -->
+            <div class="greeting">
+                Hello {{name}}!
+            </div>
+
+            <!-- Headline -->
+            <h2 class="headline">{{headline}}</h2>
+
+            <!-- Podcast Hero Card - Clickable -->
+            <a href="{{audio_url}}" target="_blank" class="podcast-hero">
+                <div class="podcast-icon">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="48" fill="rgba(255, 255, 255, 0.2)" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2"/>
+                        <polygon points="38,30 38,70 70,50" fill="#ffffff"/>
+                    </svg>
+                </div>
+                <div class="podcast-hero-title">Listen to Your Podcast Now</div>
+                <div class="podcast-hero-subtitle">Custom {{favorite_sport}} content tailored just for you</div>
+            </a>
+
+            <!-- Description -->
+            <div class="description">
+                {{description}}
+            </div>
+
+            <!-- Podcast Info -->
+            <div class="podcast-info">
+                <div class="podcast-info-title">Your Preferences</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Sport:</span>
+                        <span class="info-value">{{favorite_sport}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Team:</span>
+                        <span class="info-value">{{favorite_team}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Mood:</span>
+                        <span class="info-value">{{podcast_mood_tone}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Knowledge Level:</span>
+                        <span class="info-value">{{sports_knowledge}}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Language:</span>
+                        <span class="info-value">{{language}}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Contact Info -->
+            <div class="contact-info">
+                <p>{{contact_info}}</p>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <div class="footer-logo">
+                <a href="https://machina.gg/" target="_blank">
+                    <img src="machina-logo.png" alt="Machina Sports" />
+                </a>
+            </div>
+            <p><strong style="color: #ffffff;">Thank you for listening!</strong></p>
+            <p>© 2025 All rights reserved.</p>
+            <div class="footer-divider"></div>
+            <p>
+                You are receiving this email because you generated a personalized podcast at <a href="http://podcast.machina.gg/">podcast.machina.gg</a>
+            </p>
+            <p style="margin-top: 15px; font-size: 11px; color: #6b7280;">
+                This is an automated email. Please do not reply directly to this email.
+            </p>
+        </div>
+    </div>
+
+
+
+</body></html>
