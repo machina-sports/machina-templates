@@ -21,7 +21,9 @@ def invoke_compose(request_data):
                 - favorite_sport: User's favorite sport
                 - favorite_team: User's favorite team
                 - language: User's preferred language
+                - podcast_headline: Generated headline from prompt (catchy title)
                 - podcast_mood_tone: User's preferred podcast mood/tone
+                - podcast_summary: Generated podcast summary
                 - sports_knowledge: User's sports knowledge level
                 - header_image: Optional header image path/URL (fallback if image_path not provided)
                 - footer_image: Optional footer image path/URL
@@ -43,7 +45,9 @@ def invoke_compose(request_data):
     favorite_sport = params.get("favorite_sport")
     favorite_team = params.get("favorite_team")
     language = params.get("language")
+    podcast_headline = params.get("podcast_headline")
     podcast_mood_tone = params.get("podcast_mood_tone")
+    podcast_summary = params.get("podcast_summary")
     sports_knowledge = params.get("sports_knowledge")
     header_image = params.get("header_image")
     footer_image = params.get("footer_image")
@@ -134,8 +138,12 @@ def invoke_compose(request_data):
     if 'subject_line' not in variables:
         variables['subject_line'] = f"Your Personalized {favorite_sport} Podcast"
     
+    # Use podcast_headline from prompt if available, otherwise use default
     if 'headline' not in variables:
-        variables['headline'] = f"Your {favorite_team} Podcast is Ready!"
+        if podcast_headline:
+            variables['headline'] = podcast_headline
+        else:
+            variables['headline'] = f"Your {favorite_team} Podcast is Ready!"
     
     if 'description' not in variables:
         variables['description'] = f"<p>We've created a personalized podcast just for you about {favorite_team} and {favorite_sport}. Enjoy listening!</p>"

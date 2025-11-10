@@ -106,6 +106,8 @@ workflow:
         search_response: "$.get('search_response', [])"
       outputs:
         audio_content: "$.get('content')"
+        podcast_headline: "$.get('headline')"
+        podcast_summary: "$.get('summary')"
 
     # version-control-update
     - type: document
@@ -123,5 +125,7 @@ workflow:
           {
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
+            "podcast_headline": $.get('podcast_headline'),
+            "podcast_summary": $.get('podcast_summary'),
           }
       

@@ -79,9 +79,19 @@ prompts:
       - Make it personal: reference "your team" meaning {{favorite_team}}
       - DO NOT create generic sports content - everything must be based on the search results
 
+      FORMATTING REQUIREMENTS:
+      - Use markdown formatting for the script
+      - Start with an engaging introduction paragraph
+      - Use ## for section headings (e.g., ## Recent Matches, ## Transfer News, ## Player Updates)
+      - Each section should have 2-3 paragraphs of content
+      - Use double line breaks between paragraphs
+      - Use **bold** for emphasis on key points (player names, scores, dates)
+      - Structure: Introduction → 3-5 themed sections → Closing
+      - Make it visually scannable with clear sections and emphasis
+
       REMEMBER: The search results above are your ONLY source of information. If something isn't mentioned there, don't include it in your script. Base your entire podcast script ONLY on the search results provided.
       
-      Generate a complete podcast script ready to be read aloud, using ONLY the information from the search results provided above.
+      Generate a complete podcast script ready to be read aloud, formatted with clear paragraph breaks, using ONLY the information from the search results provided above.
     schema:
       title: "UserProfilePersonalizedPodcastContent"
       description: "Generate personalized podcast audio content from web search results about user's favorite team - for {{favorite_sport}} and {{favorite_team}}"
@@ -90,9 +100,12 @@ prompts:
         content:
           type: "string"
           description: "The conversational audio script explaining the podcast data"
+        headline:
+          type: "string"
+          description: "A catchy, engaging headline for the podcast (max 10 words) that captures the main story or theme"
         summary:
           type: "string"
           description: "A brief summary of the key points covered in the audio content"
-      required: ["content", "summary"]
+      required: ["content", "headline", "summary"]
 
 
