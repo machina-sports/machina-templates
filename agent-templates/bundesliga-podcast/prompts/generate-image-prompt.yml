@@ -31,9 +31,10 @@ prompts:
       3) Captures the emotional tone and atmosphere discussed in the audio
       4) Features specific players, moments, or events mentioned in the script when relevant
       5) Incorporates {{favorite_team}} team colors, logo, and branding
-      6) Reflects the type of scene described (match action, training, celebration, etc.)
-      7) Uses visual elements that directly support and enhance the podcast narrative
-      8) Instructs the AI to combine the best visual elements from the reference images into a unified composition
+      6) IMPORTANT: The image must be in 16:9 widescreen landscape format - explicitly mention this in the prompt
+      7) Reflects the type of scene described (match action, training, celebration, etc.)
+      8) Uses visual elements that directly support and enhance the podcast narrative
+      9) Instructs the AI to combine the best visual elements from the reference images into a unified composition
 
       Focus areas (prioritize based on podcast content):
       - If the script discusses a specific match or event, visualize that moment
