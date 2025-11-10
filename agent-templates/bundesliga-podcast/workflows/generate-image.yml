@@ -1,0 +1,195 @@
+workflow:
+  name: bundesliga-podcast-generate-image
+  title: Bundesliga Podcast Generate Image
+  description: Workflow to generate Bundesliga podcast image based on user profile stored in documents and web search results
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    oxylabs:
+      username: $TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME
+      password: $TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD
+  inputs:
+    document_id: "$.get('document_id')"
+    geo_location: "$.get('geo_location', 'Brazil')"
+    limit: $.get('limit', 10)
+    parser: ($.get('parser', 'true') == 'true') and True or False
+    query: $.get('query')
+    source: $.get('source', 'google_search')
+    udm: int($.get('udm', 2))
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Load user profile from documents
+    - type: document
+      name: load-user-profile
+      description: "Load user profile from documents by email address"
+      condition: "$.get('document_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        document_id: $.get('document_id')
+      inputs:
+        name: "'user-profile'"
+      outputs:
+        document-exists: len($.get('documents', [])) > 0
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+        favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
+        favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
+  
+    # bundesliga-podcast-generate-image-queries
+    - type: prompt
+      name: bundesliga-podcast-generate-image-queries
+      description: Generate image queries based on user's favorite sport and team.
+      condition: $.get('document_id') is not None and $.get('document-exists') is True
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        favorite_sport: $.get('favorite_sport')
+        favorite_team: $.get('favorite_team')
+      outputs:
+        image_queries: "$.get('image_queries', [])"
+
+    ## SEARCH IMAGE ON WEBSEARCH
+
+    # oxylabs-post-queries
+    - type: connector
+      name: oxylabs-post-queries
+      description: Search for images.
+      condition: len($.get('image_queries', [])) > 0
+      connector:
+        name: oxylabs
+        command: post-queries
+      continue_on_error: true
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": $.get('udm')
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": $.get('limit')
+                  }
+                ]
+              }
+            ],
+            "geo_location": $.get('geo_location'),
+            "parse": $.get('parser'),
+            "query": str($.get('image_queries', [])).join(', '),
+            "source": $.get('source'),
+          }
+      outputs:
+        image_urls: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:3] if $.get('results', [])[0].get('content') else []
+        # selected-image-base64: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[0] if len($.get('results', [])[0].get('content').get('results', {}).get('organic', [])) > 0 else None
+
+    # save-to-tmp
+    - type: connector
+      name: temp-bundesliga-podcast-logo-downloader
+      description: Save the image to tmp.
+      condition: len($.get('image_urls', [])) > 0
+      connector:
+        name: temp-downloader
+        command: invoke_save_to_tmp
+      foreach:
+        name: image-item
+        expr: $
+        value: $.get('image_urls', [])
+      inputs:
+        image_base64: $.get('image-item', {}).get('image', '')
+      outputs:
+        reference_images: |
+          [
+            $.get('image_path')
+          ]
+
+    # bundesliga-podcast-generate-image-prompt
+    - type: prompt
+      name: bundesliga-podcast-generate-image-prompt
+      description: Generate image prompt based on user's favorite sport and team.
+      condition: $.get('document_id') is not None and $.get('document-exists') is True
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        favorite_sport: "$.get('favorite_sport')"
+        favorite_team: "$.get('favorite_team')"
+      outputs:
+        image_prompt: "$.get('image_prompt', '')"
+
+    # create-background-image
+    - type: connector
+      name: create-background-image
+      description: "Create the background image using Gemini based on the generated description."
+      condition: "$.get('image_prompt') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_image"
+      inputs:
+        image_paths: "$.get('reference_images', [])"
+        model_name: "'gemini-2.5-flash-image-preview'"
+        prompt: $.get('image_prompt')
+      outputs:
+        data: "$"
+        image_path: "$.get('image_path')"
+
+    # upload image to google storage
+    - type: connector
+      name: upload-image-to-google-storage
+      description: Upload the image to Google Storage.
+      condition: $.get('image_path') is not None
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        api_key: $.get('api_key')
+        image_path: $.get('image_path')
+      outputs:
+        uploaded_image_path: "$.get('url')"
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the user profile document version control.
+      condition: $.get('document-exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('document_id')
+      documents:
+        user-profile: |
+          {
+            **$.get('document-value', {}),
+            "audio_content": $.get('audio_content'),
+            "image_path": $.get('uploaded_image_path'),
+          }
+      

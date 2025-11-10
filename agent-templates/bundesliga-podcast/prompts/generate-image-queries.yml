@@ -1,0 +1,44 @@
+prompts:
+
+  # bundesliga-podcast-generate-image-queries
+  - type: prompt
+    name: bundesliga-podcast-generate-image-queries
+    title: Bundesliga Podcast Generate Image Queries
+    description: "Generate image queries based on user's favorite team"
+    instructions: |
+      You are a sports content specialist. Based on the user's preferences, generate highly targeted image queries to retrieve up-to-date and actionable information.
+
+      User preferences:
+      - Favorite sport: {{favorite_sport}}
+      - Favorite team: {{favorite_team}}
+
+      Focus your queries on:
+      1) Images of {{favorite_team}} players
+      2) Images of {{favorite_team}} stadium
+      3) Images of {{favorite_team}} training
+      4) Images of {{favorite_team}} matches
+      5) Images of {{favorite_team}} fans
+      6) Images of {{favorite_team}} coach
+      7) Images of {{favorite_team}} board/management
+
+      Rules:
+      - Generate {{max_queries}} short, specific image queries (2-3 total)
+      - Include the club name and, when useful, the competition/season and the current year
+      - Use terms like "{{favorite_team}} players", "{{favorite_team}} stadium", "{{favorite_team}} training", "{{favorite_team}} matches", "{{favorite_team}} fans", "{{favorite_team}} coach", "{{favorite_team}} board/management"
+      - Avoid generic image queries; be concise and action-oriented
+
+      Return only the image queries (no explanations), ready for image search.
+    schema:
+      title: PersonalizedPodcastGenerateImageQueries
+      description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences
+      type: object
+      required: [ "image_queries" ]
+      properties:
+        image_queries:
+          type: array
+          description: Array of targeted image queries for retrieving relevant sports data and insights about the user's favorite sport and team
+          minItems: 1
+          maxItems: 3
+          items:
+            type: string
+            description: Specific image query focused on retrieving actionable sports information about the user's favorite sport and team (e.g., "{{favorite_team}} players" not just "{{favorite_sport}} players")

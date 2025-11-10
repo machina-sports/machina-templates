@@ -49,6 +49,15 @@ agent:
       outputs:
         workflow-status: "$.get('workflow-status')"
 
+    # bundesliga-podcast-generate-image
+    - name: bundesliga-podcast-generate-image
+      description: Generate Bundesliga podcast image based on user profile and web search results
+      condition: "$.get('document_id') is not None"
+      inputs:
+        document_id: "$.get('document_id')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
     # bundesliga-podcast-compose-template
     - name: bundesliga-podcast-compose-template
       description: Compose Bundesliga podcast template based on user profile

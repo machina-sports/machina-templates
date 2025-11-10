@@ -6,3 +6,5 @@ connector:
   commands:
     - name: "Download"
       value: "invoke_download"
+    - name: "Save to tmp"
+      value: "invoke_save_to_tmp"
