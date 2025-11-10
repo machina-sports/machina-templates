@@ -17,8 +17,7 @@ prompts:
       CRITICAL CONSTRAINTS:
       - You MUST only reference images, visual elements, players, teams, and concepts that correspond to the image queries listed above
       - Do not introduce any visual elements, scenes, players, teams, or concepts that are not represented in these queries
-      - DO NOT mention any specific player names unless they are explicitly present in the image queries above
-      - Any players, teams, or specific entities mentioned in your prompt must be explicitly present in the image queries above
+      - DO NOT mention ANY specific player names UNLESS that exact player name appears in the image_queries array above. Even if players are mentioned extensively in audio_content, use generic terms like "players", "team members", "athletes", "footballers", or "sportsmen" instead
       - The final image MUST be generated in 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
       - Remove ALL watermarks, logos, text overlays, copyright marks, and branding from the reference images - if reference images contain watermarks, instruct the AI to recreate those visual elements without the watermarks
       - The final image MUST be completely free of any text, words, letters, numbers, or typography - no text elements whatsoever
@@ -55,7 +54,6 @@ prompts:
       - Incorporate visual elements that represent {{favorite_team}} when relevant and present in image queries
       - Match the visual mood to the narrative tone (celebratory, intense, dramatic, etc.)
       - If venue/arena/stadium atmosphere is mentioned, emphasize crowd and venue
-      - DO NOT mention or reference any players unless they are explicitly present in the image queries
 
       Rules for image generation prompts:
       - Create ONE detailed, descriptive prompt
@@ -67,8 +65,7 @@ prompts:
       - Match the visual mood to the emotional tone of the podcast (energetic, contemplative, celebratory, intense, etc.)
       - The final image should be a cohesive, well-designed montage that composes all reference images in a sophisticated, aesthetic way
       - Ensure the generated image will visually complement and enhance the podcast content
-      - CRITICAL: The final image must contain absolutely NO text, words, letters, numbers, typography, or written elements of any kind
-      - DO NOT mention any player names in the prompt unless they are explicitly present in the image queries
+      - The final image must contain absolutely NO text, words, letters, numbers, typography, or written elements of any kind
 
       IMAGE STYLE REQUIREMENTS (MUST FOLLOW):
       The generated image must adhere to the following aesthetic and technical specifications:
@@ -106,7 +103,13 @@ prompts:
       - Create depth through strategic use of light and shadow
       - Avoid flat, even illumination - the lighting should be dramatic and purposeful
 
-      Return a single, detailed image generation prompt that creates a well-designed, aesthetic, sophisticated montage composing ALL reference images in a way that aligns with and tells the story from the audio_content. The montage should be tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit. The prompt must explicitly incorporate all image style requirements (aesthetic, color palette, camera technique, and lighting) described above, must only reference visual elements, teams, and scenes available in the provided image queries (DO NOT mention any players unless explicitly present in the image queries), must emphasize sophisticated design principles with seamless integration of all reference images, and must explicitly instruct that the final image contains NO text, words, letters, numbers, or typography whatsoever.
+      Before returning your prompt, perform this final check:
+      1. Read through your generated prompt
+      2. Identify any specific player names
+      3. Check if those player names appear in the image_queries: {{image_queries}}
+      4. If ANY player name in your prompt does NOT appear in image_queries, replace it with a generic term (e.g., "players", "team members", "athletes")
+      
+      Return a single, detailed image generation prompt that creates a well-designed, aesthetic, sophisticated montage composing ALL reference images in a way that aligns with and tells the story from the audio_content. The montage should be tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit. The prompt must explicitly incorporate all image style requirements (aesthetic, color palette, camera technique, and lighting) described above, must only reference visual elements, teams, and scenes available in the provided image queries, must use ONLY generic player references and NEVER mention specific player names unless they explicitly appear in the image_queries array above, must emphasize sophisticated design principles with seamless integration of all reference images, and must explicitly instruct that the final image contains NO text, words, letters, numbers, or typography whatsoever.
     schema:
       title: PersonalizedPodcastGenerateImagePrompt
       description: Generates a detailed AI image generation prompt for nano banana to create compelling sports visuals personalized based on user preferences and podcast script content, guiding the composition of all reference images into a well-designed, aesthetic, sophisticated montage that aligns with the audio story
