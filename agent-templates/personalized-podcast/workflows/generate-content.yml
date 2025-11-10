@@ -27,7 +27,7 @@ workflow:
     language: "$.get('language', 'en')"
     from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
     mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
-    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-email.html')"
+    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-generator.html')"
   outputs:
     step_websearch_docs: $.get('search_response', [])
     audio_content: "$.get('audio_content')"

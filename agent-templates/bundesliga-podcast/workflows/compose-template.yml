@@ -20,7 +20,7 @@ workflow:
       api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     document_id: "$.get('document_id')"
-    template_path: "$.get('template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-email.html')"
+    template_path: "$.get('template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-bundesliga.html')"
   outputs:
     workflow-status: "'executed'"
   tasks:
