@@ -1,0 +1,199 @@
+workflow:
+  name: "psg-podcast-generator-thread-executor"
+  title: "PSG Podcast Generator Thread Executor"
+  description: "Workflow to execute a thread for PSG Podcast Generator."
+  context-variables:
+    debugger:
+      enabled: true
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    machina-ai-fast:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    input_status: "$.get('input_status', 'waiting')"
+    output_status: "$.get('output_status', 'idle')"
+    voice_id: "$.get('voice_id', '1SM7GgM6IMuvQlz2BwM3')"
+  outputs:
+    content: "$.get('content')"
+    documents: "$.get('documents')"
+    document_id: "$.get('document_id')"
+    document_data: "$.get('document_data')"
+    messages: "$.get('messages')"
+    workflow-status: "$.get('document_id') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # Load pending thread
+    - type: "document"
+      name: "load-pending-thread"
+      description: "Load pending thread"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        name: "'thread'"
+        value.status: "$.get('input_status')"
+      outputs:
+        document_id: "$.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None"
+        document_data: "$.get('documents')[0] if len($.get('documents', [])) > 0 else None"
+        event_code: "$.get('documents')[0].get('metadata', {}).get('event_code', '') if len($.get('documents', [])) > 0 else None"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else None"
+        question: "$.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else None"
+
+    # Update thread status
+    - type: "document"
+      name: "update-thread-status"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data', {}).get('value', {}),
+            'status': 'processing'
+          }
+      filters:
+        document_id: "$.get('document_id')"
+
+    # Load similar documents
+    - type: "document"
+      name: "load-similar-documents"
+      description: "Load similar documents"
+      condition: "$.get('document_id') is not None"
+      config:
+        action: "search"
+        threshold-docs: 5
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "'content-snippet'"
+        search-limit: "'1000'"
+        search-query: "$.get('question')"
+      outputs:
+        documents: |
+          [
+            {
+              **snippet.get('value', {}),
+            }
+            for snippet in $.get('documents', [])
+          ]
+
+    # thread-executor-prompt
+    - type: "prompt"
+      name: "thread-executor-prompt"
+      description: "Thread Executor."
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+      inputs:
+        documents: "$.get('documents')"
+        messages: "$.get('messages')"
+        question: "$.get('question')"
+      outputs:
+        content: "$"
+
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('content').get('speech_to_avatar')"
+          voice_id: "$.get('voice_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"
+
+    # Load thread document
+    - type: "document"
+      name: "load-thread-document"
+      description: "Load thread document"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        _id: "$.get('document_id')"
+      inputs:
+        name: "'thread'"
+      outputs:
+        document_data: "$.get('documents')[0]"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', [])"
+
+    # Update thread document
+    - type: "document"
+      name: "update-thread-document"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data').get('value', {}),
+            'messages': [
+              *$.get('messages'),
+              {
+                'role': 'assistant',
+                'content': {
+                  **$.get('content', {}),
+                  'audio_path': $.get('audio_path')
+                },
+                'date': datetime.now().isoformat()
+              }
+            ],
+            'status': $.get('output_status')
+          }
+      filters:
+        document_id: "$.get('document_id')" 
