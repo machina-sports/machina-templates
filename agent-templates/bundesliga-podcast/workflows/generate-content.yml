@@ -124,6 +124,7 @@ workflow:
         headline: "$.get('podcast_headline')"
         summary: "$.get('podcast_summary')"
         language: "$.get('document-value', {}).get('language', 'en')"
+        user_name: "$.get('document-value', {}).get('name')"
       outputs:
         audio_content: "$.get('content')"
         podcast_headline: "$.get('headline')"

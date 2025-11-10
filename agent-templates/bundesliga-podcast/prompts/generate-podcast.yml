@@ -104,6 +104,7 @@ prompts:
       - Maintain the personality style (neutral, bold, or funny) in translation
       - Keep proper nouns (team names, player names, locations) in their original form unless they have standard translations
       - Ensure the translated content remains natural and engaging for native speakers
+      - The introduction paragraph MUST begin with a personal greeting using the user's name (e.g., "Hey [user_name]," or "Hello [user_name],") in the target language.
 
       Translate the entire podcast script while maintaining its format and structure.
     schema:
