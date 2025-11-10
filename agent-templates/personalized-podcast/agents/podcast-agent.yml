@@ -3,14 +3,14 @@ agent:
   title: Personalized Podcast Agent
   description: "Agent to manage user profile workflows: store profile, generate personalized content, and send email"
   context-agent:
-        name: $.get('name')
-        favorite_sport: $.get('favorite_sport')
-        favorite_team: $.get('favorite_team')
-        podcast_mood_tone: $.get('podcast_mood_tone')
-        sports_knowledge: $.get('sports_knowledge')
-        email_address: $.get('email_address')
-        from_email: $.get('from_email')
-        mailgun_domain: $.get('mailgun_domain')
+    name: $.get('name')
+    favorite_sport: $.get('favorite_sport')
+    favorite_team: $.get('favorite_team')
+    podcast_mood_tone: $.get('podcast_mood_tone')
+    sports_knowledge: $.get('sports_knowledge')
+    email_address: $.get('email_address')
+    from_email: $.get('from_email')
+    mailgun_domain: $.get('mailgun_domain')
   workflows:
 
     # personalized-podcast-store-user-profile
@@ -24,18 +24,15 @@ agent:
         sports_knowledge: "$.get('sports_knowledge')"
         email_address: "$.get('email_address')"
       outputs:
-        workflow-status: "$.get('workflow-status')"
         document_id: "$.get('document_id')"
-        profile_id: "$.get('profile_id')"
-        email_address: "$.get('email_address')"
+        workflow-status: "$.get('workflow-status')"
 
     # personalized-podcast-generate-content
     - name: personalized-podcast-generate-content
       description: "Generate personalized podcast content based on user profile"
       condition: "$.get('email_address') is not None"
       inputs:
-        email_address: "$.get('email_address')"
-        max_queries: "$.get('max_queries', 3)"
+        document_id: "$.get('document_id')"
         voice_id: "$.get('voice_id')"
         model_id: "$.get('model_id', 'eleven_flash_v2_5')"
         duration: "$.get('duration', 120)"
