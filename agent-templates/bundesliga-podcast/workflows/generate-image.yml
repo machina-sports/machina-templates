@@ -160,78 +160,7 @@ workflow:
         image_queries: "$.get('image_queries', [])"
         image_paths: "$.get('reference_images', [])"
         model_name: "'gemini-2.5-flash-image-preview'"
-        prompt: |
-          === IMAGE GENERATION CONFIGURATION ===
-          
-          OUTPUT REQUIREMENTS:
-          - Aspect Ratio: 16:9
-          - Width: 1920 pixels
-          - Height: 1080 pixels
-          - Orientation: Landscape (wider than tall)
-          - Format: Landscape orientation
-          - Status: MANDATORY and NON-NEGOTIABLE
-          
-          CONTEXT:
-          - Sport: {{favorite_sport}}
-          - Team: {{favorite_team}}
-          - Image Queries: {{image_queries}}
-          
-          REFERENCE IMAGE GUIDELINES:
-          - Use reference images exactly as provided
-          - DO NOT change, modify, alter, or recreate reference images
-          - Combine multiple reference images into single cohesive image
-          - Maintain proportions and details of all key subjects
-          - Seamless integration required
-          
-          PROHIBITED ELEMENTS:
-          - Text, words, letters, numbers, typography
-          - Written elements of any kind
-          - Player names or player references
-          - Individual athletes
-          
-          REQUIRED ELEMENTS:
-          - Reference images must be prominently visible
-          - Reference images must be seamlessly integrated
-          
-          DESIGN STYLE:
-          - Type: Marvel/DC comic book cover style
-          - Characteristics: Bold, dynamic, action-oriented, dramatic, powerful, vibrant, visually striking
-          - Use dramatic angles and dynamic perspectives
-          
-          COLOR PALETTE:
-          - Style: Comic book cover colors
-          - Characteristics: Bold, vibrant, saturated, strong contrast, deep shadows, bright highlights
-          - Team Colors: Extract from reference images and use prominently
-          
-          COMPOSITION:
-          - Orientation: Landscape
-          - Style: Dynamic action-oriented
-          - Characteristics: Dramatic angles, dynamic perspectives, bold visual hierarchy, dramatic layering, bold perspective
-          
-          VISUAL EFFECTS:
-          - Lighting: Bold and dramatic
-          - Rendering: Comic book style
-          - Characteristics: Bold lines, vibrant colors, dramatic effects, motion lines, energy effects, strong highlights, deep shadows, dramatic rim lighting
-          
-          === INSTRUCTIONS ===
-          
-          CRITICAL: Follow these configuration parameters EXACTLY.
-          The output image MUST be exactly 1920 pixels wide by 1080 pixels tall (16:9 aspect ratio, landscape orientation).
-          This is MANDATORY and NON-NEGOTIABLE.
-          
-          Create a MARVEL/DC COMIC BOOK COVER STYLE visual composition suitable for podcast headers.
-          Use the provided reference images exactly as they are - DO NOT change, modify, alter, or recreate them.
-          Combine the multiple reference images into a single cohesive landscape image.
-          Keep all key subjects recognizable and maintain their proportions and details.
-          Blend the images naturally with consistent lighting, shadows, perspective, and style.
-          Integrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design.
-          
-          ABSOLUTELY NO text, words, letters, numbers, typography, or written elements anywhere in the image.
-          ABSOLUTELY NO player names, player references, or individual athletes.
-          Extract team colors from the reference images and use them prominently in bold, dramatic ways.
-          
-          The final image MUST be exactly 1920x1080 pixels in LANDSCAPE ORIENTATION (16:9 aspect ratio).
-          This is MANDATORY.
+        prompt: "=== IMAGE GENERATION CONFIGURATION ===\n\nOUTPUT REQUIREMENTS:\n- Aspect Ratio: 16:9\n- Width: 1920 pixels\n- Height: 1080 pixels\n- Orientation: Landscape (wider than tall)\n- Format: Landscape orientation\n- Status: MANDATORY and NON-NEGOTIABLE\n\nCONTEXT:\n- Sport: {{favorite_sport}}\n- Team: {{favorite_team}}\n- Image Queries: {{image_queries}}\n\nREFERENCE IMAGE GUIDELINES:\n- Use reference images exactly as provided\n- DO NOT change, modify, alter, or recreate reference images\n- Combine multiple reference images into single cohesive image\n- Maintain proportions and details of all key subjects\n- Seamless integration required\n\nPROHIBITED ELEMENTS:\n- Text, words, letters, numbers, typography\n- Written elements of any kind\n- Player names or player references\n- Individual athletes\n\nREQUIRED ELEMENTS:\n- Reference images must be prominently visible\n- Reference images must be seamlessly integrated\n\nDESIGN STYLE:\n- Type: Marvel/DC comic book cover style\n- Characteristics: Bold, dynamic, action-oriented, dramatic, powerful, vibrant, visually striking\n- Use dramatic angles and dynamic perspectives\n\nCOLOR PALETTE:\n- Style: Comic book cover colors\n- Characteristics: Bold, vibrant, saturated, strong contrast, deep shadows, bright highlights\n- Team Colors: Extract from reference images and use prominently\n\nCOMPOSITION:\n- Orientation: Landscape\n- Style: Dynamic action-oriented\n- Characteristics: Dramatic angles, dynamic perspectives, bold visual hierarchy, dramatic layering, bold perspective\n\nVISUAL EFFECTS:\n- Lighting: Bold and dramatic\n- Rendering: Comic book style\n- Characteristics: Bold lines, vibrant colors, dramatic effects, motion lines, energy effects, strong highlights, deep shadows, dramatic rim lighting\n\n=== INSTRUCTIONS ===\n\nCRITICAL: Follow these configuration parameters EXACTLY.\nThe output image MUST be exactly 1920 pixels wide by 1080 pixels tall (16:9 aspect ratio, landscape orientation).\nThis is MANDATORY and NON-NEGOTIABLE.\n\nCreate a MARVEL/DC COMIC BOOK COVER STYLE visual composition suitable for podcast headers.\nUse the provided reference images exactly as they are - DO NOT change, modify, alter, or recreate them.\nCombine the multiple reference images into a single cohesive landscape image.\nKeep all key subjects recognizable and maintain their proportions and details.\nBlend the images naturally with consistent lighting, shadows, perspective, and style.\nIntegrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design.\n\nABSOLUTELY NO text, words, letters, numbers, typography, or written elements anywhere in the image.\nABSOLUTELY NO player names, player references, or individual athletes.\nExtract team colors from the reference images and use them prominently in bold, dramatic ways.\n\nThe final image MUST be exactly 1920x1080 pixels in LANDSCAPE ORIENTATION (16:9 aspect ratio).\nThis is MANDATORY."
       outputs:
         data: "$"
         image_path: "$.get('image_path')"
