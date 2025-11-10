@@ -160,8 +160,92 @@ workflow:
         image_queries: "$.get('image_queries', [])"
         image_paths: "$.get('reference_images', [])"
         model_name: "'gemini-2.5-flash-image-preview'"
-        prompt: |
-          IMAGE GENERATION CONFIGURATION (JSON): {"aspect_ratio": "16:9", "width": 1920, "height": 1080, "orientation": "landscape", "style": "marvel_dc_comic_book_cover", "context": {"sport": "{{favorite_sport}}", "team": "{{favorite_team}}", "image_queries": "{{image_queries}}"}, "reference_image_guidelines": {"use_as_provided": true, "do_not_modify": true, "combine_into_single_image": true, "maintain_proportions": true, "seamless_integration": true}, "prohibited_elements": ["text", "words", "letters", "numbers", "typography", "written_elements", "player_names", "player_references", "individual_athletes"], "required_elements": {"reference_images_visible": true, "reference_images_integrated": true}, "design_style": {"type": "marvel_dc_comic_book_cover", "characteristics": ["bold", "dynamic", "action_oriented", "dramatic", "powerful", "vibrant", "visually_striking", "dramatic_angles", "dynamic_perspectives"]}, "color_palette": {"style": "comic_book_cover", "characteristics": ["bold", "vibrant", "saturated", "strong_contrast", "deep_shadows", "bright_highlights"], "team_colors": {"extract_from_references": true, "use_prominently": true}}, "composition": {"orientation": "landscape", "style": "dynamic_action_oriented", "characteristics": ["dramatic_angles", "dynamic_perspectives", "bold_visual_hierarchy", "dramatic_layering", "bold_perspective"]}, "visual_effects": {"lighting": "bold_dramatic", "rendering": "comic_book_style", "characteristics": ["bold_lines", "vibrant_colors", "dramatic_effects", "motion_lines", "energy_effects", "strong_highlights", "deep_shadows", "dramatic_rim_lighting"]}, "output_requirements": {"format": "landscape", "aspect_ratio": "16:9", "dimensions": {"width": 1920, "height": 1080}, "mandatory": true, "non_negotiable": true}}. CRITICAL: Follow these configuration parameters EXACTLY. The output image MUST be exactly 1920 pixels wide by 1080 pixels tall (16:9 aspect ratio, landscape orientation). This is MANDATORY and NON-NEGOTIABLE. Create a MARVEL/DC COMIC BOOK COVER STYLE visual composition suitable for podcast headers. Use the provided reference images exactly as they are - DO NOT change, modify, alter, or recreate them. Combine the multiple reference images into a single cohesive landscape image. Keep all key subjects recognizable and maintain their proportions and details. Blend the images naturally with consistent lighting, shadows, perspective, and style. Integrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design. ABSOLUTELY NO text, words, letters, numbers, typography, or written elements anywhere in the image. ABSOLUTELY NO player names, player references, or individual athletes. Extract team colors from the reference images and use them prominently in bold, dramatic ways. The final image MUST be exactly 1920x1080 pixels in LANDSCAPE ORIENTATION (16:9 aspect ratio). This is MANDATORY.
+        prompt: >
+          IMAGE GENERATION CONFIGURATION (JSON): {
+          "aspect_ratio": "16:9",
+          "width": 1920,
+          "height": 1080,
+          "orientation": "landscape",
+          "style": "marvel_dc_comic_book_cover",
+          "context": {
+            "sport": "{{favorite_sport}}",
+            "team": "{{favorite_team}}",
+            "image_queries": "{{image_queries}}"
+          },
+          "reference_image_guidelines": {
+            "use_as_provided": true,
+            "do_not_modify": true,
+            "combine_into_single_image": true,
+            "maintain_proportions": true,
+            "seamless_integration": true
+          },
+          "prohibited_elements": [
+            "text", "words", "letters", "numbers", "typography",
+            "written_elements", "player_names", "player_references", "individual_athletes"
+          ],
+          "required_elements": {
+            "reference_images_visible": true,
+            "reference_images_integrated": true
+          },
+          "design_style": {
+            "type": "marvel_dc_comic_book_cover",
+            "characteristics": [
+              "bold", "dynamic", "action_oriented", "dramatic", "powerful",
+              "vibrant", "visually_striking", "dramatic_angles", "dynamic_perspectives"
+            ]
+          },
+          "color_palette": {
+            "style": "comic_book_cover",
+            "characteristics": [
+              "bold", "vibrant", "saturated", "strong_contrast",
+              "deep_shadows", "bright_highlights"
+            ],
+            "team_colors": {
+              "extract_from_references": true,
+              "use_prominently": true
+            }
+          },
+          "composition": {
+            "orientation": "landscape",
+            "style": "dynamic_action_oriented",
+            "characteristics": [
+              "dramatic_angles", "dynamic_perspectives", "bold_visual_hierarchy",
+              "dramatic_layering", "bold_perspective"
+            ]
+          },
+          "visual_effects": {
+            "lighting": "bold_dramatic",
+            "rendering": "comic_book_style",
+            "characteristics": [
+              "bold_lines", "vibrant_colors", "dramatic_effects", "motion_lines",
+              "energy_effects", "strong_highlights", "deep_shadows", "dramatic_rim_lighting"
+            ]
+          },
+          "output_requirements": {
+            "format": "landscape",
+            "aspect_ratio": "16:9",
+            "dimensions": {
+              "width": 1920,
+              "height": 1080
+            },
+            "mandatory": true,
+            "non_negotiable": true
+          }
+          }.
+          CRITICAL: Follow these configuration parameters EXACTLY.
+          The output image MUST be exactly 1920 pixels wide by 1080 pixels tall (16:9 aspect ratio, landscape orientation).
+          This is MANDATORY and NON-NEGOTIABLE.
+          Create a MARVEL/DC COMIC BOOK COVER STYLE visual composition suitable for podcast headers.
+          Use the provided reference images exactly as they are - DO NOT change, modify, alter, or recreate them.
+          Combine the multiple reference images into a single cohesive landscape image.
+          Keep all key subjects recognizable and maintain their proportions and details.
+          Blend the images naturally with consistent lighting, shadows, perspective, and style.
+          Integrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design.
+          ABSOLUTELY NO text, words, letters, numbers, typography, or written elements anywhere in the image.
+          ABSOLUTELY NO player names, player references, or individual athletes.
+          Extract team colors from the reference images and use them prominently in bold, dramatic ways.
+          The final image MUST be exactly 1920x1080 pixels in LANDSCAPE ORIENTATION (16:9 aspect ratio).
+          This is MANDATORY.
       outputs:
         data: "$"
         image_path: "$.get('image_path')"
