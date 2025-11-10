@@ -20,7 +20,6 @@ prompts:
 
       Analyze the podcast script above to identify:
       - Key themes, storylines, or narratives discussed
-      - Specific players, moments, or events highlighted
       - Emotional tone and atmosphere conveyed (celebratory, intense, dramatic, etc.)
       - Match situations or scenarios described
       - Visual imagery or scenes mentioned in the script
@@ -29,41 +28,39 @@ prompts:
       1) Guides the synthesis of multiple reference images into one cohesive final image
       2) Visually represents the main themes and storylines from the podcast script
       3) Captures the emotional tone and atmosphere discussed in the audio
-      4) Features specific players, moments, or events mentioned in the script when relevant
-      5) Incorporates {{favorite_team}} team colors, logo, and branding
+      4) Shows generic football/sports action scenes
+      5) Uses generic sports imagery (NO team names, logos, or player names)
       6) IMPORTANT: The image must be in 16:9 widescreen landscape format - explicitly mention this in the prompt
       7) Reflects the type of scene described (match action, training, celebration, etc.)
       8) Uses visual elements that directly support and enhance the podcast narrative
       9) Instructs the AI to combine the best visual elements from the reference images into a unified composition
 
       Focus areas (prioritize based on podcast content):
-      - If the script discusses a specific match or event, visualize that moment
-      - If specific players are highlighted, feature them prominently
-      - If the tone is celebratory, create a celebratory scene
+      - If the script discusses a match, visualize generic football action
+      - Use generic descriptions: "football players", "soccer stadium", "sports action"
+      - If the tone is celebratory, create a celebratory sports scene
       - If the tone is intense or dramatic, reflect that in the visual composition
       - If stadium atmosphere is mentioned, emphasize crowd and venue
-      - If training or preparation is discussed, show training scenes
       - Match the visual mood to the narrative tone of the podcast
 
-      Rules for nano banana prompts:
+      Rules for image generation prompts:
       - Create ONE detailed, descriptive prompt (150-250 words)
       - The prompt will be used with reference images that were queried based on the podcast content
       - Guide the AI to synthesize and combine elements from the reference images into a single, unified final image
-      - Personalize the prompt based on the actual podcast script content, not just generic team imagery
       - Use vivid, visual language describing composition, lighting, mood, and style that matches the podcast narrative
-      - Include specific references to {{favorite_team}}'s colors, kit, and identity
-      - If specific players are mentioned in the script, include them in the visual description
-      - If specific moments or events are discussed, visualize those exact scenarios
+      - DO NOT include any specific team names, player names, logos, or trademarks
+      - DO NOT mention {{favorite_team}} name or any identifiable marks
+      - Use only generic terms: "football players", "soccer stadium", "athletes", "sports action"
       - Describe the scene cinematically (e.g., "wide-angle shot", "dramatic lighting", "dynamic composition")
       - Match the visual mood to the emotional tone of the podcast (energetic, contemplative, celebratory, intense, etc.)
       - Mention photorealistic quality and professional sports photography style
-      - Avoid text overlays or complex graphics - focus on pure visual imagery
+      - Avoid text overlays, logos, team names, player names - focus on pure visual imagery
       - Use terms like "cinematic", "high-resolution", "professional sports photography"
       - Instruct the AI to blend and combine visual elements from the reference images harmoniously
       - Ensure the generated image will visually complement and enhance the podcast content
       - The final image should be a cohesive synthesis of the reference images, not a collage or montage
 
-      Return a single, detailed image generation prompt optimized for nano banana AI that creates a visual representation directly tied to the podcast script content and guides the synthesis of reference images into one unified final image.
+      Return a single, detailed image generation prompt that creates a generic sports visual representation without any trademarked or copyrighted names, logos, or identifiable marks.
     schema:
       title: PersonalizedPodcastGenerateImagePrompt
       description: Generates a detailed AI image generation prompt for nano banana to create compelling sports visuals personalized based on user preferences and podcast script content, guiding the synthesis of reference images into a single unified final image
@@ -72,4 +69,4 @@ prompts:
       properties:
         image_prompt:
           type: string
-          description: A comprehensive, descriptive prompt for nano banana AI image generation that guides the synthesis of reference images into a single cohesive final image, capturing the essence of the podcast script content, featuring specific players, moments, or events mentioned, matching the emotional tone and narrative themes discussed in the audio, while incorporating the user's favorite team colors, branding, and visual identity
+          description: A comprehensive, descriptive prompt for AI image generation that guides the synthesis of reference images into a single cohesive final image, capturing the essence of the podcast script content with generic sports imagery, matching the emotional tone and narrative themes discussed in the audio, without any trademarked team names, player names, or logos
