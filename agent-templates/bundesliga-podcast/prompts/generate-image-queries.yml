@@ -23,29 +23,22 @@ prompts:
       - Current storylines or narratives featured
 
       Generate image queries that:
-      1) Directly relate to the specific content discussed in the podcast script
-      2) Complement the narrative and topics covered in the audio
-      3) Focus on the most relevant visual elements mentioned in the script
-      4) Prioritize specific players, events, or moments that are highlighted in the podcast
-
-      Focus areas (prioritize based on what's mentioned in the script):
-      - Images of specific {{favorite_team}} players mentioned in the podcast
-      - Images of {{favorite_team}} stadium or venues referenced
-      - Images of {{favorite_team}} training sessions if discussed
-      - Images of {{favorite_team}} matches or events highlighted in the script
-      - Images of {{favorite_team}} fans if fan culture is mentioned
-      - Images of {{favorite_team}} coach or management if discussed
-      - Images related to specific storylines or news items covered in the podcast
+      1) Are extracted directly from the specific content discussed in the podcast script
+      2) Reflect only the actual topics, players, events, and storylines mentioned in the audio content
+      3) Prioritize the most prominent visual elements that are explicitly referenced in the script
+      4) Focus on concrete details from the audio content (specific player names, match dates, events, locations, etc.)
 
       Rules:
-      - Generate {{max_queries}} short, specific image queries (2-3 total)
-      - Personalize queries based on the actual content of the podcast script, not just generic team information
-      - Include specific player names, match dates, or events mentioned in the script when relevant
+      - Extract queries exclusively from what is actually mentioned in the podcast script content
+      - Generate short, specific image queries based on concrete details found in the audio content
+      - Only include queries for players, events, locations, or topics that are explicitly referenced in the script
+      - Include specific player names, match dates, events, or locations only if they appear in the audio content
       - Include the club name and, when useful, the competition/season and the current year
-      - If the script mentions specific players, prioritize queries for those players
-      - If the script focuses on a particular match or event, create queries related to that specific event
-      - Avoid generic image queries; be concise, action-oriented, and directly tied to the podcast content
-      - Ensure queries will retrieve images that visually support the podcast narrative
+      - Do not create queries based on assumptions or generic team information - only use what's in the script
+      - If the script doesn't mention specific players, don't create player queries
+      - If the script doesn't mention specific matches, don't create match queries
+      - Be concise, action-oriented, and directly tied to the actual podcast content
+      - Ensure queries will retrieve images that visually support the specific narrative told in the podcast
 
       Return only the image queries (no explanations), ready for image search.
     schema:
@@ -57,8 +50,8 @@ prompts:
         image_queries:
           type: array
           description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team
-          minItems: 1
-          maxItems: 3
+          minItems: 3
+          maxItems: 5
           items:
             type: string
             description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script)

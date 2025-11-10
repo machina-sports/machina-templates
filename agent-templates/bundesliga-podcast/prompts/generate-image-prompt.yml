@@ -3,13 +3,28 @@ prompts:
   # bundesliga-podcast-generate-image-prompt
   - type: prompt
     name: bundesliga-podcast-generate-image-prompt
-    title: Bundesliga Podcast Generate Image Prompt
-    description: "Generate AI image generation prompt for nano banana based on user's favorite team and podcast script content"
+    title: Personalized Podcast Generate Image Prompt
+    description: "Generate AI image generation prompt for nano banana based on user's favorite sport, team, and podcast script content"
     instructions: |
       You are a creative visual content specialist for sports media. Based on the user's preferences and the podcast script content, generate a detailed, descriptive prompt for nano banana AI image generation that will create a compelling visual representation that directly complements and enhances the podcast narrative.
 
       IMPORTANT CONTEXT:
-      Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to synthesize and combine visual elements from these reference images into a single, cohesive final image that represents the podcast content.
+      Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to generate a CINEMATIC, DREAMLKE visual composition suitable for Bundesliga headers. The image should blend classic architecture and motion, capturing the feeling of timeless heritage meeting modern speed. The composition should have soft diffusion, heavy motion blur, and nostalgic film-grain texture, using a warm muted palette with gentle light leaks and shadows that suggest analog photography. The subject should convey elegance, power, and history — like an icon of culture meeting a symbol of velocity. The final image should feel like a retro-futuristic travel poster — poetic, fast, and slightly surreal, as if suspended between memory and motion.
+
+      The image queries used to retrieve the reference images are:
+      {{image_queries}}
+
+      CRITICAL CONSTRAINTS:
+      - You MUST only reference images, visual elements, players, teams, and concepts that correspond to the image queries listed above
+      - Do not introduce any visual elements, scenes, players, teams, or concepts that are not represented in these queries
+      - DO NOT mention ANY specific player names UNLESS that exact player name appears in the image_queries array above. Even if players are mentioned extensively in audio_content, use generic terms like "players", "team members", "athletes", "footballers", or "sportsmen" instead
+      - The final image MUST be generated in 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      - The final image MUST be CINEMATIC and DREAMLKE - a realistic photographic composition with cinematic qualities
+      - The composition should blend classic architecture and motion, capturing timeless heritage meeting modern speed
+      - Remove ALL watermarks, logos, text overlays, copyright marks, and branding from the reference images - if reference images contain watermarks, instruct the AI to recreate those visual elements without the watermarks
+      - The final image MUST be completely free of any text, words, letters, numbers, or typography - no text elements whatsoever
+      - The design should be aligned and tailored for fans of {{favorite_team}}, celebrating and representing the team's identity and spirit
+      - The design must follow a consistent cinematic style suitable for Bundesliga headers - retro-futuristic travel poster aesthetic
 
       User preferences:
       - Favorite sport: {{favorite_sport}}
@@ -21,52 +36,89 @@ prompts:
       Analyze the podcast script above to identify:
       - Key themes, storylines, or narratives discussed
       - Emotional tone and atmosphere conveyed (celebratory, intense, dramatic, etc.)
-      - Match situations or scenarios described
+      - Game/match situations or scenarios described
       - Visual imagery or scenes mentioned in the script
+      - Specific references to {{favorite_sport}} and {{favorite_team}}
 
       Create a single, comprehensive image generation prompt that:
-      1) Guides the synthesis of multiple reference images into one cohesive final image
-      2) Visually represents the main themes and storylines from the podcast script
-      3) Captures the emotional tone and atmosphere discussed in the audio
-      4) Shows generic football/sports action scenes
-      5) Uses generic sports imagery (NO team names, logos, or player names)
-      6) IMPORTANT: The image must be in 16:9 widescreen landscape format - explicitly mention this in the prompt
-      7) Reflects the type of scene described (match action, training, celebration, etc.)
-      8) Uses visual elements that directly support and enhance the podcast narrative
-      9) Instructs the AI to combine the best visual elements from the reference images into a unified composition
+      1) Creates a cinematic, dreamlike composition blending classic architecture and motion suitable for Bundesliga headers
+      2) Generates the final image in 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      3) Contains absolutely NO text, words, letters, numbers, typography, or written elements whatsoever - the image must be completely text-free
+      4) Captures the feeling of timeless heritage meeting modern speed
+      5) Aligns the cinematic composition with the story, themes, and narrative flow from the audio content
+      6) Tailors the design for fans of {{favorite_team}}, celebrating the team's identity and spirit
+      7) Represents main themes and storylines through cinematic visual elements that convey elegance, power, and history
+      8) Captures emotional tone through color, lighting, and composition
+      9) Incorporates elements specific to {{favorite_sport}} and {{favorite_team}} only if present in image queries
+      10) Uses cinematic visual elements that support and enhance the podcast narrative
+      11) Reflects scene types (game/match action, training, celebration, etc.) through realistic cinematic interpretation
+      12) Creates a retro-futuristic travel poster aesthetic - poetic, fast, slightly surreal, suspended between memory and motion
 
-      Focus areas (prioritize based on podcast content):
-      - If the script discusses a match, visualize generic football action
-      - Use generic descriptions: "football players", "soccer stadium", "sports action"
-      - If the tone is celebratory, create a celebratory sports scene
-      - If the tone is intense or dramatic, reflect that in the visual composition
-      - If stadium atmosphere is mentioned, emphasize crowd and venue
-      - Match the visual mood to the narrative tone of the podcast
+      IMAGE STYLE REQUIREMENTS (MUST FOLLOW):
+      The generated image must adhere to the following cinematic, dreamlike aesthetic and technical specifications:
 
-      Rules for image generation prompts:
-      - Create ONE detailed, descriptive prompt (150-250 words)
-      - The prompt will be used with reference images that were queried based on the podcast content
-      - Guide the AI to synthesize and combine elements from the reference images into a single, unified final image
-      - Use vivid, visual language describing composition, lighting, mood, and style that matches the podcast narrative
-      - DO NOT include any specific team names, player names, logos, or trademarks
-      - DO NOT mention {{favorite_team}} name or any identifiable marks
-      - Use only generic terms: "football players", "soccer stadium", "athletes", "sports action"
-      - Describe the scene cinematically (e.g., "wide-angle shot", "dramatic lighting", "dynamic composition")
-      - Match the visual mood to the emotional tone of the podcast (energetic, contemplative, celebratory, intense, etc.)
-      - Mention photorealistic quality and professional sports photography style
-      - Avoid text overlays, logos, team names, player names - focus on pure visual imagery
-      - Use terms like "cinematic", "high-resolution", "professional sports photography"
-      - Instruct the AI to blend and combine visual elements from the reference images harmoniously
-      - Ensure the generated image will visually complement and enhance the podcast content
-      - The final image should be a cohesive synthesis of the reference images, not a collage or montage
+      Design Style (CRITICAL - CINEMATIC AND DREAMLIKE COMPOSITION):
+      - Cinematic, dreamlike composition blending classic architecture and motion
+      - Capture the feeling of timeless heritage meeting modern speed
+      - The subject should convey elegance, power, and history — like an icon of culture meeting a symbol of velocity
+      - Minimal, editorial framing suitable for Bundesliga headers
+      - Retro-futuristic travel poster aesthetic: poetic, fast, slightly surreal, suspended between memory and motion
+      - Realistic photographic composition with cinematic qualities - NOT abstract, NOT graphic design
 
-      Return a single, detailed image generation prompt that creates a generic sports visual representation without any trademarked or copyrighted names, logos, or identifiable marks.
+      Color Palette:
+      - Warm, muted palette with gentle light leaks and shadows suggesting analog photography
+      - Soft, nostalgic tones that evoke film-grain texture
+      - Team colors integrated subtly when relevant
+      - Deep shadows and warm highlights creating depth and atmosphere
+      - Avoid overly saturated or flat colors - maintain the dreamlike, cinematic quality
+      - Use color relationships to create the feeling of timeless heritage
+
+      Composition & Layout:
+      - MUST be 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      - Cinematic, dreamlike composition with soft diffusion
+      - Blend classic architecture and motion in the frame
+      - Minimal, editorial framing with balanced visual hierarchy
+      - Strategic use of negative space and composition flow
+      - Create depth through realistic layering, depth of field, and cinematic perspective
+      - Arrange visual elements to represent the story from the audio_content
+      - Composition should feel like a retro-futuristic travel poster - poetic and slightly surreal
+      - Absolutely NO text, words, letters, numbers, typography, or written elements anywhere in the composition
+
+      Visual Effects & Cinematic Techniques:
+      - Heavy motion blur applied to elements suggesting speed and movement
+      - Soft diffusion creating dreamlike, cinematic quality throughout
+      - Nostalgic film-grain texture applied to the entire image
+      - Gentle light leaks and shadows suggesting analog photography
+      - Use realistic photographic effects: depth of field, motion blur, lens flares, atmospheric haze
+      - The final image should feel suspended between memory and motion
+      - Maintain realistic rendering with cinematic, dreamlike qualities
+
+      Before returning your prompt, perform this final check:
+      1. Read through your generated prompt
+      2. Identify any specific player names
+      3. Check if those player names appear in the image_queries: {{image_queries}}
+      4. If ANY player name in your prompt does NOT appear in image_queries, replace it with a generic term (e.g., "players", "team members", "athletes")
+      
+      Return a single, detailed image generation prompt that creates a cinematic, dreamlike composition suitable for Bundesliga headers. The prompt must:
+      - Create a cinematic, dreamlike composition blending classic architecture and motion
+      - Capture the feeling of timeless heritage meeting modern speed
+      - Explicitly specify 16:9 widescreen landscape aspect ratio (1920x1080 or equivalent proportions)
+      - Explicitly state the final image contains absolutely NO text, words, letters, numbers, typography, or written elements whatsoever - completely text-free
+      - Include soft diffusion, heavy motion blur, and nostalgic film-grain texture
+      - Use a warm, muted palette with gentle light leaks and shadows suggesting analog photography
+      - Convey elegance, power, and history through the subject matter
+      - Align with and represent the story from the audio_content
+      - Be tailored for fans of {{favorite_team}}, celebrating the team's identity and spirit
+      - Incorporate all style requirements (design style, color palette, composition & layout, visual effects) described above
+      - Only reference visual elements, teams, and scenes available in the provided image queries
+      - Use ONLY generic player references (never mention specific player names unless they appear in image_queries)
+      - Explicitly state the output is CINEMATIC and DREAMLIKE - a realistic photographic composition with retro-futuristic travel poster aesthetic, poetic, fast, slightly surreal, suspended between memory and motion
     schema:
       title: PersonalizedPodcastGenerateImagePrompt
-      description: Generates a detailed AI image generation prompt for nano banana to create compelling sports visuals personalized based on user preferences and podcast script content, guiding the synthesis of reference images into a single unified final image
+      description: Generates a detailed AI image generation prompt for nano banana to create cinematic, dreamlike compositions personalized based on user preferences and podcast script content, blending classic architecture and motion to capture timeless heritage meeting modern speed, suitable for Bundesliga headers with a retro-futuristic travel poster aesthetic that aligns with the audio story
       type: object
       required: [ "image_prompt" ]
       properties:
         image_prompt:
           type: string
-          description: A comprehensive, descriptive prompt for AI image generation that guides the synthesis of reference images into a single cohesive final image, capturing the essence of the podcast script content with generic sports imagery, matching the emotional tone and narrative themes discussed in the audio, without any trademarked team names, player names, or logos
+          description: A comprehensive, descriptive prompt for AI image generation that creates a cinematic, dreamlike composition blending classic architecture and motion, capturing timeless heritage meeting modern speed, aligned with the audio_content story, incorporating the user's favorite sport and team, suitable for Bundesliga headers with soft diffusion, heavy motion blur, nostalgic film-grain texture, warm muted palette, and retro-futuristic travel poster aesthetic, matching the emotional tone and narrative themes discussed in the audio

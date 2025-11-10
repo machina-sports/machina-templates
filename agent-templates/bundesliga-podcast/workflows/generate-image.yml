@@ -104,7 +104,7 @@ workflow:
             "source": $.get('source'),
           }
       outputs:
-        image_urls: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:3] if $.get('results', [])[0].get('content') else []
+        image_urls: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:5] if $.get('results', [])[0].get('content') else []
 
     # save-to-tmp
     - type: connector
@@ -141,6 +141,7 @@ workflow:
         audio_content: $.get('audio_content')
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
+        image_queries: "$.get('image_queries', [])"
       outputs:
         image_prompt: "$.get('image_prompt', '')"
 
@@ -153,6 +154,7 @@ workflow:
         name: "google-genai"
         command: "invoke_image"
       inputs:
+        image_queries: "$.get('image_queries', [])"
         image_paths: "$.get('reference_images', [])"
         model_name: "'gemini-2.5-flash-image-preview'"
         prompt: $.get('image_prompt')
