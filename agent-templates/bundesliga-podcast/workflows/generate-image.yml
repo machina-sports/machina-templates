@@ -80,6 +80,10 @@ workflow:
         name: oxylabs
         command: post-queries
       continue_on_error: true
+      foreach:
+        name: image_query
+        expr: $
+        value: $.get('image_queries', [])
       inputs:
         body: |
           {
@@ -100,7 +104,7 @@ workflow:
             ],
             "geo_location": $.get('geo_location'),
             "parse": $.get('parser'),
-            "query": str($.get('image_queries', [])).join(', '),
+            "query": str($.get('image_query', '')),
             "source": $.get('source'),
           }
       outputs:
