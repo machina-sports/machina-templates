@@ -11,6 +11,11 @@ prompts:
       IMPORTANT CONTEXT:
       Reference images have been retrieved based on image queries generated from the podcast script. These reference images will be provided to the image generation model along with your prompt. Your task is to create a prompt that guides the AI to synthesize and combine visual elements from these reference images into a single, cohesive, personalized final image that represents the podcast content.
 
+      The image queries used to retrieve the reference images are:
+      {{image_queries}}
+
+      CRITICAL CONSTRAINT: You MUST only reference images, visual elements, players, teams, and concepts that correspond to the image queries listed above. Do not introduce any visual elements, scenes, players, teams, or concepts that are not represented in these queries. The reference images provided to the image generation model will only contain content related to these specific queries. Any players, teams, or specific entities mentioned in your prompt must be explicitly present in the image queries above.
+
       The final image generated should be a personalized composition that incorporates:
       - Visual elements from the reference images provided
       - The user's favorite sport: {{favorite_sport}}
@@ -35,34 +40,36 @@ prompts:
       1) Guides the synthesis of multiple reference images into one cohesive, personalized final image
       2) Visually represents the main themes and storylines from the podcast script
       3) Captures the emotional tone and atmosphere discussed in the audio
-      4) Incorporates elements specific to {{favorite_sport}} and {{favorite_team}}
-      5) Shows relevant sports action scenes appropriate for {{favorite_sport}}
+      4) Incorporates elements specific to {{favorite_sport}} and {{favorite_team}}, BUT ONLY if they are present in the image queries above
+      5) Shows relevant sports action scenes appropriate for {{favorite_sport}}, constrained to what is available in the image queries
       6) IMPORTANT: The image must be in 16:9 widescreen landscape format - explicitly mention this in the prompt
-      7) Reflects the type of scene described (game/match action, training, celebration, etc.)
-      8) Uses visual elements that directly support and enhance the podcast narrative
+      7) Reflects the type of scene described (game/match action, training, celebration, etc.), but only using elements from the image queries
+      8) Uses visual elements that directly support and enhance the podcast narrative, limited to what is available in the reference images
       9) Instructs the AI to combine the best visual elements from the reference images into a unified, personalized composition
-      10) Creates a personalized visual representation that reflects the user's favorite sport and team
+      10) Creates a personalized visual representation that reflects the user's favorite sport and team, but ONLY references players, teams, and scenes that are explicitly present in the image queries above
 
-      Focus areas (prioritize based on podcast content):
-      - If the script discusses a game/match, visualize relevant {{favorite_sport}} action
-      - Incorporate visual elements that represent {{favorite_team}} when relevant to the content
-      - If the tone is celebratory, create a celebratory sports scene appropriate for {{favorite_sport}}
-      - If the tone is intense or dramatic, reflect that in the visual composition
-      - If venue/arena/stadium atmosphere is mentioned, emphasize crowd and venue appropriate for {{favorite_sport}}
+      Focus areas (prioritize based on podcast content, but constrained to image queries):
+      - If the script discusses a game/match, visualize relevant {{favorite_sport}} action ONLY if such scenes are present in the image queries
+      - Incorporate visual elements that represent {{favorite_team}} ONLY if the team is mentioned in the image queries
+      - If the tone is celebratory, create a celebratory sports scene appropriate for {{favorite_sport}}, using only elements from the image queries
+      - If the tone is intense or dramatic, reflect that in the visual composition using available reference images
+      - If venue/arena/stadium atmosphere is mentioned, emphasize crowd and venue ONLY if such elements are in the image queries
       - Match the visual mood to the narrative tone of the podcast
-      - Personalize the composition to reflect the user's favorite sport and team context
+      - Personalize the composition to reflect the user's favorite sport and team context, but ONLY reference players, teams, and scenes explicitly present in the image queries above
 
       Rules for image generation prompts:
       - Create ONE detailed, descriptive prompt (150-250 words)
       - The prompt will be used with reference images that were queried based on the podcast content
+      - CRITICAL: Only reference visual elements, scenes, players, teams, and concepts that correspond to the image queries provided above ({{image_queries}}). Do not introduce any elements that are not represented in these queries.
       - Guide the AI to synthesize and combine elements from the reference images into a single, unified, personalized final image
-      - Personalize the composition by incorporating elements related to {{favorite_sport}} and {{favorite_team}}
+      - Personalize the composition by incorporating elements related to {{favorite_sport}} and {{favorite_team}}, but ONLY if they align with the available image queries
       - Use vivid, visual language describing composition, lighting, mood, and style that matches the podcast narrative
       - Match the visual mood to the emotional tone of the podcast (energetic, contemplative, celebratory, intense, etc.)
       - Instruct the AI to blend and combine visual elements from the reference images harmoniously
       - Ensure the generated image will visually complement and enhance the podcast content
       - The final image should be a cohesive, personalized synthesis of the reference images, not a collage or montage
-      - The composition should reflect the user's favorite sport and team context from the audio content
+      - The composition should reflect the user's favorite sport and team context from the audio content, constrained to what is available in the image queries
+      - DO NOT mention any specific player names, team names, or entities unless they are explicitly present in the image queries above
 
       IMAGE STYLE REQUIREMENTS (MUST FOLLOW):
       The generated image must adhere to the following aesthetic and technical specifications:
@@ -96,7 +103,7 @@ prompts:
       - Create depth through strategic use of light and shadow
       - Avoid flat, even illumination - the lighting should be dramatic and purposeful
 
-      Return a single, detailed image generation prompt that creates a personalized sports visual representation that synthesizes the reference images with elements specific to the user's favorite sport ({{favorite_sport}}), favorite team ({{favorite_team}}), and the themes discussed in the audio content. The prompt must explicitly incorporate all the image style requirements (aesthetic, color palette, camera technique, and lighting) described above.
+      Return a single, detailed image generation prompt that creates a personalized sports visual representation that synthesizes ONLY the reference images corresponding to the provided image queries ({{image_queries}}), incorporating elements specific to the user's favorite sport ({{favorite_sport}}), favorite team ({{favorite_team}}), and the themes discussed in the audio content - but ONLY if those elements are present in the image queries. The prompt must explicitly incorporate all the image style requirements (aesthetic, color palette, camera technique, and lighting) described above, and must only reference visual elements, players, teams, and scenes that are available in the provided image queries.
     schema:
       title: PersonalizedPodcastGenerateImagePrompt
       description: Generates a detailed AI image generation prompt for nano banana to create compelling sports visuals personalized based on user preferences and podcast script content, guiding the synthesis of reference images into a single unified final image
