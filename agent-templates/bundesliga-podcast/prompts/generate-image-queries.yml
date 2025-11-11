@@ -38,7 +38,7 @@ prompts:
       properties:
         image_queries:
           type: array
-          description: Array of 5 image queries. First: {favorite_team} fans, Second: {favorite_team} stadium, Third: {favorite_team} mascot, then 2 queries extracted from podcast script content.
+          description: "Array of 5 image queries. First: {favorite_team} fans, Second: {favorite_team} stadium, Third: {favorite_team} mascot, then 2 queries extracted from podcast script content."
           minItems: 5
           maxItems: 5
           items:
