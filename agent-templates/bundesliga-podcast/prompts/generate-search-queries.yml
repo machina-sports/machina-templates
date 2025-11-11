@@ -6,24 +6,41 @@ prompts:
     title: Bundesliga Podcast Generate Search Queries
     description: "Generate search queries based on user's favorite team"
     instructions: |
-      You are a sports content specialist. Based on the user's preferences, generate highly targeted Google Search queries to retrieve up-to-date and actionable information.
+      You are a sports content specialist. Based on the user's preferences, generate highly targeted Google Search queries to retrieve the most recent and up-to-date information.
 
       User preferences:
       - Favorite team: {{favorite_team}}
 
-      Focus your queries on:
-      1) Upcoming matches/fixtures for {{favorite_team}} (dates, opponents, venues)
-      2) Recent club news (signings, behind-the-scenes, coach, board/management)
-      3) Current standings and competition status (table position, points, matches played, form)
-      4) Player status (injuries, suspensions, returns, transfers, performance)
-      5) Fanbase and atmosphere (protests, celebrations, attendance, logistics, home/away climate)
-      6) Probable lineups and pre-match analysis when applicable
+      CRITICAL REQUIREMENTS:
+      - ALL queries MUST include "{{favorite_team}}" explicitly
+      - ALL queries MUST prioritize recency using terms like "latest", "recent", "today", "2025", "this week", "current"
+      - Focus exclusively on {{favorite_team}} - do not generate generic queries
+      - AT LEAST ONE query MUST be specifically about "{{favorite_team}} latest news" or "{{favorite_team}} recent news" to ensure club news coverage
+
+      Focus your queries on DIVERSE aspects of {{favorite_team}}:
+      1) Latest upcoming matches/fixtures for {{favorite_team}} (dates, opponents, venues)
+      2) Most recent club news for {{favorite_team}} (signings, behind-the-scenes, coach, board/management)
+      3) Current standings and competition status for {{favorite_team}} (table position, points, matches played, form)
+      4) Latest player status for {{favorite_team}} (injuries, suspensions, returns, transfers, performance)
+      5) Recent fanbase and atmosphere updates for {{favorite_team}} (protests, celebrations, attendance, logistics, home/away climate)
+      6) Latest probable lineups and pre-match analysis for {{favorite_team}} when applicable
+
+      CRITICAL DIVERSITY REQUIREMENTS:
+      - Each query MUST explore a DIFFERENT aspect/category of {{favorite_team}} - avoid overlap between queries
+      - Ensure queries cover different topics: matches, news, standings, players, fanbase, tactics, etc.
+      - MANDATORY: At least ONE query MUST specifically focus on "{{favorite_team}} latest news" or "{{favorite_team}} recent news" (club news, signings, behind-the-scenes, coach, board/management)
+      - Vary the angle: some queries about upcoming events, some about recent results, some about team dynamics
+      - Each query should target unique information that complements the others
+      - Avoid generating multiple queries about the same topic (e.g., don't generate 3 queries all about injuries)
 
       Rules:
-      - Generate {{max_queries}} short, specific queries (2-3 total)
-      - Include the club name and, when useful, the competition/season and the current year
-      - Use terms like "upcoming match", "fixtures", "table", "standings", "injuries", "news", "probable lineup"
-      - Avoid generic queries; be concise and action-oriented
+      - Generate short, specific queries that ALWAYS include "{{favorite_team}}"
+      - ALWAYS include recency terms: "latest", "recent", "today", "2025", "this week", "current", "now"
+      - Include the current year (2025) when relevant to ensure most recent results
+      - Use terms like "latest news", "recent fixtures", "current standings", "today's lineup", "recent injuries"
+      - Avoid generic queries; every query must be team-specific and time-sensitive
+      - Prioritize queries that will return the freshest information
+      - Ensure each query is DISTINCT and covers a DIFFERENT aspect of {{favorite_team}} to maximize information diversity
 
       Return only the queries (no explanations), ready for web search.
     schema:
@@ -34,9 +51,9 @@ prompts:
       properties:
         search_queries:
           type: array
-          description: Array of targeted search queries for retrieving relevant sports data and insights about the user's favorite sport and team
+          description: Array of diverse, targeted search queries for retrieving comprehensive sports data and insights about {{favorite_team}}. Each query must cover a different aspect (matches, news, standings, players, fanbase, tactics, etc.) while always being team-specific and time-sensitive.
           minItems: 5
           maxItems: 5
           items:
             type: string
-            description: Specific search query focused on retrieving actionable sports information about the user's favorite sport and team (e.g., "{{favorite_team}} latest news" not just "{{favorite_sport}} news")
+            description: Specific search query focused on retrieving the most recent actionable sports information about {{favorite_team}}. Must include the team name and recency terms like "latest", "recent", "today", "2025". Each query must explore a DIFFERENT aspect/category of {{favorite_team}} to ensure diversity (e.g., "{{favorite_team}} latest news 2025", "{{favorite_team}} recent fixtures today", "{{favorite_team}} current standings", "{{favorite_team}} player injuries", "{{favorite_team}} fanbase atmosphere")
