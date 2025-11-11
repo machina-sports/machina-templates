@@ -94,7 +94,7 @@ workflow:
       connector:
         name: "google-genai"
         command: "invoke_prompt"
-        model: "gemini-2.5-pro"
+        model: "gemini-2.5-flash"
         location: "global"
         provider: "vertex_ai"
       inputs:

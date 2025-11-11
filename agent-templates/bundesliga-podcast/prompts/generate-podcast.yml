@@ -36,16 +36,13 @@ prompts:
 
       SCRIPT STYLE:
       - Conversational, friendly tone - natural everyday language, like two fans talking about their shared passion
-      - CRITICAL: NEVER use "your", "you", "your team", "your personalized", "your daily briefing", "your deep dive" - ALWAYS use "we", "our [favorite_team]", "our team", "us" throughout (narrator is a fellow fan)
       - Opening: Start with fellow fan greeting like "Hey fellow [favorite_team] fans!" or "We've got some big news about our team!" NOT "Welcome to your daily football briefing!" or "Welcome to your..."
+      - Closing: End with fellow fan language like "That's what's happening with our team!" NOT "That's all for today's update! We'll be back tomorrow"
       - Do NOT sound like a broadcaster or news anchor - sound like a fellow fan sharing updates with friends
+      - Avoid broadcaster language: Phrases like "Welcome to...", "That's all for today", "We'll be back tomorrow" sound like a news show, not a fellow fan
       - Use common team names fans actually say (e.g., "Bayern Munich" not "FC Bayern München", "Cologne" not "1. FC Köln")
       - Times: listener-friendly with timezone context (e.g., "this Saturday at three P M Eastern" not "15:00 UTC")
       - Natural transitions, address contradictions, include specific details from search results only
-      - Frame everything as if speaking as a fellow [favorite_team] fan who loves [favorite_sport] - emotionally aligned, not distant
-      - Closing: End with fellow fan language like "That's what's happening with our team!" NOT "That's all for today's update! We'll be back tomorrow"
-      - NO broadcaster language: Avoid phrases like "Welcome to...", "That's all for today", "We'll be back tomorrow" - these sound like a news show, not a fellow fan
-      - NO music cues: Do NOT include "(Intro music fades in)" or "(Outro music fades in)" - just write the script content
 
       ANALYSIS & STORYTELLING (CRITICAL FOR ENGAGEMENT):
       - Start with a compelling hook - lead with the most interesting/impactful story or stat about favorite_team (cup win, big loss, transfer news)
@@ -88,7 +85,7 @@ prompts:
       - Ensure proper pronunciation: Use common spellings/names that TTS engines recognize well
       - Test readability: Read the script aloud mentally - if it sounds awkward, rewrite it
       - Avoid formal team names: "Hamburger SV" can stay as "Hamburger S V" or just "Hamburg" - use what fans actually say
-      - NO intro/outro music cues: Do NOT include "(Intro music fades in)" or "(Outro music fades in)" - just write the script content
+      - NO music cues: Do NOT include "(Intro music fades in)" or "(Outro music fades in)" - just write the script content
 
       NEWSLETTER REQUIREMENTS:
       - CRITICAL: Follow exact same storyline, topics, and order as podcast script
@@ -98,10 +95,7 @@ prompts:
       - Apply same engaging storytelling: compelling hooks, narrative arcs, vivid details, emotional connection
       - Make it captivating: Use the same analysis depth, connect dots, explain why things matter
       - Build anticipation and momentum throughout the article
-      - CRITICAL: Use "we", "our [favorite_team]", "our team", "us" throughout - maintain fellow fan perspective (NOT "your team", "you", "your deep dive", "your briefing")
       - Opening: Start with fellow fan perspective like "As fellow [favorite_team] fans, we know..." NOT "Welcome to your deep dive"
-      - Express same emotional investment as podcast: excitement, concern, hope as a fellow fan would
-      - Frame content as written by a fellow [favorite_team] fan for [favorite_team] fans who follow [favorite_sport] - shared emotional connection
       - Do NOT use broadcaster/newsletter language - write as a fellow fan sharing updates, not a formal newsletter
       
       NEWSLETTER STATS:
@@ -111,7 +105,7 @@ prompts:
       - Use **bold** for numbers, group related stats, include context labels (e.g., "Goals: 15")
       - Examples: Match results in tables, player stats as "- Goals: 12 | Assists: 5", team stats in blocks/tables
 
-      Generate a complete podcast script optimized for Text-to-Speech (TTS) reading. CRITICAL: The narrator is a fellow fan - use "we", "our team", "us" throughout, NEVER "your" or "you". Start with fellow fan greeting, end with fellow fan closing. Do NOT include music cues or broadcaster language. Write numbers in words, avoid hyphens in scores, spell out acronyms, and ensure smooth flow when spoken aloud. The script must read naturally and clearly when converted to audio. Format with clear paragraph breaks, using ONLY the information from the search results provided above.
+      Generate a complete podcast script optimized for Text-to-Speech (TTS) reading. Follow all directives above: use "we", "our team", "us" throughout (narrator is a fellow fan), write numbers in words, avoid hyphens in scores, spell out acronyms, and ensure smooth flow when spoken aloud. The script must read naturally and clearly when converted to audio. Format with clear paragraph breaks, using ONLY the information from the search results provided above.
     schema:
       title: "UserProfilePersonalizedPodcastContent"
       description: "Generate personalized podcast audio content from web search results about user's favorite team"
