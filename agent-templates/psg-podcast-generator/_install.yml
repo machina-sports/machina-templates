@@ -36,3 +36,6 @@ datasets:
 
   - type: "connector"
     path: "../../connectors/storage/storage.yml"
+
+  - type: "workflow"
+    path: "event-analyzer.yml"

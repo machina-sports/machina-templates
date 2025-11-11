@@ -6,6 +6,8 @@ workflow:
     debugger:
       enabled: true
     google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
@@ -48,6 +50,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         documents: "$.get('documents')"
         messages: "$.get('messages')"
