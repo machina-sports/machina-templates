@@ -23,7 +23,7 @@ prompts:
       - Current storylines or narratives featured
 
       Generate image queries that:
-      1) ALWAYS start with the favorite team's logo as the first query (e.g., "{{favorite_team}} logo")
+      1) ALWAYS start with the favorite team's fans as the first query (e.g., "{{favorite_team}} fans")
       2) ALWAYS include the favorite team's stadium as the second query (e.g., "{{favorite_team}} stadium")
       3) ALWAYS include the favorite team's mascot as the third query (e.g., "{{favorite_team}} mascot")
       4) Are extracted directly from the specific content discussed in the podcast script
@@ -32,7 +32,7 @@ prompts:
       7) Focus on concrete details from the audio content (specific player names, match dates, events, locations, etc.)
 
       Rules:
-      - The FIRST query MUST always be: "{{favorite_team}} logo" (this is mandatory and must be the first item in the array)
+      - The FIRST query MUST always be: "{{favorite_team}} fans" (this is mandatory and must be the first item in the array)
       - The SECOND query MUST always be: "{{favorite_team}} stadium" (this is mandatory and must be the second item in the array)
       - The THIRD query MUST always be: "{{favorite_team}} mascot" (this is mandatory and must be the third item in the array)
       - Extract queries exclusively from what is actually mentioned in the podcast script content
@@ -55,9 +55,9 @@ prompts:
       properties:
         image_queries:
           type: array
-          description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team. The first query MUST always be the favorite team's logo (e.g., "{favorite_team} logo"), the second query MUST always be the favorite team's stadium (e.g., "{favorite_team} stadium"), and the third query MUST always be the favorite team's mascot (e.g., "{favorite_team} mascot"), followed by queries extracted from the podcast script content.
+          description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team. The first query MUST always be the favorite team's fans (e.g., "{favorite_team} fans"), the second query MUST always be the favorite team's stadium (e.g., "{favorite_team} stadium"), and the third query MUST always be the favorite team's mascot (e.g., "{favorite_team} mascot"), followed by queries extracted from the podcast script content.
           minItems: 5
           maxItems: 5
           items:
             type: string
-            description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script). The first item must be "{favorite_team} logo", the second item must be "{favorite_team} stadium", and the third item must be "{favorite_team} mascot".
+            description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script). The first item must be "{favorite_team} fans", the second item must be "{favorite_team} stadium", and the third item must be "{favorite_team} mascot".

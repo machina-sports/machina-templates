@@ -18,6 +18,7 @@ workflow:
       username: $TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME
       password: $TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD
   inputs:
+    canvas_image_url: $.get('canvas_image_url', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-bundesliga-16-9.png')
     document_id: $.get('document_id')
     geo_location: $.get('geo_location', 'Brazil')
     limit: $.get('limit', 10)
@@ -157,14 +158,33 @@ workflow:
         name: "google-genai"
         command: "invoke_image"
       inputs:
+        canvas_image_url: "$.get('canvas_image_url')"
+        favorite_sport: "$.get('favorite_sport')"
+        favorite_team: "$.get('favorite_team')"
         image_queries: "$.get('image_queries', [])"
-        image_paths: "$.get('reference_images', [])"
+        image_paths: "[$.get('canvas_image_url')] + $.get('reference_images', [])"
         model_name: "'gemini-2.5-flash-image-preview'"
         prompt: |
-          "LANDSCAPE IMAGE FORMAT: Create a LANDSCAPE ORIENTATION image - wider than it is tall. The image MUST be exactly 16:9 aspect ratio (1920x1080 pixels). This is MANDATORY and NON-NEGOTIABLE. The output must be a landscape format image, 1920 pixels wide by 1080 pixels tall. Create a MARVEL/DC COMIC BOOK COVER STYLE visual composition suitable for podcast headers. CONTEXT This image is for a podcast about {{favorite_sport}} tailored for fans of {{favorite_team}}. Reference images have been provided based on these queries {{image_queries}}. REFERENCE IMAGE REQUIREMENTS - Use the provided reference images exactly as they are - DO NOT change, modify, alter, or recreate them. Use the reference images to compose the final image.\n- Combine the multiple reference images into a single cohesive image. Keep all key subjects recognizable and maintain their proportions and details. Blend the images naturally with consistent lighting, shadows, perspective, and style.\n- Integrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design.\n- Use all provided reference images to compose the final landscape image without modification. CRITICAL REQUIREMENTS - ABSOLUTELY NO text, words, letters, numbers, typography, or written elements anywhere in the image\n- ABSOLUTELY NO player names, player references, or individual athletes\n- Reference images must be prominently visible and seamlessly integrated\n- Only incorporate visual elements that correspond to the provided reference images DESIGN STYLE Create a Marvel/DC comic book cover style illustration. Bold, dynamic, and action-oriented composition with dramatic superhero comic book aesthetics. The style should evoke iconic comic book covers from Marvel and DC Comics - powerful, vibrant, and visually striking. Use dramatic angles and dynamic perspectives typical of comic book covers. COLOR PALETTE Use bold, vibrant, saturated colors typical of comic book covers. Strong contrast between light and shadow. Integrate {{favorite_team}}s primary and secondary team colors throughout the composition in bold, dramatic ways. Extract team colors from the reference images and use them prominently. Use deep shadows and bright highlights to create dramatic depth and impact. The color palette should be bold and eye-catching like Marvel/DC comic book covers. COMPOSITION Create a dynamic, action-oriented comic book cover composition in LANDSCAPE ORIENTATION. Integrate the reference images seamlessly - they should appear as powerful, iconic elements in the overall design. Use dramatic angles, dynamic perspectives, and bold visual hierarchy typical of superhero comic book covers. Create depth through dramatic layering and bold perspective. The composition should feel powerful, energetic, and iconic like a Marvel or DC comic book cover. VISUAL EFFECTS Apply bold, dramatic lighting typical of comic book covers. Use strong contrast between light and shadow. Apply comic book style rendering - bold lines, vibrant colors, dramatic effects. Include dynamic motion lines and energy effects if appropriate. Use dramatic lighting effects: strong highlights, deep shadows, dramatic rim lighting. The reference images should remain recognizable while being rendered in comic book cover style. The final image should feel powerful, dynamic, and iconic like a superhero comic book cover. Maintain comic book illustration style with bold, dramatic qualities. FINAL LANDSCAPE REQUIREMENT: The image MUST be a LANDSCAPE ORIENTATION image - wider than tall. The image MUST be exactly 16:9 aspect ratio (1920x1080 pixels). This is MANDATORY. The output image dimensions must be 1920 pixels wide by 1080 pixels tall - LANDSCAPE FORMAT."
+          "=== IMAGE GENERATION CONFIGURATION ===\n\nCANVAS IMAGE REQUIREMENTS:\n- The FIRST image provided is the CANVAS/TEMPLATE image\n- You MUST use the exact dimensions (width and height) of the canvas image\n- The output image MUST match the canvas image size EXACTLY\n- The canvas image defines the aspect ratio and dimensions for the final output\n- This is MANDATORY and NON-NEGOTIABLE\n\nOUTPUT REQUIREMENTS:\n- Dimensions: Match the canvas image dimensions EXACTLY\n- Aspect Ratio: Match the canvas image aspect ratio EXACTLY\n- Orientation: Match the canvas image orientation\n- Status: MANDATORY and NON-NEGOTIABLE\n\nCONTEXT:\n- Sport: {{favorite_sport}}\n- Team: {{favorite_team}}\n- Image Queries: {{image_queries}}\n\nREFERENCE IMAGE GUIDELINES:\n- Use reference images (images after the canvas) exactly as provided\n- DO NOT change, modify, alter, or recreate reference images\n- Combine multiple reference images into single cohesive image\n- Maintain proportions and details of all key subjects\n- Seamless integration required\n- The canvas image is ONLY for sizing - do not include its visual content in the output\n\nPROHIBITED ELEMENTS:\n- Text, words, letters, numbers, typography\n- Written elements of any kind\n- Player names or player references\n- Individual athletes\n- Logos or emblems (DO NOT add any logos or emblems to the image)\n\nREQUIRED ELEMENTS:\n- Reference images must be prominently visible\n- Reference images must be seamlessly integrated\n- Output must match canvas image dimensions exactly\n\nDESIGN STYLE:\n- Type: Marvel/DC comic book cover style\n- Characteristics: Bold, dynamic, action-oriented, dramatic, powerful, vibrant, visually striking\n- Use dramatic angles and dynamic perspectives\n\nCOLOR PALETTE:\n- Style: Comic book cover colors\n- Characteristics: Bold, vibrant, saturated, strong contrast, deep shadows, bright highlights\n- Team Colors: Extract from reference images and use prominently\n\nCOMPOSITION:\n- Orientation: Match canvas image orientation\n- Style: Dynamic action-oriented\n- Characteristics: Dramatic angles, dynamic perspectives, bold visual hierarchy, dramatic layering, bold perspective\n\nVISUAL EFFECTS:\n- Lighting: Bold and dramatic\n- Rendering: Comic book style\n- Characteristics: Bold lines, vibrant colors, dramatic effects, motion lines, energy effects, strong highlights, deep shadows, dramatic rim lighting\n\n=== INSTRUCTIONS ===\n\nCRITICAL: Follow these configuration parameters EXACTLY.\n\nThe FIRST image provided is the CANVAS/TEMPLATE image. You MUST:\n1. Analyze the canvas image dimensions (width and height)\n2. Generate the output image with EXACTLY the same dimensions as the canvas image\n3. Match the aspect ratio of the canvas image precisely\n4. DO NOT include any visual elements from the canvas image itself - it is ONLY for sizing reference\n\nThe output image MUST match the canvas image dimensions EXACTLY. This is MANDATORY and NON-NEGOTIABLE.\n\nCreate a MARVEL/DC COMIC BOOK COVER STYLE visual composition suitable for podcast headers.\nUse the provided reference images (all images after the canvas) exactly as they are - DO NOT change, modify, alter, or recreate them.\nCombine the multiple reference images into a single cohesive image that matches the canvas dimensions.\nKeep all key subjects recognizable and maintain their proportions and details.\nBlend the images naturally with consistent lighting, shadows, perspective, and style.\nIntegrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design.\n\nABSOLUTELY NO text, words, letters, team logos, numbers, typography, or written elements anywhere in the image.\nABSOLUTELY NO player names, player references, or individual athletes.\nABSOLUTELY NO logos or emblems - DO NOT add any logos or emblems to the final image.\nExtract team colors from the reference images and use them prominently in bold, dramatic ways.\n\nThe final image MUST match the canvas image dimensions EXACTLY. This is MANDATORY."
       outputs:
         data: "$"
         image_path: "$.get('image_path')"
+
+    # transform-image-to-landscape
+    - type: connector
+      name: transform-image-to-landscape
+      description: "Transform the input image to aspect_ratio='16:9'"
+      condition: "$.get('image_path') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_image"
+      inputs:
+        image_paths: "[$.get('image_path')]"
+        model_name: "'gemini-2.5-flash-image-preview'"
+        prompt: "'transform this image in landscape'"
+      outputs:
+        data: "$"
+        landscape_image_path: "$.get('image_path')"
 
     # upload image to google storage
     - type: connector
@@ -179,6 +199,20 @@ workflow:
         image_path: $.get('image_path')
       outputs:
         uploaded_image_path: "$.get('url')"
+
+    # upload landscape image to google storage
+    - type: connector
+      name: upload-landscape-image-to-google-storage
+      description: Upload the landscape image to Google Storage.
+      condition: $.get('landscape_image_path') is not None
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        api_key: $.get('api_key')
+        image_path: $.get('landscape_image_path')
+      outputs:
+        uploaded_landscape_image_path: "$.get('url')"
 
     # version-control-update
     - type: document
@@ -197,5 +231,6 @@ workflow:
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
             "image_path": $.get('uploaded_image_path'),
+            "landscape_image_path": $.get('uploaded_landscape_image_path'),
           }
       
