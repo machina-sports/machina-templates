@@ -60,3 +60,33 @@ prompts:
         summary:
           type: "string"
           description: "A brief summary of the generated content."
+
+  # psg-event-details-prompt
+  - type: "prompt"
+    name: "psg-event-details-prompt"
+    title: "PSG Event Details Prompt"
+    description: "This prompt generates comprehensive event details with focus on PSG game statistics and analysis."
+    schema:
+      title: "PSGEventDetails" 
+      description: "This schema defines the structure for generating comprehensive PSG event analysis with focus on game statistics and details."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing detailed analysis of the PSG event."  
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of event details analysis (e.g., 'Game Overview', 'Team Statistics', 'Player Performance', 'Key Goals')."
+              content:
+                type: "string"
+                description: "Detailed analysis of the event, including statistics, performance metrics, and other relevant information."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the event details analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 5
+      required: ["snippets"]
