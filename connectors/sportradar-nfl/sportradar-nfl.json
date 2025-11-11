@@ -667,6 +667,227 @@
         ]
       }
     },
+    "/seasons/{season_year}/{season_type}/standings/season.{format}": {
+      "get": {
+        "summary": "Get postgame standings information",
+        "description": "NFL Postgame Standings provides standings information for each team, updated postgame.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "season_year",
+            "required": true,
+            "description": "Year of a season in YYYY format",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "season_type",
+            "required": true,
+            "description": "Type of season (PRE, REG, PST)",
+            "schema": {
+              "type": "string",
+              "enum": ["PRE", "REG", "PST"]
+            }
+          },
+          {
+            "in": "path",
+            "name": "format",
+            "required": true,
+            "description": "Format returned (json, xml)",
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "season": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "year": {
+                          "type": "integer"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "conferences": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "alias": {
+                            "type": "string"
+                          },
+                          "divisions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "alias": {
+                                  "type": "string"
+                                },
+                                "teams": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "market": {
+                                        "type": "string"
+                                      },
+                                      "alias": {
+                                        "type": "string"
+                                      },
+                                      "rank": {
+                                        "type": "object",
+                                        "properties": {
+                                          "conference": {
+                                            "type": "integer"
+                                          },
+                                          "division": {
+                                            "type": "integer"
+                                          }
+                                        }
+                                      },
+                                      "wins": {
+                                        "type": "integer"
+                                      },
+                                      "losses": {
+                                        "type": "integer"
+                                      },
+                                      "ties": {
+                                        "type": "integer"
+                                      },
+                                      "win_pct": {
+                                        "type": "number"
+                                      },
+                                      "points_for": {
+                                        "type": "integer"
+                                      },
+                                      "points_against": {
+                                        "type": "integer"
+                                      },
+                                      "point_diff": {
+                                        "type": "integer"
+                                      },
+                                      "streak": {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string"
+                                          },
+                                          "length": {
+                                            "type": "integer"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ]
+      }
+    },
     "/seasons/{season_year}/{season_type}/{nfl_season_week}/injuries.json": {
       "get": {
         "summary": "Get weekly injuries information",
