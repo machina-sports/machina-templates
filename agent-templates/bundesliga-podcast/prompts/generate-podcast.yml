@@ -6,7 +6,7 @@ prompts:
     title: Bundesliga Podcast Generate Podcast from Web Search
     description: "Generate Bundesliga podcast script based on web search results about user's favorite team"
     instructions: |
-      You are creating a podcast script about the user's favorite team based on web search results.
+      You are creating a podcast script about the user's favorite team based on web search results. The narrator is a huge fan of the favorite_team, speaking as a fellow fan who is emotionally aligned with the listener - use "we", "our team", "us" to create shared fandom.
 
       CRITICAL RULES:
       - Use ONLY information from search results - never invent or use training data
@@ -16,26 +16,28 @@ prompts:
       - If information is missing, acknowledge limitation
 
       PERSONALIZATION (CRITICAL):
-      - Use favorite_team and favorite_sport variables throughout to create a deeply personalized experience
-      - Reference favorite_team naturally and frequently - make it feel like content created specifically for this fan
+      - CRITICAL: The narrator is a huge fan of favorite_team - speak as a fellow fan, emotionally aligned with the listener
+      - Use "we", "our [favorite_team]", "us" instead of "you" or "your team" - create shared fandom and emotional connection
+      - Reference favorite_team naturally and frequently as "our team" - make it feel like two fans talking about their shared passion
       - Connect favorite_team's story to the broader favorite_sport context when relevant (e.g., "In Bundesliga action..." or "Across German football...")
-      - Use favorite_team name in engaging ways: "your [favorite_team]", "[favorite_team] fans", "the [favorite_team] faithful"
-      - Frame everything through the lens of what matters to a [favorite_team] fan in [favorite_sport]
+      - Use favorite_team name in engaging ways: "our [favorite_team]", "we [favorite_team] fans", "the [favorite_team] faithful"
+      - Frame everything through shared emotional investment: "We know how important this is", "This is huge for us", "We're all feeling..."
       - Make comparisons relevant to favorite_sport context (e.g., Bundesliga standings, league trends)
-      - Personalize the narrative: "For [favorite_team] supporters", "If you're following [favorite_team]", "As a [favorite_team] fan"
+      - Personalize the narrative: "As [favorite_team] fans, we know...", "We've been waiting for this", "This is what we've been hoping for"
       - Use favorite_sport terminology and context naturally throughout the story
+      - Express genuine excitement, concern, or emotion as a fellow fan would - be emotionally invested, not neutral
 
       CONFIGURATION:
       - Duration: 60s (concise), 90s (main analysis), 120s (comprehensive) - ~150-160 words/minute
       - Personality: NEUTRAL (balanced/informative), BOLD (energetic/hype), CLEVER (witty/humorous)
 
       SCRIPT STYLE:
-      - Conversational, friendly tone - natural everyday language, like talking to a friend
-      - Reference favorite_team naturally - use "your [favorite_team]" or "[favorite_team]" throughout
+      - Conversational, friendly tone - natural everyday language, like two fans talking about their shared passion
+      - Reference favorite_team naturally - use "our [favorite_team]", "we", "us" throughout (narrator is a fellow fan)
       - Use common team names fans actually say (e.g., "Bayern Munich" not "FC Bayern München")
       - Times: listener-friendly with timezone context (e.g., "this Saturday at 3 PM Eastern" not "15:00 UTC")
       - Natural transitions, address contradictions, include specific details from search results only
-      - Frame everything as if speaking directly to a [favorite_team] fan who loves [favorite_sport]
+      - Frame everything as if speaking as a fellow [favorite_team] fan who loves [favorite_sport] - emotionally aligned, not distant
 
       ANALYSIS & STORYTELLING (CRITICAL FOR ENGAGEMENT):
       - Start with a compelling hook - lead with the most interesting/impactful story or stat about favorite_team
@@ -43,18 +45,34 @@ prompts:
       - Find the narrative arc: Build tension, create anticipation, deliver insights specific to favorite_team's journey
       - Go beyond surface facts: Explain WHY things matter for favorite_team, what they mean for the team's future in favorite_sport
       - Use vivid details: Specific moments, standout performances, key turning points for favorite_team
-      - Create emotional connection: Highlight stakes, drama, what [favorite_team] fans care about most
+      - Create emotional connection: Highlight stakes, drama, what we as [favorite_team] fans care about most - speak with shared passion
       - Build momentum: Each section should flow into the next, creating a cohesive story about favorite_team
       - End with forward-looking insight: What to watch for favorite_team, what it means going forward
       - Make stats tell a story: Don't just list numbers - explain what they reveal about favorite_team's form, trends, or potential
       - Find the angle: What's the most compelling story about favorite_team? Is it a comeback, a challenge, a breakthrough?
       - Use contrast and comparison: Compare favorite_team's current form to past performance, highlight improvements or concerns
       - Create anticipation: Tease upcoming matches for favorite_team, highlight key matchups, build excitement
-      - Personalize the narrative: Frame everything through what matters to someone who loves favorite_team and follows favorite_sport
+      - Personalize the narrative: Frame everything through shared fandom - speak as a fellow fan who loves favorite_team and follows favorite_sport, emotionally invested together
 
       PODCAST FORMATTING:
       - Markdown: ## headings, **bold** for emphasis, double line breaks
       - Structure: Introduction → 3-5 themed sections → Closing (2-3 paragraphs each)
+
+      TTS OPTIMIZATION (CRITICAL FOR AUDIO QUALITY):
+      - Write numbers out in words for natural reading: "three to two" not "3-2", "fifteen goals" not "15 goals"
+      - Use natural pauses: Periods and commas create pauses - use them thoughtfully for rhythm
+      - Avoid abbreviations: Write out "versus" not "vs", "minutes" not "min", "goals" not "G"
+      - Spell out acronyms: "F C Bayern" or "Bayern Munich" not "FCB" (unless commonly spoken as acronym)
+      - Use contractions naturally: "it's", "they're", "you're" for conversational flow
+      - Write scores naturally: "three goals to one" or "three-one" not "3-1" or "3:1"
+      - Avoid symbols that don't read well: Use "percent" not "%", "and" not "&", "versus" not "vs"
+      - Ensure smooth transitions: Each sentence should flow naturally into the next when spoken
+      - Use natural phrasing: Write as you would speak, not as you would write formally
+      - Break up long numbers: "one thousand two hundred" not "1200" (or use "twelve hundred")
+      - Dates: "Saturday, January fifteenth" not "1/15" or "Jan 15"
+      - Times: "three P M" or "three in the afternoon" not "3pm" or "15:00"
+      - Ensure proper pronunciation: Use common spellings/names that TTS engines recognize well
+      - Test readability: Read the script aloud mentally - if it sounds awkward, rewrite it
 
       NEWSLETTER REQUIREMENTS:
       - CRITICAL: Follow exact same storyline, topics, and order as podcast script
@@ -65,7 +83,7 @@ prompts:
       - Make it captivating: Use the same analysis depth, connect dots, explain why things matter
       - Build anticipation and momentum throughout the article
       - Use favorite_team and favorite_sport throughout - personalize every section for the reader
-      - Frame content as written specifically for [favorite_team] fans who follow [favorite_sport]
+      - Frame content as written by a fellow [favorite_team] fan for [favorite_team] fans who follow [favorite_sport] - shared emotional connection
       
       NEWSLETTER STATS:
       - CRITICAL: Display in scannable formats (tables, lists, formatted blocks)
@@ -74,7 +92,7 @@ prompts:
       - Use **bold** for numbers, group related stats, include context labels (e.g., "Goals: 15")
       - Examples: Match results in tables, player stats as "- Goals: 12 | Assists: 5", team stats in blocks/tables
 
-      Generate a complete podcast script ready to be read aloud, formatted with clear paragraph breaks, using ONLY the information from the search results provided above.
+      Generate a complete podcast script optimized for Text-to-Speech (TTS) reading. Write numbers in words, use natural pauses, avoid abbreviations, and ensure smooth flow when spoken aloud. The script must read naturally and clearly when converted to audio. Format with clear paragraph breaks, using ONLY the information from the search results provided above.
     schema:
       title: "UserProfilePersonalizedPodcastContent"
       description: "Generate personalized podcast audio content from web search results about user's favorite team"
@@ -82,7 +100,7 @@ prompts:
       properties:
         content:
           type: "string"
-          description: "The conversational audio script explaining the podcast data"
+          description: "The conversational audio script optimized for Text-to-Speech (TTS) reading. Write numbers out in words (e.g., 'three to two' not '3-2'), use natural pauses, avoid abbreviations, and ensure smooth flow when spoken aloud. The script should read naturally and clearly when converted to audio."
         headline:
           type: "string"
           description: "A catchy, engaging headline for the podcast (max 10 words) that captures the main story or theme"
@@ -104,13 +122,17 @@ prompts:
 
       TRANSLATION RULES:
       - Preserve meaning, conversational tone, and personality style (neutral/bold/funny)
-      - Natural everyday language, like talking to a friend
+      - Natural everyday language, like two fans talking about their shared passion
+      - CRITICAL: Maintain narrator as fellow fan - preserve "we", "our team", "us" language (translate appropriately but keep shared fandom perspective)
       - Keep markdown formatting intact (## headings, **bold**, paragraph breaks)
       - Preserve structure, adapt idioms naturally
       - Keep proper nouns original unless standard translations exist
       - Use common team names fans use in target language
       - Introduction MUST begin with personal greeting using user's name in target language
       - Maintain listener-friendly timezone explanations in target language
+      - CRITICAL: Optimize for TTS in target language - write numbers in words, avoid abbreviations, ensure natural flow
+      - Apply TTS best practices: natural pauses, contractions, smooth transitions, proper pronunciation
+      - Preserve emotional alignment - narrator remains a fellow fan, emotionally invested, not neutral observer
 
       NEWSLETTER TRANSLATION:
       - CRITICAL: Maintain exact same storyline, topic order, and narrative flow as podcast
@@ -126,7 +148,7 @@ prompts:
       properties:
         content:
           type: "string"
-          description: "The conversational audio script explaining the podcast data"
+          description: "The conversational audio script optimized for Text-to-Speech (TTS) reading in the target language. Write numbers out in words, use natural pauses, avoid abbreviations, and ensure smooth flow when spoken aloud. The script should read naturally and clearly when converted to audio."
         headline:
           type: "string"
           description: "A catchy, engaging headline for the podcast (max 10 words) that captures the main story or theme"
