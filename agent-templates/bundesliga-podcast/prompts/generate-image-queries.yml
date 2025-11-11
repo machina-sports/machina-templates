@@ -6,7 +6,7 @@ prompts:
     title: Bundesliga Podcast Generate Image Queries
     description: "Generate personalized image queries based on user's favorite team and podcast script content"
     instructions: |
-      You are a sports content specialist. Based on the user's preferences and the podcast script content, generate highly targeted image queries to retrieve up-to-date and actionable information that will complement the podcast audio.
+      Generate 5 targeted image queries based on the user's favorite team and podcast script content.
 
       User preferences:
       - Favorite sport: {{favorite_sport}}
@@ -15,40 +15,21 @@ prompts:
       Podcast script content:
       {{audio_content}}
 
-      Analyze the podcast script above to identify:
-      - Specific players mentioned in the script
-      - Key events, matches, or moments discussed
-      - Important locations (stadiums, training grounds) referenced
-      - Notable figures (coaches, management) highlighted
-      - Current storylines or narratives featured
+      Mandatory queries (first 3):
+      1. "{{favorite_team}} fans"
+      2. "{{favorite_team}} stadium"
+      3. "{{favorite_team}} mascot"
 
-      Generate image queries that:
-      1) ALWAYS start with the favorite team's fans as the first query (e.g., "{{favorite_team}} fans")
-      2) ALWAYS include the favorite team's stadium as the second query (e.g., "{{favorite_team}} stadium")
-      3) ALWAYS include the favorite team's mascot as the third query (e.g., "{{favorite_team}} mascot")
-      4) Are extracted directly from the specific content discussed in the podcast script
-      5) Reflect only the actual topics, players, events, and storylines mentioned in the audio content
-      6) Prioritize the most prominent visual elements that are explicitly referenced in the script
-      7) Focus on concrete details from the audio content (specific player names, match dates, events, locations, etc.)
+      Rules for remaining queries (4-5):
+      - Extract ONLY from content explicitly mentioned in the podcast script (players, events, matches, locations, coaches, storylines)
+      - Use concrete details: specific player names, match dates, events, locations
+      - Include club name and competition/season/year when useful
+      - NEVER include rival/opponent teams alone (e.g., NOT "{{rival_team}}")
+      - Only include rivals when part of favorite team context (e.g., "{{favorite_team}} defeated {{rival}}" or "{{favorite_team}} vs {{rival}}")
+      - If script doesn't mention specific players/matches, don't create those queries
+      - Be concise and action-oriented
 
-      Rules:
-      - The FIRST query MUST always be: "{{favorite_team}} fans" (this is mandatory and must be the first item in the array)
-      - The SECOND query MUST always be: "{{favorite_team}} stadium" (this is mandatory and must be the second item in the array)
-      - The THIRD query MUST always be: "{{favorite_team}} mascot" (this is mandatory and must be the third item in the array)
-      - Extract queries exclusively from what is actually mentioned in the podcast script content
-      - Generate short, specific image queries based on concrete details found in the audio content
-      - Only include queries for players, events, locations, or topics that are explicitly referenced in the script
-      - Include specific player names, match dates, events, or locations only if they appear in the audio content
-      - Include the club name and, when useful, the competition/season and the current year
-      - Do not create queries based on assumptions or generic team information - only use what's in the script
-      - If the script doesn't mention specific players, don't create player queries
-      - If the script doesn't mention specific matches, don't create match queries
-      - NEVER include queries for the opposite/rival team by themselves (e.g., do NOT create queries like "{{rival_team}}" or "{{opponent_team}}")
-      - Only include the opposite/rival team when it's part of a relevant context involving the favorite team (e.g., "{{favorite_team}} defeated {{rival}}" or "{{favorite_team}} vs {{rival}}")
-      - Be concise, action-oriented, and directly tied to the actual podcast content
-      - Ensure queries will retrieve images that visually support the specific narrative told in the podcast
-
-      Return only the image queries (no explanations), ready for image search.
+      Return only the image queries array (no explanations).
     schema:
       title: PersonalizedPodcastGenerateImageQueries
       description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences and podcast script content
@@ -57,9 +38,9 @@ prompts:
       properties:
         image_queries:
           type: array
-          description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team. The first query MUST always be the favorite team's fans (e.g., "{favorite_team} fans"), the second query MUST always be the favorite team's stadium (e.g., "{favorite_team} stadium"), and the third query MUST always be the favorite team's mascot (e.g., "{favorite_team} mascot"), followed by queries extracted from the podcast script content.
+          description: Array of 5 image queries. First: "{favorite_team} fans", Second: "{favorite_team} stadium", Third: "{favorite_team} mascot", then 2 queries extracted from podcast script content.
           minItems: 5
           maxItems: 5
           items:
             type: string
-            description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script). The first item must be "{favorite_team} fans", the second item must be "{favorite_team} stadium", and the third item must be "{favorite_team} mascot".
+            description: Image query. First 3 are mandatory (fans, stadium, mascot). Remaining queries extracted from script content (players, events, matches, locations).
