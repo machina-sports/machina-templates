@@ -15,6 +15,7 @@ prompts:
       - ALL queries MUST include "{{favorite_team}}" explicitly
       - ALL queries MUST prioritize recency using terms like "latest", "recent", "today", "2025", "this week", "current"
       - Focus exclusively on {{favorite_team}} - do not generate generic queries
+      - AT LEAST ONE query MUST be specifically about "{{favorite_team}} latest news" or "{{favorite_team}} recent news" to ensure club news coverage
 
       Focus your queries on DIVERSE aspects of {{favorite_team}}:
       1) Latest upcoming matches/fixtures for {{favorite_team}} (dates, opponents, venues)
@@ -27,6 +28,7 @@ prompts:
       CRITICAL DIVERSITY REQUIREMENTS:
       - Each query MUST explore a DIFFERENT aspect/category of {{favorite_team}} - avoid overlap between queries
       - Ensure queries cover different topics: matches, news, standings, players, fanbase, tactics, etc.
+      - MANDATORY: At least ONE query MUST specifically focus on "{{favorite_team}} latest news" or "{{favorite_team}} recent news" (club news, signings, behind-the-scenes, coach, board/management)
       - Vary the angle: some queries about upcoming events, some about recent results, some about team dynamics
       - Each query should target unique information that complements the others
       - Avoid generating multiple queries about the same topic (e.g., don't generate 3 queries all about injuries)
