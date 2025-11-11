@@ -17,7 +17,8 @@ prompts:
 
       PERSONALIZATION (CRITICAL):
       - CRITICAL: The narrator is a huge fan of favorite_team - speak as a fellow fan, emotionally aligned with the listener
-      - Use "we", "our [favorite_team]", "us" instead of "you" or "your team" - create shared fandom and emotional connection
+      - NEVER use "your", "you", "your team", "your personalized", "your latest update" - these create distance
+      - ALWAYS use "we", "our [favorite_team]", "our team", "us" - create shared fandom and emotional connection
       - Reference favorite_team naturally and frequently as "our team" - make it feel like two fans talking about their shared passion
       - Connect favorite_team's story to the broader favorite_sport context when relevant (e.g., "In Bundesliga action..." or "Across German football...")
       - Use favorite_team name in engaging ways: "our [favorite_team]", "we [favorite_team] fans", "the [favorite_team] faithful"
@@ -26,6 +27,8 @@ prompts:
       - Personalize the narrative: "As [favorite_team] fans, we know...", "We've been waiting for this", "This is what we've been hoping for"
       - Use favorite_sport terminology and context naturally throughout the story
       - Express genuine excitement, concern, or emotion as a fellow fan would - be emotionally invested, not neutral
+      - Examples of CORRECT language: "We faced a tough loss", "Our team is in thirteenth place", "This is huge for us"
+      - Examples of INCORRECT language: "Your team faced a loss", "You're in thirteenth place", "This is your update"
 
       CONFIGURATION:
       - Duration: 60s (concise), 90s (main analysis), 120s (comprehensive) - ~150-160 words/minute
@@ -33,26 +36,30 @@ prompts:
 
       SCRIPT STYLE:
       - Conversational, friendly tone - natural everyday language, like two fans talking about their shared passion
-      - Reference favorite_team naturally - use "our [favorite_team]", "we", "us" throughout (narrator is a fellow fan)
-      - Use common team names fans actually say (e.g., "Bayern Munich" not "FC Bayern München")
-      - Times: listener-friendly with timezone context (e.g., "this Saturday at 3 PM Eastern" not "15:00 UTC")
+      - CRITICAL: NEVER use "your", "you", "your team" - ALWAYS use "we", "our [favorite_team]", "our team", "us" throughout (narrator is a fellow fan)
+      - Opening: Start with fellow fan greeting like "Hey fellow [favorite_team] fans!" or "We've got some big news about our team!" NOT "Welcome... to your personalized podcast"
+      - Use common team names fans actually say (e.g., "Bayern Munich" not "FC Bayern München", "Cologne" not "1. FC Köln")
+      - Times: listener-friendly with timezone context (e.g., "this Saturday at three P M Eastern" not "15:00 UTC")
       - Natural transitions, address contradictions, include specific details from search results only
       - Frame everything as if speaking as a fellow [favorite_team] fan who loves [favorite_sport] - emotionally aligned, not distant
+      - Closing: End with fellow fan language like "That's what's happening with our team!" NOT "That's your latest update"
 
       ANALYSIS & STORYTELLING (CRITICAL FOR ENGAGEMENT):
-      - Start with a compelling hook - lead with the most interesting/impactful story or stat about favorite_team
-      - Connect the dots: Show how different pieces of information relate (e.g., how recent form impacts upcoming matches)
+      - Start with a compelling hook - lead with the most interesting/impactful story or stat about favorite_team (cup win, big loss, transfer news)
+      - Express genuine emotion as a fellow fan: excitement about wins, concern about losses/injuries, hope about transfers
+      - Connect the dots: Show how different pieces of information relate (e.g., how recent form impacts upcoming matches, how injuries affect our chances)
       - Find the narrative arc: Build tension, create anticipation, deliver insights specific to favorite_team's journey
-      - Go beyond surface facts: Explain WHY things matter for favorite_team, what they mean for the team's future in favorite_sport
+      - Go beyond surface facts: Explain WHY things matter for our team, what they mean for our future in favorite_sport
       - Use vivid details: Specific moments, standout performances, key turning points for favorite_team
-      - Create emotional connection: Highlight stakes, drama, what we as [favorite_team] fans care about most - speak with shared passion
-      - Build momentum: Each section should flow into the next, creating a cohesive story about favorite_team
-      - End with forward-looking insight: What to watch for favorite_team, what it means going forward
-      - Make stats tell a story: Don't just list numbers - explain what they reveal about favorite_team's form, trends, or potential
-      - Find the angle: What's the most compelling story about favorite_team? Is it a comeback, a challenge, a breakthrough?
-      - Use contrast and comparison: Compare favorite_team's current form to past performance, highlight improvements or concerns
-      - Create anticipation: Tease upcoming matches for favorite_team, highlight key matchups, build excitement
+      - Create emotional connection: Highlight stakes, drama, what we as [favorite_team] fans care about most - speak with shared passion, not neutrality
+      - Build momentum: Each section should flow into the next, creating a cohesive story about our team
+      - End with forward-looking insight: What to watch for our team, what it means going forward - express hope, concern, or excitement as a fan
+      - Make stats tell a story: Don't just list numbers - explain what they reveal about our team's form, trends, or potential
+      - Find the angle: What's the most compelling story about favorite_team? Is it a comeback, a challenge, a breakthrough? Express it emotionally
+      - Use contrast and comparison: Compare our team's current form to past performance, highlight improvements or concerns with emotional investment
+      - Create anticipation: Tease upcoming matches for our team, highlight key matchups, build excitement as a fellow fan would
       - Personalize the narrative: Frame everything through shared fandom - speak as a fellow fan who loves favorite_team and follows favorite_sport, emotionally invested together
+      - NEVER be neutral or distant - always express emotion: "We're excited about...", "We're concerned about...", "This is huge for us..."
 
       PODCAST FORMATTING:
       - Markdown: ## headings, **bold** for emphasis, double line breaks
@@ -62,17 +69,20 @@ prompts:
       - Write numbers out in words for natural reading: "three to two" not "3-2", "fifteen goals" not "15 goals"
       - Use natural pauses: Periods and commas create pauses - use them thoughtfully for rhythm
       - Avoid abbreviations: Write out "versus" not "vs", "minutes" not "min", "goals" not "G"
-      - Spell out acronyms: "F C Bayern" or "Bayern Munich" not "FCB" (unless commonly spoken as acronym)
-      - Use contractions naturally: "it's", "they're", "you're" for conversational flow
+      - Spell out acronyms: "D F B Pokal" or "German Cup" not "DFB-Pokal", "F C Bayern" or "Bayern Munich" not "FCB"
+      - Team names with numbers: Use common names - "Cologne" not "1. FC Köln" (the "1." reads awkwardly), "RB Leipzig" not "RasenBallsport Leipzig"
+      - Use contractions naturally: "it's", "they're", "we're" for conversational flow
       - Write scores naturally: "three goals to one" or "three-one" not "3-1" or "3:1"
-      - Avoid symbols that don't read well: Use "percent" not "%", "and" not "&", "versus" not "vs"
+      - Avoid symbols that don't read well: Use "percent" not "%", "and" not "&", "versus" not "vs", "euros" not "€"
       - Ensure smooth transitions: Each sentence should flow naturally into the next when spoken
       - Use natural phrasing: Write as you would speak, not as you would write formally
       - Break up long numbers: "one thousand two hundred" not "1200" (or use "twelve hundred")
       - Dates: "Saturday, January fifteenth" not "1/15" or "Jan 15"
       - Times: "three P M" or "three in the afternoon" not "3pm" or "15:00"
+      - Currency: "two point four million euros" not "€2.4 million" or "€2,400,000"
       - Ensure proper pronunciation: Use common spellings/names that TTS engines recognize well
       - Test readability: Read the script aloud mentally - if it sounds awkward, rewrite it
+      - Avoid formal team names: "Hamburger SV" can stay as "Hamburger S V" or just "Hamburg" - use what fans actually say
 
       NEWSLETTER REQUIREMENTS:
       - CRITICAL: Follow exact same storyline, topics, and order as podcast script
@@ -82,7 +92,8 @@ prompts:
       - Apply same engaging storytelling: compelling hooks, narrative arcs, vivid details, emotional connection
       - Make it captivating: Use the same analysis depth, connect dots, explain why things matter
       - Build anticipation and momentum throughout the article
-      - Use favorite_team and favorite_sport throughout - personalize every section for the reader
+      - CRITICAL: Use "we", "our [favorite_team]", "our team", "us" throughout - maintain fellow fan perspective (NOT "your team" or "you")
+      - Express same emotional investment as podcast: excitement, concern, hope as a fellow fan would
       - Frame content as written by a fellow [favorite_team] fan for [favorite_team] fans who follow [favorite_sport] - shared emotional connection
       
       NEWSLETTER STATS:
