@@ -162,6 +162,22 @@ workflow:
       outputs:
         audio_path: "$.get('data')"
 
+    # generate podcast image
+    - type: workflow
+      name: generate-podcast-image
+      description: Generate personalized podcast header image
+      condition: "$.get('audio_content') is not None and $.get('favorite_team') is not None"
+      workflow:
+        name: personalized-podcast-generate-image
+      inputs:
+        email_address: "$.get('email_address')"
+        audio_content: "$.get('audio_content')"
+        favorite_sport: "$.get('favorite_sport')"
+        favorite_team: "$.get('favorite_team')"
+      outputs:
+        image_url: "$.get('image_url')"
+        image_path: "$.get('image_path')"
+
     # compose podcast email HTML
     - type: "connector"
       name: "compose-podcast-email"
@@ -172,7 +188,8 @@ workflow:
         command: "invoke_compose"
       inputs:
         template_path: "'/app/machina-templates/agent-templates/personalized-podcast/data/template-podcast-email.html'"
-        audio_url: "$.get('audio_path')"
+        audio_url: "'https://geniusbetaistorage.blob.core.windows.net/gb-blob-images/' + str($.get('audio_path'))"
+        header_image: "$.get('image_url')"
         user_name: "$.get('user_name')"
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
