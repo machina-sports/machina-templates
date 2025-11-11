@@ -9,96 +9,56 @@ prompts:
       You are creating a podcast script about the user's favorite team based on web search results.
 
       CRITICAL RULES:
-      - Use ONLY information from the search results provided below
-      - Do NOT invent or create any information not in the search results
-      - Do NOT use your training data - only use the search results
-      - If information is missing, do not make it up
-
-      FILTERING REQUIREMENTS:
-      - Focus only on information directly related to the user's favorite team
-      - Ignore information about other teams unless they directly impact the favorite team
-      - Extract only relevant content from the search results
-      - Focus on news, stats, matches, and updates for the favorite team
-      - Filter out irrelevant content
+      - Use ONLY information from search results - never invent or use training data
+      - Focus on user's favorite team only (ignore other teams unless directly impacting favorite team)
+      - Cover: upcoming matches, standings, team news, player status (injuries/transfers/performances), fanbase
+      - Verify consistency, acknowledge conflicts, prioritize recent info
+      - If information is missing, acknowledge limitation
 
       CONFIGURATION:
-      - Target duration based on provided seconds (max 120)
-      - Voice personality: use the specified personality style
-
-      PERSONALITY GUIDELINES:
-      - NEUTRAL & PROFESSIONAL: Use a balanced, informative tone with clear explanations
-      - BOLD & HYPE: Use energetic language, exclamations, and exciting expressions
-      - CLEVER & FUNNY: Use witty observations, clever analogies, and light humor
-
-      DURATION CONTROL:
-      - For 60 seconds or less: Be very concise, focus only on key points
-      - For 90 seconds: Include main analysis and some details
-      - For 120 seconds: Include comprehensive analysis with examples
-      - Count words: approximately 150-160 words per minute of speech
-      - Adjust script length to fit the target duration provided
-    
-      Filter the search results to extract only information about the user's favorite team, then create a cohesive podcast script covering:
-      - Upcoming matches and fixtures
-      - Current standings and form
-      - Team news and updates
-      - Player status (injuries, transfers, performances)
-      - Fanbase and atmosphere
-
-      ANALYSIS:
-      - Filter search results to keep only relevant information
-      - Verify consistency between sources
-      - Identify and acknowledge conflicting information
-      - Prioritize recent and relevant information
-      - Only use information from the search results
-      - If search results lack information, acknowledge this limitation
+      - Duration: 60s (concise), 90s (main analysis), 120s (comprehensive) - ~150-160 words/minute
+      - Personality: NEUTRAL (balanced/informative), BOLD (energetic/hype), CLEVER (witty/humorous)
 
       SCRIPT STYLE:
-      - Conversational, friendly tone - write as a human would speak, not like a robot or formal document
-      - Use natural, everyday language that listeners can easily understand
-      - Speak as if you're having a conversation with a friend about their favorite team
-      - Avoid overly formal or technical language
-      - Natural transitions between topics
-      - Address contradictions when present in sources
-      - Include specific details only from search results: dates, names, statistics
-      - Make it personal by referencing "your team"
-      - Everything must be based on the search results
+      - Conversational, friendly tone - natural everyday language, like talking to a friend
+      - Reference "your team" to make it personal
+      - Use common team names fans actually say (e.g., "Bayern Munich" not "FC Bayern München")
+      - Times: listener-friendly with timezone context (e.g., "this Saturday at 3 PM Eastern" not "15:00 UTC")
+      - Natural transitions, address contradictions, include specific details from search results only
 
-      TEAM NAME GUIDELINES:
-      - Use common, listener-friendly team names that fans actually use in conversation
-      - Avoid technical or official full names (e.g., use "Bayern Munich" not "FC Bayern München", "Dortmund" not "Borussia Dortmund")
-      - Use the names that people naturally say when talking about teams
-      - If unsure, prefer shorter, more commonly used names
+      ANALYSIS & STORYTELLING (CRITICAL FOR ENGAGEMENT):
+      - Start with a compelling hook - lead with the most interesting/impactful story or stat
+      - Connect the dots: Show how different pieces of information relate (e.g., how recent form impacts upcoming matches)
+      - Find the narrative arc: Build tension, create anticipation, deliver insights
+      - Go beyond surface facts: Explain WHY things matter, what they mean for the team's future
+      - Use vivid details: Specific moments, standout performances, key turning points
+      - Create emotional connection: Highlight stakes, drama, what fans care about most
+      - Build momentum: Each section should flow into the next, creating a cohesive story
+      - End with forward-looking insight: What to watch for, what it means going forward
+      - Make stats tell a story: Don't just list numbers - explain what they reveal about form, trends, or potential
+      - Find the angle: What's the most compelling story? Is it a comeback, a challenge, a breakthrough?
+      - Use contrast and comparison: Compare current form to past performance, highlight improvements or concerns
+      - Create anticipation: Tease upcoming matches, highlight key matchups, build excitement
 
-      TIME AND TIMEZONE GUIDELINES:
-      - Always explain times in a listener-friendly way
-      - When mentioning match times or dates, include timezone context (e.g., "3 PM Eastern Time" or "9 PM local time in Munich")
-      - Use natural time expressions like "this Saturday at 3 PM Eastern" instead of just "Saturday 15:00 UTC"
-      - Convert times to be meaningful for listeners - explain what timezone you're using
-      - Use relative time expressions when appropriate (e.g., "this weekend", "next Tuesday", "in two days")
-      - Make time references clear and easy to understand without requiring timezone calculations
-
-      FORMATTING REQUIREMENTS:
-      - Use markdown formatting for the script
-      - Start with an engaging introduction paragraph
-      - Use ## for section headings (e.g., ## Recent Matches, ## Transfer News, ## Player Updates)
-      - Each section should have 2-3 paragraphs of content
-      - Use double line breaks between paragraphs
-      - Use **bold** for emphasis on key points (player names, scores, dates)
-      - Structure: Introduction → 3-5 themed sections → Closing
-      - Make it visually scannable with clear sections and emphasis
+      PODCAST FORMATTING:
+      - Markdown: ## headings, **bold** for emphasis, double line breaks
+      - Structure: Introduction → 3-5 themed sections → Closing (2-3 paragraphs each)
 
       NEWSLETTER REQUIREMENTS:
-      - Create a reader-friendly newsletter article that tells the story of the podcast content
-      - Do NOT simply replicate the podcast script - transform it into engaging written content
-      - Use a narrative style that flows naturally for reading (not speaking)
-      - Structure with clear sections, subheadings, and well-organized paragraphs
-      - Include bullet points or numbered lists where appropriate for readability
-      - Use engaging transitions and storytelling elements
-      - Make it scannable with clear visual hierarchy
-      - Include context and background information that enhances understanding
-      - Use markdown formatting: headings (##, ###), **bold**, *italic*, lists, and proper spacing
-      - Write in a style suitable for email newsletters or blog posts
-      - Length should be comprehensive enough to tell the full story (typically 400-800 words)
+      - CRITICAL: Follow exact same storyline, topics, and order as podcast script
+      - Transform for reading (not speaking) - narrative style, 400-800 words
+      - Structure mirrors podcast with clear sections, subheadings, bullet lists
+      - Same context/information flow - cohesive experience for listeners and readers
+      - Apply same engaging storytelling: compelling hooks, narrative arcs, vivid details, emotional connection
+      - Make it captivating: Use the same analysis depth, connect dots, explain why things matter
+      - Build anticipation and momentum throughout the article
+      
+      NEWSLETTER STATS:
+      - CRITICAL: Display in scannable formats (tables, lists, formatted blocks)
+      - Include MORE stats than podcast - extract ALL available stats from search results
+      - Format: Tables (| Opponent | Score | Date |) for comparisons, bullet lists for individual stats
+      - Use **bold** for numbers, group related stats, include context labels (e.g., "Goals: 15")
+      - Examples: Match results in tables, player stats as "- Goals: 12 | Assists: 5", team stats in blocks/tables
 
       Generate a complete podcast script ready to be read aloud, formatted with clear paragraph breaks, using ONLY the information from the search results provided above.
     schema:
@@ -117,7 +77,7 @@ prompts:
           description: "A brief summary of the key points covered in the audio content"
         newsletter-markdown:
           type: "string"
-          description: "A reader-friendly newsletter article that tells the story of the podcast content in written form. This should be a narrative, well-structured article suitable for email newsletters or blog posts, not a replication of the podcast script. Use markdown formatting with clear sections, headings, and engaging storytelling."
+          description: "A reader-friendly newsletter article that follows the exact same storyline and narrative flow as the podcast script. Cover the same topics in the same order, maintaining the same key points and information flow. Transform the podcast content into engaging written content suitable for reading (not speaking), using markdown formatting with clear sections, headings, and engaging storytelling. CRITICAL: Display all statistics in clear, scannable formats (tables, lists, formatted blocks) optimized for fast reading. Include MORE detailed stats than the podcast - extract and display ALL available stats from search results. Use markdown tables for comparisons, bullet lists for individual stats, and bold formatting for key numbers. Ensure readers who consume both the podcast and newsletter experience the same cohesive story."
       required: ["content", "headline", "summary", "newsletter-markdown"]
 
   # bundesliga-podcast-translate-prompt
@@ -129,28 +89,20 @@ prompts:
       You are translating a podcast script to the target language specified in the inputs.
 
       TRANSLATION RULES:
-      - Translate the content accurately while preserving the original meaning
-      - Maintain the conversational, podcast-style tone in the target language - write as a human would speak, not like a robot or formal document
-      - Use natural, everyday language that listeners can easily understand in the target language
-      - Speak as if you're having a conversation with a friend about their favorite team
-      - Keep all markdown formatting intact (## headings, **bold**, paragraph breaks)
-      - Preserve the structure and organization of the original script
-      - Adapt idioms and expressions naturally to the target language
-      - Maintain the personality style (neutral, bold, or funny) in translation
-      - Keep proper nouns (team names, player names, locations) in their original form unless they have standard translations
-      - Use common, listener-friendly team names that fans actually use in conversation in the target language
-      - Ensure the translated content remains natural and engaging for native speakers
-      - The introduction paragraph MUST begin with a personal greeting using the user's name (e.g., "Hey [user_name]," or "Hello [user_name],") in the target language.
-      - When translating times, maintain listener-friendly timezone explanations in the target language (e.g., "3 PM Eastern Time" or "9 PM local time in Munich")
-      - Use natural time expressions appropriate for the target language and culture
+      - Preserve meaning, conversational tone, and personality style (neutral/bold/funny)
+      - Natural everyday language, like talking to a friend
+      - Keep markdown formatting intact (## headings, **bold**, paragraph breaks)
+      - Preserve structure, adapt idioms naturally
+      - Keep proper nouns original unless standard translations exist
+      - Use common team names fans use in target language
+      - Introduction MUST begin with personal greeting using user's name in target language
+      - Maintain listener-friendly timezone explanations in target language
 
       NEWSLETTER TRANSLATION:
-      - Translate the newsletter-markdown content to the target language
-      - Maintain the reader-friendly, narrative style in the target language
-      - Preserve all markdown formatting (headings, lists, bold, italic)
-      - Keep the newsletter structure and visual hierarchy intact
-      - Adapt the storytelling style naturally to the target language
-      - Ensure the translated newsletter reads naturally for native speakers
+      - CRITICAL: Maintain exact same storyline, topic order, and narrative flow as podcast
+      - Preserve all markdown formatting (headings, lists, bold, italic, tables)
+      - CRITICAL: Preserve stat formatting - translate labels but keep numbers/structures intact
+      - Maintain reader-friendly narrative style, visual hierarchy, and cohesive story experience
 
       Translate the entire podcast script and newsletter content while maintaining their formats and structures.
     schema:
@@ -169,7 +121,7 @@ prompts:
           description: "A brief summary of the key points covered in the audio content"
         newsletter-markdown:
           type: "string"
-          description: "A reader-friendly newsletter article that tells the story of the podcast content in written form. This should be a narrative, well-structured article suitable for email newsletters or blog posts, not a replication of the podcast script. Use markdown formatting with clear sections, headings, and engaging storytelling."
+          description: "A reader-friendly newsletter article that follows the exact same storyline and narrative flow as the podcast script. Cover the same topics in the same order, maintaining the same key points and information flow. Transform the podcast content into engaging written content suitable for reading (not speaking), using markdown formatting with clear sections, headings, and engaging storytelling. CRITICAL: Display all statistics in clear, scannable formats (tables, lists, formatted blocks) optimized for fast reading. Include MORE detailed stats than the podcast - extract and display ALL available stats from search results. Use markdown tables for comparisons, bullet lists for individual stats, and bold formatting for key numbers. Ensure readers who consume both the podcast and newsletter experience the same cohesive story."
       required: ["content", "headline", "summary", "newsletter-markdown"]
 
 
