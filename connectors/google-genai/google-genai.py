@@ -172,6 +172,7 @@ def invoke_image(request_data):
 
     prompt = params.get("prompt", "Um gato fofo brincando com uma bola de lã")
     model_name = params.get("model-name", "gemini-2.5-flash-image-preview")
+    aspect_ratio = params.get("aspect_ratio")  # e.g., "16:9", "1:1", "9:16"
 
     try:
         client = genai.Client(api_key=api_key)
@@ -251,8 +252,23 @@ def invoke_image(request_data):
         print(f"Gerando imagem com prompt: {prompt}")
         if image_parts:
             print(f"✅ Usando {len(image_parts)} imagens de entrada junto com o prompt")
+        if aspect_ratio:
+            print(f"📐 Aspect ratio configurado: {aspect_ratio}")
 
-        response = client.models.generate_content(model=model_name, contents=contents)
+        # Configure image generation with aspect ratio if provided
+        config = None
+        if aspect_ratio:
+            config = types.GenerateContentConfig(
+                image_config=types.ImageConfig(
+                    aspect_ratio=aspect_ratio,
+                )
+            )
+
+        response = client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=config
+        )
 
         # Debug: Log the response structure
         print(f"📋 Response object type: {type(response)}")

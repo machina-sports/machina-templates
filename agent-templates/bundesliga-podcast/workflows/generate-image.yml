@@ -158,6 +158,7 @@ workflow:
         name: "google-genai"
         command: "invoke_image"
       inputs:
+        aspect_ratio: "'16:9'"
         canvas_image_url: "$.get('canvas_image_url')"
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
@@ -179,6 +180,7 @@ workflow:
         name: "google-genai"
         command: "invoke_image"
       inputs:
+        aspect_ratio: "'16:9'"
         image_paths: "[$.get('image_path')]"
         model_name: "'gemini-2.5-flash-image-preview'"
         prompt: "'transform this image in landscape'"
