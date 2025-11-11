@@ -53,12 +53,29 @@ prompts:
       - If search results lack information, acknowledge this limitation
 
       SCRIPT STYLE:
-      - Conversational, friendly tone
+      - Conversational, friendly tone - write as a human would speak, not like a robot or formal document
+      - Use natural, everyday language that listeners can easily understand
+      - Speak as if you're having a conversation with a friend about their favorite team
+      - Avoid overly formal or technical language
       - Natural transitions between topics
       - Address contradictions when present in sources
       - Include specific details only from search results: dates, names, statistics
       - Make it personal by referencing "your team"
       - Everything must be based on the search results
+
+      TEAM NAME GUIDELINES:
+      - Use common, listener-friendly team names that fans actually use in conversation
+      - Avoid technical or official full names (e.g., use "Bayern Munich" not "FC Bayern München", "Dortmund" not "Borussia Dortmund")
+      - Use the names that people naturally say when talking about teams
+      - If unsure, prefer shorter, more commonly used names
+
+      TIME AND TIMEZONE GUIDELINES:
+      - Always explain times in a listener-friendly way
+      - When mentioning match times or dates, include timezone context (e.g., "3 PM Eastern Time" or "9 PM local time in Munich")
+      - Use natural time expressions like "this Saturday at 3 PM Eastern" instead of just "Saturday 15:00 UTC"
+      - Convert times to be meaningful for listeners - explain what timezone you're using
+      - Use relative time expressions when appropriate (e.g., "this weekend", "next Tuesday", "in two days")
+      - Make time references clear and easy to understand without requiring timezone calculations
 
       FORMATTING REQUIREMENTS:
       - Use markdown formatting for the script
@@ -113,14 +130,19 @@ prompts:
 
       TRANSLATION RULES:
       - Translate the content accurately while preserving the original meaning
-      - Maintain the conversational, podcast-style tone in the target language
+      - Maintain the conversational, podcast-style tone in the target language - write as a human would speak, not like a robot or formal document
+      - Use natural, everyday language that listeners can easily understand in the target language
+      - Speak as if you're having a conversation with a friend about their favorite team
       - Keep all markdown formatting intact (## headings, **bold**, paragraph breaks)
       - Preserve the structure and organization of the original script
       - Adapt idioms and expressions naturally to the target language
       - Maintain the personality style (neutral, bold, or funny) in translation
       - Keep proper nouns (team names, player names, locations) in their original form unless they have standard translations
+      - Use common, listener-friendly team names that fans actually use in conversation in the target language
       - Ensure the translated content remains natural and engaging for native speakers
       - The introduction paragraph MUST begin with a personal greeting using the user's name (e.g., "Hey [user_name]," or "Hello [user_name],") in the target language.
+      - When translating times, maintain listener-friendly timezone explanations in the target language (e.g., "3 PM Eastern Time" or "9 PM local time in Munich")
+      - Use natural time expressions appropriate for the target language and culture
 
       NEWSLETTER TRANSLATION:
       - Translate the newsletter-markdown content to the target language

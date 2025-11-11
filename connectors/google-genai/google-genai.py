@@ -173,14 +173,6 @@ def invoke_image(request_data):
     prompt = params.get("prompt", "Um gato fofo brincando com uma bola de lã")
     model_name = params.get("model-name", "gemini-2.5-flash-image-preview")
     aspect_ratio = params.get("aspect_ratio")  # e.g., "16:9", "1:1", "9:16"
-    
-    # Clean up aspect_ratio if it has quotes
-    if aspect_ratio:
-        aspect_ratio = aspect_ratio.strip().strip("'").strip('"')
-        # Validate aspect ratio format
-        valid_ratios = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
-        if aspect_ratio not in valid_ratios:
-            print(f"⚠️ Warning: aspect_ratio '{aspect_ratio}' may not be supported. Valid ratios: {valid_ratios}")
 
     try:
         client = genai.Client(api_key=api_key)

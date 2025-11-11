@@ -43,6 +43,8 @@ prompts:
       - Do not create queries based on assumptions or generic team information - only use what's in the script
       - If the script doesn't mention specific players, don't create player queries
       - If the script doesn't mention specific matches, don't create match queries
+      - NEVER include queries for the opposite/rival team by themselves (e.g., do NOT create queries like "{{rival_team}}" or "{{opponent_team}}")
+      - Only include the opposite/rival team when it's part of a relevant context involving the favorite team (e.g., "{{favorite_team}} defeated {{rival}}" or "{{favorite_team}} vs {{rival}}")
       - Be concise, action-oriented, and directly tied to the actual podcast content
       - Ensure queries will retrieve images that visually support the specific narrative told in the podcast
 
