@@ -131,34 +131,17 @@ workflow:
             $.get('image_path')
           ]
 
-    # bundesliga-podcast-generate-image-prompt
-    - type: prompt
-      name: bundesliga-podcast-generate-image-prompt
-      description: Generate image prompt based on user's favorite sport and team.
-      condition: $.get('document_id') is not None and $.get('document-exists') is True
-      connector:
-        command: invoke_prompt
-        name: google-genai
-        model: gemini-2.5-flash
-        location: global
-        provider: vertex_ai
-      inputs:
-        favorite_sport: "$.get('favorite_sport')"
-        favorite_team: "$.get('favorite_team')"
-        image_queries: "$.get('image_queries', [])"
-      outputs:
-        image_prompt: "$.get('image_prompt', '')"
 
     # create-background-image
     - type: connector
       name: create-background-image
       description: "Create the background image using Gemini based on the generated description."
-      condition: "$.get('image_prompt') is not None"
+      condition: "$.get('reference_images') is not None and len($.get('reference_images', [])) > 0"
       connector:
         name: "google-genai"
         command: "invoke_image"
       inputs:
-        aspect_ratio: "'16:9'"
+        aspect_ratio: "16:9"
         canvas_image_url: "$.get('canvas_image_url')"
         favorite_sport: "$.get('favorite_sport')"
         favorite_team: "$.get('favorite_team')"
@@ -170,23 +153,6 @@ workflow:
       outputs:
         data: "$"
         image_path: "$.get('image_path')"
-
-    # transform-image-to-landscape
-    - type: connector
-      name: transform-image-to-landscape
-      description: "Transform the input image to aspect_ratio='16:9'"
-      condition: "$.get('image_path') is not None"
-      connector:
-        name: "google-genai"
-        command: "invoke_image"
-      inputs:
-        aspect_ratio: "'16:9'"
-        image_paths: "[$.get('image_path')]"
-        model_name: "'gemini-2.5-flash-image-preview'"
-        prompt: "'transform this image in landscape'"
-      outputs:
-        data: "$"
-        landscape_image_path: "$.get('image_path')"
 
     # upload image to google storage
     - type: connector
@@ -201,20 +167,6 @@ workflow:
         image_path: $.get('image_path')
       outputs:
         uploaded_image_path: "$.get('url')"
-
-    # upload landscape image to google storage
-    - type: connector
-      name: upload-landscape-image-to-google-storage
-      description: Upload the landscape image to Google Storage.
-      condition: $.get('landscape_image_path') is not None
-      connector:
-        name: google-storage
-        command: invoke_upload
-      inputs:
-        api_key: $.get('api_key')
-        image_path: $.get('landscape_image_path')
-      outputs:
-        uploaded_landscape_image_path: "$.get('url')"
 
     # version-control-update
     - type: document
@@ -233,6 +185,5 @@ workflow:
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
             "image_path": $.get('uploaded_image_path'),
-            "landscape_image_path": $.get('uploaded_landscape_image_path'),
           }
       
