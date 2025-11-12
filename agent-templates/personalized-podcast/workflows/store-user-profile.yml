@@ -26,35 +26,26 @@ workflow:
       name: "task-bulk-save-user-profile"
       description: "Bulk save user profile."
       config:
-        action: "bulk-update"
-        embed-selector: "$.get('name')"
-        embed-vector: true
-        force-update: true
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        action: save
       document_name: "'user-profile'"
       documents:
-        items: |
-          [
-            {
-              **{
-                'name': $.get('name'),
-                'favorite_sport': $.get('favorite_sport'),
-                'favorite_team': $.get('favorite_team'),
-                'podcast_mood_tone': $.get('podcast_mood_tone'),
-                'sports_knowledge': $.get('sports_knowledge'),
-                'email_address': $.get('email_address'),
-                'created_at': datetime.now().isoformat()
-              },
-              'metadata': {
-                'user_id': $.get('email_address'),
-                'profile_type': 'user_profile'
-              },
-              'title': $.get('name')
-            }
-          ]
+        user-profile: |
+          {
+            **{
+              'name': $.get('name'),
+              'favorite_sport': $.get('favorite_sport'),
+              'favorite_team': $.get('favorite_team'),
+              'podcast_mood_tone': $.get('podcast_mood_tone'),
+              'sports_knowledge': $.get('sports_knowledge'),
+              'email_address': $.get('email_address'),
+              'country': $.get('country'),
+              'language': $.get('language'),
+              'created_at': datetime.now().isoformat()
+            },
+            'title': $.get('name')
+          }
       metadata:
         document_type: "'user-profile'"
         source: "'user-input'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if len($.get('documents', [])) > 0 else None"

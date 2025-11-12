@@ -13,6 +13,7 @@ setup:
     - elevenlabs
     - storage
     - api-mailgun
+    - oxylabs
   status: available
   value: agent-templates/personalized-podcast
   version: 1.0.0
@@ -40,6 +41,12 @@ datasets:
   - type: prompt
     path: prompts/generate-search-queries.yml
 
+  - type: prompt
+    path: prompts/generate-image-queries.yml
+
+  - type: prompt
+    path: prompts/generate-image-prompt.yml
+
   - type: prompts
     path: prompts/generate-podcast.yml
 
@@ -49,4 +56,13 @@ datasets:
     path: workflows/generate-content.yml
 
   - type: workflow
+    path: workflows/generate-image.yml
+
+  - type: workflow
     path: workflows/store-user-profile.yml
+
+  - type: workflow
+    path: workflows/compose-and-send-email.yml
+
+  - type: workflow
+    path: workflows/generate-audio.yml

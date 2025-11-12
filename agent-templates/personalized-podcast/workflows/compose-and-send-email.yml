@@ -1,0 +1,124 @@
+workflow:
+  name: personalized-podcast-compose-and-send-email
+  title: Personalized Podcast Compose and Send Email
+  description: Workflow to compose HTML email template and send email with podcast
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    api-mailgun:
+      username: "api"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+  inputs:
+    document_id: "$.get('document_id')"
+    from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
+    mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
+    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-generator.html')"
+  outputs:
+    document_id: "$.get('document_id')"
+    workflow-status: "$.get('workflow-status')"
+    podcast-email-html: "$.get('podcast-email-html')"
+    podcast-email-html-path: "$.get('podcast-email-html-path')"
+    podcast-email-html-content: "$.get('podcast-email-html-content')"
+    email-sent: "$.get('email-sent')"
+    email-status: "$.get('email-status')"
+    email-id: "$.get('email-id')"
+  tasks:
+
+    # Load user profile from documents
+    - type: "document"
+      name: "load-user-profile"
+      description: "Load user profile from documents by document_id"
+      condition: "$.get('document_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        document_id: "$.get('document_id')"
+      inputs:
+        name: "'user-profile'"
+      outputs:
+        document-exists: "len($.get('documents', [])) > 0"
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+        user_name: "$.get('documents', [])[0].get('value', {}).get('name') if len($.get('documents', [])) > 0 else None"
+        favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
+        favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
+        profile_email_address: "$.get('documents', [])[0].get('value', {}).get('email_address') if len($.get('documents', [])) > 0 else None"
+        audio_path: "$.get('documents', [])[0].get('value', {}).get('audio_path') if len($.get('documents', [])) > 0 else None"
+        image_path: "$.get('documents', [])[0].get('value', {}).get('image_path') if len($.get('documents', [])) > 0 else None"
+        audio_content: "$.get('documents', [])[0].get('value', {}).get('audio_content') if len($.get('documents', [])) > 0 else None"
+        podcast_mood_tone: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone') if len($.get('documents', [])) > 0 else None"
+        sports_knowledge: "$.get('documents', [])[0].get('value', {}).get('sports_knowledge') if len($.get('documents', [])) > 0 else None"
+        language: "$.get('documents', [])[0].get('value', {}).get('language', 'en') if len($.get('documents', [])) > 0 else 'en'"
+        
+    # download the newsletter template
+    - type: connector
+      name: download the newsletter template
+      description: Download the newsletter template.
+      condition: "$.get('document-exists') is True"
+      connector:
+        name: temp-downloader
+        command: invoke_download
+      inputs:
+        image_url: $.get('newsletter_template_path')
+      outputs:
+        temp_newsletter_template_path: $.get('temp_path')
+
+    # compose podcast email HTML
+    - type: "connector"
+      name: "compose-podcast-email"
+      description: "Compose HTML email template for podcast"
+      condition: "$.get('audio_path') is not None and $.get('temp_newsletter_template_path') is not None"
+      connector:
+        name: "user-profile-podcast-compose"
+        command: "invoke_compose"
+      inputs:
+        template_path: "$.get('temp_newsletter_template_path')"
+        document_id: "$.get('document_id')"
+        audio_url: "'https://geniusbetaistorage.blob.core.windows.net/gb-blob-images/' + str($.get('audio_path'))"
+        header_image: "$.get('image_path')"
+        header_background_image: "$.get('image_path')"
+        name: "$.get('user_name')"
+        user_name: "$.get('user_name')"
+        favorite_sport: "$.get('favorite_sport')"
+        favorite_team: "$.get('favorite_team')"
+        podcast_mood_tone: "$.get('podcast_mood_tone')"
+        sports_knowledge: "$.get('sports_knowledge')"
+        language: "$.get('language')"
+        podcast_duration: "$.get('duration', 120)"
+      outputs:
+        podcast-email-html-path: "$.get('output_path')"
+        podcast-email-html: "$.get('html_content')"
+        podcast-email-html-content: "$.get('html_content')"
+
+    # send podcast email via Mailgun
+    - type: "connector"
+      name: "send-podcast-email"
+      description: "Send HTML email with podcast using Mailgun"
+      condition: "$.get('podcast-email-html-content') is not None and $.get('profile_email_address') is not None"
+      connector:
+        name: "api-mailgun"
+        command: "post-{domain}/messages"
+        command_attribute:
+          domain: "$.get('mailgun_domain') or 'mg.machina.gg'"
+      inputs:
+        body: |
+          {
+            "from": $.get('from_email', 'noreply@mg.machina.gg'), 
+            "to": $.get('profile_email_address'),
+            "subject": "Your Personalized Podcast is Ready!",
+            "html": $.get('podcast-email-html-content'),
+            "text": "Your personalized podcast is ready! Click the link in the email to listen."
+          }
+      outputs:
+        email-sent: "$.get('message') is not None"
+        email-status: "$.get('message')"
+        email-id: "$.get('id')"
+        workflow-status: "$.get('message') is not None and 'executed' or 'skipped'"
+

@@ -36,11 +36,16 @@ def invoke_compose(request_data):
     document_id = params.get("document_id")
     podcast_base_url = params.get("podcast_base_url", "https://podcast.machina.gg")
     user_name = params.get("user_name")
+    name = params.get("name") or user_name  # Support both 'name' and 'user_name'
     favorite_sport = params.get("favorite_sport")
     favorite_team = params.get("favorite_team")
     header_image = params.get("header_image")
+    header_background_image = params.get("header_background_image") or header_image
     footer_image = params.get("footer_image")
     podcast_duration = params.get("podcast_duration")
+    podcast_mood_tone = params.get("podcast_mood_tone")
+    sports_knowledge = params.get("sports_knowledge")
+    language = params.get("language", "en")
     
     if not template_path:
         return {"status": "error", "message": "template_path is required."}
@@ -53,7 +58,11 @@ def invoke_compose(request_data):
         variables.update(podcast_content)
     
     # Add user information
-    if user_name:
+    if name:
+        variables['name'] = name
+        variables['user_name'] = name  # Support both formats
+    elif user_name:
+        variables['name'] = user_name
         variables['user_name'] = user_name
     if favorite_sport:
         variables['favorite_sport'] = favorite_sport
@@ -63,6 +72,12 @@ def invoke_compose(request_data):
         variables['audio_url'] = audio_url
     if podcast_duration:
         variables['podcast_duration'] = str(podcast_duration)
+    if podcast_mood_tone:
+        variables['podcast_mood_tone'] = podcast_mood_tone
+    if sports_knowledge:
+        variables['sports_knowledge'] = sports_knowledge
+    if language:
+        variables['language'] = language
     
     # Create podcast_url from document_id and base URL
     if document_id:
@@ -71,11 +86,24 @@ def invoke_compose(request_data):
         variables['podcast_url'] = "#"
     
     # Add optional images
-    if header_image:
-        variables['header_image'] = header_image
-        variables['header_image_tag'] = f'<img src="{header_image}" alt="Header" style="width: 100%; height: auto; display: block;">'
+    # Ensure image is a valid URL (not just a path)
+    image_url = None
+    if header_background_image:
+        image_url = header_background_image
+    elif header_image:
+        image_url = header_image
+    
+    if image_url:
+        # If it's not already a full URL, it should be from Google Storage
+        # The image_path from generate-image workflow is already a full URL
+        variables['header_background_image'] = image_url
+        variables['header_image'] = image_url
+        variables['header_image_tag'] = f'<div class="team-image-section"><img src="{image_url}" alt="Team/Mascot Image" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0; border: 0; outline: none;"></div>'
         variables['header_title'] = ""
     else:
+        # Use a default gradient background when no image
+        variables['header_background_image'] = "linear-gradient(135deg, #000000 0%, #1a1a1a 100%)"
+        variables['header_image'] = ""
         variables['header_image_tag'] = ""
         variables['header_title'] = "🎙️ Your Personalized Podcast"
     

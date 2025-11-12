@@ -24,63 +24,20 @@
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-        .header {
-            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            padding: 50px 20px 40px;
-            text-align: center;
-            color: #ffffff;
-            border-bottom: 3px solid #dc2626;
-            position: relative;
-            min-height: 200px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
-            z-index: 1;
-        }
-        .header-content {
-            position: relative;
-            z-index: 2;
+        .team-image-section {
             width: 100%;
+            background: #ffffff;
+            text-align: center;
+            overflow: hidden;
+            display: block;
         }
-        .header-logo {
-            max-width: 220px;
+        .team-image-section img {
+            width: 100%;
+            max-width: 100%;
             height: auto;
             display: block;
-            margin: 0 auto 20px;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
-            transition: transform 0.3s ease;
-        }
-        .header-logo:hover {
-            transform: scale(1.05);
-        }
-        .header img {
-            max-width: 220px;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-        }
-        .header h1 {
-            font-size: 20px;
-            font-weight: 600;
             margin: 0;
-            padding: 0;
-            letter-spacing: 0.3px;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-            position: relative;
-            z-index: 2;
+            border: 0;
         }
         .content {
             padding: 40px 35px;
@@ -355,17 +312,11 @@
                 border-radius: 0;
                 box-shadow: none;
             }
-            .header {
-                padding: 40px 15px 30px;
-                min-height: 180px;
+            .team-image-section {
+                width: 100%;
             }
-            .header-logo,
-            .header img {
-                max-width: 160px;
-                margin-bottom: 16px;
-            }
-            .header h1 {
-                font-size: 18px;
+            .team-image-section img {
+                width: 100%;
             }
             .content {
                 padding: 30px 20px;
@@ -420,6 +371,18 @@
             .footer {
                 padding: 30px 20px;
             }
+            .header-logo {
+                max-width: 150px;
+            }
+            .header-logo img {
+                max-width: 150px;
+            }
+            .team-image-section {
+                width: 100%;
+            }
+            .team-image-section img {
+                width: 100%;
+            }
             .footer-logo {
                 margin-bottom: 18px;
             }
@@ -434,19 +397,14 @@
 </head>
 <body>
     <div class="email-container">
-        <!-- HEADER -->
-        <div class="header" style="background-image: url('{{header_background_image}}');">
-            <div class="header-content">
-                <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" class="header-logo" />
-                <h1>{{header_title}}</h1>
-            </div>
-        </div>
+        <!-- TEAM/MASCOT IMAGE SECTION -->
+        {{header_image_tag}}
 
         <!-- CONTENT -->
         <div class="content">
             <!-- Greeting -->
             <div class="greeting">
-                Hello {{name}}!
+                Hello {{user_name}}!
             </div>
 
             <!-- Headline -->
