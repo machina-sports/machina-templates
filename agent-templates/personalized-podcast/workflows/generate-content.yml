@@ -61,8 +61,8 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        favorite_sport: $.get('favorite_sport')
-        favorite_team: $.get('favorite_team')    
+        user_preference_1: $.get('favorite_sport')
+        user_preference_2: $.get('favorite_team')    
         sports_knowledge: "$.get('sports_knowledge')"
       outputs:
         search_queries: "$.get('search_queries', [])"
