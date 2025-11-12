@@ -389,7 +389,7 @@
 <body>
     <div class="email-container">
         <!-- HEADER -->
-        <div class="header" style="background-image: url('{{header_image_tag}}');">
+        <div class="header" style="background-image: url('{{header_background_image}}');">
             <div class="header-content">
                 <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" class="header-logo" />
                 <h1>Your Personalized Podcast is Ready!</h1>
@@ -408,7 +408,7 @@
 
             <!-- Podcast Link -->
             <div class="podcast-link-container">
-                <a href="https://podcast.machina.gg/podcast/{{podcast_id}}" target="_blank" class="podcast-link-button">
+                <a href="{{podcast_url}}" target="_blank" class="podcast-link-button">
                     🎧 Listen to Your Podcast Now
                 </a>
                 <p class="podcast-link-subtitle">Click here to enjoy your personalized {{favorite_sport}} podcast</p>
