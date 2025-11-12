@@ -155,6 +155,9 @@ workflow:
           {
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
+            "podcast_headline": $.get('podcast_headline'),
+            "podcast_summary": $.get('podcast_summary'),
+            "newsletter_markdown": $.get('newsletter_markdown')
           }
       outputs:
         workflow-status: "'executed'"
