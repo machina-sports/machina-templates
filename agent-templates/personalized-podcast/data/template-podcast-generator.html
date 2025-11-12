@@ -284,6 +284,143 @@
             opacity: 0.3;
         }
         
+        /* CTA Buttons Section */
+        .cta-section {
+            padding: 40px 35px;
+            background-color: #ffffff;
+        }
+        .cta-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .cta-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .cta-card {
+            background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid #e5e7eb;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+        }
+        .cta-card:hover {
+            border-color: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .cta-card-linkedin {
+            background: linear-gradient(135deg, #eff6ff 0%, #f9fafb 100%);
+            border-color: #bfdbfe;
+        }
+        .cta-card-linkedin:hover {
+            border-color: #2563eb;
+        }
+        .cta-card-twitter {
+            background: linear-gradient(135deg, #f9fafb 0%, rgba(0, 0, 0, 0.05) 100%);
+            border-color: #e5e7eb;
+        }
+        .cta-card-twitter:hover {
+            border-color: rgba(0, 0, 0, 0.5);
+        }
+        .cta-card-discord {
+            background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+            border-color: #c7d2fe;
+        }
+        .cta-card-discord:hover {
+            border-color: #6366f1;
+        }
+        .cta-card-demo {
+            background: linear-gradient(135deg, #fef2f2 0%, #f9fafb 100%);
+            border-color: #fecaca;
+        }
+        .cta-card-demo:hover {
+            border-color: #dc2626;
+        }
+        .cta-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        .cta-icon-linkedin {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            border-color: rgba(37, 99, 235, 0.3);
+        }
+        .cta-icon-twitter {
+            background: linear-gradient(135deg, #111827 0%, #000000 100%);
+            border-color: rgba(17, 24, 39, 0.3);
+        }
+        .cta-icon-discord {
+            background: linear-gradient(135deg, #6366f1 0%, #9333ea 100%);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        .cta-icon-demo {
+            background: linear-gradient(135deg, #dc2626 0%, #000000 100%);
+            border-color: rgba(220, 38, 38, 0.3);
+        }
+        .cta-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: #ffffff;
+        }
+        .cta-title {
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+            font-size: 14px;
+        }
+        .cta-description {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+            margin: 0;
+            line-height: 1.5;
+        }
+        .cta-button-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #000000 100%);
+            color: #ffffff;
+            border: 2px solid rgba(220, 38, 38, 0.5);
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+        }
+        .cta-button-primary:hover {
+            background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 50%, #000000 100%);
+            box-shadow: 0 6px 24px rgba(220, 38, 38, 0.3);
+        }
+        .cta-button-primary svg {
+            width: 20px;
+            height: 20px;
+            fill: #ffffff;
+        }
+        
         @media only screen and (max-width: 600px) {
             body {
                 padding: 0;
@@ -360,6 +497,20 @@
             .footer-divider {
                 margin: 15px 20px;
             }
+            .cta-section {
+                padding: 30px 20px;
+            }
+            .cta-grid-3 {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .cta-grid-2 {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .cta-card {
+                padding: 20px;
+            }
         }
     </style>
 </head>
@@ -426,24 +577,71 @@
 
             <div class="divider"></div>
 
-            <!-- Contact Info -->
-            <div class="contact-info">
-                <p>{{contact_info}}</p>
+        </div>
+
+        <!-- CTA SECTION -->
+        <div class="cta-section">
+            <!-- Book a Demo - Full Width -->
+            <a href="https://machina.gg/schedule?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=book_demo" target="_blank" class="cta-card cta-card-demo" style="margin-bottom: 16px;">
+                <div class="cta-icon cta-icon-demo">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 8V6h14v2H5z"/>
+                    </svg>
+                </div>
+                <h4 class="cta-title">Book a Demo</h4>
+                <p class="cta-description">See how Machina can transform your organization</p>
+            </a>
+
+            <!-- LinkedIn - Full Width -->
+            <a href="https://www.linkedin.com/company/machina-sports?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=linkedin_follow" target="_blank" class="cta-card cta-card-linkedin" style="margin-bottom: 16px;">
+                <div class="cta-icon cta-icon-linkedin">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                </div>
+                <h4 class="cta-title">Follow on LinkedIn</h4>
+            </a>
+
+            <!-- X and Discord - Side by Side -->
+            <div class="cta-grid-2" style="margin-bottom: 16px;">
+                <a href="https://x.com/machinasports_?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=x_follow" target="_blank" class="cta-card cta-card-twitter">
+                    <div class="cta-icon cta-icon-twitter">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                    </div>
+                    <h4 class="cta-title">Follow on X</h4>
+                </a>
+                <a href="https://discord.gg/PBYd6FbBSK?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=discord_join" target="_blank" class="cta-card cta-card-discord">
+                    <div class="cta-icon cta-icon-discord">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+                        </svg>
+                    </div>
+                    <h4 class="cta-title">Join Discord</h4>
+                </a>
             </div>
+
+            <!-- Generate New Button -->
+            <a href="http://podcast.machina.gg/?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=create_another" class="cta-button-primary">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+                Create Another Podcast
+            </a>
         </div>
 
         <!-- FOOTER -->
         <div class="footer">
             <div class="footer-logo">
-                <a href="https://machina.gg/" target="_blank">
+                <a href="https://machina.gg/?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=footer_logo" target="_blank">
                     <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" />
                 </a>
             </div>
-            <p><strong style="color: #ffffff;">Thank you for listening!</strong></p>
             <p>© 2025 All rights reserved.</p>
             <div class="footer-divider"></div>
             <p>
-                You are receiving this email because you generated a personalized podcast at <a href="http://podcast.machina.gg/">podcast.machina.gg</a>
+                You are receiving this email because you generated a personalized podcast at <a href="http://podcast.machina.gg/?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=footer_text">podcast.machina.gg</a>
             </p>
             <p style="margin-top: 15px; font-size: 11px; color: #6b7280;">
                 This is an automated email. Please do not reply directly to this email.
