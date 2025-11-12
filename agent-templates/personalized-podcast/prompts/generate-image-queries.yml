@@ -14,33 +14,39 @@ prompt:
     {{audio_content}}
 
     Analyze the podcast script above to identify:
-    - Specific players mentioned in the script
-    - Key events, matches, or moments discussed
-    - Important locations (stadiums, training grounds) referenced
-    - Notable figures (coaches, management) highlighted
+    - Specific players/athletes mentioned in the script
+    - Key events, matches, races, or moments discussed
+    - Important locations (stadiums, tracks, venues, training grounds) referenced
+    - Notable figures (coaches, management, teams) highlighted
     - Current storylines or narratives featured
 
-    Generate image queries that:
+    Determine if the favorite sport is a TEAM SPORT or INDIVIDUAL SPORT:
+    - TEAM SPORTS: soccer, football, basketball, baseball, hockey, rugby, etc. (where favorite_team refers to a team/club)
+    - INDIVIDUAL SPORTS: Formula One, F1, MMA, tennis, boxing, golf, etc. (where favorite_team refers to an individual athlete)
+
+    Generate image queries based on sport type:
+
+    FOR TEAM SPORTS:
     1) ALWAYS start with the favorite team's logo as the first query (e.g., "{{favorite_team}} logo")
     2) ALWAYS include the favorite team's stadium as the second query (e.g., "{{favorite_team}} stadium")
     3) ALWAYS include the favorite team's mascot as the third query (e.g., "{{favorite_team}} mascot")
-    4) Are extracted directly from the specific content discussed in the podcast script
-    5) Reflect only the actual topics, players, events, and storylines mentioned in the audio content
-    6) Prioritize the most prominent visual elements that are explicitly referenced in the script
-    7) Focus on concrete details from the audio content (specific player names, match dates, events, locations, etc.)
+    4) Extract remaining queries directly from the podcast script content
 
-    Rules:
-    - The FIRST query MUST always be: "{{favorite_team}} logo" (this is mandatory and must be the first item in the array)
-    - The SECOND query MUST always be: "{{favorite_team}} stadium" (this is mandatory and must be the second item in the array)
-    - The THIRD query MUST always be: "{{favorite_team}} mascot" (this is mandatory and must be the third item in the array)
+    FOR INDIVIDUAL SPORTS:
+    1) ALWAYS start with the athlete's name/photo as the first query (e.g., "{{favorite_team}} photo" or "{{favorite_team}} Formula One")
+    2) ALWAYS include the athlete's team/racing team logo as the second query (e.g., if F1: "{{favorite_team}} Mercedes Formula One logo" or extract team from script)
+    3) ALWAYS include a query for the athlete in action/competition as the third query (e.g., "{{favorite_team}} racing" or "{{favorite_team}} fight" depending on sport)
+    4) Extract remaining queries directly from the podcast script content
+
+    Additional rules for all sports:
     - Extract queries exclusively from what is actually mentioned in the podcast script content
     - Generate short, specific image queries based on concrete details found in the audio content
-    - Only include queries for players, events, locations, or topics that are explicitly referenced in the script
-    - Include specific player names, match dates, events, or locations only if they appear in the audio content
-    - Include the club name and, when useful, the competition/season and the current year
-    - Do not create queries based on assumptions or generic team information - only use what's in the script
-    - If the script doesn't mention specific players, don't create player queries
-    - If the script doesn't mention specific matches, don't create match queries
+    - Only include queries for players/athletes, events, locations, or topics that are explicitly referenced in the script
+    - Include specific names, dates, events, or locations only if they appear in the audio content
+    - Include the team/club/athlete name and, when useful, the competition/season and the current year
+    - Do not create queries based on assumptions or generic information - only use what's in the script
+    - If the script doesn't mention specific players/athletes, don't create player/athlete queries
+    - If the script doesn't mention specific matches/events, don't create match/event queries
     - Be concise, action-oriented, and directly tied to the actual podcast content
     - Ensure queries will retrieve images that visually support the specific narrative told in the podcast
 
@@ -48,15 +54,15 @@ prompt:
 
   schema:
     title: PersonalizedPodcastGenerateImageQueries
-    description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences and podcast script content
+    description: Extracts precise image queries for comprehensive sports data retrieval based on user preferences and podcast script content. Handles both team sports (soccer, football, basketball, etc.) and individual sports (F1, MMA, tennis, etc.).
     type: object
     required: [ "image_queries" ]
     properties:
       image_queries:
         type: array
-        description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative about the user's favorite sport and team. The first query MUST always be the favorite team's logo (e.g., "{{favorite_team}} logo"), the second query MUST always be the favorite team's stadium (e.g., "{{favorite_team}} stadium"), and the third query MUST always be the favorite team's mascot (e.g., "{{favorite_team}} mascot"), followed by queries extracted from the podcast script content.
+        description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative. For TEAM SPORTS: first query is team logo, second is stadium, third is mascot. For INDIVIDUAL SPORTS: first query is athlete photo/name, second is team/racing team logo, third is athlete in action/competition. Remaining queries are extracted from the podcast script content.
         minItems: 5
         maxItems: 5
         items:
           type: string
-          description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players, events, or storylines discussed in the podcast (e.g., specific player names, match events, or storylines mentioned in the script). The first item must be "{{favorite_team}} logo", the second item must be "{{favorite_team}} stadium", and the third item must be "{{favorite_team}} mascot".
+          description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players/athletes, events, or storylines discussed in the podcast. For team sports: first three queries are team logo, stadium, and mascot. For individual sports: first three queries are athlete photo, team logo, and athlete in action.
