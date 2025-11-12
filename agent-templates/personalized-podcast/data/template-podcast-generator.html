@@ -24,20 +24,63 @@
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
-        .team-image-section {
-            width: 100%;
-            background: #ffffff;
+        .header {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 50px 20px 40px;
             text-align: center;
-            overflow: hidden;
-            display: block;
+            color: #ffffff;
+            border-bottom: 3px solid #dc2626;
+            position: relative;
+            aspect-ratio: 16/9;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
-        .team-image-section img {
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+            z-index: 1;
+        }
+        .header-content {
+            position: relative;
+            z-index: 2;
             width: 100%;
-            max-width: 100%;
+        }
+        .header-logo {
+            max-width: 220px;
             height: auto;
             display: block;
+            margin: 0 auto 20px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+            transition: transform 0.3s ease;
+        }
+        .header-logo:hover {
+            transform: scale(1.05);
+        }
+        .header img {
+            max-width: 220px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
             margin: 0;
-            border: 0;
+            padding: 0;
+            letter-spacing: 0.3px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+            position: relative;
+            z-index: 2;
         }
         .content {
             padding: 40px 35px;
@@ -58,86 +101,38 @@
             letter-spacing: -0.5px;
         }
         
-        /* Podcast Hero Card - Clickable */
-        .podcast-hero {
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-            border-radius: 16px;
-            padding: 40px 30px;
+        /* Podcast Link Container */
+        .podcast-link-container {
+            background: #ffffff;
+            border: 3px solid #dc2626;
+            border-radius: 12px;
+            padding: 30px;
             margin: 30px 0;
             text-align: center;
-            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.25);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: block;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
         }
-        .podcast-hero:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(220, 38, 38, 0.35);
-            background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%);
-        }
-        .podcast-hero::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .podcast-hero:hover::before {
-            opacity: 0.8;
-        }
-        .podcast-hero::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-            transition: left 0.5s;
-        }
-        .podcast-hero:hover::after {
-            left: 100%;
-        }
-        .podcast-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 16px;
-            display: block;
-            position: relative;
-            z-index: 1;
-            transition: transform 0.3s ease;
-        }
-        .podcast-icon svg {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        .podcast-hero:hover .podcast-icon {
-            transform: scale(1.1);
-        }
-        .podcast-hero-title {
+        .podcast-link-button {
+            display: inline-block;
+            background: #dc2626;
             color: #ffffff;
-            font-size: 24px;
+            padding: 16px 40px;
+            text-decoration: none;
+            font-size: 18px;
             font-weight: 700;
-            margin-bottom: 8px;
-            position: relative;
-            z-index: 1;
-            letter-spacing: 0.3px;
+            border-radius: 50px;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
         }
-        .podcast-hero-subtitle {
-            color: rgba(255, 255, 255, 0.95);
-            font-size: 16px;
-            margin-bottom: 0;
-            position: relative;
-            z-index: 1;
-            font-weight: 400;
+        .podcast-link-button:hover {
+            background: #991b1b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        .podcast-link-subtitle {
+            color: #6b7280;
+            font-size: 15px;
+            margin: 12px 0 0 0;
+            line-height: 1.5;
         }
         
         /* Podcast Info Card */
@@ -312,11 +307,17 @@
                 border-radius: 0;
                 box-shadow: none;
             }
-            .team-image-section {
-                width: 100%;
+            .header {
+                padding: 40px 15px 30px;
+                aspect-ratio: 16/9;
             }
-            .team-image-section img {
-                width: 100%;
+            .header-logo,
+            .header img {
+                max-width: 160px;
+                margin-bottom: 16px;
+            }
+            .header h1 {
+                font-size: 18px;
             }
             .content {
                 padding: 30px 20px;
@@ -329,20 +330,16 @@
                 font-size: 26px;
                 margin-bottom: 25px;
             }
-            .podcast-hero {
-                padding: 32px 24px;
+            .podcast-link-container {
+                padding: 24px 20px;
                 margin: 25px 0;
-                border-radius: 12px;
             }
-            .podcast-icon {
-                width: 70px;
-                height: 70px;
+            .podcast-link-button {
+                font-size: 16px;
+                padding: 14px 32px;
             }
-            .podcast-hero-title {
-                font-size: 22px;
-            }
-            .podcast-hero-subtitle {
-                font-size: 15px;
+            .podcast-link-subtitle {
+                font-size: 14px;
             }
             .podcast-info {
                 padding: 24px 20px;
@@ -377,12 +374,6 @@
             .header-logo img {
                 max-width: 150px;
             }
-            .team-image-section {
-                width: 100%;
-            }
-            .team-image-section img {
-                width: 100%;
-            }
             .footer-logo {
                 margin-bottom: 18px;
             }
@@ -397,8 +388,13 @@
 </head>
 <body>
     <div class="email-container">
-        <!-- TEAM/MASCOT IMAGE SECTION -->
-        {{header_image_tag}}
+        <!-- HEADER -->
+        <div class="header" style="background-image: url('{{header_image_tag}}');">
+            <div class="header-content">
+                <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" class="header-logo" />
+                <h1>Your Personalized Podcast is Ready!</h1>
+            </div>
+        </div>
 
         <!-- CONTENT -->
         <div class="content">
@@ -410,17 +406,13 @@
             <!-- Headline -->
             <h2 class="headline">{{headline}}</h2>
 
-            <!-- Podcast Hero Card - Clickable -->
-            <a href="{{podcast_url}}" target="_blank" class="podcast-hero">
-                <div class="podcast-icon">
-                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="50" cy="50" r="48" fill="rgba(255, 255, 255, 0.2)" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2"/>
-                        <polygon points="38,30 38,70 70,50" fill="#ffffff"/>
-                    </svg>
-                </div>
-                <div class="podcast-hero-title">Listen to Your Podcast Now</div>
-                <div class="podcast-hero-subtitle">Custom {{favorite_sport}} content tailored just for you</div>
-            </a>
+            <!-- Podcast Link -->
+            <div class="podcast-link-container">
+                <a href="https://podcast.machina.gg/podcast/{{podcast_id}}" target="_blank" class="podcast-link-button">
+                    🎧 Listen to Your Podcast Now
+                </a>
+                <p class="podcast-link-subtitle">Click here to enjoy your personalized {{favorite_sport}} podcast</p>
+            </div>
 
             <!-- Description -->
             <div class="description">
