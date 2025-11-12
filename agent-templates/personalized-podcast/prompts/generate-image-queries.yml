@@ -60,9 +60,9 @@ prompt:
     properties:
       image_queries:
         type: array
-        description: Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative. For TEAM SPORTS: first query is team logo, second is stadium, third is mascot. For INDIVIDUAL SPORTS: first query is athlete photo/name, second is team/racing team logo, third is athlete in action/competition. Remaining queries are extracted from the podcast script content.
+        description: "Array of targeted image queries personalized based on the podcast script content, retrieving relevant visual content that complements the audio narrative. For TEAM SPORTS: first query is team logo, second is stadium, third is mascot. For INDIVIDUAL SPORTS: first query is athlete photo/name, second is team/racing team logo, third is athlete in action/competition. Remaining queries are extracted from the podcast script content."
         minItems: 5
         maxItems: 5
         items:
           type: string
-          description: Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players/athletes, events, or storylines discussed in the podcast. For team sports: first three queries are team logo, stadium, and mascot. For individual sports: first three queries are athlete photo, team logo, and athlete in action.
+          description: "Specific image query personalized based on the podcast script content, focused on retrieving actionable visual information that directly relates to the topics, players/athletes, events, or storylines discussed in the podcast. For team sports: first three queries are team logo, stadium, and mascot. For individual sports: first three queries are athlete photo, team logo, and athlete in action."
