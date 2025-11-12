@@ -24,17 +24,34 @@
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
+        .top-logo-bar {
+            background-color: #000000;
+            padding: 30px 35px;
+            text-align: center;
+            border-bottom: 3px solid #dc2626;
+        }
+        .top-logo-bar img {
+            max-width: 180px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            transition: opacity 0.3s ease;
+            filter: brightness(1.1) contrast(1.1);
+        }
+        .top-logo-bar img:hover {
+            opacity: 0.9;
+        }
         .header {
             background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            padding: 80px 20px 60px;
+            padding: 60px 20px 50px;
             text-align: center;
             color: #ffffff;
             border-bottom: 3px solid #dc2626;
             position: relative;
-            min-height: 300px;
+            min-height: 250px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -49,28 +66,6 @@
             bottom: 0;
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
             z-index: 1;
-        }
-        .header-content {
-            position: relative;
-            z-index: 2;
-            width: 100%;
-        }
-        .header-logo {
-            max-width: 220px;
-            height: auto;
-            display: block;
-            margin: 0 auto 20px;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
-            transition: transform 0.3s ease;
-        }
-        .header-logo:hover {
-            transform: scale(1.05);
-        }
-        .header img {
-            max-width: 220px;
-            height: auto;
-            display: block;
-            margin: 0 auto;
         }
         .content {
             padding: 40px 35px;
@@ -297,14 +292,15 @@
                 border-radius: 0;
                 box-shadow: none;
             }
-            .header {
-                padding: 60px 15px 40px;
-                min-height: 250px;
+            .top-logo-bar {
+                padding: 25px 20px;
             }
-            .header-logo,
-            .header img {
-                max-width: 160px;
-                margin-bottom: 16px;
+            .top-logo-bar img {
+                max-width: 140px;
+            }
+            .header {
+                padding: 50px 15px 40px;
+                min-height: 220px;
             }
             .content {
                 padding: 30px 20px;
@@ -355,12 +351,6 @@
             .footer {
                 padding: 30px 20px;
             }
-            .header-logo {
-                max-width: 150px;
-            }
-            .header-logo img {
-                max-width: 150px;
-            }
             .footer-logo {
                 margin-bottom: 18px;
             }
@@ -375,11 +365,13 @@
 </head>
 <body>
     <div class="email-container">
+        <!-- TOP LOGO BAR -->
+        <div class="top-logo-bar">
+            <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" />
+        </div>
+
         <!-- HEADER -->
         <div class="header" style="background-image: url('{{header_background_image}}');">
-            <div class="header-content">
-                <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" class="header-logo" />
-            </div>
         </div>
 
         <!-- CONTENT -->
