@@ -14,7 +14,7 @@ workflow:
     document_id: "$.get('document_id')"
     from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
     mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
-    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-generator.html')"
+    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-generator2.html')"
   outputs:
     document_id: "$.get('document_id')"
     workflow-status: "$.get('workflow-status')"
