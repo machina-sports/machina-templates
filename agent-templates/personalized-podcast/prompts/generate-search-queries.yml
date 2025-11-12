@@ -6,7 +6,7 @@ prompt:
     Generate targeted Google Search queries based on the following parameters:
     - Favorite sport: {{favorite_sport}}
     - Favorite entity: {{favorite_team}}
-    - Knowledge Level: {{knowledge_level}}
+    - Knowledge Level: {{sports_knowledge}}
     - Language: {{language}}
 
     LANGUAGE REQUIREMENTS:
@@ -15,25 +15,29 @@ prompt:
     - Adapt entity names and sport terms to local language conventions
 
     KNOWLEDGE LEVEL TERMINOLOGY:
-    Adjust query terminology based on {{knowledge_level}}:
+    Adjust query terminology based on {{sports_knowledge}}:
     
-    - BEGINNER/NOVICE:
+    - Beginner:
       * Required queries: "{{favorite_team}} next events", "{{favorite_team}} latest results"
-      * Basic terms: "upcoming events", "recent results", "news", "updates"
-      * Avoid: technical jargon, advanced statistics, specialized terms
-      * Examples: "{{favorite_team}} when compete next", "{{favorite_team}} latest news"
+      * Basic terms: "upcoming events", "recent results", "news", "updates", "what happened"
+      * Avoid: technical jargon, advanced statistics, specialized terms, abbreviations
+      * Examples: "{{favorite_team}} when compete next", "{{favorite_team}} latest news", "{{favorite_team}} what happened"
+      * Focus on: simple explanations, basic information, fundamental updates
     
-    - INTERMEDIATE:
+    - Casual Fan:
       * Required queries: "{{favorite_team}} upcoming schedule", "{{favorite_team}} recent results"
-      * Standard terms: "schedule", "rankings", "form", "performance updates"
-      * Include: event previews, status updates
+      * Standard terms: "schedule", "rankings", "standings", "form", "performance updates", "latest news"
+      * Include: event previews, status updates, basic stats, current position
+      * Use: common sport terminology without over-explaining
+      * Examples: "{{favorite_team}} upcoming schedule", "{{favorite_team}} standings", "{{favorite_team}} latest news"
     
-    - EXPERT/ADVANCED:
+    - Expert:
       * Required queries: "{{favorite_team}} upcoming schedule", "{{favorite_team}} latest results"
-      * Technical terms: "performance analysis", "statistical metrics", "tactical breakdown", "analytics"
-      * Include: seasons, statistical measures, advanced metrics
-      * Insider terminology: "rumors", "prognosis", "breakdown", "performance analytics"
-      * Abbreviations and technical jargon
+      * Technical terms: "performance analysis", "statistical metrics", "tactical breakdown", "analytics", "advanced stats"
+      * Include: seasons, statistical measures, advanced metrics, historical comparisons, tactical analysis
+      * Insider terminology: "rumors", "prognosis", "breakdown", "performance analytics", "expected goals", "player efficiency"
+      * Abbreviations and technical jargon: Use sport-specific abbreviations freely
+      * Examples: "{{favorite_team}} performance analytics", "{{favorite_team}} tactical breakdown", "{{favorite_team}} advanced statistics"
 
     QUERY TOPICS:
     1) Upcoming events/competitions for {{favorite_team}} (dates, opponents/competitors, venues)
@@ -47,15 +51,15 @@ prompt:
     - Next events/upcoming schedule for {{favorite_team}}
     - Latest results/recent results for {{favorite_team}}
     
-    These two queries MUST be included in every set. Use terminology appropriate for {{knowledge_level}} but always cover these basics.
+    These two queries MUST be included in every set. Use terminology appropriate for {{sports_knowledge}} but always cover these basics.
 
     REQUIREMENTS:
-    - Generate queries (3-5 total)
-    - ALWAYS include queries for next events and latest results (use appropriate terminology for {{knowledge_level}})
+    - Generate exactly 5 queries (see schema minItems/maxItems)
+    - ALWAYS include queries for next events and latest results (use appropriate terminology for {{sports_knowledge}})
     - Additional queries can cover: news, rankings, participant status, fanbase, previews, etc.
     - Include entity name and season/year when relevant
-    - Match terminology to {{knowledge_level}}
-    - Generate in {{language}} with local terminology
+    - Match terminology to {{sports_knowledge}} (see KNOWLEDGE LEVEL TERMINOLOGY above)
+    - Generate in {{language}} with local terminology (see LANGUAGE REQUIREMENTS above)
     - Be specific and action-oriented
     - Avoid generic queries
 
@@ -69,7 +73,7 @@ prompt:
       search_queries:
         type: array
         description: Array of search queries generated in the specified language with terminology matched to the knowledge level parameter
-        minItems: 3
+        minItems: 5
         maxItems: 5
         items:
           type: string

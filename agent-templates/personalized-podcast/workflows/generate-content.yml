@@ -17,13 +17,7 @@ workflow:
     duration: "$.get('duration', 120)"
     language: "$.get('language', 'en')"
   outputs:
-    document_id: "$.get('document_id')"
     workflow-status: "$.get('workflow-status')"
-    audio_content: "$.get('audio_content')"
-    user_profile: "$.get('user_profile')"
-    favorite_sport: "$.get('favorite_sport')"
-    favorite_team: "$.get('favorite_team')"
-    user_name: "$.get('user_name')"
   tasks:
 
     # Load user profile from documents
@@ -52,7 +46,9 @@ workflow:
         personality: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone', 'friendly') if len($.get('documents', [])) > 0 else 'friendly'"
         user_name: "$.get('documents', [])[0].get('value', {}).get('name') if len($.get('documents', [])) > 0 else None"
         profile_email_address: "$.get('documents', [])[0].get('value', {}).get('email_address') if len($.get('documents', [])) > 0 else None"
-  
+        sports_knowledge: "$.get('documents', [])[0].get('value', {}).get('sports_knowledge') if len($.get('documents', [])) > 0 else None"
+        podcast_mood_tone: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone') if len($.get('documents', [])) > 0 else None"
+    
     # personalized-podcast-generate-search-queries
     - type: prompt
       name: personalized-podcast-generate-search-queries
@@ -67,7 +63,7 @@ workflow:
       inputs:
         favorite_sport: $.get('favorite_sport')
         favorite_team: $.get('favorite_team')    
-        max_queries: $.get('max_queries')
+        sports_knowledge: "$.get('sports_knowledge')"
       outputs:
         search_queries: "$.get('search_queries', [])"
 
@@ -111,6 +107,8 @@ workflow:
         language: "$.get('language')"
         duration: "$.get('duration')"
         user_name: "$.get('document-value', {}).get('name')"
+        sports_knowledge: "$.get('sports_knowledge')"
+        podcast_mood_tone: "$.get('podcast_mood_tone')"
       outputs:
         audio_content: "$.get('content')"
         podcast_headline: "$.get('headline')"
