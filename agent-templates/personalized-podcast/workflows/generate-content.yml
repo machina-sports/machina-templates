@@ -61,7 +61,7 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-pro
+        model: gemini-2.5-flash
         location: global
         provider: vertex_ai
       inputs:
@@ -110,8 +110,12 @@ workflow:
         personality: "$.get('personality')"
         language: "$.get('language')"
         duration: "$.get('duration')"
+        user_name: "$.get('document-value', {}).get('name')"
       outputs:
         audio_content: "$.get('content')"
+        podcast_headline: "$.get('headline')"
+        podcast_summary: "$.get('summary')"
+        newsletter_markdown: "$.get('newsletter-markdown')"
       
       # personalized-podcast-translate-prompt
     - type: prompt
