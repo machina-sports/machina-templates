@@ -7,26 +7,30 @@ prompt:
 
     Use the provided parameters:
     - favorite_sport: The sport the user follows
-    - favorite_team: The team/entity the user supports
+    - favorite_team: The entity the user follows (team, player, athlete, etc.)
     - sports_knowledge: User's knowledge level (beginner, casual, expert)
     - language: Language for the queries
 
-    ALWAYS include these 2 core queries:
-    1. Upcoming games/events for the team
-    2. Latest results/recent matches for the team
+    ALWAYS include these 2 core queries about the specific entity:
+    1. Next events/upcoming schedule for [entity name]
+    2. Latest results/recent performance for [entity name]
 
-    Add 3 more queries covering:
-    - Recent news and updates
-    - Current standings/rankings
-    - Player/team status and transfers
+    Add 3 more queries about the specific entity:
+    - Recent news about [entity name]
+    - Current status/standings of [entity name]
+    - Updates/developments for [entity name]
+
+    ALL queries must be about the specific entity mentioned by the user.
+    Do NOT generate general sport rules or explanations.
+    Focus on current entity-specific information.
 
     Adjust terminology based on knowledge level:
     - Beginner: Use simple terms like "next games", "latest news", "what happened"
-    - Casual: Use standard terms like "schedule", "standings", "results"
+    - Casual: Use standard terms like "schedule", "standings", "results"  
     - Expert: Use technical terms like "analytics", "performance metrics", "tactical analysis"
 
     Generate all queries in the specified language.
-    Be specific and include the team name in each query.
+    Every query must include the exact entity name provided.
     
     Output only the 5 queries in the schema format.
   schema:
@@ -42,4 +46,4 @@ prompt:
         maxItems: 5
         items:
           type: string
-          description: Search query for sports content about the specified team
+          description: Search query for sports content about the specified entity

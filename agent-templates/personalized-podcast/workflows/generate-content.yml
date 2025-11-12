@@ -57,12 +57,12 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash
+        model: gemini-2.5-pro
         location: global
         provider: vertex_ai
       inputs:
-        user_preference_1: $.get('favorite_sport')
-        user_preference_2: $.get('favorite_team')    
+        entity_name_1: $.get('favorite_sport')
+        entity_name_2: $.get('favorite_team')    
         sports_knowledge: "$.get('sports_knowledge')"
       outputs:
         search_queries: "$.get('search_queries', [])"
