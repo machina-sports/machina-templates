@@ -14,13 +14,18 @@ def invoke_compose(request_data):
             params:
                 - template_path: Path to HTML template (URL or local file path)
                 - podcast-content: Podcast content with all fields
-                - document_id: Document ID for generating podcast page URL (required for podcast access)
-                - podcast_base_url: Base URL for podcast pages (default: https://podcast.machina.gg)
-                - audio_url: Optional audio URL (for reference only, not used in email links)
+                - audio_url: URL or path to the podcast audio file (overridden by podcast page if user-data.id exists)
+                - image_path: Primary header image path/URL (takes precedence over header_image)
                 - user_name: Name of the user
+                - user-data: User data object containing 'id' for podcast page URL generation
                 - favorite_sport: User's favorite sport
                 - favorite_team: User's favorite team
-                - header_image: Optional header image path/URL
+                - language: User's preferred language
+                - podcast_headline: Generated headline from prompt (catchy title)
+                - podcast_mood_tone: User's preferred podcast mood/tone
+                - podcast_summary: Generated podcast summary
+                - sports_knowledge: User's sports knowledge level
+                - header_image: Optional header image path/URL (fallback if image_path not provided)
                 - footer_image: Optional footer image path/URL
                 - podcast_duration: Optional podcast duration in seconds
     
@@ -35,17 +40,19 @@ def invoke_compose(request_data):
     audio_url = params.get("audio_url")
     document_id = params.get("document_id")
     podcast_base_url = params.get("podcast_base_url", "https://podcast.machina.gg")
+    image_path = params.get("image_path")
     user_name = params.get("user_name")
-    name = params.get("name") or user_name  # Support both 'name' and 'user_name'
     favorite_sport = params.get("favorite_sport")
     favorite_team = params.get("favorite_team")
+    language = params.get("language")
+    podcast_headline = params.get("podcast_headline")
+    podcast_mood_tone = params.get("podcast_mood_tone")
+    podcast_summary = params.get("podcast_summary")
+    sports_knowledge = params.get("sports_knowledge")
     header_image = params.get("header_image")
-    header_background_image = params.get("header_background_image") or header_image
     footer_image = params.get("footer_image")
     podcast_duration = params.get("podcast_duration")
-    podcast_mood_tone = params.get("podcast_mood_tone")
-    sports_knowledge = params.get("sports_knowledge")
-    language = params.get("language", "en")
+    user_data = params.get("user-data", {}) or params.get("user_data", {})
     
     if not template_path:
         return {"status": "error", "message": "template_path is required."}
@@ -58,53 +65,47 @@ def invoke_compose(request_data):
         variables.update(podcast_content)
     
     # Add user information
-    if name:
-        variables['name'] = name
-        variables['user_name'] = name  # Support both formats
-    elif user_name:
-        variables['name'] = user_name
+    if user_name:
         variables['user_name'] = user_name
+        variables['name'] = user_name  # Also set 'name' for template compatibility
     if favorite_sport:
         variables['favorite_sport'] = favorite_sport
     if favorite_team:
         variables['favorite_team'] = favorite_team
-    if audio_url:
-        variables['audio_url'] = audio_url
-    if podcast_duration:
-        variables['podcast_duration'] = str(podcast_duration)
+    if language:
+        variables['language'] = language
     if podcast_mood_tone:
         variables['podcast_mood_tone'] = podcast_mood_tone
     if sports_knowledge:
         variables['sports_knowledge'] = sports_knowledge
-    if language:
-        variables['language'] = language
+    if audio_url:
+        variables['audio_url'] = audio_url
+    if podcast_duration:
+        variables['podcast_duration'] = str(podcast_duration)
     
-    # Create podcast_url from document_id and base URL
-    if document_id:
-        variables['podcast_url'] = f"{podcast_base_url}/podcast/{document_id}"
+    # Create podcast page URL from document_id
+    # Support both new document_id parameter and legacy user_data.id
+    user_id = document_id or (user_data.get("id") if isinstance(user_data, dict) else None)
+    if user_id:
+        variables['podcast_page_url'] = f"{podcast_base_url}/podcast/{user_id}"
+        variables['podcast_url'] = variables['podcast_page_url']  # New variable name for template
+        variables['audio_url'] = variables['podcast_page_url']  # Override audio_url with page URL (legacy)
     else:
-        variables['podcast_url'] = "#"
+        variables['podcast_page_url'] = audio_url or ""
+        variables['podcast_url'] = audio_url or ""  # New variable name for template
     
     # Add optional images
-    # Ensure image is a valid URL (not just a path)
-    image_url = None
-    if header_background_image:
-        image_url = header_background_image
-    elif header_image:
-        image_url = header_image
+    # Use image_path as primary source for header, fallback to header_image
+    actual_header_image = image_path or header_image
     
-    if image_url:
-        # If it's not already a full URL, it should be from Google Storage
-        # The image_path from generate-image workflow is already a full URL
-        variables['header_background_image'] = image_url
-        variables['header_image'] = image_url
-        variables['header_image_tag'] = f'<div class="team-image-section"><img src="{image_url}" alt="Team/Mascot Image" style="width: 100%; max-width: 100%; height: auto; display: block; margin: 0; border: 0; outline: none;"></div>'
+    if actual_header_image:
+        variables['header_image'] = actual_header_image
+        variables['header_background_image'] = actual_header_image  # For CSS background-image
+        variables['header_image_tag'] = f'<img src="{actual_header_image}" alt="Header" style="width: 100%; height: auto; display: block;">'
         variables['header_title'] = ""
     else:
-        # Use a default gradient background when no image
-        variables['header_background_image'] = "linear-gradient(135deg, #000000 0%, #1a1a1a 100%)"
-        variables['header_image'] = ""
         variables['header_image_tag'] = ""
+        variables['header_background_image'] = ""  # Empty if no image
         variables['header_title'] = "🎙️ Your Personalized Podcast"
     
     if footer_image:
@@ -119,10 +120,16 @@ def invoke_compose(request_data):
     else:
         variables['podcast_duration_tag'] = ""
     
-    # Add podcast button - links to podcast page
-    if document_id:
-        variables['download_button'] = f'<div class="download-button"><a href="{variables["podcast_url"]}">🎧 Listen to Your Podcast</a></div>'
-        variables['podcast_button'] = f'<a href="{variables["podcast_url"]}">Listen Now</a>'
+    # Add podcast button (links to podcast page if user_id exists, otherwise direct download)
+    if variables.get('podcast_page_url'):
+        if user_id:
+            # Link to podcast page
+            variables['download_button'] = f'<div class="download-button"><a href="{variables["podcast_page_url"]}">🎧 Listen to Your Podcast</a></div>'
+            variables['podcast_button'] = f'<a href="{variables["podcast_page_url"]}">Listen Now</a>'
+        else:
+            # Direct download if no user_id
+            variables['download_button'] = f'<div class="download-button"><a href="{variables["podcast_page_url"]}" download>📥 Download Podcast</a></div>'
+            variables['podcast_button'] = f'<a href="{variables["podcast_page_url"]}" download>Download</a>'
     else:
         variables['download_button'] = ""
         variables['podcast_button'] = ""
@@ -131,8 +138,12 @@ def invoke_compose(request_data):
     if 'subject_line' not in variables:
         variables['subject_line'] = f"Your Personalized {favorite_sport} Podcast"
     
+    # Use podcast_headline from prompt if available, otherwise use default
     if 'headline' not in variables:
-        variables['headline'] = f"Your {favorite_team} Podcast is Ready!"
+        if podcast_headline:
+            variables['headline'] = podcast_headline
+        else:
+            variables['headline'] = f"Your {favorite_team} Podcast is Ready!"
     
     if 'description' not in variables:
         variables['description'] = f"<p>We've created a personalized podcast just for you about {favorite_team} and {favorite_sport}. Enjoy listening!</p>"

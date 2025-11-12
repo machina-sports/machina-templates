@@ -1,7 +1,7 @@
 workflow:
-  name: personalized-podcast-generate-image
-  title: Personalized Podcast Generate Image
-  description: Workflow to generate personalized podcast image based on user profile stored in documents and web search results
+  name: bundesliga-podcast-generate-image
+  title: Bundesliga Podcast Generate Image
+  description: Workflow to generate Bundesliga podcast image based on user profile stored in documents and web search results
   context-variables:
     debugger:
       enabled: true
@@ -18,23 +18,21 @@ workflow:
       username: $TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME
       password: $TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD
   inputs:
-    document_id: "$.get('document_id')"
+    document_id: $.get('document_id')
     geo_location: $.get('geo_location', 'Brazil')
-    limit: $.get('limit', 3)
+    limit: $.get('limit', 10)
     parser: ($.get('parser', 'true') == 'true') and True or False
+    query: $.get('query')
     source: $.get('source', 'google_search')
     udm: int($.get('udm', 2))
   outputs:
-    document_id: "$.get('document_id')"
     workflow-status: "'executed'"
-    image_path: "$.get('uploaded_image_path')"
-    image_url: "$.get('uploaded_image_url')"
   tasks:
 
     # Load user profile from documents
     - type: document
       name: load-user-profile
-      description: "Load user profile from documents by document_id"
+      description: "Load user profile from documents by email address"
       condition: "$.get('document_id') is not None"
       config:
         action: "search"
@@ -45,7 +43,7 @@ workflow:
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       filters:
-        document_id: "$.get('document_id')"
+        document_id: $.get('document_id')
       inputs:
         name: "'user-profile'"
       outputs:
@@ -54,12 +52,12 @@ workflow:
         favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
         favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
         audio_content: "$.get('documents', [])[0].get('value', {}).get('audio_content') if len($.get('documents', [])) > 0 else None"
-
-    # personalized-podcast-generate-image-queries
+  
+    # bundesliga-podcast-generate-image-queries
     - type: prompt
-      name: personalized-podcast-generate-image-queries
+      name: bundesliga-podcast-generate-image-queries
       description: Generate image queries based on user's favorite sport and team.
-      condition: "$.get('document_id') is not None and $.get('document-exists') is True"
+      condition: $.get('document_id') is not None and $.get('document-exists') is True
       connector:
         command: invoke_prompt
         name: google-genai
@@ -114,7 +112,7 @@ workflow:
 
     # save-to-tmp
     - type: connector
-      name: temp-personalized-podcast-logo-downloader
+      name: temp-bundesliga-podcast-logo-downloader
       description: Save the image to tmp.
       condition: len($.get('image_urls', [])) > 0
       connector:
@@ -131,6 +129,7 @@ workflow:
           [
             $.get('image_path')
           ]
+
 
     # create-background-image
     - type: connector
@@ -151,39 +150,38 @@ workflow:
           "=== IMAGE GENERATION CONFIGURATION ===\n\nCONTEXT:\n- Sport: {{favorite_sport}}\n- Team: {{favorite_team}}\n- Image Queries: {{image_queries}}\n\nREFERENCE IMAGE GUIDELINES:\n- Use reference images as visual inspiration for composition, colors, and style\n- Extract visual elements, colors, and composition ideas from reference images\n- DO NOT copy text, logos, watermarks, or written elements from reference images\n- If reference images contain text, logos, or written elements, recreate those visual elements WITHOUT the text/logos\n- Combine visual elements from multiple reference images into single cohesive image\n- Maintain proportions and details of key visual subjects (fans, stadiums, atmosphere)\n- Seamless integration required while removing ALL text and written elements\n\nPROHIBITED ELEMENTS (CRITICAL - HIGHEST PRIORITY):\n- Text, words, letters, numbers, typography of ANY kind\n- Written elements of any kind (jerseys, banners, signs, screens)\n- Player names or player references\n- Individual athletes\n- Logos or emblems (DO NOT add any logos or emblems to the image)\n- Watermarks, copyright marks, or branding\n- ANY readable text, even if present in reference images - REMOVE IT\n\n=== VISUAL STYLE: EDITORIAL CINEMATIC SPORTS PHOTOGRAPHY ===\n\nOVERALL CONCEPT:\nCreate an editorial-style cinematic sports image that feels both mythic and real — a moment suspended between power and poetry. Capture the essence of motion, speed, and emotion in a way that transcends realism. The visual tone should merge athletic intensity with dreamlike surrealism, as if the laws of gravity and time briefly stopped.\n\nCOMPOSITION:\n- Isolate the subject within a vast, minimal environment — desert, tundra, sky, or abstract open space — emphasizing scale and solitude\n- Frame from a slightly low or dynamic angle, giving the subject a heroic, sculptural quality\n- Center or off-center hero framing with breathing space around the subject\n- Wide horizons or negative space; minimal background distractions\n- The world feels timeless and slightly alien — familiar yet offbeat\n- Should feel like a still from a high-end sports film campaign or a conceptual editorial\n\nLIGHTING:\n- Natural, cinematic light — harsh mid-day or golden hour tones\n- Let deep shadows and highlights sculpt form\n- Avoid studio or artificial lighting\n- Use lighting to create dramatic contrast and depth\n\nCOLOR PALETTE:\n- Muted and elegant — deep blues, earthy neutrals, desaturated reds or whites\n- Use the color of the environment as emotional context rather than decoration\n- Extract team colors from reference images and apply them in a desaturated, sophisticated manner\n- Avoid bold, vibrant, saturated colors — prefer subtle, refined tones\n\nTEXTURE & LENS:\n- Emulate 35mm or medium-format analog film\n- Visible grain texture\n- Shallow depth of field\n- Slight halation around highlights\n- Delicate motion blur that suggests energy\n- Photo-realistic rendering with analog film characteristics\n\nMOOD & ATMOSPHERE:\n- Quietly powerful and emotional\n- Blend tension and serenity — the calm before or after impact\n- Should feel cinematic, introspective, and reverent\n- A surreal cinematic moment of sport — where motion becomes myth, speed becomes silence\n- Analog, emotional, timeless\n\nMOTION:\n- Convey speed or suspension using long exposure, dust trails, or kinetic blur\n- The subject appears to move through air, sand, or energy rather than through a literal field\n- Motion blur should be delicate and natural, not exaggerated\n\nSURREAL ELEMENTS (subtle):\n- Add symbolic or mythic touches that elevate the action\n- Ethereal light trails, atmospheric distortion, glowing particles, or soft halos\n- Integrated naturally within realism\n- Avoid CGI-looking effects\n- Keep surreal elements subtle and organic\n\nRENDERING DETAILS:\n- 35mm analog film aesthetic\n- Cinematic lighting\n- Shallow depth of field\n- Grain texture\n- Wide shot composition\n- Natural color grading\n- High dynamic range\n- Photo-realistic quality\n- Motion blur\n- Surreal realism\n- Editorial sports photography style\n- Fine-art composition\n- Soft haze\n- Golden hour light (or harsh mid-day light)\n\n=== INSTRUCTIONS ===\n\nCreate an editorial-style cinematic sports image suitable for podcast headers that captures the essence of {{favorite_sport}} and {{favorite_team}}.\n\nUse the provided reference images as visual inspiration - extract colors, composition ideas, and visual elements. Extract team colors from reference images and apply them in a muted, sophisticated palette.\n\nCRITICAL: If reference images contain text, logos, banners with words, or any written elements:\n- Recreate the visual scene WITHOUT the text\n- Remove all text from jerseys, banners, signs, and screens\n- Keep the visual atmosphere and composition but eliminate ALL readable text\n- Maintain the energy and style but make it completely text-free\n\nCombine visual elements from multiple reference images into a single cohesive image.\nKeep key visual subjects recognizable (fans, stadium atmosphere, team colors) but remove ALL text.\nBlend the images naturally with consistent lighting, shadows, perspective, and style.\nIntegrate the reference images seamlessly into the composition so they feel like natural, integral parts of the design.\n\nABSOLUTELY NO text, words, letters, team logos, numbers, typography, or written elements anywhere in the image - this is the HIGHEST PRIORITY requirement.\nABSOLUTELY NO player names, player references, or individual athletes.\nABSOLUTELY NO logos or emblems - DO NOT add any logos or emblems to the final image.\n\nFINAL CHECK: Before generating, ensure the image will contain ZERO readable text, ZERO words, ZERO letters, ZERO numbers, ZERO typography of any kind. The image should feel like a cinematic, editorial sports photograph — mythic, timeless, and emotionally powerful."
       outputs:
         data: "$"
-        background_image_path: "$.get('image_path')"
+        image_path: "$.get('image_path')"
 
     # upload image to google storage
     - type: connector
       name: upload-image-to-google-storage
       description: Upload the image to Google Storage.
-      condition: $.get('background_image_path') is not None
+      condition: $.get('image_path') is not None
       connector:
         name: google-storage
         command: invoke_upload
       inputs:
         api_key: $.get('api_key')
-        image_path: $.get('background_image_path')
+        image_path: $.get('image_path')
       outputs:
         uploaded_image_path: "$.get('url')"
-        uploaded_image_url: "$.get('url')"
 
     # version-control-update
     - type: document
       name: version-control-update
-      description: Update the user profile document with image_path.
-      condition: "$.get('document-exists') is True and $.get('uploaded_image_path') is not None"
+      description: Update the user profile document version control.
+      condition: $.get('document-exists') is True
       config:
         action: update
         embed-vector: false
         force-update: true
       filters:
-        document_id: "$.get('document_id')"
+        document_id: $.get('document_id')
       documents:
         user-profile: |
           {
             **$.get('document-value', {}),
+            "audio_content": $.get('audio_content'),
             "image_path": $.get('uploaded_image_path'),
           }
       
-

@@ -1,0 +1,92 @@
+prompts:
+
+  # thread-executor-prompt
+  - type: "prompt"
+    title: "Thread Executor Prompt"
+    name: "thread-executor-prompt" 
+    description: "This prompt generates contextual responses to user questions about NFL games, teams, players and statistics."
+    schema:
+      title: "ThreadExecutor"
+      description: "This schema defines the structure for generating comprehensive responses about NFL content with engaging conversation continuity."
+      type: "object"
+      properties:
+        question_answer:
+          type: "string"
+          description: "Provide a concise, direct response that answers the user's question about NFL content with personality but without unnecessary filler. Focus on actionable information, avoid verbosity, and get straight to the point while maintaining an engaging tone."
+        is_game_finished:
+          type: "boolean"
+          description: "Whether the NFL game being discussed is finished."
+        related_topics:
+          type: "array"
+          description: "List relevant NFL topics, stats, or insights related to the discussion."
+          items:
+            type: "object"
+            properties:
+              topic_title:
+                type: "string"
+                description: "Clear and appealing title for the NFL topic or insight."
+              topic_content:
+                type: "string"
+                description: "Brief content or statistic about this NFL topic."
+              relevance:
+                type: "string"
+                description: "How this topic relates to the current conversation."
+        related_questions:
+          type: "array"
+          description: "Suggest natural follow-up questions to maintain conversation flow and user engagement about NFL content."
+          items:
+            type: "string"
+            description: "Relevant and engaging follow-up question that builds on the current NFL conversation context."
+        speech_to_avatar:
+          type: "string"
+          description: "The speech to avatar speak to the user, more conversational and engaging, more like a human talking about NFL content."
+
+  # generate-content-prompt
+  - type: "prompt"
+    title: "Generate Content Prompt"
+    name: "generate-content-prompt"
+    description: "This prompt generates NFL podcast content."
+    schema:
+      title: "GenerateContent"  
+      description: "This schema defines the structure for generating NFL podcast content."
+      type: "object"
+      properties:
+        content:
+          type: "string"
+          description: "The main content of the NFL podcast episode."
+        file_name:
+          type: "string"
+          description: "The file name for the generated content."
+        summary:
+          type: "string"
+          description: "A brief summary of the generated content."
+
+  # psg-event-details-prompt
+  - type: "prompt"
+    name: "psg-event-details-prompt"
+    title: "PSG Event Details Prompt"
+    description: "This prompt generates comprehensive event details with focus on PSG game statistics and analysis."
+    schema:
+      title: "PSGEventDetails" 
+      description: "This schema defines the structure for generating comprehensive PSG event analysis with focus on game statistics and details."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets providing detailed analysis of the PSG event."  
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of event details analysis (e.g., 'Game Overview', 'Team Statistics', 'Player Performance', 'Key Goals')."
+              content:
+                type: "string"
+                description: "Detailed analysis of the event, including statistics, performance metrics, and other relevant information."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the event details analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 3
+          maxItems: 5
+      required: ["snippets"]

@@ -1,10 +1,10 @@
 prompts:
 
-  # personalized-podcast-generate-podcast-prompt
+  # bundesliga-podcast-generate-prompt
   - type: prompt
-    name: personalized-podcast-generate-podcast-prompt
-    title: Personalized Podcast Generate Podcast from Web Search
-    description: "Generate personalized podcast script based on web search results about user's favorite entity in their chosen sport"
+    name: bundesliga-podcast-generate-prompt
+    title: Bundesliga Podcast Generate Podcast from Web Search
+    description: "Generate Bundesliga podcast script based on web search results about user's favorite team"
     instructions: |
       You are creating conversational content about the user's favorite team based on web search results. Write as a real person who is a huge fan of favorite_team, speaking naturally to fellow fans - use "we", "our team", "us" to create shared fandom. This is NOT a script for a narrator - write like you're actually talking to friends about your team.
 
@@ -127,27 +127,32 @@ prompts:
       - Examples: Match results in tables, player stats as "- Goals: 12 | Assists: 5", team stats in blocks/tables
       - CRITICAL: Only include table rows or list items when you have COMPLETE, SPECIFIC information - never include rows with missing or generic data
       - If a match result is incomplete (missing opponent, score, or date), omit it entirely rather than including partial information
-    
-      Generate conversational content optimized for Text-to-Speech (TTS) reading. Follow all directives above: write as a REAL PERSON talking to friends (NOT a narrator), use "we", "our team", "us" throughout, write numbers in words, avoid hyphens in scores, spell out acronyms, and ensure smooth flow when spoken aloud. Write in a cool, human, authentic way - like you're actually talking, not reading a script. The content must sound natural and genuine when converted to audio. Format with clear paragraph breaks, using ONLY the information from the search results provided above.    
+
+      Generate conversational content optimized for Text-to-Speech (TTS) reading. Follow all directives above: write as a REAL PERSON talking to friends (NOT a narrator), use "we", "our team", "us" throughout, write numbers in words, avoid hyphens in scores, spell out acronyms, and ensure smooth flow when spoken aloud. Write in a cool, human, authentic way - like you're actually talking, not reading a script. The content must sound natural and genuine when converted to audio. Format with clear paragraph breaks, using ONLY the information from the search results provided above.
     schema:
       title: "UserProfilePersonalizedPodcastContent"
-      description: "Generate personalized podcast audio content from web search results - personalized for {{name}} about {{favorite_team}} in {{favorite_sport}}, adapted to {{podcast_mood}} mood, {{knowledge_level}} knowledge level, and {{language}} language. Works for both team and individual sports."
+      description: "Generate personalized podcast audio content from web search results about user's favorite team"
       type: "object"
       properties:
         content:
           type: "string"
-          description: "The conversational audio script explaining the podcast data"
+          description: "Conversational content optimized for Text-to-Speech (TTS) reading. Write as a REAL PERSON talking to friends (NOT a narrator or script reader). Write numbers out in words (e.g., 'three to two' not '3-2'), use natural pauses, avoid abbreviations, and ensure smooth flow when spoken aloud. Write in a cool, human, authentic way - like you're actually talking, not reading a script. The content should sound natural and genuine when converted to audio."
+        headline:
+          type: "string"
+          description: "A catchy, engaging headline for the podcast (max 10 words) that captures the main story or theme"
         summary:
           type: "string"
           description: "A brief summary of the key points covered in the audio content"
-      required: ["content", "summary"]
+        newsletter-markdown:
+          type: "string"
+          description: "A reader-friendly newsletter article that follows the exact same storyline and narrative flow as the conversational content. Cover the same topics in the same order, maintaining the same key points and information flow. Write in a cool, human, conversational style - like a real person sharing updates with friends, NOT a formal newsletter. Use markdown formatting with clear sections, headings, and engaging storytelling. CRITICAL: Display all statistics in clear, scannable formats (tables, lists, formatted blocks) optimized for fast reading. Include MORE detailed stats than the conversational content - extract and display ALL available stats from search results. Use markdown tables for comparisons, bullet lists for individual stats, and bold formatting for key numbers. CRITICAL: NEVER include generic placeholder text like 'A match was played' or similar vague statements. ONLY include dates, matches, or events when you have SPECIFIC information (opponent, score, result, details). If specific details are missing, omit that entry entirely. Every entry must contain meaningful, specific information. Ensure readers who consume both the audio and newsletter experience the same cohesive story."
+      required: ["content", "headline", "summary", "newsletter-markdown"]
 
-
-    # podcast-translate-prompt
+  # bundesliga-podcast-translate-prompt
   - type: prompt
-    name: personalized-podcast-translate-prompt
-    title: Personalized Podcast Translate Podcast from Web Search
-    description: "Translate personalized podcast script based on web search results about user's favorite entity in their chosen sport"
+    name: bundesliga-podcast-translate-prompt
+    title: Bundesliga Podcast Translate Podcast from Web Search
+    description: "Translate Bundesliga podcast script based on web search results about user's favorite team"
     instructions: |
       You are translating conversational content to the target language specified in the inputs.
 

@@ -1,35 +1,33 @@
 workflow:
-  name: personalized-podcast-generate-content
-  title: Personalized Podcast Generate Content
-  description: Workflow to generate personalized podcast content (text only) based on user profile stored in documents
+  name: bundesliga-podcast-generate-content
+  title: Bundesliga Podcast Generate Content
+  description: Workflow to generate Bundesliga podcast content based on user profile stored in documents
   context-variables:
+    api-mailgun:
+      username: "api"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
     debugger:
       enabled: true
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
     google-genai:
       credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
       project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
   inputs:
     document_id: "$.get('document_id')"
-    max_queries: "$.get('max_queries', 3)"
-    duration: "$.get('duration', 120)"
-    language: "$.get('language', 'en')"
   outputs:
-    document_id: "$.get('document_id')"
-    workflow-status: "$.get('workflow-status')"
-    audio_content: "$.get('audio_content')"
-    user_profile: "$.get('user_profile')"
-    favorite_sport: "$.get('favorite_sport')"
-    favorite_team: "$.get('favorite_team')"
-    user_name: "$.get('user_name')"
+    workflow-status: "'executed'"
   tasks:
 
     # Load user profile from documents
-    - type: "document"
-      name: "load-user-profile"
-      description: "Load user profile from documents by document_id"
+    - type: document
+      name: load-user-profile
+      description: "Load user profile from documents by email address"
       condition: "$.get('document_id') is not None"
       config:
         action: "search"
@@ -40,22 +38,18 @@ workflow:
         command: "invoke_embedding"
         model: "text-embedding-3-small"
       filters:
-        document_id: "$.get('document_id')"
+        document_id: $.get('document_id')
       inputs:
         name: "'user-profile'"
       outputs:
-        document-exists: "len($.get('documents', [])) > 0"
+        document-exists: len($.get('documents', [])) > 0
         document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
-        user_profile: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else {}"
         favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
         favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
-        personality: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone', 'friendly') if len($.get('documents', [])) > 0 else 'friendly'"
-        user_name: "$.get('documents', [])[0].get('value', {}).get('name') if len($.get('documents', [])) > 0 else None"
-        profile_email_address: "$.get('documents', [])[0].get('value', {}).get('email_address') if len($.get('documents', [])) > 0 else None"
   
-    # personalized-podcast-generate-search-queries
+    # bundesliga-podcast-generate-search-queries
     - type: prompt
-      name: personalized-podcast-generate-search-queries
+      name: bundesliga-podcast-generate-search-queries
       description: Generate search queries based on user's favorite sport and team
       condition: "$.get('favorite_sport') is not None and $.get('favorite_team') is not None"
       connector:
@@ -67,10 +61,10 @@ workflow:
       inputs:
         favorite_sport: $.get('favorite_sport')
         favorite_team: $.get('favorite_team')    
-        max_queries: $.get('max_queries')
       outputs:
         search_queries: "$.get('search_queries', [])"
 
+    # search Google
     - type: connector
       name: search-google
       description: Search the Google Gemini using Google Search grounding.
@@ -78,7 +72,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
-        model: gemini-2.5-flash
+        model: gemini-2.5-pro
       foreach:
         concurrent: true
         name: search_query
@@ -93,9 +87,9 @@ workflow:
             $.get('answer', '')
           ]
 
-    # personalized-podcast-generate-podcast-prompt
-    - type: "prompt"
-      name: "personalized-podcast-generate-podcast-prompt"
+    # bundesliga-podcast-generate-prompt
+    - type: prompt
+      name: bundesliga-podcast-generate-prompt
       description: "Generate personalized podcast script from web search results about user's favorite team."
       connector:
         name: "google-genai"
@@ -104,18 +98,20 @@ workflow:
         location: "global"
         provider: "vertex_ai"
       inputs:
-        favorite_sport: "$.get('favorite_sport')"
-        favorite_team: "$.get('favorite_team')"
+        duration: "$.get('document-value', {}).get('duration')"
+        favorite_sport: "$.get('document-value', {}).get('favorite_sport')"
+        favorite_team: "$.get('document-value', {}).get('favorite_team')"
+        personality: "$.get('document-value', {}).get('podcast_mood_tone')"
         search_response: "$.get('search_response', [])"
-        personality: "$.get('personality')"
-        language: "$.get('language')"
-        duration: "$.get('duration')"
       outputs:
         audio_content: "$.get('content')"
-      
-      # personalized-podcast-translate-prompt
+        podcast_headline: "$.get('headline')"
+        podcast_summary: "$.get('summary')"
+        newsletter_markdown: "$.get('newsletter-markdown')"
+
+    # bundesliga-podcast-translate-prompt
     - type: prompt
-      name: personalized-podcast-translate-prompt
+      name: bundesliga-podcast-translate-prompt
       description: "Translate personalized podcast script to the target language."
       condition: "$.get('document-value', {}).get('language') is not None and $.get('document-value', {}).get('language') != 'en'"
       connector:
@@ -137,22 +133,24 @@ workflow:
         podcast_summary: "$.get('summary')"
         newsletter_markdown: "$.get('newsletter-markdown')"
 
-    # version-control-update - save audio_content to document
+    # version-control-update
     - type: document
       name: version-control-update
-      description: Update the user profile document with audio_content.
-      condition: "$.get('document-exists') is True and $.get('audio_content') is not None"
+      description: Update the user profile document version control.
+      condition: $.get('document-exists') is True
       config:
         action: update
         embed-vector: false
         force-update: true
       filters:
-        document_id: "$.get('document_id')"
+        document_id: $.get('document_id')
       documents:
         user-profile: |
           {
             **$.get('document-value', {}),
             "audio_content": $.get('audio_content'),
+            "podcast_headline": $.get('podcast_headline'),
+            "podcast_summary": $.get('podcast_summary'),
+            "newsletter_markdown": $.get('newsletter_markdown'),
           }
-      outputs:
-        workflow-status: "'executed'"
+      

@@ -1,21 +1,20 @@
 setup:
-  title: Personalized Podcast
-  description: AI-powered personalized podcast generator for user profiles.
+  title: Bundesliga Podcast Generator
+  description: AI-powered Bundesliga podcast generator for user profiles.
   category:
     - fan-engagement
   estimatedTime: 1 minute
   features:
-    - AI Agent to generate personalized podcast content based on user profile.
-    - AI Reporter to generate personalized podcast content based on user profile.
+    - AI Agent to generate Bundesliga podcast content based on user profile.
+    - AI Reporter to generate Bundesliga podcast content based on user profile.
   integrations:
     - machina-ai
     - google-genai
     - elevenlabs
     - storage
     - api-mailgun
-    - oxylabs
   status: available
-  value: agent-templates/personalized-podcast
+  value: agent-templates/bundesliga-podcast
   version: 1.0.0
 
 datasets:
@@ -38,19 +37,25 @@ datasets:
 
   # prompts
 
-  - type: prompt
-    path: prompts/generate-search-queries.yml
-
-  - type: prompt
-    path: prompts/generate-image-queries.yml
-
-  - type: prompt
+  - type: prompts
     path: prompts/generate-image-prompt.yml
+
+  - type: prompts
+    path: prompts/generate-image-queries.yml
 
   - type: prompts
     path: prompts/generate-podcast.yml
 
+  - type: prompts
+    path: prompts/generate-search-queries.yml
+
   # workflows
+
+  - type: workflow
+    path: workflows/compose-template.yml
+
+  - type: workflow
+    path: workflows/generate-audio.yml
 
   - type: workflow
     path: workflows/generate-content.yml
@@ -60,9 +65,3 @@ datasets:
 
   - type: workflow
     path: workflows/store-user-profile.yml
-
-  - type: workflow
-    path: workflows/compose-and-send-email.yml
-
-  - type: workflow
-    path: workflows/generate-audio.yml

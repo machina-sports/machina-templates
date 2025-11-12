@@ -1,0 +1,100 @@
+workflow:
+  name: personalized-podcast-generate-audio
+  title: Personalized Podcast Generate Audio
+  description: Workflow to generate personalized podcast audio and save to user profile document
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    document_id: "$.get('document_id')"
+    voice_id: "$.get('voice_id')"
+    model_id: "$.get('model_id', 'eleven_flash_v2_5')"
+    language: "$.get('language', 'en')"
+  outputs:
+    document_id: "$.get('document_id')"
+    workflow-status: "$.get('workflow-status')"
+    audio_path: "$.get('audio_path')"
+    audio_content: "$.get('audio_content')"
+  tasks:
+
+    # Load user profile from documents
+    - type: document
+      name: load-user-profile
+      description: "Load user profile from documents by document_id"
+      condition: "$.get('document_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        document_id: "$.get('document_id')"
+      inputs:
+        name: "'user-profile'"
+      outputs:
+        document-exists: "len($.get('documents', [])) > 0"
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+        audio_content: "$.get('documents', [])[0].get('value', {}).get('audio_content') if len($.get('documents', [])) > 0 else None"
+
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      condition: "$.get('audio_content') is not None"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('audio_content')"
+          voice_id: "$.get('voice_id')"
+          model_id: "$.get('model_id', 'eleven_flash_v2_5')"
+          optimize_streaming_latency: "$.get('optimize_streaming_latency', '0')"
+          output_format: "$.get('output_format', 'mp3_22050_32')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"podcast-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"
+
+    # version-control-update - save audio_path to document
+    - type: document
+      name: version-control-update
+      description: Update the user profile document with audio_path.
+      condition: "$.get('document-exists') is True and $.get('audio_path') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        user-profile: |
+          {
+            **$.get('document-value', {}),
+            "audio_path": $.get('audio_path'),
+          }
+      outputs:
+        workflow-status: "'executed'"
+

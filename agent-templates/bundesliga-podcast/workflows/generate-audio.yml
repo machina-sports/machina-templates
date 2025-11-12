@@ -1,0 +1,103 @@
+workflow:
+  name: bundesliga-podcast-generate-audio
+  title: Bundesliga Podcast Generate Audio
+  description: Workflow to generate Bundesliga podcast audio based on user profile stored in documents
+  context-variables:
+    api-mailgun:
+      username: "api"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+    debugger:
+      enabled: true
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    google-storage:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
+      bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    document_id: "$.get('document_id')"
+    model_id: "$.get('model_id', 'eleven_flash_v2_5')"
+    voice_id: "$.get('voice_id')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Load user profile from documents
+    - type: document
+      name: load-user-profile
+      description: "Load user profile from documents by email address"
+      condition: "$.get('document_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        document_id: $.get('document_id')
+      inputs:
+        name: "'user-profile'"
+      outputs:
+        document-exists: len($.get('documents', [])) > 0
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+        audio_content: "$.get('documents', [])[0].get('value', {}).get('audio_content') if len($.get('documents', [])) > 0 else None"
+        language: "$.get('documents', [])[0].get('value', {}).get('language', 'en') if len($.get('documents', [])) > 0 else 'en'"
+
+    # get text to speech
+    - type: connector
+      name: get text to speech
+      description: "Get a text to speech from ElevenLabs with user's language"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('audio_content')"
+          model_id: "$.get('model_id', 'eleven_flash_v2_5')"
+          voice_id: "$.get('voice_id')"
+          language: "$.get('language', 'en')"
+          optimize_streaming_latency: "$.get('optimize_streaming_latency', '0')"
+          output_format: "$.get('output_format', 'mp3_22050_32')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"podcast-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: connector
+      name: store audio
+      description: "Upload audio file to Google Cloud Storage and get public URL"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('full_filepath')"
+      outputs:
+        uploaded_audio_path: "$.get('url')"
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the user profile document version control.
+      condition: $.get('document-exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('document_id')
+      documents:
+        user-profile: |
+          {
+            **$.get('document-value', {}),
+            "audio_path": $.get('uploaded_audio_path'),
+          }
+      

@@ -1,7 +1,7 @@
 workflow:
-  name: personalized-podcast-store-user-profile
-  title: Personalized Podcast Store User Profile
-  description: "Workflow to receive user profile inputs and store them as documents in the database"
+  name: bundesliga-podcast-store-user-profile
+  title: Bundesliga Podcast Store User Profile
+  description: Workflow to receive user profile inputs and store them as documents in the database
   context-variables:
     debugger:
       enabled: true
@@ -14,17 +14,17 @@ workflow:
     podcast_mood_tone: "$.get('podcast_mood_tone')"
     sports_knowledge: "$.get('sports_knowledge')"
     email_address: "$.get('email_address')"
+    country: "$.get('country')"
+    language: "$.get('language')"
   outputs:
-    workflow-status: "'executed'"
     document_id: "$.get('document_id')"
-    profile_id: "$.get('profile_id')"
-    user_data: "$.get('user_data')"
-    debug_logs: "$.get('debug_logs')"
+    workflow-status: "'executed'"
   tasks:
+    
     # Store user profile as document
-    - type: "document"
-      name: "task-bulk-save-user-profile"
-      description: "Bulk save user profile."
+    - type: document
+      name: task-save-user-profile
+      description: "Save user profile."
       config:
         action: save
       document_name: "'user-profile'"
