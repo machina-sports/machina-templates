@@ -14,7 +14,7 @@ workflow:
     document_id: "$.get('document_id')"
     from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
     mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
-    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-generator.html')"
+    newsletter_template_path: "$.get('newsletter_template_path', 'https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/template-podcast-generator_new3.html')"
   outputs:
     document_id: "$.get('document_id')"
     workflow-status: "$.get('workflow-status')"
@@ -56,7 +56,9 @@ workflow:
         podcast_mood_tone: "$.get('documents', [])[0].get('value', {}).get('podcast_mood_tone') if len($.get('documents', [])) > 0 else None"
         sports_knowledge: "$.get('documents', [])[0].get('value', {}).get('sports_knowledge') if len($.get('documents', [])) > 0 else None"
         language: "$.get('documents', [])[0].get('value', {}).get('language', 'en') if len($.get('documents', [])) > 0 else 'en'"
-        
+        newsletter_markdown: "$.get('documents', [])[0].get('value', {}).get('newsletter_markdown') if len($.get('documents', [])) > 0 else None"
+        podcast_headline: "$.get('documents', [])[0].get('value', {}).get('podcast_headline') if len($.get('documents', [])) > 0 else None"
+        podcast_summary: "$.get('documents', [])[0].get('value', {}).get('podcast_summary') if len($.get('documents', [])) > 0 else None"
     # download the newsletter template
     - type: connector
       name: download the newsletter template
@@ -92,6 +94,9 @@ workflow:
         sports_knowledge: "$.get('sports_knowledge')"
         language: "$.get('language')"
         podcast_duration: "$.get('duration', 120)"
+        newsletter_markdown: "$.get('newsletter_markdown')"
+        podcast_headline: "$.get('podcast_headline')"
+        podcast_summary: "$.get('podcast_summary')"
       outputs:
         podcast-email-html-path: "$.get('output_path')"
         podcast-email-html: "$.get('html_content')"
@@ -112,9 +117,9 @@ workflow:
           {
             "from": $.get('from_email', 'noreply@mg.machina.gg'), 
             "to": $.get('profile_email_address'),
-            "subject": "Your Personalized Podcast is Ready!",
+            "subject": $.get('podcast_headline') + " // Machina Sports",
             "html": $.get('podcast-email-html-content'),
-            "text": "Your personalized podcast is ready! Click the link in the email to listen."
+            "text": $.get('podcast_summary')
           }
       outputs:
         email-sent: "$.get('message') is not None"

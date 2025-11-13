@@ -23,6 +23,9 @@ def invoke_compose(request_data):
                 - header_image: Optional header image path/URL
                 - footer_image: Optional footer image path/URL
                 - podcast_duration: Optional podcast duration in seconds
+                - newsletter_markdown: Newsletter markdown content
+                - podcast_headline: Podcast headline
+                - podcast_summary: Podcast summary
     
     Returns:
         Dictionary with status, data (containing output_path), and message
@@ -46,6 +49,9 @@ def invoke_compose(request_data):
     podcast_mood_tone = params.get("podcast_mood_tone")
     sports_knowledge = params.get("sports_knowledge")
     language = params.get("language", "en")
+    newsletter_markdown = params.get("newsletter_markdown")
+    podcast_headline = params.get("podcast_headline")
+    podcast_summary = params.get("podcast_summary")
     
     if not template_path:
         return {"status": "error", "message": "template_path is required."}
@@ -78,6 +84,12 @@ def invoke_compose(request_data):
         variables['sports_knowledge'] = sports_knowledge
     if language:
         variables['language'] = language
+    if newsletter_markdown:
+        variables['newsletter_markdown'] = newsletter_markdown
+    if podcast_headline:
+        variables['podcast_headline'] = podcast_headline
+    if podcast_summary:
+        variables['podcast_summary'] = podcast_summary
     
     # Create podcast_url from document_id and base URL
     if document_id:
