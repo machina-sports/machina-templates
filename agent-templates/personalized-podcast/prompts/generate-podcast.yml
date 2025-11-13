@@ -18,11 +18,11 @@ prompts:
       - Search Results: Use ONLY information from web search results about [favorite_team]
 
       STORYTELLING STRUCTURE (CRITICAL):
-      - ALWAYS lead with the LATEST, most breaking news first - IF [recipient_name] provided, hook [recipient_name] immediately. IF NOT provided, hook with latest news naturally.
-      - Prioritize: Most recent events → Current standings/form → Upcoming matches → Context/history
-      - If you have breaking news, injuries, transfers, or recent results - START THERE
+      - ALWAYS START WITH THE LATEST AND BREAKING NEWS FIRST - This is NON-NEGOTIABLE. The opening must immediately dive into the most recent, breaking, or urgent news about [favorite_team]. IF [recipient_name] provided, hook [recipient_name] immediately with breaking news. IF NOT provided, hook with latest breaking news naturally.
+      - Priority order (MANDATORY): Breaking/latest news → Most recent events → Current standings/form → Upcoming matches → Context/history
+      - If you have ANY breaking news, injuries, transfers, recent results, or urgent updates - START THERE IMMEDIATELY. Do not build up to it - lead with it.
       - Build narrative from latest info backward, not chronologically forward
-      - Structure: Latest hook → 3-5 themed sections → Forward-looking close (2-3 paragraphs each)
+      - Structure: Breaking news hook (MUST be first) → 3-5 themed sections → Forward-looking close (2-3 paragraphs each)
       - Duration: 90-120 seconds (~150-160 words/minute)
 
       CRITICAL RULES:
@@ -38,9 +38,9 @@ prompts:
 
       [recipient_name] PERSONALIZATION (CONDITIONAL - ONLY IF [recipient_name] IS PROVIDED):
       - IF [recipient_name] IS PROVIDED:
-        * Opening: FIRST WORD must be "Hey [recipient_name]," or "[recipient_name]," - NO EXCEPTIONS
+        * Opening: FIRST WORD must be "Hey [recipient_name]," or "[recipient_name]," - NO EXCEPTIONS. MUST immediately follow with breaking/latest news.
         * WRONG: "Hey Dubs fans..." or "Hey fight fans..." or "Welcome to..." or "Welcome back to another episode..." or "It's your host..." or "Let's talk about..." or "Alright, folks..." or "Alright, tennis fanatics..."
-        * RIGHT: "Hey [recipient_name], this just broke..." or "[recipient_name], you're not gonna believe this..." or "Alright [recipient_name], this is insane..."
+        * RIGHT: "Hey [recipient_name], this just broke..." or "[recipient_name], you're not gonna believe this breaking news..." or "Alright [recipient_name], this is insane - [breaking news]..." - ALWAYS lead with latest/breaking news immediately after greeting
         * Use name 2-4 times strategically: exciting news, big wins, important updates, transitions, closing
         * Closing: REQUIRED personalized ending addressing [recipient_name] directly - "That's what's going on, [recipient_name]!" or "[recipient_name], this is going to be epic!" or "Keep the faith, [recipient_name] - we're in this together!"
         * NEVER end without addressing [recipient_name] - closing MUST include their name
@@ -48,7 +48,7 @@ prompts:
         * Make it feel like talking directly to [recipient_name], not broadcasting to a crowd
       - IF [recipient_name] IS NOT PROVIDED:
         * Do NOT use or mention [recipient_name] anywhere in the content
-        * Start naturally with latest news: "This just broke..." or "We've got huge news..." or "Alright, this is insane..."
+        * Start naturally with breaking/latest news IMMEDIATELY: "This just broke..." or "We've got huge breaking news..." or "Alright, this is insane - [breaking news]..." - MUST lead with latest/breaking news first
         * End naturally without personalization: "That's what's going on!" or "This is going to be epic!" or "Keep the faith - we're in this together!"
 
       PRONOUN USAGE (CRITICAL - ZERO TOLERANCE):
@@ -109,7 +109,7 @@ prompts:
       - Only include complete, specific information - no placeholders
       - BAN: "Let's dive into...", "Fresh off...", "Welcome to...", "In this article..."
 
-      Generate podcast script optimized for TTS. IF [recipient_name] provided, lead with latest news to hook [recipient_name]. IF NOT provided, lead with latest news naturally. Target 90-120 seconds. Use ONLY search results provided.    
+      Generate podcast script optimized for TTS. CRITICAL: ALWAYS START WITH THE LATEST AND BREAKING NEWS FIRST - this is mandatory. IF [recipient_name] provided, hook [recipient_name] immediately with breaking news. IF NOT provided, hook with latest breaking news naturally. Target 90-120 seconds. Use ONLY search results provided.    
     schema:
       title: "UserProfilePersonalizedPodcastContent"
       description: "Generate personalized podcast audio content from web search results about user's favorite team"
