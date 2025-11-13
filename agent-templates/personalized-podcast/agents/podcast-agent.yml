@@ -13,6 +13,8 @@ agent:
     language: $.get('language')
     from_email: $.get('from_email')
     mailgun_domain: $.get('mailgun_domain')
+    allow_machina_outreach: $.get('allow_machina_outreach')
+    allow_data_usage: $.get('allow_data_usage')
   workflows:
 
     # personalized-podcast-store-user-profile
@@ -27,6 +29,8 @@ agent:
         name: "$.get('name')"
         podcast_mood_tone: "$.get('podcast_mood_tone')"
         sports_knowledge: "$.get('sports_knowledge')"
+        allow_machina_outreach: "$.get('allow_machina_outreach')"
+        allow_data_usage: "$.get('allow_data_usage')"
       outputs:
         document_id: "$.get('document_id')"
         workflow-status: "$.get('workflow-status')"

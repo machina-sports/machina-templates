@@ -14,6 +14,8 @@ workflow:
     podcast_mood_tone: "$.get('podcast_mood_tone')"
     sports_knowledge: "$.get('sports_knowledge')"
     email_address: "$.get('email_address')"
+    allow_machina_outreach: "$.get('allow_machina_outreach')"
+    allow_data_usage: "$.get('allow_data_usage')"
   outputs:
     workflow-status: "'executed'"
     document_id: "$.get('document_id')"
@@ -40,6 +42,8 @@ workflow:
               'email_address': $.get('email_address'),
               'country': $.get('country'),
               'language': $.get('language'),
+              'allow_machina_outreach': $.get('allow_machina_outreach'),
+              'allow_data_usage': $.get('allow_data_usage'),
               'created_at': datetime.now().isoformat()
             },
             'title': $.get('name')
