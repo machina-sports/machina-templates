@@ -119,7 +119,7 @@ workflow:
             "to": $.get('profile_email_address'),
             "subject": $.get('podcast_headline') + " // Machina Sports",
             "html": $.get('podcast-email-html-content'),
-            "text": $.get('podcast_summary'),
+            "text": $.get('podcast_summary')
           }
       outputs:
         email-sent: "$.get('message') is not None"
