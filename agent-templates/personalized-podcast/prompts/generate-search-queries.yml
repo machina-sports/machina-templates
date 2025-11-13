@@ -1,7 +1,7 @@
 prompt:
   name: personalized-podcast-generate-search-queries
   title: Personalized Podcast Generate Search Queries
-  description: "Generate search queries for sports content based on user preferences"
+  description: "Generate search queries focused on most recent updates for sports content based on user preferences"
   instructions: |
     Generate exactly 5 Google Search queries for sports content.
 
@@ -13,43 +13,46 @@ prompt:
 
     CRITICAL: Always use the exact favorite_team value provided as the entity name, even if you are not familiar with the team or athlete name. Do NOT ignore it, change it, or substitute it with another entity. Use it exactly as provided in all queries.
 
-    ALWAYS include these 2 core queries about the specific entity:
-    1. Next events/upcoming schedule for [entity name] [favorite_sport]
-    2. Latest results/recent performance for [entity name] [favorite_sport]
+    PRIORITY: Focus MOSTLY on the most recent updates, latest news, and current developments. At least 4 out of 5 queries should emphasize recency with terms like "latest", "recent", "today", "breaking", "just", "now", "current", etc.
 
-    Add 3 more queries about the specific entity:
-    - Recent news about [entity name] [favorite_sport]
-    - Current status/standings of [entity name] [favorite_sport]
-    - Updates/developments for [entity name] [favorite_sport]
+    ALWAYS include these 2 core queries about the specific entity (with recency focus):
+    1. Latest/Recent updates/news for [entity name] [favorite_sport]
+    2. Today's/Breaking news about [entity name] [favorite_sport]
+
+    Add 3 more queries about the specific entity (prioritizing recent updates):
+    - Latest results/recent performance updates for [entity name] [favorite_sport]
+    - Current status/latest standings for [entity name] [favorite_sport]
+    - Recent developments/latest updates for [entity name] [favorite_sport]
 
     ALL queries must be about the specific entity mentioned by the user.
     Do NOT generate general sport rules or explanations.
-    Focus on current entity-specific information, for the [favorite_sport]
+    Focus on the MOST RECENT and CURRENT entity-specific information, prioritizing latest updates and news for the [favorite_sport]
 
     IMPORTANT: Every query MUST include both:
     - The exact entity name (favorite_team) provided
     - The sport name (favorite_sport) to enhance search specificity and relevance
 
-    Adjust terminology based on knowledge level [sports_knowledge]:
-    - Beginner: Use simple terms like "next games", "latest news", "what happened"
-    - Casual: Use standard terms like "schedule", "standings", "results"  
-    - Expert: Use technical terms like "analytics", "performance metrics", "tactical analysis"
+    Adjust terminology based on knowledge level [sports_knowledge], but ALWAYS prioritize recency:
+    - Beginner: Use simple recency terms like "latest news", "what happened today", "recent updates", "just happened", "today's news"
+    - Casual: Use standard recency terms like "breaking news", "latest updates", "recent developments", "current news", "today's updates"  
+    - Expert: Use technical recency terms like "latest developments", "recent analysis", "current insights", "breaking updates", "latest metrics"
 
     Generate all queries in the specified language.
     Every query must include both the exact entity name and the sport name provided.
+    Every query should emphasize recency and focus on the most recent updates, news, or developments.
     
     Output only the 5 queries in the schema format.
   schema:
     title: PersonalizedPodcastGenerateSearchQueries
-    description: Search queries for sports data retrieval, adapted to knowledge level and language parameters
+    description: Search queries focused on most recent updates for sports data retrieval, adapted to knowledge level and language parameters
     type: object
     required: [ "search_queries" ]
     properties:
       search_queries:
         type: array
-        description: Array of 5 search queries for sports content
+        description: Array of 5 search queries focused on most recent updates for sports content
         minItems: 5
         maxItems: 5
         items:
           type: string
-          description: Search query for sports content about the specified entity
+          description: Search query focused on recent updates for sports content about the specified entity
