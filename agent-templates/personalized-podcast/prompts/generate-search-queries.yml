@@ -7,7 +7,7 @@ prompt:
 
     Use the provided parameters:
     - favorite_sport: The sport the user follows
-    - favorite_team: The entity the user follows (team, player, athlete, etc.)
+    - favorite_team: The [entity name] the user follows (team, player, athlete, etc.) 
     - sports_knowledge: User's knowledge level (beginner, casual, expert)
     - language: Language for the queries
 
