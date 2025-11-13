@@ -106,7 +106,7 @@ workflow:
         personality: "$.get('personality')"
         language: "$.get('language')"
         duration: "$.get('duration')"
-        user_name: "$.get('document-value', {}).get('name')"
+        recipient_name: "$.get('document-value', {}).get('name')"
         sports_knowledge: "$.get('sports_knowledge')"
         podcast_mood_tone: "$.get('podcast_mood_tone')"
       outputs:
