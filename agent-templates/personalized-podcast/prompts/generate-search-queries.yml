@@ -24,9 +24,9 @@ prompt:
 
     ALL queries must be about the specific entity mentioned by the user.
     Do NOT generate general sport rules or explanations.
-    Focus on current entity-specific information.
+    Focus on current entity-specific information, for the [favorite_sport]
 
-    Adjust terminology based on knowledge level:
+    Adjust terminology based on knowledge level [sports_knowledge]:
     - Beginner: Use simple terms like "next games", "latest news", "what happened"
     - Casual: Use standard terms like "schedule", "standings", "results"  
     - Expert: Use technical terms like "analytics", "performance metrics", "tactical analysis"
