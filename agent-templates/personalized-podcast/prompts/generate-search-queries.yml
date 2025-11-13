@@ -14,17 +14,21 @@ prompt:
     CRITICAL: Always use the exact favorite_team value provided as the entity name, even if you are not familiar with the team or athlete name. Do NOT ignore it, change it, or substitute it with another entity. Use it exactly as provided in all queries.
 
     ALWAYS include these 2 core queries about the specific entity:
-    1. Next events/upcoming schedule for [entity name]
-    2. Latest results/recent performance for [entity name]
+    1. Next events/upcoming schedule for [entity name] [favorite_sport]
+    2. Latest results/recent performance for [entity name] [favorite_sport]
 
     Add 3 more queries about the specific entity:
-    - Recent news about [entity name]
-    - Current status/standings of [entity name]
-    - Updates/developments for [entity name]
+    - Recent news about [entity name] [favorite_sport]
+    - Current status/standings of [entity name] [favorite_sport]
+    - Updates/developments for [entity name] [favorite_sport]
 
     ALL queries must be about the specific entity mentioned by the user.
     Do NOT generate general sport rules or explanations.
     Focus on current entity-specific information, for the [favorite_sport]
+
+    IMPORTANT: Every query MUST include both:
+    - The exact entity name (favorite_team) provided
+    - The sport name (favorite_sport) to enhance search specificity and relevance
 
     Adjust terminology based on knowledge level [sports_knowledge]:
     - Beginner: Use simple terms like "next games", "latest news", "what happened"
@@ -32,7 +36,7 @@ prompt:
     - Expert: Use technical terms like "analytics", "performance metrics", "tactical analysis"
 
     Generate all queries in the specified language.
-    Every query must include the exact entity name provided.
+    Every query must include both the exact entity name and the sport name provided.
     
     Output only the 5 queries in the schema format.
   schema:
