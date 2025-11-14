@@ -1,0 +1,104 @@
+workflow:
+  name: "dsg-soccer-sync-fixtures"
+  title: "DSG Soccer - Sync Fixtures"
+  description: "Workflow to synchronize fixtures/matches from DSG API for a specific season."
+  context-variables:
+    debugger:
+      enabled: true
+    dsg-soccer:
+      username: "$DSG_SOCCER_USERNAME"
+      password: "$DSG_SOCCER_PASSWORD"
+      authkey: "$DSG_SOCCER_AUTHKEY"
+      client: "machinasports"
+      ftype: "json"
+      type: "season"
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    season_id: "$.get('season_id', '76035')"
+  outputs:
+    fixtures: "$.get('fixtures')"
+    sport_schema_events: "$.get('sport_schema_events', [])"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-fixtures
+    - type: "connector"
+      name: "task-load-fixtures"
+      description: "Get Fixtures from DSG API"
+      connector:
+        name: "dsg-soccer"
+        command: "get-get_matches"
+      inputs:
+        type: "$.get('type')"
+        id: "$.get('season_id')"
+        client: "$.get('client')"
+        authkey: "$.get('authkey')"
+        ftype: "$.get('ftype')"
+      outputs:
+        fixtures_data: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('discipline', {}).get('gender', {}).get('round', {}).get('list', {}).get('match', [])"
+        season_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {})"
+        competition_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {})"
+
+    # task-map-to-iptc-schema
+    - type: "mapping"
+      name: "dsg-soccer-event-mapping"
+      description: "Map fixtures to IPTC Sport Schema format"
+      inputs:
+        fixtures_data: "$.get('fixtures_data')"
+      outputs:
+        all_events: "$.get('sport_schema_events')"
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-events-by-ids
+    - type: "document"
+      name: "load-events-by-ids"
+      condition: "$.get('all_events_ids') is not None"
+      description: "Load existing events by IDs."
+      config:
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.(all_events_ids)}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+
+    # task-bulk-save-events
+    - type: "document"
+      name: "task-bulk-save-events"
+      description: "Bulk save the individual events."
+      condition: "$.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: "$.get('new_events_list')"
+      inputs:
+        new_events_list: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
+              },
+              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
+            }
+            for f in $.get('all_events', [])
+            if str(f.get('@id', '')) not in $.(existing_events_ids)
+          ]

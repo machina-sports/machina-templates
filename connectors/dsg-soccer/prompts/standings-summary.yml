@@ -1,0 +1,37 @@
+prompts:
+
+  # dsg-standings-summary
+  - type: prompt
+    name: dsg-standings-summary
+    title: DSG Soccer | Standings Summary
+    description: Creates a concise text summary from league standings data
+    instruction: |
+      Generate a detailed, readable summary of the league standings from total_table. Include TOP 5 and BOTTOM 3 teams with rich statistics.
+      
+      USE ONLY THE DATA PROVIDED - DO NOT INFER OR ASSUME ANYTHING.
+      
+      DATA AVAILABLE:
+      - position, team_name, points
+      - matches_total, matches_won, matches_draw, matches_lost
+      - score_for (goals scored), score_against (goals conceded), score_difference
+      - form (recent 5 games as W/L/D string)
+      - zone (e.g., "UEFA Champions League", "Relegation")
+      
+      FORMAT:
+      - Start with competition name and season + matches played
+      - TOP 5: Position, team, points, W-D-L record, goals for/against, form
+      - BOTTOM 3: Position, team, points, goals for/against, goal difference, zone
+      - Mention form streaks ONLY if visible in form string (e.g., "W,W,W,W,W")
+      
+      Be conversational but stick to the data. No predictions, no insights, no assumptions.
+    schema:
+      title: StandingsSummary
+      description: Summary of league standings
+      type: object
+      required: [
+        "standings_summary"
+      ]
+      properties:
+        standings_summary:
+          type: string
+          description: Concise text summary of the standings focusing on top and bottom teams

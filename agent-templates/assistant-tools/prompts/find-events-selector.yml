@@ -6,20 +6,28 @@ prompts:
     title: Assistant Find Events Selector
     description: Selects relevant events from search results based on user query and time context
     instruction: |
-      Select events by index that MATCH the user query. Extract team/player names from user query and compare against event descriptions.
+      You are selecting events from a numbered list. Return the index numbers (0, 1, 2, etc.) that match the user's query.
 
-      MATCHING RULES:
-      - If user mentions team name, ONLY select events containing that exact team
-      - Compare team names case-insensitively
-      - Verify each selected index actually contains relevant teams/keywords
-      - If no events match, return []
-
-      QUANTITY:
-      SINGULAR ("match", "game", "the next"): Return ONLY index 0 (most relevant matching event)
-      PLURAL ("matches", "games", "show me"): Return all matching indices up to 3 max
-      EXPLICIT ALL ("all matches", "list all"): Return all matching indices up to 5 max
+      MATCHING LOGIC:
+      1. Extract team/player/competition names from user query
+      2. For each event in the list, check if the event description contains those names
+      3. Return the indices of ALL matching events
       
-      CRITICAL: Only return indices that exist and match the query.
+      EXAMPLES:
+      Query: "Arsenal games" → Check each event for "Arsenal" → Return [0, 3] if events 0 and 3 contain Arsenal
+      Query: "next Liverpool match" → Check for "Liverpool" → Return [1] if only event 1 has Liverpool
+      Query: "Premier League matches" → Check for competition → Return [0, 1, 2] if multiple match
+      
+      QUANTITY RULES:
+      - SINGULAR ("match", "game", "the next"): Return ONLY the FIRST matching index [0]
+      - PLURAL ("matches", "games", "upcoming"): Return UP TO 3 matching indices [0, 1, 2]
+      - ALL ("all matches", "list all"): Return UP TO 5 matching indices [0, 1, 2, 3, 4]
+      
+      CRITICAL:
+      - ALWAYS return at least ONE index if ANY event matches
+      - Match team names case-insensitively
+      - If NO events match, return empty array []
+      - Indices must exist in the provided events list
     schema:
       title: AssistantFindEventsSelector
       description: Selects events by array index based on user query

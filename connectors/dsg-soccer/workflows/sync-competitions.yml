@@ -1,0 +1,78 @@
+workflow:
+  name: "dsg-soccer-sync-competitions"
+  title: "DSG Soccer - Sync Competitions"
+  description: "Workflow to synchronize competitions from DSG API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    dsg-soccer:
+      username: "$DSG_SOCCER_USERNAME"
+      password: "$DSG_SOCCER_PASSWORD"
+      authkey: "$DSG_SOCCER_AUTHKEY"
+      client: "machinasports"
+      ftype: "json"
+  outputs:
+    competition: "$.get('competition')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-competitions
+    - type: "connector"
+      name: "task-load-competitions"
+      description: "Get Competitions from DSG API"
+      connector:
+        name: "dsg-soccer"
+        command: "get-get_competitions"
+      inputs:
+        client: "$.get('client')"
+        authkey: "$.get('authkey')"
+        ftype: "$.get('ftype')"
+      outputs:
+        competition: "$"
+
+    # task-update-competitions
+    - type: "document"
+      name: "task-update-competitions"
+      description: "Update the competitions document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        dsg-competitions: |
+          {
+            'data': $.get('competition'),
+            'title': 'DSG - Competition Data',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-save-competition
+    - type: "document"
+      name: "task-save-competition"
+      description: "Save the competition document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        competition: |
+          {
+            **$.get('competition', {}),
+            'title': f"{$.get('competition', {}).get('area_name', '')} {$.get('competition', {}).get('name', '')}",
+            'selected': True,
+            'provider': 'dsg'
+          }
+      metadata:
+        document_type: "'competition'"
+        provider: "'dsg'"
+

@@ -1,0 +1,54 @@
+setup:
+  title: Data Sports Group (DSG) Soccer API
+  description: Connect to the DSG Soccer API to access English Premier League data including competitions, seasons, and match information with IPTC normalization support.
+  category:
+    - data-acquisition
+    - soccer
+  estimatedTime: 1 minute
+  features:
+    - Access to English Premier League data
+    - Competition information (get_competitions)
+    - Season data for current and past 2 seasons (get_seasons)
+    - All matches per season with detailed information (get_matches)
+    - Championship tables/standings with home, away, and total statistics (get_tables)
+    - Match-specific details including referees, injuries, and events
+    - IPTC Sports Schema normalization for compatibility with Machina agents
+    - Basic Authentication for secure access
+  integrations:
+    - dsg
+    - data-sports-group
+  status: available
+  value: connectors/dsg-soccer
+  version: 1.0.0
+
+datasets:
+
+  # connector
+
+  - type: "connector"
+    path: "dsg-soccer.yml"
+  
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/dsg-soccer-mappings.yml"
+
+  # prompts
+
+  - type: "prompts"
+    path: "prompts/standings-summary.yml"
+  
+  # workflows
+
+  - type: "workflow"
+    path: "workflows/sync-competitions.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-seasons.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-fixtures.yml"
+  
+  - type: "workflow"
+    path: "workflows/sync-tables.yml"
+

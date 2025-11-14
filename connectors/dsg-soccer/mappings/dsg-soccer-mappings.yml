@@ -1,0 +1,64 @@
+mappings:
+
+  # DSG Soccer - Match/Fixture to IPTC Event Mapping
+  - type: mapping
+    name: dsg-soccer-event-mapping
+    title: "DSG Soccer - Event Mapping"
+    description: "Mapping data from DSG Soccer API to IPTC Sports Schema event format"
+    outputs:
+      sport_schema_events: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:dsg:sport_event:{m.get('match_id')}",
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"{m.get('team_a_name', 'TBD')} vs {m.get('team_b_name', 'TBD')}",
+            "schema:startDate": f"{m.get('date')}T{m.get('time', '00:00:00')}+00:00",
+            "sport:status": m.get('status', 'unknown'),
+            "sport:round": m.get('round_name'),
+            "sport:matchday": m.get('match_extra', {}).get('gameweek') if m.get('match_extra') else None,
+            "sport:competition": {
+              "@id": f"urn:dsg:competition:{m.get('competition_id')}",
+              "@type": "sport:Competition",
+              "name": m.get('competition_name')
+            },
+            "sport:season": {
+              "@id": f"urn:dsg:season:{m.get('season_id')}",
+              "@type": "sport:Season",
+              "name": m.get('season_title')
+            },
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:dsg:venue:{m.get('match_extra', {}).get('venue', {}).get('venue_id')}" if m.get('match_extra', {}).get('venue', {}).get('venue_id') else None,
+              "name": m.get('match_extra', {}).get('venue', {}).get('venue_name') if m.get('match_extra') and m.get('match_extra').get('venue') else None
+            } if m.get('match_extra', {}).get('venue') else None,
+            "sport:competitors": [
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:dsg:team:{m.get('team_a_id')}",
+                "name": m.get('team_a_name'),
+                "sport:qualifier": "home",
+                "sport:abbreviation": m.get('team_a_short')
+              },
+              {
+                "@type": "sport:Team",
+                "@id": f"urn:dsg:team:{m.get('team_b_id')}",
+                "name": m.get('team_b_name'),
+                "sport:qualifier": "away",
+                "sport:abbreviation": m.get('team_b_short')
+              }
+            ],
+            "sport:score": {
+              "sport:homeScore": m.get('score_a'),
+              "sport:awayScore": m.get('score_b'),
+              "sport:status": m.get('score_status')
+            } if m.get('score_a') is not None or m.get('score_b') is not None else None,
+            "provider": "dsg",
+            "provider_id": m.get('match_id')
+          }
+          for m in $.get('fixtures_data', [])
+          if m is not None
+        ]
