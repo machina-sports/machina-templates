@@ -12,6 +12,7 @@ setup:
     - machina-ai
     - google-genai
     - oxylabs
+    - grok
   status: available
   value: agent-templates/roast-agent
   version: 1.0.0
@@ -30,6 +31,11 @@ datasets:
 
   - type: prompt
     path: prompts/generate-roast.yml
+
+  # connectors
+
+  - type: connector
+    path: "../../connectors/grok/grok.yml"
 
   # workflows
 

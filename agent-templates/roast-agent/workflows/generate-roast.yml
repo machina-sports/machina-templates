@@ -11,6 +11,8 @@ workflow:
       credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
       project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    grok:
+      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
   inputs:
     team_a: "$.get('team_a')"
     team_b: "$.get('team_b')"
@@ -42,7 +44,7 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-pro
+        model: gemini-2.5-flash
         location: global
         provider: vertex_ai
       inputs:
@@ -80,6 +82,80 @@ workflow:
             $.get('data', {}).get('grounding_metadata', {}) if $.get('data') else $.get('grounding_metadata', {})
           ]
 
+    # search-xai-fan-roasts
+    - type: connector
+      name: search-xai-fan-roasts
+      description: Search X (Twitter) for fan roasts, memes, and viral moments about team B using xAI Grok
+      condition: "$.get('team_b') is not None"
+      connector:
+        name: "grok"
+        command: "post-chat/completions"
+      inputs:
+        body: |
+          {
+            "messages": [
+              {
+                "role": "user",
+                "content": "Search for recent fan roasts, memes, viral moments, embarrassing reactions, and brutal takes about " + str($.get('team_b', '')) + ". Find the most savage, funny, and shareable roasts from fans. Focus on recent failures, losses, bad performances, embarrassing moments, and viral memes. Include actual fan reactions and quotes if possible. Language: " + str($.get('language', 'en'))
+              }
+            ],
+            "model": "grok-4-fast",
+            "stream": False,
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "search_parameters": {
+              "mode": "on",
+              "sources": [
+                {
+                  "type": "x"
+                }
+              ],
+              "from_date": (datetime.utcnow() - timedelta(days=7)).strftime('%Y-%m-%d'),
+              "to_date": datetime.utcnow().strftime('%Y-%m-%d')
+            },
+            "response_format": {
+              "type": "json_schema",
+              "json_schema": {
+                "name": "xai_fan_roasts",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "fan_roasts": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Array of actual fan roasts, memes, and brutal takes found on X about team B"
+                    },
+                    "viral_moments": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Viral moments, embarrassing reactions, or memorable failures mentioned on X"
+                    },
+                    "fan_sentiment": {
+                      "type": "string",
+                      "description": "Overall fan sentiment and reactions about team B from X"
+                    },
+                    "key_topics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Key topics, failures, or issues fans are roasting team B about"
+                    }
+                  },
+                  "required": ["fan_roasts", "viral_moments", "fan_sentiment", "key_topics"],
+                  "additionalProperties": False
+                }
+              }
+            }
+          }
+      outputs:
+        xai_response: "$"
+        xai_fan_roasts: "$.get('choices', [])[0].get('message', {}).get('content', '')"
+
     # roast-agent-generate-roast-prompt
     - type: prompt
       name: roast-agent-generate-roast-prompt
@@ -98,6 +174,7 @@ workflow:
         language: "$.get('language', 'en')"
         search_response: "$.get('search_response', [])"
         search_metadata: "$.get('search_metadata', [])"
+        xai_fan_roasts: "$.get('xai_fan_roasts', '')"
       outputs:
         roast_content: "$.get('roast_content')"
         roast_points: "$.get('roast_points')"
