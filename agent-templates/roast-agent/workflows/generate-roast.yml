@@ -74,16 +74,18 @@ workflow:
         search_queries_team_a: "$.get('search_queries', [])"
 
     # combine-search-queries
-    - type: transform
+    - type: connector
       name: combine-search-queries
       description: Combine search queries from Team B and Team A prompts
       condition: "$.get('search_queries_team_b') is not None and $.get('search_queries_team_a') is not None"
+      connector:
+        name: "roast-agent-combine-search-queries"
+        command: "invoke_combine"
       inputs:
         search_queries_team_b: "$.get('search_queries_team_b', [])"
         search_queries_team_a: "$.get('search_queries_team_a', [])"
       outputs:
-        search_queries: |
-          ($.get('search_queries_team_b', []) or []) + ($.get('search_queries_team_a', []) or [])
+        search_queries: "$.get('data', {}).get('search_queries', [])"
 
     # search-google
     - type: connector

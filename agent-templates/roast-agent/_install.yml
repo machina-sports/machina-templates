@@ -40,6 +40,9 @@ datasets:
   - type: connector
     path: "../../connectors/grok/grok.yml"
 
+  - type: connector
+    path: scripts/combine-search-queries.yml
+
   # workflows
 
   - type: workflow
