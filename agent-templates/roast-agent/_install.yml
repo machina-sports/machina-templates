@@ -30,6 +30,9 @@ datasets:
     path: prompts/generate-search-queries.yml
 
   - type: prompt
+    path: prompts/generate-search-queries-team-a.yml
+
+  - type: prompt
     path: prompts/generate-roast.yml
 
   # connectors
