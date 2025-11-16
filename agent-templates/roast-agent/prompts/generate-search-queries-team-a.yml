@@ -5,49 +5,55 @@ prompt:
   instructions: |
     Generate Google Search queries to find Team A's wins, victories, and trash talk points against Team B.
     
-    PARAMETERS:
-    - team_a: The user's team (use exact name provided)
-    - team_b: The team being roasted (use exact name provided)
-    - roast_intensity: low | medium | high | extreme
+    PARAMETERS PROVIDED:
+    - team_a: The actual team name (e.g., "warriors", "lakers", "celtics") - USE THIS EXACT VALUE
+    - team_b: The actual team name being roasted (e.g., "lakers", "warriors", "heat") - USE THIS EXACT VALUE
     - language: Language code for queries
+    - roast_intensity: Intensity level (low, medium, high)
+
+    CRITICAL: You MUST replace "Team A" and "Team B" with the ACTUAL team names provided in the parameters.
+    DO NOT use placeholders like "Team A" or "Team B" in your output queries.
+    DO NOT use "[team_a]" or "[team_b]" - use the actual team names directly.
 
     YOUR TASK:
     Generate 3-4 search queries that find Team A's positive content and victories against Team B.
+    Use the ACTUAL team names from the parameters in EVERY query.
     
     REQUIRED QUERY TYPES (generate all of these):
-    1. Team A recent wins and victories against Team B
-    2. Team A vs Team B head-to-head record (showing Team A dominance)
-    3. Team A best performances against Team B
-    4. Team A trash talk, celebrations, or dominant moments vs Team B
+    1. [ACTUAL_TEAM_A_NAME] recent wins and victories against [ACTUAL_TEAM_B_NAME]
+    2. [ACTUAL_TEAM_A_NAME] vs [ACTUAL_TEAM_B_NAME] head-to-head record (showing dominance)
+    3. [ACTUAL_TEAM_A_NAME] best performances against [ACTUAL_TEAM_B_NAME]
+    4. [ACTUAL_TEAM_A_NAME] trash talk, celebrations, or dominant moments vs [ACTUAL_TEAM_B_NAME]
 
     QUERY FORMAT:
     Every query MUST:
-    - Include Team A's exact name
-    - Include Team B's exact name (for comparison context)
+    - Start with the ACTUAL team_a name (not "Team A")
+    - Include the ACTUAL team_b name (not "Team B")
     - Include positive keywords: "wins", "victories", "beat", "defeated", "dominated", "record", "best", "trash talk", "celebrations"
     - Include recency: "recent", "latest", "this season", "2024", "today"
     
-    EXAMPLES:
-    - "[team_a] vs [team_b] recent wins victories"
-    - "[team_a] beat [team_b] head-to-head record"
-    - "[team_a] best performances against [team_b] this season"
-    - "[team_a] trash talk [team_b] celebrations recent"
+    CONCRETE EXAMPLES (if team_a="warriors" and team_b="lakers"):
+    - "warriors vs lakers recent wins victories"
+    - "warriors beat lakers head-to-head record"
+    - "warriors best performances against lakers this season"
+    - "warriors trash talk lakers celebrations recent"
 
-    INTENSITY:
+    INTENSITY ADJUSTMENTS:
     - low: Focus on general head-to-head records
     - medium: Include recent wins and victories
-    - high: Emphasize dominant performances and trash talk
-    - extreme: Include celebrations, viral moments, and savage trash talk
+    - high: Emphasize dominant performances, trash talk, celebrations, viral moments, and savage content
 
     CRITICAL RULES:
-    - EVERY query must include BOTH Team A and Team B
+    - EVERY query must include BOTH actual team names (team_a and team_b values)
+    - NEVER use "Team A" or "Team B" - always use the actual team names
     - Focus on Team A's SUCCESSES and VICTORIES
     - Show Team A dominating or beating Team B
-    - Use exact team names as provided
+    - Use the exact team names as provided in the parameters
     - All queries should be positive for Team A, negative context for Team B
 
     OUTPUT:
     Generate exactly 3-4 queries in the specified language.
+    Each query must contain the actual team names, not placeholders.
     Output only the queries array in the schema format.
   schema:
     title: RoastAgentGenerateSearchQueriesTeamA

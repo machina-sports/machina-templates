@@ -8,7 +8,7 @@ prompt:
     CONTEXT:
     - Team A: [team_a] (the USER'S team - the roaster's team, write from their perspective)
     - Team B: [team_b] (the TARGET team being roasted - this is the main focus)
-    - Intensity: [roast_intensity] (low/medium/high/extreme - adjust savagery accordingly)
+    - Intensity: [roast_intensity] (low/medium/high - adjust savagery accordingly)
     - Language: [language]
     - Search Results: Use ONLY information from web search results provided in [search_response]
     - Search Metadata: Source URLs and metadata are provided in [search_metadata] - use this to extract source information for citations
@@ -43,8 +43,7 @@ prompt:
     - **Intensity-based**:
       * low: Playful jabs with dark humor undertones
       * medium: Solid burns with unfiltered observations
-      * high: Savage roasts, embarrassing moments, brutal honesty
-      * extreme: Maximum savagery, viral moments, absolutely unhinged - say the quiet part VERY loud
+      * high: Maximum savagery, viral moments, absolutely unhinged - say the quiet part VERY loud, embarrassing moments, brutal honesty
 
     CRITICAL RULES:
     - EVERY roast point MUST be backed by search results OR X fan roasts - no made-up facts

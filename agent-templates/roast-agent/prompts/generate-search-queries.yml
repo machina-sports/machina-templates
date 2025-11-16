@@ -5,48 +5,56 @@ prompt:
   instructions: |
     Generate Google Search queries to find ONLY negative content about Team B.
     
-    PARAMETERS:
-    - team_b: The team being roasted (use exact name provided)
-    - roast_intensity: low | medium | high | extreme
+    PARAMETERS PROVIDED:
+    - team_b: The actual team name being roasted (e.g., "lakers", "warriors", "heat") - USE THIS EXACT VALUE
     - language: Language code for queries
+    - roast_intensity: Intensity level (low, medium, high)
+
+    CRITICAL: You MUST use the ACTUAL team name provided in the team_b parameter.
+    DO NOT use placeholders like "Team B" in your output queries.
+    DO NOT use "[team_b]" - use the actual team name directly.
 
     YOUR TASK:
     Generate 5-6 search queries that find negative content about Team B ONLY.
+    Use the ACTUAL team name from the team_b parameter in EVERY query.
     
     REQUIRED QUERY TYPES (generate all of these):
-    1. Team B recent losses and defeats
-    2. Team B embarrassing moments and failures
-    3. Team B worst statistics and weaknesses
-    4. Team B struggles, controversies, bad performances
-    5. Team B memes, social media failures, viral moments
-    6. Team B injuries, bad form, poor streaks
+    1. [ACTUAL_TEAM_B_NAME] recent losses and defeats
+    2. [ACTUAL_TEAM_B_NAME] embarrassing moments and failures
+    3. [ACTUAL_TEAM_B_NAME] worst statistics and weaknesses
+    4. [ACTUAL_TEAM_B_NAME] struggles, controversies, bad performances
+    5. [ACTUAL_TEAM_B_NAME] memes, social media failures, viral moments
+    6. [ACTUAL_TEAM_B_NAME] injuries, bad form, poor streaks
 
     QUERY FORMAT:
     Every query MUST:
-    - Start with Team B's exact name
+    - Start with the ACTUAL team_b name (not "Team B")
     - Include a negative keyword: "losses", "failures", "worst", "embarrassing", "bad", "struggles", "controversy", "defeats", "weaknesses"
     - Include recency: "recent", "latest", "this season", "2024", "today"
     
-    EXAMPLES:
-    - "[team_b] worst losses 2024"
-    - "[team_b] embarrassing moments recent"
-    - "[team_b] bad performances this season"
-    - "[team_b] struggles controversies latest"
+    CONCRETE EXAMPLES (if team_b="lakers"):
+    - "lakers worst losses 2024"
+    - "lakers embarrassing moments recent"
+    - "lakers bad performances this season"
+    - "lakers struggles controversies latest"
+    - "lakers memes viral failures"
+    - "lakers injuries bad form"
 
-    INTENSITY:
+    INTENSITY ADJUSTMENTS:
     - low: Focus on general stats and recent form
     - medium: Include failures and losses
-    - high: Emphasize embarrassing moments and controversies
-    - extreme: Include memes, viral failures, social media reactions
+    - high: Emphasize embarrassing moments, controversies, memes, viral failures, and social media reactions
 
     CRITICAL RULES:
-    - ONLY generate queries about Team B
+    - ONLY generate queries about Team B (use the actual team_b name)
     - NEVER include Team A in any query
+    - NEVER use "Team B" - always use the actual team name
     - EVERY query must be negative/roast-focused
-    - Use Team B's exact name as provided
+    - Use the exact team name as provided in the team_b parameter
 
     OUTPUT:
     Generate exactly 5-6 queries in the specified language.
+    Each query must contain the actual team name, not placeholders.
     Output only the queries array in the schema format.
   schema:
     title: RoastAgentGenerateSearchQueriesTeamB
