@@ -3,36 +3,27 @@ prompt:
   title: Roast Agent Generate Search Queries - Team B Negative Content
   description: "Generate search queries to find negative content, failures, and embarrassing moments about Team B (the team being roasted)"
   instructions: |
-    Generate Google Search queries to find ONLY negative content about Team B.
-    
-    PARAMETERS PROVIDED:
-    - team_b: The actual team name being roasted (e.g., "lakers", "warriors", "heat") - USE THIS EXACT VALUE
-    - language: Language code for queries
-    - roast_intensity: Intensity level (low, medium, high)
+    Generate 5-6 Google search queries finding ONLY negative content about [team_b].
 
-    CRITICAL: You MUST use the ACTUAL team name provided in the team_b parameter.
-    DO NOT use placeholders like "Team B" in your output queries.
-    DO NOT use "[team_b]" - use the actual team name directly.
+    PARAMETERS:
+    - team_b: Actual team name (e.g., "lakers") - use this exact value, never "Team B" or "[team_b]"
+    - language: Query language
+    - roast_intensity: low/medium/high (scales negativity focus)
 
-    YOUR TASK:
-    Generate 5-6 search queries that find negative content about Team B ONLY.
-    Use the ACTUAL team name from the team_b parameter in EVERY query.
-    
-    REQUIRED QUERY TYPES (generate all of these):
-    1. [ACTUAL_TEAM_B_NAME] recent losses and defeats
-    2. [ACTUAL_TEAM_B_NAME] embarrassing moments and failures
-    3. [ACTUAL_TEAM_B_NAME] worst statistics and weaknesses
-    4. [ACTUAL_TEAM_B_NAME] struggles, controversies, bad performances
-    5. [ACTUAL_TEAM_B_NAME] memes, social media failures, viral moments
-    6. [ACTUAL_TEAM_B_NAME] injuries, bad form, poor streaks
+    REQUIRED QUERY TYPES (generate exactly 5-6):
+    1. [team_b] recent losses and defeats
+    2. [team_b] embarrassing moments and failures
+    3. [team_b] worst statistics and weaknesses
+    4. [team_b] struggles, controversies, bad performances
+    5. [team_b] memes, social media failures, viral moments
+    6. [team_b] injuries, bad form, poor streaks (optional if 5 queries suffice)
 
-    QUERY FORMAT:
-    Every query MUST:
-    - Start with the ACTUAL team_b name (not "Team B")
-    - Include a negative keyword: "losses", "failures", "worst", "embarrassing", "bad", "struggles", "controversy", "defeats", "weaknesses"
-    - Include recency: "recent", "latest", "this season", "2024", "today"
-    
-    CONCRETE EXAMPLES (if team_b="lakers"):
+    QUERY REQUIREMENTS:
+    - Start with actual team_b name
+    - Include negative keywords: losses, failures, worst, embarrassing, bad, struggles, controversy, defeats, weaknesses
+    - Include recency: recent, latest, this season, 2024, today
+
+    EXAMPLES (team_b="lakers"):
     - "lakers worst losses 2024"
     - "lakers embarrassing moments recent"
     - "lakers bad performances this season"
@@ -40,22 +31,16 @@ prompt:
     - "lakers memes viral failures"
     - "lakers injuries bad form"
 
-    INTENSITY ADJUSTMENTS:
-    - low: Focus on general stats and recent form
+    INTENSITY SCALING:
+    - low: General stats and recent form
     - medium: Include failures and losses
-    - high: Emphasize embarrassing moments, controversies, memes, viral failures, and social media reactions
+    - high: Emphasize embarrassing moments, controversies, memes, viral failures
 
-    CRITICAL RULES:
-    - ONLY generate queries about Team B (use the actual team_b name)
-    - NEVER include Team A in any query
-    - NEVER use "Team B" - always use the actual team name
-    - EVERY query must be negative/roast-focused
-    - Use the exact team name as provided in the team_b parameter
-
-    OUTPUT:
-    Generate exactly 5-6 queries in the specified language.
-    Each query must contain the actual team name, not placeholders.
-    Output only the queries array in the schema format.
+    CONSTRAINTS:
+    - ONLY Team B queries - never include Team A
+    - Use exact team_b parameter value
+    - All queries must be negative/roast-focused
+    - Generate in specified language
   schema:
     title: RoastAgentGenerateSearchQueriesTeamB
     description: Search queries focused on finding negative content about Team B
