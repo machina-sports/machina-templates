@@ -1,0 +1,68 @@
+prompt:
+  name: roast-agent-generate-search-queries
+  title: Roast Agent Generate Search Queries
+  description: "Generate search queries focused on finding roast-worthy content: failures, stats, comparisons, memes, and embarrassing moments for two teams"
+  instructions: |
+    Generate exactly 8-10 Google Search queries for roast content comparing two teams.
+
+    Use the provided parameters:
+    - team_a: The USER'S team (the roaster's team - Team A fans will roast Team B)
+    - team_b: The TARGET team being roasted (this is the main focus)
+    - roast_intensity: Intensity level (low, medium, high, extreme)
+    - language: Language for the queries
+
+    CRITICAL: Always use the exact team names provided. Do NOT ignore, change, or substitute them. Use them exactly as provided in all queries.
+
+    PRIORITY: Focus on finding roast-worthy content, with PRIMARY focus on Team B (the target):
+    1. Recent losses, failures, embarrassing moments (especially Team B)
+    2. Head-to-head comparison stats and records (Team A vs Team B)
+    3. Current form, injuries, controversies (especially Team B)
+    4. Memes, fan reactions, social media moments (especially Team B)
+    5. Statistical weaknesses and failures (especially Team B)
+    6. Recent bad performances or streaks (especially Team B)
+
+    QUERY DISTRIBUTION (Team B is the primary target):
+    - 5-6 queries about Team B's failures, losses, bad stats, embarrassing moments (PRIMARY FOCUS)
+    - 1-2 queries about Team A vs Team B head-to-head comparisons
+    - 1-2 queries about Team A's context (for comparison, but Team B is the roast target)
+
+    ALWAYS include these core query types (Team B is the primary target):
+    1. Recent losses/failures for [team_b] [sport] (PRIMARY - Team B is being roasted)
+    2. [team_b] embarrassing moments recent (PRIMARY - Team B is being roasted)
+    3. [team_b] worst stats [sport] recent (PRIMARY - Team B is being roasted)
+    4. [team_a] vs [team_b] head-to-head record comparison
+    5. [team_b] memes social media recent failures
+    6. [team_b] struggles controversies recent
+    7. [team_a] vs [team_b] recent match results (if applicable)
+    8. [team_b] bad performances this season
+
+    Adjust intensity based on roast_intensity:
+    - low: Focus on general stats, recent form
+    - medium: Include failures, losses, weaknesses
+    - high: Emphasize embarrassing moments, bad streaks, controversies
+    - extreme: Include memes, social media reactions, viral failures
+
+    IMPORTANT: Every query MUST include:
+    - The exact team name(s) provided
+    - Terms emphasizing recency: "recent", "latest", "today", "this season", "2024", etc.
+    - Roast-focused keywords: "failures", "losses", "worst", "embarrassing", "bad", "struggles", "controversy"
+
+    Generate all queries in the specified language.
+    Every query should be designed to find content that can be used for roasting.
+    
+    Output only the queries in the schema format.
+  schema:
+    title: RoastAgentGenerateSearchQueries
+    description: Search queries focused on finding roast-worthy content for two teams
+    type: object
+    required: [ "search_queries" ]
+    properties:
+      search_queries:
+        type: array
+        description: Array of 8-10 search queries focused on roast-worthy content (failures, stats, comparisons, memes)
+        minItems: 8
+        maxItems: 10
+        items:
+          type: string
+          description: Search query focused on finding roast-worthy content about the specified team(s)
+

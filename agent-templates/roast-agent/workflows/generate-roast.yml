@@ -1,0 +1,106 @@
+workflow:
+  name: roast-agent-generate-roast
+  title: Roast Agent Generate Roast
+  description: Workflow to generate hyper viral roast comparing two teams using real sports data, with source citations
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    team_a: "$.get('team_a')"
+    team_b: "$.get('team_b')"
+    roast_intensity: "$.get('roast_intensity', 'medium')"
+    language: "$.get('language', 'en')"
+    max_queries: "$.get('max_queries', 8)"
+  outputs:
+    workflow-status: "$.get('roast_content') is not None and 'executed' or 'skipped'"
+    roast_content: "$.get('roast_content')"
+    roast_points: "$.get('roast_points')"
+    headline: "$.get('headline')"
+    sources: "$.get('sources')"
+    metadata: |
+      {
+        'team_a': $.get('team_a'),
+        'team_b': $.get('team_b'),
+        'roast_intensity': $.get('roast_intensity', 'medium'),
+        'language': $.get('language', 'en'),
+        'generated_at': datetime.now().isoformat(),
+        'version': '1.0.0'
+      }
+  tasks:
+
+    # roast-agent-generate-search-queries
+    - type: prompt
+      name: roast-agent-generate-search-queries
+      description: Generate search queries focused on roast-worthy content for both teams
+      condition: "$.get('team_a') is not None and $.get('team_b') is not None"
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        team_a: $.get('team_a')
+        team_b: $.get('team_b')
+        roast_intensity: $.get('roast_intensity', 'medium')
+        language: $.get('language', 'en')
+      outputs:
+        search_queries: "$.get('search_queries', [])"
+
+    # search-google
+    - type: connector
+      name: search-google
+      description: Search Google using Gemini search grounding for roast-worthy content
+      condition: "$.get('search_queries') is not None and len($.get('search_queries', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-2.5-flash
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: $.get('search_queries')
+      inputs:
+        location: $.get('location', 'global')
+        search_query: $.get('search_query', '')
+      outputs:
+        search_response: |
+          [
+            $.get('answer', '')
+          ]
+        search_metadata: |
+          [
+            $.get('data', {}).get('grounding_metadata', {}) if $.get('data') else $.get('grounding_metadata', {})
+          ]
+
+    # roast-agent-generate-roast-prompt
+    - type: prompt
+      name: roast-agent-generate-roast-prompt
+      description: Generate hyper viral roast comparing two teams with source citations
+      condition: "$.get('search_response') is not None and len($.get('search_response', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        team_a: "$.get('team_a')"
+        team_b: "$.get('team_b')"
+        roast_intensity: "$.get('roast_intensity', 'medium')"
+        language: "$.get('language', 'en')"
+        search_response: "$.get('search_response', [])"
+        search_metadata: "$.get('search_metadata', [])"
+      outputs:
+        roast_content: "$.get('roast_content')"
+        roast_points: "$.get('roast_points')"
+        headline: "$.get('headline')"
+        sources: "$.get('sources')"
+

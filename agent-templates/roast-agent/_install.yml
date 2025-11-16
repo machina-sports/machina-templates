@@ -1,0 +1,38 @@
+setup:
+  title: Roast Agent
+  description: AI-powered roast generator that creates hyper viral roasts comparing two teams using real sports data and context, with source citations.
+  category:
+    - fan-engagement
+  estimatedTime: 30 seconds
+  features:
+    - AI Agent to generate hyper viral roasts comparing two teams
+    - Source citations with explanations accessible via "why?" feature
+    - JSON API response optimized for mobile app consumption
+  integrations:
+    - machina-ai
+    - google-genai
+    - oxylabs
+  status: available
+  value: agent-templates/roast-agent
+  version: 1.0.0
+
+datasets:
+
+  # agent
+
+  - type: agent
+    path: agents/roast-agent.yml
+
+  # prompts
+
+  - type: prompt
+    path: prompts/generate-search-queries.yml
+
+  - type: prompt
+    path: prompts/generate-roast.yml
+
+  # workflows
+
+  - type: workflow
+    path: workflows/generate-roast.yml
+
