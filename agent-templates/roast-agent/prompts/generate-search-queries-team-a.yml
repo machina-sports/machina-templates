@@ -1,0 +1,66 @@
+prompt:
+  name: roast-agent-generate-search-queries-team-a
+  title: Roast Agent Generate Search Queries - Team A Wins & Trash Talk
+  description: "Generate search queries to find Team A's recent wins, victories, and trash talk points against Team B"
+  instructions: |
+    Generate Google Search queries to find Team A's wins, victories, and trash talk points against Team B.
+    
+    PARAMETERS:
+    - team_a: The user's team (use exact name provided)
+    - team_b: The team being roasted (use exact name provided)
+    - roast_intensity: low | medium | high | extreme
+    - language: Language code for queries
+
+    YOUR TASK:
+    Generate 3-4 search queries that find Team A's positive content and victories against Team B.
+    
+    REQUIRED QUERY TYPES (generate all of these):
+    1. Team A recent wins and victories against Team B
+    2. Team A vs Team B head-to-head record (showing Team A dominance)
+    3. Team A best performances against Team B
+    4. Team A trash talk, celebrations, or dominant moments vs Team B
+
+    QUERY FORMAT:
+    Every query MUST:
+    - Include Team A's exact name
+    - Include Team B's exact name (for comparison context)
+    - Include positive keywords: "wins", "victories", "beat", "defeated", "dominated", "record", "best", "trash talk", "celebrations"
+    - Include recency: "recent", "latest", "this season", "2024", "today"
+    
+    EXAMPLES:
+    - "[team_a] vs [team_b] recent wins victories"
+    - "[team_a] beat [team_b] head-to-head record"
+    - "[team_a] best performances against [team_b] this season"
+    - "[team_a] trash talk [team_b] celebrations recent"
+
+    INTENSITY:
+    - low: Focus on general head-to-head records
+    - medium: Include recent wins and victories
+    - high: Emphasize dominant performances and trash talk
+    - extreme: Include celebrations, viral moments, and savage trash talk
+
+    CRITICAL RULES:
+    - EVERY query must include BOTH Team A and Team B
+    - Focus on Team A's SUCCESSES and VICTORIES
+    - Show Team A dominating or beating Team B
+    - Use exact team names as provided
+    - All queries should be positive for Team A, negative context for Team B
+
+    OUTPUT:
+    Generate exactly 3-4 queries in the specified language.
+    Output only the queries array in the schema format.
+  schema:
+    title: RoastAgentGenerateSearchQueriesTeamA
+    description: Search queries focused on finding Team A's wins, victories, and trash talk points against Team B
+    type: object
+    required: [ "search_queries" ]
+    properties:
+      search_queries:
+        type: array
+        description: Array of 3-4 search queries focused on Team A's wins, victories, and trash talk against Team B
+        minItems: 3
+        maxItems: 4
+        items:
+          type: string
+          description: Search query focused on finding Team A's positive content and victories against Team B
+

@@ -36,10 +36,28 @@ workflow:
       }
   tasks:
 
-    # roast-agent-generate-search-queries
+    # roast-agent-generate-search-queries-team-b
     - type: prompt
-      name: roast-agent-generate-search-queries
-      description: Generate search queries focused on roast-worthy content for both teams
+      name: roast-agent-generate-search-queries-team-b
+      description: Generate search queries focused on Team B's negative content, failures, and embarrassing moments
+      condition: "$.get('team_b') is not None"
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        team_b: $.get('team_b')
+        roast_intensity: $.get('roast_intensity', 'medium')
+        language: $.get('language', 'en')
+      outputs:
+        search_queries_team_b: "$.get('search_queries', [])"
+
+    # roast-agent-generate-search-queries-team-a
+    - type: prompt
+      name: roast-agent-generate-search-queries-team-a
+      description: Generate search queries focused on Team A's wins, victories, and trash talk points against Team B
       condition: "$.get('team_a') is not None and $.get('team_b') is not None"
       connector:
         command: invoke_prompt
@@ -53,7 +71,19 @@ workflow:
         roast_intensity: $.get('roast_intensity', 'medium')
         language: $.get('language', 'en')
       outputs:
-        search_queries: "$.get('search_queries', [])"
+        search_queries_team_a: "$.get('search_queries', [])"
+
+    # combine-search-queries
+    - type: transform
+      name: combine-search-queries
+      description: Combine search queries from Team B and Team A prompts
+      condition: "$.get('search_queries_team_b') is not None and $.get('search_queries_team_a') is not None"
+      inputs:
+        search_queries_team_b: "$.get('search_queries_team_b', [])"
+        search_queries_team_a: "$.get('search_queries_team_a', [])"
+      outputs:
+        search_queries: |
+          ($.get('search_queries_team_b', []) or []) + ($.get('search_queries_team_a', []) or [])
 
     # search-google
     - type: connector
