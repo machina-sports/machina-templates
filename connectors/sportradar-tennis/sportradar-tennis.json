@@ -1226,7 +1226,7 @@
         "tags": ["Competitors"]
       }
     },
-    "/en/seasons/{season_id}/competitors.json": {
+    "/en/seasons/{season_id}/{data_type}": {
       "get": {
         "summary": "Get Season Competitors",
         "description": "Retrieve all competitors participating in a specific tennis season",
@@ -1242,6 +1242,15 @@
             "description": "The ID of the season (e.g., sr:season:107797)"
           },
           {
+            "in": "path",
+            "name": "data_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The type of data to retrieve (e.g. standings, fixtures, etc.)"
+          },
+          {
             "in": "header",
             "name": "x-api-key",
             "schema": {
@@ -1251,61 +1260,54 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SeasonCompetitorsResponse"
-                },
-                "example": {
-                  "generated_at": "2025-09-17T22:15:40+00:00",
-                  "season_competitors": [
-                    {
-                      "id": "sr:competitor:14414",
-                      "name": "Gasquet, Richard",
-                      "short_name": "Gasquet, Richard",
-                      "abbreviation": "GAS"
-                    },
-                    {
-                      "id": "sr:competitor:14548",
-                      "name": "Wawrinka, Stan",
-                      "short_name": "Wawrinka, Stan",
-                      "abbreviation": "WAW"
-                    },
-                    {
-                      "id": "sr:competitor:14844",
-                      "name": "Monfils, Gael",
-                      "short_name": "Monfils, Gael",
-                      "abbreviation": "MON"
-                    },
-                    {
-                      "id": "sr:competitor:14882",
-                      "name": "Djokovic, Novak",
-                      "short_name": "Djokovic, Novak",
-                      "abbreviation": "DJO"
-                    }
-                  ]
+                  "type": "object"
                 }
               }
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Season not found"
-          },
-          "429": {
-            "description": "Too Many Requests"
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": ["Seasons"]
