@@ -12,28 +12,10 @@ workflow:
   
   tasks:
     
-    # 0 check-daily-execution
-    - type: "document"
-      name: "check-daily-execution"
-      description: "Check if news research has already been performed today."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      filters:
-        name: "corinthians-daily-news"
-        execution: "{'$gt': datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)}"
-      inputs:
-        name: "'corinthians-daily-news'"
-      outputs:
-        news_already_processed: "len($.get('documents', [])) > 0"
-        workflow-status: "len($.get('documents', [])) > 0 and 'skipped' or None"
-
     # 1 search-news
     - type: "connector"
       name: "search-news"
       description: "Search Google for Corinthians news."
-      condition: "$.get('news_already_processed') is not True"
       connector:
         name: "google-genai"
         command: "invoke_search"
@@ -70,7 +52,7 @@ workflow:
     - type: "prompt"
       name: "prompt-embedding-news"
       description: "Generate viral-worthy Corinthians news analysis."
-      condition: "$.get('news_already_processed') is not True and $.get('news_search_response') is not None"
+      condition: "$.get('news_search_response') is not None"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
@@ -101,7 +83,6 @@ workflow:
     - type: "document"
       name: "update-documents-news"
       description: "Update Corinthians news analysis documents."
-      condition: "$.get('news_already_processed') is not True"
       config:
         action: "update"
         embed-vector: false
@@ -123,7 +104,6 @@ workflow:
     - type: "document"
       name: "update-snippets"
       description: "Update Corinthians analysis snippets with viral-worthy stats."
-      condition: "$.get('news_already_processed') is not True"
       config:
         action: "bulk-save"
         embed-vector: true
