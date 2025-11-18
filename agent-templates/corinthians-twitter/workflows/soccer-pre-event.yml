@@ -5,10 +5,12 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    sportradar-soccer:
-      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    api-football:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     openai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -20,7 +22,7 @@ workflow:
     # 0 load-event-by-code
     - type: "document"
       name: "load-event-by-code"
-      description: "Search Corinthians event (sportradar) by code."
+      description: "Search Corinthians event by code."
       condition: "$.get('event_code') is not None"
       config:
         action: "search"
@@ -39,7 +41,7 @@ workflow:
     # 1 load-event-by-schedule
     - type: "document"
       name: "load-event-by-schedule"
-      description: "Search for Corinthians scheduled matches (sportradar)."
+      description: "Search for Corinthians scheduled matches."
       condition: "$.get('event_exists') is not True"
       config:
         action: "search"
@@ -56,9 +58,9 @@ workflow:
         event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
         event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
 
-    # 2 sportradar-soccer-mapping
+    # 2 mapping
     - type: "mapping"
-      name: "sportradar-soccer-mapping"
+      name: "api-football-mapping"
       description: "Transform the Corinthians match data with brutal stats insight"
       condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
       inputs:
@@ -95,37 +97,35 @@ workflow:
       metadata:
         event_code: "$.get('event_code')"
 
-    # 4 fetch-event-fun-facts
+    # 4 fetch-head-to-head
     - type: "connector"
-      name: "fetch-event-fun-facts"
-      description: "Get fun facts about a specific sport event from SportRadar"
-      condition: "$.get('event_exists') is True and $.get('season') is not None"
+      name: "fetch-head-to-head"
+      description: "Get head to head stats for the teams"
+      condition: "$.get('event_exists') is True"
       connector:
-        name: "sportradar-soccer"
-        command: "get-sport_events/{sport_event_id}/fun_facts.json"
-        command_attribute:
-          sport_event_id: "$.get('event_code')"
+        name: "api-football"
+        command: "fixtures/headtohead"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        h2h: f"{$.get('team_home_id')}-{$.get('team_away_id')}"
       outputs:
-        result-fun-facts: "$.get('facts')"
-        result-fun-facts-bulk: |
+        result-h2h: "$.get('response', [])"
+        result-h2h-bulk: |
           [
             {
-              'subject': '$.(title)',
-              'text': c.get('statement', ''),
-              'title': f"$.(title) - Fun Facts",
+              'subject': 'Head to Head',
+              'text': f"Match on {c.get('fixture', {}).get('date', '')[:10]}: {c.get('teams', {}).get('home', {}).get('name')} {c.get('goals', {}).get('home')} - {c.get('goals', {}).get('away')} {c.get('teams', {}).get('away', {}).get('name')}",
+              'title': f"$.(title) - H2H",
               'metadata': {
                 'event_code': '$.(event_code)',
                 'language': 'en'
               } 
             }
-            for c in $.get('facts', [])
+            for c in $.get('response', [])[:5]
           ]
 
-    # 6 update-snippets - fun-facts
+    # 6 update-snippets - h2h
     - type: "document"
-      name: "update-snippets-fun-facts"
+      name: "update-snippets-h2h"
       condition: "$.get('event_exists') is True"
       description: "Update Corinthians analysis snippets with viral-worthy stats."
       config:
@@ -142,7 +142,7 @@ workflow:
       inputs:
         parsed-items: |
           [
-            *$.get('result-fun-facts-bulk', []),
+            *$.get('result-h2h-bulk', []),
           ]
 
     # 7 version-control-success-schedule

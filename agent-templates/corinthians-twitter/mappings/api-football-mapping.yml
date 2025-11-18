@@ -1,0 +1,21 @@
+mappings:
+
+  - type: "mapping"
+    title: "API Football Mapping"
+    name: "api-football-mapping"
+    description: "Mapping data from api-football data"
+    outputs:
+      article_count: "$.get('event_selected', {}).get('version_control', {}).get('article_count', 0)"
+      event_code: "$.get('event_selected', {}).get('fixture', {}).get('id')"
+      image_count: "$.get('event_selected', {}).get('version_control', {}).get('image_count', 0)"
+      research_news_count: "$.get('event_selected', {}).get('version_control', {}).get('research_news_count', 0)"
+      research_odds_count: "$.get('event_selected', {}).get('version_control', {}).get('research_odds_count', 0)"
+      research_stats_count: "$.get('event_selected', {}).get('version_control', {}).get('research_stats_count', 0)"
+      research_team_count: "$.get('event_selected', {}).get('version_control', {}).get('research_team_count', 0)"
+      season: "$.get('event_selected', {}).get('league', {}).get('season')"
+      season_title: "$.get('event_selected', {}).get('league', {}).get('name')"
+      team_home_name: "$.get('event_selected', {}).get('teams', {}).get('home', {}).get('name')"
+      team_away_name: "$.get('event_selected', {}).get('teams', {}).get('away', {}).get('name')"
+      team_home_id: "$.get('event_selected', {}).get('teams', {}).get('home', {}).get('id')"
+      team_away_id: "$.get('event_selected', {}).get('teams', {}).get('away', {}).get('id')"
+      title: "$.get('event_selected', {}).get('title')"

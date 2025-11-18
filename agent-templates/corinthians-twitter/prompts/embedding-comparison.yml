@@ -1,0 +1,29 @@
+prompt:
+  type: "prompt"
+  title: "Embedding Comparison"
+  name: "prompt-embedding-comparison"
+  description: "This schema defines the structure to generate a detailed comparison analysis between Corinthians and their opponent's standings and recent performance."  
+  schema:
+    title: "EmbeddingComparison"
+    description: "This schema defines the structure to generate a detailed comparison analysis between Corinthians and their opponent's standings and recent performance."
+    type: "object"
+    properties:
+      snippets:
+        type: "array"
+        description: "An array of snippets analyzing the teams' comparison from a die-hard Corinthians perspective."
+        items:
+          type: "object"
+          properties:
+            title:
+              type: "string"
+              description: "The category of comparison analysis (e.g., 'Head-to-Head Comparison', 'Recent Form Comparison', 'Points Gap Comparison', etc)."
+            content:
+              type: "string"
+              description: "Brutally direct, raw, unfiltered analysis comparing Corinthians and their opponent. Must include specific numerical stats (exact percentages, counts, averages) that reveal the true picture. For example: 'Corinthians dominated with 68% possession vs Santos' 32%' or 'Corinthians outshot Palmeiras 17-8 in their last encounter.' Avoid vague statements like 'Corinthians played well' - replace with concrete stats like 'Corinthians created 2.34 xG vs their average of 1.12.' Keep it short, incisive, and to the point with actual numbers backing every claim."
+            confidence:
+              type: "number"
+              description: "The confidence score for the accuracy of the comparison analysis (0.0 to 1.0)."
+          required: ["title", "content", "confidence"]
+        minItems: 3
+        maxItems: 10
+

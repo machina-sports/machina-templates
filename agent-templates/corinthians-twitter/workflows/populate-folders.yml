@@ -61,7 +61,7 @@ workflow:
                 {
                   "name": "soccer-schedules",
                   "title": "Soccer Games",
-                  "description": "Corinthians soccer game schedules synced from the Sportradar API.",
+                  "description": "Corinthians soccer game schedules synced from the API-Football API.",
                   "category": "Catalogue",
                   "metadata": {
                     "name": ["soccer-game", "soccer-games", "football"]

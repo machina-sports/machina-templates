@@ -12,3 +12,9 @@ agent:
       outputs:
         research-stats-soccer: "$.get('workflow-status', False)"
         research-odds: "$.get('workflow-status', False)"
+
+    # Corinthians News Research
+    - name: "soccer-news"
+      description: "Research and analyze the latest news and rumors for Corinthians."
+      outputs:
+        research-news: "$.get('workflow-status', False)"

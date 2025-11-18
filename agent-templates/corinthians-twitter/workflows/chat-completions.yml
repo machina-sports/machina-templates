@@ -9,6 +9,8 @@ workflow:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     messages: "$.get('messages', [])"
   outputs:
@@ -48,20 +50,11 @@ workflow:
       name: "chat-completions-prompt"
       description: "Chat Completions."
       connector:
-        # name: "groq"
-        # command: "invoke_prompt"
-        # model: "meta-llama/llama-4-scout-17b-16e-instruct"
-        # model: "llama-3.3-70b-versatile"
-        # model: "llama-3.1-8b-instant"
-        # model: "deepseek-r1-distill-llama-70b"
-        # model: "deepseek-r1-distill-llama-70b-specdec"
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4.1"
+        model: "gemini-2.5-pro"
       inputs:
         documents: "$.get('parsed_documents')"
         messages: "$.get('messages')"
       outputs:
         message: "$.get('choices')[0].get('message').get('content')"
-
-    
