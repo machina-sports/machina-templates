@@ -1,0 +1,77 @@
+workflow:
+  name: "sportradar-tennis-sync-daily-schedules"
+  title: "Tennis - Daily Schedules"
+  description: "Workflow to synchronize daily tennis match schedules from SportRadar API to Machina."
+  context-variables:
+    debugger: 
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    date: "$.get('date')"
+  outputs:
+    workflow-status: "$.get('summaries_response') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-daily-schedules
+    - type: "connector"
+      name: "task-load-daily-schedules"
+      description: "Get Daily Schedule Summaries from SportRadar (paginated)"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/schedules/{date}/summaries.json"
+        command_attribute:
+          date: "$.get('date')"
+      foreach:
+        concurrent: false
+        name: pagination_offset
+        expr: $
+        value: "list(range(0, 1000, 200))"
+      inputs:
+        date: "$.get('date')"
+        start: "$.get('pagination_offset')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        all_summaries: |
+          $.get('all_summaries', []) + $.get('summaries', [])
+
+    # iptc-sportradar-tennis-event-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-event-mapping
+      title: "IPTC | Sportradar Tennis Event Mapping"
+      description: "Mapping data from sportradar tennis daily schedules to IPTC events"
+      inputs:
+        summaries: "$.get('all_summaries', [])"
+      outputs:
+        iptc-events: "$.get('sport_schema_events')"
+
+    # task-bulk-save-daily-schedules
+    - type: "document"
+      name: "task-bulk-save-daily-schedules"
+      description: "Bulk save the tennis daily schedules."
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: |
+          [
+            {
+              **e,
+              'metadata': {
+                'event_code': str(e.get('@id', '')),
+                'sport': 'tennis'
+              },
+              'title': e.get('name', '')
+            }
+            for e in $.get('iptc-events', [])
+          ]
+
