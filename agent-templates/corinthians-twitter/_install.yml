@@ -49,6 +49,8 @@ datasets:
   - type: workflow
     path: workflows/soccer-embeddings.yml
   - type: workflow
+    path: workflows/soccer-news.yml
+  - type: workflow
     path: workflows/soccer-live-event.yml
   - type: workflow
     path: workflows/soccer-pre-event.yml

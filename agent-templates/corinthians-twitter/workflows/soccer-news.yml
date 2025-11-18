@@ -1,0 +1,215 @@
+workflow:
+  name: "soccer-news"
+  title: "Soccer News"
+  description: "Workflow to research and analyze the latest news and rumors for Corinthians."
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search Corinthians event by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for Corinthians scheduled matches."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(days=30), '$lt': datetime.utcnow() + timedelta(days=30)}"
+        value.version_control.research_news_status: "{'$ne': 'processed'}"
+      inputs:
+        name: "{'$in': ['soccer-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value', {}).get('title') if $.get('documents') else None"
+        event_code: "$.get('documents')[0].get('value', {}).get('fixture', {}).get('id') if $.get('documents') else None"
+
+    # 2 version-control-update-schedule
+    - type: "document"
+      name: "version-control-update-schedule"
+      description: "Update the Corinthians events document version control."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'research_news_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 3 generate-news-queries
+    - type: "prompt"
+      name: "prompt-generate-news-queries"
+      description: "Generate search queries for Corinthians news."
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        title: "$.get('title')"
+      outputs:
+        news_queries: "$.get('search_queries', [])"
+
+    # 4 search-news
+    - type: "connector"
+      name: "search-news"
+      description: "Search Google for Corinthians news."
+      condition: "$.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_search"
+        model: "gemini-2.5-flash"
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: $.get('news_queries')
+      inputs:
+        location: "Brazil"
+        search_query: $.get('search_query', '')
+      outputs:
+        news_search_response: |
+          [
+            $.get('answer', '')
+          ]
+
+    # 5 embedding-news
+    - type: "prompt"
+      name: "prompt-embedding-news"
+      description: "Generate viral-worthy Corinthians news analysis."
+      condition: "$.get('event_exists') is True and $.get('news_search_response') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        search_results: "$.get('news_search_response', [])"
+        title: "$.get('title')"
+      outputs:
+        research-news: "$"
+        research-news-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'pt'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 6 update-documents
+    - type: "document"
+      name: "update-documents-news"
+      description: "Update Corinthians news analysis documents."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        news-analysis: |
+          {
+            "execution": datetime.utcnow(),
+            "content": $.get('research-news'),
+            "title": f"{$.get('title')} - News Analysis",
+            "status": 'active'
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+    
+    # 7 update-snippets
+    - type: "document"
+      name: "update-snippets"
+      condition: "$.get('event_exists') is True"
+      description: "Update Corinthians analysis snippets with viral-worthy stats."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('research-news-bulk', [])
+          ]
+
+    # 8 version-control-success-schedule
+    - type: "document"
+      name: "version-control-success-schedule"
+      description: "Update the Corinthians events document version control after processing."
+      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        soccer-game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'research_news_count': $.get('event_selected', {}).get('version_control', {}).get('research_news_count', 0) + 1,
+              'research_news_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+

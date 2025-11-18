@@ -268,71 +268,6 @@ workflow:
             for c in $.get('snippets', [])
           ]
 
-    # 11.5 generate-news-queries
-    - type: "prompt"
-      name: "prompt-generate-news-queries"
-      description: "Generate search queries for Corinthians news."
-      condition: "$.get('event_exists') is True"
-      connector:
-        name: "google-genai"
-        command: "invoke_prompt"
-        model: "gemini-2.5-pro"
-      inputs:
-        title: "$.get('title')"
-      outputs:
-        news_queries: "$.get('search_queries', [])"
-
-    # 11.6 search-news
-    - type: "connector"
-      name: "search-news"
-      description: "Search Google for Corinthians news."
-      condition: "$.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
-      connector:
-        name: "google-genai"
-        command: "invoke_search"
-        model: "gemini-2.5-flash"
-      foreach:
-        concurrent: true
-        name: search_query
-        expr: $
-        value: $.get('news_queries')
-      inputs:
-        location: "Brazil"
-        search_query: $.get('search_query', '')
-      outputs:
-        news_search_response: |
-          [
-            $.get('answer', '')
-          ]
-
-    # 11.7 embedding-news
-    - type: "prompt"
-      name: "prompt-embedding-news"
-      description: "Generate viral-worthy Corinthians news analysis."
-      condition: "$.get('event_exists') is True and $.get('news_search_response') is not None"
-      connector:
-        name: "google-genai"
-        command: "invoke_prompt"
-        model: "gemini-2.5-pro"
-      inputs:
-        search_results: "$.get('news_search_response', [])"
-        title: "$.get('title')"
-      outputs:
-        research-news: "$"
-        research-news-bulk: |
-          [
-            {
-              'subject': '$.(title)',
-              'text': c.get('content', ''),
-              'title': f"$.(title) - {c.get('title', '')}",
-              'metadata': {
-                'event_code': '$.(event_code)',
-                'language': 'pt'
-              }
-            }
-            for c in $.get('snippets', [])
-          ]
-
     # 12 update-documents
     - type: "document"
       name: "update-documents-standings"
@@ -364,13 +299,6 @@ workflow:
             "title": f"{$.get('title')} - Players to Watch",
             "status": 'active'
           }
-        news-analysis: |
-          {
-            "execution": datetime.utcnow(),
-            "content": $.get('research-news'),
-            "title": f"{$.get('title')} - News Analysis",
-            "status": 'active'
-          }
       metadata:
         event_code: "$.get('event_code')"
     
@@ -395,8 +323,7 @@ workflow:
           [
             *$.get('research-standings-bulk', []),
             *$.get('research-comparison-bulk', []),
-            *$.get('research-players-to-watch-bulk', []),
-            *$.get('research-news-bulk', [])
+            *$.get('research-players-to-watch-bulk', [])
           ]
 
     # 14 version-control-success-schedule
