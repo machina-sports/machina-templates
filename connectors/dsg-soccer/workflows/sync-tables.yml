@@ -1,0 +1,124 @@
+workflow:
+  name: "dsg-soccer-sync-tables"
+  title: "DSG Soccer - Sync Tables"
+  description: "Workflow to synchronize championship standings/tables from DSG API for a specific round."
+  context-variables:
+    debugger:
+      enabled: true
+    dsg-soccer:
+      username: "$DSG_SOCCER_USERNAME"
+      password: "$DSG_SOCCER_PASSWORD"
+      authkey: "$DSG_SOCCER_AUTHKEY"
+      client: "machinasports"
+      ftype: "json"
+      type: "round"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    round_id: "$.get('round_id', '125229')"
+  outputs:
+    standings: "$.get('standings')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-tables
+    - type: "connector"
+      name: "task-load-tables"
+      description: "Get Championship Tables/Standings from DSG API"
+      connector:
+        name: "dsg-soccer"
+        command: "get-get_tables"
+      inputs:
+        type: "$.get('type')"
+        id: "$.get('round_id')"
+        client: "$.get('client')"
+        authkey: "$.get('authkey')"
+        ftype: "$.get('ftype')"
+      outputs:
+        round_data: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {})"
+        season_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {})"
+        competition_info: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {})"
+        total_table: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {}).get('total', {}).get('table', [])"
+        home_table: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {}).get('home', {}).get('table', [])"
+        away_table: "$.get('datasportsgroup', {}).get('tour', {}).get('tour_season', {}).get('competition', {}).get('season', {}).get('round', {}).get('away', {}).get('table', [])"
+
+    # task-update-standings-summary
+    - type: "document"
+      name: "task-update-standings-summary"
+      description: "Update the standings summary document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        dsg-standings: |
+          {
+            'total_table': $.get('total_table'),
+            'home_table': $.get('home_table'),
+            'away_table': $.get('away_table'),
+            'round': $.get('round_data'),
+            'season': $.get('season_info'),
+            'competition': $.get('competition_info'),
+            'title': f"DSG - Standings for {$.get('competition_info', {}).get('name', 'Competition')} {$.get('season_info', {}).get('title', '')}",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'total_teams': len($.get('total_table', []))
+          }
+      metadata:
+        document_type: "'standings'"
+        provider: "'dsg'"
+
+    # standings-summary-generator
+    - type: prompt
+      name: dsg-standings-summary
+      description: "Generate a summary of the standings."
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _0-date-time-now: datetime.now().isoformat()
+        _1-total_table: $.get('total_table')
+        _2-home_table: $.get('home_table')
+        _3-away_table: $.get('away_table')
+        _4-round: $.get('round_data')
+        _5-season: $.get('season_info')
+        _6-competition: $.get('competition_info')
+      outputs:
+        standings_summary: $.get('standings_summary')
+    
+    # task-bulk-save-standings-summary
+    - type: "document"
+      name: "task-bulk-save-standings-summary"
+      description: "Bulk save the standings summary."
+      config:
+        action: "bulk-update"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'standings-summary'"
+      documents:
+        items: |
+          [
+            {
+              'content': $.get('standings_summary', {}),
+              'title': f"DSG - Standings Summary",
+              'execution': datetime.utcnow(),
+              'status': 'active',
+              'provider': 'dsg'
+            }
+          ]
+      metadata:
+        document_type: "'standings-summary'"
+        provider: "'dsg'"

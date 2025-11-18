@@ -98,6 +98,9 @@ datasets:
     path: workflows/chat-reasoning.yml
 
   - type: workflow
+    path: workflows/chat-registering.yml
+
+  - type: workflow
     path: workflows/chat-response.yml
 
   - type: workflow

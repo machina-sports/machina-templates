@@ -1,0 +1,34 @@
+workflow:
+
+  # assistant-chat-registering
+  name: assistant-chat-registering
+  title: Assistant - Chat Registering
+  description: Workflow to register a Assistant chat.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    empty: "'True'"
+  outputs:
+    thread_id: $.get('document_id', None)
+    workflow-status: "'executed'"
+  tasks:
+
+    # Create and save thread document
+    - type: document
+      name: create-thread-document
+      description: Create and save new thread document
+      config:
+        action: save
+        embed-vector: false
+      documents:
+        thread: |
+          {
+            'agent_id': 'moderator-chat-executor',
+            'messages': [],
+            'status': 'active'
+          }
+      outputs:
+        document_id: $.get('documents',[])[0].get('_id') if len($.get('documents', [])) > 0 else None
