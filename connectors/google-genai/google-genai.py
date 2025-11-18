@@ -400,14 +400,30 @@ def invoke_search(request_data):
 
         response = llm.invoke(search_query)
 
+        # Extract grounding metadata
+        grounding_metadata = response.response_metadata.get("grounding_metadata", {})
+        
+        # Extract search results (links and titles)
+        grounding_chunks = grounding_metadata.get("grounding_chunks", [])
+        search_results = []
+        for chunk in grounding_chunks:
+            if "web" in chunk:
+                search_results.append({
+                    "title": chunk["web"].get("title", ""),
+                    "url": chunk["web"].get("uri", "")
+                })
+        
+        # Extract search queries used
+        web_queries = grounding_metadata.get("web_search_queries", [])
+
         return {
             "status": True,
             "data": {
                 "query": search_query,
                 "answer": response.content,
-                "grounding_metadata": response.response_metadata.get(
-                    "grounding_metadata", {}
-                ),
+                "search_results": search_results,  # Easy access to links and titles
+                "search_queries": web_queries,     # Queries that were executed
+                # "grounding_metadata": grounding_metadata,  # Full metadata for advanced use
             },
             "message": "Search completed successfully",
         }
