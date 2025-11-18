@@ -41,8 +41,6 @@ datasets:
   - type: prompt
     path: prompts/result-score-summary.yml
   - type: prompt
-    path: prompts/generate-news-queries.yml
-  - type: prompt
     path: prompts/embedding-news.yml
 
   # workflows

@@ -29,23 +29,11 @@ workflow:
         news_already_processed: "len($.get('documents', [])) > 0"
         workflow-status: "len($.get('documents', [])) > 0 and 'skipped' or None"
 
-    # 1 generate-news-queries
-    - type: "prompt"
-      name: "prompt-generate-news-queries"
-      description: "Generate search queries for Corinthians news."
-      condition: "$.get('news_already_processed') is not True"
-      connector:
-        name: "google-genai"
-        command: "invoke_prompt"
-        model: "gemini-2.5-pro"
-      outputs:
-        news_queries: "$.get('search_queries', [])"
-
-    # 2 search-news
+    # 1 search-news
     - type: "connector"
       name: "search-news"
       description: "Search Google for Corinthians news."
-      condition: "$.get('news_already_processed') is not True and $.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
+      condition: "$.get('news_already_processed') is not True"
       connector:
         name: "google-genai"
         command: "invoke_search"
@@ -54,7 +42,17 @@ workflow:
         concurrent: true
         name: search_query
         expr: $
-        value: $.get('news_queries')
+        value: |
+          [
+            "Corinthians últimas notícias hoje",
+            "Corinthians mercado da bola rumores",
+            "Corinthians bastidores crise e polêmicas",
+            "Corinthians provável escalação novidades",
+            "Corinthians opinião torcida",
+            "Corinthians situação financeira e dívidas",
+            "Corinthians atualizações departamento médico",
+            "Corinthians declarações presidente e diretoria"
+          ]
       inputs:
         location: "Brazil"
         search_query: $.get('search_query', '')
