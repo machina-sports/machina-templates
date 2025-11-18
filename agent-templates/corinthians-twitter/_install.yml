@@ -24,7 +24,7 @@ datasets:
     path: agents/setup-onboarding.yml
 
   # mappings
-  - type: mapping
+  - type: mappings
     path: mappings/api-football-mapping.yml
 
   # prompts
