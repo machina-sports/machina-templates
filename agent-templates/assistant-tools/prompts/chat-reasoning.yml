@@ -14,6 +14,7 @@ prompts:
       - Use is_find_markets when user asks about odds, betting markets, specific betting information, predictions, tips, prognoses, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results.
       - Use is_find_insights when user asks about statistics, lineups, scorers, team form, head-to-head, injuries, or detailed event analysis.
       - Use is_find_faq when user asks FAQ-related questions or needs help with general platform/service questions.
+      - Use is_find_odds_range when user specifies an odds range filter (e.g., "odds between 1.50 and 2.50", "odds entre 1.8 e 2.2", "odds from 2.0 to 3.0").
       - When ALL is_find_* flags are FALSE: Set all flags to false and provide a brief loading/thinking message in short_message.
       - When ANY is_find_* flag is TRUE: Provide a brief status message in short_message informing what will be searched.
       
@@ -37,8 +38,14 @@ prompts:
       
       VECTOR SEARCH: Only return true when player, competition, or team name is present in the user's query. If none of these are found, return false.
       
+      ODDS RANGE EXTRACTION:
+      - Extract odd_from and odd_to when user specifies odds range (e.g., "entre 1.50 e 2.50", "between 2.0 and 3.5", "from 1.8 to 2.2").
+      - When is_find_odds_range is true, populate both odd_from and odd_to with numeric values.
+      - When is_find_odds_range is false, omit both odd_from and odd_to entirely.
+      
       OPTIONAL FIELDS:
       - Only populate market_query and runner_query when is_find_markets is true. Omit these fields entirely otherwise.
+      - Only populate odd_from and odd_to when is_find_odds_range is true. Omit these fields entirely otherwise.
       - Populate sport_id when is_find_event or is_find_markets is true.
       - Only populate search_date_interval, search_query, search_sort, vector_query, vector_search when is_find_event is true.
       
@@ -54,6 +61,7 @@ prompts:
         "is_find_faq",
         "is_find_insights",
         "is_find_markets",
+        "is_find_odds_range",
         "search_date_interval",
         "search_query",
         "search_sort",
@@ -77,6 +85,9 @@ prompts:
         is_find_markets:
           type: boolean
           description: User asks about odds, betting markets, specific betting information, predictions, tips, prognoses, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results. When true, is_find_event should also be true.
+        is_find_odds_range:
+          type: boolean
+          description: User specifies an odds range filter for betting markets (e.g., "odds between 1.50 and 2.50", "odds entre 1.8 e 2.2"). When true, both odd_from and odd_to should be populated with numeric values.
         
         # Common fields (populate when is_find_event OR is_find_markets is true, otherwise omit)
         search_date_interval:
@@ -121,6 +132,14 @@ prompts:
         runner_query:
           type: string
           description: "Extract betting selection intent: team names, outcome preferences, draw, score predictions, or specific result types. Only populate when is_find_markets is true."
+        
+        # Odds range fields (populate only when is_find_odds_range is true, otherwise omit)
+        odd_from:
+          type: number
+          description: "Minimum odds value for filtering. Only populate when is_find_odds_range is true."
+        odd_to:
+          type: number
+          description: "Maximum odds value for filtering. Only populate when is_find_odds_range is true."
         
         short_message:
           type: string

@@ -19,6 +19,8 @@ mappings:
     description: Prepare reasoning
     outputs:
       market_query: $.get('document_value', {}).get('status-reasoning', {}).get('market_query', None)
+      odd_from: $.get('document_value', {}).get('status-reasoning', {}).get('odd_from', None)
+      odd_to: $.get('document_value', {}).get('status-reasoning', {}).get('odd_to', None)
       runner_query: $.get('document_value', {}).get('status-reasoning', {}).get('runner_query', None)
       search_date_interval: |
         $.get('document_value', {}).get('status-reasoning', {}).get('search_date_interval', None) or {

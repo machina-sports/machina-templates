@@ -5,6 +5,8 @@ def invoke_map_markets(request_data):
     mapped_runners = params.get("mapped-runners", [])
     market_query = params.get("market-query", "").lower()
     sport_id = params.get("sport-id", "4")
+    odd_from = params.get("odd-from")
+    odd_to = params.get("odd-to")
 
     # Handle football (sport 4) selections
     if sport_id == "4" and market_query:
@@ -46,6 +48,14 @@ def invoke_map_markets(request_data):
         ]
     else:
         selected_market_runners = mapped_runners
+    
+    # Filter by odds range if specified
+    if odd_from is not None and odd_to is not None:
+        # Each runner already has a direct 'price' field (not nested in options)
+        selected_market_runners = [
+            runner for runner in selected_market_runners
+            if 'price' in runner and odd_from <= runner['price'] <= odd_to
+        ]
     
     # Extract runner titles
     selected_market_runners_names = [

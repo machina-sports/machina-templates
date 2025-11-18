@@ -75,6 +75,8 @@ workflow:
         sport_id: $.get('sport_id')
         vector_query: $.get('vector_query')
         vector_search: $.get('vector_search')
+        odd_from: $.get('odd_from')
+        odd_to: $.get('odd_to')
 
     # EVENT SEARCH
 
@@ -247,6 +249,8 @@ workflow:
         # market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
         market-query: $.get('market-query')
         sport-id: $.get('sport_id')
+        odd-from: $.get('odd_from')
+        odd-to: $.get('odd_to')
       outputs:
         selected-market-runners-names: $.get('selected-market-runners-names', [])
         selected-runners-parsed: $.get('selected-market-runners', [])
