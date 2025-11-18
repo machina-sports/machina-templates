@@ -5,102 +5,47 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    api-football:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     openai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
-  inputs:
-    event_code: "$.get('event_code') or None"
-  outputs:
-    events: "$.get('events')"
-    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
   
   tasks:
     
-    # 0 load-event-by-code
+    # 0 check-daily-execution
     - type: "document"
-      name: "load-event-by-code"
-      description: "Search Corinthians event by code."
-      condition: "$.get('event_code') is not None"
+      name: "check-daily-execution"
+      description: "Check if news research has already been performed today."
       config:
         action: "search"
         search-limit: 1
         search-vector: false
-        search-sorters: ["start_time", 1]
       filters:
-        metadata.event_code: "$.get('event_code')"
+        name: "corinthians-daily-news"
+        execution: "{'$gt': datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)}"
       inputs:
-        name: "{'$in': ['soccer-game']}"
+        name: "'corinthians-daily-news'"
       outputs:
-        event_exists: "len($.get('documents', [])) > 0"
-        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
-        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+        news_already_processed: "len($.get('documents', [])) > 0"
+        workflow-status: "len($.get('documents', [])) > 0 and 'skipped' or None"
 
-    # 1 load-event-by-schedule
-    - type: "document"
-      name: "load-event-by-schedule"
-      description: "Search for Corinthians scheduled matches."
-      condition: "$.get('event_exists') is not True"
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-        search-sorters: ["start_time", 1]
-      filters:
-        value.start_time: "{'$gt': datetime.utcnow() - timedelta(days=30), '$lt': datetime.utcnow() + timedelta(days=30)}"
-        value.version_control.research_news_status: "{'$ne': 'processed'}"
-      inputs:
-        name: "{'$in': ['soccer-game']}"
-      outputs:
-        event_exists: "len($.get('documents', [])) > 0"
-        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
-        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
-        title: "$.get('documents')[0].get('value', {}).get('title') if $.get('documents') else None"
-        event_code: "$.get('documents')[0].get('value', {}).get('fixture', {}).get('id') if $.get('documents') else None"
-
-    # 2 version-control-update-schedule
-    - type: "document"
-      name: "version-control-update-schedule"
-      description: "Update the Corinthians events document version control."
-      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
-      config:
-        action: "update"
-        embed-vector: false
-        force-update: true
-      documents:
-        soccer-game: |
-          {
-            **$.get('event_selected'),
-            'version_control': {
-              **$.get('event_selected').get('version_control', {}),
-              'processing': True,
-              'research_news_status': 'processing'
-            }
-          }
-      metadata:
-        event_code: "$.get('event_code')"
-
-    # 3 generate-news-queries
+    # 1 generate-news-queries
     - type: "prompt"
       name: "prompt-generate-news-queries"
       description: "Generate search queries for Corinthians news."
-      condition: "$.get('event_exists') is True"
+      condition: "$.get('news_already_processed') is not True"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
-      inputs:
-        title: "$.get('title')"
       outputs:
         news_queries: "$.get('search_queries', [])"
 
-    # 4 search-news
+    # 2 search-news
     - type: "connector"
       name: "search-news"
       description: "Search Google for Corinthians news."
-      condition: "$.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
+      condition: "$.get('news_already_processed') is not True and $.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
       connector:
         name: "google-genai"
         command: "invoke_search"
@@ -119,59 +64,63 @@ workflow:
             $.get('answer', '')
           ]
 
-    # 5 embedding-news
+    # 3 embedding-news
     - type: "prompt"
       name: "prompt-embedding-news"
       description: "Generate viral-worthy Corinthians news analysis."
-      condition: "$.get('event_exists') is True and $.get('news_search_response') is not None"
+      condition: "$.get('news_already_processed') is not True and $.get('news_search_response') is not None"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
       inputs:
         search_results: "$.get('news_search_response', [])"
-        title: "$.get('title')"
+        title: "'Corinthians Daily News'"
       outputs:
         research-news: "$"
         research-news-bulk: |
           [
             {
-              'subject': '$.(title)',
+              'subject': 'Corinthians News',
               'text': c.get('content', ''),
-              'title': f"$.(title) - {c.get('title', '')}",
+              'title': c.get('title', ''),
               'metadata': {
-                'event_code': '$.(event_code)',
-                'language': 'pt'
+                'type': 'team-news',
+                'team': 'Corinthians',
+                'language': 'pt',
+                'date': datetime.utcnow().isoformat()
               }
             }
             for c in $.get('snippets', [])
           ]
 
-    # 6 update-documents
+    # 4 update-documents
     - type: "document"
       name: "update-documents-news"
       description: "Update Corinthians news analysis documents."
-      condition: "$.get('event_exists') is True"
+      condition: "$.get('news_already_processed') is not True"
       config:
         action: "update"
         embed-vector: false
         force-update: true
+      filters:
+        name: "corinthians-daily-news"
       documents:
-        news-analysis: |
+        corinthians-daily-news: |
           {
+            "name": "corinthians-daily-news",
             "execution": datetime.utcnow(),
             "content": $.get('research-news'),
-            "title": f"{$.get('title')} - News Analysis",
-            "status": 'active'
+            "title": "Corinthians Daily News",
+            "status": 'active',
+            "type": "news-digest"
           }
-      metadata:
-        event_code: "$.get('event_code')"
     
-    # 7 update-snippets
+    # 5 update-snippets
     - type: "document"
       name: "update-snippets"
-      condition: "$.get('event_exists') is True"
       description: "Update Corinthians analysis snippets with viral-worthy stats."
+      condition: "$.get('news_already_processed') is not True"
       config:
         action: "bulk-save"
         embed-vector: true
@@ -188,28 +137,3 @@ workflow:
           [
             *$.get('research-news-bulk', [])
           ]
-
-    # 8 version-control-success-schedule
-    - type: "document"
-      name: "version-control-success-schedule"
-      description: "Update the Corinthians events document version control after processing."
-      condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
-      config:
-        action: "update"
-        embed-vector: false
-        force-update: true
-      documents:
-        soccer-game: |
-          {
-            **$.get('event_selected'),
-            'version_control': {
-              **$.get('event_selected').get('version_control', {}),
-              'processing': False,
-              'research_news_count': $.get('event_selected', {}).get('version_control', {}).get('research_news_count', 0) + 1,
-              'research_news_status': 'processed',
-              'updated': datetime.utcnow()
-            }
-          }
-      metadata:
-        event_code: "$.get('event_code')"
-
