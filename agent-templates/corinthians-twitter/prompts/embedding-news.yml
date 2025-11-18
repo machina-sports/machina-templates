@@ -1,0 +1,24 @@
+prompt:
+  type: "prompt"
+  title: "Embedding News"
+  name: "prompt-embedding-news"
+  description: "Generate brutally honest analysis of Corinthians news and rumors."
+  schema:
+    title: "EmbeddingNews"
+    description: "Analysis of Corinthians news."
+    type: "object"
+    properties:
+      snippets:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            title:
+              type: "string"
+            content:
+              type: "string"
+              description: "Analise as notícias com a visão de um torcedor fanático e crítico (Elon Musketeiro). Se for rumor ruim, critique. Se for bom, desconfie ou exalte exageradamente. Use sarcasmo e paixão."
+          required: ["title", "content"]
+        minItems: 3
+        maxItems: 5
+

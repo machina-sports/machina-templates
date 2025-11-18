@@ -1,0 +1,39 @@
+prompt:
+  type: "prompt"
+  title: "Generate News Queries"
+  name: "prompt-generate-news-queries"
+  description: "Generate search queries for the latest Corinthians news and rumors."
+  instruction: |
+    Gere exatamente 5 consultas de pesquisa no Google para encontrar as últimas notícias e rumores sobre o Corinthians.
+
+    Foco:
+    - Notícias recentes (últimas 24-48h)
+    - Rumores de transferência (mercado da bola)
+    - Bastidores e polêmicas
+    - Situação do técnico e jogadores
+    - Opinião da torcida (Fiel)
+
+    As consultas devem ser em Português.
+    Priorize termos como "últimas notícias", "hoje", "agora", "mercado da bola", "fofoca", "polêmica".
+
+    Exemplos:
+    - "Corinthians últimas notícias hoje"
+    - "Corinthians mercado da bola rumores"
+    - "bastidores Corinthians crise"
+    - "Corinthians provável escalação novidades"
+    - "opinião torcida Corinthians protesto"
+
+    Saída apenas as 5 consultas no formato schema.
+  schema:
+    title: "GenerateNewsQueries"
+    description: "Search queries for Corinthians news."
+    type: "object"
+    required: [ "search_queries" ]
+    properties:
+      search_queries:
+        type: "array"
+        minItems: 5
+        maxItems: 5
+        items:
+          type: "string"
+

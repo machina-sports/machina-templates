@@ -5,10 +5,12 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    sportradar-soccer:
-      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    api-football:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     openai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -20,7 +22,7 @@ workflow:
     # 0 load-event-by-code
     - type: "document"
       name: "load-event-by-code"
-      description: "Search Corinthians event (sportradar) by code."
+      description: "Search Corinthians event by code."
       condition: "$.get('event_code') is not None"
       config:
         action: "search"
@@ -39,7 +41,7 @@ workflow:
     # 1 load-event-by-schedule
     - type: "document"
       name: "load-event-by-schedule"
-      description: "Search for Corinthians scheduled matches (sportradar)."
+      description: "Search for Corinthians scheduled matches."
       condition: "$.get('event_exists') is not True"
       config:
         action: "search"
@@ -56,9 +58,9 @@ workflow:
         event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
         event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
 
-    # 3 sportradar-soccer-mapping
+    # 3 mapping
     - type: "mapping"
-      name: "sportradar-soccer-mapping"
+      name: "api-football-mapping"
       description: "Transform the Corinthians match data with brutal stats insight"
       condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
       inputs:
@@ -72,6 +74,7 @@ workflow:
         team_home_id: "$.get('team_home_id')"
         team_away_id: "$.get('team_away_id')"
         title: "$.get('title')"
+        league_id: "$.get('event_selected', {}).get('league', {}).get('id')"
 
     # 4 version-control-update-schedule
     - type: "document"
@@ -98,18 +101,16 @@ workflow:
     # 3 fetch-event-standings
     - type: "connector"
       name: "fetch-event-standings"
-      description: "Get season standings data for Corinthians analysis from SportRadar"
+      description: "Get season standings data for Corinthians analysis from API-Football"
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sportradar-soccer"
-        command: "get-seasons/{season_id}/{data_type}"
-        command_attribute:
-          season_id: "$.get('season')"
-          data_type: "'standings.json'"
+        name: "api-football"
+        command: "standings"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        season: "$.get('season')"
+        league: "$.get('league_id')"
       outputs:
-        result-standings: "[x for x in $.get('standings') if x.get('type') == 'total']"
+        result-standings: "$.get('response', [])[0].get('league', {}).get('standings', [])[0] if $.get('response') else []"
 
     # 4 embedding-standings
     - type: "prompt"
@@ -117,9 +118,9 @@ workflow:
       description: "Generate viral-worthy Corinthians standings analysis with raw fan perspective."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         title: "$.get('title')"
         standings: "$.get('result-standings')"
@@ -142,65 +143,45 @@ workflow:
     # 5 fetch-home-competitor
     - type: "connector"
       name: "fetch-home-competitor"
-      description: "Get Corinthians or their opponent's home data from SportRadar" 
+      description: "Get Corinthians or their opponent's home data from API-Football" 
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sportradar-soccer"
-        command: "get-competitors/{competitor_id}/{data_type}"
-        command_attribute:
-          competitor_id: "$.get('team_home_id')"
-          data_type: "'summaries.json'"
+        name: "api-football"
+        command: "fixtures"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        team: "$.get('team_home_id')"
+        last: 5
+        status: "FT-AET-PEN"
       outputs:
-        result-home-competitor: |
-          [
-            {
-              'sport_event': c.get('sport_event', ''),
-              'sport_event_status': c.get('sport_event_status', '')
-            }
-            for c in $.get('summaries', [])[:10]
-          ]
+        result-home-competitor: "$.get('response', [])"
 
     # 6 fetch-away-competitor
     - type: "connector"
       name: "fetch-away-competitor"
-      description: "Get Corinthians or their opponent's away data from SportRadar" 
+      description: "Get Corinthians or their opponent's away data from API-Football" 
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sportradar-soccer"
-        command: "get-competitors/{competitor_id}/{data_type}"
-        command_attribute:
-          competitor_id: "$.get('team_away_id')"
-          data_type: "'summaries.json'"
+        name: "api-football"
+        command: "fixtures"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        team: "$.get('team_away_id')"
+        last: 5
+        status: "FT-AET-PEN"
       outputs:
-        result-away-competitor: |
-          [
-            {
-              'sport_event': c.get('sport_event', ''),
-              'sport_event_status': c.get('sport_event_status', '')
-            }
-            for c in $.get('summaries', [])[:10]
-          ]
+        result-away-competitor: "$.get('response', [])"
 
     # 7 fetch-comparison
     - type: "connector"
       name: "fetch-comparison"
-      description: "Get head-to-head comparison data for Corinthians vs opponent from SportRadar" 
+      description: "Get head-to-head comparison data from API-Football" 
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sportradar-soccer"
-        command: "get-competitors/{competitor1_id}/versus/{competitor2_id}/{data_type}"
-        command_attribute:
-          competitor1_id: "$.get('team_home_id')"
-          competitor2_id: "$.get('team_away_id')"
-          data_type: "'summaries.json'"
+        name: "api-football"
+        command: "fixtures/headtohead"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        h2h: f"{$.get('team_home_id')}-{$.get('team_away_id')}"
       outputs:
-        result-comparison: "$"
+        result-comparison: "$.get('response', [])"
 
     # 8 embedding-comparison
     - type: "prompt"
@@ -208,9 +189,9 @@ workflow:
       description: "Generate brutally honest, stats-driven comparison between Corinthians and opponent."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         title: "$.get('title')"
         home-competitor: "$.get('result-home-competitor')"
@@ -235,34 +216,28 @@ workflow:
     # 9 fetch-home-competitor-profile
     - type: "connector"
       name: "fetch-home-competitor-profile"
-      description: "Get detailed profile data for Corinthians or opponent (home) from SportRadar" 
+      description: "Get detailed squad data for home team from API-Football" 
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sportradar-soccer"
-        command: "get-competitors/{competitor_id}/{data_type}"
-        command_attribute:
-          competitor_id: "$.get('team_home_id')"
-          data_type: "'profile.json'"
+        name: "api-football"
+        command: "players/squad"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        team: "$.get('team_home_id')"
       outputs:
-        result-home-competitor-profile: "$"
+        result-home-competitor-profile: "$.get('response', [])"
 
     # 10 fetch-away-competitor-profile
     - type: "connector"
       name: "fetch-away-competitor-profile"
-      description: "Get detailed profile data for Corinthians or opponent (away) from SportRadar" 
+      description: "Get detailed squad data for away team from API-Football" 
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "sportradar-soccer"
-        command: "get-competitors/{competitor_id}/{data_type}"
-        command_attribute:
-          competitor_id: "$.get('team_away_id')"
-          data_type: "'profile.json'"
+        name: "api-football"
+        command: "players/squad"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        team: "$.get('team_away_id')"
       outputs:
-        result-away-competitor-profile: "$"
+        result-away-competitor-profile: "$.get('response', [])"
 
     # 11 embedding-players-to-watch
     - type: "prompt"
@@ -270,9 +245,9 @@ workflow:
       description: "Generate raw, unfiltered analysis of key Corinthians players with viral stats."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         title: "$.get('title')"
         home-competitor-profile: "$.get('result-home-competitor-profile')"
@@ -289,6 +264,71 @@ workflow:
                 'event_code': '$.(event_code)',
                 'language': 'en'
               } 
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 11.5 generate-news-queries
+    - type: "prompt"
+      name: "prompt-generate-news-queries"
+      description: "Generate search queries for Corinthians news."
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        title: "$.get('title')"
+      outputs:
+        news_queries: "$.get('search_queries', [])"
+
+    # 11.6 search-news
+    - type: "connector"
+      name: "search-news"
+      description: "Search Google for Corinthians news."
+      condition: "$.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_search"
+        model: "gemini-2.5-flash"
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: $.get('news_queries')
+      inputs:
+        location: "Brazil"
+        search_query: $.get('search_query', '')
+      outputs:
+        news_search_response: |
+          [
+            $.get('answer', '')
+          ]
+
+    # 11.7 embedding-news
+    - type: "prompt"
+      name: "prompt-embedding-news"
+      description: "Generate viral-worthy Corinthians news analysis."
+      condition: "$.get('event_exists') is True and $.get('news_search_response') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        search_results: "$.get('news_search_response', [])"
+        title: "$.get('title')"
+      outputs:
+        research-news: "$"
+        research-news-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'pt'
+              }
             }
             for c in $.get('snippets', [])
           ]
@@ -324,6 +364,13 @@ workflow:
             "title": f"{$.get('title')} - Players to Watch",
             "status": 'active'
           }
+        news-analysis: |
+          {
+            "execution": datetime.utcnow(),
+            "content": $.get('research-news'),
+            "title": f"{$.get('title')} - News Analysis",
+            "status": 'active'
+          }
       metadata:
         event_code: "$.get('event_code')"
     
@@ -348,7 +395,8 @@ workflow:
           [
             *$.get('research-standings-bulk', []),
             *$.get('research-comparison-bulk', []),
-            *$.get('research-players-to-watch-bulk', [])
+            *$.get('research-players-to-watch-bulk', []),
+            *$.get('research-news-bulk', [])
           ]
 
     # 14 version-control-success-schedule

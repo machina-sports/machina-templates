@@ -1,68 +1,60 @@
 setup:
-  title: "Corinthians Twitter Engagement"
-  description: AI-powered Twitter engagement system for Corinthians football club.
+  title: Corinthians Twitter Agent
+  description: AI agent that tweets about Corinthians matches with a fan persona.
   category:
-    - special-templates
-  estimatedTime: 5 minutes
+    - sports
+    - fan-engagement
+  estimatedTime: 1 minute
   features:
-    - AI Agent to engage with fans on Twitter.
-    - Soccer data integration for real-time match updates.
-    - Automated content generation for Twitter posts.
+    - AI Agent to tweet live match updates.
+    - AI Agent to analyze pre-match and post-match stats.
   integrations:
-    - sportradar
+    - api-football
+    - openai
+    - google-genai
   status: available
-  value: "agent-templates/corinthians-twitter"
+  value: agent-templates/corinthians-twitter
   version: 1.0.0
 
 datasets:
+  # agents
+  - type: agent
+    path: agents/statistics-scheduler.yml
+  - type: agent
+    path: agents/setup-onboarding.yml
 
-  # connectors
-  - type: "connector"
-    path: "../../connectors/groq/groq.yml"
-  - type: "connector"
-    path: "../../connectors/openai/openai.yml"
-  - type: "connector"
-    path: "../../connectors/sportradar-soccer/sportradar-soccer.yml"
-
-  # setup agent
-  - type: "agent"
-    path: "_setup.yml"
-
-  # stats scheduler
-  - type: "agent"
-    path: "_scheduler.yml"
-  
   # mappings
-  - type: "mappings"
-    path: "_mappings.yml"
-  
+  - type: mapping
+    path: mappings/api-football-mapping.yml
+
   # prompts
-  - type: "prompts"
-    path: "_prompts.yml"
-
-  # folders
-  - type: "workflow"
-    path: "_folders.yml"
-
-  ## WORKFLOWS
+  - type: prompt
+    path: prompts/chat-completions.yml
+  - type: prompt
+    path: prompts/embedding-comparison.yml
+  - type: prompt
+    path: prompts/embedding-players-to-watch.yml
+  - type: prompt
+    path: prompts/embedding-standings.yml
+  - type: prompt
+    path: prompts/competitor-stats-summary.yml
+  - type: prompt
+    path: prompts/result-score-summary.yml
+  - type: prompt
+    path: prompts/generate-news-queries.yml
+  - type: prompt
+    path: prompts/embedding-news.yml
 
   # workflows
-  - type: "workflow"
-    path: "chat-completions.yml"
-
-  # workflow to generate embeddings
-  - type: "workflow"
-    path: "soccer-embeddings.yml"
-
-  # workflow to generate fun facts
-  - type: "workflow"
-    path: "soccer-live-event.yml"
-
-  # workflow to generate live event
-  - type: "workflow"
-    path: "soccer-pre-event.yml"
-
-  # workflow to sync soccer team
-  - type: "workflow"
-    path: "team-events-sync.yml"
-    
+  - type: workflow
+    path: workflows/soccer-embeddings.yml
+  - type: workflow
+    path: workflows/soccer-live-event.yml
+  - type: workflow
+    path: workflows/soccer-pre-event.yml
+  - type: workflow
+    path: workflows/team-events-sync.yml
+  - type: workflow
+    path: workflows/chat-completions.yml
+  - type: workflow
+    path: workflows/populate-folders.yml
