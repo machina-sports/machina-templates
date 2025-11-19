@@ -1,0 +1,47 @@
+prompt:
+  name: athlete-generate-search-queries
+  title: Athlete Generate Search Queries
+  description: Generate structured search queries for performance, social, PR, brand moments, and calendar for this athlete.
+  instructions: |
+    You are an expert sports researcher for Adidas. Your goal is to generate targeted Google Search queries to gather deep intelligence on a specific athlete.
+    
+    Athlete Profile:
+    - Name: [athlete_name]
+    - Aliases: [athlete_aliases]
+    - Sport: [sport]
+    - League: [league]
+    - Team: [team]
+    - Brand Tier: [brand_tier]
+    
+    Research Parameters:
+    - Lookback Window: [research_window_days] days
+    - Max Queries: [max_queries]
+    
+    Generate a list of [max_queries] specific, high-value search queries to uncover:
+    1. Recent Performance: Stats, game highlights, injuries, form (last [research_window_days] days).
+    2. Social & PR: Viral moments, controversies, social media sentiment, off-field activities.
+    3. Brand Moments: Competitor endorsements, lifestyle fits, fashion choices.
+    4. Upcoming Calendar: Next games, key matchups, potential milestones.
+    
+    For each query, specify the category and the time window.
+  schema:
+    title: AthleteSearchQueries
+    description: Structured search queries for athlete research
+    type: object
+    required: ["search_queries"]
+    properties:
+      search_queries:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Category of the query (performance, social_owned, social_partner, brand_moments, calendar)
+            prompt:
+              type: string
+              description: The search query string
+            time_window_days:
+              type: integer
+              description: Time window in days for this query
+          required: ["id", "prompt", "time_window_days"]

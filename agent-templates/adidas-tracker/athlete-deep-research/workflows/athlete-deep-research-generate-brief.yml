@@ -1,0 +1,169 @@
+workflow:
+  name: athlete-deep-research-generate-brief
+  title: Athlete Deep Research Generate Brief
+  description: Workflow to run deep web research on an athlete and generate an internal activation brief based on structured facts from Google Search grounded Gemini.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+
+  inputs:
+    document_id: "$.get('document_id')"
+    max_queries: "$.get('max_queries', 5)"
+    research_window_days: "$.get('research_window_days', 14)"
+    language: "$.get('language', 'en')"
+
+  outputs:
+    workflow-status: "$.get('workflow-status')"
+    athlete_snapshot: "$.get('athlete_snapshot', {})"
+    athlete_tile_summary: "$.get('athlete_tile_summary')"
+    athlete_detailed_brief: "$.get('athlete_detailed_brief')"
+
+  tasks:
+    - type: document
+      name: load-athlete-profile
+      description: Load athlete profile from documents by document_id
+      condition: "$.get('document_id') is not None"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      filters:
+        document_id: "$.get('document_id')"
+      inputs:
+        name: "'athlete-profile'"
+      outputs:
+        document-exists: "len($.get('documents', [])) > 0"
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+        athlete_profile: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else {}"
+        athlete_name: "$.get('documents', [])[0].get('value', {}).get('athlete_name') if len($.get('documents', [])) > 0 else None"
+        athlete_aliases: "$.get('documents', [])[0].get('value', {}).get('athlete_aliases', []) if len($.get('documents', [])) > 0 else []"
+        athlete_sport: "$.get('documents', [])[0].get('value', {}).get('sport') if len($.get('documents', [])) > 0 else None"
+        athlete_league: "$.get('documents', [])[0].get('value', {}).get('league') if len($.get('documents', [])) > 0 else None"
+        athlete_team: "$.get('documents', [])[0].get('value', {}).get('team') if len($.get('documents', [])) > 0 else None"
+        athlete_brand_tier: "$.get('documents', [])[0].get('value', {}).get('brand_tier') if len($.get('documents', [])) > 0 else None"
+        athlete_primary_market: "$.get('documents', [])[0].get('value', {}).get('primary_market') if len($.get('documents', [])) > 0 else None"
+        athlete_language_pref: "$.get('documents', [])[0].get('value', {}).get('language', 'en') if len($.get('documents', [])) > 0 else 'en'"
+        last_snapshot: "$.get('documents', [])[0].get('value', {}).get('athlete_snapshot', {}) if len($.get('documents', [])) > 0 else {}"
+
+    - type: prompt
+      name: athlete-generate-search-queries
+      description: Generate structured search queries for performance, social, PR, brand moments, and calendar for this athlete.
+      condition: "$.get('athlete_name') is not None and $.get('athlete_sport') is not None"
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        athlete_name: "$.get('athlete_name')"
+        athlete_aliases: "$.get('athlete_aliases', [])"
+        sport: "$.get('athlete_sport')"
+        league: "$.get('athlete_league')"
+        team: "$.get('athlete_team')"
+        brand_tier: "$.get('athlete_brand_tier')"
+        research_window_days: "$.get('research_window_days', 14)"
+        max_queries: "$.get('max_queries', 5)"
+      outputs:
+        search_queries: "$.get('search_queries', [])"
+
+    - type: connector
+      name: search-google
+      description: Search Google Gemini using Google Search grounding per generated search query.
+      condition: "$.get('search_queries') is not None and len($.get('search_queries', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-2.5-flash
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: "$"
+        value: "$.get('search_queries')"
+      inputs:
+        location: "$.get('location', 'global')"
+        search_query: "$.get('search_query', {})"
+      outputs:
+        search_response: |
+          [
+            $.get('answer', '')
+          ]
+
+    - type: prompt
+      name: athlete-aggregate-research
+      description: Aggregate search responses into a structured athlete_snapshot with performance, social, brand moments, calendar, and activation ideas.
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        athlete_name: "$.get('athlete_name')"
+        sport: "$.get('athlete_sport')"
+        league: "$.get('athlete_league')"
+        team: "$.get('athlete_team')"
+        brand_tier: "$.get('athlete_brand_tier')"
+        primary_market: "$.get('athlete_primary_market')"
+        search_response: "$.get('search_response', [])"
+        last_snapshot: "$.get('last_snapshot', {})"
+      outputs:
+        athlete_snapshot: "$.get('athlete_snapshot', {})"
+        athlete_tile_summary: "$.get('tile_summary')"
+        athlete_detailed_brief: "$.get('detailed_brief')"
+        athlete_newsletter_markdown: "$.get('newsletter_markdown')"
+
+    - type: prompt
+      name: athlete-brief-translate-prompt
+      description: Translate athlete brief to the target language if athlete profile language is not English.
+      condition: "$.get('athlete_language_pref') is not None and $.get('athlete_language_pref') != 'en'"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        detailed_brief: "$.get('athlete_detailed_brief')"
+        tile_summary: "$.get('athlete_tile_summary')"
+        newsletter_markdown: "$.get('athlete_newsletter_markdown')"
+        language: "$.get('athlete_language_pref', 'en')"
+        athlete_name: "$.get('athlete_name')"
+      outputs:
+        athlete_detailed_brief: "$.get('detailed_brief')"
+        athlete_tile_summary: "$.get('tile_summary')"
+        athlete_newsletter_markdown: "$.get('newsletter_markdown')"
+
+    - type: document
+      name: version-control-update-athlete
+      description: Update the athlete profile document with the latest athlete_snapshot and briefs.
+      condition: "$.get('document-exists') is True and $.get('athlete_snapshot') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        athlete-profile: |
+          {
+            **$.get('document-value', {}),
+            "athlete_snapshot": $.get('athlete_snapshot'),
+            "athlete_tile_summary": $.get('athlete_tile_summary'),
+            "athlete_detailed_brief": $.get('athlete_detailed_brief'),
+            "athlete_newsletter_markdown": $.get('athlete_newsletter_markdown'),
+            "last_synced_at": $.get('athlete_snapshot', {}).get('snapshot_at'),
+            "last_heat_score": $.get('athlete_snapshot', {}).get('sentiment_and_heat', {}).get('heat_score')
+          }
+      outputs:
+        workflow-status: "'executed'"

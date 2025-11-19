@@ -1,0 +1,29 @@
+prompt:
+  name: athlete-brief-translate-prompt
+  title: Athlete Brief Translate
+  description: Translate athlete brief to the target language.
+  instructions: |
+    Translate the following athlete brief materials for [athlete_name] into [language].
+    Maintain the professional tone and sports terminology appropriate for [language].
+    
+    Input:
+    Detailed Brief:
+    [detailed_brief]
+    
+    Tile Summary:
+    [tile_summary]
+    
+    Newsletter Markdown:
+    [newsletter_markdown]
+  schema:
+    title: AthleteBriefTranslation
+    description: Translated athlete brief materials
+    type: object
+    required: ["detailed_brief", "tile_summary", "newsletter_markdown"]
+    properties:
+      detailed_brief:
+        type: string
+      tile_summary:
+        type: string
+      newsletter_markdown:
+        type: string
