@@ -42,6 +42,9 @@ datasets:
     path: workflows/sync-standings.yml
 
   - type: workflow
+    path: workflows/sync-match-stats.yml
+
+  - type: workflow
     path: workflows/sync-transfers.yml
 
   - type: agent
