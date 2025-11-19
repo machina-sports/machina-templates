@@ -80,7 +80,7 @@ workflow:
         command: invoke_embedding
         model: text-embedding-3-small
       filters:
-        "value.sport:status": "{'$in': ['closed', 'ended']}"
+        "value.sport:status": "{'$in': ['Played', 'closed', 'ended']}"
         "value.schema:startDate": |
           {
             "$gt": $.get('search_date_interval', {}).get('start_date') + "T07:00:00+00:00" if $.get('search_date_interval', {}).get('start_date') else None,
@@ -138,7 +138,7 @@ workflow:
         command: invoke_embedding
         model: text-embedding-3-small
       filters:
-        "value.sport:status": "{'$in': ['closed', 'ended']}"
+        "value.sport:status": "{'$in': ['Played', 'closed', 'ended']}"
         "value.schema:startDate": |
           {
             "$gt": (datetime.fromisoformat($.get('search_date_interval', {}).get('start_date')) - timedelta(days=60)).strftime('%Y-%m-%d') + "T07:00:00+00:00" if $.get('search_date_interval', {}).get('start_date') else (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d') + "T07:00:00+00:00",
