@@ -116,7 +116,31 @@ Synchronize team standings (league table/classificação).
 
 **Note:** Returns ALL division types (total, home, away, form, etc.) in a single call.
 
-#### 6. **sync-transfers.yml** (`sp-opta-sync-transfers`)
+#### 6. **sync-match-stats.yml** (`sp-opta-sync-match-stats`)
+Synchronize detailed match statistics.
+
+**Inputs:**
+- `match_id` (required): The match/fixture UUID
+
+**Features:**
+- Checks for expired data (24-hour cache)
+- Fetches detailed match statistics including:
+  - Match info (teams, venue, competition, etc.)
+  - Live data (match details, periods, lineups)
+  - Team statistics (formation, aggregated stats)
+  - Individual player statistics (passes, shots, tackles, etc.)
+- Saves 3 types of documents:
+  - Complete match data (1 doc)
+  - Team statistics per match (2 docs - one per team)
+  - Player statistics per match (~46 docs - all players)
+
+**Outputs:**
+- `match_stats`: Complete match statistics data
+- `workflow-status`: 'executed' or 'skipped'
+
+**Note:** Requires match_id (fixture UUID). Use `sync-schedules` first to get match IDs.
+
+#### 7. **sync-transfers.yml** (`sp-opta-sync-transfers`)
 Synchronize player transfer data.
 
 **Inputs:**
@@ -199,7 +223,22 @@ workflow:
         tournament_calendar_id: $.get('tournament_calendar_id')
 ```
 
-### Example 4: Use the Sync Agent
+### Example 4: Get Match Statistics
+
+```yaml
+workflow:
+  name: get-match-stats
+  inputs:
+    match_id: "abc123xyz"  # Match ID from sync-schedules
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-match-stats
+      inputs:
+        match_id: $.get('match_id')
+```
+
+### Example 5: Use the Sync Agent
 
 Execute the agent using the Machina API:
 
@@ -228,7 +267,7 @@ Common Opta Soccer API endpoints you can use with `invoke-request`:
 | `tournamentcalendar` | Tournament calendars and seasons | `comp={competition_id}` |
 | `tournamentschedule` | Match schedules | `comp={competition_id}`, `seasonId={season_id}` |
 | `match` | Fixtures and results | `comp={competition_id}` |
-| `matchstats` | Match statistics | `matchId={match_id}` |
+| `matchstats` | Match statistics (detailed) | `matchId={match_id}` |
 | `matchevent` | Match events | `matchId={match_id}` |
 | `standings` | Team standings (league table) | `tmcl={tournament_calendar_id}` |
 | `squads` | Team squads | `tmcl={team_id}` |
@@ -255,6 +294,9 @@ The sync workflows create the following document types:
 - `sport:Event`: Match/fixture events (standardized format)
 - `sp-standings`: Aggregated league table/standings data
 - `sp-team-standing`: Individual team standing/position in league table
+- `sp-match-stats`: Complete match data (match info + live data)
+- `sp-team-match-stats`: Team statistics for a match (formation, aggregated stats)
+- `sp-player-match-stats`: Individual player statistics for a match
 - `synchronization`: Metadata documents for sync tracking
 
 ## Authentication Flow
