@@ -18,6 +18,7 @@ mappings:
     title: Assistant - Prepare Reasoning
     description: Prepare reasoning
     outputs:
+      analysis_mode: $.get('document_value', {}).get('status-reasoning', {}).get('analysis_mode', 'single')
       market_query: $.get('document_value', {}).get('status-reasoning', {}).get('market_query', None)
       odd_from: $.get('document_value', {}).get('status-reasoning', {}).get('odd_from', None)
       odd_to: $.get('document_value', {}).get('status-reasoning', {}).get('odd_to', None)

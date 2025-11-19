@@ -67,6 +67,7 @@ workflow:
       inputs:
         document_value: $.get('document_value')
       outputs:
+        analysis_mode: $.get('analysis_mode', 'single')
         market-query: $.get('market_query')
         runner-query: $.get('runner_query')
         search_date_interval: $.get('search_date_interval')
@@ -87,7 +88,7 @@ workflow:
       condition: $.get('search_query') is not None
       config:
         action: search
-        threshold-docs: 3
+        threshold-docs: "15 if $.get('analysis_mode') in ['round', 'multiple'] else 3"
         threshold-similarity: 0.01
         search-limit: 1000
         search-sorters: ["value.startDate", 1]
@@ -99,6 +100,7 @@ workflow:
       filters:
         '$or': "[{'value.startDate':{'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}, {'value.startDateUtc': {'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}]"
         value.isOpenForBetting: "{'$eq': True}"
+        value.type: "{'$ne': 'Tournament'} if $.get('analysis_mode') in ['round', 'multiple'] else None"
       inputs:
         name: "'game-market'"
         search-query: |
@@ -121,7 +123,7 @@ workflow:
     # assistant-grade-first-selection
     - type: prompt
       name: assistant-grade-first-selection
-      condition: $.get('events-parsed') is not None and len($.get('events-parsed', [])) > 0
+      condition: $.get('events-parsed') is not None and len($.get('events-parsed', [])) > 0 and $.get('analysis_mode') == 'single'
       continue_on_error: true
       connector:
         command: invoke_prompt
@@ -137,10 +139,10 @@ workflow:
         grade_selected_event: $.get('grade_selected_event', False)
         has_events: $.get('grade_selected_event', False)
 
-    # assistant-find-markets-events (fallback)
+    # assistant-find-markets-events (multiple events selection)
     - type: prompt
       name: assistant-find-markets-events
-      condition: $.get('events-parsed') is not None and $.get('grade_selected_event') is not True
+      condition: $.get('events-parsed') is not None and ($.get('grade_selected_event') is not True or $.get('analysis_mode') in ['round', 'multiple'])
       connector:
         command: invoke_prompt
         name: google-genai

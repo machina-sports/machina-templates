@@ -11,7 +11,7 @@ prompts:
       INTENT CLASSIFICATION:
       - MULTIPLE commands can be true at once - they work together to provide complete information.
       - Use is_find_event for finding/listing events.
-      - Use is_find_markets when user asks about odds, betting markets, specific betting information, predictions, tips, prognoses, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results.
+      - Use is_find_markets when user asks about ANYTHING related to betting: odds, apostas, melhores odds, mercados, betting markets, specific betting information, predictions, tips, prognoses, valor, +EV, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results.
       - Use is_find_insights when user asks about statistics, lineups, scorers, team form, head-to-head, injuries, or detailed event analysis.
       - Use is_find_faq when user asks FAQ-related questions or needs help with general platform/service questions.
       - Use is_find_odds_range when user specifies an odds range filter (e.g., "odds between 1.50 and 2.50", "odds entre 1.8 e 2.2", "odds from 2.0 to 3.0").
@@ -21,9 +21,21 @@ prompts:
       COMBINED EXECUTION:
       - When is_find_markets=true, ALWAYS set is_find_event=true as well.
       - When is_find_insights=true, ALWAYS set is_find_event=true as well.
+      - When user asks about "odds", "apostas", "melhores odds", "mercados", "betting", "valor", "+EV" in context of events/rounds → set BOTH is_find_event=true AND is_find_markets=true.
       - is_find_faq typically runs alone unless user explicitly asks about both.
       
       SEARCH QUERY: Extract full team/player names with competition when available. Omit unknown teams.
+      
+      ANALYSIS MODE DETECTION:
+      - "single": User asks about ONE specific match (e.g., "Flamengo vs Palmeiras", "jogo do Chelsea")
+      - "round": User asks about a ROUND or MULTIPLE matches (e.g., "próxima rodada", "jogos de hoje", "rodada do Brasileirão", "all matches tomorrow")
+      - "multiple": User explicitly mentions MULTIPLE specific matches (e.g., "Flamengo vs Palmeiras e Corinthians vs Santos")
+      - Default to "single" when unclear or asking about general odds without specifying scope
+      
+      EVENT TYPE FILTERING (when analysis_mode is "round" or "multiple"):
+      - Exclude "Tournament" type events (Championship Winner, Top 4 Finish, etc.)
+      - Focus on "Match" type events only
+      - This ensures queries about "rodada" return actual games, not season-long markets
       
       DATES & SORT (for is_find_event):
       - end_date must be NEXT DAY to cover full 24h.
@@ -62,6 +74,7 @@ prompts:
         "is_find_insights",
         "is_find_markets",
         "is_find_odds_range",
+        "analysis_mode",
         "search_date_interval",
         "search_query",
         "search_sort",
@@ -84,10 +97,20 @@ prompts:
           description: User asks about statistics, lineups, scorers, team form, head-to-head records, injuries, or detailed event analysis.
         is_find_markets:
           type: boolean
-          description: User asks about odds, betting markets, specific betting information, predictions, tips, prognoses, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results. When true, is_find_event should also be true.
+          description: User asks about ANYTHING related to betting - odds, apostas, melhores odds, mercados, betting markets, specific betting information, predictions, tips, prognoses, valor, +EV, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results. CRITICAL - When ANY betting-related keyword is mentioned (odds, apostas, mercados, valor, +EV), this MUST be true along with is_find_event.
         is_find_odds_range:
           type: boolean
           description: User specifies an odds range filter for betting markets (e.g., "odds between 1.50 and 2.50", "odds entre 1.8 e 2.2"). When true, both odd_from and odd_to should be populated with numeric values.
+        
+        analysis_mode:
+          type: string
+          enum: ["single", "multiple", "round"]
+          description: |
+            Determines analysis scope based on user query:
+            - "single": User asks about ONE specific match
+            - "round": User asks about a ROUND or ALL matches in a timeframe/competition
+            - "multiple": User explicitly mentions MULTIPLE specific matches
+            Default to "single" when unclear.
         
         # Common fields (populate when is_find_event OR is_find_markets is true, otherwise omit)
         search_date_interval:

@@ -6,20 +6,24 @@ prompts:
     title: Assistant Find Events Selector
     description: Selects relevant events from search results based on user query and time context
     instruction: |
-      Select events by index that MATCH the user query. Extract team/player names from user query and compare against event descriptions.
+      Select events by index that MATCH or are RELEVANT to the user query. Use flexible matching to identify related events.
 
       MATCHING RULES:
-      - If user mentions team name, ONLY select events containing that exact team
-      - Compare team names case-insensitively
-      - Verify each selected index actually contains relevant teams/keywords
-      - If no events match, return []
+      - COMPETITION MATCH: If user mentions competition name (e.g., "Brasileirão", "Premier League", "Champions League"), return ALL events from that competition
+      - TEAM MATCH: If user mentions specific team name, return events containing that team (fuzzy matching: "Flamengo" matches "CR Flamengo RJ")
+      - GENERIC QUERIES: "próximos jogos", "jogos de hoje", "next matches" → return ALL events found
+      - ROUND/RODADA: "próxima rodada", "round" → return ALL events from the same competition/timeframe
+      - Compare team and competition names case-insensitively and with partial matching
+      - If events share same competition in description, they are likely related
+      - Only return [] if truly NO events are relevant
 
       QUANTITY:
-      SINGULAR ("match", "game", "the next"): Return ONLY index 0 (most relevant matching event)
-      PLURAL ("matches", "games", "show me"): Return all matching indices up to 3 max
-      EXPLICIT ALL ("all matches", "list all"): Return all matching indices up to 5 max
+      - SPECIFIC TEAM ("Flamengo", "Chelsea"): Return events with that team (1-2 events)
+      - COMPETITION ("Brasileirão", "Premier League"): Return ALL events from that competition (up to 15)
+      - ROUND/GENERIC ("próxima rodada", "jogos de hoje"): Return ALL events (up to 15)
+      - SINGULAR ("the match", "o jogo"): Return ONLY index 0
       
-      CRITICAL: Only return indices that exist and match the query.
+      CRITICAL: Be GENEROUS with matching. If in doubt about relevance, INCLUDE the event.
     schema:
       title: AssistantFindEventsSelector
       description: Selects events by array index based on user query
@@ -30,6 +34,6 @@ prompts:
       properties:
         selected_events:
           type: array
-          description: Array of event indices that match the user query. Conservative selection - typically 1-2 events for specific questions, up to 3-4 for broader searches.
+          description: Array of event indices that match or are relevant to the user query. Be GENEROUS - for competition queries or rounds, return ALL related events (up to 15). For specific teams, return 1-2 events. Only return empty array if NO events are relevant.
           items:
             type: integer
