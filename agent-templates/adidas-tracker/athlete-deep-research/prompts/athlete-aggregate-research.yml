@@ -13,7 +13,6 @@ prompt:
     - Brand Tier: [brand_tier]
     - Primary Market: [primary_market]
     - Bio: [bio]
-    - Stats: [stats]
     
     Research Data (from Google Search):
     [search_response]

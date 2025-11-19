@@ -14,7 +14,6 @@ prompt:
     - Position: [position]
     - Brand Tier: [brand_tier]
     - Bio: [bio]
-    - Stats: [stats]
     - Social Media: [social_media]
     
     Research Parameters:
