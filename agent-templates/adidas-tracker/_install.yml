@@ -76,6 +76,9 @@ datasets:
   - type: "workflow"
     path: "athlete-deep-research/workflows/athlete-deep-research-generate-brief.yml"
 
+  - type: "workflow"
+    path: "athlete-deep-research/workflows/athlete-deep-research-ingest.yml"
+
   - type: "prompt"
     path: "athlete-deep-research/prompts/athlete-generate-search-queries.yml"
 
