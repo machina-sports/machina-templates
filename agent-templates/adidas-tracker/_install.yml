@@ -81,6 +81,3 @@ datasets:
 
   - type: "prompt"
     path: "athlete-deep-research/prompts/athlete-aggregate-research.yml"
-
-  - type: "prompt"
-    path: "athlete-deep-research/prompts/athlete-brief-translate-prompt.yml"

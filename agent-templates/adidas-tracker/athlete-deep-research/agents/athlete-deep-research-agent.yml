@@ -10,7 +10,6 @@ agent:
     team: $.get('team')
     brand_tier: $.get('brand_tier')
     primary_market: $.get('primary_market')
-    language: $.get('language')
   workflows:
     - name: athlete-deep-research-generate-brief
       description: "Run deep web research on an athlete and generate an internal activation brief."
@@ -18,7 +17,6 @@ agent:
         document_id: "$.get('document_id')"
         max_queries: "$.get('max_queries', 5)"
         research_window_days: "$.get('research_window_days', 14)"
-        language: "$.get('language', 'en')"
       outputs:
         workflow-status: "$.get('workflow-status')"
         athlete_snapshot: "$.get('athlete_snapshot')"

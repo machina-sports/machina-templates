@@ -11,7 +11,11 @@ prompt:
     - Sport: [sport]
     - League: [league]
     - Team: [team]
+    - Position: [position]
     - Brand Tier: [brand_tier]
+    - Bio: [bio]
+    - Stats: [stats]
+    - Social Media: [social_media]
     
     Research Parameters:
     - Lookback Window: [research_window_days] days

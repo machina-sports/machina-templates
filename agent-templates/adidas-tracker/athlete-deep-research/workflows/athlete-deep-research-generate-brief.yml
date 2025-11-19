@@ -16,7 +16,6 @@ workflow:
     document_id: "$.get('document_id')"
     max_queries: "$.get('max_queries', 5)"
     research_window_days: "$.get('research_window_days', 14)"
-    language: "$.get('language', 'en')"
 
   outputs:
     workflow-status: "$.get('workflow-status')"
@@ -50,6 +49,10 @@ workflow:
         athlete_sport: "$.get('documents', [])[0].get('value', {}).get('sport') if len($.get('documents', [])) > 0 else None"
         athlete_league: "$.get('documents', [])[0].get('value', {}).get('league') if len($.get('documents', [])) > 0 else None"
         athlete_team: "$.get('documents', [])[0].get('value', {}).get('team') if len($.get('documents', [])) > 0 else None"
+        athlete_position: "$.get('documents', [])[0].get('value', {}).get('position') if len($.get('documents', [])) > 0 else None"
+        athlete_bio: "$.get('documents', [])[0].get('value', {}).get('bio') if len($.get('documents', [])) > 0 else None"
+        athlete_stats: "$.get('documents', [])[0].get('value', {}).get('stats') if len($.get('documents', [])) > 0 else {}"
+        athlete_social_media: "$.get('documents', [])[0].get('value', {}).get('social_media') if len($.get('documents', [])) > 0 else {}"
         athlete_brand_tier: "$.get('documents', [])[0].get('value', {}).get('brand_tier') if len($.get('documents', [])) > 0 else None"
         athlete_primary_market: "$.get('documents', [])[0].get('value', {}).get('primary_market') if len($.get('documents', [])) > 0 else None"
         athlete_language_pref: "$.get('documents', [])[0].get('value', {}).get('language', 'en') if len($.get('documents', [])) > 0 else 'en'"
@@ -71,6 +74,10 @@ workflow:
         sport: "$.get('athlete_sport')"
         league: "$.get('athlete_league')"
         team: "$.get('athlete_team')"
+        position: "$.get('athlete_position')"
+        bio: "$.get('athlete_bio')"
+        stats: "$.get('athlete_stats')"
+        social_media: "$.get('athlete_social_media')"
         brand_tier: "$.get('athlete_brand_tier')"
         research_window_days: "$.get('research_window_days', 14)"
         max_queries: "$.get('max_queries', 5)"
@@ -113,6 +120,9 @@ workflow:
         sport: "$.get('athlete_sport')"
         league: "$.get('athlete_league')"
         team: "$.get('athlete_team')"
+        position: "$.get('athlete_position')"
+        bio: "$.get('athlete_bio')"
+        stats: "$.get('athlete_stats')"
         brand_tier: "$.get('athlete_brand_tier')"
         primary_market: "$.get('athlete_primary_market')"
         search_response: "$.get('search_response', [])"
@@ -121,27 +131,6 @@ workflow:
         athlete_snapshot: "$.get('athlete_snapshot', {})"
         athlete_tile_summary: "$.get('tile_summary')"
         athlete_detailed_brief: "$.get('detailed_brief')"
-        athlete_newsletter_markdown: "$.get('newsletter_markdown')"
-
-    - type: prompt
-      name: athlete-brief-translate-prompt
-      description: Translate athlete brief to the target language if athlete profile language is not English.
-      condition: "$.get('athlete_language_pref') is not None and $.get('athlete_language_pref') != 'en'"
-      connector:
-        name: google-genai
-        command: invoke_prompt
-        model: gemini-2.5-flash
-        location: global
-        provider: vertex_ai
-      inputs:
-        detailed_brief: "$.get('athlete_detailed_brief')"
-        tile_summary: "$.get('athlete_tile_summary')"
-        newsletter_markdown: "$.get('athlete_newsletter_markdown')"
-        language: "$.get('athlete_language_pref', 'en')"
-        athlete_name: "$.get('athlete_name')"
-      outputs:
-        athlete_detailed_brief: "$.get('detailed_brief')"
-        athlete_tile_summary: "$.get('tile_summary')"
         athlete_newsletter_markdown: "$.get('newsletter_markdown')"
 
     - type: document
