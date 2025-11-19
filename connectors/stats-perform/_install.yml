@@ -39,6 +39,9 @@ datasets:
     path: workflows/sync-schedules.yml
 
   - type: workflow
+    path: workflows/sync-standings.yml
+
+  - type: workflow
     path: workflows/sync-transfers.yml
 
   - type: agent

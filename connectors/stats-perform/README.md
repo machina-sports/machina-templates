@@ -94,8 +94,45 @@ Synchronize match schedules for a competition/season.
 - `schedules`: Array of match objects
 - `workflow-status`: 'executed' or 'skipped'
 
-#### 5. **example-sync-all.yml** (`sp-opta-example-sync-all`)
-Example workflow showing how to use all sync workflows together.
+#### 5. **sync-standings.yml** (`sp-opta-sync-standings`)
+Synchronize team standings (league table/classificação).
+
+**Inputs:**
+- `tournament_calendar_id` (required): The season/tournament calendar ID
+
+**Features:**
+- Checks for expired data (6-hour cache)
+- Fetches complete league table with:
+  - Team position, points, games played
+  - Wins, draws, losses
+  - Goals scored, conceded, and goal difference
+  - All division types (total, home, away, form, etc.)
+- Links to season document
+- Saves aggregated standings and individual team standings
+
+**Outputs:**
+- `standings`: Complete league table data
+- `workflow-status`: 'executed' or 'skipped'
+
+**Note:** Returns ALL division types (total, home, away, form, etc.) in a single call.
+
+#### 6. **sync-transfers.yml** (`sp-opta-sync-transfers`)
+Synchronize player transfer data.
+
+**Inputs:**
+- `contestant_id` (required): Team/contestant ID
+- `competition_id` (optional): Competition ID
+- `strt_dt` (optional): Start date for transfers
+- `end_dt` (optional): End date for transfers
+
+**Features:**
+- Fetches player transfer information
+- Supports date range filtering
+
+**Outputs:**
+- `transfers`: Array of transfer objects
+- `transfers_raw`: Raw API response
+- `workflow-status`: 'executed'
 
 ### Agent (`agents/sp-opta-sync.yml`)
 
@@ -147,7 +184,22 @@ workflow:
         competition_id: $.get('competition_id')
 ```
 
-### Example 3: Use the Sync Agent
+### Example 3: Get Team Standings (League Table)
+
+```yaml
+workflow:
+  name: get-standings
+  inputs:
+    tournament_calendar_id: "9pqtmpr3w8jm73y0eb8hmum8k"  # Season ID from sync-seasons
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-standings
+      inputs:
+        tournament_calendar_id: $.get('tournament_calendar_id')
+```
+
+### Example 4: Use the Sync Agent
 
 Execute the agent using the Machina API:
 
@@ -178,7 +230,7 @@ Common Opta Soccer API endpoints you can use with `invoke-request`:
 | `match` | Fixtures and results | `comp={competition_id}` |
 | `matchstats` | Match statistics | `matchId={match_id}` |
 | `matchevent` | Match events | `matchId={match_id}` |
-| `standings` | Team standings | `comp={competition_id}` |
+| `standings` | Team standings (league table) | `tmcl={tournament_calendar_id}` |
 | `squads` | Team squads | `tmcl={team_id}` |
 
 For a complete list, see the [Stats Perform Opta API Documentation](https://developer.statsperform.com/).
@@ -199,7 +251,10 @@ The sync workflows create the following document types:
 
 - `sp-competition`: Individual competition/tournament
 - `sp-season`: Individual season within a competition
+- `sp-team`: Team/contestant information
 - `sport:Event`: Match/fixture events (standardized format)
+- `sp-standings`: Aggregated league table/standings data
+- `sp-team-standing`: Individual team standing/position in league table
 - `synchronization`: Metadata documents for sync tracking
 
 ## Authentication Flow
