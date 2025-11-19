@@ -66,3 +66,21 @@ datasets:
 
   - type: "workflow"
     path: "statistics/scripts.yml"
+
+  - type: "connector"
+    path: "../../connectors/google-genai/google-genai.yml"
+
+  - type: "agent"
+    path: "athlete-deep-research/agents/athlete-deep-research-agent.yml"
+
+  - type: "workflow"
+    path: "athlete-deep-research/workflows/athlete-deep-research-generate-brief.yml"
+
+  - type: "workflow"
+    path: "athlete-deep-research/workflows/athlete-deep-research-ingest.yml"
+
+  - type: "prompt"
+    path: "athlete-deep-research/prompts/athlete-generate-search-queries.yml"
+
+  - type: "prompt"
+    path: "athlete-deep-research/prompts/athlete-aggregate-research.yml"

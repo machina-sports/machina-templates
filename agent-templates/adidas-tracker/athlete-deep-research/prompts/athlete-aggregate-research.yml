@@ -1,0 +1,80 @@
+prompt:
+  name: athlete-aggregate-research
+  title: Athlete Aggregate Research
+  description: Aggregate search responses into a structured athlete_snapshot with performance, social, brand moments, calendar, and activation ideas.
+  instructions: |
+    You are a senior sports marketing strategist at Adidas. Analyze the following research data for [athlete_name] and generate a comprehensive activation brief.
+    
+    Athlete Context:
+    - Sport: [sport]
+    - League: [league]
+    - Team: [team]
+    - Position: [position]
+    - Brand Tier: [brand_tier]
+    - Primary Market: [primary_market]
+    - Bio: [bio]
+    
+    Research Data (from Google Search):
+    [search_response]
+    
+    Previous Snapshot (for context):
+    [last_snapshot]
+    
+    Your Task:
+    1. Synthesize the research into a structured "Athlete Snapshot".
+    2. Identify key "Activation Opportunities" for Adidas (e.g., reacting to a win, leveraging a viral moment, preparing for a milestone).
+    3. Calculate a "Heat Score" (0-100) based on current buzz, performance, and relevance.
+    4. Write a "Detailed Brief" for the internal marketing team.
+    5. Write a "Tile Summary" (one sentence) for the dashboard.
+    6. Write a "Newsletter Section" (markdown) for the weekly report.
+  schema:
+    title: AthleteSnapshot
+    description: Structured athlete snapshot and brief
+    type: object
+    required: ["athlete_snapshot", "tile_summary", "detailed_brief", "newsletter_markdown"]
+    properties:
+      athlete_snapshot:
+        type: object
+        properties:
+          snapshot_at:
+            type: string
+            description: ISO 8601 timestamp
+          performance_summary:
+            type: object
+            properties:
+              details: {type: string}
+              sentiment: {type: string}
+          social_pr_summary:
+            type: object
+            properties:
+              details: {type: string}
+              sentiment: {type: string}
+          brand_moments:
+            type: array
+            items: {type: string}
+          upcoming_calendar:
+            type: object
+            properties:
+              next_match: {type: string}
+              milestones: {type: string}
+          sentiment_and_heat:
+            type: object
+            properties:
+              heat_score: {type: integer}
+              flags: {type: array, items: {type: string}}
+          activation_opportunities:
+            type: array
+            items:
+              type: object
+              properties:
+                idea: {type: string}
+                rationale: {type: string}
+          raw_sources:
+            type: array
+            items: {type: string}
+      tile_summary:
+        type: string
+      detailed_brief:
+        type: string
+      newsletter_markdown:
+        type: string
