@@ -19,6 +19,7 @@ mappings:
     description: Prepare reasoning
     outputs:
       analysis_mode: $.get('document_value', {}).get('status-reasoning', {}).get('analysis_mode', 'single')
+      is_build_parlay: $.get('document_value', {}).get('status-reasoning', {}).get('is_build_parlay', False)
       market_query: $.get('document_value', {}).get('status-reasoning', {}).get('market_query', None)
       odd_from: $.get('document_value', {}).get('status-reasoning', {}).get('odd_from', None)
       odd_to: $.get('document_value', {}).get('status-reasoning', {}).get('odd_to', None)
@@ -31,6 +32,7 @@ mappings:
       search_query: $.get('document_value', {}).get('status-reasoning', {}).get('search_query', None)
       search_sort: $.get('document_value', {}).get('status-reasoning', {}).get('search_sort', 'future')
       sport_id: $.get('document_value', {}).get('status-reasoning', {}).get('sport_id', '4')
+      target_odd: $.get('document_value', {}).get('status-reasoning', {}).get('target_odd', None)
       vector_query: $.get('document_value', {}).get('status-reasoning', {}).get('vector_query', False)
       vector_search: $.get('document_value', {}).get('status-reasoning', {}).get('vector_search', False)
 
@@ -45,6 +47,14 @@ mappings:
           market.get('title', '')
           for market in $.get('market-docs', [])
         ])
+
+  # assistant-prepare-parlay-docs
+  - type: mapping
+    name: assistant-prepare-parlay-docs
+    title: Assistant - Prepare Parlay Docs
+    description: Prepare parlay bet docs - pass through as-is
+    outputs:
+      market-docs: $.get('market-docs')
 
   # assistant-prepare-market-finder-verification
   - type: mapping

@@ -13,7 +13,7 @@ workflow:
   inputs:
     competition_id: "$.get('competition_id')"
     season_id: "$.get('season_id', None)"
-    pages_to_fetch: "$.get('pages_to_fetch', [10, 11])"
+    pages_to_fetch: "$.get('pages_to_fetch', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])"
     page_size: "$.get('page_size', 30)"
   outputs:
     schedules: "$.get('schedules')"

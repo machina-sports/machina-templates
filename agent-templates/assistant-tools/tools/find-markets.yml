@@ -20,16 +20,18 @@ workflow:
   inputs:
     country: $.get('country', 'br')
     document_id: $.get('document_id')
+    is_build_parlay: $.get('is_build_parlay', False)
     market-query: $.get('market-query')
     runner-query: $.get('runner_query')
     onlyMainMarkets: $.get('onlyMainMarkets', 'true')
     search_date_interval: $.get('search_date_interval', {})
     search_query: $.get('search_query')
     sport_id: $.get('sport_id', '4')
+    target_odd: $.get('target_odd')
     vector_query: $.get('vector_query')
   outputs:
-    step_find_markets_docs: $.get('selected-runners-parsed', [])
-    step_find_markets_objects: $.get('selected-runners-parsed', [])
+    step_find_markets_docs: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
+    step_find_markets_objects: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
     workflow-status: len($.get('selected-runners-parsed', [])) > 0 and 'executed' or 'skipped'
   tasks:
 
@@ -68,12 +70,14 @@ workflow:
         document_value: $.get('document_value')
       outputs:
         analysis_mode: $.get('analysis_mode', 'single')
+        is_build_parlay: $.get('is_build_parlay', False)
         market-query: $.get('market_query')
         runner-query: $.get('runner_query')
         search_date_interval: $.get('search_date_interval')
         search_query: $.get('search_query')
         search_sort: $.get('search_sort')
         sport_id: $.get('sport_id')
+        target_odd: $.get('target_odd')
         vector_query: $.get('vector_query')
         vector_search: $.get('vector_search')
         odd_from: $.get('odd_from')
@@ -251,11 +255,30 @@ workflow:
         # market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
         market-query: $.get('market-query')
         sport-id: $.get('sport_id')
+        is-build-parlay: $.get('is_build_parlay', False)
         odd-from: $.get('odd_from')
         odd-to: $.get('odd_to')
       outputs:
         selected-market-runners-names: $.get('selected-market-runners-names', [])
         selected-runners-parsed: $.get('selected-market-runners', [])
+    
+    # assistant-build-parlay
+    - type: connector
+      name: assistant-build-parlay
+      description: Build parlay combinations to reach target odd
+      condition: $.get('is_build_parlay') == True and len($.get('selected-runners-parsed', [])) > 0
+      connector:
+        name: assistant-tools-build-parlay
+        command: invoke_build_parlay
+      inputs:
+        available-runners: $.get('selected-runners-parsed')
+        target-odd: $.get('target_odd', 10.0)
+        max-legs: "5"
+        tolerance: "0.20"
+      outputs:
+        parlay-combinations: $.get('parlay-combinations', [])
+        parlay-best: $.get('best-combination')
+        parlay-found-count: $.get('combinations-found', 0)
 
     # assistant-find-markets-selection
     - type: prompt

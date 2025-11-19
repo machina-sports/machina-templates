@@ -15,14 +15,24 @@ prompts:
       - Use is_find_insights when user asks about statistics, lineups, scorers, team form, head-to-head, injuries, or detailed event analysis.
       - Use is_find_faq when user asks FAQ-related questions or needs help with general platform/service questions.
       - Use is_find_odds_range when user specifies an odds range filter (e.g., "odds between 1.50 and 2.50", "odds entre 1.8 e 2.2", "odds from 2.0 to 3.0").
+      - Use is_build_parlay when user wants to build a combined bet (parlay/multipla/acumulada) to reach a target odd (e.g., "monte um bilhete com odd 30", "fazer múltipla de 50", "combinada com cotação 25").
       - When ALL is_find_* flags are FALSE: Set all flags to false and provide a brief loading/thinking message in short_message.
       - When ANY is_find_* flag is TRUE: Provide a brief status message in short_message informing what will be searched.
       
       COMBINED EXECUTION:
       - When is_find_markets=true, ALWAYS set is_find_event=true as well.
       - When is_find_insights=true, ALWAYS set is_find_event=true as well.
+      - When is_build_parlay=true, ALWAYS set BOTH is_find_event=true AND is_find_markets=true.
       - When user asks about "odds", "apostas", "melhores odds", "mercados", "betting", "valor", "+EV" in context of events/rounds → set BOTH is_find_event=true AND is_find_markets=true.
       - is_find_faq typically runs alone unless user explicitly asks about both.
+      
+      PARLAY/COMBINED BET DETECTION:
+      - Keywords: "bilhete", "combinada", "múltipla", "acumulada", "parlay", "combo", "monte", "montar"
+      - Target odd keywords: "odd X", "cotação X", "odds de X", "com odd X", "atingir X"
+      - Extract numeric value from target odd phrases (e.g., "odd 30" → 30, "cotação 50" → 50)
+      - When is_build_parlay=true, populate target_odd field with extracted number
+      - If no specific target mentioned but user asks for parlay, default target_odd to 10.0
+      - Parlay mode prefers diverse markets across multiple events or diverse market types
       
       SEARCH QUERY: Extract full team/player names with competition when available. Omit unknown teams.
       
@@ -51,13 +61,23 @@ prompts:
       VECTOR SEARCH: Only return true when player, competition, or team name is present in the user's query. If none of these are found, return false.
       
       ODDS RANGE EXTRACTION:
-      - Extract odd_from and odd_to when user specifies odds range (e.g., "entre 1.50 e 2.50", "between 2.0 and 3.5", "from 1.8 to 2.2").
-      - When is_find_odds_range is true, populate both odd_from and odd_to with numeric values.
+      - Extract odd_from and/or odd_to when user specifies odds filtering (e.g., "entre 1.50 e 2.50", "acima de 2.0", "até 3.5", "between 2.0 and 3.5", "maior que 1.8").
+      - When is_find_odds_range is true, populate at least one of odd_from or odd_to (or both) with numeric values.
+      - odd_from: minimum odds value (use when user says "acima de", "maior que", "a partir de", "from", "above", "greater than").
+      - odd_to: maximum odds value (use when user says "até", "abaixo de", "menor que", "to", "below", "less than", "under").
       - When is_find_odds_range is false, omit both odd_from and odd_to entirely.
+      
+      MARKET_QUERY EXTRACTION (when is_find_markets is true):
+      - Include specific market line if mentioned: "over 2.5", "under 3.5", "gols over 2.5", "acima de 2.5"
+      - Extract the complete market specification including numbers: "over 2.5" not just "over" or "gols"
+      - Examples: "odds over 2.5" → market_query: "over 2.5" or "gols over 2.5"
+      - Examples: "mercado de gols" → market_query: "gols"
+      - Examples: "under 3.5" → market_query: "under 3.5"
       
       OPTIONAL FIELDS:
       - Only populate market_query and runner_query when is_find_markets is true. Omit these fields entirely otherwise.
       - Only populate odd_from and odd_to when is_find_odds_range is true. Omit these fields entirely otherwise.
+      - Only populate target_odd when is_build_parlay is true. Omit otherwise.
       - Populate sport_id when is_find_event or is_find_markets is true.
       - Only populate search_date_interval, search_query, search_sort, vector_query, vector_search when is_find_event is true.
       
@@ -74,6 +94,7 @@ prompts:
         "is_find_insights",
         "is_find_markets",
         "is_find_odds_range",
+        "is_build_parlay",
         "analysis_mode",
         "search_date_interval",
         "search_query",
@@ -100,7 +121,10 @@ prompts:
           description: User asks about ANYTHING related to betting - odds, apostas, melhores odds, mercados, betting markets, specific betting information, predictions, tips, prognoses, valor, +EV, which team will win, comparative questions between teams/outcomes, or any question seeking betting recommendations or expected results. CRITICAL - When ANY betting-related keyword is mentioned (odds, apostas, mercados, valor, +EV), this MUST be true along with is_find_event.
         is_find_odds_range:
           type: boolean
-          description: User specifies an odds range filter for betting markets (e.g., "odds between 1.50 and 2.50", "odds entre 1.8 e 2.2"). When true, both odd_from and odd_to should be populated with numeric values.
+          description: User specifies an odds filter for betting markets (e.g., "odds between 1.50 and 2.50", "odds acima de 2.0", "odds até 3.5"). When true, at least one of odd_from or odd_to should be populated with numeric values.
+        is_build_parlay:
+          type: boolean
+          description: User wants to build a combined bet (parlay/multipla/acumulada) to reach a target odd. Keywords include "bilhete", "combinada", "múltipla", "acumulada", "parlay", "monte", "montar". When true, MUST set both is_find_event=true and is_find_markets=true, and populate target_odd field.
         
         analysis_mode:
           type: string
@@ -151,7 +175,7 @@ prompts:
         # Market-specific fields (populate only when is_find_markets is true, otherwise omit)
         market_query:
           type: string
-          description: "Extract market type intent from query. Default: 3way for Football, Winner for Tennis. Only populate when is_find_markets is true."
+          description: "Extract market type intent from query. Include specific line if mentioned (e.g., 'over 2.5', 'under 3.5', 'gols over 2.5'). Default: 3way for Football, Winner for Tennis. Only populate when is_find_markets is true. Examples: 'over 2.5', 'under 3.5 gols', 'gols', '3way', 'handicap'."
         runner_query:
           type: string
           description: "Extract betting selection intent: team names, outcome preferences, draw, score predictions, or specific result types. Only populate when is_find_markets is true."
@@ -159,10 +183,15 @@ prompts:
         # Odds range fields (populate only when is_find_odds_range is true, otherwise omit)
         odd_from:
           type: number
-          description: "Minimum odds value for filtering. Only populate when is_find_odds_range is true."
+          description: "Minimum odds value for filtering. Only populate when is_find_odds_range is true and user specifies a minimum threshold (e.g., 'acima de', 'maior que', 'from', 'above'). Can be omitted if only odd_to is specified."
         odd_to:
           type: number
-          description: "Maximum odds value for filtering. Only populate when is_find_odds_range is true."
+          description: "Maximum odds value for filtering. Only populate when is_find_odds_range is true and user specifies a maximum threshold (e.g., 'até', 'abaixo de', 'to', 'below'). Can be omitted if only odd_from is specified."
+        
+        # Parlay fields (populate only when is_build_parlay is true, otherwise omit)
+        target_odd:
+          type: number
+          description: "Target total odd for combined bet (parlay). Only populate when is_build_parlay is true. Extract from phrases like 'odd 30', 'cotação 50', 'odds de 25'. If no specific target mentioned, default to 10.0."
         
         short_message:
           type: string
