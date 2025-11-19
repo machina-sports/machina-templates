@@ -148,8 +148,8 @@ def invoke_request(request_data):
             # For tournamentschedule, season ID goes in the URL path
             season_id = query_params.pop("seasonId")
             base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}/{season_id}"
-        elif endpoint == "matchstats" and query_params.get("matchId"):
-            # For matchstats, match ID goes in the URL path
+        elif endpoint in ["matchstats", "matchexpectedgoals"] and query_params.get("matchId"):
+            # For matchstats and matchexpectedgoals, match ID goes in the URL path
             match_id = query_params.pop("matchId")
             base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}/{match_id}"
         else:
