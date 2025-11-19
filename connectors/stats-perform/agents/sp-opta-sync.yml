@@ -37,6 +37,16 @@ agent:
         schedules: "$.get('schedules')"
         sync-schedules-status: "$.get('workflow-status', False)"
 
+    # sp-opta-sync-standings (BR Serie A - Season 2024)
+    # tournament_calendar_id (season id): "9pqtmpr3w8jm73y0eb8hmum8k"
+    # - name: sp-opta-sync-standings
+    #   description: Sync league table/standings for a season (all division types)
+    #   inputs:
+    #     tournament_calendar_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
+    #   outputs:
+    #     standings: "$.get('standings')"
+    #     sync-standings-status: "$.get('workflow-status', False)"
+
     # sp-opta-sync-transfers (Test)
     # Greuther Fürth: "9dlxuym0eab00j9ggrdr87soj"
     # Grêmio: "1yd80wg4djlmtgkei51x0x4t6"

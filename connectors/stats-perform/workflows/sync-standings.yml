@@ -1,0 +1,146 @@
+workflow:
+  name: "sp-opta-sync-standings"
+  title: "Stats Perform Opta - Team Standings"
+  description: "Workflow to synchronize team standings (league table) from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    tournament_calendar_id: "$.get('tournament_calendar_id')"
+  outputs:
+    standings: "$.get('standings')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "check-document-timedelta"
+      description: "Check if the standings document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.tournament_calendar_id: "$.get('tournament_calendar_id')"
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=6)}"
+        value.status: "'active'"
+      inputs:
+        name: "'sp-standings'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('tournament_calendar_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # task-load-standings
+    - type: "connector"
+      name: "task-load-standings"
+      description: "Get Team Standings from Stats Perform Opta"
+      condition: "$.get('tournament_calendar_id') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'standings'"
+        competition_id: "None"
+        query_params: |
+          {
+            'tmcl': $.get('tournament_calendar_id')
+          }
+      outputs:
+        standings_raw: "$"
+        standings: "$.get('stage', [])"
+        tournament_info: "$.get('tournamentCalendar', {})"
+        competition_name: "$.get('competition', {}).get('name', '')"
+
+    # task-update-standings
+    - type: "document"
+      name: "task-update-standings"
+      description: "Update the standings document."
+      condition: "$.get('tournament_calendar_id') is not None and $.get('standings') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        sp-standings: |
+          {
+            'tournament_calendar_id': $.get('tournament_calendar_id'),
+            'data': $.get('standings'),
+            'tournament_info': $.get('tournament_info'),
+            'competition_name': $.get('competition_name', ''),
+            'title': f"{$.get('competition_name', 'League')} - Standings {$.get('tournament_info', {}).get('name', '')}",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        tournament_calendar_id: "$.get('tournament_calendar_id')"
+        document_type: "'synchronization'"
+
+    # task-bulk-save-team-standings
+    - type: "document"
+      name: "task-bulk-save-team-standings"
+      description: "Bulk save individual team standings."
+      condition: "$.get('tournament_calendar_id') is not None and $.get('standings') is not None and len($.get('standings', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-team-standing'"
+      documents:
+        items: "$.get('team_standings_list')"
+      inputs:
+        team_standings_list: |
+          [
+            {
+              **team_standing,
+              'tournament_calendar_id': $.get('tournament_calendar_id'),
+              'stage_id': stage.get('id', ''),
+              'stage_name': stage.get('name', ''),
+              'division_type': division.get('type', ''),
+              'team_id': team_standing.get('contestantId', ''),
+              'team_name': team_standing.get('contestantName', ''),
+              'position': team_standing.get('rank', 0),
+              'played': team_standing.get('matchesPlayed', 0),
+              'points': team_standing.get('points', 0),
+              'wins': team_standing.get('matchesWon', 0),
+              'draws': team_standing.get('matchesDrawn', 0),
+              'losses': team_standing.get('matchesLost', 0),
+              'goals_for': team_standing.get('goalsFor', 0),
+              'goals_against': team_standing.get('goalsAgainst', 0),
+              'goal_difference': team_standing.get('goaldifference', ''),
+              'title': f"{team_standing.get('contestantName', 'Team')} - Position {team_standing.get('rank', '?')}"
+            }
+            for stage in $.get('standings', [])
+            for division in stage.get('division', [])
+            for team_standing in division.get('ranking', [])
+            if team_standing is not None
+          ]
+      metadata:
+        document_type: "'sp-team-standing'"
+        tournament_calendar_id: "$.get('tournament_calendar_id')"
+
