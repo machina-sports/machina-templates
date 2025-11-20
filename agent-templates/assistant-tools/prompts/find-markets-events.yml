@@ -6,28 +6,39 @@ prompts:
     title: Assistant Find Markets Events
     description: "Chat Completion Events Selector"
     instruction: |
-      Select event indices matching the user query. Return valid indices only (0 to array length - 1).
+      Select event indices matching or RELEVANT to the user query. Return valid indices only (0 to array length - 1).
       
-      TEAM MATCHING RULES:
+      MATCHING PHILOSOPHY: Be EXTREMELY GENEROUS. When in doubt, INCLUDE the event. Better to include too many than miss relevant ones.
+      
+      TEAM MATCHING (Fuzzy & Flexible):
       - Match ANY significant word overlap between query and event teams
-      - "Atletico Mineiro" matches "CA Mineiro" (same team, different prefix)
+      - "Atletico Mineiro" matches "CA Mineiro", "Atletico MG", "Mineiro" (same team, different prefix)
+      - "Flamengo" matches "CR Flamengo RJ", "Flamengo RJ" 
       - "Man United" matches "Manchester United" (abbreviation)
-      - Ignore: FC, CF, CA, EC, MG, CE, and location suffixes
-      - If query has 2 teams and event has those teams → MATCH
+      - Ignore: FC, CF, CA, EC, MG, CE, SP, RJ, and location suffixes
+      - Partial matches are VALID: "Inter" matches "SC Internacional RS"
       
       PRIORITY ORDER:
       
-      1. OUTRIGHT MARKETS: Query mentions "winner", "top scorer", "champion" + competition name → return ONLY outright events (not team matches)
+      0. ROUND/MULTIPLE MATCHES: Query mentions "rodada", "round", "all matches", "today's games", "jogos de hoje", "próxima rodada", "melhores odds", "odds" → return ALL indices (up to 15) to enable comparative analysis
       
-      2. TEAM MATCH: Query has 2 team names → return indices of events with BOTH teams (use fuzzy matching)
+      1. COMPETITION QUERY: Query mentions competition name ("Brasileirão", "Serie A", "Premier League", "Champions") → return ALL events from that competition (up to 15)
       
-      3. COMPETITION: Query has competition name only → return all events from that competition (max 5)
+      2. OUTRIGHT MARKETS: Query EXPLICITLY mentions "winner", "top scorer", "champion", "campeão", "artilheiro" + competition name → return ONLY outright/tournament events
       
-      4. GENERIC: "next/upcoming games" → [0,1,2,3,4], "next game" → [0]
+      3. TEAM MATCH: Query has 2 team names → return indices of events with BOTH teams (use fuzzy matching)
       
-      5. NO MATCH: []
+      4. SINGLE TEAM: Query has 1 team name → return ALL events with that team (up to 3)
       
-      BE GENEROUS with team name matching. Focus on core team identity, not exact spelling.
+      5. GENERIC: "next/upcoming games", "próximos jogos" → return ALL indices (up to 15)
+      
+      6. NO MATCH: [] (only if truly no events are relevant)
+      
+      CRITICAL RULES:
+      - If events share same competition in title, they are RELATED - include ALL
+      - For "odds" or "apostas" queries, return ALL events to enable comparison
+      - Default to inclusion: if unsure, ADD the index
+      - Only return [] if events are clearly unrelated to query
     schema:
       title: AssistantFindMarketsEvents
       description: "Selects events by array index based on user query"
@@ -38,6 +49,6 @@ prompts:
       properties:
         selected_events:
           type: "array"
-          description: "Array of event indices that match the user query"
+          description: "Array of event indices that match or are relevant to the user query. Be EXTREMELY GENEROUS - for competition/round queries return ALL related events (up to 15). For 'odds'/'apostas' queries return ALL events to enable comparison. Default to INCLUSION when uncertain."
           items:
             type: "integer"

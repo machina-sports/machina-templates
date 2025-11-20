@@ -1,0 +1,24 @@
+agent:
+  name: athlete-deep-research-agent
+  title: Athlete Deep Research Agent
+  description: "Agent to run deep web research on athletes and generate internal activation briefs."
+  context-agent:
+    name: $.get('name')
+    athlete_name: $.get('athlete_name')
+    sport: $.get('sport')
+    league: $.get('league')
+    team: $.get('team')
+    brand_tier: $.get('brand_tier')
+    primary_market: $.get('primary_market')
+  workflows:
+    - name: athlete-deep-research-generate-brief
+      description: "Run deep web research on an athlete and generate an internal activation brief."
+      inputs:
+        document_id: "$.get('document_id')"
+        max_queries: "$.get('max_queries', 5)"
+        research_window_days: "$.get('research_window_days', 14)"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        athlete_snapshot: "$.get('athlete_snapshot')"
+        athlete_tile_summary: "$.get('athlete_tile_summary')"
+        athlete_detailed_brief: "$.get('athlete_detailed_brief')"

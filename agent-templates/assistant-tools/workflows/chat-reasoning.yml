@@ -102,6 +102,7 @@ workflow:
               *$.get('input_message')
             ],
             'selected-event': $.get('event_code'),
+            'analysis-mode': $.get('chat_reasoning', {}).get('analysis_mode', 'single'),
             'status': 'processing',
             'status-reasoning': $.get('chat_reasoning'),
             'status_message': $.get('chat_reasoning', {}).get('short_message', '')

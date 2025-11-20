@@ -20,17 +20,23 @@ workflow:
   inputs:
     country: $.get('country', 'br')
     document_id: $.get('document_id')
+    is_build_parlay: $.get('is_build_parlay', False)
     market-query: $.get('market-query')
     runner-query: $.get('runner_query')
     onlyMainMarkets: $.get('onlyMainMarkets', 'true')
     search_date_interval: $.get('search_date_interval', {})
     search_query: $.get('search_query')
     sport_id: $.get('sport_id', '4')
+    target_odd: $.get('target_odd')
     vector_query: $.get('vector_query')
   outputs:
-    step_find_markets_docs: $.get('selected-runners-parsed', [])
-    step_find_markets_objects: $.get('selected-runners-parsed', [])
+    step_find_markets_docs: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
+    step_find_markets_objects: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
     workflow-status: len($.get('selected-runners-parsed', [])) > 0 and 'executed' or 'skipped'
+    country: $.get('country')
+    sport_id: $.get('sport_id')
+    selected_events_ids: $.get('selected_events_ids', [])
+    mapped-runners: $.get('mapped-runners', [])
   tasks:
 
     # Load chat history (thread document)
@@ -67,14 +73,19 @@ workflow:
       inputs:
         document_value: $.get('document_value')
       outputs:
+        analysis_mode: $.get('analysis_mode', 'single')
+        is_build_parlay: $.get('is_build_parlay', False)
         market-query: $.get('market_query')
         runner-query: $.get('runner_query')
         search_date_interval: $.get('search_date_interval')
         search_query: $.get('search_query')
         search_sort: $.get('search_sort')
         sport_id: $.get('sport_id')
+        target_odd: $.get('target_odd')
         vector_query: $.get('vector_query')
         vector_search: $.get('vector_search')
+        odd_from: $.get('odd_from')
+        odd_to: $.get('odd_to')
 
     # EVENT SEARCH
 
@@ -85,7 +96,7 @@ workflow:
       condition: $.get('search_query') is not None
       config:
         action: search
-        threshold-docs: 3
+        threshold-docs: "15 if $.get('analysis_mode') in ['round', 'multiple'] else 3"
         threshold-similarity: 0.01
         search-limit: 1000
         search-sorters: ["value.startDate", 1]
@@ -97,6 +108,7 @@ workflow:
       filters:
         '$or': "[{'value.startDate':{'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}, {'value.startDateUtc': {'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}]"
         value.isOpenForBetting: "{'$eq': True}"
+        value.type: "{'$ne': 'Tournament'} if $.get('analysis_mode') in ['round', 'multiple'] else None"
       inputs:
         name: "'game-market'"
         search-query: |
@@ -119,7 +131,7 @@ workflow:
     # assistant-grade-first-selection
     - type: prompt
       name: assistant-grade-first-selection
-      condition: $.get('events-parsed') is not None and len($.get('events-parsed', [])) > 0
+      condition: $.get('events-parsed') is not None and len($.get('events-parsed', [])) > 0 and $.get('analysis_mode') == 'single'
       continue_on_error: true
       connector:
         command: invoke_prompt
@@ -135,10 +147,10 @@ workflow:
         grade_selected_event: $.get('grade_selected_event', False)
         has_events: $.get('grade_selected_event', False)
 
-    # assistant-find-markets-events (fallback)
+    # assistant-find-markets-events (multiple events selection)
     - type: prompt
       name: assistant-find-markets-events
-      condition: $.get('events-parsed') is not None and $.get('grade_selected_event') is not True
+      condition: $.get('events-parsed') is not None and ($.get('grade_selected_event') is not True or $.get('analysis_mode') in ['round', 'multiple'])
       connector:
         command: invoke_prompt
         name: google-genai
@@ -247,9 +259,30 @@ workflow:
         # market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
         market-query: $.get('market-query')
         sport-id: $.get('sport_id')
+        is-build-parlay: $.get('is_build_parlay', False)
+        odd-from: $.get('odd_from')
+        odd-to: $.get('odd_to')
       outputs:
         selected-market-runners-names: $.get('selected-market-runners-names', [])
         selected-runners-parsed: $.get('selected-market-runners', [])
+    
+    # assistant-build-parlay
+    - type: connector
+      name: assistant-build-parlay
+      description: Build parlay combinations to reach target odd
+      condition: $.get('is_build_parlay') == True and len($.get('selected-runners-parsed', [])) > 0
+      connector:
+        name: assistant-tools-build-parlay
+        command: invoke_build_parlay
+      inputs:
+        available-runners: $.get('selected-runners-parsed')
+        target-odd: $.get('target_odd', 10.0)
+        max-legs: "5"
+        tolerance: "0.20"
+      outputs:
+        parlay-combinations: $.get('parlay-combinations', [])
+        parlay-best: $.get('best-combination')
+        parlay-found-count: $.get('combinations-found', 0)
 
     # assistant-find-markets-selection
     - type: prompt

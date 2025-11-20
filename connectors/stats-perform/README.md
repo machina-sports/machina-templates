@@ -94,8 +94,93 @@ Synchronize match schedules for a competition/season.
 - `schedules`: Array of match objects
 - `workflow-status`: 'executed' or 'skipped'
 
-#### 5. **example-sync-all.yml** (`sp-opta-example-sync-all`)
-Example workflow showing how to use all sync workflows together.
+#### 5. **sync-standings.yml** (`sp-opta-sync-standings`)
+Synchronize team standings (league table/classificação).
+
+**Inputs:**
+- `tournament_calendar_id` (required): The season/tournament calendar ID
+
+**Features:**
+- Checks for expired data (6-hour cache)
+- Fetches complete league table with:
+  - Team position, points, games played
+  - Wins, draws, losses
+  - Goals scored, conceded, and goal difference
+  - All division types (total, home, away, form, etc.)
+- Links to season document
+- Saves aggregated standings and individual team standings
+
+**Outputs:**
+- `standings`: Complete league table data
+- `workflow-status`: 'executed' or 'skipped'
+
+**Note:** Returns ALL division types (total, home, away, form, etc.) in a single call.
+
+#### 6. **sync-match-stats.yml** (`sp-opta-sync-match-stats`)
+Synchronize detailed match statistics.
+
+**Inputs:**
+- `match_id` (required): The match/fixture UUID
+
+**Features:**
+- Checks for expired data (24-hour cache)
+- Fetches detailed match statistics including:
+  - Match info (teams, venue, competition, etc.)
+  - Live data (match details, periods, lineups)
+  - Team statistics (formation, aggregated stats)
+  - Individual player statistics (passes, shots, tackles, etc.)
+- Saves 3 types of documents:
+  - Complete match data (1 doc)
+  - Team statistics per match (2 docs - one per team)
+  - Player statistics per match (~46 docs - all players)
+
+**Outputs:**
+- `match_stats`: Complete match statistics data
+- `workflow-status`: 'executed' or 'skipped'
+
+**Note:** Requires match_id (fixture UUID). Use `sync-schedules` first to get match IDs.
+
+#### 7. **sync-match-xg.yml** (`sp-opta-sync-match-xg`)
+Synchronize match expected goals (xG) data.
+
+**Inputs:**
+- `match_id` (required): The match/fixture UUID
+
+**Features:**
+- Checks for expired data (24-hour cache)
+- Fetches expected goals (xG) data from stat arrays:
+  - Team statistics: `expectedGoals`, `expectedGoalsontarget`, `expectedGoalsNonpenalty`
+  - Player statistics: Same stat types per player
+  - Shot events: Individual shots (typeId=13) with qualifiers
+- Saves 4 types of documents:
+  - Complete match xG data (1 doc)
+  - Team xG statistics per match (2 docs - one per team)
+  - Player xG statistics per match (players with xG stats)
+  - Shot events with xG (all shots in the match)
+
+**Outputs:**
+- `match_xg`: Complete match expected goals data
+- `workflow-status`: 'executed' or 'skipped'
+
+**Note:** xG data comes in `stat` arrays with types like 'expectedGoals', 'expectedGoalsontarget'. Shot events (typeId=13) contain detailed xG in qualifiers.
+
+#### 8. **sync-transfers.yml** (`sp-opta-sync-transfers`)
+Synchronize player transfer data.
+
+**Inputs:**
+- `contestant_id` (required): Team/contestant ID
+- `competition_id` (optional): Competition ID
+- `strt_dt` (optional): Start date for transfers
+- `end_dt` (optional): End date for transfers
+
+**Features:**
+- Fetches player transfer information
+- Supports date range filtering
+
+**Outputs:**
+- `transfers`: Array of transfer objects
+- `transfers_raw`: Raw API response
+- `workflow-status`: 'executed'
 
 ### Agent (`agents/sp-opta-sync.yml`)
 
@@ -147,7 +232,52 @@ workflow:
         competition_id: $.get('competition_id')
 ```
 
-### Example 3: Use the Sync Agent
+### Example 3: Get Team Standings (League Table)
+
+```yaml
+workflow:
+  name: get-standings
+  inputs:
+    tournament_calendar_id: "9pqtmpr3w8jm73y0eb8hmum8k"  # Season ID from sync-seasons
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-standings
+      inputs:
+        tournament_calendar_id: $.get('tournament_calendar_id')
+```
+
+### Example 4: Get Match Statistics
+
+```yaml
+workflow:
+  name: get-match-stats
+  inputs:
+    match_id: "abc123xyz"  # Match ID from sync-schedules
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-match-stats
+      inputs:
+        match_id: $.get('match_id')
+```
+
+### Example 5: Get Match Expected Goals (xG)
+
+```yaml
+workflow:
+  name: get-match-xg
+  inputs:
+    match_id: "abc123xyz"  # Match ID from sync-schedules
+  tasks:
+    - type: workflow
+      workflow:
+        name: sp-opta-sync-match-xg
+      inputs:
+        match_id: $.get('match_id')
+```
+
+### Example 6: Use the Sync Agent
 
 Execute the agent using the Machina API:
 
@@ -176,9 +306,10 @@ Common Opta Soccer API endpoints you can use with `invoke-request`:
 | `tournamentcalendar` | Tournament calendars and seasons | `comp={competition_id}` |
 | `tournamentschedule` | Match schedules | `comp={competition_id}`, `seasonId={season_id}` |
 | `match` | Fixtures and results | `comp={competition_id}` |
-| `matchstats` | Match statistics | `matchId={match_id}` |
+| `matchstats` | Match statistics (detailed) | `matchId={match_id}` |
+| `matchexpectedgoals` | Match expected goals (xG, xGOT) | `matchId={match_id}` |
 | `matchevent` | Match events | `matchId={match_id}` |
-| `standings` | Team standings | `comp={competition_id}` |
+| `standings` | Team standings (league table) | `tmcl={tournament_calendar_id}` |
 | `squads` | Team squads | `tmcl={team_id}` |
 
 For a complete list, see the [Stats Perform Opta API Documentation](https://developer.statsperform.com/).
@@ -199,7 +330,17 @@ The sync workflows create the following document types:
 
 - `sp-competition`: Individual competition/tournament
 - `sp-season`: Individual season within a competition
+- `sp-team`: Team/contestant information
 - `sport:Event`: Match/fixture events (standardized format)
+- `sp-standings`: Aggregated league table/standings data
+- `sp-team-standing`: Individual team standing/position in league table
+- `sp-match-stats`: Complete match data (match info + live data)
+- `sp-team-match-stats`: Team statistics for a match (formation, aggregated stats)
+- `sp-player-match-stats`: Individual player statistics for a match
+- `sp-match-xg`: Complete match expected goals data
+- `sp-team-match-xg`: Team xG statistics (expectedGoals, expectedGoalsontarget, stats array)
+- `sp-player-match-xg`: Player xG statistics (expectedGoals, expectedGoalsontarget per player)
+- `sp-shot-event-xg`: Individual shot events with xG values from qualifiers
 - `synchronization`: Metadata documents for sync tracking
 
 ## Authentication Flow

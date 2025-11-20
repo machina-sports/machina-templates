@@ -5,10 +5,12 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    sportradar-soccer:
-      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    api-football:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     openai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -20,7 +22,7 @@ workflow:
     # 0 load-event-by-code
     - type: "document"
       name: "load-event-by-code"
-      description: "Search Corinthians event (sportradar) by code."
+      description: "Search Corinthians event by code."
       condition: "$.get('event_code') is not None"
       config:
         action: "search"
@@ -39,7 +41,7 @@ workflow:
     # 1 load-event-by-schedule
     - type: "document"
       name: "load-event-by-schedule"
-      description: "Search for Corinthians scheduled matches (sportradar)."
+      description: "Search for Corinthians scheduled matches."
       condition: "$.get('event_exists') is not True"
       config:
         action: "search"
@@ -56,9 +58,9 @@ workflow:
         event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
         event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
 
-    # 2 sportradar-soccer-mapping
+    # 2 mapping
     - type: "mapping"
-      name: "sportradar-soccer-mapping"
+      name: "api-football-mapping"
       description: "Transform the Corinthians match data with brutal stats insight"
       condition: "$.get('event_exists') is True and $.get('event_type') == 'soccer-game'"
       inputs:
@@ -95,52 +97,48 @@ workflow:
       metadata:
         event_code: "$.get('event_code')"
 
-    # 4 fetch-event-summary
+    # 4 fetch-event-details
     - type: "connector"
-      name: "fetch-event-summary"
-      description: "Get summary about a specific sport event from SportRadar"
-      condition: "$.get('event_exists') is True and $.get('season') is not None"
+      name: "fetch-event-details"
+      description: "Get details about a specific sport event from API-Football"
+      condition: "$.get('event_exists') is True"
       connector:
-        name: "sportradar-soccer"
-        command: "get-sport_events/{event_code}/{data_type}"
-        command_attribute:
-          event_code: "$.get('event_code')"
-          data_type: "'summary.json'"
+        name: "api-football"
+        command: "fixtures"
       inputs:
-        api_key: "$.get('sportradar_api_key')"
+        id: "$.get('event_code')"
+      outputs:
+        fixture_data: "$.get('response', [])[0] if $.get('response') else {}"
+        result-home-score: "$.get('fixture_data', {}).get('goals', {}).get('home', 0)"
+        result-away-score: "$.get('fixture_data', {}).get('goals', {}).get('away', 0)"
+        result-clock-played: "$.get('fixture_data', {}).get('fixture', {}).get('status', {}).get('elapsed', 0)"
+        result-match-status: "$.get('fixture_data', {}).get('fixture', {}).get('status', {}).get('long', '')"
+        result-venue: "$.get('fixture_data', {}).get('fixture', {}).get('venue', {})"
+
+    # 5 fetch-event-stats
+    - type: "connector"
+      name: "fetch-event-stats"
+      description: "Get statistics about a specific sport event from API-Football"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "api-football"
+        command: "fixtures/statistics"
+      inputs:
+        fixture: "$.get('event_code')"
       outputs:
         result-competitors-stats: |
           [
             {
-              'competitor_stats': c.get('statistics', {}),
-              'competitor_name': c.get('name', ''),
-              'title': f"$.(title) - {c.get('name', '')} Stats",
+              'competitor_stats': { item.get('type'): item.get('value') for item in team_stat.get('statistics', []) },
+              'competitor_name': team_stat.get('team', {}).get('name', ''),
+              'title': f"$.(title) - {team_stat.get('team', {}).get('name', '')} Stats",
               'metadata': {
                 'event_code': '$.(event_code)',
                 'language': 'en'
               } 
             }
-            for c in $.get('statistics', []).get('totals', []).get('competitors', [])
+            for team_stat in $.get('response', [])
           ]
-        result-summary: "$"
-        result-summary-bulk: |
-          [
-            {
-              'subject': '$.(title)',
-              'text': c.get('statement', ''),
-              'title': f"$.(title) - Event Summary",
-              'metadata': {
-                'event_code': '$.(event_code)',
-                'language': 'en'
-              } 
-            }
-            for c in $.get('summary', [])
-          ]
-        result-home-score: "$.get('sport_event_status', {}).get('home_score', 0)"
-        result-away-score: "$.get('sport_event_status', {}).get('away_score', 0)"
-        result-clock-played: "$.get('sport_event_status', {}).get('clock', {}).get('played', 0)"
-        result-match-status: "$.get('sport_event_status', {}).get('match_status', '')"
-        result-venue: "$.get('sport_event', {}).get('venue', {})"
 
     # 5 prompt-score-and-players
     - type: "prompt"
@@ -148,9 +146,9 @@ workflow:
       description: "Generate structured analysis snippets for a single team using their players data"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         title: "$.get('title')"
         team_home_name: "$.get('team_home_name')"
@@ -183,9 +181,9 @@ workflow:
       description: "Generate structured analysis snippets for a single team using their players data"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         competitor: "$.get('result-competitors-stats', [])[0] or {}"
         competitor_name: "$.get('result-competitors-stats', [])[0].get('competitor_name')"
@@ -212,9 +210,9 @@ workflow:
       description: "Generate structured analysis snippets for a single team using their players data"
       condition: "$.get('event_exists') is True"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         competitor: "$.get('result-competitors-stats', [])[1] or {}"
         competitor_name: "$.get('result-competitors-stats', [])[1].get('competitor_name')"
@@ -254,7 +252,6 @@ workflow:
       inputs:
         parsed-items: |
           [
-            *$.get('result-summary-bulk', []),
             *$.get('result-score-and-players-bulk', []),
             *$.get('result-home-stats-bulk', []),
             *$.get('result-away-stats-bulk', [])

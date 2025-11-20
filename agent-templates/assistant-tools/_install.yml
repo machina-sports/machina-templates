@@ -67,6 +67,9 @@ datasets:
   # scripts
   
   - type: connector
+    path: scripts/build_parlay.yml
+
+  - type: connector
     path: scripts/map_markets.yml
 
   - type: connector

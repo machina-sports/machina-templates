@@ -13,57 +13,141 @@ mappings:
               "sport": "https://www.sportschema.org/ontologies/sport#",
               "schema": "https://schema.org/"
             },
-            "@id": f"urn:opta:sport_event:{match.get('id')}",
+            "@id": f"urn:opta:sport_event:{match.get('matchInfo', {}).get('id')}",
             "@type": ["sport:Event", "schema:SportsEvent"],
-            "name": f"{match.get('homeContestantName', 'TBD')} vs {match.get('awayContestantName', 'TBD')}",
-            "schema:startDate": f"{match.get('date')}T{match.get('time', '00:00:00Z')}",
+            "name": f"{match.get('matchInfo', {}).get('contestant', [{}])[0].get('name', 'TBD')} vs {match.get('matchInfo', {}).get('contestant', [{}])[1].get('name', 'TBD')}",
+            "schema:startDate": f"{match.get('matchInfo', {}).get('date')}T{match.get('matchInfo', {}).get('time', '00:00:00Z')}",
             "schema:sportName": "football",
-            "sport:localDate": match.get('localDate'),
-            "sport:localTime": match.get('localTime'),
-            "sport:coverageLevel": match.get('coverageLevel'),
-            "sport:optaBetting": match.get('optaBetting'),
-            "sport:var": match.get('var'),
+            "sport:localDate": match.get('matchInfo', {}).get('localDate'),
+            "sport:localTime": match.get('matchInfo', {}).get('localTime'),
+            "sport:coverageLevel": match.get('matchInfo', {}).get('coverageLevel'),
+            "sport:var": match.get('matchInfo', {}).get('var'),
+            "sport:status": match.get('liveData', {}).get('matchDetails', {}).get('matchStatus'),
+            "sport:week": match.get('matchInfo', {}).get('week'),
             "sport:competition": {
-              "@id": f"urn:opta:competition:{$.get('schedules_raw', {}).get('competition', {}).get('id')}",
+              "@id": f"urn:opta:competition:{match.get('matchInfo', {}).get('competition', {}).get('id')}",
               "@type": "sport:Competition",
-              "name": $.get('schedules_raw', {}).get('competition', {}).get('name'),
-              "sport:knownName": $.get('schedules_raw', {}).get('competition', {}).get('knownName'),
-              "sport:competitionCode": $.get('schedules_raw', {}).get('competition', {}).get('competitionCode'),
-              "sport:competitionFormat": $.get('schedules_raw', {}).get('competition', {}).get('competitionFormat'),
+              "name": match.get('matchInfo', {}).get('competition', {}).get('name'),
+              "sport:knownName": match.get('matchInfo', {}).get('competition', {}).get('knownName'),
+              "sport:competitionCode": match.get('matchInfo', {}).get('competition', {}).get('competitionCode'),
+              "sport:competitionFormat": match.get('matchInfo', {}).get('competition', {}).get('competitionFormat'),
               "sport:season": {
-                "@id": f"urn:opta:season:{$.get('schedules_raw', {}).get('tournamentCalendar', {}).get('id')}",
+                "@id": f"urn:opta:season:{match.get('matchInfo', {}).get('tournamentCalendar', {}).get('id')}",
                 "@type": "sport:Season",
-                "name": $.get('schedules_raw', {}).get('tournamentCalendar', {}).get('name'),
-                "sport:startDate": $.get('schedules_raw', {}).get('tournamentCalendar', {}).get('startDate'),
-                "sport:endDate": $.get('schedules_raw', {}).get('tournamentCalendar', {}).get('endDate')
+                "name": match.get('matchInfo', {}).get('tournamentCalendar', {}).get('name'),
+                "sport:startDate": match.get('matchInfo', {}).get('tournamentCalendar', {}).get('startDate'),
+                "sport:endDate": match.get('matchInfo', {}).get('tournamentCalendar', {}).get('endDate')
               }
             },
+            "sport:stage": {
+              "@id": f"urn:opta:stage:{match.get('matchInfo', {}).get('stage', {}).get('id')}",
+              "@type": "sport:Stage",
+              "name": match.get('matchInfo', {}).get('stage', {}).get('name'),
+              "sport:startDate": match.get('matchInfo', {}).get('stage', {}).get('startDate'),
+              "sport:endDate": match.get('matchInfo', {}).get('stage', {}).get('endDate')
+            } if match.get('matchInfo', {}).get('stage') else None,
+            "sport:venue": {
+              "@type": "sport:Venue",
+              "@id": f"urn:opta:venue:{match.get('matchInfo', {}).get('venue', {}).get('id')}",
+              "name": match.get('matchInfo', {}).get('venue', {}).get('longName'),
+              "sport:shortName": match.get('matchInfo', {}).get('venue', {}).get('shortName'),
+              "sport:neutral": match.get('matchInfo', {}).get('venue', {}).get('neutral'),
+              "schema:latitude": match.get('matchInfo', {}).get('venue', {}).get('latitude'),
+              "schema:longitude": match.get('matchInfo', {}).get('venue', {}).get('longitude')
+            } if match.get('matchInfo', {}).get('venue') else None,
             "sport:competitors": [
               {
                 "@type": "sport:Team",
-                "@id": f"urn:opta:team:{match.get('homeContestantId')}",
-                "name": match.get('homeContestantName'),
-                "sport:officialName": match.get('homeContestantOfficialName'),
-                "sport:shortName": match.get('homeContestantShortName'),
-                "sport:code": match.get('homeContestantCode'),
-                "sport:qualifier": "home"
+                "@id": f"urn:opta:team:{match.get('matchInfo', {}).get('contestant', [{}])[0].get('id')}",
+                "name": match.get('matchInfo', {}).get('contestant', [{}])[0].get('name'),
+                "sport:officialName": match.get('matchInfo', {}).get('contestant', [{}])[0].get('officialName'),
+                "sport:shortName": match.get('matchInfo', {}).get('contestant', [{}])[0].get('shortName'),
+                "sport:code": match.get('matchInfo', {}).get('contestant', [{}])[0].get('code'),
+                "sport:qualifier": match.get('matchInfo', {}).get('contestant', [{}])[0].get('position')
               },
               {
                 "@type": "sport:Team",
-                "@id": f"urn:opta:team:{match.get('awayContestantId')}",
-                "name": match.get('awayContestantName'),
-                "sport:officialName": match.get('awayContestantOfficialName'),
-                "sport:shortName": match.get('awayContestantShortName'),
-                "sport:code": match.get('awayContestantCode'),
-                "sport:qualifier": "away"
+                "@id": f"urn:opta:team:{match.get('matchInfo', {}).get('contestant', [{}])[1].get('id')}",
+                "name": match.get('matchInfo', {}).get('contestant', [{}])[1].get('name'),
+                "sport:officialName": match.get('matchInfo', {}).get('contestant', [{}])[1].get('officialName'),
+                "sport:shortName": match.get('matchInfo', {}).get('contestant', [{}])[1].get('shortName'),
+                "sport:code": match.get('matchInfo', {}).get('contestant', [{}])[1].get('code'),
+                "sport:qualifier": match.get('matchInfo', {}).get('contestant', [{}])[1].get('position')
               }
             ],
+            "sport:score": {
+              "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('total', {}).get('home'),
+              "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('total', {}).get('away'),
+              "sport:halfTime": {
+                "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht', {}).get('home'),
+                "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht', {}).get('away')
+              } if match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht') else None
+            } if match.get('liveData', {}).get('matchDetails', {}).get('scores') else None,
             "sport:matchInfo": {
-              "sport:numberOfPeriods": match.get('numberOfPeriods'),
-              "sport:periodLength": match.get('periodLength')
-            }
+              "sport:numberOfPeriods": match.get('matchInfo', {}).get('numberOfPeriods'),
+              "sport:periodLength": match.get('matchInfo', {}).get('periodLength'),
+              "sport:attendance": match.get('liveData', {}).get('matchDetailsExtra', {}).get('attendance'),
+              "sport:winner": match.get('liveData', {}).get('matchDetails', {}).get('winner')
+            },
+            "sport:timeline": [
+              {
+                "@context": {
+                  "sport": "https://sportschema.org/ontologies/main/"
+                },
+                "@id": f"urn:opta:action:{event.get('optaEventId')}",
+                "@type": "sport:Action",
+                "type": event.get('type', ''),
+                "competitor": "home" if event.get('contestantId') == match.get('matchInfo', {}).get('contestant', [{}])[0].get('id') else "away",
+                "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('timeMin', 0)}' - Period {event.get('periodId', 0)}",
+                "sport:actionType": f"http://cv.iptc.org/newscodes/spsocaction/{event.get('type', '').lower().replace('_', '-')}",
+                "sport:minutesElapsed": str(event.get('timeMin', 0)),
+                "sport:actionDateTime": event.get('timestamp'),
+                "sport:periodValue": str(event.get('periodId', 0)),
+                "sport:participation": (
+                  ([
+                    {
+                      "@id": f"urn:opta:team-participation:{event.get('contestantId')}",
+                      "@type": "sport:TeamParticipation",
+                      "sport:participationBy": {
+                        "@id": f"urn:opta:team:{event.get('contestantId')}",
+                        "@type": "sport:Team",
+                        "sport:label": match.get('matchInfo', {}).get('contestant', [{}])[0].get('name') if event.get('contestantId') == match.get('matchInfo', {}).get('contestant', [{}])[0].get('id') else match.get('matchInfo', {}).get('contestant', [{}])[1].get('name')
+                      }
+                    }
+                  ] if event.get('contestantId') else []) + 
+                  ([
+                    {
+                      "@id": f"urn:opta:player-participation:{event.get('scorerId', event.get('playerId'))}",
+                      "@type": "sport:IndividualParticipation",
+                      "sport:participationBy": {
+                        "@id": f"urn:opta:player:{event.get('scorerId', event.get('playerId'))}",
+                        "@type": "sport:Athlete",
+                        "sport:label": event.get('scorerName', event.get('playerName', 'Unknown Player'))
+                      }
+                    }
+                  ] if event.get('scorerId') or event.get('playerId') else []) +
+                  ([
+                    {
+                      "@id": f"urn:opta:player-participation:{event.get('assistPlayerId')}",
+                      "@type": "sport:IndividualParticipation",
+                      "sport:role": "assist",
+                      "sport:participationBy": {
+                        "@id": f"urn:opta:player:{event.get('assistPlayerId')}",
+                        "@type": "sport:Athlete",
+                        "sport:label": event.get('assistPlayerName', 'Unknown Player')
+                      }
+                    }
+                  ] if event.get('assistPlayerId') else [])
+                ),
+                "commentaries": [
+                  {
+                    "text": f"{event.get('scorerName', event.get('playerName', ''))} - {event.get('type', '')} ({event.get('timeMinSec', '')})" + (f" Assist: {event.get('assistPlayerName', '')}" if event.get('assistPlayerName') else "") + (f" Reason: {event.get('cardReason', '')}" if event.get('cardReason') else "")
+                  }
+                ]
+              }
+              for event in (match.get('liveData', {}).get('goal', []) + match.get('liveData', {}).get('card', []))
+            ]
           }
-          for match_date in $.get('schedules_raw', {}).get('matchDate', [])
-          for match in match_date.get('match', [])
+          for match in $.get('schedules_raw', [])
         ]
 

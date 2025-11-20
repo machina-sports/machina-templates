@@ -1,0 +1,177 @@
+workflow:
+  name: "sp-opta-sync-match-stats"
+  title: "Stats Perform Opta - Match Statistics"
+  description: "Workflow to synchronize detailed match statistics from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    match_id: "$.get('match_id')"
+  outputs:
+    match_stats: "$.get('match_stats')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "check-document-timedelta"
+      description: "Check if the match stats document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.match_id: "$.get('match_id')"
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=24)}"
+        value.status: "'active'"
+      inputs:
+        name: "'sp-match-stats'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('match_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # task-load-match-stats
+    - type: "connector"
+      name: "task-load-match-stats"
+      description: "Get Match Statistics from Stats Perform Opta"
+      condition: "$.get('match_id') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'matchstats'"
+        competition_id: "None"
+        query_params: |
+          {
+            'matchId': $.get('match_id'),
+            'detailed': 'yes',
+            'people': 'yes'
+          }
+      outputs:
+        match_stats_raw: "$"
+        match_stats: "$.get('matchInfo', {})"
+        live_data: "$.get('liveData', {})"
+        contestants: "$.get('matchInfo', {}).get('contestant', [])"
+        lineup_data: "$.get('liveData', {}).get('lineUp', [])"
+
+    # task-update-match-stats
+    - type: "document"
+      name: "task-update-match-stats"
+      description: "Update the match stats document."
+      condition: "$.get('match_id') is not None and $.get('match_stats') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        sp-match-stats: |
+          {
+            'match_id': $.get('match_id'),
+            'match_info': $.get('match_stats'),
+            'live_data': $.get('live_data'),
+            'match_date': $.get('match_stats', {}).get('date', ''),
+            'match_time': $.get('match_stats', {}).get('time', ''),
+            'competition_name': $.get('match_stats', {}).get('competition', {}).get('name', ''),
+            'title': f"Match Stats - {$.get('match_stats', {}).get('description', $.get('match_id'))}",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        match_id: "$.get('match_id')"
+        document_type: "'synchronization'"
+
+    # task-bulk-save-team-stats
+    - type: "document"
+      name: "task-bulk-save-team-stats"
+      description: "Bulk save team statistics."
+      condition: "$.get('match_id') is not None and $.get('lineup_data') is not None and len($.get('lineup_data', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-team-match-stats'"
+      documents:
+        items: "$.get('team_stats_list')"
+      inputs:
+        team_stats_list: |
+          [
+            {
+              'match_id': $.get('match_id'),
+              'team_id': lineup.get('contestantId', ''),
+              'team_name': next((c.get('name', '') for c in $.get('contestants', []) if c.get('id') == lineup.get('contestantId')), ''),
+              'formation': lineup.get('formationUsed', ''),
+              'stats': lineup.get('stat', []),
+              'title': f"{next((c.get('name', 'Team') for c in $.get('contestants', []) if c.get('id') == lineup.get('contestantId')), 'Team')} - Team Stats"
+            }
+            for lineup in $.get('lineup_data', [])
+            if lineup.get('contestantId')
+          ]
+      metadata:
+        document_type: "'sp-team-match-stats'"
+        match_id: "$.get('match_id')"
+
+    # task-bulk-save-player-stats
+    - type: "document"
+      name: "task-bulk-save-player-stats"
+      description: "Bulk save individual player statistics."
+      condition: "$.get('match_id') is not None and $.get('lineup_data') is not None and len($.get('lineup_data', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-player-match-stats'"
+      documents:
+        items: "$.get('player_stats_list')"
+      inputs:
+        player_stats_list: |
+          [
+            {
+              'match_id': $.get('match_id'),
+              'team_id': lineup.get('contestantId', ''),
+              'player_id': player.get('playerId', ''),
+              'player_name': player.get('matchName', ''),
+              'player_position': player.get('position', ''),
+              'shirt_number': player.get('shirtNumber', ''),
+              'formation_place': player.get('formationPlace', ''),
+              'stats': player.get('stat', []),
+              'title': f"{player.get('matchName', 'Player')} - Match Stats"
+            }
+            for lineup in $.get('lineup_data', [])
+            for player in lineup.get('player', [])
+            if player is not None and player.get('stat')
+          ]
+      metadata:
+        document_type: "'sp-player-match-stats'"
+        match_id: "$.get('match_id')"
+
+

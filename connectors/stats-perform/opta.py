@@ -143,11 +143,15 @@ def invoke_request(request_data):
         competition_id = params.get("competition_id")
         query_params = params.get("query_params", {})
         
-        # Build API URL - tournamentschedule requires season ID in path
+        # Build API URL - some endpoints require IDs in path
         if endpoint == "tournamentschedule" and query_params.get("seasonId"):
             # For tournamentschedule, season ID goes in the URL path
             season_id = query_params.pop("seasonId")
             base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}/{season_id}"
+        elif endpoint in ["matchstats", "matchexpectedgoals"] and query_params.get("matchId"):
+            # For matchstats and matchexpectedgoals, match ID goes in the URL path
+            match_id = query_params.pop("matchId")
+            base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}/{match_id}"
         else:
             base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}"
         

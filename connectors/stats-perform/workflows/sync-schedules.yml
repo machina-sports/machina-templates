@@ -1,7 +1,7 @@
 workflow:
   name: "sp-opta-sync-schedules"
-  title: "Stats Perform Opta - Schedules"
-  description: "Workflow to synchronize match schedules from Stats Perform Opta API to Machina."
+  title: "Stats Perform Opta - Fixtures & Results (MA1)"
+  description: "Workflow to synchronize fixtures and results (with lineups, scores, events) from Stats Perform Opta API (MA1) to Machina."
   context-variables:
     debugger:
       enabled: true
@@ -13,6 +13,8 @@ workflow:
   inputs:
     competition_id: "$.get('competition_id')"
     season_id: "$.get('season_id', None)"
+    pages_to_fetch: "$.get('pages_to_fetch', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])"
+    page_size: "$.get('page_size', 30)"
   outputs:
     schedules: "$.get('schedules')"
     workflow-status: "len($.get('all_events_ids', [])) > len($.get('existing_events_ids', [])) and 'executed' or 'skipped'"
@@ -30,21 +32,29 @@ workflow:
         raw_data: "$"
         access_token: "$.get('access_token')"
 
-    # load-schedules-from-tournament-schedule
+    # load-schedules-from-fixtures-and-results
     - type: "connector"
-      name: "load-schedules"
-      description: "Get tournament schedules from Stats Perform Opta"
+      name: "load-schedules-paginated"
+      description: "Fetch fixtures and results with pagination (MA1)"
       condition: "$.get('competition_id') is not None and $.get('access_token') is not None"
       connector:
         name: "opta"
         command: "invoke_request"
+      foreach:
+        name: page_number
+        expr: $
+        value: $.get('pages_to_fetch')
       inputs:
         access_bearer: "$.get('access_token')"
-        endpoint: "'tournamentschedule'"
+        endpoint: "'match'"
         competition_id: "$.get('competition_id')"
-        query_params: "{'seasonId': $.get('season_id')}"
+        query_params: |
+          {
+            '_pgSz': str($.get('page_size')),
+            '_pgNm': str($.get('page_number', 1))
+          }
       outputs:
-        schedules_raw: "$"
+        schedules_raw: "$.get('match', [])"
 
     # iptc-opta-event-mapping
     - type: "mapping"

@@ -7,37 +7,67 @@ agent:
     season_id: "$.get('season_id', None)"
   workflows:
 
-    # # sp-opta-sync-competitions
-    # - name: sp-opta-sync-competitions
-    #   description: Sync all competitions from Stats Perform Opta
-    #   outputs:
-    #     competitions: "$.get('competitions')"
-    #     sync-competitions-status: "$.get('workflow-status', False)"
+    # sp-opta-sync-competitions
+    - name: sp-opta-sync-competitions
+      description: Sync all competitions from Stats Perform Opta
+      outputs:
+        competitions: "$.get('competitions')"
+        sync-competitions-status: "$.get('workflow-status', False)"
 
-    # # sp-opta-sync-seasons
-    # - name: sp-opta-sync-seasons
-    #   description: Sync seasons for a competition
-    #   condition: "$.get('competition_id') is not None"
-    #   inputs:
-    #     competition_id: "$.get('competition_id')"
-    #   outputs:
-    #     seasons: "$.get('seasons')"
-    #     sync-seasons-status: "$.get('workflow-status', False)"
+    # sp-opta-sync-seasons
+    - name: sp-opta-sync-seasons
+      description: Sync seasons for a competition
+      condition: "$.get('competition_id') is not None"
+      inputs:
+        competition_id: "$.get('competition_id')"
+      outputs:
+        seasons: "$.get('seasons')"
+        sync-seasons-status: "$.get('workflow-status', False)"
 
     # sp-opta-sync-schedules (BR Serie A)
     # id: "scf9p4y91yjvqvg5jndxzhxj"
     # season id: "9pqtmpr3w8jm73y0eb8hmum8k"
 
-    # - name: sp-opta-sync-schedules
-    #   description: Sync schedules for a competition/season
-    #   inputs:
-    #     competition_id: "'scf9p4y91yjvqvg5jndxzhxj'"
-    #     season_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
-    #   outputs:
-    #     schedules: "$.get('schedules')"
-    #     sync-schedules-status: "$.get('workflow-status', False)"
+    - name: sp-opta-sync-schedules
+      description: Sync schedules for a competition/season
+      inputs:
+        competition_id: "'scf9p4y91yjvqvg5jndxzhxj'"
+        season_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
+      outputs:
+        schedules: "$.get('schedules')"
+        sync-schedules-status: "$.get('workflow-status', False)"
 
-    # sp-opta-sync-transfers (Test)
+      # sp-opta-sync-standings (BR Serie A - Season 2024)
+      # tournament_calendar_id (season id): "9pqtmpr3w8jm73y0eb8hmum8k"
+      # - name: sp-opta-sync-standings
+      #   description: Sync league table/standings for a season (all division types)
+      #   inputs:
+      #     tournament_calendar_id: "'9pqtmpr3w8jm73y0eb8hmum8k'"
+      #   outputs:
+      #     standings: "$.get('standings')"
+      #     sync-standings-status: "$.get('workflow-status', False)"
+
+      # sp-opta-sync-match-stats
+      # match_id (fixture UUID): Get from sync-schedules output
+      # - name: sp-opta-sync-match-stats
+      #   description: Sync detailed match statistics (teams and players)
+      #   inputs:
+      #     match_id: "'abc123xyz'"  # Replace with actual match ID
+      #   outputs:
+      #     match_stats: "$.get('match_stats')"
+      #     sync-match-stats-status: "$.get('workflow-status', False)"
+
+      # sp-opta-sync-match-xg
+      # match_id (fixture UUID): Get from sync-schedules output
+      # - name: sp-opta-sync-match-xg
+      #   description: Sync match expected goals (xG) data
+      #   inputs:
+      #     match_id: "'abc123xyz'"  # Replace with actual match ID
+      #   outputs:
+      #     match_xg: "$.get('match_xg')"
+      #     sync-match-xg-status: "$.get('workflow-status', False)"
+
+      # sp-opta-sync-transfers (Test)
     # Greuther Fürth: "9dlxuym0eab00j9ggrdr87soj"
     # Grêmio: "1yd80wg4djlmtgkei51x0x4t6"
     # São Paulo: "5p301ikmaba9gesscss3zo745"

@@ -1,0 +1,10 @@
+connector:
+    name: assistant-tools-build-parlay
+    title: Assistant Tools - Build Parlay
+    description: Builds parlay/combined bet combinations to reach a target odd
+    filename: build_parlay.py
+    filetype: pyscript
+    commands:
+      - name: Invoke Build Parlay
+        value: invoke_build_parlay
+

@@ -1,0 +1,223 @@
+workflow:
+  name: "sp-opta-sync-match-xg"
+  title: "Stats Perform Opta - Match Expected Goals (xG)"
+  description: "Workflow to synchronize match expected goals (xG) data from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    match_id: "$.get('match_id')"
+  outputs:
+    match_xg: "$.get('match_xg')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "check-document-timedelta"
+      description: "Check if the match xG document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.match_id: "$.get('match_id')"
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=24)}"
+        value.status: "'active'"
+      inputs:
+        name: "'sp-match-xg'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('match_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # task-load-match-xg
+    - type: "connector"
+      name: "task-load-match-xg"
+      description: "Get Match Expected Goals from Stats Perform Opta"
+      condition: "$.get('match_id') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'matchexpectedgoals'"
+        competition_id: "None"
+        query_params: |
+          {
+            'matchId': $.get('match_id')
+          }
+      outputs:
+        match_xg_raw: "$"
+        match_info: "$.get('matchInfo', {})"
+        live_data: "$.get('liveData', {})"
+        contestants: "$.get('matchInfo', {}).get('contestant', [])"
+        lineup_data: "$.get('liveData', {}).get('lineUp', [])"
+        events: "$.get('liveData', {}).get('event', [])"
+
+    # task-update-match-xg
+    - type: "document"
+      name: "task-update-match-xg"
+      description: "Update the match xG document."
+      condition: "$.get('match_id') is not None and $.get('match_info') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        sp-match-xg: |
+          {
+            'match_id': $.get('match_id'),
+            'match_info': $.get('match_info'),
+            'live_data': $.get('live_data'),
+            'match_date': $.get('match_info', {}).get('date', ''),
+            'match_time': $.get('match_info', {}).get('time', ''),
+            'competition_name': $.get('match_info', {}).get('competition', {}).get('name', ''),
+            'title': f"Match xG - {$.get('match_info', {}).get('description', $.get('match_id'))}",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        match_id: "$.get('match_id')"
+        document_type: "'synchronization'"
+
+    # task-bulk-save-team-xg
+    - type: "document"
+      name: "task-bulk-save-team-xg"
+      description: "Bulk save team expected goals statistics."
+      condition: "$.get('match_id') is not None and $.get('lineup_data') is not None and len($.get('lineup_data', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-team-match-xg'"
+      documents:
+        items: "$.get('team_xg_list')"
+      inputs:
+        team_xg_list: |
+          [
+            {
+              'match_id': $.get('match_id'),
+              'team_id': lineup.get('contestantId', ''),
+              'team_name': next((c.get('name', '') for c in $.get('contestants', []) if c.get('id') == lineup.get('contestantId')), ''),
+              'xg_total': float(next((s.get('value', 0) for s in lineup.get('stat', []) if s.get('type') == 'expectedGoals'), 0)),
+              'xgot_total': float(next((s.get('value', 0) for s in lineup.get('stat', []) if s.get('type') == 'expectedGoalsontarget'), 0)),
+              'xg_nonpenalty': float(next((s.get('value', 0) for s in lineup.get('stat', []) if s.get('type') == 'expectedGoalsNonpenalty'), 0)),
+              'stats': lineup.get('stat', []),
+              'title': f"{next((c.get('name', 'Team') for c in $.get('contestants', []) if c.get('id') == lineup.get('contestantId')), 'Team')} - xG Data"
+            }
+            for lineup in $.get('lineup_data', [])
+            if lineup.get('contestantId')
+          ]
+      metadata:
+        document_type: "'sp-team-match-xg'"
+        match_id: "$.get('match_id')"
+
+    # task-bulk-save-player-xg
+    - type: "document"
+      name: "task-bulk-save-player-xg"
+      description: "Bulk save individual player expected goals statistics."
+      condition: "$.get('match_id') is not None and $.get('lineup_data') is not None and len($.get('lineup_data', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-player-match-xg'"
+      documents:
+        items: "$.get('player_xg_list')"
+      inputs:
+        player_xg_list: |
+          [
+            {
+              'match_id': $.get('match_id'),
+              'team_id': lineup.get('contestantId', ''),
+              'player_id': player.get('playerId', ''),
+              'player_name': player.get('matchName', ''),
+              'player_position': player.get('position', ''),
+              'shirt_number': player.get('shirtNumber', ''),
+              'xg_total': float(next((s.get('value', 0) for s in player.get('stat', []) if s.get('type') == 'expectedGoals'), 0)),
+              'xgot_total': float(next((s.get('value', 0) for s in player.get('stat', []) if s.get('type') == 'expectedGoalsontarget'), 0)),
+              'xg_nonpenalty': float(next((s.get('value', 0) for s in player.get('stat', []) if s.get('type') == 'expectedGoalsNonpenalty'), 0)),
+              'stats': player.get('stat', []),
+              'title': f"{player.get('matchName', 'Player')} - xG Data"
+            }
+            for lineup in $.get('lineup_data', [])
+            for player in lineup.get('player', [])
+            if player is not None and len(player.get('stat', [])) > 0
+          ]
+      metadata:
+        document_type: "'sp-player-match-xg'"
+        match_id: "$.get('match_id')"
+
+    # task-bulk-save-shot-events
+    - type: "document"
+      name: "task-bulk-save-shot-events"
+      description: "Bulk save individual shot events with xG values."
+      condition: "$.get('match_id') is not None and $.get('events') is not None and len($.get('events', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-shot-event-xg'"
+      documents:
+        items: "$.get('shot_events_list')"
+      inputs:
+        shot_events_list: |
+          [
+            {
+              'match_id': $.get('match_id'),
+              'event_id': event.get('id', ''),
+              'type_id': event.get('typeId', ''),
+              'period_id': event.get('periodId', ''),
+              'time_min': event.get('timeMin', 0),
+              'time_sec': event.get('timeSec', 0),
+              'team_id': event.get('contestantId', ''),
+              'player_id': event.get('playerId', ''),
+              'player_name': event.get('playerName', ''),
+              'outcome': event.get('outcome', ''),
+              'x': event.get('x', 0),
+              'y': event.get('y', 0),
+              'qualifiers': event.get('qualifier', []),
+              'title': f"{event.get('playerName', 'Player')} - Shot at {event.get('timeMin', 0)}'"
+            }
+            for event in $.get('events', [])
+            if event.get('typeId') == 13
+          ]
+      metadata:
+        document_type: "'sp-shot-event-xg'"
+        match_id: "$.get('match_id')"
+
+
+

@@ -1,0 +1,538 @@
+workflow:
+  name: athlete-deep-research-ingest
+  title: Athlete Deep Research Ingest
+  description: Ingest athlete data for deep research.
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    athletes: |
+      [
+        {
+          "id": "jeremiah-smith-jr",
+          "name": "Jeremiah Smith Jr.",
+          "slug": "jeremiah-smith-jr",
+          "image": "/images/athletes/jeremiah-smith-jr.png",
+          "sport": "football",
+          "team": {
+            "name": "Ohio State Buckeyes",
+            "logo": "/images/teams/ohio-state.png"
+          },
+          "position": "Wide Receiver",
+          "country": "USA",
+          "jerseyNumber": "4",
+          "stats": {
+            "performanceScore": 92,
+            "socialImpact": 88,
+            "brandValue": 85
+          },
+          "socialMedia": {
+            "instagram": "jeremiah_smith1",
+            "twitter": "Jermiah_Smith1"
+          },
+          "bio": "Jeremiah Smith Jr. is a top-tier wide receiver talent playing for Ohio State, known for his incredible hands and route-running ability."
+        },
+        {
+          "id": "rome-odunze",
+          "name": "Rome Odunze",
+          "slug": "rome-odunze",
+          "image": "/images/athletes/rome-odunze.png",
+          "sport": "football",
+          "team": {
+            "name": "Chicago Bears",
+            "logo": "/images/teams/bears.png"
+          },
+          "position": "Wide Receiver",
+          "country": "USA",
+          "jerseyNumber": "15",
+          "stats": {
+            "performanceScore": 89,
+            "socialImpact": 84,
+            "brandValue": 86
+          },
+          "socialMedia": {
+            "instagram": "romeodunze",
+            "twitter": "RomeOdunze"
+          },
+          "bio": "Rome Odunze is a dynamic playmaker for the Chicago Bears, selected 9th overall in the 2024 NFL Draft after a stellar career at Washington."
+        },
+        {
+          "id": "pete-crow-armstrong",
+          "name": "Pete Crow-Armstrong",
+          "slug": "pete-crow-armstrong",
+          "image": "/images/athletes/pete-crow-armstrong.png",
+          "sport": "baseball",
+          "team": {
+            "name": "Chicago Cubs",
+            "logo": "/images/teams/cubs.png"
+          },
+          "position": "Outfielder",
+          "country": "USA",
+          "jerseyNumber": "52",
+          "stats": {
+            "performanceScore": 85,
+            "socialImpact": 80,
+            "brandValue": 82
+          },
+          "socialMedia": {
+            "instagram": "petecrowarmstrong",
+            "twitter": "PCArmstrong"
+          },
+          "bio": "Pete Crow-Armstrong is a defensive wizard and exciting outfield prospect for the Chicago Cubs, known for his speed and elite fielding."
+        },
+        {
+          "id": "julio-rodriguez-jr",
+          "name": "Julio Rodríguez",
+          "slug": "julio-rodriguez",
+          "image": "/images/athletes/julio-rodriguez-jr.png",
+          "sport": "baseball",
+          "team": {
+            "name": "Seattle Mariners",
+            "logo": "/images/teams/mariners.png"
+          },
+          "position": "Outfielder",
+          "country": "Dominican Republic",
+          "jerseyNumber": "44",
+          "stats": {
+            "performanceScore": 94,
+            "socialImpact": 91,
+            "brandValue": 93
+          },
+          "socialMedia": {
+            "instagram": "jrodshow44",
+            "twitter": "JRODshow44"
+          },
+          "bio": "Julio Rodríguez, also known as 'J-Rod', is the face of the Seattle Mariners franchise and one of the most electrifying young stars in baseball."
+        },
+        {
+          "id": "nijaree-canady",
+          "name": "NiJaree Canady",
+          "slug": "nijaree-canady",
+          "image": "/images/athletes/nijaree-canady.png",
+          "sport": "softball",
+          "team": {
+            "name": "Texas Tech",
+            "logo": "/images/teams/texas-tech.png"
+          },
+          "position": "Pitcher",
+          "country": "USA",
+          "jerseyNumber": "24",
+          "stats": {
+            "performanceScore": 95,
+            "socialImpact": 82,
+            "brandValue": 84
+          },
+          "socialMedia": {
+            "instagram": "nijareecanady",
+            "twitter": "CanadyNijaree"
+          },
+          "bio": "NiJaree Canady is widely considered the most dominant pitcher in college softball, transferring to Texas Tech after a historic stint at Stanford."
+        },
+        {
+          "id": "tiare-jennings",
+          "name": "Tiare Jennings",
+          "slug": "tiare-jennings",
+          "image": "/images/athletes/tiare-jennings.png",
+          "sport": "softball",
+          "team": {
+            "name": "Oklahoma Sooners",
+            "logo": "/images/teams/oklahoma.png"
+          },
+          "position": "Infielder",
+          "country": "USA",
+          "jerseyNumber": "23",
+          "stats": {
+            "performanceScore": 93,
+            "socialImpact": 86,
+            "brandValue": 85
+          },
+          "socialMedia": {
+            "instagram": "tiarejennings",
+            "twitter": "_tiarejennings"
+          },
+          "bio": "Tiare Jennings is a key leader for the powerhouse Oklahoma Sooners softball team, known for her clutch hitting and defensive reliability."
+        },
+        {
+          "id": "cavan-sullivan",
+          "name": "Cavan Sullivan",
+          "slug": "cavan-sullivan",
+          "image": "/images/athletes/cavan-sullivan.png",
+          "sport": "soccer",
+          "team": {
+            "name": "Philadelphia Union",
+            "logo": "/images/teams/union.png"
+          },
+          "position": "Midfielder",
+          "country": "USA",
+          "jerseyNumber": "6",
+          "stats": {
+            "performanceScore": 84,
+            "socialImpact": 90,
+            "brandValue": 88
+          },
+          "socialMedia": {
+            "instagram": "cavan.sullivan"
+          },
+          "bio": "Cavan Sullivan is a historic soccer prodigy who became the youngest player to debut in MLS history with the Philadelphia Union."
+        },
+        {
+          "id": "riqui-puig",
+          "name": "Riqui Puig",
+          "slug": "riqui-puig",
+          "image": "/images/athletes/riqui-puig.png",
+          "sport": "soccer",
+          "team": {
+            "name": "LA Galaxy",
+            "logo": "/images/teams/galaxy.png"
+          },
+          "position": "Midfielder",
+          "country": "Spain",
+          "jerseyNumber": "10",
+          "stats": {
+            "performanceScore": 88,
+            "socialImpact": 89,
+            "brandValue": 87
+          },
+          "socialMedia": {
+            "instagram": "riquipuig",
+            "twitter": "RiquiPuig"
+          },
+          "bio": "Riqui Puig is a creative midfielder for the LA Galaxy, bringing FC Barcelona flair and vision to Major League Soccer."
+        },
+        {
+          "id": "lindsey-heaps",
+          "name": "Lindsey Heaps",
+          "slug": "lindsey-heaps",
+          "image": "/images/athletes/lindsey-heaps.png",
+          "sport": "soccer",
+          "team": {
+            "name": "Adidas",
+            "logo": "/images/teams/adidas.png"
+          },
+          "position": "Forward",
+          "country": "USA",
+          "stats": {
+            "performanceScore": 80,
+            "socialImpact": 75,
+            "brandValue": 78
+          },
+          "socialMedia": {
+            "instagram": "lindseyheaps"
+          },
+          "bio": "Lindsey Heaps is a talented rising soccer player partnering with Adidas to showcase the next generation of athletic performance."
+        },
+        {
+          "id": "sam-coffey",
+          "name": "Sam Coffey",
+          "slug": "sam-coffey",
+          "image": "/images/athletes/sam-coffey.png",
+          "sport": "soccer",
+          "team": {
+            "name": "Portland Thorns",
+            "logo": "/images/teams/thorns.png"
+          },
+          "position": "Midfielder",
+          "country": "USA",
+          "jerseyNumber": "17",
+          "stats": {
+            "performanceScore": 86,
+            "socialImpact": 81,
+            "brandValue": 83
+          },
+          "socialMedia": {
+            "instagram": "ssamcoffey",
+            "twitter": "ssamcoffeyy"
+          },
+          "bio": "Sam Coffey is a commanding midfield presence for the Portland Thorns and the US Women's National Team."
+        },
+        {
+          "id": "jaedyn-shaw",
+          "name": "Jaedyn Shaw",
+          "slug": "jaedyn-shaw",
+          "image": "/images/athletes/jaedyn-shaw.png",
+          "sport": "soccer",
+          "team": {
+            "name": "San Diego Wave",
+            "logo": "/images/teams/wave.png"
+          },
+          "position": "Forward",
+          "country": "USA",
+          "jerseyNumber": "11",
+          "stats": {
+            "performanceScore": 89,
+            "socialImpact": 85,
+            "brandValue": 87
+          },
+          "socialMedia": {
+            "instagram": "jaedynshaw",
+            "twitter": "JaedynShaw11"
+          },
+          "bio": "Jaedyn Shaw is one of the most exciting young attackers in the NWSL and a rising star for the USWNT."
+        },
+        {
+          "id": "hailey-van-lith",
+          "name": "Hailey Van Lith",
+          "slug": "hailey-van-lith",
+          "image": "/images/athletes/hailey-van-lith.png",
+          "sport": "basketball",
+          "team": {
+            "name": "TCU Horned Frogs",
+            "logo": "/images/teams/tcu.png"
+          },
+          "position": "Guard",
+          "country": "USA",
+          "jerseyNumber": "11",
+          "stats": {
+            "ppg": 14.5,
+            "rpg": 4.0,
+            "apg": 3.5,
+            "performanceScore": 91,
+            "socialImpact": 94,
+            "brandValue": 92
+          },
+          "socialMedia": {
+            "instagram": "haileyvanlith",
+            "tiktok": "haileyvanlith"
+          },
+          "bio": "Hailey Van Lith is a star collegiate guard now at TCU, known for her scoring ability, intensity, and massive social media following."
+        },
+        {
+          "id": "darryn-peterson",
+          "name": "Darryn Peterson",
+          "slug": "darryn-peterson",
+          "image": "/images/athletes/darryn-peterson.png",
+          "sport": "basketball",
+          "team": {
+            "name": "Huntington Prep",
+            "logo": "/images/teams/huntington.png"
+          },
+          "position": "Guard",
+          "country": "USA",
+          "jerseyNumber": "3",
+          "stats": {
+            "performanceScore": 88,
+            "socialImpact": 82,
+            "brandValue": 85
+          },
+          "socialMedia": {
+            "instagram": "darrynpeterson"
+          },
+          "bio": "Darryn Peterson is one of the top-ranked high school basketball recruits in the country, celebrated for his smooth scoring and elite skill set."
+        },
+        {
+          "id": "sophie-cunningham",
+          "name": "Sophie Cunningham",
+          "slug": "sophie-cunningham",
+          "image": "/images/athletes/sophie-cunningham.png",
+          "sport": "basketball",
+          "team": {
+            "name": "Phoenix Mercury",
+            "logo": "/images/teams/mercury.png"
+          },
+          "position": "Guard",
+          "country": "USA",
+          "jerseyNumber": "9",
+          "stats": {
+            "ppg": 11.2,
+            "rpg": 3.8,
+            "apg": 2.1,
+            "performanceScore": 85,
+            "socialImpact": 83,
+            "brandValue": 84
+          },
+          "socialMedia": {
+            "instagram": "sophie_cham",
+            "twitter": "sophiecunningham"
+          },
+          "bio": "Sophie Cunningham is a tough, sharpshooting guard for the Phoenix Mercury, known for her competitive fire and clutch play."
+        },
+        {
+          "id": "harper-murray",
+          "name": "Harper Murray",
+          "slug": "harper-murray",
+          "image": "/images/athletes/harper-murray.png",
+          "sport": "volleyball",
+          "team": {
+            "name": "Nebraska Cornhuskers",
+            "logo": "/images/teams/nebraska.png"
+          },
+          "position": "Outside Hitter",
+          "country": "USA",
+          "jerseyNumber": "27",
+          "stats": {
+            "performanceScore": 90,
+            "socialImpact": 88,
+            "brandValue": 86
+          },
+          "socialMedia": {
+            "instagram": "harpermurray",
+            "tiktok": "harpermurray"
+          },
+          "bio": "Harper Murray is a freshman sensation for Nebraska Volleyball, already making waves with her powerful kills and all-around game."
+        },
+        {
+          "id": "aleia-hobbs",
+          "name": "Aleia Hobbs",
+          "slug": "aleia-hobbs",
+          "image": "/images/athletes/aleia-hobbs.png",
+          "sport": "track_and_field",
+          "team": {
+            "name": "USA",
+            "logo": "/images/teams/usa.png"
+          },
+          "position": "Sprinter",
+          "country": "USA",
+          "stats": {
+            "performanceScore": 91,
+            "socialImpact": 84,
+            "brandValue": 85
+          },
+          "socialMedia": {
+            "instagram": "aleiahobbs",
+            "twitter": "AleiaHobbs"
+          },
+          "bio": "Aleia Hobbs is an elite American sprinter and Olympic medalist, specializing in the 100 meters and relay events."
+        },
+        {
+          "id": "quincy-hall",
+          "name": "Quincy Hall",
+          "slug": "quincy-hall",
+          "image": "/images/athletes/quincy-hall.png",
+          "sport": "track_and_field",
+          "team": {
+            "name": "USA",
+            "logo": "/images/teams/usa.png"
+          },
+          "position": "Sprinter (400m)",
+          "country": "USA",
+          "stats": {
+            "performanceScore": 92,
+            "socialImpact": 83,
+            "brandValue": 84
+          },
+          "socialMedia": {
+            "instagram": "quincy_hall"
+          },
+          "bio": "Quincy Hall is a world-class 400m runner known for his grit and determination on the track, representing Team USA."
+        },
+        {
+          "id": "ezra-frech",
+          "name": "Ezra Frech",
+          "slug": "ezra-frech",
+          "image": "/images/athletes/ezra-frech.png",
+          "sport": "paralympic",
+          "team": {
+            "name": "USA",
+            "logo": "/images/teams/usa.png"
+          },
+          "position": "Track & Field",
+          "country": "USA",
+          "stats": {
+            "performanceScore": 93,
+            "socialImpact": 95,
+            "brandValue": 90
+          },
+          "socialMedia": {
+            "instagram": "ezrafrech",
+            "tiktok": "ezrafrech"
+          },
+          "bio": "Ezra Frech is a Paralympic gold medalist and world record holder in the high jump, inspiring millions with his athleticism and advocacy."
+        },
+        {
+          "id": "dyson-daniels",
+          "name": "Dyson Daniels",
+          "slug": "dyson-daniels",
+          "image": "/images/athletes/dyson-daniels.png",
+          "sport": "basketball",
+          "team": {
+            "name": "Atlanta Hawks",
+            "logo": "/images/teams/hawks.png"
+          },
+          "position": "Guard",
+          "country": "Australia",
+          "jerseyNumber": "11",
+          "stats": {
+            "ppg": 10.1,
+            "rpg": 4.2,
+            "apg": 3.8,
+            "performanceScore": 86,
+            "socialImpact": 81,
+            "brandValue": 83
+          },
+          "socialMedia": {
+            "instagram": "dysondaniels"
+          },
+          "bio": "Dyson Daniels is a versatile Australian guard for the Atlanta Hawks, known for his elite perimeter defense and playmaking potential."
+        },
+        {
+          "id": "satou-sabally",
+          "name": "Satou Sabally",
+          "slug": "satou-sabally",
+          "image": "/images/athletes/satou-sabally.png",
+          "sport": "basketball",
+          "team": {
+            "name": "Dallas Wings",
+            "logo": "/images/teams/wings.png"
+          },
+          "position": "Forward",
+          "country": "Germany",
+          "jerseyNumber": "0",
+          "stats": {
+            "ppg": 18.6,
+            "rpg": 8.1,
+            "apg": 4.4,
+            "performanceScore": 92,
+            "socialImpact": 89,
+            "brandValue": 88
+          },
+          "socialMedia": {
+            "instagram": "satou_sabally",
+            "twitter": "satou_sabally",
+            "tiktok": "satousabally"
+          },
+          "bio": "Satou Sabally is a German superstar forward for the Dallas Wings, blending size, shooting, and skill into a unique All-WNBA package."
+        }
+      ]
+
+  outputs:
+    workflow-status: "'executed'"
+
+  tasks:
+    - type: document
+      name: ingest-athletes
+      description: "Ingest athlete data into the system."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "athlete-profile"
+      documents:
+        items: "$.get('parsed_athletes')"
+      inputs:
+        parsed_athletes: |
+          [
+            {
+              "title": athlete.get('name'),
+              "metadata": {
+                "document_id": athlete.get('id'),
+                "slug": athlete.get('slug'),
+                "sport": athlete.get('sport'),
+                "team": athlete.get('team', {}).get('name'),
+                "country": athlete.get('country')
+              },
+              "athlete_name": athlete.get('name'),
+              "athlete_aliases": [athlete.get('name'), athlete.get('slug')],
+              "sport": athlete.get('sport'),
+              "team": athlete.get('team', {}).get('name'),
+              "team_logo": athlete.get('team', {}).get('logo'),
+              "position": athlete.get('position'),
+              "jersey_number": athlete.get('jerseyNumber'),
+              "primary_market": athlete.get('country'),
+              "image": athlete.get('image'),
+              "stats": athlete.get('stats', {}),
+              "social_media": athlete.get('socialMedia', {}),
+              "bio": athlete.get('bio'),
+              "brand_tier": "Emerging"
+            }
+            for athlete in $.get('athletes', [])
+          ]
