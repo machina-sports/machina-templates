@@ -33,6 +33,10 @@ workflow:
     step_find_markets_docs: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
     step_find_markets_objects: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
     workflow-status: len($.get('selected-runners-parsed', [])) > 0 and 'executed' or 'skipped'
+    country: $.get('country')
+    sport_id: $.get('sport_id')
+    selected_events_ids: $.get('selected_events_ids', [])
+    mapped-runners: $.get('mapped-runners', [])
   tasks:
 
     # Load chat history (thread document)
