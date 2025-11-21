@@ -27,3 +27,9 @@ datasets:
   - type: "workflow"
     path: "workflows/sync-articles.yml"
 
+  - type: "workflow"
+    path: "workflows/sync-labels.yml"
+
+  - type: "agent"
+    path: "agent.yml"
+

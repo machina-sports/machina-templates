@@ -25,19 +25,17 @@ workflow:
       description: "Fetch articles from Zendesk Help Center"
       connector:
         name: "zendesk"
-        command: "get-api/v2/help_center/{locale}/articles"
-        command_attribute:
-          locale: "$.get('locale')"
+        command: "list_articles"
       inputs:
+        locale: "$.get('locale')"
         sort_by: "$.get('sort_by')"
         sort_order: "$.get('sort_order')"
         page: "$.get('page')"
         per_page: "$.get('per_page')"
-        Accept: "'application/json'"
       outputs:
-        articles_response: "$"
-        articles: "$.get('articles', [])"
-        articles_count: "$.get('count', 0)"
+        articles_response: "$.get('data', {})"
+        articles: "$.get('data', {}).get('articles', [])"
+        articles_count: "$.get('data', {}).get('count', 0)"
         articles_parsed: |
           [
             {

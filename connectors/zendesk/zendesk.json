@@ -15,11 +15,10 @@
       "get": {
         "summary": "List articles",
         "description": "Retrieve a list of articles from the Help Center",
-        "operationId": "listArticles",
         "parameters": [
           {
-            "name": "locale",
             "in": "path",
+            "name": "locale",
             "required": true,
             "schema": {
               "type": "string"
@@ -27,8 +26,8 @@
             "description": "The locale code (e.g., en-gb)"
           },
           {
-            "name": "sort_by",
             "in": "query",
+            "name": "sort_by",
             "required": false,
             "schema": {
               "type": "string",
@@ -38,8 +37,8 @@
             "description": "Sort articles by field"
           },
           {
-            "name": "sort_order",
             "in": "query",
+            "name": "sort_order",
             "required": false,
             "schema": {
               "type": "string",
@@ -49,8 +48,8 @@
             "description": "Sort order"
           },
           {
-            "name": "page",
             "in": "query",
+            "name": "page",
             "required": false,
             "schema": {
               "type": "integer",
@@ -59,8 +58,8 @@
             "description": "Page number for pagination"
           },
           {
-            "name": "per_page",
             "in": "query",
+            "name": "per_page",
             "required": false,
             "schema": {
               "type": "integer",
