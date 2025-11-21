@@ -1,0 +1,33 @@
+agent:
+  name: zendesk-sync-agent
+  title: Zendesk Sync Agent
+  description: "Agent to synchronize articles and labels from Zendesk Help Center to the database"
+  context-agent:
+    locale: $.get('locale', 'en-gb')
+    sort_by: $.get('sort_by', 'updated_at')
+    sort_order: $.get('sort_order', 'asc')
+    page: $.get('page', 1)
+    per_page: $.get('per_page', 30)
+  workflows:
+
+    # zendesk-sync-articles
+    - name: zendesk-sync-articles
+      description: "Sync articles from Zendesk Help Center"
+      inputs:
+        locale: "$.get('locale', 'en-gb')"
+        sort_by: "$.get('sort_by', 'updated_at')"
+        sort_order: "$.get('sort_order', 'asc')"
+        page: "$.get('page', 1)"
+        per_page: "$.get('per_page', 30)"
+      outputs:
+        articles_count: "$.get('articles_count', 0)"
+        articles_status: "$.get('workflow-status')"
+
+    # zendesk-sync-labels
+    - name: zendesk-sync-labels
+      description: "Sync labels from Zendesk Help Center"
+      inputs: {}
+      outputs:
+        labels_count: "$.get('labels_count', 0)"
+        labels_status: "$.get('workflow-status')"
+
