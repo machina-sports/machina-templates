@@ -1,0 +1,6 @@
+connector:
+  name: "zendesk"
+  description: "Zendesk Help Center API - Access articles and help center content"
+  filename: "zendesk.json"
+  filetype: "restapi"
+

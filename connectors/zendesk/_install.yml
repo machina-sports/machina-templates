@@ -1,0 +1,29 @@
+setup:
+  title: Zendesk Help Center API
+  description: Connect to Zendesk Help Center API to retrieve and sync articles from your help center.
+  category:
+    - content-management
+    - help-desk
+    - knowledge-base
+  estimatedTime: 1 minute
+  features:
+    - Retrieve articles from Help Center
+    - Sync articles to database
+    - Support for multiple locales
+    - Article metadata and content
+  integrations:
+    - zendesk
+  requirements:
+    - ZENDESK_USERNAME (Email address with /token suffix, e.g., "email@domain.com/token")
+    - ZENDESK_PASSWORD (API token for Zendesk account)
+  status: available
+  value: "connectors/zendesk"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "zendesk.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-articles.yml"
+

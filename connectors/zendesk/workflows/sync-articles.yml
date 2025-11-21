@@ -1,0 +1,80 @@
+workflow:
+  name: "zendesk-sync-articles"
+  title: "Zendesk Sync Articles"
+  description: "Workflow to fetch articles from Zendesk Help Center and save them to the database"
+  context-variables:
+    debugger:
+      enabled: true
+    zendesk:
+      username: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME"
+      password: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD"
+  inputs:
+    locale: "$.get('locale', 'en-gb')"
+    sort_by: "$.get('sort_by', 'updated_at')"
+    sort_order: "$.get('sort_order', 'asc')"
+    page: "$.get('page', 1)"
+    per_page: "$.get('per_page', 30)"
+  outputs:
+    articles_count: "$.get('articles_count', 0)"
+    workflow-status: "$.get('articles_parsed', []) is None or len($.get('articles_parsed', [])) == 0 and 'skipped' or 'executed'"
+  tasks:
+
+    # task-fetch-articles
+    - type: "connector"
+      name: "task-fetch-articles"
+      description: "Fetch articles from Zendesk Help Center"
+      connector:
+        name: "zendesk"
+        command: "get-api/v2/help_center/{locale}/articles"
+        command_attribute:
+          locale: "$.get('locale')"
+      inputs:
+        sort_by: "$.get('sort_by')"
+        sort_order: "$.get('sort_order')"
+        page: "$.get('page')"
+        per_page: "$.get('per_page')"
+        Accept: "'application/json'"
+      outputs:
+        articles_response: "$"
+        articles: "$.get('articles', [])"
+        articles_count: "$.get('count', 0)"
+        articles_parsed: |
+          [
+            {
+              **article,
+              'metadata': {
+                'article_id': str(article.get('id', '')),
+                'section_id': str(article.get('section_id', '')),
+                'author_id': str(article.get('author_id', '')),
+                'locale': article.get('locale', ''),
+                'source_locale': article.get('source_locale', ''),
+                'permission_group_id': str(article.get('permission_group_id', '')),
+                'draft': article.get('draft', False),
+                'promoted': article.get('promoted', False),
+                'outdated': article.get('outdated', False)
+              },
+              'title': article.get('title', article.get('name', '')),
+              'created_at': article.get('created_at'),
+              'updated_at': article.get('updated_at'),
+              'edited_at': article.get('edited_at')
+            }
+            for article in $.get('articles', [])
+          ]
+
+    # bulk-save-articles
+    - type: "document"
+      name: "bulk-save-articles"
+      condition: "$.get('articles_parsed') is not None and len($.get('articles_parsed', [])) > 0"
+      description: "Bulk save articles to the database"
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'zendesk-article'"
+      documents:
+        items: "$.get('articles_parsed')"
+      inputs:
+        articles_parsed: "$.get('articles_parsed')"
+      outputs:
+        saved_count: "$len($.get('documents', [])) if $.get('documents') else 0"
+
