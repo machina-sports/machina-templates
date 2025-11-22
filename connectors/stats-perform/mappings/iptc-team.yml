@@ -1,0 +1,40 @@
+mappings:
+
+  # iptc-opta-team-mapping
+  - type: mapping
+    title: "IPTC | Stats Perform Opta Team Mapping"
+    name: "iptc-opta-team-mapping"
+    description: "Mapping data from Stats Perform Opta to IPTC Sport Schema team format"
+    outputs:
+      sport_schema_teams: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:opta:team:{team.get('id')}",
+            "@type": ["sport:Team", "schema:SportsTeam"],
+            "name": team.get('name', ''),
+            "schema:name": team.get('officialName', team.get('name', '')),
+            "sport:officialName": team.get('officialName', ''),
+            "sport:shortName": team.get('shortName', ''),
+            "sport:code": team.get('code', ''),
+            "sport:teamType": team.get('teamType', 'default'),
+            "sport:type": team.get('type', 'club'),
+            "sport:country": team.get('country', ''),
+            "sport:countryId": team.get('countryId', ''),
+            "sport:city": team.get('city', ''),
+            "sport:founded": team.get('founded', ''),
+            "sport:status": team.get('status', 'active'),
+            "schema:address": {
+              "streetAddress": team.get('postalAddress', ''),
+              "postalCode": team.get('addressZip', '')
+            } if team.get('postalAddress') else None,
+            "sport:details": team.get('details', ''),
+            "lastUpdated": team.get('lastUpdated', ''),
+            "title": team.get('name', '')
+          }
+          for team in $.get('teams_raw', [])
+        ]
+
