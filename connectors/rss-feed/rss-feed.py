@@ -5,24 +5,27 @@ from urllib.parse import quote_plus
 from email.utils import parsedate_to_datetime
 
 
-def fetch_feed(params):
+def fetch_feed(request_data):
     """
     Fetch and parse an RSS/Atom feed.
 
     Args:
-        params (dict): Dictionary containing:
-            - google_news (bool, optional): If True, use Google News RSS feed. Default: False
-            - query (str, required if google_news=True): Search query for Google News
-            - url (str, required if google_news=False): The URL of the RSS feed
-            - language (str, optional): Language code for Google News (default: "en-US")
-            - country (str, optional): Country code for Google News (default: "US")
-            - after (str, optional): Filter articles published after this date (YYYY-MM-DD format)
-            - before (str, optional): Filter articles published before this date (YYYY-MM-DD format)
-            - sort_by_date (bool, optional): Sort entries by publication date (newest first). Default: False
+        request_data (dict): Dictionary containing:
+            - params (dict): Dictionary with:
+                - google_news (bool, optional): If True, use Google News RSS feed. Default: False
+                - query (str, required if google_news=True): Search query for Google News
+                - url (str, required if google_news=False): The URL of the RSS feed
+                - language (str, optional): Language code for Google News (default: "en-US")
+                - country (str, optional): Country code for Google News (default: "US")
+                - after (str, optional): Filter articles published after this date (YYYY-MM-DD format)
+                - before (str, optional): Filter articles published before this date (YYYY-MM-DD format)
+                - sort_by_date (bool, optional): Sort entries by publication date (newest first). Default: False
 
     Returns:
         dict: Status and parsed feed data.
     """
+    params = request_data.get("params")
+    
     def _build_google_news_url(query, language="en-US", country="US", after=None, before=None):
         lang_code = language.split("-")[0] if "-" in language else language
         ceid = f"{country}:{lang_code}"
@@ -79,13 +82,17 @@ def fetch_feed(params):
         return sorted(entries, key=get_sort_key, reverse=reverse)
 
     google_news = params.get("google_news", False)
+    if isinstance(google_news, str):
+        google_news = google_news.lower() in ('true', '1', 'yes')
     sort_by_date = params.get("sort_by_date", False)
+    if isinstance(sort_by_date, str):
+        sort_by_date = sort_by_date.lower() in ('true', '1', 'yes')
     
     # Determine the URL to use
     if google_news:
         query = params.get("query")
         if not query:
-            return {"status": "error", "message": "Query is required when google_news is True."}
+            return {"status": False, "message": "Query is required when google_news is True."}
         
         language = params.get("language", "en-US")
         country = params.get("country", "US")
@@ -95,7 +102,7 @@ def fetch_feed(params):
     else:
         url = params.get("url")
         if not url:
-            return {"status": "error", "message": "URL is required when google_news is False."}
+            return {"status": False, "message": "URL is required when google_news is False."}
 
     try:
         feed = feedparser.parse(url)
@@ -103,7 +110,7 @@ def fetch_feed(params):
         # Check if the feed was fetched successfully
         if hasattr(feed, 'status') and feed.status >= 400:
              return {
-                "status": "error", 
+                "status": False, 
                 "message": f"Failed to fetch feed. HTTP Status: {feed.status}"
             }
         
@@ -111,7 +118,7 @@ def fetch_feed(params):
             # We log the exception but continue if entries were parsed, 
             # as feedparser is lenient. However, if no entries and bozo is set, it's likely a fatal error.
             if not feed.entries and not feed.feed:
-                 return {"status": "error", "message": f"Failed to parse feed: {feed.bozo_exception}"}
+                 return {"status": False, "message": f"Failed to parse feed: {feed.bozo_exception}"}
 
         # Process feed metadata
         feed_data = {
@@ -135,28 +142,31 @@ def fetch_feed(params):
         return {"status": True, "data": feed_data}
 
     except Exception as e:
-        return {"status": "error", "message": f"Exception when fetching feed: {e}"}
+        return {"status": False, "message": f"Exception when fetching feed: {e}"}
 
 
-def fetch_items(params):
+def fetch_items(request_data):
     """
     Fetch items from an RSS/Atom feed, optionally limited by count or date.
 
     Args:
-        params (dict): Dictionary containing:
-            - google_news (bool, optional): If True, use Google News RSS feed. Default: False
-            - query (str, required if google_news=True): Search query for Google News
-            - url (str, required if google_news=False): The URL of the RSS feed
-            - limit (int, optional): Max number of items to return
-            - language (str, optional): Language code for Google News (default: "en-US")
-            - country (str, optional): Country code for Google News (default: "US")
-            - after (str, optional): Filter articles published after this date (YYYY-MM-DD format)
-            - before (str, optional): Filter articles published before this date (YYYY-MM-DD format)
-            - sort_by_date (bool, optional): Sort entries by publication date (newest first). Default: False
+        request_data (dict): Dictionary containing:
+            - params (dict): Dictionary with:
+                - google_news (bool, optional): If True, use Google News RSS feed. Default: False
+                - query (str, required if google_news=True): Search query for Google News
+                - url (str, required if google_news=False): The URL of the RSS feed
+                - limit (int, optional): Max number of items to return
+                - language (str, optional): Language code for Google News (default: "en-US")
+                - country (str, optional): Country code for Google News (default: "US")
+                - after (str, optional): Filter articles published after this date (YYYY-MM-DD format)
+                - before (str, optional): Filter articles published before this date (YYYY-MM-DD format)
+                - sort_by_date (bool, optional): Sort entries by publication date (newest first). Default: False
 
     Returns:
         dict: Status and list of feed items.
     """
+    params = request_data.get("params")
+    
     def _build_google_news_url(query, language="en-US", country="US", after=None, before=None):
         lang_code = language.split("-")[0] if "-" in language else language
         ceid = f"{country}:{lang_code}"
@@ -213,14 +223,18 @@ def fetch_items(params):
         return sorted(entries, key=get_sort_key, reverse=reverse)
 
     google_news = params.get("google_news", False)
+    if isinstance(google_news, str):
+        google_news = google_news.lower() in ('true', '1', 'yes')
     sort_by_date = params.get("sort_by_date", False)
+    if isinstance(sort_by_date, str):
+        sort_by_date = sort_by_date.lower() in ('true', '1', 'yes')
     limit = params.get("limit")
     
     # Determine the URL to use
     if google_news:
         query = params.get("query")
         if not query:
-            return {"status": "error", "message": "Query is required when google_news is True."}
+            return {"status": False, "message": "Query is required when google_news is True."}
         
         language = params.get("language", "en-US")
         country = params.get("country", "US")
@@ -230,7 +244,7 @@ def fetch_items(params):
     else:
         url = params.get("url")
         if not url:
-            return {"status": "error", "message": "URL is required when google_news is False."}
+            return {"status": False, "message": "URL is required when google_news is False."}
 
     try:
         feed = feedparser.parse(url)
@@ -238,7 +252,7 @@ def fetch_items(params):
         # Check if the feed was fetched successfully
         if hasattr(feed, 'status') and feed.status >= 400:
              return {
-                "status": "error", 
+                "status": False, 
                 "message": f"Failed to fetch feed. HTTP Status: {feed.status}"
             }
         
@@ -246,7 +260,7 @@ def fetch_items(params):
             # We log the exception but continue if entries were parsed, 
             # as feedparser is lenient. However, if no entries and bozo is set, it's likely a fatal error.
             if not feed.entries and not feed.feed:
-                 return {"status": "error", "message": f"Failed to parse feed: {feed.bozo_exception}"}
+                 return {"status": False, "message": f"Failed to parse feed: {feed.bozo_exception}"}
 
         # Process entries
         items = []
@@ -269,4 +283,4 @@ def fetch_items(params):
         return {"status": True, "data": items}
 
     except Exception as e:
-        return {"status": "error", "message": f"Exception when fetching items: {e}"}
+        return {"status": False, "message": f"Exception when fetching items: {e}"}
