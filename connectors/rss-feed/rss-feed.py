@@ -284,7 +284,15 @@ def fetch_items(request_data):
             except (ValueError, TypeError):
                 pass # Ignore invalid limit
         
-        return {"status": True, "data": items}
+        return {
+            "status": True,
+            "items": items,
+            "count": len(items),
+            "query": params.get("query", ""),
+            "url": url,
+            "athlete_id": params.get("athlete_id"),
+            "athlete_value": params.get("athlete_value", {})
+        }
 
     except Exception as e:
         return {"status": False, "message": f"Exception when fetching items: {e}"}
