@@ -5,43 +5,6 @@ from urllib.parse import quote_plus
 from email.utils import parsedate_to_datetime
 
 
-def _build_google_news_url(query, language="en-US", country="US", after=None, before=None):
-    """
-    Build a Google News RSS feed URL from a search query.
-    
-    Args:
-        query (str): Search query string
-        language (str): Language code (default: "en-US")
-        country (str): Country code (default: "US")
-        after (str, optional): Filter articles published after this date (YYYY-MM-DD format)
-        before (str, optional): Filter articles published before this date (YYYY-MM-DD format)
-    
-    Returns:
-        str: Google News RSS URL
-    """
-    # Extract language code (e.g., "en" from "en-US")
-    lang_code = language.split("-")[0] if "-" in language else language
-    
-    # Build the ceid parameter (country:language)
-    ceid = f"{country}:{lang_code}"
-    
-    # Build query string with optional date filters
-    query_parts = [query]
-    if after:
-        query_parts.append(f"after:{after}")
-    if before:
-        query_parts.append(f"before:{before}")
-    
-    # Join query parts and URL encode
-    full_query = " ".join(query_parts)
-    encoded_query = quote_plus(full_query)
-    
-    # Build the Google News RSS URL
-    url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
-    
-    return url
-
-
 def fetch_feed(params):
     """
     Fetch and parse an RSS/Atom feed.
@@ -60,6 +23,61 @@ def fetch_feed(params):
     Returns:
         dict: Status and parsed feed data.
     """
+    def _build_google_news_url(query, language="en-US", country="US", after=None, before=None):
+        lang_code = language.split("-")[0] if "-" in language else language
+        ceid = f"{country}:{lang_code}"
+        query_parts = [query]
+        if after:
+            query_parts.append(f"after:{after}")
+        if before:
+            query_parts.append(f"before:{before}")
+        full_query = " ".join(query_parts)
+        encoded_query = quote_plus(full_query)
+        url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
+        return url
+
+    def _parse_entry(entry):
+        content = ""
+        if hasattr(entry, 'content'):
+            content = entry.content[0].value if entry.content else ""
+        elif hasattr(entry, 'description'):
+            content = entry.description
+        elif hasattr(entry, 'summary'):
+            content = entry.summary
+        published_parsed = entry.get('published_parsed') or entry.get('updated_parsed')
+        published_iso = ""
+        if published_parsed:
+            published_iso = datetime.fromtimestamp(time.mktime(published_parsed)).isoformat()
+        return {
+            "title": entry.get("title", ""),
+            "link": entry.get("link", ""),
+            "id": entry.get("id", ""),
+            "published": entry.get("published", entry.get("updated", "")),
+            "published_iso": published_iso,
+            "author": entry.get("author", ""),
+            "summary": entry.get("summary", ""),
+            "content": content,
+            "tags": [tag.term for tag in entry.tags] if hasattr(entry, 'tags') else []
+        }
+
+    def _sort_entries_by_date(entries, reverse=True):
+        def get_sort_key(entry):
+            published_iso = entry.get("published_iso", "")
+            if published_iso:
+                try:
+                    return datetime.fromisoformat(published_iso.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    pass
+            published = entry.get("published", "")
+            if published:
+                try:
+                    dt = parsedate_to_datetime(published)
+                    return dt
+                except (ValueError, TypeError):
+                    pass
+            return datetime.min if reverse else datetime.max
+        return sorted(entries, key=get_sort_key, reverse=reverse)
+
     google_news = params.get("google_news", False)
     sort_by_date = params.get("sort_by_date", False)
     
@@ -139,16 +157,108 @@ def fetch_items(params):
     Returns:
         dict: Status and list of feed items.
     """
+    def _build_google_news_url(query, language="en-US", country="US", after=None, before=None):
+        lang_code = language.split("-")[0] if "-" in language else language
+        ceid = f"{country}:{lang_code}"
+        query_parts = [query]
+        if after:
+            query_parts.append(f"after:{after}")
+        if before:
+            query_parts.append(f"before:{before}")
+        full_query = " ".join(query_parts)
+        encoded_query = quote_plus(full_query)
+        url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
+        return url
+
+    def _parse_entry(entry):
+        content = ""
+        if hasattr(entry, 'content'):
+            content = entry.content[0].value if entry.content else ""
+        elif hasattr(entry, 'description'):
+            content = entry.description
+        elif hasattr(entry, 'summary'):
+            content = entry.summary
+        published_parsed = entry.get('published_parsed') or entry.get('updated_parsed')
+        published_iso = ""
+        if published_parsed:
+            published_iso = datetime.fromtimestamp(time.mktime(published_parsed)).isoformat()
+        return {
+            "title": entry.get("title", ""),
+            "link": entry.get("link", ""),
+            "id": entry.get("id", ""),
+            "published": entry.get("published", entry.get("updated", "")),
+            "published_iso": published_iso,
+            "author": entry.get("author", ""),
+            "summary": entry.get("summary", ""),
+            "content": content,
+            "tags": [tag.term for tag in entry.tags] if hasattr(entry, 'tags') else []
+        }
+
+    def _sort_entries_by_date(entries, reverse=True):
+        def get_sort_key(entry):
+            published_iso = entry.get("published_iso", "")
+            if published_iso:
+                try:
+                    return datetime.fromisoformat(published_iso.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    pass
+            published = entry.get("published", "")
+            if published:
+                try:
+                    dt = parsedate_to_datetime(published)
+                    return dt
+                except (ValueError, TypeError):
+                    pass
+            return datetime.min if reverse else datetime.max
+        return sorted(entries, key=get_sort_key, reverse=reverse)
+
+    google_news = params.get("google_news", False)
+    sort_by_date = params.get("sort_by_date", False)
     limit = params.get("limit")
     
-    # Pass all params to fetch_feed, which will handle URL resolution
+    # Determine the URL to use
+    if google_news:
+        query = params.get("query")
+        if not query:
+            return {"status": "error", "message": "Query is required when google_news is True."}
+        
+        language = params.get("language", "en-US")
+        country = params.get("country", "US")
+        after = params.get("after")
+        before = params.get("before")
+        url = _build_google_news_url(query, language, country, after, before)
+    else:
+        url = params.get("url")
+        if not url:
+            return {"status": "error", "message": "URL is required when google_news is False."}
+
     try:
-        result = fetch_feed(params)
-        if result.get("status") == "error":
-            return result
+        feed = feedparser.parse(url)
         
-        items = result.get("data", {}).get("entries", [])
+        # Check if the feed was fetched successfully
+        if hasattr(feed, 'status') and feed.status >= 400:
+             return {
+                "status": "error", 
+                "message": f"Failed to fetch feed. HTTP Status: {feed.status}"
+            }
         
+        if feed.bozo:
+            # We log the exception but continue if entries were parsed, 
+            # as feedparser is lenient. However, if no entries and bozo is set, it's likely a fatal error.
+            if not feed.entries and not feed.feed:
+                 return {"status": "error", "message": f"Failed to parse feed: {feed.bozo_exception}"}
+
+        # Process entries
+        items = []
+        for entry in feed.entries:
+            parsed_entry = _parse_entry(entry)
+            items.append(parsed_entry)
+        
+        # Sort by date if requested (newest first)
+        if sort_by_date:
+            items = _sort_entries_by_date(items)
+        
+        # Apply limit if specified
         if limit:
             try:
                 limit = int(limit)
@@ -160,73 +270,3 @@ def fetch_items(params):
 
     except Exception as e:
         return {"status": "error", "message": f"Exception when fetching items: {e}"}
-
-
-def _sort_entries_by_date(entries, reverse=True):
-    """
-    Sort entries by publication date.
-    
-    Args:
-        entries (list): List of entry dictionaries
-        reverse (bool): If True, sort newest first (default). If False, sort oldest first.
-    
-    Returns:
-        list: Sorted list of entries
-    """
-    def get_sort_key(entry):
-        """Extract timestamp for sorting."""
-        published_iso = entry.get("published_iso", "")
-        if published_iso:
-            try:
-                return datetime.fromisoformat(published_iso.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                pass
-        
-        # Fallback to published string
-        published = entry.get("published", "")
-        if published:
-            try:
-                # Try parsing common date formats
-                from email.utils import parsedate_to_datetime
-                dt = parsedate_to_datetime(published)
-                return dt
-            except (ValueError, TypeError):
-                pass
-        
-        # If no date found, put at the end (or beginning if reverse=False)
-        return datetime.min if reverse else datetime.max
-    
-    return sorted(entries, key=get_sort_key, reverse=reverse)
-
-
-def _parse_entry(entry):
-    """
-    Helper to parse a single feed entry into a standardized dictionary.
-    """
-    # Extract content - prefer full content, fallback to summary/description
-    content = ""
-    if hasattr(entry, 'content'):
-        # Atom usually has a list of content objects
-        content = entry.content[0].value if entry.content else ""
-    elif hasattr(entry, 'description'):
-        content = entry.description
-    elif hasattr(entry, 'summary'):
-        content = entry.summary
-        
-    published_parsed = entry.get('published_parsed') or entry.get('updated_parsed')
-    published_iso = ""
-    if published_parsed:
-        published_iso = datetime.fromtimestamp(time.mktime(published_parsed)).isoformat()
-    
-    return {
-        "title": entry.get("title", ""),
-        "link": entry.get("link", ""),
-        "id": entry.get("id", ""),
-        "published": entry.get("published", entry.get("updated", "")),
-        "published_iso": published_iso,
-        "author": entry.get("author", ""),
-        "summary": entry.get("summary", ""),
-        "content": content,
-        "tags": [tag.term for tag in entry.tags] if hasattr(entry, 'tags') else []
-    }
-
