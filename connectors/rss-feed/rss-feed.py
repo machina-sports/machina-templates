@@ -1,7 +1,7 @@
 import feedparser
 import time
+import urllib.parse
 from datetime import datetime
-from urllib.parse import quote_plus
 from email.utils import parsedate_to_datetime
 
 
@@ -35,7 +35,7 @@ def fetch_feed(request_data):
         if before:
             query_parts.append(f"before:{before}")
         full_query = " ".join(query_parts)
-        encoded_query = quote_plus(full_query)
+        encoded_query = urllib.parse.quote_plus(full_query)
         url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
         return url
 
@@ -176,7 +176,7 @@ def fetch_items(request_data):
         if before:
             query_parts.append(f"before:{before}")
         full_query = " ".join(query_parts)
-        encoded_query = quote_plus(full_query)
+        encoded_query = urllib.parse.quote_plus(full_query)
         url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
         return url
 
