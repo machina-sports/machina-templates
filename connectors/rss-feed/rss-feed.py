@@ -36,7 +36,9 @@ def fetch_feed(request_data):
             query_parts.append(f"before:{before}")
         full_query = " ".join(query_parts)
         encoded_query = urllib.parse.quote_plus(full_query)
-        url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
+        encoded_country = urllib.parse.quote_plus(country)
+        encoded_ceid = urllib.parse.quote_plus(ceid)
+        url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={encoded_country}&ceid={encoded_ceid}"
         return url
 
     def _parse_entry(entry):
@@ -177,7 +179,9 @@ def fetch_items(request_data):
             query_parts.append(f"before:{before}")
         full_query = " ".join(query_parts)
         encoded_query = urllib.parse.quote_plus(full_query)
-        url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={country}&ceid={ceid}"
+        encoded_country = urllib.parse.quote_plus(country)
+        encoded_ceid = urllib.parse.quote_plus(ceid)
+        url = f"https://news.google.com/rss/search?q={encoded_query}&hl={language}&gl={encoded_country}&ceid={encoded_ceid}"
         return url
 
     def _parse_entry(entry):
