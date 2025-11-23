@@ -286,12 +286,14 @@ def fetch_items(request_data):
         
         return {
             "status": True,
-            "items": items,
-            "count": len(items),
-            "query": params.get("query", ""),
-            "url": url,
-            "athlete_id": params.get("athlete_id"),
-            "athlete_value": params.get("athlete_value", {})
+            "data": {
+                "items": items,
+                "count": len(items),
+                "query": params.get("query", ""),
+                "url": url,
+                "athlete_id": params.get("athlete_id"),
+                "athlete_value": params.get("athlete_value", {})
+            }
         }
 
     except Exception as e:
