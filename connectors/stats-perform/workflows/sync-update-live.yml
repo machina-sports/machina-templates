@@ -147,7 +147,7 @@ workflow:
     - type: "document"
       name: "load-game-market"
       description: "Search for game-market related to the event."
-      condition: "$.get('event_code') is not None and $.get('event_exists') is True"
+      condition: $.get('event_code') is not None and $.get('event_exists') is True and ($.get('event_value', {}).get('market_data') is None or not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False))
       config:
         action: "search"
         search-limit: 1
@@ -167,14 +167,7 @@ workflow:
     - type: "connector"
       name: "fetch-market-from-bwin"
       description: "Get market from Bwin API for the event using fixture ID from game-market."
-      condition: |
-        $.get('event_code') is not None and
-        $.get('market_fixture_id') is not None and
-        $.get('market_exists') is True and
-        (
-          $.get('event_value', {}).get('market_data') is None or 
-          not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False)
-        )
+      condition: $.get('event_code') is not None and $.get('market_fixture_id') is not None and $.get('market_exists') is True and ($.get('event_value', {}).get('market_data') is None or not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False))
       connector:
         name: "bwin"
         command: "get-offer/api/{sportId}/{country}/fixtures"
