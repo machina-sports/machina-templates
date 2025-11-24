@@ -1,0 +1,101 @@
+workflow:
+  name: "rss-feed-test"
+  title: "RSS Feed Test"
+  description: "Workflow to test the RSS Feed connector functionality with both regular feeds and Google News."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    google_news: "$.get('google_news', False)"
+    query: "$.get('query', 'Jeremiah Smith Jr')"
+    feed_url: "$.get('feed_url', 'https://techcrunch.com/feed/')"
+    limit: "$.get('limit', 5)"
+    language: "$.get('language', 'en-US')"
+    country: "$.get('country', 'US')"
+    after: "$.get('after')"
+    before: "$.get('before')"
+    sort_by_date: "$.get('sort_by_date', False)"
+  outputs:
+    feed_data: "$.get('feed_data')"
+    feed_items: "$.get('feed_items')"
+    workflow-status: "'executed'"
+  tasks:
+
+    # Test fetch_feed command - Google News
+    - type: "connector"
+      name: "test-fetch-feed-google-news"
+      description: "Test fetching a Google News RSS feed with metadata and entries."
+      condition: "$.get('google_news') is True"
+      connector:
+        name: "rss-feed"
+        command: "fetch_feed"
+      inputs:
+        google_news: "$.get('google_news')"
+        query: "$.get('query')"
+        language: "$.get('language')"
+        country: "$.get('country')"
+        after: "$.get('after')"
+        before: "$.get('before')"
+        sort_by_date: "$.get('sort_by_date')"
+      outputs:
+        feed_data: "$.get('data')"
+        feed_title: "$.get('data', {}).get('title', '')"
+        feed_link: "$.get('data', {}).get('link', '')"
+        entries_count: "len($.get('data', {}).get('entries', []))"
+
+    # Test fetch_feed command - Regular RSS
+    - type: "connector"
+      name: "test-fetch-feed-regular"
+      description: "Test fetching a regular RSS feed with metadata and entries."
+      condition: "$.get('google_news') is not True"
+      connector:
+        name: "rss-feed"
+        command: "fetch_feed"
+      inputs:
+        google_news: "$.get('google_news', False)"
+        url: "$.get('feed_url')"
+      outputs:
+        feed_data: "$.get('data')"
+        feed_title: "$.get('data', {}).get('title', '')"
+        feed_link: "$.get('data', {}).get('link', '')"
+        entries_count: "len($.get('data', {}).get('entries', []))"
+
+    # Test fetch_items command - Google News with limit
+    - type: "connector"
+      name: "test-fetch-items-google-news"
+      description: "Test fetching Google News RSS feed items with a limit."
+      condition: "$.get('google_news') is True"
+      connector:
+        name: "rss-feed"
+        command: "fetch_items"
+      inputs:
+        google_news: "$.get('google_news')"
+        query: "$.get('query')"
+        limit: "$.get('limit')"
+        language: "$.get('language')"
+        country: "$.get('country')"
+        after: "$.get('after')"
+        before: "$.get('before')"
+        sort_by_date: "$.get('sort_by_date')"
+      outputs:
+        feed_items: "$.get('data')"
+        items_count: "len($.get('data', []))"
+        first_item_title: "$.get('data', [{}])[0].get('title', '') if $.get('data', []) else ''"
+
+    # Test fetch_items command - Regular RSS with limit
+    - type: "connector"
+      name: "test-fetch-items-regular"
+      description: "Test fetching regular RSS feed items with a limit."
+      condition: "$.get('google_news') is not True"
+      connector:
+        name: "rss-feed"
+        command: "fetch_items"
+      inputs:
+        google_news: "$.get('google_news', False)"
+        url: "$.get('feed_url')"
+        limit: "$.get('limit')"
+      outputs:
+        feed_items: "$.get('data')"
+        items_count: "len($.get('data', []))"
+        first_item_title: "$.get('data', [{}])[0].get('title', '') if $.get('data', []) else ''"
+

@@ -26,6 +26,9 @@ datasets:
   - type: mappings
     path: mappings/iptc-sport-event.yml
 
+  - type: mappings
+    path: mappings/iptc-team.yml
+
   - type: workflow
     path: workflows/invoke-request.yml
 
@@ -49,6 +52,9 @@ datasets:
 
   - type: workflow
     path: workflows/sync-transfers.yml
+
+  - type: workflow
+    path: workflows/sync-teams.yml
 
   - type: agent
     path: agents/sp-opta-sync.yml

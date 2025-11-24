@@ -1,0 +1,11 @@
+connector:
+  name: "rss-feed"
+  description: "A robust connector for fetching and parsing RSS and Atom feeds, supporting metadata extraction and item filtering."
+  filename: "rss-feed.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Fetch Feed"
+      value: "fetch_feed"
+
+    - name: "Fetch Items"
+      value: "fetch_items"
