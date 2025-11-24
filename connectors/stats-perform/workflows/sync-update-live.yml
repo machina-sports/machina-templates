@@ -60,7 +60,7 @@ workflow:
         search-sorters: ["updated", 1]
       filters:
         value.sport:status: "$.get('sport_status') if $.get('sport_status') is not None else {'$in': ['Fixture', 'Playing']}"
-        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=48)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=48)).isoformat()}"
+        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         updated: "$.get('status_updated') if $.get('status_updated') is not None else {'$lt': datetime.utcnow() - timedelta(minutes=1)}"
