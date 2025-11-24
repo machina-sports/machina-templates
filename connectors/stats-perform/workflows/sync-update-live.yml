@@ -149,11 +149,7 @@ workflow:
       description: "Search for game-market related to the event."
       condition: |
         $.get('event_code') is not None and 
-        $.get('event_exists') is True and 
-        (
-          $.get('event_value', {}).get('market_data') is None or 
-          not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False)
-        )
+        $.get('event_exists') is True
       config:
         action: "search"
         search-limit: 1
