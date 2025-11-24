@@ -150,7 +150,10 @@ workflow:
       condition: |
         $.get('event_code') is not None and 
         $.get('event_exists') is True and 
-        $.get('event_value', {}).get('market_data') is None
+        (
+          $.get('event_value', {}).get('market_data') is None or 
+          not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False)
+        )
       config:
         action: "search"
         search-limit: 1
@@ -190,6 +193,7 @@ workflow:
       outputs:
         market_data: "$"
         market_code: "str($.get('items', [{}])[0].get('id', {}).get('entityId', '')) if $.get('items') and len($.get('items', [])) > 0 and $.get('items', [{}])[0].get('id', {}).get('entityId') else None"
+
     # 7 version-control-success
     - type: "document"
       name: "version-control-success"
