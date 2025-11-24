@@ -7,6 +7,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    bwin:
+      Bwin-AccessId: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID"
+      Bwin-AccessIdToken: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN"
     opta:
       outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
       secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
@@ -39,6 +42,8 @@ workflow:
         document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
         event_exists: "len($.get('documents', [])) > 0"
         event_value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+        event_code: "$.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else $.get('event_code')"
+        match_id: "str($.get('documents', [])[0].get('metadata', {}).get('event_code', '')).split(':')[-1] if $.get('documents') and ':' in str($.get('documents', [])[0].get('metadata', {}).get('event_code', '')) else (str($.get('documents', [])[0].get('metadata', {}).get('event_code', '')) if $.get('documents') else None)"
 
     # 1 load-event-by-schedule (live)
     - type: "document"
@@ -55,7 +60,7 @@ workflow:
         search-sorters: ["updated", 1]
       filters:
         value.sport:status: "$.get('sport_status') if $.get('sport_status') is not None else {'$in': ['Fixture', 'Playing', 'Played']}"
-        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=2)).isoformat()}"
+        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=48)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=48)).isoformat()}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         updated: "$.get('status_updated') if $.get('status_updated') is not None else {'$lt': datetime.utcnow() - timedelta(minutes=1)}"
@@ -138,6 +143,56 @@ workflow:
       outputs:
         updated_event: "$.get('sport_schema_events', [{}])[0] if $.get('sport_schema_events') else $.get('event_value', {})"
 
+    # 5 load-game-market
+    - type: "document"
+      name: "load-game-market"
+      description: "Search for game-market related to the event."
+      condition: |
+        $.get('event_code') is not None and 
+        $.get('event_exists') is True and 
+        (
+          $.get('event_value', {}).get('market_data') is None or 
+          not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False)
+        )
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        value.event_code: "$.get('event_code')"
+      inputs:
+        name: "'game-market'"
+      outputs:
+        market_exists: "len($.get('documents', [])) > 0"
+        market_code: "str($.get('documents', [])[0].get('metadata', {}).get('market_code', '')) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('metadata', {}).get('market_code') else None"
+        market_fixture_id: "int($.get('documents', [])[0].get('value', {}).get('id', 0)) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('value', {}).get('id') else None"
+        market_document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') and len($.get('documents', [])) > 0 else None"
+
+    # 5.1 fetch-market-from-bwin
+    - type: "connector"
+      name: "fetch-market-from-bwin"
+      description: "Get market from Bwin API for the event using fixture ID from game-market."
+      condition: |
+        $.get('event_code') is not None and
+        $.get('market_fixture_id') is not None and
+        $.get('market_exists') is True and
+        (
+          $.get('event_value', {}).get('market_data') is None or 
+          not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False)
+        )
+      connector:
+        name: "bwin"
+        command: "get-offer/api/{sportId}/{country}/fixtures"
+        command_attribute:
+          country: "'br'"
+          sportId: "'4'"
+      inputs:
+        fixtureIds: "[$.get('market_fixture_id')]"
+        onlyMainMarkets: "'true'"
+      outputs:
+        market_data: "$"
+        market_code: "str($.get('items', [{}])[0].get('id', {}).get('entityId', '')) if $.get('items') and len($.get('items', [])) > 0 and $.get('items', [{}])[0].get('id', {}).get('entityId') else None"
     # 7 version-control-success
     - type: "document"
       name: "version-control-success"
@@ -154,11 +209,14 @@ workflow:
           {
             **$.get('event_value', {}),
             **$.get('updated_event', {}),
+            'market_data': $.get('market_data') if $.get('market_data') is not None else $.get('event_value', {}).get('market_data'),
+            'market_code': $.get('market_code') if $.get('market_code') is not None else ($.get('event_value', {}).get('market_code') if $.get('event_value', {}).get('market_code') else None),
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
               'processing': False,
               'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1,
               'update_event_summary_status': 'processed',
+              'hasMarketCode': ($.get('market_code') is not None and $.get('market_code') != '') or ($.get('event_value', {}).get('market_code') is not None and $.get('event_value', {}).get('market_code') != ''),
               'updated': datetime.utcnow()
             }
           }
