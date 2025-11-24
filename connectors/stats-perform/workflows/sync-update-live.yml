@@ -126,9 +126,6 @@ workflow:
         event_data: "$"
         match_info: "$.get('matchInfo', {})"
         live_data: "$.get('liveData', {})"
-        update_event_summary_status: "'processed'"
-        update_event_summary_count: |
-          $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1
 
     # 6 iptc-opta-event-mapping
     - type: "mapping"
@@ -160,8 +157,8 @@ workflow:
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
               'processing': False,
-              'update_event_summary_count': $.get('update_event_summary_count') or $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0),
-              'update_event_summary_status': $.get('update_event_summary_status') or $.get('event_value', {}).get('version_control', {}).get('update_event_summary_status', 'pending'),
+              'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1,
+              'update_event_summary_status': 'processed',
               'updated': datetime.utcnow()
             }
           }
