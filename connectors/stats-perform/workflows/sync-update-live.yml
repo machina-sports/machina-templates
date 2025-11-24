@@ -1,0 +1,170 @@
+workflow:
+
+  # sp-opta-update-live
+  name: "sp-opta-update-live"
+  title: "Stats Perform Opta - Update Live"
+  description: "Workflow to update live soccer events from Stats Perform Opta API by event code."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    event_code: "$.get('event_code', None)"
+    sport_status: "$.get('sport_status')"
+    status_updated: "$.get('status_updated')"
+    start_date: "$.get('start_date')"
+  outputs:
+    event_data: "$.get('event_data')"
+    event_code: "$.get('event_code')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (opta) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        event_exists: "len($.get('documents', [])) > 0"
+        event_value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+
+    # 1 load-event-by-schedule (live)
+    - type: "document"
+      name: "load-event-by-schedule-live"
+      description: "Search for schedule events (opta) that need live update."
+      condition: |
+        (
+          $.get('event_exists') is not True
+        )
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        value.sport:status: "$.get('sport_status') if $.get('sport_status') is not None else {'$in': ['Fixture', 'Playing', 'Played']}"
+        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=2)).isoformat()}"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        updated: "$.get('status_updated') if $.get('status_updated') is not None else {'$lt': datetime.utcnow() - timedelta(minutes=1)}"
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') else None"
+        event_exists: "len($.get('documents', [])) > 0"
+        event_code: "$.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None"
+        event_value: "$.get('documents', [])[0].get('value', {}) if $.get('documents') else None"
+        match_id: "str($.get('documents', [])[0].get('metadata', {}).get('event_code', '')).split(':')[-1] if $.get('documents') and ':' in str($.get('documents', [])[0].get('metadata', {}).get('event_code', '')) else (str($.get('documents', [])[0].get('metadata', {}).get('event_code', '')) if $.get('documents') else None)"
+
+    # 2 version-control-update
+    - type: "document"
+      name: "version-control-update"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'processing': True,
+              'update_event_summary_status': 'processing',
+              'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0)
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # 3 task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('event_code') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # 4 fetch-event-summary
+    - type: "connector"
+      name: "fetch-event-summary"
+      description: "Get event summary with live data from Stats Perform Opta"
+      condition: "$.get('match_id') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_bearer: "$.get('access_token')"
+        endpoint: "'matchstats'"
+        competition_id: "None"
+        query_params: |
+          {
+            'matchId': $.get('match_id'),
+            'detailed': 'yes',
+            'people': 'yes'
+          }
+      outputs:
+        event_data: "$"
+        match_info: "$.get('matchInfo', {})"
+        live_data: "$.get('liveData', {})"
+        update_event_summary_status: "'processed'"
+        update_event_summary_count: |
+          $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1
+
+    # 6 iptc-opta-event-mapping
+    - type: "mapping"
+      name: "iptc-opta-event-mapping"
+      title: "IPTC | Stats Perform Opta Event Mapping"
+      description: "Mapping data from Stats Perform Opta to IPTC events"
+      condition: "$.get('event_data') is not None and $.get('match_info') is not None"
+      inputs:
+        schedules_raw: "[$.get('event_data', {})]"
+      outputs:
+        updated_event: "$.get('sport_schema_events', [{}])[0] if $.get('sport_schema_events') else $.get('event_value', {})"
+
+    # 7 version-control-success
+    - type: "document"
+      name: "version-control-success"
+      description: "Update the events document with new data."
+      condition: "$.get('event_code') is not None and $.get('updated_event') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            **$.get('updated_event', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'processing': False,
+              'update_event_summary_count': $.get('update_event_summary_count') or $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0),
+              'update_event_summary_status': $.get('update_event_summary_status') or $.get('event_value', {}).get('version_control', {}).get('update_event_summary_status', 'pending'),
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+

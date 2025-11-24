@@ -56,5 +56,8 @@ datasets:
   - type: workflow
     path: workflows/sync-teams.yml
 
+  - type: workflow
+    path: workflows/sync-update-live.yml
+
   - type: agent
     path: agents/sp-opta-sync.yml

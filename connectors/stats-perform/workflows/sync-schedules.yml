@@ -40,6 +40,7 @@ workflow:
       connector:
         name: "opta"
         command: "invoke_request"
+      continue_on_error: true
       foreach:
         name: page_number
         expr: $
