@@ -41,6 +41,16 @@ mappings:
               "name": f.get('sport_event', {}).get('venue', {}).get('name'),
               "schema:addressLocality": f.get('sport_event', {}).get('venue', {}).get('city_name')
             },
+            "sport:channels": [
+              {
+                "@type": "sport:BroadcastChannel",
+                "sport:channelName": channel.get('name'),
+                "sport:channelUrl": channel.get('url'),
+                "sport:country": channel.get('country'),
+                "sport:countryCode": channel.get('country_code')
+              }
+              for channel in f.get('sport_event', {}).get('channels', [])
+            ] if f.get('sport_event', {}).get('channels') else [],
             "sport:competitors": [
               {
                 "@type": "sport:Team",
