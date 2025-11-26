@@ -64,6 +64,9 @@ datasets:
     path: "mappings/iptc-sport-event.yml"
 
   - type: "mappings"
+    path: "mappings/iptc-team.yml"
+
+  - type: "mappings"
     path: "mappings/last-match.yml"
   
   - type: "mappings"

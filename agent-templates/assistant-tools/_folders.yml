@@ -88,6 +88,17 @@ workflow:
                   "view": "list"
                 },
                 {
+                  "name": "sport-team",
+                  "title": "Sport Team",
+                  "description": "The sport teams available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["sport:Team"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "threads",
                   "title": "Thread",
                   "description": "The threads available in the Conversation API.",
