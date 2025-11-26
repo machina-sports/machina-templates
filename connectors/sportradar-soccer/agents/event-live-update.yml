@@ -26,6 +26,14 @@ agent:
       outputs:
         event-synchronize-status: $.get('workflow-status', False)
 
+    # Workflow Event Sync Markets
+    - name: sportradar-soccer-event-sync-markets
+      description: Soccer Event Sync Markets
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-sync-markets-status: $.get('workflow-status', False)
+
     # Workflow Event Update
     - name: sportradar-soccer-event-update
       description: Soccer Event Update

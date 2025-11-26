@@ -104,6 +104,9 @@ datasets:
     path: "workflows/event-consumer.yml"
 
   - type: "workflow"
+    path: "workflows/event-sync-markets.yml"
+
+  - type: "workflow"
     path: "workflows/event-synchronize.yml"
 
   - type: "workflow"
