@@ -4,63 +4,20 @@ workflow:
   description: "Workflow to synchronize a season standings from SportRadar API to Machina."
   context-variables:
     debugger:
-      enabled: false
+      enabled: true
     sportradar-soccer:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
     season_id: "$.get('season_id')"
   outputs:
     standings: "$.get('standings')"
-    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+    workflow-status: "len($.get('standings', [])) > 0 and 'executed' or 'skipped'"
   tasks:
 
-    # task-check-document-timedelta
-    - type: "document"
-      name: "task-check-document-timedelta"
-      description: "Check if the standings document has expired."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      filters:
-        value.sid: "$.get('season_id')"
-        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
-        value.status: "'active'"
-      inputs:
-        name: "'standings'"
-      outputs:
-        documents: "$.get('documents')"
-        should_update: "len($.get('documents')) == 0"
-
-    # task-check-document-get-season
-    - type: "document"
-      name: "get-season"
-      description: "Get the season document."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      condition: "$.get('should_update') == True"
-      filters:
-        metadata.season_id: "$.get('season_id')"
-      inputs:
-        name: "'season'"
-      outputs:
-        season: "$.get('documents')[0] if $.get('documents') else None"
-
-    # task-load-schedules
+    # task-load-standings
     - type: "connector"
       name: "task-load-standings"
       description: "Get a season standings from SportRadar"
-      condition: "$.get('should_update') == True and $.get('season') is not None"
       connector:
         name: "sportradar-soccer"
         command: "get-seasons/{season_id}/{data_type}"
@@ -70,13 +27,12 @@ workflow:
       inputs:
         api_key: "$.get('api_key')"
       outputs:
-        standings: "[x for x in $.get('standings') if x.get('type') == 'total']"
+        standings: "$.get('standings', [])"
 
     # task-update-standings
     - type: "document"
       name: "task-update-standings"
       description: "Update the standings document."
-      condition: "$.get('should_update') == True and $.get('season') is not None"
       config:
         action: "update"
         embed-vector: false
@@ -88,12 +44,11 @@ workflow:
       documents:
         standings: |
           {
-            'sid': $.get('season_id'),
-            'data': $.get('standings'),
-            'title': f"{$.get('season').get('value', {}).get('title', '')} - All Standings",
+            'data': $.get('standings', []),
+            'season_id': $.get('season_id'),
+            'title': f"{$.get('season_id', '')} - All Standings",
             'execution': datetime.utcnow(),
             'status': 'active'
           }
       metadata:
-        sid: "$.get('season_id')"
-        document_type: "'synchronization'"
+        season_id: "$.get('season_id')"
