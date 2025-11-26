@@ -110,3 +110,11 @@ datasets:
 
   - type: workflow
     path: _folders.yml
+
+  # tools
+
+  - type: connector
+    path: scripts/market-event-matcher.yml
+  
+  - type: workflow
+    path: tools/event-matcher.yml
