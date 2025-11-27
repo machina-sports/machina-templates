@@ -129,6 +129,11 @@ datasets:
   - type: workflow
     path: _folders.yml
 
+  # assets (translation policies, etc)
+
+  - type: workflow
+    path: assets/market-translations-pt-br.yml
+
   # tools
 
   - type: connector

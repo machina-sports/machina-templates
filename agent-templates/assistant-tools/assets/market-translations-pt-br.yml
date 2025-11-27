@@ -1,0 +1,85 @@
+workflow:
+  name: asset-market-translations-pt-br
+  title: Asset - Market Translations PT-BR
+  description: Market translation policy document for Brazilian Portuguese
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: document
+      name: create-translation-document
+      description: Create or update market translation policy document
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        market-translations-pt-br: |
+          {
+            "name": "market-translations-pt-br",
+            "language": "pt-BR",
+            "version": "1.0",
+            "description": "Translation mappings for betting markets, types, and options to Brazilian Portuguese",
+            "translations": {
+              "market_types": {
+                "3way": "Resultado 1X2",
+                "over/under": "Acima/Abaixo",
+                "total": "Total de Gols",
+                "handicap": "Handicap",
+                "draw_no_bet": "Empate Anula",
+                "both_teams_to_score": "Ambas Marcam",
+                "double_chance": "Dupla Chance",
+                "correct_score": "Placar Exato",
+                "asian_handicap": "Handicap Asiático",
+                "first_half": "Primeiro Tempo",
+                "second_half": "Segundo Tempo",
+                "corners": "Escanteios",
+                "cards": "Cartões",
+                "winner": "Vencedor",
+                "to_qualify": "Classificação",
+                "anytime_goalscorer": "Marcar a Qualquer Momento",
+                "first_goalscorer": "Primeiro Goleador"
+              },
+              "market_names": {
+                "match result": "Resultado da Partida",
+                "full time result": "Resultado Final",
+                "total goals": "Total de Gols",
+                "both teams to score": "Ambas as Equipes Marcam",
+                "draw no bet": "Empate Anula Aposta",
+                "double chance": "Dupla Chance",
+                "correct score": "Placar Exato",
+                "first half": "Primeiro Tempo",
+                "second half": "Segundo Tempo",
+                "corners": "Escanteios",
+                "winner": "Vencedor da Partida",
+                "handicap": "Handicap"
+              },
+              "option_names": {
+                "x": "Empate",
+                "draw": "Empate",
+                "tie": "Empate",
+                "over": "Acima",
+                "under": "Abaixo",
+                "over 0.5": "Acima de 0,5",
+                "over 1.5": "Acima de 1,5",
+                "over 2.5": "Acima de 2,5",
+                "over 3.5": "Acima de 3,5",
+                "over 4.5": "Acima de 4,5",
+                "under 0.5": "Abaixo de 0,5",
+                "under 1.5": "Abaixo de 1,5",
+                "under 2.5": "Abaixo de 2,5",
+                "under 3.5": "Abaixo de 3,5",
+                "under 4.5": "Abaixo de 4,5",
+                "yes": "Sim",
+                "no": "Não",
+                "home": "Casa",
+                "away": "Fora",
+                "home team": "Time da Casa",
+                "away team": "Time Visitante",
+                "both teams to score": "Ambas Marcam",
+                "btts yes": "Sim",
+                "btts no": "Não"
+              }
+            }
+          }
+

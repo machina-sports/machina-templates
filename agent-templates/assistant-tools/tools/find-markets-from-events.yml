@@ -52,6 +52,7 @@ workflow:
         team_events_values: $.get('event_values', [])
         market_query: $.get('market_query', '')
         has_events: len($.get('event_values', [])) > 0
+        reasoning: $.get('last_user_msg', {}).get('reasoning', {})
 
     # Extract markets from events
     - type: connector
@@ -68,6 +69,21 @@ workflow:
         events_with_markets: $.get('events_with_markets', [])
         total_markets: $.get('total_markets', 0)
 
+    # Load translation document
+    - type: document
+      name: load-translation-policy
+      description: Load market translation policy for Portuguese (Brazil)
+      condition: $.get('total_markets', 0) > 0
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'market-translations-pt-br'"
+      outputs:
+        translations: $.get('documents')[0].get('value', {}).get('translations', {}) if len($.get('documents', [])) > 0 else {}
+        translation_loaded: len($.get('documents', [])) > 0
+
     # Filter and summarize markets
     - type: connector
       name: filter-and-summarize-markets
@@ -80,6 +96,14 @@ workflow:
         all_markets: $.get('all_markets')
         market_query: $.get('market_query', '')
         top_n_markets: "5"
+        translations: $.get('translations', {})
+        reasoning_filters: |
+          {
+            'recommended_market_types': $.get('reasoning', {}).get('recommended_market_types', []),
+            'odds_range': $.get('reasoning', {}).get('odds_range', {}),
+            'runner_filter': $.get('reasoning', {}).get('runner_filter', 'all'),
+            'market_query': $.get('reasoning', {}).get('market_query', '')
+          } if $.get('reasoning', {}).get('market_filter_requested', False) else {}
       outputs:
         markets-docs: $.get('markets_docs', [])
         markets-parsed: $.get('markets_parsed', [])

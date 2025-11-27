@@ -194,6 +194,18 @@ def filter_and_summarize_markets(request_data):
         all_markets = params.get("all_markets", [])
         market_query = params.get("market_query", "")
         top_n_markets = params.get("top_n_markets", 5)
+        translations = params.get("translations", {})  # Translation dictionaries from document
+        
+        # Reasoning-based filters (from chat-reasoning)
+        reasoning_filters = params.get("reasoning_filters", {})
+        recommended_market_types = reasoning_filters.get("recommended_market_types", [])
+        odds_range = reasoning_filters.get("odds_range", {})
+        runner_filter = reasoning_filters.get("runner_filter", "all")
+        reasoning_market_query = reasoning_filters.get("market_query", "")
+        
+        # Use reasoning market_query if provided, otherwise use direct param
+        if reasoning_market_query:
+            market_query = reasoning_market_query
         
         if not isinstance(all_markets, list):
             all_markets = []
@@ -202,20 +214,44 @@ def filter_and_summarize_markets(request_data):
         popular_market_types = [
             "3way",
             "total",
-            "handicap",
+            # "handicap",  # Excluded per user request
             "draw_no_bet",
             "both_teams_to_score",
             "double_chance",
-            "correct_score"
+            "correct_score",
+            "over/under"  # Added to include Total Goals markets
+        ]
+        
+        # Define market name patterns to exclude
+        excluded_market_patterns = [
+            "result after",  # Excludes "Result after 60:00 min", etc.
+            "after",         # Additional pattern to catch time-based markets
+            "handicap"       # Exclude handicap markets by name
         ]
         
         filtered_markets = []
+        
+        # Helper function to check if market should be excluded
+        def should_exclude_market(market):
+            market_name = market.get("market_name", "").lower()
+            market_type = market.get("market_type", "").lower()
+            
+            # Check if market name contains any excluded patterns
+            for pattern in excluded_market_patterns:
+                if pattern in market_name or pattern in market_type:
+                    return True
+            
+            return False
         
         # Strategy 1: If market_query is provided, use fuzzy matching
         if market_query and isinstance(market_query, str) and market_query.strip():
             query_lower = market_query.strip().lower()
             
             for market in all_markets:
+                # Skip excluded markets
+                if should_exclude_market(market):
+                    continue
+                
                 market_name = market.get("market_name", "").lower()
                 market_type = market.get("market_type", "").lower()
                 
@@ -247,6 +283,10 @@ def filter_and_summarize_markets(request_data):
             # Group markets by event
             markets_by_event = {}
             for market in all_markets:
+                # Skip excluded markets
+                if should_exclude_market(market):
+                    continue
+                
                 event_id = market.get("event_id")
                 if event_id not in markets_by_event:
                     markets_by_event[event_id] = []
@@ -270,9 +310,172 @@ def filter_and_summarize_markets(request_data):
         # Limit overall results
         filtered_markets = filtered_markets[:top_n_markets * 3]  # Allow more results across multiple events
         
+        # Apply reasoning-based filters if provided
+        if reasoning_filters:
+            reasoning_filtered = []
+            
+            for market in filtered_markets:
+                # Filter by recommended market types
+                if recommended_market_types and isinstance(recommended_market_types, list):
+                    market_type = market.get("market_type", "").lower()
+                    if market_type not in [t.lower() for t in recommended_market_types]:
+                        continue
+                
+                # Filter by odds range
+                if odds_range and isinstance(odds_range, dict):
+                    min_odds = odds_range.get("min_odds")
+                    max_odds = odds_range.get("max_odds")
+                    
+                    # Filter options within odds range
+                    if min_odds is not None or max_odds is not None:
+                        filtered_options = []
+                        for opt in market.get("options", []):
+                            if isinstance(opt, dict):
+                                opt_odds = opt.get("odds")
+                                if opt_odds is not None:
+                                    if min_odds is not None and opt_odds < min_odds:
+                                        continue
+                                    if max_odds is not None and opt_odds > max_odds:
+                                        continue
+                                    filtered_options.append(opt)
+                        
+                        # Skip market if no options remain after filtering
+                        if not filtered_options:
+                            continue
+                        
+                        market = {**market, "options": filtered_options}
+                
+                # Filter by runner (home/away/draw)
+                if runner_filter and runner_filter != "all":
+                    filtered_options = []
+                    for opt in market.get("options", []):
+                        if isinstance(opt, dict):
+                            opt_name = opt.get("name", "").lower()
+                            
+                            # Detect runner type
+                            if runner_filter == "draw":
+                                # Match draw/empate/x
+                                if any(x in opt_name for x in ["x", "draw", "empate", "tie"]):
+                                    filtered_options.append(opt)
+                            elif runner_filter == "home":
+                                # Match first option or team names (heuristic: not draw, not second team)
+                                event_title = market.get("event_title", "")
+                                if event_title and " vs " in event_title.lower():
+                                    home_team = event_title.split(" vs ")[0].strip().lower()
+                                    if home_team in opt_name or opt_name.startswith("1"):
+                                        filtered_options.append(opt)
+                                elif opt_name.startswith("1") or "home" in opt_name:
+                                    filtered_options.append(opt)
+                            elif runner_filter == "away":
+                                # Match second option or away team
+                                event_title = market.get("event_title", "")
+                                if event_title and " vs " in event_title.lower():
+                                    away_team = event_title.split(" vs ")[-1].strip().lower()
+                                    if away_team in opt_name or opt_name.startswith("2"):
+                                        filtered_options.append(opt)
+                                elif opt_name.startswith("2") or "away" in opt_name:
+                                    filtered_options.append(opt)
+                    
+                    # Skip market if no options remain
+                    if not filtered_options:
+                        continue
+                    
+                    market = {**market, "options": filtered_options}
+                
+                reasoning_filtered.append(market)
+            
+            filtered_markets = reasoning_filtered
+        
+        # Check if user query mentions "under" to show both over/under
+        show_under = False
+        if market_query and isinstance(market_query, str):
+            query_lower = market_query.lower()
+            if "under" in query_lower or "abaixo" in query_lower:
+                show_under = True
+        
+        # Apply translations and filter options
+        translated_markets = []
+        for market in filtered_markets:
+            if translations and isinstance(translations, dict):
+                translated_market = market.copy()
+                
+                # Translate market type
+                market_type = market.get("market_type", "")
+                if market_type and "market_types" in translations:
+                    market_types_dict = translations.get("market_types", {})
+                    translated_type = market_types_dict.get(market_type.lower())
+                    if translated_type:
+                        translated_market["market_type_original"] = market_type
+                        translated_market["market_type"] = translated_type
+                
+                # Translate market name (partial match - case insensitive)
+                market_name = market.get("market_name", "")
+                if market_name and "market_names" in translations:
+                    market_names_dict = translations.get("market_names", {})
+                    market_name_lower = market_name.lower()
+                    translated = False
+                    
+                    # Try exact match first
+                    if market_name_lower in market_names_dict:
+                        translated_market["market_name_original"] = market_name
+                        translated_market["market_name"] = market_names_dict[market_name_lower]
+                        translated = True
+                    else:
+                        # Try partial match (find any key in market name)
+                        for key, value in market_names_dict.items():
+                            if key in market_name_lower:
+                                translated_market["market_name_original"] = market_name
+                                # Replace case-insensitive
+                                import re
+                                translated_market["market_name"] = re.sub(
+                                    re.escape(key), 
+                                    value, 
+                                    market_name, 
+                                    flags=re.IGNORECASE
+                                )
+                                translated = True
+                                break
+                
+                # Translate and filter options
+                options = market.get("options", [])
+                if options and isinstance(options, list) and "option_names" in translations:
+                    option_names_dict = translations.get("option_names", {})
+                    translated_options = []
+                    
+                    for opt in options:
+                        if isinstance(opt, dict):
+                            translated_opt = opt.copy()
+                            opt_name = opt.get("name", "")
+                            
+                            if opt_name:
+                                opt_name_lower = opt_name.lower().strip()
+                                
+                                # Filter out "Under" options by default (unless user asked for them)
+                                if not show_under and ("under" in opt_name_lower or "abaixo" in opt_name_lower):
+                                    continue
+                                
+                                # Translate option name
+                                translated_name = option_names_dict.get(opt_name_lower)
+                                if translated_name:
+                                    translated_opt["name_original"] = opt_name
+                                    translated_opt["name"] = translated_name
+                            
+                            translated_options.append(translated_opt)
+                        else:
+                            translated_options.append(opt)
+                    
+                    # Sort options by odds (ascending - lowest odds first)
+                    translated_options.sort(key=lambda x: x.get("odds", 999) if isinstance(x, dict) else 999)
+                    
+                    translated_market["options"] = translated_options
+                
+                translated_markets.append(translated_market)
+            else:
+                translated_markets.append(market)
+        
         # Format for LLM consumption (markets_docs)
         markets_docs = []
-        for market in filtered_markets:
+        for market in translated_markets:
             event_title = market.get("event_title", "Unknown Event")
             market_name = market.get("market_name", "Unknown Market")
             options = market.get("options", [])
@@ -288,8 +491,22 @@ def filter_and_summarize_markets(request_data):
             doc_text = f"{event_title} - {market_name}: {', '.join(options_text)}"
             markets_docs.append(doc_text)
         
-        # Return structured data (markets_parsed)
-        markets_parsed = filtered_markets
+        # Return structured data (markets_parsed) - use translated markets
+        markets_parsed = translated_markets
+        
+        # Collect statistics about excluded markets
+        excluded_count = 0
+        excluded_types = set()
+        all_market_types = set()
+        
+        for market in all_markets:
+            market_type = market.get("market_type", "unknown")
+            market_name = market.get("market_name", "")
+            all_market_types.add(f"{market_type}: {market_name}")
+            
+            if should_exclude_market(market):
+                excluded_count += 1
+                excluded_types.add(f"{market_type}: {market_name}")
         
         return {
             "status": True,
@@ -297,7 +514,24 @@ def filter_and_summarize_markets(request_data):
                 "markets_docs": markets_docs,
                 "markets_parsed": markets_parsed,
                 "total_filtered": len(filtered_markets),
-                "filter_method": "query_match" if market_query else "popular_markets"
+                "filter_method": "query_match" if market_query else "popular_markets",
+                "translations_applied": bool(translations and isinstance(translations, dict)),
+                "under_options_shown": show_under,
+                "reasoning_filters_applied": bool(reasoning_filters),
+                "debug_info": {
+                    "total_markets_before_filter": len(all_markets),
+                    "excluded_markets_count": excluded_count,
+                    "excluded_market_examples": list(excluded_types)[:5],  # Show first 5 excluded
+                    "all_unique_market_types": list(all_market_types)[:20],  # Show first 20 types
+                    "excluded_patterns": excluded_market_patterns,
+                    "options_filter": "showing only OVER options (default)" if not show_under else "showing both OVER and UNDER options (user requested)",
+                    "reasoning_filters": {
+                        "applied": bool(reasoning_filters),
+                        "recommended_market_types": recommended_market_types if recommended_market_types else None,
+                        "odds_range": odds_range if odds_range else None,
+                        "runner_filter": runner_filter if runner_filter != "all" else None
+                    }
+                }
             }
         }
         

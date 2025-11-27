@@ -33,6 +33,17 @@ workflow:
               "icon": "folder",
               "items": [
                 {
+                  "name": "assets",
+                  "title": "Assets",
+                  "description": "Configuration assets: setup, structure, translations, and policies",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-trending-news", "setup-playground", "site-structure", "doc-structure", "market-translations-pt-br"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "content-article",
                   "title": "Content Article",
                   "description": "The content articles available",

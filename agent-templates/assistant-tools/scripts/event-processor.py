@@ -67,6 +67,7 @@ def process_team_events(request_data):
     - If exactly 2 team_ids: filter events where both teams face each other
     - Otherwise: use all events
     - Separate into played_events and fixture_events based on status
+    - Apply limits to played and fixture events (from reasoning)
     """
     
     def is_head_to_head(event_value, team_ids):
@@ -132,6 +133,21 @@ def process_team_events(request_data):
         
         team_events_parsed = params.get("team_events_parsed", [])
         team_ids = params.get("team_ids", [])
+        limit_played_events = params.get("limit_played_events", 3)
+        limit_fixture_events = params.get("limit_fixture_events", 3)
+        
+        # Ensure limits are integers
+        if not isinstance(limit_played_events, int):
+            try:
+                limit_played_events = int(limit_played_events)
+            except (ValueError, TypeError):
+                limit_played_events = 3
+        
+        if not isinstance(limit_fixture_events, int):
+            try:
+                limit_fixture_events = int(limit_fixture_events)
+            except (ValueError, TypeError):
+                limit_fixture_events = 3
         
         if not isinstance(team_events_parsed, list):
             return {
@@ -189,12 +205,26 @@ def process_team_events(request_data):
             else:
                 fixture_events.append(event)
         
+        # Apply limits (most recent played events, earliest upcoming fixture events)
+        # Played events are already sorted by date descending (most recent first)
+        # Fixture events need the earliest ones (sorted ascending by date)
+        limited_played_events = played_events[:limit_played_events] if limit_played_events > 0 else played_events
+        limited_fixture_events = fixture_events[:limit_fixture_events] if limit_fixture_events > 0 else fixture_events
+        
         return {
             "status": True,
             "data": {
-                "played_events": played_events,
-                "fixture_events": fixture_events,
-                "head_to_head_events": head_to_head_events
+                "played_events": limited_played_events,
+                "fixture_events": limited_fixture_events,
+                "head_to_head_events": head_to_head_events,
+                "debug_info": {
+                    "total_played_before_limit": len(played_events),
+                    "total_fixture_before_limit": len(fixture_events),
+                    "limit_played_events": limit_played_events,
+                    "limit_fixture_events": limit_fixture_events,
+                    "played_events_returned": len(limited_played_events),
+                    "fixture_events_returned": len(limited_fixture_events)
+                }
             }
         }
         

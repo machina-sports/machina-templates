@@ -64,3 +64,36 @@ mappings:
     outputs:
       selected_events_ids: "[$.get('events_docs')[int(i)].get('parsed_id') for i in $.get('selected_events',[])]"
       selected_events_parsed: "[$.get('events_docs')[int(i)] for i in $.get('selected_events',[])]"
+
+  # assistant-format-markets-for-display
+  - type: mapping
+    name: assistant-format-markets-for-display
+    title: Assistant - Format Markets for Display
+    description: Transform translated markets into frontend display format
+    outputs:
+      markets_objects: |
+        [
+          {
+            'event-id': market.get('event_id'),
+            'market-id': market.get('market_id'),
+            'market-type': market.get('market_type'),
+            'marketType': market.get('market_type'),
+            'title': market.get('market_name'),
+            'bet_title': market.get('market_name'),
+            'options': [
+              {
+                'option-id': opt.get('id'),
+                'id': opt.get('id'),
+                'name': opt.get('name'),
+                'runner_name': opt.get('name'),
+                'selection': opt.get('name'),
+                'price': opt.get('odds'),
+                'bet_odd': opt.get('odds'),
+                'odds': opt.get('odds'),
+                'odd': opt.get('odds')
+              }
+              for opt in market.get('options', [])
+            ]
+          }
+          for market in $.get('markets-parsed', [])
+        ]

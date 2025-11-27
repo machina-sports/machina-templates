@@ -225,7 +225,10 @@ def summarize_message_data(request_data):
                     "insights_docs": [],
                     "markets_docs": [],
                     "markets_objects": [],
-                    "websearch_docs": []
+                    "websearch_docs": [],
+                    "game_schedule": None,
+                    "trending_news": None,
+                    "trending_questions": []
                 }
             }
         
@@ -241,6 +244,9 @@ def summarize_message_data(request_data):
         faq_docs = last_user_msg.get("faq-docs", [])
         insights_docs = last_user_msg.get("insights-docs", [])
         websearch_docs = last_user_msg.get("websearch-docs", [])
+        game_schedule = last_user_msg.get("game-schedule", None)
+        trending_news = last_user_msg.get("trending-news", None)
+        trending_questions = last_user_msg.get("trending-questions", [])
         
         # Get markets-parsed (raw data for objects/widgets)
         markets_parsed = last_user_msg.get("markets-parsed", [])
@@ -287,7 +293,10 @@ def summarize_message_data(request_data):
                 "insights_docs": insights_docs,
                 "markets_docs": markets_docs,
                 "markets_objects": markets_objects,
-                "websearch_docs": websearch_docs
+                "websearch_docs": websearch_docs,
+                "game_schedule": game_schedule,
+                "trending_news": trending_news,
+                "trending_questions": trending_questions
             }
         }
         
@@ -307,7 +316,10 @@ def summarize_message_data(request_data):
                 "insights_docs": [],
                 "markets_docs": [],
                 "markets_objects": [],
-                "websearch_docs": []
+                "websearch_docs": [],
+                "game_schedule": None,
+                "trending_news": None,
+                "trending_questions": []
             }
         }
 
