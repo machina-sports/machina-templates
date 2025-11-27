@@ -1,7 +1,7 @@
 agent:
-  name: zendesk-sync-agent
-  title: Zendesk Sync Agent
-  description: "Agent to synchronize articles and labels from Zendesk Help Center to the database"
+  name: bwin-zendesk-sync-agent
+  title: BWIN - Zendesk Sync Agent
+  description: "Agent to synchronize articles and labels from BWIN Zendesk Help Center to the database"
   context-agent:
     locale: $.get('locale', 'en-gb')
     sort_by: $.get('sort_by', 'updated_at')
@@ -10,8 +10,8 @@ agent:
     per_page: $.get('per_page', 30)
   workflows:
 
-    # zendesk-sync-articles
-    - name: zendesk-sync-articles
+    # bwin-zendesk-sync-articles
+    - name: bwin-zendesk-sync-articles
       description: "Sync articles from Zendesk Help Center"
       inputs:
         locale: "$.get('locale', 'en-gb')"
@@ -23,11 +23,21 @@ agent:
         articles_count: "$.get('articles_count', 0)"
         articles_status: "$.get('workflow-status')"
 
-    # zendesk-sync-labels
-    - name: zendesk-sync-labels
+    # bwin-zendesk-sync-labels
+    - name: bwin-zendesk-sync-labels
       description: "Sync labels from Zendesk Help Center"
       inputs: {}
       outputs:
         labels_count: "$.get('labels_count', 0)"
         labels_status: "$.get('workflow-status')"
+
+    # bwin-zendesk-generate-snippets
+    - name: bwin-zendesk-generate-snippets
+      description: "Generate snippets from articles for search and retrieval"
+      condition: "$.get('articles_status') == 'executed'"
+      inputs:
+        limit: "$.get('limit', 100)"
+      outputs:
+        snippets_count: "$.get('snippets_count', 0)"
+        snippets_status: "$.get('workflow-status')"
 

@@ -1,5 +1,5 @@
 workflow:
-  name: "zendesk-sync-articles"
+  name: "bwin-zendesk-sync-articles"
   title: "Zendesk Sync Articles"
   description: "Workflow to fetch articles from Zendesk Help Center and save them to the database"
   context-variables:
@@ -8,6 +8,10 @@ workflow:
     zendesk:
       username: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME"
       password: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     locale: "$.get('locale', 'en-gb')"
     sort_by: "$.get('sort_by', 'updated_at')"
@@ -16,6 +20,8 @@ workflow:
     per_page: "$.get('per_page', 30)"
   outputs:
     articles_count: "$.get('articles_count', 0)"
+    saved_count: "$.get('saved_count', 0)"
+    saved_articles: "$.get('saved_articles', [])"
     workflow-status: "$.get('articles_parsed', []) is None or len($.get('articles_parsed', [])) == 0 and 'skipped' or 'executed'"
   tasks:
 
@@ -36,28 +42,42 @@ workflow:
         articles_response: "$.get('data', {})"
         articles: "$.get('data', {}).get('articles', [])"
         articles_count: "$.get('data', {}).get('count', 0)"
-        articles_parsed: |
+        articles_raw: |
           [
             {
-              **article,
               'metadata': {
                 'article_id': str(article.get('id', '')),
                 'section_id': str(article.get('section_id', '')),
                 'author_id': str(article.get('author_id', '')),
-                'locale': article.get('locale', ''),
-                'source_locale': article.get('source_locale', ''),
+                'locale': str(article.get('locale', '')),
+                'source_locale': str(article.get('source_locale', '')),
                 'permission_group_id': str(article.get('permission_group_id', '')),
-                'draft': article.get('draft', False),
-                'promoted': article.get('promoted', False),
-                'outdated': article.get('outdated', False)
+                'draft': bool(article.get('draft', False)),
+                'promoted': bool(article.get('promoted', False)),
+                'outdated': bool(article.get('outdated', False))
               },
-              'title': article.get('title', article.get('name', '')),
-              'created_at': article.get('created_at'),
-              'updated_at': article.get('updated_at'),
-              'edited_at': article.get('edited_at')
+              'title': str(article.get('title', article.get('name', ''))),
+              'body_html': str(article.get('body', '')),
+              'label_names': [str(label) for label in (article.get('label_names', []) or [])],
+              'created_at': str(article.get('created_at', '')),
+              'updated_at': str(article.get('updated_at', '')),
+              'edited_at': str(article.get('edited_at', '')) if article.get('edited_at') else '',
+              'id': str(article.get('id', '')),
+              'url': str(article.get('url', '')),
+              'html_url': str(article.get('html_url', ''))
             }
             for article in $.get('articles', [])
+            if article.get('body')
           ]
+
+    - type: "mapping"
+      name: "bwin-zendesk-articles-html-to-text-mapping"
+      description: "Convert HTML content to clean text using bs4"
+      condition: "$.get('articles_raw') is not None and len($.get('articles_raw', [])) > 0"
+      inputs:
+        articles_raw: "$.get('articles_raw', [])"
+      outputs:
+        articles_parsed: "$.get('articles_parsed', [])"
 
     # bulk-save-articles
     - type: "document"
@@ -68,11 +88,12 @@ workflow:
         action: "bulk-update"
         embed-vector: false
         force-update: true
-      document_name: "'zendesk-article'"
+      document_name: "'bwin-zendesk-article'"
       documents:
         items: "$.get('articles_parsed')"
       inputs:
         articles_parsed: "$.get('articles_parsed')"
       outputs:
-        saved_count: "$len($.get('documents', [])) if $.get('documents') else 0"
+        saved_count: "len($.get('documents', [])) if $.get('documents') else 0"
+        saved_articles: "$.get('documents', []) if $.get('documents') else $.get('articles_parsed', [])"
 

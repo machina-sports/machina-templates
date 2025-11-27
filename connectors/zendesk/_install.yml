@@ -1,16 +1,16 @@
 setup:
-  title: Zendesk Help Center API
-  description: Connect to Zendesk Help Center API to retrieve and sync articles from your help center.
+  title: BWIN - Zendesk Help Center API
+  description: Connect to BWIN Zendesk Help Center API to retrieve and sync articles from your help center.
   category:
     - content-management
     - help-desk
     - knowledge-base
   estimatedTime: 1 minute
   features:
-    - Retrieve articles from Help Center
-    - Sync articles to database
+    - Retrieve articles from BWIN Zendesk Help Center
+    - Sync articles and labels to database
     - Support for multiple locales
-    - Article metadata and content
+    - Generate snippets from articles for search and retrieval
   integrations:
     - zendesk
   requirements:
@@ -29,6 +29,15 @@ datasets:
 
   - type: "workflow"
     path: "workflows/sync-labels.yml"
+
+  - type: "workflow"
+    path: "workflows/generate-snippets.yml"
+
+  - type: "prompts"
+    path: "prompts.yml"
+
+  - type: "mappings"
+    path: "mappings/html-to-text.yml"
 
   - type: "agent"
     path: "agent.yml"

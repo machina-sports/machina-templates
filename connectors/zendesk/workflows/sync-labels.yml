@@ -1,5 +1,5 @@
 workflow:
-  name: "zendesk-sync-labels"
+  name: "bwin-zendesk-sync-labels"
   title: "Zendesk Sync Labels"
   description: "Workflow to fetch labels from Zendesk Help Center and save them to the database"
   context-variables:
@@ -28,14 +28,16 @@ workflow:
         labels_parsed: |
           [
             {
-              **label,
               'metadata': {
                 'label_id': str(label.get('id', '')),
-                'name': label.get('name', '')
+                'name': str(label.get('name', ''))
               },
-              'title': label.get('name', ''),
-              'created_at': label.get('created_at'),
-              'updated_at': label.get('updated_at')
+              'title': str(label.get('name', '')),
+              'name': str(label.get('name', '')),
+              'created_at': str(label.get('created_at', '')) if label.get('created_at') else '',
+              'updated_at': str(label.get('updated_at', '')) if label.get('updated_at') else '',
+              'id': str(label.get('id', '')),
+              'url': str(label.get('url', '')) if label.get('url') else ''
             }
             for label in $.get('labels', [])
           ]
@@ -49,7 +51,7 @@ workflow:
         action: "bulk-update"
         embed-vector: false
         force-update: true
-      document_name: "'zendesk-label'"
+      document_name: "'bwin-zendesk-label'"
       documents:
         items: "$.get('labels_parsed')"
       inputs:
