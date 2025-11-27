@@ -1,0 +1,20 @@
+agent:
+  name: competitions-schedule-football-en
+  title: Competitions Schedule - Football - EN
+  description: Agent to schedule Football Competitions
+  workflows:
+
+    # sync England Premier League (130281)
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:130281'"
+      outputs:
+        sync-seasons-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:130281'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)

@@ -20,3 +20,19 @@ agent:
         season_id: "'sr:season:128461'"
       outputs:
         sync-competitors-status: $.get('workflow-status', False)
+
+    # SOUTH AMERICA BRAZIL - Copa do Brasil
+    # sr:season:128463
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:128463'"
+      outputs:
+        sync-schedules-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:128463'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)

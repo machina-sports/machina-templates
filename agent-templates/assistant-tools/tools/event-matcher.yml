@@ -84,7 +84,7 @@ workflow:
       description: "Match markets to events using fuzzy matching and date comparison."
       condition: "$.get('candidate_events') is not None and len($.get('candidate_events', [])) > 0 and ($.get('market') is not None or ($.get('markets') is not None and len($.get('markets', [])) > 0))"
       connector:
-        name: "misterai-market-event-matcher"
+        name: "assistant-tools-market-event-matcher"
         command: "match_markets_to_events"
       inputs:
         markets: "[$.get('market')] if $.get('market') is not None else $.get('markets', [])"

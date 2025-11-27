@@ -1,0 +1,24 @@
+agent:
+  name: competitions-markets-football-es
+  title: Competitions Markets - Football - ES
+  description: Agent to update Football Markets
+  workflows:
+
+    # bwin-sync-spain-la-liga markets (102829)
+    - name: bwin-sync-markets
+      description: sync-markets
+      inputs:
+        country: "'br'"
+        competitionIds: "'102829'"
+        sportId: "'4'"
+      outputs:
+        sync-markets-odds-status: "$.get('workflow-status', False)"
+
+    # associate-markets-events
+    - name: associate-markets-events
+      description: Associate game-markets to sport:Event documents by similarity
+      inputs:
+        limit: "50"
+      outputs:
+        associate-markets-status: "$.get('workflow-status', 'skipped')"
+        markets_matched: "$.get('markets_matched', [])"

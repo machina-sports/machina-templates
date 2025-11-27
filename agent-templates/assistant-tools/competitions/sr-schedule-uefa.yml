@@ -1,0 +1,50 @@
+agent:
+  name: competitions-schedule-football-uefa
+  title: Competitions Schedule - Football - UEFA
+  description: Agent to schedule Football Competitions
+  workflows:
+
+    # sync UEFA Champions League 131129
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:131129'"
+      outputs:
+        sync-seasons-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:131129'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)
+
+    # sync UEFA Conference League 131637
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:131637'"
+      outputs:
+        sync-seasons-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:131637'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)
+
+    # sync UEFA Europa League 131635
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:131635'"
+      outputs:
+        sync-seasons-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:131635'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)
