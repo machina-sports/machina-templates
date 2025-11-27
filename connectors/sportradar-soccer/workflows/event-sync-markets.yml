@@ -93,8 +93,7 @@ workflow:
             **$.get('event_updated', {}),
             'market_data': $.get('market_data', []),
             'version_control': {
-              **$.get('event_value', {}).get('version_control', {}),
-              'processing': True
+              **$.get('event_value', {}).get('version_control', {})
             }
           }
       

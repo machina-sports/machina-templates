@@ -48,13 +48,13 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=8)).isoformat()}"
         value.sport:status: "{'$in': ['live', 'interrupted']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        updated: "{'$lt': datetime.utcnow() - timedelta(seconds=30)}"
+        updated: "{'$lt': datetime.utcnow() - timedelta(seconds=15)}"
       inputs:
         name: "{'$in': ['sport:Event']}"
       outputs:
@@ -72,7 +72,7 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=4)).isoformat()}"
         value.sport:status: "{'$in': ['not_started']}"
@@ -96,7 +96,7 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=8)).isoformat()}"
         value.sport:status: "{'$in': ['closed', 'ended']}"
@@ -120,13 +120,35 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
         value.schema:startDate: "{'$gt': (datetime.utcnow() + timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
         value.sport:status: "{'$in': ['not_started']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         updated: "{'$lt': datetime.utcnow() - timedelta(hours=3)}"
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+    
+    # load-stuck-events - safety mechanism to recover stuck events
+    - type: document
+      name: load-stuck-events
+      description: Find events stuck in processing state for more than 5 minutes.
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.counter", 1, "updated", 1]
+      filters:
+        value.version_control.processing: True
+        value.version_control.finished: "{'$ne': True}"
+        updated: "{'$lt': datetime.utcnow() - timedelta(minutes=5)}"
       inputs:
         name: "{'$in': ['sport:Event']}"
       outputs:

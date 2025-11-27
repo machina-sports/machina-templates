@@ -137,8 +137,7 @@ workflow:
             'schema:statistics': $.get('iptc_events_statistics', []),
             'schema:timeline': $.get('iptc_events_timeline', []),
             'version_control': {
-              **$.get('event_value', {}).get('version_control', {}),
-              'processing': True
+              **$.get('event_value', {}).get('version_control', {})
             }
           }
       
