@@ -79,11 +79,11 @@ def extract_markets_from_events(request_data):
                 
                 market_id = market.get("id")
                 market_type = market.get("marketType", "")
-                is_open = market.get("isOpenForBetting", False)
-                is_displayed = market.get("isDisplayed", False)
+                is_open = market.get("isOpenForBetting", True)  # Default to True if not specified
+                is_displayed = market.get("isDisplayed", True)  # Default to True if not specified
                 
-                # Only include markets that are open and displayed
-                if not is_open or not is_displayed:
+                # Skip markets that are explicitly closed or hidden
+                if is_open is False or is_displayed is False:
                     continue
                 
                 market_name_obj = market.get("name", {})
