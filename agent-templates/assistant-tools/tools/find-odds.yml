@@ -1,9 +1,9 @@
 workflow:
   
-  # assistant-tools-find-markets-from-events
-  name: assistant-tools-find-markets-from-events
-  title: Assistant - Tools Find Markets from Events
-  description: Workflow to extract and filter markets from events' market_data.
+  # assistant-tools-find-odds
+  name: assistant-tools-find-odds
+  title: Assistant - Tools Find Odds
+  description: Workflow to extract and filter odds from events' market_data.
   context-variables:
     debugger:
       enabled: true
@@ -138,4 +138,5 @@ workflow:
           }
       filters:
         document_id: $.get('document_id')
+
 

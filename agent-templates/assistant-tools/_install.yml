@@ -111,7 +111,7 @@ datasets:
     path: tools/find-upcoming.yml
 
   - type: workflow
-    path: tools/find-markets-from-events.yml
+    path: tools/find-odds.yml
 
   # workflows
 

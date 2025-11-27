@@ -38,7 +38,7 @@ workflow:
                   "description": "Configuration assets: setup, structure, translations, and policies",
                   "category": "Catalogue",
                   "metadata": {
-                    "name": ["content-trending-news", "setup-playground", "site-structure", "doc-structure", "market-translations-pt-br"]
+                    "name": ["content-trending-news", "setup-playground", "site-structure", "doc-structure", "market-translations-pt-br", "sportingbot-character"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
