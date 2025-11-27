@@ -1,0 +1,10 @@
+connector:
+  name: team-matcher
+  description: Match team names from user query to team documents using fuzzy matching
+  filename: team-matcher.py
+  filetype: pyscript
+  commands:
+    - name: match_teams_by_name
+      value: match_teams_by_name
+
+

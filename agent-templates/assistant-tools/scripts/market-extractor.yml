@@ -1,0 +1,14 @@
+connector:
+  name: market-extractor
+  description: Extract and filter markets from events' market_data
+  filename: market-extractor.py
+  filetype: pyscript
+  commands:
+    - name: extract_message_data_for_markets
+      value: extract_message_data_for_markets
+    - name: extract_event_values
+      value: extract_event_values
+    - name: extract_markets_from_events
+      value: extract_markets_from_events
+    - name: filter_and_summarize_markets
+      value: filter_and_summarize_markets

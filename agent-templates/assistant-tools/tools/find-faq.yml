@@ -68,3 +68,31 @@ workflow:
           ]
         has_snippets: len($.get('documents', [])) > 0
 
+    # update-thread-with-faq-docs
+    - type: document
+      name: update-thread-with-faq-docs
+      description: Update thread document with FAQ docs in the last user message
+      condition: $.get('document_id') is not None and $.get('has_snippets') is True
+      config:
+        action: update
+      documents:
+        thread: |
+          {
+            **$.get('document_value'),
+            'messages': [
+              *[
+                (
+                  {
+                    **msg,
+                    'faq-docs': $.get('snippets-parsed', [])
+                  }
+                  if msg.get('role') == 'user' and idx == len($.get('messages', [])) - 1
+                  else msg
+                )
+                for idx, msg in enumerate($.get('messages', []))
+              ]
+            ]
+          }
+      filters:
+        document_id: $.get('document_id')
+

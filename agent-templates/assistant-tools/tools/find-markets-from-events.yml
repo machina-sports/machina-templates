@@ -1,0 +1,117 @@
+workflow:
+  
+  # assistant-tools-find-markets-from-events
+  name: assistant-tools-find-markets-from-events
+  title: Assistant - Tools Find Markets from Events
+  description: Workflow to extract and filter markets from events' market_data.
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    document_id: $.get('document_id')
+  outputs:
+    step_find_markets_parsed: $.get('markets-parsed', [])
+    step_find_markets_objects: $.get('markets-parsed', [])
+    workflow-status: $.get('has_markets') is True and 'executed' or 'skipped'
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('document_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+        last_user_msg: |
+          (
+            [msg for msg in $.get('documents')[0].get('value', {}).get('messages', []) if msg.get('role') == 'user'][-1]
+            if len([msg for msg in $.get('documents')[0].get('value', {}).get('messages', []) if msg.get('role') == 'user']) > 0
+            else {}
+          )
+
+    # Extract data from last user message (team-events, reasoning, market_query)
+    - type: connector
+      name: extract-message-data-for-markets
+      description: Extract team-events and reasoning from last user message
+      condition: $.get('last_user_msg') is not None and len($.get('last_user_msg', {})) > 0
+      connector:
+        name: market-extractor
+        command: extract_message_data_for_markets
+      inputs:
+        last_user_msg: $.get('last_user_msg')
+      outputs:
+        team_events_values: $.get('event_values', [])
+        market_query: $.get('market_query', '')
+        has_events: len($.get('event_values', [])) > 0
+
+    # Extract markets from events
+    - type: connector
+      name: extract-markets-from-events
+      description: Extract all markets from events' market_data
+      condition: $.get('has_events') is True
+      connector:
+        name: market-extractor
+        command: extract_markets_from_events
+      inputs:
+        events: $.get('team_events_values')
+      outputs:
+        all_markets: $.get('all_markets', [])
+        events_with_markets: $.get('events_with_markets', [])
+        total_markets: $.get('total_markets', 0)
+
+    # Filter and summarize markets
+    - type: connector
+      name: filter-and-summarize-markets
+      description: Filter markets by query or popularity
+      condition: $.get('total_markets', 0) > 0
+      connector:
+        name: market-extractor
+        command: filter_and_summarize_markets
+      inputs:
+        all_markets: $.get('all_markets')
+        market_query: $.get('market_query', '')
+        top_n_markets: "5"
+      outputs:
+        markets-docs: $.get('markets_docs', [])
+        markets-parsed: $.get('markets_parsed', [])
+        has_markets: len($.get('markets_parsed', [])) > 0
+
+    # Update thread with markets-parsed
+    - type: document
+      name: update-thread-with-markets-parsed
+      description: Update thread document with markets parsed in the last user message
+      condition: $.get('document_id') is not None and $.get('has_markets') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        thread: |
+          {
+            **$.get('document_value'),
+            'messages': [
+              *[
+                (
+                  {
+                    **msg,
+                    'markets-parsed': $.get('markets-parsed', [])
+                  }
+                  if msg.get('role') == 'user' and idx == len($.get('messages', [])) - 1
+                  else msg
+                )
+                for idx, msg in enumerate($.get('messages', []))
+              ]
+            ]
+          }
+      filters:
+        document_id: $.get('document_id')
+

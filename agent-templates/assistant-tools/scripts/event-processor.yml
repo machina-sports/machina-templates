@@ -1,0 +1,13 @@
+connector:
+  name: event-processor
+  description: Process team events to extract head-to-head matches and separate by played/fixture status
+  filename: event-processor.py
+  filetype: pyscript
+  commands:
+    - name: collect_fixture_ids
+      value: collect_fixture_ids
+    - name: process_team_events
+      value: process_team_events
+
+
+

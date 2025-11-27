@@ -1,0 +1,12 @@
+connector:
+  name: event-summarizer
+  description: Prepare event summaries separated by Played/Fixture status with concise formatting
+  filename: event-summarizer.py
+  filetype: pyscript
+  commands:
+    - name: format_event_summaries
+      value: format_event_summaries
+    - name: prepare_event_summaries
+      value: prepare_event_summaries
+
+

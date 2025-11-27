@@ -78,6 +78,21 @@ datasets:
   - type: connector
     path: scripts/persona-randomizer.yml
 
+  - type: connector
+    path: scripts/team-matcher.yml
+
+  - type: connector
+    path: scripts/event-processor.yml
+
+  - type: connector
+    path: scripts/event-summarizer.yml
+
+  - type: connector
+    path: scripts/market-extractor.yml
+
+  - type: connector
+    path: scripts/message-data-transformer.yml
+
   # tools
 
   - type: workflow
@@ -94,6 +109,9 @@ datasets:
 
   - type: workflow
     path: tools/find-upcoming.yml
+
+  - type: workflow
+    path: tools/find-markets-from-events.yml
 
   # workflows
 
