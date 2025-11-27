@@ -208,8 +208,15 @@ def process_team_events(request_data):
         # Apply limits (most recent played events, earliest upcoming fixture events)
         # Played events are already sorted by date descending (most recent first)
         # Fixture events need the earliest ones (sorted ascending by date)
+        
+        # Sort fixture events by start date ascending (earliest first)
+        fixture_events_sorted = sorted(
+            fixture_events,
+            key=lambda e: e.get("schema:startDate", "9999-12-31") if isinstance(e, dict) else "9999-12-31"
+        )
+        
         limited_played_events = played_events[:limit_played_events] if limit_played_events > 0 else played_events
-        limited_fixture_events = fixture_events[:limit_fixture_events] if limit_fixture_events > 0 else fixture_events
+        limited_fixture_events = fixture_events_sorted[:limit_fixture_events] if limit_fixture_events > 0 else fixture_events_sorted
         
         return {
             "status": True,
