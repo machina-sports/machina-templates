@@ -39,7 +39,7 @@ def format_event_summaries(request_data):
             return None
     
     def format_summary(value):
-        """Format: Home vs Away | Competition | Date Time | Status | Score"""
+        """Format: Home vs Away | Competition | Date Time | Status | Score | Channel"""
         try:
             if not isinstance(value, dict):
                 return None
@@ -78,6 +78,15 @@ def format_event_summaries(request_data):
             score = value.get("sport:score", {})
             if isinstance(score, dict) and score.get("sport:homeScore") is not None:
                 parts.append(f"{score.get('sport:homeScore')}-{score.get('sport:awayScore')}")
+            
+            # Channel (for fixtures)
+            channels = value.get("sport:channels", [])
+            if isinstance(channels, list) and len(channels) > 0:
+                channel = channels[0]
+                if isinstance(channel, dict):
+                    channel_name = channel.get("sport:channelName")
+                    if channel_name:
+                        parts.append(f"📺 {channel_name}")
             
             return " | ".join(parts)
         except:
@@ -191,7 +200,7 @@ def prepare_event_summaries(request_data):
             return None
     
     def format_summary(value):
-        """Format: Home vs Away | Competition | Date Time | Status | Score"""
+        """Format: Home vs Away | Competition | Date Time | Status | Score | Channel"""
         try:
             if not isinstance(value, dict):
                 return None
@@ -230,6 +239,15 @@ def prepare_event_summaries(request_data):
             score = value.get("sport:score", {})
             if isinstance(score, dict) and score.get("sport:homeScore") is not None:
                 parts.append(f"{score.get('sport:homeScore')}-{score.get('sport:awayScore')}")
+            
+            # Channel (for fixtures)
+            channels = value.get("sport:channels", [])
+            if isinstance(channels, list) and len(channels) > 0:
+                channel = channels[0]
+                if isinstance(channel, dict):
+                    channel_name = channel.get("sport:channelName")
+                    if channel_name:
+                        parts.append(f"📺 {channel_name}")
             
             return " | ".join(parts)
         except:

@@ -86,7 +86,7 @@ def summarize_message_data(request_data):
             return None
     
     def format_event_summary(event):
-        """Format event dict to: Home vs Away | Competition | Date Time | Status | Score"""
+        """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel"""
         try:
             # Extract teams
             competitors = event.get("sport:competitors", [])
@@ -134,6 +134,15 @@ def summarize_message_data(request_data):
                 home_score = score.get("sport:homeScore")
                 away_score = score.get("sport:awayScore")
                 parts.append(f"{home_score}-{away_score}")
+            
+            # Channel (for fixtures)
+            channels = event.get("sport:channels", [])
+            if isinstance(channels, list) and len(channels) > 0:
+                channel = channels[0]
+                if isinstance(channel, dict):
+                    channel_name = channel.get("sport:channelName")
+                    if channel_name:
+                        parts.append(f"📺 {channel_name}")
             
             return " | ".join(parts)
             
