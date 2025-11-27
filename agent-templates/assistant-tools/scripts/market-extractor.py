@@ -573,23 +573,29 @@ def extract_message_data_for_markets(request_data):
                 }
             }
         
-        # Extract team-events
-        team_events_docs = last_user_msg.get("team-events", [])
-        event_values = []
+        # Extract events from multiple possible sources
+        # Priority: head-to-head-events (has full market data) > fixture-events > team-events
+        event_sources = [
+            last_user_msg.get("head-to-head-events", []),
+            last_user_msg.get("fixture-events", []),
+            last_user_msg.get("team-events", [])
+        ]
         
-        if isinstance(team_events_docs, list):
-            for event in team_events_docs:
-                if not isinstance(event, dict):
-                    continue
-                
-                # If it has a 'value' field, extract it
-                if 'value' in event:
-                    event_value = event.get('value', {})
-                    if isinstance(event_value, dict):
-                        event_values.append(event_value)
-                # If it's already a value object (has IPTC fields), use it directly
-                elif '@id' in event or 'sport:competitors' in event:
-                    event_values.append(event)
+        event_values = []
+        for team_events_docs in event_sources:
+            if isinstance(team_events_docs, list):
+                for event in team_events_docs:
+                    if not isinstance(event, dict):
+                        continue
+                    
+                    # If it has a 'value' field, extract it
+                    if 'value' in event:
+                        event_value = event.get('value', {})
+                        if isinstance(event_value, dict):
+                            event_values.append(event_value)
+                    # If it's already a value object (has IPTC fields), use it directly
+                    elif '@id' in event or 'sport:competitors' in event:
+                        event_values.append(event)
         
         # Extract market query from reasoning
         reasoning = last_user_msg.get("reasoning", {})
