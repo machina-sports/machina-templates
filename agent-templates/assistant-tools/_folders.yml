@@ -77,6 +77,17 @@ workflow:
                   "view": "list"
                 },
                 {
+                  "name": "content-matchday",
+                  "title": "Matchday",
+                  "description": "The matchday content available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-matchday"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "marketlist",
                   "title": "Market List",
                   "description": "The market list available in the BWIN API.",

@@ -38,20 +38,53 @@ workflow:
             else {}
           )
 
-    # Extract data from last user message (team-events, reasoning, market_query)
-    - type: connector
-      name: extract-message-data-for-markets
-      description: Extract team-events and reasoning from last user message
-      condition: $.get('last_user_msg') is not None and len($.get('last_user_msg', {})) > 0
-      connector:
-        name: market-extractor
-        command: extract_message_data_for_markets
-      inputs:
-        last_user_msg: $.get('last_user_msg')
+    # Load fixture events by IDs
+    - type: document
+      name: load-fixture-events
+      description: Load fixture events from document store by IDs (excluding closed events)
+      condition: $.get('last_user_msg', {}).get('fixture-event-ids') is not None and len($.get('last_user_msg', {}).get('fixture-event-ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: |
+          {'$in': $.get('last_user_msg', {}).get('fixture-event-ids', [])}
+        value.sport:status: "{'$ne': 'closed'}"
       outputs:
-        team_events_values: $.get('event_values', [])
-        market_query: $.get('market_query', '')
-        has_events: len($.get('event_values', [])) > 0
+        fixture_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+        has_fixture_events: len($.get('documents', [])) > 0
+
+    # Load played events by IDs
+    - type: document
+      name: load-played-events
+      description: Load played events from document store by IDs (excluding closed events)
+      condition: $.get('last_user_msg', {}).get('played-event-ids') is not None and len($.get('last_user_msg', {}).get('played-event-ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.schema:startDate", -1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.sport:status: "{'$ne': 'closed'}"
+        metadata.event_code: |
+          {'$in': $.get('last_user_msg', {}).get('played-event-ids', [])}
+      outputs:
+        played_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+        has_played_events: len($.get('documents', [])) > 0
+        team_events_values: |
+          [
+            *$.get('fixture_events', []),
+            *[event.get('value', {}) for event in $.get('documents', [])]
+          ]
+        has_events: |
+          len($.get('fixture_events', [])) > 0 or len($.get('documents', [])) > 0
+        market_query: $.get('last_user_msg', {}).get('reasoning', {}).get('market_query', '')
         reasoning: $.get('last_user_msg', {}).get('reasoning', {})
 
     # Extract markets from events

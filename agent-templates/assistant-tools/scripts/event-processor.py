@@ -60,6 +60,73 @@ def collect_fixture_ids(request_data):
         }
 
 
+def collect_event_ids(request_data):
+    """
+    Collect @id values from a list of events.
+    Generic version that works with any event list.
+    
+    Args:
+        request_data (dict): Request data containing:
+            - params (dict):
+                - events (list): List of event objects
+    
+    Returns:
+        dict: Response containing event_ids list
+    """
+    try:
+        if not isinstance(request_data, dict):
+            return {
+                "status": False,
+                "error": "Invalid request_data: expected dict",
+                "data": {
+                    "event_ids": []
+                }
+            }
+        
+        params = request_data.get("params", {})
+        if not isinstance(params, dict):
+            return {
+                "status": False,
+                "error": "Invalid params: expected dict",
+                "data": {
+                    "event_ids": []
+                }
+            }
+        
+        events = params.get("events", [])
+        
+        if not isinstance(events, list):
+            events = []
+        
+        # Collect all @id values
+        event_ids = []
+        
+        for event in events:
+            if isinstance(event, dict):
+                event_id = event.get("@id")
+                if event_id:
+                    event_ids.append(event_id)
+        
+        return {
+            "status": True,
+            "data": {
+                "event_ids": event_ids
+            }
+        }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "status": False,
+            "error": str(e),
+            "message": f"Error collecting event IDs: {str(e)}",
+            "traceback": traceback.format_exc(),
+            "data": {
+                "event_ids": []
+            }
+        }
+
+
 def process_team_events(request_data):
     """
     Process team events to extract head-to-head matches and separate by played/fixture status.

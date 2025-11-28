@@ -30,9 +30,8 @@ workflow:
         search-vector: false
         search-sorters: ["value.start_time", 1]
       filters:
-        metadata.event_code: $.get('event_code')
-      inputs:
         name: "{'$in': ['sport:Event']}"
+        metadata.event_code: $.get('event_code')
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -50,13 +49,12 @@ workflow:
         search-vector: false
         search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
+        name: "{'$in': ['sport:Event']}"
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=8)).isoformat()}"
         value.sport:status: "{'$in': ['live', 'interrupted']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         updated: "{'$lt': datetime.utcnow() - timedelta(seconds=15)}"
-      inputs:
-        name: "{'$in': ['sport:Event']}"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -74,13 +72,12 @@ workflow:
         search-vector: false
         search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
+        name: "{'$in': ['sport:Event']}"
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=4)).isoformat()}"
         value.sport:status: "{'$in': ['not_started']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         updated: "{'$lt': datetime.utcnow() - timedelta(minutes=1)}"
-      inputs:
-        name: "{'$in': ['sport:Event']}"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -98,13 +95,12 @@ workflow:
         search-vector: false
         search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
+        name: "{'$in': ['sport:Event']}"
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=8)).isoformat()}"
         value.sport:status: "{'$in': ['closed', 'ended']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         updated: "{'$lt': datetime.utcnow() - timedelta(hours=1)}"
-      inputs:
-        name: "{'$in': ['sport:Event']}"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -122,13 +118,12 @@ workflow:
         search-vector: false
         search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
+        name: "{'$in': ['sport:Event']}"
         value.schema:startDate: "{'$gt': (datetime.utcnow() + timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
         value.sport:status: "{'$in': ['not_started']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        updated: "{'$lt': datetime.utcnow() - timedelta(hours=3)}"
-      inputs:
-        name: "{'$in': ['sport:Event']}"
+        updated: "{'$lt': datetime.utcnow() - timedelta(minutes=5)}"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -146,11 +141,10 @@ workflow:
         search-vector: false
         search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
+        name: "{'$in': ['sport:Event']}"
         value.version_control.processing: True
         value.version_control.finished: "{'$ne': True}"
         updated: "{'$lt': datetime.utcnow() - timedelta(minutes=5)}"
-      inputs:
-        name: "{'$in': ['sport:Event']}"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0

@@ -8,6 +8,9 @@ def summarize_message_data(request_data):
         request_data (dict): Request data containing:
             - params (dict):
                 - last_user_msg (dict): The last user message object from thread
+                - played_events (list): Loaded played event documents (optional)
+                - fixture_events (list): Loaded fixture event documents (optional)
+                - head_to_head_events (list): Loaded head-to-head event documents (optional)
     
     Returns:
         dict: Response containing summarized data ready for LLM consumption
@@ -221,6 +224,11 @@ def summarize_message_data(request_data):
         params = request_data.get("params", {})
         last_user_msg = params.get("last_user_msg", {})
         
+        # Get loaded events from params (passed from workflow)
+        played_events = params.get("played_events", [])
+        fixture_events = params.get("fixture_events", [])
+        head_to_head_events = params.get("head_to_head_events", [])
+        
         if not isinstance(last_user_msg, dict):
             return {
                 "status": False,
@@ -244,10 +252,10 @@ def summarize_message_data(request_data):
         # Summarize matched teams
         matched_teams_summary = summarize_teams(last_user_msg.get("matched-teams", []))
         
-        # Summarize events
-        fixture_events_summary = summarize_events(last_user_msg.get("fixture-events", []))
-        played_events_summary = summarize_events(last_user_msg.get("played-events", []))
-        head_to_head_events_summary = summarize_events(last_user_msg.get("head-to-head-events", []))
+        # Summarize events (use loaded events if available, fallback to message data for backward compatibility)
+        fixture_events_summary = summarize_events(fixture_events if fixture_events else last_user_msg.get("fixture-events", []))
+        played_events_summary = summarize_events(played_events if played_events else last_user_msg.get("played-events", []))
+        head_to_head_events_summary = summarize_events(head_to_head_events if head_to_head_events else last_user_msg.get("head-to-head-events", []))
         
         # Pass through already-summarized docs
         faq_docs = last_user_msg.get("faq-docs", [])
