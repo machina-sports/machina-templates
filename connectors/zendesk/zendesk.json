@@ -1,0 +1,264 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Zendesk Help Center API",
+    "description": "This API allows you to retrieve articles from Zendesk Help Center.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://bwines.zendesk.com"
+    }
+  ],
+  "paths": {
+    "/api/v2/help_center/{locale}/articles": {
+      "get": {
+        "summary": "List articles",
+        "description": "Retrieve a list of articles from the Help Center",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locale",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The locale code (e.g., en-gb)"
+          },
+          {
+            "in": "query",
+            "name": "sort_by",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["updated_at", "created_at", "title", "position"],
+              "default": "updated_at"
+            },
+            "description": "Sort articles by field"
+          },
+          {
+            "in": "query",
+            "name": "sort_order",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "asc"
+            },
+            "description": "Sort order"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Page number for pagination"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 30
+            },
+            "description": "Number of articles per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticlesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "BasicAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Article": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "html_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "author_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "comments_disabled": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "promoted": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vote_sum": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vote_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "section_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_locale": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "outdated": {
+            "type": "boolean"
+          },
+          "outdated_locales": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "edited_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user_segment_id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "permission_group_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "content_tag_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "label_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "type": "string"
+          },
+          "user_segment_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "ArticlesResponse": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "next_page": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "per_page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "previous_page": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "articles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Article"
+            }
+          },
+          "sort_by": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Basic authentication using username (email/token format) and password (API token)"
+      }
+    }
+  }
+}
+
