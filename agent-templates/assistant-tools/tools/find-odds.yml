@@ -77,99 +77,27 @@ workflow:
         played_events: |
           [event.get('value', {}) for event in $.get('documents', [])]
         has_played_events: len($.get('documents', [])) > 0
-        team_events_values: |
-          [
-            *$.get('fixture_events', []),
-            *[event.get('value', {}) for event in $.get('documents', [])]
-          ]
-        has_events: |
-          len($.get('fixture_events', [])) > 0 or len($.get('documents', [])) > 0
         market_query: $.get('last_user_msg', {}).get('reasoning', {}).get('market_query', '')
         reasoning: $.get('last_user_msg', {}).get('reasoning', {})
 
-    # Extract markets from events
-    - type: connector
-      name: extract-markets-from-events
-      description: Extract all markets from events' market_data
-      condition: $.get('has_events') is True
-      connector:
-        name: market-extractor
-        command: extract_markets_from_events
-      inputs:
-        events: $.get('team_events_values')
-      outputs:
-        all_markets: $.get('all_markets', [])
-        events_with_markets: $.get('events_with_markets', [])
-        total_markets: $.get('total_markets', 0)
-
-    # Load translation document
+    # Load next events by IDs
     - type: document
-      name: load-translation-policy
-      description: Load market translation policy for Portuguese (Brazil)
-      condition: $.get('total_markets', 0) > 0
+      name: load-next-events
+      description: Load next events from document store by IDs (excluding closed events)
+      condition: $.get('last_user_msg', {}).get('next-event-ids') is not None and len($.get('last_user_msg', {}).get('next-event-ids', [])) > 0
       config:
         action: search
-        search-limit: 1
+        search-limit: 100
         search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
       filters:
-        name: "'market-translations-pt-br'"
+        name: "{'$in': ['sport:Event']}"
+        value.sport:status: "{'$ne': 'closed'}"
+        metadata.event_code: |
+          {'$in': $.get('last_user_msg', {}).get('next-event-ids', [])}
       outputs:
-        translations: $.get('documents')[0].get('value', {}).get('translations', {}) if len($.get('documents', [])) > 0 else {}
-        translation_loaded: len($.get('documents', [])) > 0
-
-    # Filter and summarize markets
-    - type: connector
-      name: filter-and-summarize-markets
-      description: Filter markets by query or popularity
-      condition: $.get('total_markets', 0) > 0
-      connector:
-        name: market-extractor
-        command: filter_and_summarize_markets
-      inputs:
-        all_markets: $.get('all_markets')
-        market_query: $.get('market_query', '')
-        top_n_markets: "5"
-        translations: $.get('translations', {})
-        reasoning_filters: |
-          {
-            'recommended_market_types': $.get('reasoning', {}).get('recommended_market_types', []),
-            'odds_range': $.get('reasoning', {}).get('odds_range', {}),
-            'runner_filter': $.get('reasoning', {}).get('runner_filter', 'all'),
-            'market_query': $.get('reasoning', {}).get('market_query', '')
-          } if $.get('reasoning', {}).get('market_filter_requested', False) else {}
-      outputs:
-        markets-docs: $.get('markets_docs', [])
-        markets-parsed: $.get('markets_parsed', [])
-        has_markets: len($.get('markets_parsed', [])) > 0
-
-    # Update thread with markets-parsed
-    - type: document
-      name: update-thread-with-markets-parsed
-      description: Update thread document with markets parsed in the last user message
-      condition: $.get('document_id') is not None and $.get('has_markets') is True
-      config:
-        action: update
-        embed-vector: false
-        force-update: true
-      documents:
-        thread: |
-          {
-            **$.get('document_value'),
-            'messages': [
-              *[
-                (
-                  {
-                    **msg,
-                    'markets-parsed': $.get('markets-parsed', [])
-                  }
-                  if msg.get('role') == 'user' and idx == len($.get('messages', [])) - 1
-                  else msg
-                )
-                for idx, msg in enumerate($.get('messages', []))
-              ]
-            ]
-          }
-      filters:
-        document_id: $.get('document_id')
+        next_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+        has_next_events: len($.get('documents', [])) > 0
 
 

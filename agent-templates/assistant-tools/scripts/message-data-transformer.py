@@ -224,10 +224,13 @@ def summarize_message_data(request_data):
         params = request_data.get("params", {})
         last_user_msg = params.get("last_user_msg", {})
         
-        # Get loaded events from params (passed from workflow)
+        # Get loaded events and markets from params (passed from workflow)
         played_events = params.get("played_events", [])
         fixture_events = params.get("fixture_events", [])
         head_to_head_events = params.get("head_to_head_events", [])
+        next_events = params.get("next_events", [])
+        markets_docs = params.get("markets_docs", [])
+        markets_parsed = params.get("markets_parsed", [])
         
         if not isinstance(last_user_msg, dict):
             return {
@@ -238,14 +241,15 @@ def summarize_message_data(request_data):
                     "fixture_events_summary": [],
                     "played_events_summary": [],
                     "head_to_head_events_summary": [],
+                    "next_events_summary": [],
                     "faq_docs": [],
                     "insights_docs": [],
                     "markets_docs": [],
                     "markets_objects": [],
                     "websearch_docs": [],
                     "game_schedule": None,
-                    "trending_news": None,
-                    "trending_questions": []
+                    "context_summary": "",
+                    "user_question": ""
                 }
             }
         
@@ -256,20 +260,17 @@ def summarize_message_data(request_data):
         fixture_events_summary = summarize_events(fixture_events if fixture_events else last_user_msg.get("fixture-events", []))
         played_events_summary = summarize_events(played_events if played_events else last_user_msg.get("played-events", []))
         head_to_head_events_summary = summarize_events(head_to_head_events if head_to_head_events else last_user_msg.get("head-to-head-events", []))
+        next_events_summary = summarize_events(next_events if next_events else last_user_msg.get("next-events", []))
         
         # Pass through already-summarized docs
         faq_docs = last_user_msg.get("faq-docs", [])
         insights_docs = last_user_msg.get("insights-docs", [])
         websearch_docs = last_user_msg.get("websearch-docs", [])
         game_schedule = last_user_msg.get("game-schedule", None)
-        trending_news = last_user_msg.get("trending-news", None)
-        trending_questions = last_user_msg.get("trending-questions", [])
         
-        # Get markets-parsed (raw data for objects/widgets)
-        markets_parsed = last_user_msg.get("markets-parsed", [])
-        
-        # Summarize markets-parsed to markets_docs for LLM
-        markets_docs = summarize_markets(markets_parsed)
+        # Create compact context (summary + user question) for token efficiency
+        context_summary = last_user_msg.get("reasoning", {}).get("short_message", "")
+        user_question = last_user_msg.get("content", "")
         
         # Flatten markets-parsed into individual market objects for UI widgets
         markets_objects = []
@@ -306,14 +307,15 @@ def summarize_message_data(request_data):
                 "fixture_events_summary": fixture_events_summary,
                 "played_events_summary": played_events_summary,
                 "head_to_head_events_summary": head_to_head_events_summary,
+                "next_events_summary": next_events_summary,
                 "faq_docs": faq_docs,
                 "insights_docs": insights_docs,
                 "markets_docs": markets_docs,
                 "markets_objects": markets_objects,
                 "websearch_docs": websearch_docs,
                 "game_schedule": game_schedule,
-                "trending_news": trending_news,
-                "trending_questions": trending_questions
+                "context_summary": context_summary,
+                "user_question": user_question
             }
         }
         
@@ -329,14 +331,15 @@ def summarize_message_data(request_data):
                 "fixture_events_summary": [],
                 "played_events_summary": [],
                 "head_to_head_events_summary": [],
+                "next_events_summary": [],
                 "faq_docs": [],
                 "insights_docs": [],
                 "markets_docs": [],
                 "markets_objects": [],
                 "websearch_docs": [],
                 "game_schedule": None,
-                "trending_news": None,
-                "trending_questions": []
+                "context_summary": "",
+                "user_question": ""
             }
         }
 

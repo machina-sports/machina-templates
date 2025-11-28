@@ -473,8 +473,9 @@ def filter_and_summarize_markets(request_data):
             else:
                 translated_markets.append(market)
         
-        # Format for LLM consumption (markets_docs)
-        markets_docs = []
+        # Format for LLM consumption (markets_docs) - grouped by event
+        # Group markets by event first to avoid repeating event title
+        markets_by_event = {}
         for market in translated_markets:
             event_title = market.get("event_title", "Unknown Event")
             market_name = market.get("market_name", "Unknown Market")
@@ -487,9 +488,20 @@ def filter_and_summarize_markets(request_data):
                 opt_odds = opt.get("odds", "N/A")
                 options_text.append(f"{opt_name}: {opt_odds}")
             
-            # Create summary text
-            doc_text = f"{event_title} - {market_name}: {', '.join(options_text)}"
-            markets_docs.append(doc_text)
+            # Create market summary
+            market_summary = f"{market_name}: {', '.join(options_text)}"
+            
+            # Group by event
+            if event_title not in markets_by_event:
+                markets_by_event[event_title] = []
+            markets_by_event[event_title].append(market_summary)
+        
+        # Create consolidated summaries - one per event
+        markets_docs = []
+        for event_title, market_summaries in markets_by_event.items():
+            # Join all markets for this event with " | " separator
+            consolidated = f"{event_title}: {' | '.join(market_summaries)}"
+            markets_docs.append(consolidated)
         
         # Return structured data (markets_parsed) - use translated markets
         markets_parsed = translated_markets
