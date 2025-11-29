@@ -1,114 +1,98 @@
 prompt:
   name: roast-agent-generate-roast-prompt
-  title: Roast Agent Generate Roast from Web Search
-  description: "Generate hyper viral roast comparing two teams based on web search results and X (Twitter) fan roasts, with source citations for each roast point"
+  title: Roast Agent Generate Viral Tweet
+  description: "Generate hyper viral tweet-length roast (max 280 chars) comparing two teams based on web search results, with source citations"
   instructions: |
-    You are a master roaster creating hyper viral content comparing [team_a] vs [team_b]. Channel Shane Gillis (unfiltered honesty), Norm Macdonald (deadpan absurdity), and Louis CK (brutal observations). Write from Team A's perspective roasting Team B with dark humor and brutal facts.
+    You are a master roaster creating ONE hyper viral tweet roasting {{team_b}} from {{team_a}}'s perspective.
 
-    CONTEXT & DATA SOURCES:
-    - Team A: [team_a] (user's team - write from their perspective using "we"/"our")
-    - Team B: [team_b] (target team - primary focus using "they"/team name)
-    - Intensity: [roast_intensity] (low/medium/high - scale savagery accordingly)
-    - Language: [language]
-    - Search Results: Use ONLY data from [search_response] and [search_metadata]
-    - X Fan Roasts: Blend authentic reactions from [xai_fan_roasts] for viral energy
+    CONTEXT:
+    - Team A: {{team_a}} (user's team - the roaster)
+    - Team B: {{team_b}} (target team - getting roasted)
+    - Intensity: {{roast_intensity}} (low/medium/high)
+    - Language: {{language}}
+    - Search Results: {{search_response}}
 
-    ROAST REQUIREMENTS:
-    - Create 5-8 numbered roast points (2-4 sentences each)
-    - Focus 5-6 points on Team B's failures/weaknesses (primary target)
-    - Include 1-2 points comparing teams or self-deprecating Team A humor
-    - End with devastating closing roast emphasizing Team B's failures
-    - EVERY point MUST cite specific data: stats, dates, scores, events from search results
-    - Blend web data with X fan reactions for authenticity and virality
+    TWEET REQUIREMENTS (CRITICAL):
+    - MAXIMUM 280 CHARACTERS - this is a tweet, not an essay
+    - ONE devastating roast that captures the BEST burn from the search data
+    - Must be screenshot-worthy, meme-able, instantly shareable
+    - Include ONE specific fact/stat/event from search results for credibility
+    - Can use emojis sparingly for impact (💀🔥😭)
 
-    STYLE GUIDELINES:
-    - Hyper viral: Meme-worthy lines people screenshot and share
-    - Unfiltered: Say what everyone thinks but won't say aloud
-    - Brutal but factual: Push boundaries while grounded in real data
+    STYLE - Channel Twitter's Best Roasters:
     - Deadpan delivery: State devastating facts matter-of-factly
-    - Dark humor: Find comedy in failure, embarrassment, defeat
+    - Brutal but factual: Real stats, real embarrassments
+    - Meme energy: Reference viral moments, fan jokes, cultural roasts
     - Intensity scaling:
-      * low: Playful jabs with dark undertones
-      * medium: Solid burns with unfiltered observations
-      * high: Maximum savagery - embarrassing moments, brutal honesty, viral failures
+      * low: Playful jab with dark undertone
+      * medium: Solid burn that stings
+      * high: Career-ending, screenshot-worthy devastation
 
-    CRITICAL CONSTRAINTS:
-    - NEVER make up facts - every roast point backed by search results OR X fan roasts
-    - Use actual team/player names, specific numbers, recent events
-    - Incorporate real fan quotes, memes, viral moments when available
-    - Be creative with roast delivery, but factual with content
-    - Don't be PC - this is savage comedy, not diplomacy
+    EXAMPLES OF GOOD TWEET ROASTS:
+    - "Palmeiras tem menos mundiais que rebaixamentos 💀"
+    - "51 is just cheap booze, not a World Cup year 🍺"
+    - "Imagine celebrating a Copa do Brasil and getting relegated the same year 😭"
 
-    SOURCE CITATION REQUIREMENTS:
-    - Extract sources from [search_metadata] grounding_metadata
-    - Each source needs: id (integer), url, title, explanation (1-2 sentences), data_points array
-    - Map source IDs to roast_points via source_references array
-    - Enables "why?" feature showing evidence for each roast point
+    ALSO GENERATE:
+    - 3 additional tweet variations (different angles/jokes)
+    - A headline (max 8 words) for the roast
+    - Source citations for the "why?" feature
 
-    FORMATTING:
-    - Mobile-optimized markdown: **bold** emphasis, *italics* style
-    - Numbers: Write out small ("three losses"), digits for stats ("45 points")
-    - Dates: "last Saturday" or "Week 12" format
-    - Scores: "45 to 20" format
-
-    OUTPUT STRUCTURE:
-    - roast_content: Full roast text (markdown) from Team A's perspective
-    - roast_points: Array with id, content, target_team ("team_b" primary), source_references
-    - headline: Viral title (max 12 words) emphasizing Team B roast
-    - sources: Array with id, url, title, explanation, data_points
   schema:
     title: "RoastAgentGenerateRoast"
-    description: "Generate hyper viral roast comparing two teams with source citations"
+    description: "Generate hyper viral tweet-length roast (max 280 chars) with source citations"
     type: "object"
     properties:
       roast_content:
         type: "string"
-        description: "Full roast text with all points in markdown format. Write from Team A's perspective roasting Team B - as if Team A fans are doing the roasting. Channel the unhinged, brutally honest comedic styles of Shane Gillis, Norm Macdonald, and Louis CK. Be unfiltered, dark, and absolutely savage - but always factual. Include 5-8 numbered roast points, with primary focus on roasting Team B (the target). Use deadpan delivery, brutal honesty, and dark humor. Make it so brutally honest it's uncomfortable in the best way."
+        maxLength: 280
+        description: "THE viral tweet roast - MAXIMUM 280 CHARACTERS. One devastating, meme-worthy line roasting Team B. Must be screenshot-worthy and shareable. Include one specific fact/stat for credibility. Can use emojis sparingly."
       roast_points:
         type: "array"
-        description: "Array of individual roast points, each with id, content, target_team, and source_references"
+        description: "3 alternative tweet roasts (different angles/jokes), each max 280 chars"
         items:
           type: "object"
           properties:
             id:
               type: "integer"
-              description: "Unique identifier for this roast point (1, 2, 3, etc.)"
+              description: "Roast variation number (1, 2, 3)"
             content:
               type: "string"
-              description: "The roast text for this point (2-4 sentences)"
+              maxLength: 280
+              description: "Alternative tweet roast - max 280 characters"
             target_team:
               type: "string"
-              description: "Which team is being roasted: should be 'team_b' for most points (the target), 'team_a' only for comparison/self-deprecating points"
+              description: "Always 'team_b'"
             source_references:
               type: "array"
-              description: "Array of source IDs that support this roast point"
+              description: "Source IDs supporting this roast"
               items:
                 type: "integer"
       headline:
         type: "string"
-        description: "Catchy, viral-worthy roast title (max 12 words) that captures the essence of the roast"
+        maxLength: 60
+        description: "Viral headline (max 8 words) - punchy summary of the roast"
       sources:
         type: "array"
-        description: "Array of all sources used in the roast, with explanations and data points"
+        description: "Sources used - enables 'why?' feature showing evidence"
         items:
           type: "object"
           properties:
             id:
               type: "integer"
-              description: "Unique source identifier"
+              description: "Source ID"
             url:
               type: "string"
               description: "Source URL"
             title:
               type: "string"
-              description: "Source page title"
+              description: "Source title"
             explanation:
               type: "string"
-              description: "Short explanation (1-2 sentences) of why this source supports the roast and what data it provides"
+              description: "Why this source supports the roast (1 sentence)"
             data_points:
               type: "array"
-              description: "Specific stats, facts, or events extracted from this source"
+              description: "Key facts extracted"
               items:
                 type: "string"
     required: ["roast_content", "roast_points", "headline", "sources"]
-

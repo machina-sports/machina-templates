@@ -23,6 +23,7 @@ workflow:
     roast_points: "$.get('roast_points')"
     headline: "$.get('headline')"
     sources: "$.get('sources')"
+    video_path: "$.get('video_path')"
     metadata: |
       {
         'team_a': $.get('team_a'),
@@ -132,14 +133,8 @@ workflow:
         command: "invoke_video"
       inputs:
         model_name: "'veo-3.1-fast-generate-001'"
-        poll_interval: 10
-        team_a: "$.get('team_a')"
-        team_b: "$.get('team_b')"
-        roast_intensity: "$.get('roast_intensity', 'medium')"
-        language: "$.get('language', 'en')"
-        roast_content: "$.get('roast_content')"
-        prompt: |
-          "=== VIDEO GENERATION CONFIGURATION ===\n\nCONTEXT:\n- Team A (Roaster): {{team_a}}\n- Team B (Target): {{team_b}}\n- Roast Intensity: {{roast_intensity}}\n- Language: {{language}}\n\nROAST CONTENT:\nThe following roast content tells the story and narrative that this video must visually represent:\n\n{{roast_content}}\n\nAnalyze the roast content above to understand:\n- Key themes, storylines, and narratives discussed\n- Emotional tone and atmosphere (savage, funny, intense, dramatic, etc.)\n- Game/match situations, moments, or scenarios described\n- Visual imagery, scenes, or atmospheres mentioned in the roast\n- The overall narrative arc and emotional journey\n\nUse this roast context to personalize the video generation - the visual composition should align with and enhance the roast themes, emotional tone, and story elements. The video should feel like a visual representation of the roast, capturing its essence, mood, and key moments through cinematic visual elements.\n\n=== VISUAL STYLE: HYPER-VIRAL SPORTS MEME AESTHETIC ===\n\nOVERALL CONCEPT:\nCreate a visually striking, humorous, and \"meme-worthy\" video clip that metaphorically represents the savage roast. The video should have the energy of a viral TikTok or Reel - instantly engaging, visually loud, and conceptually funny. Move away from standard \"broadcast\" footage and towards \"internet culture\" visuals. The goal is maximum virality.\n\nVISUAL METAPHORS (Interpret the roast):\n- If the roast mentions \"choking\", visualize exaggerated tension, stumbling, or fumbling.\n- If the roast calls them \"trash\", subtly integrate gritty textures, smoke, or chaotic elements.\n- If the roast is about \"clowns\", use vibrant, chaotic colors and exaggerated, almost surreal movements.\n- Make it SURREAL and SYMBOLIC rather than literal.\n\nAESTHETIC & TONE:\n- High contrast, vibrant colors (neon accents, deep shadows).\n- \"Dank meme\" energy: slightly surreal, exaggerated physics, dramatic lighting.\n- Cinematic yet absurd.\n- Visuals should scream \"emotional damage\".\n\nCOMPOSITION & MOTION:\n- Fast, dynamic camera movement (whip pans, rapid zooms).\n- \"Hero shot\" of the losing team's mascot or symbol looking defeated/funny/sad in the rain.\n- OR \"Hero shot\" of the winning team looking god-like and overpowering.\n- Loopable quality if possible.\n\n=== INSTRUCTIONS ===\n\nCreate a hyper-viral, meme-focused sports video based on the roast of {{team_b}} by {{team_a}}. The video should:\n\n- BE FUNNY AND SAVAGE.\n- Visually represent the core \"burn\" of the roast content using surreal metaphors.\n- Use a high-energy, attention-grabbing visual style (TikTok/Reels/Shorts aesthetic).\n- Capture the specific emotional tone: savage, disrespectful, hilarious.\n- Avoid generic sports highlights; focus on \"fail\" aesthetics or \"dominance\" aesthetics depending on the perspective.\n- Create a \"Main Character\" vs \"NPC\" dynamic visually.\n- Ensure the video feels like it belongs on a viral social media account.\n- Keep the video short, punchy, and instantly shareable (5-10 seconds ideal).\n- Use rapid cuts, dramatic zooms, and attention-grabbing transitions.\n- Make it loopable for maximum replay value.\n- Focus on one core visual joke or metaphor from the roast.\n- Exaggerate everything - make it bigger, funnier, more dramatic than reality.\n- Use visual irony and contrast (small vs big, slow vs fast, sad vs triumphant)."
+        poll_interval: "10"
+        prompt: "'Create a hyper-viral meme video for this ROAST TWEET: ' + str($.get('roast_content', '')) + ' | Team ' + str($.get('team_a', '')) + ' roasting ' + str($.get('team_b', '')) + '. STYLE: TikTok viral aesthetic, high contrast neon colors, dramatic lighting, surreal visuals. Show losing team mascot defeated/sad OR winning team looking god-like. Fast whip pans, rapid zooms, loopable 5-10 sec. Dank meme energy, emotional damage vibes. FUNNY and SAVAGE.'"
       outputs:
         data: "$"
         video_path: "$.get('video_path')"
