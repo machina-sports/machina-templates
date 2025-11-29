@@ -132,7 +132,9 @@ workflow:
         name: "google-genai"
         command: "invoke_video"
       inputs:
-        model_name: "'veo-3.1-fast-generate-001'"
+        provider: vertex_ai
+        location: global
+        model_name: veo-3.1-fast-generate-001
         poll_interval: "10"
         prompt: "'Create a hyper-viral meme video for this ROAST TWEET: ' + str($.get('roast_content', '')) + ' | Team ' + str($.get('team_a', '')) + ' roasting ' + str($.get('team_b', '')) + '. STYLE: TikTok viral aesthetic, high contrast neon colors, dramatic lighting, surreal visuals. Show losing team mascot defeated/sad OR winning team looking god-like. Fast whip pans, rapid zooms, loopable 5-10 sec. Dank meme energy, emotional damage vibes. FUNNY and SAVAGE.'"
       outputs:

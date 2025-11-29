@@ -435,14 +435,29 @@ def invoke_search(request_data):
 
 
 def invoke_video(request_data):
-    """Generate videos using Google's Veo model"""
+    """
+    Generate videos using Google's Veo model.
+    
+    Supports both AI Studio (default) and Vertex AI providers.
+    
+    Parameters:
+    - provider: "ai_studio" (default) or "vertex_ai"
+    - model_name: Model name (e.g., "veo-3.1-fast-generate-001")
+    
+    AI Studio Parameters:
+    - api_key: Required - Get from https://aistudio.google.com/apikey
+    
+    Vertex AI Parameters:
+    - project_id: Required - Your GCP Project ID
+    - location: Optional (default: "us-central1")
+    - credential: Optional - Service account JSON (string or dict)
+    """
     
     params = request_data.get("params")
     headers = request_data.get("headers")
-    api_key = headers.get("api_key")
     
-    if not api_key:
-        return {"status": False, "message": "API key is required."}
+    # Get provider (default to ai_studio for backward compatibility)
+    provider = params.get("provider", "ai_studio").lower()
     
     # Get parameters
     prompt = params.get("prompt")
@@ -454,7 +469,43 @@ def invoke_video(request_data):
         return {"status": False, "message": "Prompt is required for video generation."}
     
     try:
-        client = genai.Client(api_key=api_key)
+        # Initialize client based on provider
+        if provider == "vertex_ai":
+            project_id = headers.get("project_id")
+            location = params.get("location", "us-central1")
+            credential = headers.get("credential")
+            
+            if not project_id:
+                return {"status": False, "message": "project_id is required for Vertex AI."}
+            
+            # Handle credentials
+            credentials = None
+            if credential:
+                if isinstance(credential, str):
+                    try:
+                        credential = json.loads(credential)
+                    except json.JSONDecodeError:
+                        return {"status": False, "message": "credential must be valid JSON"}
+                
+                credentials = service_account.Credentials.from_service_account_info(credential)
+            
+            # Initialize Vertex AI client
+            client = genai.Client(
+                vertexai=True,
+                project=project_id,
+                location=location,
+                credentials=credentials,
+            )
+            print(f"🔐 Using Vertex AI authentication (project: {project_id}, location: {location})")
+        else:
+            # AI Studio (default)
+            api_key = headers.get("api_key")
+            
+            if not api_key:
+                return {"status": False, "message": "API key is required for AI Studio."}
+            
+            client = genai.Client(api_key=api_key)
+            print("🔐 Using AI Studio API key authentication")
         
         print(f"🎬 Starting video generation with model: {model_name}")
         print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
