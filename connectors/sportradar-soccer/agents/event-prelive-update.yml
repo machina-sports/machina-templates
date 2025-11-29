@@ -1,16 +1,16 @@
 agent:
-  name: sportradar-event-live-update
-  title: Sportradar Event Live Update
-  description: Agent to consume and update live Sportradar events (live, interrupted, post-live).
+  name: sportradar-event-prelive-update
+  title: Sportradar Event Pre-Live Update
+  description: Agent to consume and update pre-live Sportradar events (not_started, long-term).
   context:
-    config-frequency: 0.1
+    config-frequency: 0.5
   context-agent:
     event_code: $.get('event_code')
   workflows:
 
-    # Workflow Event Consumer - Live
-    - name: sportradar-soccer-event-consumer-live
-      description: Soccer Event Consumer (Live)
+    # Workflow Event Consumer - Pre-Live
+    - name: sportradar-soccer-event-consumer-prelive
+      description: Soccer Event Consumer (Pre-Live)
       inputs:
         event_code: $.get('event_code')
       outputs:
@@ -42,3 +42,4 @@ agent:
         event_document_id: $.get('event_document_id')
       outputs:
         event-update-status: $.get('workflow-status', False)
+
