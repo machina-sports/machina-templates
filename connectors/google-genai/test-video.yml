@@ -1,0 +1,50 @@
+workflow:
+  name: "google-genai-test-video"
+  title: "Google Gemini Test Video"
+  description: "Workflow to test the Google Gemini video generation using Veo model."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY"
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    model_name: "$.get('model_name', 'veo-3.1-fast-generate-001')"
+    prompt: "$.get('prompt')"
+    poll_interval: "$.get('poll_interval', 10)"
+    output_path: "$.get('output_path')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    
+    # 1 test-video
+    - type: "connector"
+      name: "test-video"
+      description: "Test the Google Gemini video generation."
+      connector:
+        name: "google-genai"
+        command: "invoke_video"
+      inputs:
+        model_name: "$.get('model_name')"
+        prompt: "$.get('prompt')"
+        poll_interval: "$.get('poll_interval')"
+        output_path: "$.get('output_path')"
+      outputs:
+        data: "$"
+        video_path: "$.get('video_path')"
+    
+    # 2 save-video
+    - type: "connector"
+      name: "save-video"
+      description: "Save the video to Google Storage."
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        video_path: "$.get('video_path')"
+      outputs:
+        data: "$"
+        workflow-status: "'executed'"
+
