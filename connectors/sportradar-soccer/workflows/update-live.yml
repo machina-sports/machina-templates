@@ -49,7 +49,7 @@ workflow:
         action: "search"
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.version_control.updated", 1]
+        search-sorters: ["value.version_control.counter", 1, "updated", 1]
       filters:
         value.start_time: "{'$gt': datetime.utcnow() - timedelta(hours=8), '$lt': datetime.utcnow() + timedelta(hours=8)}"
         value.sport_event_status.status: "{'$in': ['live', 'interrupted']}"
@@ -98,6 +98,7 @@ workflow:
             **$.get('event_value', {}),
             'version_control': {
               **$.get('version_control', {}),
+              'counter': $.get('event_value', {}).get('version_control', {}).get('counter', 0) + 1,
               'processing': True,
               'update_event_summary_status': 'processing'
             }
@@ -301,6 +302,7 @@ workflow:
             'title': $.get('event_title'),
             'version_control': {
               **$.get('version_control', {}),
+              'counter': $.get('event_value', {}).get('version_control', {}).get('counter', 0),
               'processing': False,
               'update_home_last_matches_count': $.get('update_home_last_matches_count') or $.get('version_control', {}).get('update_home_last_matches_count', 0),
               'update_home_last_matches_status': $.get('update_home_last_matches_status') or $.get('version_control', {}).get('update_home_last_matches_status', 'pending'),
