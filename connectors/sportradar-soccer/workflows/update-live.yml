@@ -53,9 +53,9 @@ workflow:
       filters:
         value.start_time: "{'$gt': datetime.utcnow() - timedelta(hours=24), '$lt': datetime.utcnow() + timedelta(hours=24)}"
         value.sport_event_status.status: "{'$in': ['live', 'interrupted']}"
+        '$or': "[{'value.version_control.live-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}}, {'value.version_control.live-update-timestamp': {'$exists': False}}]"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        '$or': "[{'value.version_control.live-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}}, {'value.version_control.live-update-timestamp': {'$exists': False}}]"
       inputs:
         name: "{'$in': ['soccer-game']}"
       outputs:
