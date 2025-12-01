@@ -173,7 +173,7 @@ def invoke_image(request_data):
         image_paths.append(image_path)
 
     prompt = params.get("prompt", "Ronaldinho Gaúcho brincando com uma bola de lã")
-    model_name = params.get("model_name", "gemini-2.5-flash-image-preview")
+    model_name = params.get("model_name") or "gemini-2.5-flash-image-preview"
     aspect_ratio = params.get("aspect_ratio")  # e.g., "16:9", "1:1", "9:16"
 
     try:
