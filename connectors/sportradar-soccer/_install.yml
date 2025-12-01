@@ -55,6 +55,9 @@ datasets:
   - type: "agent"
     path: "agents/event-prelive-update.yml"
 
+  - type: "agent"
+    path: "agents/update-by-round.yml"
+
   # mappings
 
   - type: "mappings"
@@ -126,6 +129,9 @@ datasets:
 
   - type: "workflow"
     path: "workflows/event-update.yml"
+
+  - type: "workflow"
+    path: "workflows/load-round-events.yml"
 
   - type: "workflow"
     path: "workflows/update-competition.yml"

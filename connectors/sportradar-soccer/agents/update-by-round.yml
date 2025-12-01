@@ -1,0 +1,35 @@
+agent:
+
+  # sportradar-soccer-update-by-round
+  name: sportradar-soccer-update-by-round
+  title: SportRadar Soccer - Update Events by Round
+  description: Update all soccer events for a specific competition and round number
+  context-agent:
+    competition_id: "$.get('competition_id')"
+    round_number: "$.get('round_number')"
+  workflows:
+
+    # Load events for the round
+    - name: sportradar-soccer-load-round-events
+      description: Load all events for competition and round
+      inputs:
+        competition_id: $.get('competition_id')
+        round_number: $.get('round_number')
+      outputs:
+        event_document_ids: $.get('event_document_ids')
+        event_count: $.get('event_count')
+
+    # Synchronize each event
+    - name: sportradar-soccer-event-synchronize
+      description: Synchronize event data from SportRadar
+      condition: $.get('event_document_ids') is not None and len($.get('event_document_ids', [])) > 0
+      foreach:
+        concurrent: true
+        name: event-document-id
+        expr: $
+        value: $.get('event_document_ids', [])
+      inputs:
+        event_document_id: $.get('event-document-id')
+      outputs:
+        sync_results: $.get('workflow-status')
+

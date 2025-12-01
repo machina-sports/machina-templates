@@ -1,0 +1,42 @@
+workflow:
+
+  # sportradar-soccer-load-round-events
+  name: sportradar-soccer-load-round-events
+  title: SportRadar Soccer - Load Round Events
+  description: Load all soccer events for a specific competition and round number
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    competition_id: "$.get('competition_id')"
+    round_number: "$.get('round_number')"
+  outputs:
+    event_document_ids: "$.get('event_document_ids', [])"
+    event_count: "len($.get('event_document_ids', []))"
+    workflow-status: "$.get('event_count', 0) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # Load events by round number and competition
+    - type: document
+      name: load-events
+      description: Search sport:Event documents by round number and competition
+      condition: "$.get('round_number') is not None"
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.sport:round.sport:number: "int($.get('round_number'))"
+        value.sport:competition.@id: "$.get('competition_id') if $.get('competition_id') else None"
+      outputs:
+        documents: "$.get('documents', [])"
+        event_count: "len($.get('documents', []))"
+        event_document_ids: |
+          [
+            event.get('_id')
+            for event in $.get('documents', [])
+            if event.get('_id')
+          ]
+
