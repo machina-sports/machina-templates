@@ -1,0 +1,6 @@
+datasets:
+  - type: "agent"
+    path: "agents/market-analyst.yml"
+  - type: "workflow"
+    path: "workflows/analyze-market.yml"
+

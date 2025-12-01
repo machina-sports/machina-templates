@@ -1,0 +1,57 @@
+workflow:
+  name: "analyze-market"
+  title: "Analyze Market Series"
+  description: "Fetches markets for a series and analyzes them using AI"
+  
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+
+  inputs:
+    series_ticker: "$.get('series_ticker', 'KXHIGHNY')"
+    limit: "$.get('limit', 10)"
+
+  outputs:
+    analysis: "$.get('analysis')"
+    market_count: "len($.get('markets', []))"
+
+  tasks:
+    # 1. Fetch Market Data
+    - type: "connector"
+      name: "fetch-markets"
+      description: "Get active markets for the series"
+      connector:
+        name: "kalshi"
+        command: "get_markets"
+      inputs:
+        series_ticker: "$.get('series_ticker')"
+        limit: "$.get('limit')"
+        status: "open"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    # 2. Analyze with LLM
+    - type: "prompt"
+      name: "generate-analysis"
+      description: "Analyze the market data"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-3-pro-preview"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        messages:
+          - role: "system"
+            content: "You are an expert prediction market analyst. Your goal is to analyze market data from Kalshi to provide clear, actionable insights. Focus on: 1. Implied Probabilities 2. Volume Analysis 3. Market Sentiment 4. Anomalies. Output your analysis in a concise markdown format."
+          - role: "user"
+            content: |
+              Analyze the following market data for the series "$.get('series_ticker')":
+              
+              $.get('markets')
+              
+              Provide a summary of the most significant opportunities or insights.
+      outputs:
+        analysis: "$.get('choices')[0].get('message').get('content')"

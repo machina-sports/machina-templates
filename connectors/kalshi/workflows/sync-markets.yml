@@ -30,7 +30,7 @@ workflow:
       description: "Get markets from Kalshi API"
       connector:
         name: "kalshi"
-        command: "get-markets"
+        command: "get_markets"
         command_attribute:
           limit: "$.get('limit')"
           cursor: "$.get('cursor')"

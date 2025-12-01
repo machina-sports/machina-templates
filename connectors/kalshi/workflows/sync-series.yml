@@ -25,7 +25,7 @@ workflow:
       description: "Get series from Kalshi API"
       connector:
         name: "kalshi"
-        command: "get-series"
+        command: "get_series"
         command_attribute:
           category: "$.get('category')"
           include_product_metadata: "$.get('include_product_metadata')"
