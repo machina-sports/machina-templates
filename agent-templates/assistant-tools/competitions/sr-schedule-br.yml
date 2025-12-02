@@ -2,6 +2,8 @@ agent:
   name: competitions-schedule-football-br
   title: Competitions Schedule - Football - BR
   description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
   workflows:
 
     # SOUTH AMERICA BRAZIL - Brasileirao

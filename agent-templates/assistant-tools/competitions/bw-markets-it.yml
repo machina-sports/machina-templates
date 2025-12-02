@@ -2,6 +2,8 @@ agent:
   name: competitions-markets-football-it
   title: Competitions Markets - Football - IT
   description: Agent to update Football Markets
+  context:
+    config-frequency: 10
   workflows:
 
     # bwin-sync-italy-serie-a markets (102846)

@@ -2,6 +2,8 @@ agent:
   name: competitions-schedule-football-it
   title: Competitions Schedule - Football - IT
   description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
   workflows:
 
     # sync Italy Serie A (130971)

@@ -2,6 +2,8 @@ agent:
   name: competitions-schedule-football-es
   title: Competitions Schedule - Football - ES
   description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
   workflows:
 
     # sync Spain La Liga (130805)

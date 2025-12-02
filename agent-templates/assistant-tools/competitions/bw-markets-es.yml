@@ -2,6 +2,8 @@ agent:
   name: competitions-markets-football-es
   title: Competitions Markets - Football - ES
   description: Agent to update Football Markets
+  context:
+    config-frequency: 10
   workflows:
 
     # bwin-sync-spain-la-liga markets (102829)

@@ -2,6 +2,8 @@ agent:
   name: competitions-markets-football-uefa
   title: Competitions Markets - Football - UEFA
   description: Agent to update Football Markets
+  context:
+    config-frequency: 10
   workflows:
 
     # bwin-sync uefa europa league (102856)

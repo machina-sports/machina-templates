@@ -2,6 +2,8 @@ agent:
   name: competitions-markets-football-de
   title: Competitions Markets - Football - DE
   description: Agent to update Football Markets
+  context:
+    config-frequency: 10
   workflows:
 
     # bwin-sync-germany-bundesliga markets (102842)
