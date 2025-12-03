@@ -22,6 +22,7 @@ workflow:
     - type: "connector"
       name: "fetch-markets"
       description: "Get active markets for the series"
+      condition: "$.get('series_ticker') is not None"
       connector:
         name: "kalshi"
         command: "get_markets"
@@ -30,28 +31,26 @@ workflow:
         limit: "$.get('limit')"
         status: "open"
       outputs:
-        markets: "$.get('markets', [])"
+        markets: "$.get('data', {}).get('markets', []) if $.get('status') == True else ($.get('markets', []) if 'markets' in $ else [])"
+        markets_json: "json.dumps($.get('data', {}).get('markets', []), indent=2) if $.get('status') == True else json.dumps($.get('markets', []), indent=2)"
+        user_message: "'Analyze the following market data for the series \"' + str($.get('series_ticker')) + '\":\\n\\n' + (json.dumps($.get('data', {}).get('markets', []), indent=2) if $.get('status') == True else json.dumps($.get('markets', []), indent=2)) + '\\n\\nProvide a summary of the most significant opportunities or insights.'"
 
     # 2. Analyze with LLM
     - type: "prompt"
       name: "generate-analysis"
-      description: "Analyze the market data"
+      description: "Analyze the market data using AI"
+      condition: "$.get('markets') is not None and len($.get('markets', [])) > 0"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
-        model: "gemini-3-pro-preview"
+        model: "gemini-2.5-pro"
         location: "global"
         provider: "vertex_ai"
       inputs:
         messages:
           - role: "system"
-            content: "You are an expert prediction market analyst. Your goal is to analyze market data from Kalshi to provide clear, actionable insights. Focus on: 1. Implied Probabilities 2. Volume Analysis 3. Market Sentiment 4. Anomalies. Output your analysis in a concise markdown format."
+            content: "You are an expert prediction market analyst. Your goal is to analyze market data from Kalshi to provide clear, actionable insights. Focus on: 1. Implied Probabilities: Calculate the implied probability from the Yes and No prices. 2. Volume Analysis: Identify where the money is flowing. 3. Market Sentiment: Identify specific events that the market is favoring. 4. Anomalies: Any unusual pricing or volume patterns. Output your analysis in a concise markdown format."
           - role: "user"
-            content: |
-              Analyze the following market data for the series "$.get('series_ticker')":
-              
-              $.get('markets')
-              
-              Provide a summary of the most significant opportunities or insights.
+            content: "$.get('user_message', '')"
       outputs:
-        analysis: "$.get('choices')[0].get('message').get('content')"
+        analysis: "$.get('content')"

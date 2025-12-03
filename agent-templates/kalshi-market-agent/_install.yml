@@ -1,6 +1,10 @@
 datasets:
+  - type: "connector"
+    path: "../../connectors/kalshi/kalshi.yml"
   - type: "agent"
     path: "agents/market-analyst.yml"
   - type: "workflow"
     path: "workflows/analyze-market.yml"
+  - type: "prompt"
+    path: "prompts/market-analysis.yml"
 
