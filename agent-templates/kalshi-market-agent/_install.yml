@@ -1,10 +1,24 @@
 datasets:
+  # Connectors
   - type: "connector"
     path: "../../connectors/kalshi/kalshi.yml"
+  
+  # Agent
   - type: "agent"
     path: "agents/market-analyst.yml"
+  
+  # Workflows
+  - type: "workflow"
+    path: "workflows/sync-sports-markets.yml"
+  - type: "workflow"
+    path: "workflows/sync-sports-events.yml"
+  - type: "workflow"
+    path: "workflows/analyze-sports-markets.yml"
+  - type: "workflow"
+    path: "workflows/monitor-active-sports-markets.yml"
   - type: "workflow"
     path: "workflows/analyze-market.yml"
+  
+  # Prompts
   - type: "prompt"
     path: "prompts/market-analysis.yml"
-

@@ -1,0 +1,169 @@
+workflow:
+  name: "kalshi-analyze-sports-markets"
+  title: "Analyze Sports Markets"
+  description: "Fetches active sports markets and analyzes them using AI to identify trends and opportunities"
+  
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+
+  inputs:
+    event_ticker: "$.get('event_ticker')"
+    series_ticker: "$.get('series_ticker')"
+    limit: "$.get('limit', 50)"
+    min_volume: "$.get('min_volume', 0)"
+    status: "$.get('status', 'open')"
+
+  outputs:
+    analysis: "$.get('analysis')"
+    markets_analyzed: "$.get('markets_analyzed', 0)"
+    sports_markets_found: "$.get('sports_markets_found', 0)"
+
+  tasks:
+    # 1. Fetch Sports Markets
+    - type: "connector"
+      name: "fetch-sports-markets"
+      description: "Get active sports markets from Kalshi API"
+      connector:
+        name: "kalshi"
+        command: "get_markets"
+        command_attribute:
+          limit: "$.get('limit')"
+          event_ticker: "$.get('event_ticker')"
+          series_ticker: "$.get('series_ticker')"
+          status: "$.get('status')"
+      outputs:
+        all_markets: "$.get('data', {}).get('markets', []) if $.get('status') == True else ($.get('markets', []) if 'markets' in $ else [])"
+        workflow-status: "'executed'"
+
+    # 2. Filter Sports Markets
+    - type: "mapping"
+      name: "filter-sports-markets"
+      title: "Filter Sports Markets"
+      description: "Filter markets to only include sports-related ones"
+      condition: "$.get('all_markets') is not None and len($.get('all_markets', [])) > 0"
+      inputs:
+        markets: "$.get('all_markets', [])"
+        min_volume: "$.get('min_volume', 0)"
+      outputs:
+        sports_markets: |
+          [
+            market
+            for market in $.get('markets', [])
+            if (any(keyword in (market.get('title', '') + ' ' + market.get('subtitle', '')).lower()
+              for keyword in ['sport', 'nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 
+                             'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'boxing', 
+                             'mma', 'ufc', 'nascar', 'f1', 'formula', 'racing', 'cricket', 
+                             'rugby', 'olympics', 'olympic', 'game', 'match', 'team', 'player', 
+                             'coach', 'draft', 'playoff', 'championship', 'super bowl', 
+                             'world cup', 'stanley cup', 'world series', 'nba finals', 
+                             'nfl playoffs', 'college football', 'college basketball', 'ncaa'])
+            or market.get('category', '').lower() == 'sports')
+            and market.get('volume', 0) >= $.get('min_volume', 0)
+          ]
+        sports_markets_found: |
+          len([
+            market
+            for market in $.get('markets', [])
+            if (any(keyword in (market.get('title', '') + ' ' + market.get('subtitle', '')).lower()
+              for keyword in ['sport', 'nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 
+                             'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'boxing', 
+                             'mma', 'ufc', 'nascar', 'f1', 'formula', 'racing', 'cricket', 
+                             'rugby', 'olympics', 'olympic', 'game', 'match', 'team', 'player', 
+                             'coach', 'draft', 'playoff', 'championship', 'super bowl', 
+                             'world cup', 'stanley cup', 'world series', 'nba finals', 
+                             'nfl playoffs', 'college football', 'college basketball', 'ncaa'])
+            or market.get('category', '').lower() == 'sports')
+            and market.get('volume', 0) >= $.get('min_volume', 0)
+          ])
+        markets_analyzed: |
+          len([
+            market
+            for market in $.get('markets', [])
+            if (any(keyword in (market.get('title', '') + ' ' + market.get('subtitle', '')).lower()
+              for keyword in ['sport', 'nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 
+                             'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'boxing', 
+                             'mma', 'ufc', 'nascar', 'f1', 'formula', 'racing', 'cricket', 
+                             'rugby', 'olympics', 'olympic', 'game', 'match', 'team', 'player', 
+                             'coach', 'draft', 'playoff', 'championship', 'super bowl', 
+                             'world cup', 'stanley cup', 'world series', 'nba finals', 
+                             'nfl playoffs', 'college football', 'college basketball', 'ncaa'])
+            or market.get('category', '').lower() == 'sports')
+            and market.get('volume', 0) >= $.get('min_volume', 0)
+          ])
+
+    # 3. Prepare Analysis Data
+    - type: "mapping"
+      name: "prepare-analysis-data"
+      title: "Prepare Market Data for Analysis"
+      description: "Format market data for AI analysis"
+      condition: "$.get('sports_markets') is not None and len($.get('sports_markets', [])) > 0"
+      inputs:
+        markets: "$.get('sports_markets', [])"
+      outputs:
+        markets_summary: |
+          {
+            'total_markets': len($.get('markets', [])),
+            'markets_by_status': {
+              status: len([m for m in $.get('markets', []) if m.get('status') == status])
+              for status in ['open', 'closed', 'finalized', 'initialized']
+            },
+            'total_volume': sum(m.get('volume', 0) for m in $.get('markets', [])),
+            'top_markets_by_volume': sorted(
+              [{'ticker': m.get('ticker'), 'title': m.get('title'), 'volume': m.get('volume', 0), 
+                'yes_bid': m.get('yes_bid', 0), 'yes_ask': m.get('yes_ask', 0),
+                'status': m.get('status')} 
+               for m in $.get('markets', [])],
+              key=lambda x: x.get('volume', 0),
+              reverse=True
+            )[:10]
+          }
+        markets_json: "json.dumps($.get('markets', []), indent=2)"
+        user_message: |
+          "Analyze the following sports markets from Kalshi:\n\n" + 
+          "Summary:\n" + json.dumps($.get('markets_summary', {}), indent=2) + "\n\n" +
+          "Full Market Data:\n" + json.dumps($.get('markets', []), indent=2) + "\n\n" +
+          "Provide insights on:\n" +
+          "1. Implied probabilities from Yes/No prices\n" +
+          "2. Volume trends and where money is flowing\n" +
+          "3. Market sentiment and favored outcomes\n" +
+          "4. Anomalies or unusual patterns\n" +
+          "5. Most interesting opportunities"
+
+    # 4. Analyze with LLM
+    - type: "prompt"
+      name: "generate-analysis"
+      description: "Analyze the sports market data using AI"
+      condition: "$.get('sports_markets') is not None and len($.get('sports_markets', [])) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.0-flash-exp"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        messages:
+          - role: "system"
+            content: |
+              You are an expert prediction market analyst specializing in sports markets. 
+              Your goal is to analyze Kalshi sports market data to provide clear, actionable insights.
+              
+              Focus on:
+              1. **Implied Probabilities**: Calculate the implied probability from the Yes and No prices.
+                 - Yes probability ≈ Yes bid price
+                 - No probability ≈ No bid price
+              2. **Volume Analysis**: Identify where the money is flowing and which markets are most active.
+              3. **Market Sentiment**: Identify specific events or outcomes that the market is favoring.
+              4. **Anomalies**: Any unusual pricing or volume patterns that might indicate opportunities.
+              5. **Sports Context**: Consider the sports context - teams, players, leagues, championships.
+              
+              Output your analysis in a clear markdown format with sections for each area of focus.
+          - role: "user"
+            content: "$.get('user_message', '')"
+      outputs:
+        analysis: "$.get('content')"
+

@@ -1,0 +1,159 @@
+workflow:
+  name: "kalshi-monitor-active-sports-markets"
+  title: "Monitor Active Sports Markets"
+  description: "Monitors active sports markets and identifies high-volume or trending opportunities"
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    limit: "$.get('limit', 500)"
+    min_volume: "$.get('min_volume', 1000)"
+    min_liquidity: "$.get('min_liquidity', 500)"
+    force-update: "($.get('force-update') == 'true')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+    active_sports_markets: "$.get('active_sports_markets', [])"
+    high_volume_markets: "$.get('high_volume_markets', [])"
+    trending_markets: "$.get('trending_markets', [])"
+  tasks:
+
+    # 1. Load Active Markets
+    - type: "connector"
+      name: "load-active-markets"
+      description: "Get active markets from Kalshi API"
+      connector:
+        name: "kalshi"
+        command: "get_markets"
+        command_attribute:
+          limit: "$.get('limit')"
+          status: "'open'"
+      outputs:
+        market_data: "$.get('data', {}).get('markets', []) if $.get('status') == True else ($.get('markets', []) if 'markets' in $ else [])"
+        workflow-status: "'executed'"
+
+    # 2. Filter Sports Markets
+    - type: "mapping"
+      name: "filter-sports-markets"
+      title: "Filter Active Sports Markets"
+      description: "Filter to only active sports markets"
+      condition: "$.get('market_data') is not None and len($.get('market_data', [])) > 0"
+      inputs:
+        markets: "$.get('market_data', [])"
+      outputs:
+        active_sports_markets: |
+          [
+            market
+            for market in $.get('markets', [])
+            if market.get('status') == 'open'
+            and (any(keyword in (market.get('title', '') + ' ' + market.get('subtitle', '')).lower()
+              for keyword in ['sport', 'nfl', 'nba', 'mlb', 'nhl', 'soccer', 'football', 
+                             'basketball', 'baseball', 'hockey', 'tennis', 'golf', 'boxing', 
+                             'mma', 'ufc', 'nascar', 'f1', 'formula', 'racing', 'cricket', 
+                             'rugby', 'olympics', 'olympic', 'game', 'match', 'team', 'player', 
+                             'coach', 'draft', 'playoff', 'championship', 'super bowl', 
+                             'world cup', 'stanley cup', 'world series', 'nba finals', 
+                             'nfl playoffs', 'college football', 'college basketball', 'ncaa'])
+            or market.get('category', '').lower() == 'sports')
+          ]
+
+    # 3. Identify High Volume Markets
+    - type: "mapping"
+      name: "identify-high-volume-markets"
+      title: "Identify High Volume Markets"
+      description: "Find markets with high trading volume"
+      condition: "$.get('active_sports_markets') is not None and len($.get('active_sports_markets', [])) > 0"
+      inputs:
+        markets: "$.get('active_sports_markets', [])"
+        min_volume: "$.get('min_volume', 1000)"
+      outputs:
+        high_volume_markets: |
+          sorted(
+            [
+              {
+                'ticker': m.get('ticker'),
+                'title': m.get('title'),
+                'event_ticker': m.get('event_ticker'),
+                'volume': m.get('volume', 0),
+                'volume24h': m.get('volume_24h', 0),
+                'liquidity': m.get('liquidity', 0),
+                'yes_bid': m.get('yes_bid', 0),
+                'yes_ask': m.get('yes_ask', 0),
+                'open_interest': m.get('open_interest', 0)
+              }
+              for m in $.get('markets', [])
+              if m.get('volume', 0) >= $.get('min_volume', 1000)
+            ],
+            key=lambda x: x.get('volume', 0),
+            reverse=True
+          )
+
+    # 4. Identify Trending Markets (High 24h Volume)
+    - type: "mapping"
+      name: "identify-trending-markets"
+      title: "Identify Trending Markets"
+      description: "Find markets with high 24h volume (trending)"
+      condition: "$.get('active_sports_markets') is not None and len($.get('active_sports_markets', [])) > 0"
+      inputs:
+        markets: "$.get('active_sports_markets', [])"
+      outputs:
+        trending_markets: |
+          sorted(
+            [
+              {
+                'ticker': m.get('ticker'),
+                'title': m.get('title'),
+                'event_ticker': m.get('event_ticker'),
+                'volume24h': m.get('volume_24h', 0),
+                'volume': m.get('volume', 0),
+                'liquidity': m.get('liquidity', 0),
+                'yes_bid': m.get('yes_bid', 0),
+                'yes_ask': m.get('yes_ask', 0)
+              }
+              for m in $.get('markets', [])
+              if m.get('volume_24h', 0) > 0
+            ],
+            key=lambda x: x.get('volume24h', 0),
+            reverse=True
+          )[:20]
+
+    # 5. Save Active Markets to Documents
+    - type: "document"
+      name: "save-active-markets"
+      description: "Save active sports markets to documents for monitoring"
+      condition: "$.get('active_sports_markets') is not None and len($.get('active_sports_markets', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: "$.get('force-update')"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'kalshi-active-sports-market'"
+      documents:
+        items: "$.get('parsedItems', [])"
+      inputs:
+        parsedItems: |
+          [
+            {
+              'id': m.get('ticker'),
+              'eventId': m.get('event_ticker'),
+              'title': m.get('title'),
+              'subtitle': m.get('subtitle'),
+              'status': m.get('status'),
+              'volume': m.get('volume', 0),
+              'volume24h': m.get('volume_24h', 0),
+              'liquidity': m.get('liquidity', 0),
+              'yesBid': m.get('yes_bid', 0),
+              'yesAsk': m.get('yes_ask', 0),
+              'openInterest': m.get('open_interest', 0),
+              'isHighVolume': m.get('volume', 0) >= $.get('min_volume', 1000),
+              'isTrending': m.get('volume_24h', 0) > 0,
+              'monitoredAt': str(datetime.now().isoformat())
+            }
+            for m in $.get('active_sports_markets', [])
+          ]
+
