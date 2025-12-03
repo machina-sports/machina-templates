@@ -142,7 +142,7 @@ workflow:
       connector:
         name: "google-genai"
         command: "invoke_prompt"
-        model: "gemini-2.0-flash-exp"
+        model: "gemini-3-pro-preview"
         location: "global"
         provider: "vertex_ai"
       inputs:
@@ -166,4 +166,5 @@ workflow:
             content: "$.get('user_message', '')"
       outputs:
         analysis: "$.get('content')"
+
 
