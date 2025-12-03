@@ -1,0 +1,12 @@
+agent:
+  name: "kalshi-market-analyst"
+  title: "Kalshi Market Analyst"
+  description: "Monitors Kalshi markets and provides analysis on trending events and probabilities."
+  version: "1.0.0"
+  workflows:
+    - name: "analyze-market"
+      description: "Analyzes specific market series for insights"
+      inputs:
+        series_ticker: "'KXHIGHNY'"
+        limit: 10
+

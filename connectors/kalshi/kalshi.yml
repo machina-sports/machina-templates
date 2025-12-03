@@ -1,5 +1,17 @@
 connector:
   name: "kalshi"
   description: "Kalshi Prediction Markets API - Access events, markets, and trading data"
-  filename: "kalshi.json"
-  filetype: "restapi"
+  filename: "kalshi.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Get Markets"
+      value: "get_markets"
+
+    - name: "Get Series"
+      value: "get_series"
+
+    - name: "Get Events"
+      value: "get_events"
+
+    - name: "Get Orderbook"
+      value: "get_orderbook"
