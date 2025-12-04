@@ -6,7 +6,7 @@ workflow:
   description: Workflow to execute a chat completion for events.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID

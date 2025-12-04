@@ -4,6 +4,7 @@ agent:
   description: Agent to update Football Markets
   context:
     config-frequency: 10
+    status: "inactive"
   workflows:
 
     # bwin-sync uefa europa league (102856)
@@ -36,8 +37,8 @@ agent:
       outputs:
         sync-markets-odds-status: "$.get('workflow-status', False)"
 
-    # associate-markets-events
-    - name: associate-markets-events
+    # assistant-tools-event-matcher
+    - name: assistant-tools-event-matcher
       description: Associate game-markets to sport:Event documents by similarity
       inputs:
         limit: "250"

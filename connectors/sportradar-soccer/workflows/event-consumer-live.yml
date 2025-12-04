@@ -6,7 +6,7 @@ workflow:
   description: Workflow to consume live soccer games from SportRadar API by event code. Handles live, interrupted, post-live, and stuck events.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     sportradar-soccer:

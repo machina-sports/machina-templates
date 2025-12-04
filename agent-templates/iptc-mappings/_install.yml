@@ -31,14 +31,7 @@ datasets:
   - type: "prompts"
     path: "any-source/custom-event-prompt.yml"
 
-  - type: "workflow"
-    path: "any-source/custom-event-test.yml"
-
   # api-football
-
-  - type: "workflow"
-    path: "api-football/event-mapping-test.yml"
-
   - type: "mappings"
     path: "api-football/event-mapping.yml"
 
@@ -49,10 +42,6 @@ datasets:
     path: "api-football/event-teams-stats.yml"
 
   # sportradar
-
-  - type: "workflow"
-    path: "sportradar/event-mapping-test.yml"
-
   - type: "mappings"
     path: "sportradar/event-players-stats.yml"
 

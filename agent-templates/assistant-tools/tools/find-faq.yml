@@ -6,7 +6,7 @@ workflow:
   description: Workflow to find and retrieve content snippets.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     google-genai:
       api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
     machina-ai:

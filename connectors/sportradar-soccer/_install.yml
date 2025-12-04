@@ -130,17 +130,17 @@ datasets:
   - type: "workflow"
     path: "workflows/load-round-events.yml"
 
-  - type: "workflow"
-    path: "workflows/update-competition.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-competition.yml"
   
-  - type: "workflow"
-    path: "workflows/update-live.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-live.yml"
   
-  - type: "workflow"
-    path: "workflows/update-longterm.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-longterm.yml"
   
-  - type: "workflow"
-    path: "workflows/update-postlive.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-postlive.yml"
   
-  - type: "workflow"
-    path: "workflows/update-prelive.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-prelive.yml"
