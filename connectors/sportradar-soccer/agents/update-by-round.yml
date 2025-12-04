@@ -2,8 +2,10 @@ agent:
 
   # sportradar-soccer-update-by-round
   name: sportradar-soccer-update-by-round
-  title: SportRadar Soccer - Update Events by Round
+  title: Sportradar - Update Events by Round
   description: Update all soccer events for a specific competition and round number
+  context:
+    status: "inactive"
   context-agent:
     competition_id: "$.get('competition_id')"
     round_number: "$.get('round_number')"

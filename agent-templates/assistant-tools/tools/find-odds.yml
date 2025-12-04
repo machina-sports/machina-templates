@@ -6,7 +6,7 @@ workflow:
   description: Workflow to extract and filter odds from events' market_data.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
   inputs:
     document_id: $.get('document_id')
   outputs:

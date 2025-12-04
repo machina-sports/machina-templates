@@ -3,6 +3,8 @@ workflow:
   title: "Sportradar Soccer - Competitions"
   description: "Workflow to synchronize competitions from SportRadar API to Machina."
   context-variables:
+    debugger:
+      enabled: false
     sportradar-soccer:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   outputs:

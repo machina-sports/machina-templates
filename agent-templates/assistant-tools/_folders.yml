@@ -1,7 +1,10 @@
 workflow:
   name: assistant-tools-folders
-  title: Assistant Tools - Folders
+  title: Assistant - Tools Folders
   description: Assistant Tools - Folders
+  context-variables:
+    debugger:
+      enabled: false
   outputs:
     workflow-status: "'executed'"
   tasks:

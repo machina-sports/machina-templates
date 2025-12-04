@@ -2,11 +2,11 @@ workflow:
 
   # sportradar-soccer-load-round-events
   name: sportradar-soccer-load-round-events
-  title: SportRadar Soccer - Load Round Events
+  title: Sportradar Soccer - Load Round Events
   description: Load all soccer events for a specific competition and round number
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
   inputs:
     competition_id: "$.get('competition_id')"
     round_number: "$.get('round_number')"

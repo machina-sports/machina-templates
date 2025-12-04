@@ -1,10 +1,10 @@
 workflow:
-  name: "sportradar-soccer-sync-missing-players"
-  title: "Sportradar Soccer Sync Missing Players"
-  description: "Workflow to sync soccer missing players (injuries/suspensions)."
+  name: sportradar-soccer-sync-missing-players
+  title: Sportradar Soccer - Sync Missing Players
+  description: Workflow to sync soccer missing players (injuries/suspensions).
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     sportradar-soccer:
       x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
     machina-ai:

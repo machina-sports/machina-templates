@@ -1,12 +1,12 @@
 workflow:
 
-  # associate-markets-events
-  name: "associate-markets-events"
-  title: "Associate Game Markets to Events"
+  # assistant-tools-event-matcher
+  name: assistant-tools-event-matcher
+  title: Assistant - Tools Event Matcher
   description: "Workflow to associate game-market documents to sport:Event documents by similarity matching."
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
