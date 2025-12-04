@@ -41,6 +41,8 @@ mappings:
             'market-id': m.get('id'),
             'option-id': o.get('id'),
             'marketType': m.get('marketType'),
+            'happening': m.get('happening', ''),
+            'period': m.get('period', ''),
             'name': o.get('name', {}).get('text', ''),
             'price': o.get('price', {}).get('odds', ''),
             'title': f"{m.get('title')} {o.get('name', {}).get('text', '')}: {o.get('price', {}).get('odds', '')}",
