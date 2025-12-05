@@ -133,6 +133,11 @@ datasets:
   - type: "workflow"
     path: "workflows/load-round-events.yml"
 
+  - type: "workflow"
+    path: "workflows/load-head-to-head.yml"
+
+  - type: "workflow"
+    path: "workflows/update-competition.yml"
   # - type: "workflow"
   #   path: "workflows/update-competition.yml"
   

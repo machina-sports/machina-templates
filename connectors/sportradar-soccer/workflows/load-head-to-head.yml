@@ -1,0 +1,77 @@
+workflow:
+
+  # sportradar-soccer-load-head-to-head
+  name: sportradar-soccer-load-head-to-head
+  title: SportRadar Soccer - Load Head-to-Head
+  description: Load head-to-head summaries between two competitors and save to database
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    event_code: "$.get('event_code')"
+    competitor_id: "$.get('competitor_id')"
+    competitor2_id: "$.get('competitor2_id')"
+  outputs:
+    summaries: "$.get('summaries', [])"
+    summaries_count: "len($.get('summaries', []))"
+    document_id: "$.get('document_id')"
+    workflow-status: "$.get('summaries_count', 0) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # Fetch head-to-head summaries
+    - type: connector
+      name: fetch-head-to-head
+      description: Get head-to-head summaries between two competitors from SportRadar
+      condition: "$.get('competitor_id') is not None and $.get('competitor2_id') is not None"
+      connector:
+        name: sportradar-soccer
+        command: get-competitors/{competitor_id}/versus/{competitor2_id}/summaries.json
+        command_attribute:
+          competitor_id: "$.get('competitor_id')"
+          competitor2_id: "$.get('competitor2_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        raw_data: "$"
+        summaries: "$.get('summaries', [])"
+        last_meetings: "$.get('last_meetings', [])"
+        next_meetings: "$.get('next_meetings', [])"
+        summaries_count: "len($.get('summaries', []))"
+
+    # Save head-to-head data as document with metadata
+    - type: document
+      name: save-head-to-head
+      description: Save head-to-head data to database with event_code metadata
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        head-to-head: |
+          {
+            'data': $.get('raw_data', {}),
+            'summaries': $.get('summaries', []),
+            'last_meetings': $.get('last_meetings', []),
+            'next_meetings': $.get('next_meetings', []),
+            'competitor1_id': $.get('competitor_id'),
+            'competitor2_id': $.get('competitor2_id'),
+            'event_code': $.get('event_code'),
+            'title': f"{$.get('competitor_id', '')} vs {$.get('competitor2_id', '')} - Head to Head",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+        competitor1_id: "$.get('competitor_id')"
+        competitor2_id: "$.get('competitor2_id')"
+        document_type: "'head-to-head'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if len($.get('documents', [])) > 0 else None"
+
+
