@@ -2,6 +2,9 @@ agent:
   name: competitions-schedule-football-en
   title: Competitions Schedule - Football - EN
   description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
+    status: "inactive"
   workflows:
 
     # sync England Premier League (130281)

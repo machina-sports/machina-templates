@@ -1,0 +1,33 @@
+workflow:
+  name: "test-public-data"
+  title: "Test Public Kalshi Data"
+  description: "Test fetching public market data from Kalshi without authentication."
+  inputs:
+    series_ticker: "$.get('series_ticker', 'KXHIGHNY')"
+  outputs:
+    series_info: "$.get('series_info')"
+    markets: "$.get('markets')"
+  tasks:
+    - type: "connector"
+      name: "get-series-info"
+      description: "Get info for a specific series"
+      connector:
+        name: "kalshi"
+        command: "get_series"
+      inputs:
+        series_ticker: "$.get('series_ticker')"
+      outputs:
+        series_info: "$.get('series')"
+
+    - type: "connector"
+      name: "get-markets"
+      description: "Get markets for the series"
+      connector:
+        name: "kalshi"
+        command: "get_markets"
+      inputs:
+        series_ticker: "$.get('series_ticker')"
+        status: "open"
+      outputs:
+        markets: "$.get('markets')"
+

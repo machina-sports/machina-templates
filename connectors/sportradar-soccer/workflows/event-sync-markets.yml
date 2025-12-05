@@ -6,7 +6,7 @@ workflow:
   description: Workflow to sync event markets from SportRadar API by event code.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     bwin:
       Bwin-AccessId: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID"
       Bwin-AccessIdToken: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN"

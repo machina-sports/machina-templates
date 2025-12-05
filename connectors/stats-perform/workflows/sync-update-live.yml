@@ -57,13 +57,13 @@ workflow:
         action: "search"
         search-limit: 1
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["value.version_control.opta-update-timestamp", 1]
       filters:
         value.sport:status: "$.get('sport_status') if $.get('sport_status') is not None else {'$in': ['Fixture', 'Playing']}"
-        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=72)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
+        value.schema:startDate: "$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
+        '$or': "[{'value.version_control.opta-update-timestamp': $.get('status_updated') if $.get('status_updated') is not None else {'$lt': (datetime.utcnow() - timedelta(minutes=1)).isoformat()}}, {'value.version_control.opta-update-timestamp': {'$exists': False}}]"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        updated: "$.get('status_updated') if $.get('status_updated') is not None else {'$lt': datetime.utcnow() - timedelta(minutes=1)}"
       inputs:
         name: "{'$in': ['sport:Event']}"
       outputs:
@@ -92,7 +92,8 @@ workflow:
               **$.get('event_value', {}).get('version_control', {}),
               'processing': True,
               'update_event_summary_status': 'processing',
-              'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0)
+              'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0),
+              'opta-update-timestamp': datetime.utcnow().isoformat()
             }
           }
       metadata:
@@ -205,7 +206,8 @@ workflow:
               'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1,
               'update_event_summary_status': 'processed',
               'hasMarketCode': ($.get('market_code') is not None and $.get('market_code') != '') or ($.get('event_value', {}).get('market_code') is not None and $.get('event_value', {}).get('market_code') != ''),
-              'updated': datetime.utcnow()
+              'updated': datetime.utcnow(),
+              'opta-update-timestamp': datetime.utcnow().isoformat()
             }
           }
       metadata:

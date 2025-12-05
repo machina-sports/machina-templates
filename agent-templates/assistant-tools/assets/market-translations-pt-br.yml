@@ -1,7 +1,10 @@
 workflow:
-  name: asset-market-translations-pt-br
-  title: Asset - Market Translations PT-BR
-  description: Market translation policy document for Brazilian Portuguese
+  name: assistant-market-translations
+  title: Assistant - Market Translations
+  description: Assistant - Market Translations
+  context-variables:
+    debugger:
+      enabled: false
   outputs:
     workflow-status: "'executed'"
   tasks:

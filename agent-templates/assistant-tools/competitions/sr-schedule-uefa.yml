@@ -2,6 +2,9 @@ agent:
   name: competitions-schedule-football-uefa
   title: Competitions Schedule - Football - UEFA
   description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
+    status: "inactive"
   workflows:
 
     # sync UEFA Champions League 131129

@@ -1,9 +1,10 @@
 agent:
   name: sportradar-event-live-update
-  title: Sportradar Event Live Update
+  title: Sportradar - Event Live Update
   description: Agent to consume and update live Sportradar events (live, interrupted, post-live).
   context:
     config-frequency: 0.1
+    status: "inactive"
   context-agent:
     event_code: $.get('event_code')
   workflows:

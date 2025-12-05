@@ -4,7 +4,7 @@ workflow:
   description: Workflow to synchronize a season competitors from SportRadar API to Machina.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     sportradar-soccer:
       api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
     machina-ai:

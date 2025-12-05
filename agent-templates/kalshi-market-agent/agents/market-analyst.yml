@@ -1,0 +1,55 @@
+agent:
+  name: "kalshi-market-analyst"
+  title: "Kalshi Market Analyst"
+  description: "Monitors Kalshi sports markets and provides analysis on trending events and probabilities. Focuses on sports-related prediction markets."
+  version: "1.0.0"
+  workflows:
+    # Sync Sports Markets
+    - name: "kalshi-sync-sports-markets"
+      description: "Sync sports-related markets from Kalshi API"
+      inputs:
+        status: "'open'"
+        limit: 500
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        sports_markets_synced: "$.get('sports_markets_synced')"
+
+    # Sync Sports Events
+    - name: "kalshi-sync-sports-events"
+      description: "Sync sports-related events from Kalshi API"
+      inputs:
+        limit: 200
+        status: "'open'"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        sports_events_synced: "$.get('sports_events_synced')"
+
+    # Analyze Sports Markets
+    - name: "kalshi-analyze-sports-markets"
+      description: "Analyze active sports markets for insights and opportunities"
+      inputs:
+        limit: 50
+        status: "'open'"
+        min_volume: 0
+      outputs:
+        analysis: "$.get('analysis')"
+        markets_analyzed: "$.get('markets_analyzed')"
+
+    # Monitor Active Sports Markets
+    - name: "kalshi-monitor-active-sports-markets"
+      description: "Monitor active sports markets and identify high-volume opportunities"
+      inputs:
+        limit: 500
+        min_volume: 1000
+        min_liquidity: 500
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        active_sports_markets: "$.get('active_sports_markets')"
+        high_volume_markets: "$.get('high_volume_markets')"
+
+    # Legacy: Analyze specific market series
+    - name: "analyze-market"
+      description: "Analyzes specific market series for insights"
+      inputs:
+        series_ticker: "'KXHIGHNY'"
+        limit: 10

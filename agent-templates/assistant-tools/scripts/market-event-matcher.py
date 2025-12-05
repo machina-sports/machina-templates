@@ -34,6 +34,9 @@ def match_markets_to_events(request_data):
     markets = params.get("markets", [])
     events = params.get("events", [])
     
+    print(f"LOG: Total markets received: {len(markets)}")
+    print(f"LOG: Total events received: {len(events)}")
+    
     # Filter out outright markets
     match_markets = [m for m in markets if not is_outright_market(m)]
     outright_count = len(markets) - len(match_markets)
@@ -42,10 +45,17 @@ def match_markets_to_events(request_data):
         print(f"LOG: Filtered out {outright_count} outright/season markets")
     
     print(f"LOG: Processing {len(match_markets)} match markets against {len(events)} events")
+    
+    # Debug: print all events received
+    for idx, event in enumerate(events[:5]):  # Show first 5
+        e_val = event.get("value", {})
+        e_title = e_val.get("title", "") or event.get("title", "")
+        e_date = e_val.get("schema:startDate", "")
+        print(f"LOG: Event {idx}: '{e_title}' | Date: {e_date}")
 
     matches = []
 
-    for market in match_markets:
+    for m_idx, market in enumerate(match_markets):
         m_val = market.get("value", {})
         m_title = m_val.get("title", "") or market.get("title", "")
         m_comp = m_val.get("competition", "")
@@ -61,15 +71,17 @@ def match_markets_to_events(request_data):
             except Exception as e:
                 print(f"LOG: Market date parse error: {e}")
 
-        print(f"\nLOG: === Checking Market: '{m_title}' (Date: {m_date}) ===")
+        print(f"\nLOG: === Market {m_idx}: '{m_title}' (Date: {m_date}, Comp: {m_comp}) ===")
+        
+        # Extract Market Teams (Normalized)
+        m_teams_raw = m_val.get('participants', [])
+        m_teams = [normalize(t.get('name', '')) for t in m_teams_raw if isinstance(t, dict)]
+        print(f"LOG: Market Teams: {m_teams}")
 
         best_event = None
         best_conf = 0.0
 
-        # Extract Market Teams (Normalized)
-        m_teams = [normalize(t.get('name', '')) for t in m_val.get('participants', []) if isinstance(t, dict)]
-
-        for event in events:
+        for e_idx, event in enumerate(events):
             e_val = event.get("value", {})
             e_title = e_val.get("title", "") or event.get("title", "")
             e_search = normalize(e_title)
@@ -123,15 +135,23 @@ def match_markets_to_events(request_data):
             else:
                 conf = (name_score * 0.7) + (date_score * 0.3)
 
+            # Log ALL comparisons with details (for debugging)
+            print(f"LOG:   Event {e_idx}: '{e_title}' | Conf: {conf:.2f} (Name: {name_score:.2f}, Team: {team_score:.2f}, Date: {date_score})")
+            if e_teams:
+                print(f"LOG:     Event Teams: {e_teams}")
+            
             if conf > 0.55: # Log close calls
-                print(f"LOG:   vs Event '{e_title}' | Score: {conf:.2f} (Name: {name_score:.2f}, Team: {team_score:.2f}, Date: {date_score})")
+                print(f"LOG:     >>> Close call! Score above 0.55")
 
             if conf > best_conf:
                 best_conf = conf
                 best_event = event
+                print(f"LOG:     >>> New best match! (prev: {best_conf:.2f})")
 
-        if best_event and best_conf > 0.6:
-            print(f"LOG:   >>> MATCHED with {best_conf:.2f}")
+        if best_event and best_conf > 0.5:
+            best_event_title = best_event.get("value", {}).get("title", "") or best_event.get("title", "")
+            print(f"LOG:   >>> ✓ MATCHED with confidence {best_conf:.2f}")
+            print(f"LOG:       Matched event: '{best_event_title}'")
             matches.append({
                 "market": market,
                 "event": best_event,
@@ -139,7 +159,7 @@ def match_markets_to_events(request_data):
                 "event_code": best_event.get("metadata", {}).get("event_code")
             })
         else:
-            print("LOG:   >>> NO MATCH found")
+            print(f"LOG:   >>> ✗ NO MATCH found (best_conf: {best_conf:.2f}, threshold: 0.5, has_event: {best_event is not None})")
 
     return {
         "status": True,

@@ -16,6 +16,191 @@ def summarize_message_data(request_data):
         dict: Response containing summarized data ready for LLM consumption
     """
     from datetime import datetime, timezone, timedelta
+    import re
+    
+    def normalize_team_name(team_name):
+        """
+        Normalize team names by:
+        1. Removing prefixes (SC, FC, EC, CR, FR, CA, FB, etc.)
+        2. Removing regional suffixes (SP, RS, RJ, MG, CE, BA, PE, etc.)
+        3. Removing intermediate club type indicators
+        4. Adding proper accents to Brazilian team names
+        """
+        if not team_name or not isinstance(team_name, str):
+            return team_name
+        
+        team = team_name.strip()
+        
+        # Remove leading club type prefixes
+        team = re.sub(r'^(FC|SC|EC|AC|CE|EF|PE|ASS|ASOC|SE|IND|CR|FR|CA|FB|CBS|CEF)\s+', '', team, flags=re.IGNORECASE)
+        
+        # Remove trailing state/region abbreviations with optional club type before them
+        team = re.sub(r'\s+(FC|SC|EC|AC|CE|EF|PE|ASS|ASOC|SE|IND|CR|FR|CA|FB|CBS|CEF)?\s*[A-Z]{2}$', '', team, flags=re.IGNORECASE)
+        
+        # Remove intermediate club type abbreviations
+        team = re.sub(r'\s+(FC|SC|EC|AC|CE|EF|PE|ASS|ASOC|SE|IND|CR|FR|CA|FB|CBS|CEF)\s+', ' ', team, flags=re.IGNORECASE)
+        
+        # Remove extra spaces
+        team = re.sub(r'\s+', ' ', team).strip()
+        
+        # Specific team mappings
+        team_map = {
+            "Sao Paulo": "São Paulo",
+            "Sao paulo": "São Paulo",
+            "SAO PAULO": "São Paulo",
+            "Corinthians": "Corinthians",
+            "Corinthians SP": "Corinthians",
+            "Palmeiras": "Palmeiras",
+            "SE Palmeiras": "Palmeiras",
+            "Flamengo": "Flamengo",
+            "CR Flamengo": "Flamengo",
+            "Vasco": "Vasco da Gama",
+            "Botafogo": "Botafogo",
+            "FR Botafogo": "Botafogo",
+            "Fluminense": "Fluminense",
+            "Santos": "Santos",
+            "Santos FC": "Santos",
+            "Sao Paulo FC": "São Paulo",
+            "Internacional": "Internacional",
+            "Internacional RS": "Internacional",
+            "SC Internacional": "Internacional",
+            "Gremio": "Grêmio",
+            "Gremio FB Porto Alegrense": "Grêmio",
+            "Gremio Porto Alegrense": "Grêmio",
+            "Gremio Porto-alegrense": "Grêmio",
+            "FB Porto Alegrense": "Grêmio",
+            "Cruzeiro": "Cruzeiro",
+            "Cruzeiro EC": "Cruzeiro",
+            "Atletico": "Atlético Mineiro",
+            "Atletico Mineiro": "Atlético Mineiro",
+            "CA Mineiro": "Atlético Mineiro",
+            "Mineiro": "Atlético Mineiro",
+            "Bahia": "Bahia",
+            "EC Bahia": "Bahia",
+            "Fortaleza": "Fortaleza",
+            "Fortaleza EC": "Fortaleza",
+            "Ceara": "Ceará",
+            "Ceara SC": "Ceará",
+            "Ceara SC Fortaleza": "Ceará",
+            "Ceara Fortaleza": "Ceará",
+            "Ceará": "Ceará",
+            "Vitoria": "Vitória",
+            "EC Vitoria": "Vitória",
+            "EC Vitoria Salvador": "Vitória",
+            "Vitoria Salvador": "Vitória",
+            "Juventude": "Juventude",
+            "EC Juventude": "Juventude",
+            "EC Juventude Caxias do Sul": "Juventude",
+            "Juventude Caxias do Sul": "Juventude",
+            "Sport": "Sport Recife",
+            "Sport Recife": "Sport Recife",
+            "Sport Club do Recife": "Sport Recife",
+            "Red Bull Bragantino": "Red Bull Bragantino",
+            "Bragantino": "Red Bull Bragantino",
+            "Nautico": "Náutico",
+            "Náutico": "Náutico",
+            "Paysandu": "Paysandu",
+            "America": "América",
+            "América": "América",
+            "CSA": "CSA",
+            "Ponte Preta": "Ponte Preta",
+            "Londrina": "Londrina",
+            "Goias": "Goiás",
+            "Goiás": "Goiás",
+            "Mirassol": "Mirassol",
+            "Mirassol FC": "Mirassol",
+            "Vasco da Gama": "Vasco da Gama",
+        }
+        
+        team = team.strip()
+        return team_map.get(team, team)
+    
+    def normalize_runner_name(runner_name):
+        """
+        Normalize runner names by:
+        1. Translating Over/Under to Portuguese (Acima/Abaixo)
+        2. Translating Draw/X to Empate
+        3. Removing leading club type prefixes from team names
+        """
+        if not runner_name or not isinstance(runner_name, str):
+            return runner_name
+        
+        runner = runner_name.strip()
+        
+        # Translate Over/Under to Portuguese
+        runner = re.sub(r'^Over\s+', 'Acima ', runner, flags=re.IGNORECASE)
+        runner = re.sub(r'^Under\s+', 'Abaixo ', runner, flags=re.IGNORECASE)
+        
+        # Translate Draw/X to Empate
+        if runner.upper() == "X" or runner.upper() == "DRAW":
+            runner = "Empate"
+        
+        # Normalize team names within runner
+        runner = normalize_team_name(runner)
+        
+        return runner
+    
+    def normalize_event_title(event_title):
+        """
+        Normalize event title by:
+        1. Converting "Team1 - Team2" format to "Team1 x Team2"
+        2. Normalizing team names (removing suffixes, adding accents)
+        """
+        if not event_title or not isinstance(event_title, str):
+            return event_title
+        
+        # Split by " - " to get teams
+        parts = event_title.split(" - ")
+        if len(parts) == 2:
+            team1 = normalize_team_name(parts[0].strip())
+            team2 = normalize_team_name(parts[1].strip())
+            return f"{team1} x {team2}"
+        
+        return event_title
+    
+    def translate_market_title(title):
+        """
+        Translate English market titles to Portuguese
+        """
+        if not title or not isinstance(title, str):
+            return title
+        
+        market_translations = {
+            "Match Result": "Resultado Correto",
+            "Match Result - 2UP (EP)": "Resultado Correto",
+            "Match Result - 2UP": "Resultado Correto",
+            "Winner": "Vencedor",
+            "Draw": "Empate",
+            "Over/Under": "Acima/Abaixo",
+            "Both Teams to Score": "Ambos Times Marcam",
+            "First Goal Scorer": "Primeiro Goleador",
+            "Last Goal Scorer": "Último Goleador",
+            "Correct Score": "Placar Correto",
+            "Total Goals": "Total de Gols",
+            "Next Goal": "Próximo Gol",
+            "Handicap": "Handicap",
+            "Asian Handicap": "Handicap Asiático",
+            "Total Corners": "Total de Escanteios",
+            "Total Cards": "Total de Cartões",
+            "Double Chance": "Dupla Chance",
+            "Half Time Result": "Resultado Primeiro Tempo",
+            "Half Time/Full Time": "Resultado HT/FT",
+            "Goal in Both Halves": "Gol nos Dois Tempos",
+            "Team to Score in Both Halves": "Time Marca nos Dois Tempos",
+            "Draw No Bet": "Sem Empate",
+            "Accumulator": "Acumulador",
+        }
+        
+        # Try exact match first
+        if title in market_translations:
+            return market_translations[title]
+        
+        # Try partial match for titles with variations
+        for key, value in market_translations.items():
+            if key.lower() in title.lower():
+                return value
+        
+        return title
     
     def summarize_teams(matched_teams):
         """Summarize matched teams to simple strings."""
@@ -290,14 +475,14 @@ def summarize_message_data(request_data):
                 for option in options:
                     if isinstance(option, dict):
                         markets_objects.append({
-                            "title": market_name,
-                            "runner": option.get("name", ""),
+                            "title": translate_market_title(market_name),
+                            "runner": normalize_runner_name(option.get("name", "")),
                             "odds": option.get("odds"),
                             "market_type": market_type,
                             "market_id": market_id,
                             "option_id": option.get("id"),
                             "event_id": event_id,
-                            "event_title": event_title
+                            "event_title": normalize_event_title(event_title)
                         })
         
         return {

@@ -27,7 +27,7 @@ workflow:
       description: "Get events from Kalshi API"
       connector:
         name: "kalshi"
-        command: "get-events"
+        command: "get_events"
         command_attribute:
           limit: "$.get('limit')"
           cursor: "$.get('cursor')"

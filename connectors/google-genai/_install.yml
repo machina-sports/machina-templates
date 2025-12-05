@@ -8,7 +8,7 @@ setup:
     - Real-time chat completion (AI Studio & Vertex AI)
     - Real-time content generation (AI Studio & Vertex AI)
     - Real-time image generation (AI Studio)
-    - Real-time video generation (AI Studio - Veo models)
+    - Real-time video generation (AI Studio & Vertex AI - Veo models)
     - Vertex AI Global Endpoint support
     - Enterprise-grade Vertex AI integration
   integrations:

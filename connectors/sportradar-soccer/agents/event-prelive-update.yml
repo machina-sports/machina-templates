@@ -1,9 +1,10 @@
 agent:
   name: sportradar-event-prelive-update
-  title: Sportradar Event Pre-Live Update
+  title: Sportradar - Event Pre-Live Update
   description: Agent to consume and update pre-live Sportradar events (not_started, long-term).
   context:
     config-frequency: 0.5
+    status: "inactive"
   context-agent:
     event_code: $.get('event_code')
   workflows:

@@ -9,7 +9,7 @@ workflow:
       Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
       Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
     debugger:
-      enabled: true
+      enabled: false
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID

@@ -2,6 +2,9 @@ agent:
   name: competitions-schedule-football-de
   title: Competitions Schedule - Football - DE
   description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
+    status: "inactive"
   workflows:
 
     # sync Germany Bundesliga (130571)

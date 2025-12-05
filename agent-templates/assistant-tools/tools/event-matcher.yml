@@ -1,8 +1,8 @@
 workflow:
 
-  # associate-markets-events
-  name: "associate-markets-events"
-  title: "Associate Game Markets to Events"
+  # assistant-tools-event-matcher
+  name: assistant-tools-event-matcher
+  title: Assistant - Tools Event Matcher
   description: "Workflow to associate game-market documents to sport:Event documents by similarity matching."
   context-variables:
     debugger:
@@ -10,6 +10,7 @@ workflow:
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
+    externalSeasonId: $.get('externalSeasonId')
     limit: "$.get('limit', 50)"
     market_id: "$.get('market_id', None)"
   outputs:
@@ -28,7 +29,6 @@ workflow:
         search-vector: false
       filters:
         document_id: "$.get('market_id')"
-        metadata.event_code: "{'$exists': False}"
       inputs:
         name: "'game-market'"
       outputs:
@@ -45,9 +45,10 @@ workflow:
         action: "search"
         search-limit: "$.get('limit', 50)"
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["updated", -1]
       filters:
         metadata.event_code: "{'$exists': False}"
+        metadata.external_season_id: "$.get('externalSeasonId')"
         value.isOpenForBetting: "{'$eq': True}"
       inputs:
         name: "'game-market'"
@@ -67,6 +68,8 @@ workflow:
         search-vector: false
         search-sorters: ["value.schema:startDate", 1]
       filters:
+        value.sport:competition.sport:season.@id: $.get('externalSeasonId')
+        value.sport:status: "{'$nin': ['Played', 'closed', 'ended']}"
         value.schema:startDate: |
           {
             '$gte': (datetime.utcnow() - timedelta(days=7)).isoformat(),
@@ -89,7 +92,7 @@ workflow:
       inputs:
         markets: "[$.get('market')] if $.get('market') is not None else $.get('markets', [])"
         events: "$.get('candidate_events', [])"
-        name_threshold: "0.6"
+        name_threshold: "0.4"
         date_tolerance_hours: "2"
       outputs:
         matches: "$.get('matches', [])"

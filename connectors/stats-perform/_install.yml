@@ -58,3 +58,24 @@ datasets:
 
   - type: workflow
     path: workflows/sync-update-live.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-consumer-live.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-consumer-prelive.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-synchronize.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-sync-markets.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-update.yml
+
+  - type: agent
+    path: agents/sp-opta-event-live-update.yml
+
+  - type: agent
+    path: agents/sp-opta-event-prelive-update.yml
