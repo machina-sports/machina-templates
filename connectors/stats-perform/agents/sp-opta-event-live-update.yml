@@ -1,0 +1,46 @@
+agent:
+  name: sp-opta-event-live-update
+  title: Stats Perform Opta - Event Live Update
+  description: Agent to consume and update live Stats Perform Opta events (Playing).
+  context:
+    config-frequency: 0.1
+    status: "inactive"
+  context-agent:
+    event_code: $.get('event_code')
+  workflows:
+
+    # Workflow Event Consumer - Live
+    - name: sp-opta-event-consumer-live
+      description: Stats Perform Opta Event Consumer (Live)
+      inputs:
+        event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('event_document_id')
+        event_exists: $.get('event_exists')
+        event-consumer-status: $.get('workflow-status', False)
+
+    # Workflow Event Synchronize
+    - name: sp-opta-event-synchronize
+      description: Stats Perform Opta Event Synchronize
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-synchronize-status: $.get('workflow-status', False)
+
+    # Workflow Event Sync Markets
+    - name: sp-opta-event-sync-markets
+      description: Stats Perform Opta Event Sync Markets
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-sync-markets-status: $.get('workflow-status', False)
+
+    # Workflow Event Update
+    - name: sp-opta-event-update
+      description: Stats Perform Opta Event Update
+      condition: $.get('event_exists') is True
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-update-status: $.get('workflow-status', False)
+

@@ -100,7 +100,7 @@ workflow:
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
-        embed-vector: true
+        embed-vector: false
         force-update: true
       connector:
         name: "machina-ai"
