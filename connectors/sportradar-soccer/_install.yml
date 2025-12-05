@@ -102,6 +102,9 @@ datasets:
     path: "workflows/sync-standings.yml"
 
   - type: "workflow"
+    path: "workflows/sync-season-leaders.yml"
+
+  - type: "workflow"
     path: "workflows/sync-transfers.yml"
 
   - type: "workflow"
