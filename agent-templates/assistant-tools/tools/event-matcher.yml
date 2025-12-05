@@ -6,7 +6,7 @@ workflow:
   description: "Workflow to associate game-market documents to sport:Event documents by similarity matching."
   context-variables:
     debugger:
-      enabled: false
+      enabled: true
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
@@ -45,7 +45,7 @@ workflow:
         action: "search"
         search-limit: "$.get('limit', 50)"
         search-vector: false
-        search-sorters: ["updated", 1]
+        search-sorters: ["updated", -1]
       filters:
         metadata.event_code: "{'$exists': False}"
         value.isOpenForBetting: "{'$eq': True}"
@@ -67,6 +67,7 @@ workflow:
         search-vector: false
         search-sorters: ["value.schema:startDate", 1]
       filters:
+        value.sport:status: "{'$nin': ['Played', 'closed', 'ended']}"
         value.schema:startDate: |
           {
             '$gte': (datetime.utcnow() - timedelta(days=7)).isoformat(),
@@ -89,7 +90,7 @@ workflow:
       inputs:
         markets: "[$.get('market')] if $.get('market') is not None else $.get('markets', [])"
         events: "$.get('candidate_events', [])"
-        name_threshold: "0.6"
+        name_threshold: "0.4"
         date_tolerance_hours: "2"
       outputs:
         matches: "$.get('matches', [])"
