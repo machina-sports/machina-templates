@@ -3688,43 +3688,69 @@
                 ],
                 "parameters": [
                     {
-                        "$ref": "#/components/parameters/MarketLimitQuery"
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {"type": "integer", "default": 100}
                     },
                     {
-                        "$ref": "#/components/parameters/CursorQuery"
+                        "name": "cursor",
+                        "in": "query",
+                        "schema": {"type": "string"}
                     },
                     {
-                        "$ref": "#/components/parameters/EventTickerQuery"
+                        "name": "event_ticker",
+                        "in": "query",
+                        "schema": {"type": "string"}
                     },
                     {
-                        "$ref": "#/components/parameters/SeriesTickerQuery"
+                        "name": "series_ticker",
+                        "in": "query",
+                        "schema": {"type": "string"}
                     },
                     {
-                        "$ref": "#/components/parameters/MinCreatedTsQuery"
+                        "name": "min_created_ts",
+                        "in": "query",
+                        "schema": {"type": "integer"}
                     },
                     {
-                        "$ref": "#/components/parameters/MaxCreatedTsQuery"
+                        "name": "max_created_ts",
+                        "in": "query",
+                        "schema": {"type": "integer"}
                     },
                     {
-                        "$ref": "#/components/parameters/MaxCloseTsQuery"
+                        "name": "max_close_ts",
+                        "in": "query",
+                        "schema": {"type": "integer"}
                     },
                     {
-                        "$ref": "#/components/parameters/MinCloseTsQuery"
+                        "name": "min_close_ts",
+                        "in": "query",
+                        "schema": {"type": "integer"}
                     },
                     {
-                        "$ref": "#/components/parameters/MinSettledTsQuery"
+                        "name": "min_settled_ts",
+                        "in": "query",
+                        "schema": {"type": "integer"}
                     },
                     {
-                        "$ref": "#/components/parameters/MaxSettledTsQuery"
+                        "name": "max_settled_ts",
+                        "in": "query",
+                        "schema": {"type": "integer"}
                     },
                     {
-                        "$ref": "#/components/parameters/MarketStatusQuery"
+                        "name": "status",
+                        "in": "query",
+                        "schema": {"type": "string"}
                     },
                     {
-                        "$ref": "#/components/parameters/TickersQuery"
+                        "name": "tickers",
+                        "in": "query",
+                        "schema": {"type": "string"}
                     },
                     {
-                        "$ref": "#/components/parameters/MveFilterQuery"
+                        "name": "mve_filter",
+                        "in": "query",
+                        "schema": {"type": "string"}
                     }
                 ],
                 "responses": {
@@ -7743,6 +7769,7 @@
                     "ticker",
                     "event_ticker",
                     "market_type",
+                    "name",
                     "title",
                     "subtitle",
                     "yes_sub_title",
@@ -7790,6 +7817,10 @@
                     "price_ranges"
                 ],
                 "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Market name (derived from ticker)"
+                    },
                     "ticker": {
                         "type": "string"
                     },
