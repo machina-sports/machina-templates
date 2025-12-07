@@ -17,26 +17,28 @@ setup:
   version: 1.0.0
 
 datasets:
-  # Connectors
-  - type: "connector"
-    path: "../../connectors/kalshi/kalshi.yml"
   
   # Agent
-  - type: "agent"
-    path: "agents/market-analyst.yml"
-  
-  # Workflows
-  - type: "workflow"
-    path: "workflows/sync-sports-markets.yml"
-  - type: "workflow"
-    path: "workflows/sync-sports-events.yml"
-  - type: "workflow"
-    path: "workflows/analyze-sports-markets.yml"
-  - type: "workflow"
-    path: "workflows/monitor-active-sports-markets.yml"
-  - type: "workflow"
-    path: "workflows/analyze-market.yml"
+  - type: agent
+    path: agents/market-analyst.yml
   
   # Prompts
-  - type: "prompt"
-    path: "prompts/market-analysis.yml"
+  - type: prompts
+    path: prompts/market-analysis.yml
+
+  # Scripts
+  - type: connector
+    path: scripts/past_events.yml
+
+  # Workflows
+  - type: workflow
+    path: workflows/prediction-consumer.yml
+
+  - type: workflow
+    path: workflows/prediction-executor.yml
+
+  - type: workflow
+    path: workflows/prediction-update.yml
+  
+  - type: workflow
+    path: _folders.yml

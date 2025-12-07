@@ -1,0 +1,130 @@
+workflow:
+  name: kalshi-prediction-executor
+  title: Kalshi - Prediction Executor
+  description: Workflow to execute a prediction.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    document_id: $.get('document_id')
+  outputs:
+    workflow-status: $.get('document-exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: kalshi-prediction-load-by-id
+      description: Load document by id
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        document-document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        document-exists: len($.get('documents', [])) > 0
+        document-selected: $.get('documents', [])[0] if len($.get('documents', [])) > 0 else None
+        document-value: $.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else None
+        event_competititors: |
+          [
+            competitor.get('@id')
+            for competitor in $.get('documents', [])[0].get('value', {}).get('sport:competitors', [])
+          ]
+
+    # load event filtering by competitor
+    - type: document
+      name: load-event-by-competitor
+      description: Search for events by competitor in the same competition.
+      condition: $.get('document-exists') is True
+      config:
+        action: search
+        search-limit: 12
+        search-vector: false
+        search-sorters: ["value.schema:startDate", -1]
+      filters:
+        value.sport:competitors.@id: "{'$in': $.get('event_competititors')}"
+        value.sport:status: "{'$in': ['closed', 'ended', 'FT']}"
+        value.sport:competition.@id: $.get('competition_id')
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_list: $.get('documents', []) if $.get('documents') else None
+        event_list_ids: |
+          [
+            event.get('value', {}).get('@id').replace('urn:sportradar:sport_event:', '')
+            for event in $.get('documents', [])
+          ]
+        event_list_parsed: |
+          [
+            {
+              **event.get('value', {}),
+            }
+            for event in $.get('documents', [])
+          ]
+
+    # iptc-mapping-past-events
+    - type: mapping
+      name: iptc-events-summary
+      condition: $.get('document_id') is not None and $.get('document-exists') is True
+      inputs:
+        events: $.get('event_list_parsed')
+      outputs:
+        past_events_summary: $.get('events_summary')
+
+    ## CONTENT STORIES FROM PAST EVENTS
+
+    # # coverage-event-stories-prompt
+    # - type: prompt
+    #   name: coverage-event-stories-prompt
+    #   description: Coverage Event Stories Prompt
+    #   condition: $.get('document_id') is not None and $.get('document-exists') is True
+    #   connector:
+    #     command: invoke_prompt
+    #     name: google-genai
+    #     model: gemini-2.5-flash
+    #     location: global
+    #     provider: vertex_ai
+    #   inputs:
+    #     event_summary: $.get('events_summary')
+    #     past_events_objects: $.get('past_events_objects')
+    #   outputs:
+    #     event-stories-snippets: |
+    #       [
+    #         {
+    #           **snippet,
+    #           "metadata": {
+    #             "content-group": "event-preview",
+    #             "event_code": "$.(metadata_event_code)"
+    #           }
+    #         }
+    #         for snippet in $.get('snippets', [])
+    #       ]
+
+    # # version-control-update
+    # - type: document
+    #   name: version-control-update
+    #   description: Update the events document version control.
+    #   condition: $.get('document-exists') is True
+    #   config:
+    #     action: update
+    #     embed-vector: false
+    #     force-update: true
+    #   filters:
+    #     document_id: $.get('document_id')
+    #   documents:
+    #     sport:Event: |
+    #       {
+    #         **$.get('document-value', {}),
+    #         'version_control': {
+    #           **$.get('document-value', {}).get('version_control', {}),
+    #           'event-preview': $.get('is_prediction_finished'),
+    #           'processing': False
+    #         }
+    #       }
+      
