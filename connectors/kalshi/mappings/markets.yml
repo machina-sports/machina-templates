@@ -10,7 +10,8 @@ mappings:
           {
             'id': market.get('ticker', ''),
             'eventId': market.get('event_ticker', ''),
-            'title': market.get('title', ''),
+            'title': market.get('ticker', '') + ' - ' + market.get('title', ''),
+            'originalTitle': market.get('title', ''),
             'subtitle': market.get('subtitle', ''),
             'yesSubTitle': market.get('yes_sub_title', ''),
             'noSubTitle': market.get('no_sub_title', ''),
@@ -78,7 +79,8 @@ mappings:
           {
             'id': event.get('event_ticker', ''),
             'seriesId': event.get('series_ticker', ''),
-            'title': event.get('title', ''),
+            'title': event.get('event_ticker', '') + ' - ' + event.get('title', ''),
+            'originalTitle': event.get('title', ''),
             'subtitle': event.get('sub_title', ''),
             'category': event.get('category', ''),
             'mutuallyExclusive': event.get('mutually_exclusive', False),
@@ -87,8 +89,8 @@ mappings:
             'strikePeriod': event.get('strike_period', ''),
             'collateralReturnType': event.get('collateral_return_type', ''),
             'metadata': {
-              'price_level_structure': event.get('price_level_structure', ''),
-              'markets_count': len(event.get('markets', [])) if 'markets' in event else 0
+              'id': event.get('event_ticker', ''),
+              'seriesId': event.get('series_ticker', '')
             }
           }
           for event in $.get('events', [])
@@ -103,7 +105,8 @@ mappings:
         [
           {
             'id': series.get('ticker', ''),
-            'title': series.get('title', ''),
+            'title': series.get('ticker', '') + ' - ' + series.get('title', ''),
+            'originalTitle': series.get('title', ''),
             'category': series.get('category', ''),
             'frequency': series.get('frequency', ''),
             'feeType': series.get('fee_type', ''),

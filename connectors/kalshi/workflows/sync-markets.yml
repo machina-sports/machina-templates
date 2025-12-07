@@ -9,6 +9,7 @@ workflow:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
     series_ticker: $.get('series_ticker', '')
+    event_ticker: $.get('event_ticker', '')
   outputs:
     workflow-status: $.get('workflow-status', 'skipped')
   tasks:
@@ -22,6 +23,7 @@ workflow:
         command: get-markets
       inputs:
         series_ticker: $.get('series_ticker')
+        event_ticker: $.get('event_ticker')
       outputs:
         cursor: $.get('cursor', 0)
         markets: $.get('markets', [])

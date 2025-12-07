@@ -1690,7 +1690,13 @@
                         }
                     },
                     {
-                        "$ref": "#/components/parameters/SeriesTickerQuery"
+                        "name": "series_ticker",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by series ticker",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "name": "min_close_ts",

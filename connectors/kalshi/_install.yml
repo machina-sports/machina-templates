@@ -40,3 +40,6 @@ datasets:
 
   - type: workflow
     path: workflows/sync-series.yml
+
+  - type: workflow
+    path: workflows/sync-events.yml
