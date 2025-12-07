@@ -22,30 +22,30 @@ setup:
     - Kalshi-API-Key
     - Kalshi-User-Id
   status: available
-  value: "connectors/kalshi"
+  value: connectors/kalshi
   version: 0.2.0
 
 datasets:
-  - type: "connector"
-    path: "kalshi.yml"
+  - type: connector
+    path: scripts/kalshi-api.yml
 
-  - type: "workflow"
-    path: "workflows/sync-events.yml"
+  # - type: workflow
+  #   path: workflows/sync-events.yml
 
-  - type: "workflow"
-    path: "workflows/sync-markets.yml"
+  - type: workflow
+    path: workflows/sync-markets.yml
 
-  - type: "workflow"
-    path: "workflows/sync-series.yml"
+  - type: workflow
+    path: workflows/sync-series.yml
 
-  - type: "workflow"
-    path: "workflows/sync-trades.yml"
+  # - type: workflow
+  #   path: workflows/sync-trades.yml
 
-  - type: "workflow"
-    path: "workflows/sync-fills.yml"
+  # - type: workflow
+  #   path: workflows/sync-fills.yml
 
-  - type: "workflow"
-    path: "workflows/sync-settlements.yml"
+  # - type: workflow
+  #   path: workflows/sync-settlements.yml
 
-  - type: "mappings"
-    path: "mappings/markets.yml"
+  # - type: mappings
+  #   path: mappings/markets.yml
