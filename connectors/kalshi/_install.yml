@@ -29,14 +29,17 @@ datasets:
   - type: connector
     path: scripts/kalshi-api.yml
 
-  # - type: workflow
-  #   path: workflows/sync-events.yml
+  - type: workflow
+    path: _folders.yml
 
   - type: workflow
     path: workflows/sync-markets.yml
 
   - type: workflow
     path: workflows/sync-series.yml
+
+  # - type: workflow
+  #   path: workflows/sync-events.yml
 
   # - type: workflow
   #   path: workflows/sync-trades.yml
