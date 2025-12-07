@@ -63,14 +63,14 @@ workflow:
       condition: $.get('market_data') is not None and len($.get('market_data', [])) > 0
       config:
         action: bulk-update
-        embed-selector: $.get('title')
+        embed-selector: $.get('name')
         embed-vector: true
         force-update: $.get('force-update')
       connector:
         name: machina-ai
         command: invoke_embedding
         model: text-embedding-3-small
-      document_name: "'kalshi-market'"
+      document_name: "'kalshi-markets'"
       documents:
         items: $.get('parsedItems', [])
       inputs:

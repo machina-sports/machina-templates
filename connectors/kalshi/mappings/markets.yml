@@ -92,7 +92,10 @@ mappings:
               for source in series.get('settlement_sources', [])
             ],
             'additionalProhibitions': series.get('additional_prohibitions', []),
-            'metadata': series.get('product_metadata', {})
+            'metadata': {
+              'id': series.get('ticker', ''),
+              'category': series.get('category', '')
+            }
           }
           for series in $.get('series', [])
         ]
