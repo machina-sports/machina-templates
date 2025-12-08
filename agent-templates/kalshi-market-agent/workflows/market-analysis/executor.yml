@@ -1,7 +1,7 @@
 workflow:
-  name: kalshi-prediction-executor
-  title: Kalshi - Prediction Executor
-  description: Workflow to execute a prediction.
+  name: kalshi-market-analysis-executor
+  title: Kalshi - Market Analysis Executor
+  description: Workflow to execute a market analysis.
   context-variables:
     debugger:
       enabled: true
@@ -139,7 +139,7 @@ workflow:
       connector:
         command: invoke_prompt
         name: google-genai
-        model: gemini-2.5-flash
+        model: gemini-3-pro-preview
         location: global
         provider: vertex_ai
       inputs:
@@ -148,6 +148,7 @@ workflow:
       outputs:
         analysis: "$.get('analysis')"
         summary: "$.get('summary')"
+        selected_market: "$.get('selected_market')"
 
     # kalshi-prediction-update
     - type: document
@@ -158,13 +159,17 @@ workflow:
         action: update
         embed-vector: false
         force-update: true
+      filters:
+        metadata.eventCode: $.get('event_code')
       documents:
         kalshi-market-analysis: |
           {
+            "title": f"Kalshi Market Analysis - {$.get('event_code') or $.get('event_ticker')}",
             "analysis": $.get('analysis'),
             "summary": $.get('summary'),
-            "metadata": {
-              "eventCode": $.get('event_code')
-            }
+            "selected": $.get('selected_market')
           }
+      metadata:
+        eventCode: $.get('event_code')
+        eventTicker: $.get('event_ticker')
       

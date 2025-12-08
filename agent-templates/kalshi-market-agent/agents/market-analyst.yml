@@ -10,29 +10,29 @@ agent:
   workflows:
   
     # Event consumer
-    - name: kalshi-prediction-consumer
-      description: Select Upcoming Prediction
+    - name: kalshi-market-analysis-consumer
+      description: Consume Upcoming Market Analysis
       inputs:
         event_code: $.get('event_code')
       outputs:
-        prediction_document_id: $.get('event_document_id')
-        prediction_exists: $.get('workflow-status', 'skipped') == 'executed'
+        market_analysis_document_id: $.get('event_document_id')
+        market_analysis_exists: $.get('workflow-status', 'skipped') == 'executed'
 
     # Event executor
-    - name: kalshi-prediction-executor
-      description: Execute Prediction
-      condition: $.get('prediction_exists') is True
+    - name: kalshi-market-analysis-executor
+      description: Execute Market Analysis Executor
+      condition: $.get('market_analysis_exists') is True
       inputs:
-        document_id: $.get('prediction_document_id')
+        document_id: $.get('market_analysis_document_id')
       outputs:
-        prediction-executor-status: $.get('workflow-status', 'skipped') == 'executed'
+        market-analysis-executor-status: $.get('workflow-status', 'skipped') == 'executed'
 
     # Event update
-    - name: kalshi-prediction-update
-      description: Kalshi - Prediction Update
-      condition: $.get('prediction_exists') is True
+    - name: kalshi-market-analysis-update
+      description: Update Market Analysis Executor
+      condition: $.get('market_analysis_exists') is True
       inputs:
-        document_id: $.get('prediction_document_id')
-        is_prediction_finished: $.get('is_prediction_finished', False)
+        document_id: $.get('market_analysis_document_id')
+        is_market_analysis_finished: $.get('is_market_analysis_finished', False)
       outputs:
-        prediction-update-status: $.get('workflow-status', 'skipped') == 'executed'
+        market-analysis-update-status: $.get('workflow-status', 'skipped') == 'executed'

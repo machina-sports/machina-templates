@@ -20,6 +20,9 @@ datasets:
   
   # Agent
   - type: agent
+    path: agents/combo-analyst.yml
+
+  - type: agent
     path: agents/market-analyst.yml
   
   # Prompts
@@ -37,15 +40,18 @@ datasets:
   # Workflows
   - type: workflow
     path: workflows/event-matcher.yml
+    
+  - type: workflow
+    path: workflows/combo-analysis/executor.yml
 
   - type: workflow
-    path: workflows/prediction-consumer.yml
+    path: workflows/market-analysis/consumer.yml
 
   - type: workflow
-    path: workflows/prediction-executor.yml
+    path: workflows/market-analysis/executor.yml
 
   - type: workflow
-    path: workflows/prediction-update.yml
+    path: workflows/market-analysis/update.yml
   
   - type: workflow
     path: _folders.yml

@@ -1,7 +1,7 @@
 workflow:
-  name: kalshi-prediction-consumer
-  title: Kalshi - Prediction Consumer
-  description: Workflow to consume prediction data from Kalshi API and save to Machina.
+  name: kalshi-market-analysis-consumer
+  title: Kalshi - Market Analysis Consumer
+  description: Workflow to consume market analysis data from Kalshi API and save to Machina.
   context-variables:
     debugger:
       enabled: true

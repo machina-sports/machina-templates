@@ -26,12 +26,23 @@ workflow:
               "icon": "folder",
               "items": [
                 {
-                  "name": "event-prediction",
-                  "title": "Event Prediction",
-                  "description": "Kalshi prediction event data",
-                  "category": "Event Prediction",
+                  "name": "kalshi-combo-analysis",
+                  "title": "Combo Analysis",
+                  "description": "Kalshi prediction combo analysis data",
+                  "category": "Combo Analysis",
                   "metadata": {
-                    "name": ["event-prediction"]
+                    "name": ["kalshi-combo-analysis"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "kalshi-market-analysis",
+                  "title": "Market Analysis",
+                  "description": "Kalshi prediction market analysis data",
+                  "category": "Market Analysis",
+                  "metadata": {
+                    "name": ["kalshi-market-analysis"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"

@@ -1,0 +1,18 @@
+agent:
+  name: kalshi-combo-analyst
+  title: Kalshi Combo Analyst
+  description: Monitors Kalshi sports combo markets and provides analysis on trending events and probabilities. Focuses on sports-related prediction markets.
+  context:
+    config-frequency: 10
+    status: "inactive"
+  context-agent:
+    seasonId: "$.get('seasonId')"
+  workflows:
+
+    # Event executor
+    - name: kalshi-combo-analysis-executor
+      description: Execute Combo Analysis Executor
+      inputs:
+        seasonId: $.get('seasonId')
+      outputs:
+        combo-analysis-executor-status: $.get('workflow-status', 'skipped') == 'executed'
