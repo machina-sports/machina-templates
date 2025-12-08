@@ -306,6 +306,74 @@ def summarize_message_data(request_data):
         }
         return stat_abbreviations.get(stat_label, stat_label)
     
+    def extract_goals_from_timeline(event):
+        """Extract goals (score_change events) from schema:timeline separated by home/away."""
+        timeline = event.get("schema:timeline", [])
+        print(f"[DEBUG] schema:timeline type: {type(timeline)}, length: {len(timeline) if isinstance(timeline, list) else 'N/A'}")
+        
+        goals_home = []
+        goals_away = []
+        
+        if isinstance(timeline, list):
+            for timeline_idx, action in enumerate(timeline):
+                if isinstance(action, dict):
+                    # Check if this is a score_change action
+                    action_type = action.get("type") or action.get("@type")
+                    is_score_change = (
+                        action_type == "score_change" or 
+                        (isinstance(action_type, str) and "score-change" in action_type.lower())
+                    )
+                    
+                    if is_score_change:
+                        print(f"[DEBUG] Found score_change at timeline index {timeline_idx}")
+                        
+                        # Get competitor (home or away)
+                        competitor = action.get("competitor", "")
+                        print(f"[DEBUG] Competitor: {competitor}")
+                        
+                        # Get time of goal
+                        minutes = action.get("sport:minutesElapsed", "")
+                        print(f"[DEBUG] Minutes elapsed: {minutes}")
+                        
+                        # Get all participants (scorer + assisters)
+                        participants = []
+                        participation = action.get("sport:participation", [])
+                        if isinstance(participation, list) and len(participation) > 0:
+                            for p_idx, p in enumerate(participation):
+                                if isinstance(p, dict):
+                                    participation_by = p.get("sport:participationBy", {})
+                                    if isinstance(participation_by, dict):
+                                        player_label = participation_by.get("sport:label", "")
+                                        if player_label:
+                                            participants.append(player_label)
+                                            print(f"[DEBUG] Participant {p_idx}: {player_label}")
+                        
+                        # Format goal entry: "Minutes' Player1 (assist: Player2, ...)"
+                        goal_entry = ""
+                        
+                        if minutes:
+                            goal_entry = f"{minutes}'"
+                        
+                        if len(participants) > 0:
+                            if goal_entry:
+                                goal_entry += f" {participants[0]}"
+                            else:
+                                goal_entry = participants[0]
+                            # Add assisters if there are more than 1 participant
+                            if len(participants) > 1:
+                                assisters = ", ".join(participants[1:])
+                                goal_entry += f" (assist: {assisters})"
+                        
+                        print(f"[DEBUG] Goal entry: {goal_entry}")
+                        
+                        # Add to appropriate list
+                        if competitor.lower() == "home":
+                            goals_home.append(goal_entry)
+                        elif competitor.lower() == "away":
+                            goals_away.append(goal_entry)
+        
+        return goals_home, goals_away
+    
     def format_event_summary(event):
         """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel | Statistics"""
         try:
@@ -414,6 +482,19 @@ def summarize_message_data(request_data):
                         stats_away_str = " | ".join(stats_away)
                         parts.append(f"[Away: {stats_away_str}]")
                         print(f"[DEBUG] Added Away stats: {stats_away_str}")
+            
+            # Timeline - Extract goals from schema:timeline
+            goals_home, goals_away = extract_goals_from_timeline(event)
+            if goals_home or goals_away:
+                if goals_home:
+                    goals_home_str = " | ".join(goals_home)
+                    parts.append(f"[Home Goals: {goals_home_str}]")
+                    print(f"[DEBUG] Added Home goals: {goals_home_str}")
+                
+                if goals_away:
+                    goals_away_str = " | ".join(goals_away)
+                    parts.append(f"[Away Goals: {goals_away_str}]")
+                    print(f"[DEBUG] Added Away goals: {goals_away_str}")
             
             return " | ".join(parts)
             
