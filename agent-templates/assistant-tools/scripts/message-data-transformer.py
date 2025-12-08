@@ -273,8 +273,41 @@ def summarize_message_data(request_data):
                 pass
             return None
     
+    def get_stat_abbreviation(stat_label):
+        """Map statistic labels to abbreviations for compact display."""
+        stat_abbreviations = {
+            "Ball Possession": "Poss",
+            "Cards Given": "Cd",
+            "Corner Kicks": "Cor",
+            "Fouls": "Fouls",
+            "Free Kicks": "FK",
+            "Goal Kicks": "GK",
+            "Injuries": "Inj",
+            "Offsides": "Off",
+            "Red Cards": "Cd R",
+            "Shots Blocked": "SB",
+            "Shots Off Target": "SOT",
+            "Shots On Target": "SOnT",
+            "Shots Saved": "SS",
+            "Shots Total": "ST",
+            "Substitutions": "Sub",
+            "Throw Ins": "TI",
+            "Yellow Cards": "Cd Y",
+            "Yellow Red Cards": "Cd YR",
+            "Tackles": "Tack",
+            "Interceptions": "Int",
+            "Clearances": "Clear",
+            "Dribbles": "Drib",
+            "Passes": "Pass",
+            "Pass Accuracy": "PA%",
+            "Crosses": "Cross",
+            "Touches": "Touch",
+            "Possession": "Poss",
+        }
+        return stat_abbreviations.get(stat_label, stat_label)
+    
     def format_event_summary(event):
-        """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel"""
+        """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel | Statistics"""
         try:
             # Extract teams
             competitors = event.get("sport:competitors", [])
@@ -331,6 +364,56 @@ def summarize_message_data(request_data):
                     channel_name = channel.get("sport:channelName")
                     if channel_name:
                         parts.append(f"📺 {channel_name}")
+            
+            # Statistics summary (schema:statistics is an array of team statistics objects)
+            statistics = event.get("schema:statistics", [])
+            print(f"[DEBUG] schema:statistics type: {type(statistics)}, length: {len(statistics) if isinstance(statistics, (list, dict)) else 'N/A'}")
+            
+            if isinstance(statistics, list) and len(statistics) > 0:
+                stats_home = []
+                stats_away = []
+                
+                # Iterate through each team's statistics object (home=idx 0, away=idx 1)
+                for idx, team_stat in enumerate(statistics):
+                    team_type = "Home" if idx == 0 else "Away"
+                    print(f"[DEBUG] Processing team_stat[{idx}] ({team_type}): {type(team_stat)}")
+                    
+                    if isinstance(team_stat, dict):
+                        # Get the sport:statistics array from this team
+                        sport_stats_array = team_stat.get("sport:statistics", [])
+                        print(f"[DEBUG] sport:statistics array type: {type(sport_stats_array)}, length: {len(sport_stats_array) if isinstance(sport_stats_array, list) else 'N/A'}")
+                        
+                        # Choose which array to append to (home or away)
+                        target_stats = stats_home if idx == 0 else stats_away
+                        
+                        if isinstance(sport_stats_array, list):
+                            # Iterate through each statistic in the array
+                            for stat_idx, stat in enumerate(sport_stats_array):
+                                print(f"[DEBUG] Processing stat[{stat_idx}]: {type(stat)}")
+                                if isinstance(stat, dict):
+                                    stat_label = stat.get("sport:statLabel", "")
+                                    stat_value = stat.get("sport:statValue", "")
+                                    stat_type = stat.get("sport:statType", "")
+                                    print(f"[DEBUG] Stat: label='{stat_label}', value='{stat_value}', type='{stat_type}'")
+                                    
+                                    # Include all stats (including zeros)
+                                    if stat_label and stat_value is not None:
+                                        # Use abbreviation for compact display
+                                        stat_abbr = get_stat_abbreviation(stat_label)
+                                        target_stats.append(f"{stat_abbr}: {stat_value}")
+                                        print(f"[DEBUG] Added {team_type} stat: {stat_abbr}: {stat_value}")
+                
+                # Format and append home and away statistics
+                if stats_home or stats_away:
+                    if stats_home:
+                        stats_home_str = " | ".join(stats_home)
+                        parts.append(f"[Home: {stats_home_str}]")
+                        print(f"[DEBUG] Added Home stats: {stats_home_str}")
+                    
+                    if stats_away:
+                        stats_away_str = " | ".join(stats_away)
+                        parts.append(f"[Away: {stats_away_str}]")
+                        print(f"[DEBUG] Added Away stats: {stats_away_str}")
             
             return " | ".join(parts)
             
