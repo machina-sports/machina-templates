@@ -48,8 +48,8 @@ workflow:
         search-vector: false
         search-sorters: ["updated", -1]
       filters:
-        metadata.eventCode: "{'$exists': False}"
         metadata.seriesId: $.get('seriesId')
+        value.eventCode: "{'$exists': False}"
         # value.isOpenForBetting: "{'$eq': True}"
       inputs:
         name: "'kalshi-events'"
@@ -119,7 +119,7 @@ workflow:
         kalshi-events: |
           {
             **($.get('match_item', {}).get('market', {}).get('value', {}) or {}),
-            'event_code': $.get('match_item', {}).get('event_code', ''),
+            'eventCode': $.get('match_item', {}).get('event_code', ''),
             'match_confidence': $.get('match_item', {}).get('confidence', 0.0),
             'matched_at': datetime.utcnow().isoformat()
           }

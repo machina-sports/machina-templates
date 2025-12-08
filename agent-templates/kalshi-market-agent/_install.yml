@@ -26,6 +26,10 @@ datasets:
   - type: prompts
     path: prompts/market-analysis.yml
 
+  # Mappings
+  - type: mappings
+    path: mappings/kalshi-markets-summary.yml
+
   # Scripts
   - type: connector
     path: scripts/market-event-matcher.yml

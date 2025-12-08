@@ -30,6 +30,7 @@ workflow:
         document-exists: len($.get('documents', [])) > 0
         document-selected: $.get('documents', [])[0] if len($.get('documents', [])) > 0 else None
         document-value: $.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else None
+        event_code: $.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None
         event_competititors: |
           [
             competitor.get('@id')
@@ -49,7 +50,6 @@ workflow:
       filters:
         value.sport:competitors.@id: "{'$in': $.get('event_competititors')}"
         value.sport:status: "{'$in': ['closed', 'ended', 'FT']}"
-        value.sport:competition.@id: $.get('competition_id')
       inputs:
         name: "{'$in': ['sport:Event']}"
       outputs:
@@ -75,7 +75,55 @@ workflow:
       inputs:
         events: $.get('event_list_parsed')
       outputs:
+        past_events_ids: $.get('events_ids')
         past_events_summary: $.get('events_summary')
+
+    # load-kalshi-events-by-past-event-codes
+    - type: document
+      name: load-kalshi-events-by-event-codes
+      description: Load kalshi-events that reference the past events by eventCode.
+      condition: $.get('past_events_ids') is not None and len($.get('past_events_ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        value.eventCode: "{'$in': [$.get('event_code')]}"
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        kalshi_events: $.get('documents', [])
+        kalshi_events_count: len($.get('documents', []))
+        kalshi_events_exists: len($.get('documents', [])) > 0
+        event_ticker: $.get('documents', [])[0].get('metadata', {}).get('id') if $.get('documents') else None
+
+    # 1 load-markets
+    - type: connector
+      name: load-markets
+      description: Get markets from Kalshi API
+      condition: $.get('event_ticker') is not None
+      connector:
+        name: kalshi
+        command: get-markets
+      inputs:
+        event_ticker: $.get('event_ticker')
+      outputs:
+        cursor: $.get('cursor', 0)
+        markets: $.get('markets', [])
+
+    # mapping-markets-summary
+    - type: mapping
+      name: kalshi-markets-summary
+      description: Seleciona campos principais dos markets.
+      condition: $.get('markets') is not None and len($.get('markets', [])) > 0
+      inputs:
+        markets: $.get('markets')
+      outputs:
+        markets_summary: $.get('markets_summary')
+        markets_selected: $.get('markets_selected')
+        markets_tickers: $.get('markets_tickers')
+        markets_count: $.get('markets_count')
 
     ## CONTENT STORIES FROM PAST EVENTS
 
