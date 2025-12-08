@@ -11,19 +11,54 @@ def match_markets_to_events(request_data):
         # Remove accents and lowercase
         return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
     
+    def looks_like_match_title(text):
+        t = normalize(text)
+        # Simple heuristics to catch matchup strings even when participants are missing
+        return any(pat in t for pat in [" vs ", " v ", " x "]) or (" - " in t and " vs " in t.replace("-", " - "))
+
+    def strip_code_prefix(text):
+        """Remove leading code/ticker before the first ' - ' to avoid polluting team names."""
+        if not text or " - " not in text:
+            return text
+        parts = text.split(" - ", 1)
+        return parts[1].strip() if len(parts) == 2 else text
+
+    def extract_teams_from_title(text):
+        """
+        Best-effort team extraction when participants are missing.
+        Splits on common separators: vs, v, x, '-', '–'.
+        """
+        if not text:
+            return []
+        t = normalize(strip_code_prefix(text))
+        # Replace separators with a common token
+        for sep in [" vs ", " v ", " x ", " - ", " – "]:
+            t = t.replace(sep, "|")
+        parts = [p.strip() for p in t.split("|") if p.strip()]
+        # Keep only up to 3 to avoid noise
+        return parts[:3]
+
     def is_outright_market(market):
         """Check if this is an outright/season market rather than a match market"""
         m_val = market.get("value", {})
-        m_title = normalize(m_val.get("title", "") or market.get("title", ""))
+        # Prefer originalTitle/subtitle for matchup text; fallback to title
+        m_title = m_val.get("title", "") or market.get("title", "")
+        m_title_primary = m_val.get("originalTitle", "") or m_val.get("subtitle", "") or m_title
+        m_title_clean = strip_code_prefix(m_title_primary or m_title)
+        m_title_norm = normalize(m_title)
+        m_alt_title = m_val.get("originalTitle", "") or m_val.get("subtitle", "")
+        m_alt_title_norm = normalize(m_alt_title)
         
         # Check for outright keywords
         outright_keywords = ['outright', 'winner', 'champion', 'top scorer', 'relegation', 'vencedor']
-        if any(keyword in m_title for keyword in outright_keywords):
+        if any(keyword in m_title_norm for keyword in outright_keywords):
             return True
         
-        # Check if there are participants (matches have teams, outrights don't always)
+        # If participants are missing, but the title looks like a matchup, treat as match market
         participants = m_val.get('participants', [])
         if len(participants) < 2:
+            if looks_like_match_title(m_title) or looks_like_match_title(m_alt_title):
+                return False
             return True
             
         return False
@@ -46,36 +81,59 @@ def match_markets_to_events(request_data):
     
     print(f"LOG: Processing {len(match_markets)} match markets against {len(events)} events")
     
+    # Check if any event carries a date (some Kalshi events have none)
+    def parse_date_safe(date_str):
+        if not date_str:
+            return None
+        try:
+            clean = date_str.replace('ZT', 'T').replace('Z', '+00:00')
+            return datetime.fromisoformat(clean)
+        except Exception:
+            return None
+
+    event_dates_available = False
+    for ev in events:
+        ev_val = ev.get("value", {}) or {}
+        ev_date = parse_date_safe(ev_val.get("schema:startDate", "") or ev_val.get("startDate", ""))
+        if ev_date:
+            event_dates_available = True
+            break
+
     # Debug: print all events received
     for idx, event in enumerate(events[:5]):  # Show first 5
         e_val = event.get("value", {})
         e_title = e_val.get("title", "") or event.get("title", "")
-        e_date = e_val.get("schema:startDate", "")
-        print(f"LOG: Event {idx}: '{e_title}' | Date: {e_date}")
+        e_date = e_val.get("schema:startDate", "") or e_val.get("startDate", "")
+        print(f"LOG: Event {idx}: '{e_title}' | Date: {e_date or 'N/A'}")
+
+    if not event_dates_available:
+        print("LOG: No event dates detected — date score will be ignored.")
 
     matches = []
 
     for m_idx, market in enumerate(match_markets):
         m_val = market.get("value", {})
         m_title = m_val.get("title", "") or market.get("title", "")
+        m_title_primary = m_val.get("originalTitle", "") or m_val.get("subtitle", "") or m_title
+        m_title_clean = strip_code_prefix(m_title_primary or m_title)
         m_comp = m_val.get("competition", "")
-        m_search = normalize(f"{m_title} {m_comp}")
+        m_search = normalize(f"{m_title_clean} {m_comp}")
         
         # Date parsing (Market)
         m_date_str = m_val.get("startDate") or m_val.get("startDateUtc", "")
-        m_date = None
-        if m_date_str:
-            try:
-                clean = m_date_str.replace('ZT', 'T').replace('Z', '+00:00')
-                m_date = datetime.fromisoformat(clean)
-            except Exception as e:
-                print(f"LOG: Market date parse error: {e}")
+        m_date = parse_date_safe(m_date_str)
+        if m_date_str and m_date is None:
+            print(f"LOG: Market date parse error for '{m_title}': {m_date_str}")
 
         print(f"\nLOG: === Market {m_idx}: '{m_title}' (Date: {m_date}, Comp: {m_comp}) ===")
         
         # Extract Market Teams (Normalized)
         m_teams_raw = m_val.get('participants', [])
         m_teams = [normalize(t.get('name', '')) for t in m_teams_raw if isinstance(t, dict)]
+        if not m_teams:
+            # Try to derive from title/originalTitle/subtitle for Kalshi formats
+            derived = extract_teams_from_title(m_title_primary) or extract_teams_from_title(m_val.get("originalTitle", "")) or extract_teams_from_title(m_val.get("subtitle", "")) or extract_teams_from_title(m_title)
+            m_teams = derived
         print(f"LOG: Market Teams: {m_teams}")
 
         best_event = None
@@ -88,26 +146,21 @@ def match_markets_to_events(request_data):
             
             # Date parsing (Event)
             e_date_str = e_val.get("schema:startDate", "") or e_val.get("startDate", "")
-            e_date = None
-            if e_date_str:
-                try:
-                    clean = e_date_str.replace('ZT', 'T').replace('Z', '+00:00')
-                    e_date = datetime.fromisoformat(clean)
-                except:
-                    pass
+            e_date = parse_date_safe(e_date_str)
 
             # 1. Name Score (Normalized)
             name_score = difflib.SequenceMatcher(None, m_search, e_search).ratio()
             
             # 2. Date Score
             date_score = 0.0
-            if m_date and e_date:
-                dt = m_date - e_date
-                hours_diff = abs(dt.total_seconds()) / 3600
-                if hours_diff < 24: # 24h tolerance
-                    date_score = 1.0
-            elif not m_date and not e_date:
-                date_score = 0.5
+            if event_dates_available:
+                if m_date and e_date:
+                    dt = m_date - e_date
+                    hours_diff = abs(dt.total_seconds()) / 3600
+                    if hours_diff < 24: # 24h tolerance
+                        date_score = 1.0
+                elif not m_date and not e_date:
+                    date_score = 0.5
 
             # 3. Participant/Team Check (Normalized)
             e_teams_raw = e_val.get('sport:competitors', []) or e_val.get('sport:competitor', []) or e_val.get('competitors', [])
@@ -130,13 +183,19 @@ def match_markets_to_events(request_data):
                 team_score = matches_found / max(len(m_teams), 1)
 
             # Total Confidence
-            if team_score > 0:
-                conf = (team_score * 0.5) + (name_score * 0.3) + (date_score * 0.2)
+            if event_dates_available:
+                if team_score > 0:
+                    conf = (team_score * 0.5) + (name_score * 0.3) + (date_score * 0.2)
+                else:
+                    conf = (name_score * 0.7) + (date_score * 0.3)
             else:
-                conf = (name_score * 0.7) + (date_score * 0.3)
+                if team_score > 0:
+                    conf = (team_score * 0.6) + (name_score * 0.4)
+                else:
+                    conf = name_score
 
             # Log ALL comparisons with details (for debugging)
-            print(f"LOG:   Event {e_idx}: '{e_title}' | Conf: {conf:.2f} (Name: {name_score:.2f}, Team: {team_score:.2f}, Date: {date_score})")
+            print(f"LOG:   Event {e_idx}: '{e_title}' | Conf: {conf:.2f} (Name: {name_score:.2f}, Team: {team_score:.2f}, Date: {date_score if event_dates_available else 'ignored'})")
             if e_teams:
                 print(f"LOG:     Event Teams: {e_teams}")
             

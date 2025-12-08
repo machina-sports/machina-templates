@@ -10,7 +10,7 @@ workflow:
   inputs:
     category: $.get('category', 'Sports')
     force-update: ($.get('force-update') == 'true')
-    include_product_metadata: $.get('include_product_metadata', false)
+    include_product_metadata: $.get('include_product_metadata', False)
     tags: $.get('tags', 'Soccer')
   outputs:
     workflow-status: $.get('workflow-status', 'skipped')

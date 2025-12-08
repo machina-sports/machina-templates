@@ -28,9 +28,12 @@ datasets:
 
   # Scripts
   - type: connector
-    path: scripts/past_events.yml
+    path: scripts/market-event-matcher.yml
 
   # Workflows
+  - type: workflow
+    path: workflows/event-matcher.yml
+
   - type: workflow
     path: workflows/prediction-consumer.yml
 

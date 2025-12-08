@@ -3696,67 +3696,94 @@
                     {
                         "name": "limit",
                         "in": "query",
-                        "schema": {"type": "integer", "default": 100}
+                        "schema": {
+                            "type": "integer",
+                            "default": 100
+                        }
                     },
                     {
                         "name": "cursor",
                         "in": "query",
-                        "schema": {"type": "string"}
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "name": "event_ticker",
                         "in": "query",
-                        "schema": {"type": "string"}
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "name": "series_ticker",
                         "in": "query",
-                        "schema": {"type": "string"}
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "name": "min_created_ts",
                         "in": "query",
-                        "schema": {"type": "integer"}
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "max_created_ts",
                         "in": "query",
-                        "schema": {"type": "integer"}
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "max_close_ts",
                         "in": "query",
-                        "schema": {"type": "integer"}
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "min_close_ts",
                         "in": "query",
-                        "schema": {"type": "integer"}
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "min_settled_ts",
                         "in": "query",
-                        "schema": {"type": "integer"}
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "max_settled_ts",
                         "in": "query",
-                        "schema": {"type": "integer"}
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "status",
                         "in": "query",
-                        "schema": {"type": "string"}
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "name": "tickers",
                         "in": "query",
-                        "schema": {"type": "string"}
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
                         "name": "mve_filter",
                         "in": "query",
-                        "schema": {"type": "string"}
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {

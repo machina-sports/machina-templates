@@ -59,6 +59,8 @@ mappings:
             'rulesPrimary': market.get('rules_primary', ''),
             'rulesSecondary': market.get('rules_secondary', ''),
             'settlementTimerSeconds': market.get('settlement_timer_seconds', 0),
+            'settlementValue': market.get('settlement_value', 0),
+            'settlementValueDollars': market.get('settlement_value_dollars', ''),
             'strikeType': market.get('strike_type', ''),
             'customStrike': market.get('custom_strike', {}),
             'metadata': {
