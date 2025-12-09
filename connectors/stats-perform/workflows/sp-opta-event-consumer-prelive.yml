@@ -53,7 +53,7 @@ workflow:
         value.sport:status: "'Fixture'"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -76,7 +76,7 @@ workflow:
         value.sport:status: "'Fixture'"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
