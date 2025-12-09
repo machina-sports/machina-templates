@@ -19,44 +19,6 @@ datasets:
   - type: agent
     path: agents/chat-executor.yml
 
-  # competitions
-
-  - type: agent
-    path: competitions/bw-markets-br.yml
-
-  - type: agent
-    path: competitions/bw-markets-de.yml
-
-  - type: agent
-    path: competitions/bw-markets-en.yml
-
-  - type: agent
-    path: competitions/bw-markets-es.yml
-
-  - type: agent
-    path: competitions/bw-markets-it.yml
-
-  - type: agent
-    path: competitions/bw-markets-uefa.yml
-
-  - type: agent
-    path: competitions/sr-schedule-br.yml
-
-  - type: agent
-    path: competitions/sr-schedule-de.yml
-
-  - type: agent
-    path: competitions/sr-schedule-en.yml
-
-  - type: agent
-    path: competitions/sr-schedule-es.yml
-
-  - type: agent
-    path: competitions/sr-schedule-it.yml
-
-  - type: agent
-    path: competitions/sr-schedule-uefa.yml
-
   # mappings
 
   - type: mappings
