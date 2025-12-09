@@ -28,11 +28,17 @@ datasets:
   - type: "connector"
     path: "bwin.yml" 
 
+  - type: "connector"
+    path: "scripts/odds-delta.yml"
+
   - type: "workflow"
     path: "workflows/sync-markets.yml"
 
   - type: "workflow"
     path: "workflows/sync-odds.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-variation.yml"
 
   - type: "mappings"
     path: "mappings/markets.yml"
