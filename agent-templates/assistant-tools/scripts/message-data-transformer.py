@@ -273,8 +273,185 @@ def summarize_message_data(request_data):
                 pass
             return None
     
+    def get_stat_abbreviation(stat_label):
+        """Map statistic labels to abbreviations for compact display."""
+        stat_abbreviations = {
+            "Ball Possession": "Poss",
+            "Cards Given": "Cd",
+            "Corner Kicks": "Cor",
+            "Fouls": "Fouls",
+            "Free Kicks": "FK",
+            "Goal Kicks": "GK",
+            "Injuries": "Inj",
+            "Offsides": "Off",
+            "Red Cards": "Cd R",
+            "Shots Blocked": "SB",
+            "Shots Off Target": "SOT",
+            "Shots On Target": "SOnT",
+            "Shots Saved": "SS",
+            "Shots Total": "ST",
+            "Substitutions": "Sub",
+            "Throw Ins": "TI",
+            "Yellow Cards": "Cd Y",
+            "Yellow Red Cards": "Cd YR",
+            "Tackles": "Tack",
+            "Interceptions": "Int",
+            "Clearances": "Clear",
+            "Dribbles": "Drib",
+            "Passes": "Pass",
+            "Pass Accuracy": "PA%",
+            "Crosses": "Cross",
+            "Touches": "Touch",
+            "Possession": "Poss",
+        }
+        return stat_abbreviations.get(stat_label, stat_label)
+    
+    def extract_cards_from_timeline(event):
+        """Extract cards (yellow_card, red_card events) from schema:timeline separated by home/away."""
+        timeline = event.get("schema:timeline", [])
+        print(f"[DEBUG] Extracting cards from schema:timeline")
+        
+        cards_home_yellow = []
+        cards_home_red = []
+        cards_away_yellow = []
+        cards_away_red = []
+        
+        if isinstance(timeline, list):
+            for timeline_idx, action in enumerate(timeline):
+                if isinstance(action, dict):
+                    # Check if this is a card action
+                    action_type = action.get("type") or action.get("@type")
+                    is_yellow_card = (
+                        action_type == "yellow_card" or 
+                        (isinstance(action_type, str) and "yellow" in action_type.lower())
+                    )
+                    is_red_card = (
+                        action_type == "red_card" or 
+                        (isinstance(action_type, str) and "red" in action_type.lower())
+                    )
+                    
+                    if is_yellow_card or is_red_card:
+                        card_type = "yellow" if is_yellow_card else "red"
+                        print(f"[DEBUG] Found {card_type}_card at timeline index {timeline_idx}")
+                        
+                        # Get competitor (home or away)
+                        competitor = action.get("competitor", "")
+                        print(f"[DEBUG] Competitor: {competitor}")
+                        
+                        # Get time of card
+                        minutes = action.get("sport:minutesElapsed", "")
+                        print(f"[DEBUG] Minutes elapsed: {minutes}")
+                        
+                        # Get player who received card
+                        player_name = ""
+                        participation = action.get("sport:participation", [])
+                        if isinstance(participation, list) and len(participation) > 0:
+                            first_player = participation[0]
+                            if isinstance(first_player, dict):
+                                participation_by = first_player.get("sport:participationBy", {})
+                                if isinstance(participation_by, dict):
+                                    player_name = participation_by.get("sport:label", "")
+                        
+                        print(f"[DEBUG] Player: {player_name}")
+                        
+                        # Format card entry: "Minutes' PlayerName"
+                        card_entry = ""
+                        
+                        if minutes:
+                            card_entry = f"{minutes}'"
+                        
+                        if player_name:
+                            if card_entry:
+                                card_entry += f" {player_name}"
+                            else:
+                                card_entry = player_name
+                        
+                        print(f"[DEBUG] Card entry: {card_entry}")
+                        
+                        # Add to appropriate list based on team and card type
+                        if competitor.lower() == "home":
+                            if is_yellow_card:
+                                cards_home_yellow.append(card_entry)
+                            else:
+                                cards_home_red.append(card_entry)
+                        elif competitor.lower() == "away":
+                            if is_yellow_card:
+                                cards_away_yellow.append(card_entry)
+                            else:
+                                cards_away_red.append(card_entry)
+        
+        return cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red
+    
+    def extract_goals_from_timeline(event):
+        """Extract goals (score_change events) from schema:timeline separated by home/away."""
+        timeline = event.get("schema:timeline", [])
+        print(f"[DEBUG] schema:timeline type: {type(timeline)}, length: {len(timeline) if isinstance(timeline, list) else 'N/A'}")
+        
+        goals_home = []
+        goals_away = []
+        
+        if isinstance(timeline, list):
+            for timeline_idx, action in enumerate(timeline):
+                if isinstance(action, dict):
+                    # Check if this is a score_change action
+                    action_type = action.get("type") or action.get("@type")
+                    is_score_change = (
+                        action_type == "score_change" or 
+                        (isinstance(action_type, str) and "score-change" in action_type.lower())
+                    )
+                    
+                    if is_score_change:
+                        print(f"[DEBUG] Found score_change at timeline index {timeline_idx}")
+                        
+                        # Get competitor (home or away)
+                        competitor = action.get("competitor", "")
+                        print(f"[DEBUG] Competitor: {competitor}")
+                        
+                        # Get time of goal
+                        minutes = action.get("sport:minutesElapsed", "")
+                        print(f"[DEBUG] Minutes elapsed: {minutes}")
+                        
+                        # Get all participants (scorer + assisters)
+                        participants = []
+                        participation = action.get("sport:participation", [])
+                        if isinstance(participation, list) and len(participation) > 0:
+                            for p_idx, p in enumerate(participation):
+                                if isinstance(p, dict):
+                                    participation_by = p.get("sport:participationBy", {})
+                                    if isinstance(participation_by, dict):
+                                        player_label = participation_by.get("sport:label", "")
+                                        if player_label:
+                                            participants.append(player_label)
+                                            print(f"[DEBUG] Participant {p_idx}: {player_label}")
+                        
+                        # Format goal entry: "Minutes' Player1 (assist: Player2, ...)"
+                        goal_entry = ""
+                        
+                        if minutes:
+                            goal_entry = f"{minutes}'"
+                        
+                        if len(participants) > 0:
+                            if goal_entry:
+                                goal_entry += f" {participants[0]}"
+                            else:
+                                goal_entry = participants[0]
+                            # Add assisters if there are more than 1 participant
+                            if len(participants) > 1:
+                                assisters = ", ".join(participants[1:])
+                                goal_entry += f" (assist: {assisters})"
+                        
+                        print(f"[DEBUG] Goal entry: {goal_entry}")
+                        
+                        # Add to appropriate list
+                        if competitor.lower() == "home":
+                            goals_home.append(goal_entry)
+                        elif competitor.lower() == "away":
+                            goals_away.append(goal_entry)
+        
+        return goals_home, goals_away
+    
     def format_event_summary(event):
-        """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel"""
+        """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel | Statistics"""
         try:
             # Extract teams
             competitors = event.get("sport:competitors", [])
@@ -331,6 +508,100 @@ def summarize_message_data(request_data):
                     channel_name = channel.get("sport:channelName")
                     if channel_name:
                         parts.append(f"📺 {channel_name}")
+            
+            # Statistics summary (schema:statistics is an array of team statistics objects)
+            statistics = event.get("schema:statistics", [])
+            print(f"[DEBUG] schema:statistics type: {type(statistics)}, length: {len(statistics) if isinstance(statistics, (list, dict)) else 'N/A'}")
+            
+            if isinstance(statistics, list) and len(statistics) > 0:
+                stats_home = []
+                stats_away = []
+                
+                # Iterate through each team's statistics object (home=idx 0, away=idx 1)
+                for idx, team_stat in enumerate(statistics):
+                    team_type = "Home" if idx == 0 else "Away"
+                    print(f"[DEBUG] Processing team_stat[{idx}] ({team_type}): {type(team_stat)}")
+                    
+                    if isinstance(team_stat, dict):
+                        # Get the sport:statistics array from this team
+                        sport_stats_array = team_stat.get("sport:statistics", [])
+                        print(f"[DEBUG] sport:statistics array type: {type(sport_stats_array)}, length: {len(sport_stats_array) if isinstance(sport_stats_array, list) else 'N/A'}")
+                        
+                        # Choose which array to append to (home or away)
+                        target_stats = stats_home if idx == 0 else stats_away
+                        
+                        if isinstance(sport_stats_array, list):
+                            # Iterate through each statistic in the array
+                            for stat_idx, stat in enumerate(sport_stats_array):
+                                print(f"[DEBUG] Processing stat[{stat_idx}]: {type(stat)}")
+                                if isinstance(stat, dict):
+                                    stat_label = stat.get("sport:statLabel", "")
+                                    stat_value = stat.get("sport:statValue", "")
+                                    stat_type = stat.get("sport:statType", "")
+                                    print(f"[DEBUG] Stat: label='{stat_label}', value='{stat_value}', type='{stat_type}'")
+                                    
+                                    # Include all stats (including zeros)
+                                    if stat_label and stat_value is not None:
+                                        # Use abbreviation for compact display
+                                        stat_abbr = get_stat_abbreviation(stat_label)
+                                        target_stats.append(f"{stat_abbr}: {stat_value}")
+                                        print(f"[DEBUG] Added {team_type} stat: {stat_abbr}: {stat_value}")
+                
+                # Format and append home and away statistics
+                if stats_home or stats_away:
+                    if stats_home:
+                        stats_home_str = " | ".join(stats_home)
+                        parts.append(f"[Home: {stats_home_str}]")
+                        print(f"[DEBUG] Added Home stats: {stats_home_str}")
+                    
+                    if stats_away:
+                        stats_away_str = " | ".join(stats_away)
+                        parts.append(f"[Away: {stats_away_str}]")
+                        print(f"[DEBUG] Added Away stats: {stats_away_str}")
+            
+            # Timeline - Extract goals from schema:timeline
+            goals_home, goals_away = extract_goals_from_timeline(event)
+            if goals_home or goals_away:
+                if goals_home:
+                    goals_home_str = " | ".join(goals_home)
+                    parts.append(f"[Home Goals: {goals_home_str}]")
+                    print(f"[DEBUG] Added Home goals: {goals_home_str}")
+                
+                if goals_away:
+                    goals_away_str = " | ".join(goals_away)
+                    parts.append(f"[Away Goals: {goals_away_str}]")
+                    print(f"[DEBUG] Added Away goals: {goals_away_str}")
+            
+            # Timeline - Extract cards from schema:timeline
+            cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red = extract_cards_from_timeline(event)
+            
+            # Format home cards
+            if cards_home_yellow or cards_home_red:
+                card_parts = []
+                if cards_home_yellow:
+                    yellow_str = " | ".join(cards_home_yellow)
+                    card_parts.append(f"Yellow: {yellow_str}")
+                if cards_home_red:
+                    red_str = " | ".join(cards_home_red)
+                    card_parts.append(f"Red: {red_str}")
+                if card_parts:
+                    home_cards_str = " | ".join(card_parts)
+                    parts.append(f"[Home Cards: {home_cards_str}]")
+                    print(f"[DEBUG] Added Home cards: {home_cards_str}")
+            
+            # Format away cards
+            if cards_away_yellow or cards_away_red:
+                card_parts = []
+                if cards_away_yellow:
+                    yellow_str = " | ".join(cards_away_yellow)
+                    card_parts.append(f"Yellow: {yellow_str}")
+                if cards_away_red:
+                    red_str = " | ".join(cards_away_red)
+                    card_parts.append(f"Red: {red_str}")
+                if card_parts:
+                    away_cards_str = " | ".join(card_parts)
+                    parts.append(f"[Away Cards: {away_cards_str}]")
+                    print(f"[DEBUG] Added Away cards: {away_cards_str}")
             
             return " | ".join(parts)
             
