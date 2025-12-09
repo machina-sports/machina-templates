@@ -14,7 +14,7 @@ workflow:
   inputs:
     seasonId: $.get('seasonId')
   outputs:
-    workflow-status: $.get('document-exists') is not True and 'skipped' or 'executed'
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
   tasks:
 
     # load event filtering by competitor
@@ -90,40 +90,13 @@ workflow:
             for market_analysis in $.get('documents', [])
           ]
 
-    # # 1 load-markets
-    # - type: connector
-    #   name: load-markets
-    #   description: Get markets from Kalshi API
-    #   condition: $.get('event_ticker') is not None
-    #   connector:
-    #     name: kalshi
-    #     command: get-markets
-    #   inputs:
-    #     event_ticker: $.get('event_ticker')
-    #   outputs:
-    #     cursor: $.get('cursor', 0)
-    #     markets: $.get('markets', [])
-
-    # # mapping-markets-summary
-    # - type: mapping
-    #   name: kalshi-markets-summary
-    #   description: Seleciona campos principais dos markets.
-    #   condition: $.get('markets') is not None and len($.get('markets', [])) > 0
-    #   inputs:
-    #     markets: $.get('markets')
-    #   outputs:
-    #     markets_summary: $.get('markets_summary')
-    #     markets_selected: $.get('markets_selected')
-    #     markets_tickers: $.get('markets_tickers')
-    #     markets_count: $.get('markets_count')
-
     # ## CONTENT STORIES FROM PAST EVENTS
 
     # kalshi-market-analysis-prompt
     - type: prompt
-      name: kalshi-market-analysis-prompt
-      description: Kalshi Market Analysis Prompt
-      condition: $.get('market_analysis_list_parsed') is not None and $.get('market_analysis_list_parsed') > 0
+      name: kalshi-combo-analysis-prompt
+      description: Kalshi Combo Analysis Prompt
+      condition: $.get('market_analysis_list_exists') is True
       connector:
         command: invoke_prompt
         name: google-genai
@@ -135,26 +108,26 @@ workflow:
       outputs:
         analysis: "$.get('analysis')"
         summary: "$.get('summary')"
+        selected_combo: "$.get('selected_combo')"
 
-    # # kalshi-prediction-update
-    # - type: document
-    #   name: kalshi-prediction-update
-    #   description: Update the kalshi market analysis document.
-    #   condition: $.get('analysis') is not None and $.get('summary') is not None
-    #   config:
-    #     action: update
-    #     embed-vector: false
-    #     force-update: true
-    #   filters:
-    #     metadata.eventCode: $.get('event_code')
-    #   documents:
-    #     kalshi-market-analysis: |
-    #       {
-    #         "title": f"Kalshi Market Analysis - {$.get('event_code') or $.get('event_ticker')}",
-    #         "analysis": $.get('analysis'),
-    #         "summary": $.get('summary')
-    #       }
-    #   metadata:
-    #     eventCode: $.get('event_code')
-    #     eventTicker: $.get('event_ticker')
-      
+    # kalshi-combo-analysis-update
+    - type: document
+      name: kalshi-combo-analysis-update
+      description: Update the kalshi combo analysis document.
+      condition: $.get('analysis') is not None and $.get('summary') is not None
+      config:
+        action: save
+        embed-vector: false
+        force-update: true
+      filters:
+        metadata.seasonId: $.get('seasonId')
+      documents:
+        kalshi-combo-analysis: |
+          {
+            "title": f"Kalshi Combo Analysis - {$.get('seasonId')}",
+            "analysis": $.get('analysis'),
+            "summary": $.get('summary'),
+            "selected": $.get('selected_combo')
+          }
+      metadata:
+        seasonId: $.get('seasonId')

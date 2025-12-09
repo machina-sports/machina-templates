@@ -27,6 +27,9 @@ datasets:
   
   # Prompts
   - type: prompts
+    path: prompts/combo-analysis.yml
+
+  - type: prompts
     path: prompts/market-analysis.yml
 
   # Mappings
