@@ -93,7 +93,7 @@ mappings:
               "processing": False,
               "finished": False,
               "counter": 0,
-              "opta-update-timestamp": None
+              "consumer-update-timestamp": None
             },
             "sport:timeline": [
               {

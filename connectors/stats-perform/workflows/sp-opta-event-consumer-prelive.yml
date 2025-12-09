@@ -46,14 +46,14 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.version_control.counter", 1, "updated", 1]
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=4)).isoformat()}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=80)).isoformat()}"
         value.sport:status: "'Fixture'"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        updated: "{'$lt': datetime.utcnow() - timedelta(minutes=1)}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -69,14 +69,14 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.version_control.counter", 1, "updated", 1]
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
         value.schema:startDate: "{'$gt': (datetime.utcnow() + timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
         value.sport:status: "'Fixture'"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        updated: "{'$lt': datetime.utcnow() - timedelta(minutes=1)}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -101,7 +101,8 @@ workflow:
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
               'counter': $.get('event_value', {}).get('version_control', {}).get('counter', 0) + 1,
-              'processing': True
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
             }
           }
 

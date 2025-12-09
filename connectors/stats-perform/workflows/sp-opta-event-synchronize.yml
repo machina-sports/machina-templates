@@ -101,7 +101,7 @@ workflow:
               **$.get('event_value', {}).get('version_control', {}),
               'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1,
               'update_event_summary_status': 'processed',
-              'opta-update-timestamp': datetime.utcnow().isoformat()
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
             }
           }
       metadata:

@@ -53,8 +53,7 @@ workflow:
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
               'processing': False,
-              'updated': datetime.utcnow(),
-              'opta-update-timestamp': datetime.utcnow().isoformat()
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
             }
           }
 
