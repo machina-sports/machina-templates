@@ -6,6 +6,11 @@ mappings:
     title: "IPTC | Events Summary"
     description: "Selects multiple events summary equivalent to the search query"
     outputs:
+      events_ids: |
+        [
+          event.get('@id')
+          for event in $.get('events', [])
+        ]
       events_summary: |
         [
           " | ".join([

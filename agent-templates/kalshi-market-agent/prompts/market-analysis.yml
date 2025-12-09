@@ -1,8 +1,8 @@
 prompts:
 
-  # kalshi-market-agent-market-analysis-prompt
+  # kalshi-market-analysis-prompt
   - type: prompt
-    name: kalshi-market-agent-market-analysis-prompt
+    name: kalshi-market-analysis-prompt
     title: Market Analysis Prompt
     description: "Analyzes prediction market data to identify trends and probabilities"
     instructions: |
@@ -25,7 +25,7 @@ prompts:
       title: KalshiMarketAnalysis
       description: Market analysis results from Kalshi prediction market data
       type: object
-      required: [ "analysis", "summary" ]
+      required: [ "analysis", "summary", "selected_market" ]
       properties:
         analysis:
           type: string
@@ -33,3 +33,22 @@ prompts:
         summary:
           type: string
           description: Summary of the most significant opportunities or insights from the market data
+        selected_market:
+          type: object
+          description: Selected market
+          properties:
+            ticker:
+              type: string
+              description: Market ticker
+            title:
+              type: string
+              description: Market title
+            selected_sub_title:
+              type: string
+              description: Selected sub title
+            selected_side:
+              type: string
+              description: Selected side (yes or no)
+            selected_price:
+              type: number
+              description: Selected price

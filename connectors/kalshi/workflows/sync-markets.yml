@@ -1,77 +1,61 @@
 workflow:
-  name: "kalshi-sync-markets"
-  title: "Kalshi - Sync Markets"
-  description: "Workflow to synchronize market data from Kalshi API to Machina."
+  name: kalshi-sync-markets
+  title: Kalshi - Sync Markets
+  description: Workflow to synchronize market data from Kalshi API to Machina.
   context-variables:
     debugger:
       enabled: true
-    kalshi:
-      Kalshi-API-Key: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
-      Kalshi-User-Id: "$TEMP_CONTEXT_VARIABLE_KALSHI_USER_ID"
     machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    event_ticker: "$.get('event_ticker')"
-    series_ticker: "$.get('series_ticker')"
-    tickers: "$.get('tickers')"
-    status: "$.get('status')"
-    min_close_ts: "$.get('min_close_ts')"
-    max_close_ts: "$.get('max_close_ts')"
-    force-update: "($.get('force-update') == 'true')"
-    limit: "$.get('limit', 100)"
-    cursor: "$.get('cursor')"
+    series_ticker: $.get('series_ticker', '')
+    event_ticker: $.get('event_ticker', '')
   outputs:
-    workflow-status: "$.get('workflow-status', 'skipped')"
+    workflow-status: $.get('workflow-status', 'skipped')
   tasks:
 
     # 1 load-markets
-    - type: "connector"
-      name: "load-markets"
-      description: "Get markets from Kalshi API"
+    - type: connector
+      name: load-markets
+      description: Get markets from Kalshi API
       connector:
-        name: "kalshi"
-        command: "get_markets"
-        command_attribute:
-          limit: "$.get('limit')"
-          cursor: "$.get('cursor')"
-          event_ticker: "$.get('event_ticker')"
-          series_ticker: "$.get('series_ticker')"
-          tickers: "$.get('tickers')"
-          status: "$.get('status')"
-          min_close_ts: "$.get('min_close_ts')"
-          max_close_ts: "$.get('max_close_ts')"
+        name: kalshi
+        command: get-markets
+      inputs:
+        series_ticker: $.get('series_ticker')
+        event_ticker: $.get('event_ticker')
       outputs:
-        market_data: "$.get('markets', [])"
-        next_cursor: "$.get('cursor')"
+        cursor: $.get('cursor', 0)
+        markets: $.get('markets', [])
         workflow-status: "'executed'"
 
     # kalshi-market-mapping
     - type: mapping
       name: kalshi-market-mapping
-      title: "Kalshi - Market Data Mapping"
-      description: "Mapping data from Kalshi market API responses"
-      condition: "$.get('market_data') is not None and len($.get('market_data', [])) > 0"
+      title: Kalshi - Market Data Mapping
+      description: Mapping data from Kalshi market API responses
+      condition: $.get('markets') is not None and len($.get('markets', [])) > 0
       inputs:
-        markets: "$.get('market_data', [])"
+        markets: $.get('markets', [])
       outputs:
-        bulk-markets: "$.get('mapped-markets', [])"
+        bulk-markets: $.get('mapped-markets', [])
 
     # 2 bulk-save-markets
-    - type: "document"
-      name: "bulk-save-markets"
-      description: "Bulk save the market data."
-      condition: "$.get('market_data') is not None and len($.get('market_data', [])) > 0"
+    - type: document
+      name: bulk-save-markets
+      description: Bulk save the market data.
+      condition: $.get('bulk-markets') is not None and len($.get('bulk-markets', [])) > 0
       config:
-        action: "bulk-update"
-        embed-selector: "$.get('title')"
+        action: bulk-update
+        embed-selector: $.get('title')
         embed-vector: true
-        force-update: "$.get('force-update')"
+        force-update: $.get('force-update')
       connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      document_name: "'kalshi-market'"
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'kalshi-markets'"
       documents:
-        items: "$.get('parsedItems', [])"
+        items: $.get('bulk-markets', [])
       inputs:
-        parsedItems: "$.get('bulk-markets', [])"
+        bulk-markets: $.get('bulk-markets', [])

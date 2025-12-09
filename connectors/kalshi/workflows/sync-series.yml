@@ -1,66 +1,63 @@
 workflow:
-  name: "kalshi-sync-series"
-  title: "Kalshi - Sync Series"
-  description: "Workflow to synchronize series data from Kalshi API to Machina."
+  name: kalshi-sync-series
+  title: Kalshi - Sync Series
+  description: Workflow to synchronize series data from Kalshi API to Machina.
   context-variables:
     debugger:
       enabled: true
-    kalshi:
-      Kalshi-API-Key: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
-      Kalshi-User-Id: "$TEMP_CONTEXT_VARIABLE_KALSHI_USER_ID"
     machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    category: "$.get('category')"
-    include_product_metadata: "$.get('include_product_metadata', false)"
-    tags: "$.get('tags')"
-    force-update: "($.get('force-update') == 'true')"
+    category: $.get('category', 'Sports')
+    force-update: ($.get('force-update') == 'true')
+    include_product_metadata: $.get('include_product_metadata', False)
+    tags: $.get('tags', 'Soccer')
   outputs:
-    workflow-status: "$.get('workflow-status', 'skipped')"
+    workflow-status: $.get('workflow-status', 'skipped')
   tasks:
 
     # 1 load-series
-    - type: "connector"
-      name: "load-series"
-      description: "Get series from Kalshi API"
+    - type: connector
+      name: load-series
+      description: Get series from Kalshi API
       connector:
-        name: "kalshi"
-        command: "get_series"
-        command_attribute:
-          category: "$.get('category')"
-          include_product_metadata: "$.get('include_product_metadata')"
-          tags: "$.get('tags')"
+        name: kalshi
+        command: get-series
+      inputs:
+        category: $.get('category')
+        include_product_metadata: $.get('include_product_metadata')
+        tags: $.get('tags')
       outputs:
-        series_data: "$.get('series', [])"
+        series_data: $.get('series', [])
         workflow-status: "'executed'"
 
     # kalshi-series-mapping
     - type: mapping
       name: kalshi-series-mapping
-      title: "Kalshi - Series Data Mapping"
-      description: "Mapping data from Kalshi series API responses"
-      condition: "$.get('series_data') is not None and len($.get('series_data', [])) > 0"
+      title: Kalshi - Series Data Mapping
+      description: Mapping data from Kalshi series API responses
+      condition: $.get('series_data') is not None and len($.get('series_data', [])) > 0
       inputs:
-        series: "$.get('series_data', [])"
+        series: $.get('series_data', [])
       outputs:
-        bulk-series: "$.get('mapped-series', [])"
+        bulk-series: $.get('mapped-series', [])
 
     # 2 bulk-save-series
-    - type: "document"
-      name: "bulk-save-series"
-      description: "Bulk save the series data."
-      condition: "$.get('series_data') is not None and len($.get('series_data', [])) > 0"
+    - type: document
+      name: bulk-save-series
+      description: Bulk save the series data.
+      condition: $.get('series_data') is not None and len($.get('series_data', [])) > 0
       config:
-        action: "bulk-update"
-        embed-selector: "$.get('title')"
+        action: bulk-update
+        embed-selector: $.get('title')
         embed-vector: true
-        force-update: "$.get('force-update')"
+        force-update: $.get('force-update')
       connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
       document_name: "'kalshi-series'"
       documents:
-        items: "$.get('parsedItems', [])"
+        items: $.get('parsedItems', [])
       inputs:
-        parsedItems: "$.get('bulk-series', [])"
+        parsedItems: $.get('bulk-series', [])

@@ -1,0 +1,160 @@
+workflow:
+  name: kalshi-combo-analysis-executor
+  title: Kalshi - Combo Analysis Executor
+  description: Workflow to execute a combo analysis.
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    seasonId: $.get('seasonId')
+  outputs:
+    workflow-status: $.get('document-exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load event filtering by competitor
+    - type: document
+      name: load-event-by-competitor
+      description: Search for events by competitor in the same competition.
+      condition: $.get('seasonId') is not None
+      config:
+        action: search
+        search-limit: 12
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        value.sport:competition.@id: "{'$in': [$.get('seasonId')]}"
+        value.sport:status: "{'$in': ['NS']}"
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_list: $.get('documents', []) if $.get('documents') else None
+        event_list_ids: |
+          [
+            event.get('value', {}).get('@id').replace('urn:sportradar:sport_event:', '')
+            for event in $.get('documents', [])
+          ]
+        event_list_parsed: |
+          [
+            {
+              **event.get('value', {}),
+            }
+            for event in $.get('documents', [])
+          ]
+
+    # iptc-mapping-past-events
+    - type: mapping
+      name: iptc-events-summary
+      condition: $.get('event_exists') is True
+      inputs:
+        events: $.get('event_list_parsed')
+      outputs:
+        events_ids: $.get('events_ids')
+        events_summary: $.get('events_summary')
+
+    # load-market-analysis-by-event-codes
+    - type: document
+      name: load-market-analysis-by-event-codes
+      description: Load market analysis by event codes.
+      condition: $.get('events_ids') is not None and len($.get('events_ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        metadata.eventCode: "{'$in': $.get('events_ids')}"
+      inputs:
+        name: "'kalshi-market-analysis'"
+      outputs:
+        market_analysis_list: $.get('documents', [])
+        market_analysis_list_count: len($.get('documents', []))
+        market_analysis_list_exists: len($.get('documents', [])) > 0
+        market_analysis_list_ids: |
+          [
+            market_analysis.get('metadata', {}).get('eventCode', '')
+            for market_analysis in $.get('documents', [])
+          ]
+        market_analysis_list_parsed: |
+          [
+            {
+              **market_analysis.get('metadata', {}),
+              **market_analysis.get('value', {}),
+            }
+            for market_analysis in $.get('documents', [])
+          ]
+
+    # # 1 load-markets
+    # - type: connector
+    #   name: load-markets
+    #   description: Get markets from Kalshi API
+    #   condition: $.get('event_ticker') is not None
+    #   connector:
+    #     name: kalshi
+    #     command: get-markets
+    #   inputs:
+    #     event_ticker: $.get('event_ticker')
+    #   outputs:
+    #     cursor: $.get('cursor', 0)
+    #     markets: $.get('markets', [])
+
+    # # mapping-markets-summary
+    # - type: mapping
+    #   name: kalshi-markets-summary
+    #   description: Seleciona campos principais dos markets.
+    #   condition: $.get('markets') is not None and len($.get('markets', [])) > 0
+    #   inputs:
+    #     markets: $.get('markets')
+    #   outputs:
+    #     markets_summary: $.get('markets_summary')
+    #     markets_selected: $.get('markets_selected')
+    #     markets_tickers: $.get('markets_tickers')
+    #     markets_count: $.get('markets_count')
+
+    # ## CONTENT STORIES FROM PAST EVENTS
+
+    # kalshi-market-analysis-prompt
+    - type: prompt
+      name: kalshi-market-analysis-prompt
+      description: Kalshi Market Analysis Prompt
+      condition: $.get('market_analysis_list_parsed') is not None and $.get('market_analysis_list_parsed') > 0
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        market_analysis_list_parsed: $.get('market_analysis_list_parsed', [])
+      outputs:
+        analysis: "$.get('analysis')"
+        summary: "$.get('summary')"
+
+    # # kalshi-prediction-update
+    # - type: document
+    #   name: kalshi-prediction-update
+    #   description: Update the kalshi market analysis document.
+    #   condition: $.get('analysis') is not None and $.get('summary') is not None
+    #   config:
+    #     action: update
+    #     embed-vector: false
+    #     force-update: true
+    #   filters:
+    #     metadata.eventCode: $.get('event_code')
+    #   documents:
+    #     kalshi-market-analysis: |
+    #       {
+    #         "title": f"Kalshi Market Analysis - {$.get('event_code') or $.get('event_ticker')}",
+    #         "analysis": $.get('analysis'),
+    #         "summary": $.get('summary')
+    #       }
+    #   metadata:
+    #     eventCode: $.get('event_code')
+    #     eventTicker: $.get('event_ticker')
+      
