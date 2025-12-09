@@ -16,14 +16,34 @@ def match_markets_to_events(request_data):
         m_val = market.get("value", {})
         m_title = normalize(m_val.get("title", "") or market.get("title", ""))
         
-        # Check for outright keywords
-        outright_keywords = ['outright', 'winner', 'champion', 'top scorer', 'relegation', 'vencedor']
+        # Check for outright keywords (be specific to avoid false positives like "Champions League")
+        outright_keywords = [
+            'outright',
+            'tournament winner',
+            'league winner', 
+            'to win',
+            'top scorer',
+            'relegation',
+            'vencedor do campeonato',
+            'vencedor da liga'
+        ]
         if any(keyword in m_title for keyword in outright_keywords):
+            print(f"LOG: Market '{m_title}' flagged as outright due to keyword")
             return True
         
         # Check if there are participants (matches have teams, outrights don't always)
         participants = m_val.get('participants', [])
+        
+        # DEBUG: Log participant info
+        print(f"LOG: Market '{m_title}' has {len(participants)} participants: {participants}")
+        
+        # Only filter if explicitly has no participants AND title doesn't suggest a match
         if len(participants) < 2:
+            # Check if title looks like a match (e.g., "Team A vs Team B")
+            if ' vs ' in m_title or ' x ' in m_title or ' - ' in m_title:
+                print(f"LOG: Market '{m_title}' has <2 participants but title looks like a match - keeping")
+                return False
+            print(f"LOG: Market '{m_title}' flagged as outright due to <2 participants")
             return True
             
         return False
