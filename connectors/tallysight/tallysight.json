@@ -233,6 +233,14 @@
                     },
                     {
                         "in": "query",
+                        "name": "team",
+                        "description": "Team name for the player.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
                         "name": "workspace",
                         "description": "Workspace id. If not provided, the main workspace will be used.",
                         "schema": {
@@ -311,6 +319,14 @@
                         "in": "query",
                         "name": "locale",
                         "description": "Locale for localization (e.g., 'pt' for Portuguese, 'en' for English).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "wm",
+                        "description": "Tracking link / affiliate ID for Sports Interaction.",
                         "schema": {
                             "type": "string"
                         }
