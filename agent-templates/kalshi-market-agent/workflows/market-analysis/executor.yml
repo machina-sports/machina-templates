@@ -149,6 +149,10 @@ workflow:
         analysis: "$.get('analysis')"
         summary: "$.get('summary')"
         selected_market: "$.get('selected_market')"
+        markets_ranked: "$.get('markets_ranked')"
+        risk_flags: "$.get('risk_flags')"
+        missing_data: "$.get('missing_data')"
+        should_trade: "$.get('should_trade')"
 
     # kalshi-prediction-update
     - type: document
@@ -167,7 +171,12 @@ workflow:
             "title": f"Kalshi Market Analysis - {$.get('event_code') or $.get('event_ticker')}",
             "analysis": $.get('analysis'),
             "summary": $.get('summary'),
-            "selected": $.get('selected_market')
+            "selected_market": $.get('selected_market'),
+            "selected": $.get('selected_market'),
+            "markets_ranked": $.get('markets_ranked'),
+            "risk_flags": $.get('risk_flags'),
+            "missing_data": $.get('missing_data'),
+            "should_trade": $.get('should_trade')
           }
       metadata:
         eventCode: $.get('event_code')
