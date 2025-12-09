@@ -106,4 +106,3 @@ workflow:
               'consumer-update-timestamp': datetime.utcnow().isoformat()
             }
           }
-
