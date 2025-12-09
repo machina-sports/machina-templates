@@ -10,6 +10,18 @@ def match_markets_to_events(request_data):
         if not text: return ""
         # Remove accents and lowercase
         return unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
+
+    def canonical_team_name(name):
+        """Normalize common team aliases so name matching is stricter."""
+        base = normalize(name)
+        aliases = {
+            "internazionale": "inter milan",
+            "inter milano": "inter milan",
+            "psv eindhoven": "psv",
+            "manchester u.": "manchester united",
+            "manchester utd": "manchester united",
+        }
+        return aliases.get(base, base)
     
     def is_outright_market(market):
         """Check if this is an outright/season market rather than a match market"""
@@ -95,7 +107,13 @@ def match_markets_to_events(request_data):
         
         # Extract Market Teams (Normalized)
         m_teams_raw = m_val.get('participants', [])
-        m_teams = [normalize(t.get('name', '')) for t in m_teams_raw if isinstance(t, dict)]
+        m_teams = []
+        for t in m_teams_raw:
+            if not isinstance(t, dict):
+                continue
+            m_name = canonical_team_name(t.get('name', ''))
+            if m_name:
+                m_teams.append(m_name)
         print(f"LOG: Market Teams: {m_teams}")
 
         best_event = None
@@ -135,9 +153,13 @@ def match_markets_to_events(request_data):
             if isinstance(e_teams_raw, list):
                 for t in e_teams_raw:
                     if isinstance(t, dict):
-                        e_teams.append(normalize(t.get('name', '')))
+                        e_name = canonical_team_name(t.get('name', ''))
                     elif isinstance(t, str):
-                        e_teams.append(normalize(t))
+                        e_name = canonical_team_name(t)
+                    else:
+                        continue
+                    if e_name:
+                        e_teams.append(e_name)
 
             team_score = 0.0
             if m_teams and e_teams:
@@ -149,11 +171,17 @@ def match_markets_to_events(request_data):
                             break
                 team_score = matches_found / max(len(m_teams), 1)
 
-            # Total Confidence
+            # If both sides have teams but there is zero overlap, hard drop this event.
+            if m_teams and e_teams and team_score == 0:
+                print("LOG:     Skipping due to zero team overlap despite teams present")
+                continue
+
+            # Total Confidence (favor team overlap more heavily)
             if team_score > 0:
-                conf = (team_score * 0.5) + (name_score * 0.3) + (date_score * 0.2)
+                conf = (team_score * 0.6) + (name_score * 0.25) + (date_score * 0.15)
             else:
-                conf = (name_score * 0.7) + (date_score * 0.3)
+                # No team data on either side; fallback to name/date but with lower weight
+                conf = (name_score * 0.6) + (date_score * 0.4)
 
             # Log ALL comparisons with details (for debugging)
             print(f"LOG:   Event {e_idx}: '{e_title}' | Conf: {conf:.2f} (Name: {name_score:.2f}, Team: {team_score:.2f}, Date: {date_score})")

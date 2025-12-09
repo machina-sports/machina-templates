@@ -48,6 +48,7 @@ workflow:
         search-sorters: ["updated", -1]
       filters:
         metadata.external_season_id: "$.get('externalSeasonId')"
+        metadata.market_type: "{'$ne': 'Tournament'}"
         value.event_code: "{'$exists': False}"
         value.isOpenForBetting: "{'$eq': True}"
       inputs:
@@ -65,6 +66,8 @@ workflow:
       config:
         action: "search"
         search-limit: 500
+        # threshold-docs: 10
+        # threshold-similarity: 0.01
         search-vector: false
         search-sorters: ["value.schema:startDate", 1]
       filters:
@@ -77,6 +80,7 @@ workflow:
           }
       inputs:
         name: "'sport:Event'"
+        # search-query: "$.get('search_query')"
       outputs:
         candidate_events: "$.get('documents', [])"
         events_count: "len($.get('documents', []))"
