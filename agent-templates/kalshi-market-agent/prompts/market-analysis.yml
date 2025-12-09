@@ -238,7 +238,7 @@ prompts:
               description: Conviction score from 1 (low) to 5 (high).
             trade_tier:
               type: string
-              description: "A", "B", "C", or "PASS" based on edge strength and conviction.
+              description: 'A, B, C, or PASS based on edge strength and conviction.'
             recommended_action:
               type: string
               description: '"enter", "monitor", or "pass" depending on edge and risk.'
