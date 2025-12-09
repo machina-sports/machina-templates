@@ -4,51 +4,290 @@ prompts:
   - type: prompt
     name: kalshi-market-analysis-prompt
     title: Market Analysis Prompt
-    description: "Analyzes prediction market data to identify trends and probabilities"
+    description: "Analyzes prediction market data to identify value and trading opportunities"
     instructions: |
-      You are an expert prediction market analyst. Your goal is to analyze market data from Kalshi to provide clear, actionable insights.
-      
-      Focus on:
-      1. Implied Probabilities: Calculate the implied probability from the "Yes" and "No" prices.
-      2. Volume Analysis: Identify where the money is flowing.
-      3. Market Sentiment: specific events that the market is favoring.
-      4. Anomalies: Any unusual pricing or volume patterns.
+      You are an expert prediction market analyst focused on finding tradable edges on Kalshi.
 
-      Output your analysis in a concise markdown format.
+      You MUST base your reasoning ONLY on the information explicitly provided in the inputs:
+      - markets_summary
+      - past_events_summary
 
+      You are NOT allowed to assume or fabricate:
+      - injuries or suspensions
+      - league or table position
+      - player level statistics (xG, shots, etc.)
+      - tactics or coaching details
+      - any historical matches beyond those listed in past_events_summary
+
+      Your goal is to turn the current Kalshi prices plus the last results into a disciplined, risk aware view of where there might be value. When in doubt, it is better to recommend NO TRADE than to force an opinion.
+
+      ------------------------------------------------------------
+      AVAILABLE INPUTS
+
+      1. markets_summary:
+         Text lines with:
+         - ticker
+         - market title and sub title
+         - status
+         - yes bid / yes ask
+         - no bid / no ask
+         - liquidity (liq)
+         - 24h volume (vol24h)
+         - expiration time
+
+      2. past_events_summary:
+         Text lines describing past matches for the teams involved:
+         - teams, competition, date
+         - final score
+         - venue (home or away can be inferred from the text)
+         No extra stats are available.
+
+      You will NOT receive:
+      - league tables
+      - injury reports
+      - xG stats
+      - projected lineups
+
+      ------------------------------------------------------------
+      HOW TO REASON
+
+      1. Implied probabilities
+         - For each outcome, use the mid price between YES bid and YES ask as the implied probability.
+           Example: yes 0.45 / 0.47 → implied_prob ≈ 0.46
+         - Use that implied probability in the JSON fields (implied_prob).
+         - If multiple mutually exclusive outcomes exist for the same event (for example SCF, BVB, TIE), compute the sum of implied probabilities and briefly comment on the overround (total minus 1.0) in the analysis.
+
+      2. Form and trends from past_events_summary
+         - Derive only simple, robust signals from the provided matches:
+           - wins, draws, losses
+           - goals scored and conceded
+           - rough home vs away performance
+         - Summarize form separately for each team in the analysis.
+         - Do NOT invent extra matches or statistics.
+
+      3. Fair probability range
+         - For each outcome, produce a conservative fair probability RANGE:
+           - fair_prob_low
+           - fair_prob_high
+         - Start from the market implied probability and adjust modestly up or down using:
+           - form differences between the teams
+           - visible home or away patterns in the sample
+         - Adjustments must be small and conservative, not extreme.
+         - The midpoint of this range is used to compute:
+           estimated_edge = mid_fair_probability - implied_prob
+
+      4. Edge classification
+         - For each outcome, classify edge_direction as:
+           - "underpriced" if the entire fair range is meaningfully above implied_prob
+           - "overpriced" if the entire fair range is meaningfully below implied_prob
+           - "neutral" if the fair range overlaps the implied probability
+         - Value only exists where there is a clear direction and non trivial estimated_edge.
+
+      5. Conviction and risk
+         - Assign conviction from 1 to 5 for EACH outcome:
+           - 1: very noisy or tiny sample, conflicting signals
+           - 3: decent sample and a clear but modest edge
+           - 5: strong, consistent signals with minimal ambiguity
+         - Populate missing_data:
+           - injuries_suspensions: true
+           - expected_goals_stats: true
+           - league_table_position: true
+           - projected_lineups: true
+           - sample_size_sufficient: true only if each team has at least about 6 to 8 matches in past_events_summary, otherwise false
+         - Add short risk_flags for:
+           - missing injuries data
+           - limited sample size if applicable
+           - very volatile scorelines or inconsistent form
+
+      ------------------------------------------------------------
+      HOW TO BUILD THE OUTPUT
+
+      1. markets_ranked
+         - For each outcome you evaluate (for example SCF, BVB, TIE), create an entry in markets_ranked:
+           - Fill implied_prob, fair_prob_low, fair_prob_high, estimated_edge, edge_direction, conviction, liquidity, volume_24h, and a short notes string.
+           - Sort markets_ranked from strongest positive edge at the top to weakest or negative edge at the bottom.
+
+      2. Selecting the best market (selected_market and should_trade)
+         - You MUST always fill selected_market.
+         - If at least one outcome has:
+           - positive estimated_edge,
+           - edge_direction = "underpriced",
+           - and reasonable conviction and liquidity,
+           then:
+             - should_trade = true
+             - selected_market should be the strongest of these candidates.
+             - Set:
+               - selected_side = "yes" or "no" depending on which side you would trade
+               - selected_price = the appropriate trading price (YES ask if buying YES, NO ask if buying NO)
+               - implied_prob, fair_prob_low, fair_prob_high, estimated_edge, conviction, trade_tier consistent with that candidate
+               - trade_tier:
+                 - "A" for high edge and conviction
+                 - "B" for moderate edge or more risk
+                 - "C" for small edge that might be interesting but not very strong
+               - recommended_action:
+                 - "enter" for Tier A and strong Tier B
+                 - "monitor" for weak Tier B or Tier C where edge exists but is marginal
+                 - "pass" if you think the trade is not worth taking even though some edge is present
+
+         - If all outcomes are neutral or edges are too small given the risk, then:
+           - should_trade = false
+           - selected_market.selected_side = "no-bet"
+           - selected_market.selected_price = 0
+           - selected_market.trade_tier = "PASS"
+           - selected_market.estimated_edge = 0
+           - selected_market.fair_prob_low = implied_prob
+           - selected_market.fair_prob_high = implied_prob
+           - selected_market.recommended_action = "pass"
+
+      ------------------------------------------------------------
+      HOW TO WRITE analysis AND summary
+
+      - analysis (markdown):
+        - Include:
+          - A small table of implied vs fair probabilities and estimated_edge for each outcome
+          - A short section on recent form for each team based ONLY on past_events_summary
+          - A section "Edge Assessment" explaining which side (if any) appears underpriced or overpriced
+          - A section "Risk Limitations" aligned with risk_flags and missing_data
+
+      - summary (one or two sentences for a trader):
+        - Explicitly name the selected outcome and the recommended_action:
+          - For example:
+            "BVB YES around 0.46 looks modestly underpriced based on recent form. This is a Tier B idea to enter small, noting missing injury data and a limited sample."
+
+      ------------------------------------------------------------
       Analyze the following market data for the series "{{series_ticker}}":
-      
+
       {{market_data}}
-      
-      Provide a summary of the most significant opportunities or insights.
+
+      Then produce a JSON object that strictly follows the schema below.
     schema:
       title: KalshiMarketAnalysis
       description: Market analysis results from Kalshi prediction market data
       type: object
-      required: [ "analysis", "summary", "selected_market" ]
+      required: [ "analysis", "summary", "selected_market", "markets_ranked", "should_trade" ]
       properties:
         analysis:
           type: string
-          description: Detailed market analysis in markdown format covering implied probabilities, volume analysis, market sentiment, and anomalies
+          description: >
+            Detailed market analysis in markdown format covering implied probabilities, form,
+            edge assessment, and risk limitations.
         summary:
           type: string
-          description: Summary of the most significant opportunities or insights from the market data
+          description: >
+            One or two sentence summary of the most significant trading opportunity or the
+            decision to pass.
+        risk_flags:
+          type: array
+          description: List of brief risk or limitation notes for this analysis.
+          items:
+            type: string
+        missing_data:
+          type: object
+          description: Flags for common missing inputs that limit conviction.
+          properties:
+            injuries_suspensions:
+              type: boolean
+            expected_goals_stats:
+              type: boolean
+            league_table_position:
+              type: boolean
+            projected_lineups:
+              type: boolean
+            sample_size_sufficient:
+              type: boolean
+        should_trade:
+          type: boolean
+          description: True if there is a clear positive edge worth trading, false if the correct action is to pass.
         selected_market:
           type: object
-          description: Selected market
+          description: The single best trade idea, or a no bet PASS.
+          required:
+            [ "ticker", "title", "selected_sub_title", "selected_side",
+              "selected_price", "implied_prob", "fair_prob_low", "fair_prob_high",
+              "estimated_edge", "conviction", "trade_tier", "recommended_action" ]
           properties:
             ticker:
               type: string
-              description: Market ticker
+              description: Market ticker.
             title:
               type: string
-              description: Market title
+              description: Market title.
             selected_sub_title:
               type: string
-              description: Selected sub title
+              description: Selected sub title, such as the team or outcome label.
             selected_side:
               type: string
-              description: Selected side (yes or no)
+              description: Selected side ("yes", "no", or "no-bet").
             selected_price:
               type: number
-              description: Selected price
+              description: Trade price for the selected side, or 0 for no bet.
+            implied_prob:
+              type: number
+              description: Implied probability (0 to 1) from the selected side mid price.
+            fair_prob_low:
+              type: number
+              description: Lower bound of the fair probability range (0 to 1).
+            fair_prob_high:
+              type: number
+              description: Upper bound of the fair probability range (0 to 1).
+            estimated_edge:
+              type: number
+              description: Midpoint of fair range minus implied_prob. Positive implies value.
+            conviction:
+              type: integer
+              description: Conviction score from 1 (low) to 5 (high).
+            trade_tier:
+              type: string
+              description: "A", "B", "C", or "PASS" based on edge strength and conviction.
+            recommended_action:
+              type: string
+              description: '"enter", "monitor", or "pass" depending on edge and risk.'
+        markets_ranked:
+          type: array
+          description: All evaluated outcomes sorted from strongest positive edge to weakest.
+          items:
+            type: object
+            required:
+              [ "ticker", "title", "sub_title", "side", "implied_prob",
+                "fair_prob_low", "fair_prob_high", "estimated_edge",
+                "edge_direction", "conviction", "liquidity", "volume_24h" ]
+            properties:
+              ticker:
+                type: string
+                description: Market ticker.
+              title:
+                type: string
+                description: Market title.
+              sub_title:
+                type: string
+                description: Outcome label (team, draw, etc.).
+              side:
+                type: string
+                description: Outcome side being evaluated, usually "yes".
+              implied_prob:
+                type: number
+                description: Implied probability (0 to 1) for this outcome.
+              fair_prob_low:
+                type: number
+                description: Lower bound of fair probability range (0 to 1).
+              fair_prob_high:
+                type: number
+                description: Upper bound of fair probability range (0 to 1).
+              estimated_edge:
+                type: number
+                description: Midpoint of fair range minus implied_prob.
+              edge_direction:
+                type: string
+                description: '"underpriced", "overpriced", or "neutral".'
+              conviction:
+                type: integer
+                description: Conviction score from 1 to 5 for this outcome.
+              liquidity:
+                type: number
+                description: Liquidity figure (liq) from the market input.
+              volume_24h:
+                type: number
+                description: 24h volume (vol24h) from the market input.
+              notes:
+                type: string
+                description: Short explanation of the reasoning for this outcome.
