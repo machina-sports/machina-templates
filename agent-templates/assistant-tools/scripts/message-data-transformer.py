@@ -306,6 +306,82 @@ def summarize_message_data(request_data):
         }
         return stat_abbreviations.get(stat_label, stat_label)
     
+    def extract_cards_from_timeline(event):
+        """Extract cards (yellow_card, red_card events) from schema:timeline separated by home/away."""
+        timeline = event.get("schema:timeline", [])
+        print(f"[DEBUG] Extracting cards from schema:timeline")
+        
+        cards_home_yellow = []
+        cards_home_red = []
+        cards_away_yellow = []
+        cards_away_red = []
+        
+        if isinstance(timeline, list):
+            for timeline_idx, action in enumerate(timeline):
+                if isinstance(action, dict):
+                    # Check if this is a card action
+                    action_type = action.get("type") or action.get("@type")
+                    is_yellow_card = (
+                        action_type == "yellow_card" or 
+                        (isinstance(action_type, str) and "yellow" in action_type.lower())
+                    )
+                    is_red_card = (
+                        action_type == "red_card" or 
+                        (isinstance(action_type, str) and "red" in action_type.lower())
+                    )
+                    
+                    if is_yellow_card or is_red_card:
+                        card_type = "yellow" if is_yellow_card else "red"
+                        print(f"[DEBUG] Found {card_type}_card at timeline index {timeline_idx}")
+                        
+                        # Get competitor (home or away)
+                        competitor = action.get("competitor", "")
+                        print(f"[DEBUG] Competitor: {competitor}")
+                        
+                        # Get time of card
+                        minutes = action.get("sport:minutesElapsed", "")
+                        print(f"[DEBUG] Minutes elapsed: {minutes}")
+                        
+                        # Get player who received card
+                        player_name = ""
+                        participation = action.get("sport:participation", [])
+                        if isinstance(participation, list) and len(participation) > 0:
+                            first_player = participation[0]
+                            if isinstance(first_player, dict):
+                                participation_by = first_player.get("sport:participationBy", {})
+                                if isinstance(participation_by, dict):
+                                    player_name = participation_by.get("sport:label", "")
+                        
+                        print(f"[DEBUG] Player: {player_name}")
+                        
+                        # Format card entry: "Minutes' PlayerName"
+                        card_entry = ""
+                        
+                        if minutes:
+                            card_entry = f"{minutes}'"
+                        
+                        if player_name:
+                            if card_entry:
+                                card_entry += f" {player_name}"
+                            else:
+                                card_entry = player_name
+                        
+                        print(f"[DEBUG] Card entry: {card_entry}")
+                        
+                        # Add to appropriate list based on team and card type
+                        if competitor.lower() == "home":
+                            if is_yellow_card:
+                                cards_home_yellow.append(card_entry)
+                            else:
+                                cards_home_red.append(card_entry)
+                        elif competitor.lower() == "away":
+                            if is_yellow_card:
+                                cards_away_yellow.append(card_entry)
+                            else:
+                                cards_away_red.append(card_entry)
+        
+        return cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red
+    
     def extract_goals_from_timeline(event):
         """Extract goals (score_change events) from schema:timeline separated by home/away."""
         timeline = event.get("schema:timeline", [])
@@ -495,6 +571,37 @@ def summarize_message_data(request_data):
                     goals_away_str = " | ".join(goals_away)
                     parts.append(f"[Away Goals: {goals_away_str}]")
                     print(f"[DEBUG] Added Away goals: {goals_away_str}")
+            
+            # Timeline - Extract cards from schema:timeline
+            cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red = extract_cards_from_timeline(event)
+            
+            # Format home cards
+            if cards_home_yellow or cards_home_red:
+                card_parts = []
+                if cards_home_yellow:
+                    yellow_str = " | ".join(cards_home_yellow)
+                    card_parts.append(f"Yellow: {yellow_str}")
+                if cards_home_red:
+                    red_str = " | ".join(cards_home_red)
+                    card_parts.append(f"Red: {red_str}")
+                if card_parts:
+                    home_cards_str = " | ".join(card_parts)
+                    parts.append(f"[Home Cards: {home_cards_str}]")
+                    print(f"[DEBUG] Added Home cards: {home_cards_str}")
+            
+            # Format away cards
+            if cards_away_yellow or cards_away_red:
+                card_parts = []
+                if cards_away_yellow:
+                    yellow_str = " | ".join(cards_away_yellow)
+                    card_parts.append(f"Yellow: {yellow_str}")
+                if cards_away_red:
+                    red_str = " | ".join(cards_away_red)
+                    card_parts.append(f"Red: {red_str}")
+                if card_parts:
+                    away_cards_str = " | ".join(card_parts)
+                    parts.append(f"[Away Cards: {away_cards_str}]")
+                    print(f"[DEBUG] Added Away cards: {away_cards_str}")
             
             return " | ".join(parts)
             
