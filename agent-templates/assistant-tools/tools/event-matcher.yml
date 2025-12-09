@@ -47,8 +47,8 @@ workflow:
         search-vector: false
         search-sorters: ["updated", -1]
       filters:
-        metadata.event_code: "{'$exists': False}"
         metadata.external_season_id: "$.get('externalSeasonId')"
+        value.event_code: "{'$exists': False}"
         value.isOpenForBetting: "{'$eq': True}"
       inputs:
         name: "'game-market'"
