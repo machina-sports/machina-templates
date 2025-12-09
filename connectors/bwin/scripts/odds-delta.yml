@@ -1,0 +1,9 @@
+connector:
+  name: "bwin-odds-delta"
+  description: "Calculate odds delta and maintain historical odds data for Bwin markets"
+  filename: "odds-delta.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Calculate Odds Delta"
+      value: "calculate_odds_delta"
+
