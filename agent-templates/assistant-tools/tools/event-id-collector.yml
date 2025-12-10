@@ -1,0 +1,10 @@
+connector:
+  name: assistant-tools-event-id-collector
+  title: Assistant Tools - Event ID Collector
+  description: Collect and combine event IDs from different sources in a message. Generic tool for assistant workflows.
+  filename: event-id-collector.py
+  filetype: pyscript
+  commands:
+    - name: collect_all_event_ids
+      value: collect_all_event_ids
+

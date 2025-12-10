@@ -85,7 +85,16 @@ datasets:
   - type: connector
     path: scripts/message-data-transformer.yml
 
+  - type: connector
+    path: scripts/market-event-matcher.yml
+
   # tools
+
+  - type: connector
+    path: tools/event-id-collector.yml
+  
+  - type: workflow
+    path: tools/event-matcher.yml
 
   - type: workflow
     path: tools/find-faq.yml
@@ -125,11 +134,3 @@ datasets:
 
   - type: workflow
     path: assets/market-translations-pt-br.yml
-
-  # tools
-
-  - type: connector
-    path: scripts/market-event-matcher.yml
-  
-  - type: workflow
-    path: tools/event-matcher.yml
