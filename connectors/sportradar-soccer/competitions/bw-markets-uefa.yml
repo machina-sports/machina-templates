@@ -7,25 +7,25 @@ agent:
     status: "inactive"
   workflows:
 
-    # bwin-sync uefa europa league (102856)
-    - name: bwin-sync-markets
-      description: sync-markets
-      inputs:
-        country: "'br'"
-        competitionIds: "'102856'"
-        sportId: "'4'"
-      outputs:
-        sync-markets-odds-status: "$.get('workflow-status', False)"
+    # # bwin-sync uefa europa league (102856)
+    # - name: bwin-sync-markets
+    #   description: sync-markets
+    #   inputs:
+    #     country: "'br'"
+    #     competitionIds: "'102856'"
+    #     sportId: "'4'"
+    #   outputs:
+    #     sync-markets-odds-status: "$.get('workflow-status', False)"
 
-    # bwin-sync uefa conference league (102919)
-    - name: bwin-sync-markets
-      description: sync-markets
-      inputs:
-        country: "'br'"
-        competitionIds: "'102919'"
-        sportId: "'4'"
-      outputs:
-        sync-markets-odds-status: "$.get('workflow-status', False)"
+    # # bwin-sync uefa conference league (102919)
+    # - name: bwin-sync-markets
+    #   description: sync-markets
+    #   inputs:
+    #     country: "'br'"
+    #     competitionIds: "'102919'"
+    #     sportId: "'4'"
+    #   outputs:
+    #     sync-markets-odds-status: "$.get('workflow-status', False)"
 
     # bwin-sync uefa champions league (102855)
     - name: bwin-sync-markets
