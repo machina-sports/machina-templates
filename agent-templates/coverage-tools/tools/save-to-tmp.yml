@@ -1,0 +1,9 @@
+connector:
+  name: coverage-tools-save-to-tmp
+  title: Coverage - Save to Tmp
+  description: This connector is to save image to tmp
+  filename: save-to-tmp.py
+  filetype: pyscript
+  commands:
+    - name: invoke_save_to_tmp
+      value: invoke_save_to_tmp

@@ -1,0 +1,21 @@
+mappings:
+
+  # coverage-dispatch-preferences
+  - type: mapping
+    name: coverage-dispatch-preferences
+    title: Coverage - Dispatch Preferences
+    description: Normalize dispatch configuration and runtime overrides
+    outputs:
+      dispatch-enabled: $.get('dispatch-config', {}).get('dispatch_enabled', False)
+      enable-image: $.get('dispatch-config', {}).get('enable_image', False)
+      enable-machina-wordpress: $.get('dispatch-config', {}).get('enable_machina_wordpress', False)
+      enable-sportingbet-wordpress: $.get('dispatch-config', {}).get('enable_sportingbet_wordpress', False)
+      enable-slack: $.get('dispatch-config', {}).get('enable_slack', False)
+      slack-channel-id: $.get('dispatch-config', {}).get('slack_channel_id', '')
+      slack-username: $.get('dispatch-config', {}).get('slack_username', '')
+      site_id: $.get('dispatch-config', {}).get('wp_site_id', '')
+      wp-article-author: $.get('dispatch-config', {}).get('wp_article_author', 0)
+      wp-article-categories: $.get('dispatch-config', {}).get('wp_article_categories', [])
+      wp-article-tags: $.get('dispatch-config', {}).get('wp_article_tags', [])
+      wp-article-stats: $.get('dispatch-config', {}).get('wp_article_stats', '')
+

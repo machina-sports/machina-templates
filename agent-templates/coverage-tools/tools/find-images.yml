@@ -1,0 +1,91 @@
+workflow:
+  name: coverage-tools-find-images
+  title: Coverage - Find Images
+  description: Load event and images
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    oxylabs:
+      username: $TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME
+      password: $TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD
+  inputs:
+    limit: $.get('limit', 10)
+    geo_location: $.get('geo_location', 'Brazil')
+    parser: ($.get('parser', 'true') == 'true') and True or False
+    query: $.get('query')
+    document_id: $.get('document_id')
+    source: $.get('source', 'google_search')
+    udm: int($.get('udm', 2))
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # load-event
+    - type: document
+      name: load-event
+      description: Load individual event by ID
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        event: $
+        event-document: $.get('documents', [])[0] if $.get('documents', []) else None
+        event-document-id: $.get('documents', [])[0].get('_id', None) if $.get('documents', []) else None
+        event_start_date: $.get('documents', [])[0].get('value', {}).get('schema:startDate', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('schema:startDate') else ''
+        team_a_name: $.get('documents', [])[0].get('value', {}).get('sport:competitors', [])[0].get('name', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('sport:competitors') else ''
+        team_b_name: $.get('documents', [])[0].get('value', {}).get('sport:competitors', [])[1].get('name', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('sport:competitors') else ''
+        query: $.get('documents', [])[0].get('value', {}).get('sport:competitors', [])[0].get('name', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('sport:competitors') else ''
+
+    # oxylabs-post-queries
+    - type: connector
+      name: oxylabs-post-queries
+      description: Search for images.
+      condition: $.get('query') is not None
+      connector:
+        name: oxylabs
+        command: post-queries
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": $.get('udm')
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": $.get('limit')
+                  }
+                ]
+              }
+            ],
+            "geo_location": $.get('geo_location'),
+            "parse": $.get('parser'),
+            "query": $.get('query'),
+            "source": $.get('source'),
+          }
+      outputs:
+        organic-results: $.get('results', [])[0].get('content').get('results', {}).get('organic', []) if $.get('results', [])[0].get('content') else []
+        selected-image-base64: $.get('results', [])[0].get('content').get('results', {}).get('organic', [])[0] if len($.get('results', [])[0].get('content').get('results', {}).get('organic', [])) > 0 else None
+
+    # save-to-tmp
+    - type: connector
+      name: save-to-tmp
+      description: Save the image to tmp.
+      condition: $.get('selected-image-base64') is not None
+      connector:
+        name: coverage-tools-save-to-tmp
+        command: invoke_save_to_tmp
+      inputs:
+        image_base64: $.get('selected-image-base64', {}).get('image', '')
+      outputs:
+        temp_image_path: $.get('image_path')

@@ -1,0 +1,65 @@
+workflow:
+  name: coverage-tools-find-all-markets
+  title: Coverage - Find ALL Markets (Unfiltered)
+  description: Load all market odds without LLM filtering for interesting odds detection
+  context-variables:
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    debugger:
+      enabled: true
+  inputs:
+    country: $.get('country', 'br')
+    sport_id: $.get('sport_id', '4')
+    fixture_ids: $.get('fixture_ids', [])
+  outputs:
+    all_markets_mapped: $.get('mapped-runners', [])
+    workflow-status: len($.get('mapped-runners', [])) > 0 and 'executed' or 'skipped'
+  tasks:
+
+    # load-all-market-odds (NO filtering, ALL markets)
+    - type: connector
+      name: load-all-market-odds
+      description: Get ALL market odds from Bwin without filtering
+      condition: len($.get('fixture_ids', [])) > 0
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          country: $.get('country')
+          sportId: $.get('sport_id')
+      inputs:
+        fixtureIds: $.get('fixture_ids')
+        marketsFilterCriteria: "'Visible'"
+        onlyMainMarkets: "'false'"
+        isInPlay: "'false'"
+      outputs:
+        bulk-odds: |
+          [
+            {
+              **m,
+              'id': m.get('id'),
+              'name': m.get('name', {}).get('text', ''),
+              'metadata': {
+                'market_code': str(f.get('id', {}).get('full', '')),
+                'market_id': str(m.get('id', {}))
+              },
+              'competition_name': f.get('competition', {}).get('name', {}).get('text', ''),
+              'title': f"{f.get('name', {}).get('text', '')} | {m.get('name', {}).get('text', '')}"
+            }
+            for f in $.get('items', [])
+            for m in f.get('markets', [])
+          ]
+
+    # map-market-odds
+    - type: mapping
+      name: assistant-find-markets-odds-mapping
+      description: Map odds to standard format
+      condition: len($.get('bulk-odds', [])) > 0
+      inputs:
+        market-odds: $.get('bulk-odds')
+      outputs:
+        mapped-odds: $.get('mapped-odds')
+        mapped-runners: $.get('mapped-runners')
+        market-types: $.get('market-types')
+

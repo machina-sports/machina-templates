@@ -1,0 +1,10 @@
+connector:
+  name: coverage-filter-interesting-odds
+  title: Coverage - Filter Interesting Odds (1.50-3.00)
+  description: Filter odds 1.50-3.00 for Total Goals, Team Total Goals, and First To Score markets
+  filename: filter_odds.py
+  filetype: pyscript
+  commands:
+    - name: invoke_filter_interesting_odds
+      value: invoke_filter_interesting_odds
+

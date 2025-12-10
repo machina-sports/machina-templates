@@ -1,0 +1,79 @@
+setup:
+  title: Coverage Tools
+  description: AI-powered assistant for Coverage Tools.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agent to assist moderators to create content for Coverage Tools.
+  status: available
+  integrations:
+    - machina-ai
+  value: agent-templates/coverage-tools
+  version: 1.0.0
+
+datasets:
+
+
+  # mappings
+
+  - type: mappings
+    path: mappings/dispatch.yml
+
+  - type: mappings
+    path: mappings/past-events.yml
+  
+  - type: mappings
+    path: mappings/selectors.yml
+    
+  # event preview scripts
+
+  - type: connector
+    path: scripts/article_parser.yml
+
+  - type: connector
+    path: scripts/filter_odds.yml
+
+  - type: connector
+    path: scripts/image_parser.yml
+
+  - type: connector
+    path: scripts/image_preview.yml
+
+  - type: connector
+    path: scripts/layout_randomizer.yml
+
+  - type: connector
+    path: scripts/parse_widgets.yml
+
+  - type: connector
+    path: scripts/past_events.yml
+
+  # tools
+
+  - type: workflow
+    path: tools/filter-interesting-odds.yml
+    
+  - type: workflow
+    path: tools/find-all-markets.yml
+
+  - type: workflow
+    path: tools/find-images.yml
+
+  - type: workflow
+    path: tools/find-widgets.yml
+
+  - type: connector
+    path: tools/normalize-teams.yml
+
+  - type: workflow
+    path: tools/notify-slack.yml
+
+  - type: connector
+    path: tools/save-to-tmp.yml
+
+  - type: connector
+    path: tools/send-slack.yml
+
+  - type: workflow
+    path: tools/send-wp.yml
