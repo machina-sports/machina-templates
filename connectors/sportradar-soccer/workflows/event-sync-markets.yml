@@ -91,6 +91,7 @@ workflow:
           {
             **$.get('event_value', {}),
             **$.get('event_updated', {}),
+            'market_code': $.get('market_code'),
             'market_data': $.get('market_data', []),
             'version_control': {
               **$.get('event_value', {}).get('version_control', {})

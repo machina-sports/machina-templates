@@ -33,7 +33,12 @@ mappings:
             },
             "sport:round": {
               "@type": "sport:Round",
-              "sport:number": f.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number')
+              "sport:number": f.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('number'),
+              "name": f.get('sport_event', {}).get('sport_event_context', {}).get('round', {}).get('name')
+            },
+            "sport:stage": {
+              "@type": "sport:Stage",
+              "sport:phase": f.get('sport_event', {}).get('sport_event_context', {}).get('stage', {}).get('phase')
             },
             "sport:venue": {
               "@type": "sport:Venue",
