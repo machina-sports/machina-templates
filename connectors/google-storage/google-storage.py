@@ -16,9 +16,9 @@ def invoke_upload(request_data):
 
     headers = request_data.get("headers")
 
-    api_key = headers.get("api_key")
+    api_key = params.get("api_key") or headers.get("api_key")
 
-    bucket_name = headers.get("bucket_name")
+    bucket_name = params.get("bucket_name") or headers.get("bucket_name")
 
     image_path = params.get("image_path")
     if not image_path:
@@ -63,7 +63,8 @@ def invoke_upload(request_data):
             # For local files, use exact basename (preserve as-is)
             filename = os.path.basename(image_path)
 
-    remote = f"static/{filename}"
+    folder_path = params.get("folder_path", "static")
+    remote = f"{folder_path}/{filename}"
 
     if not api_key:
         return {"status": "error", "message": "API key is required."}
