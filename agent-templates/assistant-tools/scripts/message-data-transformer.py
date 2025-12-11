@@ -11,12 +11,20 @@ def summarize_message_data(request_data):
                 - played_events (list): Loaded played event documents (optional)
                 - fixture_events (list): Loaded fixture event documents (optional)
                 - head_to_head_events (list): Loaded head-to-head event documents (optional)
+                - timezone (str): Timezone code: 'br' (Brazil, GMT-3), 'es' (Spain, GMT+1), 'en' (Washington D.C., GMT-4) - default: 'br'
     
     Returns:
         dict: Response containing summarized data ready for LLM consumption
     """
     from datetime import datetime, timezone, timedelta
     import re
+    
+    # Define timezone mappings
+    TIMEZONE_MAP = {
+        'br': ('Brazil/Brasilia', -3),       # GMT-3
+        'es': ('Europe/Madrid', 1),          # GMT+1 (CET)
+        'en': ('US/Eastern', -4),            # GMT-4 (Washington D.C., EDT)
+    }
     
     def normalize_team_name(team_name):
         """
@@ -238,8 +246,14 @@ def summarize_message_data(request_data):
         
         return summaries
     
-    def format_datetime(datetime_str):
-        """Format datetime: 2025-12-07T19:00:00Z -> 07/12 16:00 (UTC to GMT-3 for Brazil)"""
+    def format_datetime(datetime_str, tz_offset=-3):
+        """
+        Format datetime: 2025-12-07T19:00:00Z -> 07/12 16:00 (UTC to specified timezone)
+        
+        Args:
+            datetime_str: ISO format datetime string
+            tz_offset: Hour offset from UTC (default: -3 for Brazil)
+        """
         if not datetime_str:
             return None
         
@@ -256,11 +270,11 @@ def summarize_message_data(request_data):
             
             dt = datetime.fromisoformat(datetime_str)
             
-            # Convert UTC to GMT-3 (Brasília timezone)
-            gmt_minus_3 = timezone(timedelta(hours=-3))
-            dt_brasilia = dt.astimezone(gmt_minus_3)
+            # Convert UTC to specified timezone
+            target_tz = timezone(timedelta(hours=tz_offset))
+            dt_converted = dt.astimezone(target_tz)
             
-            return dt_brasilia.strftime("%d/%m %H:%M")
+            return dt_converted.strftime("%d/%m %H:%M")
             
         except Exception:
             # Try to extract just date if time parsing fails
@@ -450,7 +464,7 @@ def summarize_message_data(request_data):
         
         return goals_home, goals_away
     
-    def format_event_summary(event):
+    def format_event_summary(event, tz_offset=-3):
         """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel | Statistics"""
         try:
             # Extract teams
@@ -481,10 +495,10 @@ def summarize_message_data(request_data):
                 if competition:
                     parts.append(competition)
             
-            # Date/Time (convert UTC to GMT-3 for Brazil)
+            # Date/Time (convert UTC to specified timezone)
             start_date = event.get("schema:startDate")
             if start_date:
-                date_time = format_datetime(start_date)
+                date_time = format_datetime(start_date, tz_offset)
                 if date_time:
                     parts.append(date_time)
             
@@ -608,7 +622,7 @@ def summarize_message_data(request_data):
         except Exception:
             return None
     
-    def summarize_events(events):
+    def summarize_events(events, tz_offset=-3):
         """Summarize events to concise strings."""
         summaries = []
         
@@ -623,7 +637,7 @@ def summarize_message_data(request_data):
             
             # If dict, format it
             if isinstance(event, dict):
-                summary = format_event_summary(event)
+                summary = format_event_summary(event, tz_offset)
                 if summary:
                     summaries.append(summary)
         
@@ -680,6 +694,12 @@ def summarize_message_data(request_data):
         params = request_data.get("params", {})
         last_user_msg = params.get("last_user_msg", {})
         
+        # Get timezone parameter (default: 'br' for Brazil)
+        timezone_code = params.get("timezone", "br").lower()
+        if timezone_code not in TIMEZONE_MAP:
+            timezone_code = "br"
+        tz_name, tz_offset = TIMEZONE_MAP[timezone_code]
+        
         # Get loaded events and markets from params (passed from workflow)
         played_events = params.get("played_events", [])
         fixture_events = params.get("fixture_events", [])
@@ -713,10 +733,11 @@ def summarize_message_data(request_data):
         matched_teams_summary = summarize_teams(last_user_msg.get("matched-teams", []))
         
         # Summarize events (use loaded events if available, fallback to message data for backward compatibility)
-        fixture_events_summary = summarize_events(fixture_events if fixture_events else last_user_msg.get("fixture-events", []))
-        played_events_summary = summarize_events(played_events if played_events else last_user_msg.get("played-events", []))
-        head_to_head_events_summary = summarize_events(head_to_head_events if head_to_head_events else last_user_msg.get("head-to-head-events", []))
-        next_events_summary = summarize_events(next_events if next_events else last_user_msg.get("next-events", []))
+        # Pass timezone offset to all summarize_events calls
+        fixture_events_summary = summarize_events(fixture_events if fixture_events else last_user_msg.get("fixture-events", []), tz_offset)
+        played_events_summary = summarize_events(played_events if played_events else last_user_msg.get("played-events", []), tz_offset)
+        head_to_head_events_summary = summarize_events(head_to_head_events if head_to_head_events else last_user_msg.get("head-to-head-events", []), tz_offset)
+        next_events_summary = summarize_events(next_events if next_events else last_user_msg.get("next-events", []), tz_offset)
         
         # Pass through already-summarized docs
         faq_docs = last_user_msg.get("faq-docs", [])
