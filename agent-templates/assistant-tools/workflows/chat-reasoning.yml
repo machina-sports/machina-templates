@@ -42,6 +42,29 @@ workflow:
         document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
         messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
 
+    # Create thread document if it doesn't exist
+    - type: document
+      name: create-thread-document
+      description: Create a new thread document if it doesn't exist
+      condition: $.get('thread_id') is not None and $.get('document_exists') is False
+      config:
+        action: create
+        embed-vector: false
+      documents:
+        thread: |
+          {
+            'messages': [],
+            'status': 'created',
+            'status_message': 'Thread created',
+            'created_at': '{{ now() }}'
+          }
+      inputs:
+        document_id: $.get('thread_id')
+      outputs:
+        document_id: $.get('thread_id')
+        document_exists: True
+        document_value: {'messages': []}
+
     # Load event object (sport:Event)
     - type: document
       name: load-event-object
