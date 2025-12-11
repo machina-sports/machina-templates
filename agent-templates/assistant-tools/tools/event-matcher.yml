@@ -1,0 +1,130 @@
+workflow:
+
+  # assistant-tools-event-matcher
+  name: assistant-tools-event-matcher
+  title: Assistant - Tools Event Matcher
+  description: "Workflow to associate game-market documents to sport:Event documents by similarity matching."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    externalSeasonId: $.get('externalSeasonId')
+    limit: "$.get('limit', 50)"
+    market_id: "$.get('market_id', None)"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+    markets_matched: "$.get('markets_matched', [])"
+  tasks:
+
+    # 1 load-market-without-event-code
+    - type: "document"
+      name: "load-market-without-event-code"
+      description: "Load a game-market that doesn't have event_code in metadata."
+      condition: "$.get('market_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: "$.get('market_id')"
+      inputs:
+        name: "'game-market'"
+      outputs:
+        market: "$.get('documents', [{}])[0] if $.get('documents') and len($.get('documents', [])) > 0 else None"
+        market_exists: "len($.get('documents', [])) > 0"
+        workflow-status: "'executed' if len($.get('documents', [])) > 0 else 'skipped'"
+
+    # 1.1 load-markets-batch-without-event-code
+    - type: "document"
+      name: "load-markets-batch-without-event-code"
+      description: "Load game-markets that don't have event_code in metadata (batch mode)."
+      condition: "$.get('market_id') is None"
+      config:
+        action: "search"
+        search-limit: "$.get('limit', 50)"
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        metadata.external_season_id: "$.get('externalSeasonId')"
+        metadata.market_type: "{'$ne': 'Tournament'}"
+        value.event_code: "{'$exists': False}"
+        value.isOpenForBetting: "{'$eq': True}"
+      inputs:
+        name: "'game-market'"
+      outputs:
+        markets: "$.get('documents', [])"
+        markets_count: "len($.get('documents', []))"
+        workflow-status: "'executed' if len($.get('documents', [])) > 0 else 'skipped'"
+
+    # 2 load-candidate-events
+    - type: "document"
+      name: "load-candidate-events"
+      description: "Load candidate sport:Event documents within date range of markets."
+      condition: "$.get('market') is not None or ($.get('markets') is not None and len($.get('markets', [])) > 0)"
+      config:
+        action: "search"
+        search-limit: 500
+        # threshold-docs: 10
+        # threshold-similarity: 0.01
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        value.sport:competition.sport:season.@id: $.get('externalSeasonId')
+        value.sport:status: "{'$nin': ['Played', 'closed', 'ended']}"
+        value.schema:startDate: |
+          {
+            '$gte': (datetime.utcnow() - timedelta(days=7)).isoformat(),
+            '$lte': (datetime.utcnow() + timedelta(days=30)).isoformat()
+          }
+      inputs:
+        name: "'sport:Event'"
+        # search-query: "$.get('search_query')"
+      outputs:
+        candidate_events: "$.get('documents', [])"
+        events_count: "len($.get('documents', []))"
+
+    # 3 match-markets-to-events
+    - type: "connector"
+      name: "match-markets-to-events"
+      description: "Match markets to events using fuzzy matching and date comparison."
+      condition: "$.get('candidate_events') is not None and len($.get('candidate_events', [])) > 0 and ($.get('market') is not None or ($.get('markets') is not None and len($.get('markets', [])) > 0))"
+      connector:
+        name: "assistant-tools-market-event-matcher"
+        command: "match_markets_to_events"
+      inputs:
+        markets: "[$.get('market')] if $.get('market') is not None else $.get('markets', [])"
+        events: "$.get('candidate_events', [])"
+        name_threshold: "0.4"
+        date_tolerance_hours: "2"
+      outputs:
+        matches: "$.get('matches', [])"
+        match_count: "$.get('match_count', 0)"
+
+    # 4 update-markets-with-event-codes-foreach
+    - type: "document"
+      name: "update-markets-with-event-codes-foreach"
+      description: "Update game-market documents with event_code from matched events (one by one)."
+      condition: "$.get('matches') is not None and len($.get('matches', [])) > 0"
+      foreach:
+        name: match_item
+        expr: $
+        value: "$.get('matches', [])"
+        concurrent: true
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('match_item', {}).get('market', {}).get('_id')"
+      documents:
+        game-market: |
+          {
+            **($.get('match_item', {}).get('market', {}).get('value', {}) or {}),
+            'event_code': $.get('match_item', {}).get('event_code', ''),
+            'match_confidence': $.get('match_item', {}).get('confidence', 0.0),
+            'matched_at': datetime.utcnow().isoformat()
+          }
+      outputs:
+        markets_matched: "$.get('documents', [])"

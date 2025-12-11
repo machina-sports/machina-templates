@@ -9,7 +9,7 @@ workflow:
       Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
       Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
     debugger:
-      enabled: true
+      enabled: false
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
@@ -322,3 +322,19 @@ workflow:
       outputs:
         selected-runners-ids: $.get('selected_runners')
         selected-runners-parsed: "[context.get('selected-market-runners')[int(i)] if int(i) < len(context.get('selected-market-runners')) else None for i in $.get('selected_runners',[])]"
+
+    # update-thread-with-markets-docs
+    - type: document
+      name: update-thread-with-markets-docs
+      description: Update thread document with markets docs
+      condition: $.get('document_id') is not None and len($.get('selected-runners-parsed', [])) > 0
+      config:
+        action: update
+      documents:
+        thread: |
+          {
+            **$.get('document_value'),
+            'markets-docs': $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
+          }
+      filters:
+        document_id: $.get('document_id')

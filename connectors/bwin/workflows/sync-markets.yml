@@ -4,7 +4,7 @@ workflow:
   description: "Workflow to synchronize a season schedules from Bwin API to Machina."
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     bwin:
       Bwin-AccessId: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID"
       Bwin-AccessIdToken: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN"
@@ -13,6 +13,7 @@ workflow:
   inputs:
     country: "$.get('country')"
     competitionIds: "$.get('competitionIds')"
+    externalSeasonId: "$.get('externalSeasonId')"
     fixtureIds: "$.get('fixtureIds')"
     force-update: "($.get('force-update') == 'true')"
     sportId: "$.get('sportId')"
@@ -39,8 +40,9 @@ workflow:
             {
               **f,
               'metadata': {
+                'external_season_id': context.get('externalSeasonId'),
                 'market_code': str(f.get('id', {}).get('entityId', '')),
-                'market_type': f.get('type', '')
+                'market_type': f.get('type', ''),
               },
               'title': f"{f.get('name', {}).get('text', '')}",
             }

@@ -1,130 +1,99 @@
 workflow:
-  name: "sportradar-soccer-sync-competitors"
-  title: "Sportradar Soccer - Competitors"
-  description: "Workflow to synchronize a season competitors from SportRadar API to Machina."
+  name: sportradar-soccer-sync-competitors
+  title: Sportradar Soccer - Competitors
+  description: Workflow to synchronize a season competitors from SportRadar API to Machina.
   context-variables:
+    debugger:
+      enabled: false
     sportradar-soccer:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    season_id: "$.get('season_id')"
+    season_id: $.get('season_id')
   outputs:
-    competitors: "$.get('competitors')"
-    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+    teams: $.get('iptc_teams')
+    workflow-status: $.get('teams_parsed') is not None and 'executed' or 'skipped'
   tasks:
-    # check-document-timedelta
-    - type: "document"
-      name: "check-document-timedelta"
-      description: "Check if the competitors document has expired."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      filters:
-        value.sid: "$.get('season_id')"
-        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=0)}"
-        value.status: "'active'"
-      inputs:
-        name: "'competitors'"
-      outputs:
-        documents: "$.get('documents')"
-        should_update: "len($.get('documents')) == 0"
-
-    # task-check-document-get-season
-    - type: "document"
-      name: "get-season"
-      description: "Get the season document."
-      config:
-        action: "search"
-        search-limit: 1
-        search-vector: false
-      connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      condition: "$.get('should_update') == True"
-      filters:
-        value.id: "$.get('season_id')"
-      inputs:
-        name: "'season'"
-      outputs:
-        season: "$.get('documents')[0] if $.get('documents') else None"
 
     # load-competitors
-    - type: "connector"
-      name: "load-competitors"
-      description: "Get a season competitors from SportRadar"
+    - type: connector
+      name: load-competitors
+      description: Get a season competitors from SportRadar
       connector:
-        name: "sportradar-soccer"
-        command: "get-seasons/{season_id}/{data_type}"
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/{data_type}
         command_attribute:
-          season_id: "$.get('season_id')"
+          season_id: $.get('season_id')
           data_type: "'competitors.json'"
-      condition: "$.get('should_update') == True and $.get('season') is not None"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: $.get('api_key')
       outputs:
-        competitors: "$.get('season_competitors')"
-        competitors_parsed: |
+        teams_raw: $.get('season_competitors')
+
+    # IPTC mapping
+    - type: mapping
+      name: iptc-sportradar-team-mapping
+      description: Convert teams to IPTC Sport Schema format
+      condition: $.get('teams_raw') is not None
+      inputs:
+        teams_raw: $.get('teams_raw')
+      outputs:
+        iptc_teams: $.get('sport_schema_teams')
+        teams_parsed: |
           [
             {
-              **c,
+              **t,
               'metadata': {
-                'team_code': c.get('id', '')
+                'team_code': str(t.get('@id', ''))
               },
               'version_control': {
                 'updated': datetime.utcnow()
               },
-              'title': f"{c.get('name', {})}",
+              'title': t.get('name', ''),
               'selected': False
             }
-            for c in $.get('season_competitors')
+            for t in $.get('sport_schema_teams', [])
           ]
 
     # update-competitors
-    - type: "document"
-      name: "update-competitors"
-      description: "Update the competitors document."
+    - type: document
+      name: update-competitors
+      description: Update the competitors document.
       config:
-        action: "update"
+        action: update
         embed-vector: false
         force-update: true
-      condition: "$.get('should_update') == True and $.get('season') is not None"
       connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
       documents:
         competitors: |
           {
-            'sid': $.get('season_id'),
-            'data': $.get('competitors'),
-            'title': f"{$.get('season', {}).get('value', {}).get('title', '')} - All Competitors",
+            'data': $.get('iptc_teams'),
+            'title': f"{$.get('season_id', '')} - All Competitors",
+            'season_id': $.get('season_id'),
             'execution': datetime.utcnow(),
             'status': 'active'
           }
       metadata:
-        sid: "$.get('season_id')"
-        document_type: "'synchronization'"
+        season_id: $.get('season_id')
 
     # bulk-save-schedules
-    - type: "document"
-      name: "bulk-save-schedules"
-      condition: "$.get('should_update') == True and $.get('season') is not None"
-      description: "Bulk save the competitors."
+    - type: document
+      name: bulk-save-competitors
+      description: Bulk save the competitors.
       config:
-        action: "bulk-update"
+        action: bulk-update
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      document_name: "'soccer-team'"
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: 'sport:Team'
       documents:
-        items: "$.get('competitors_parsed')"
+        items: $.get('teams_parsed')
       inputs:
-        competitors_parsed: "$.get('competitors_parsed')"
+        teams_parsed: $.get('teams_parsed')

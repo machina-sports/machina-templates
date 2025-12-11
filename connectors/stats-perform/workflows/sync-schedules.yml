@@ -12,9 +12,9 @@ workflow:
       secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
   inputs:
     competition_id: "$.get('competition_id')"
-    season_id: "$.get('season_id', None)"
-    pages_to_fetch: "$.get('pages_to_fetch', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])"
-    page_size: "$.get('page_size', 30)"
+    season_id: "$.get('season_id')"
+    pages_to_fetch: "$.get('pages_to_fetch', [1, 2])"
+    page_size: "$.get('page_size', 10)"
   outputs:
     schedules: "$.get('schedules')"
     workflow-status: "len($.get('all_events_ids', [])) > len($.get('existing_events_ids', [])) and 'executed' or 'skipped'"
@@ -24,7 +24,7 @@ workflow:
     - type: "connector"
       name: "get-access-token"
       description: "Get OAuth access token from Stats Perform Opta API."
-      condition: "$.get('competition_id') is not None"
+      condition: "$.get('competition_id') is not None and $.get('season_id') is not None"
       connector:
         name: "opta"
         command: "authorization"
@@ -36,10 +36,11 @@ workflow:
     - type: "connector"
       name: "load-schedules-paginated"
       description: "Fetch fixtures and results with pagination (MA1)"
-      condition: "$.get('competition_id') is not None and $.get('access_token') is not None"
+      condition: "$.get('competition_id') is not None and $.get('season_id') is not None and $.get('access_token') is not None"
       connector:
         name: "opta"
         command: "invoke_request"
+      continue_on_error: true
       foreach:
         name: page_number
         expr: $
@@ -51,7 +52,8 @@ workflow:
         query_params: |
           {
             '_pgSz': str($.get('page_size')),
-            '_pgNm': str($.get('page_number', 1))
+            '_pgNm': str($.get('page_number', 1)),
+            'tmcl': str($.get('season_id'))
           }
       outputs:
         schedules_raw: "$.get('match', [])"
@@ -98,7 +100,7 @@ workflow:
       config:
         action: "bulk-update"
         embed-selector: "$.get('title')"
-        embed-vector: true
+        embed-vector: false
         force-update: true
       connector:
         name: "machina-ai"

@@ -1,0 +1,108 @@
+workflow:
+
+  # sp-opta-event-consumer-prelive
+  name: sp-opta-event-consumer-prelive
+  title: Stats Perform Opta - Event Consumer (Pre-Live)
+  description: Workflow to consume pre-live soccer games from Stats Perform Opta API by event code. Handles Fixture events (near-term and long-term).
+  context-variables:
+    debugger:
+      enabled: false
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    event_code: $.get('event_code')
+  outputs:
+    event_document_id: $.get('event_document_id')
+    event_exists: $.get('event_exists')
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (opta) by code.
+      condition: $.get('event_code') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+    
+    # load event filtering by prelive events (Fixture) - near-term (0-4h)
+    - type: document
+      name: load-event-by-schedule
+      description: Search for pre-live schedule events (opta) - Fixture status, near-term (0-4h).
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=80)).isoformat()}"
+        value.sport:status: "'Fixture'"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+    
+    # load event filtering by longterm events (Fixture) - long-term (8-72h)
+    - type: document
+      name: load-event-by-schedule
+      description: Search for long-term schedule events (opta) - Fixture status, long-term (8-72h).
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() + timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
+        value.sport:status: "'Fixture'"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'counter': $.get('event_value', {}).get('version_control', {}).get('counter', 0) + 1,
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }
+

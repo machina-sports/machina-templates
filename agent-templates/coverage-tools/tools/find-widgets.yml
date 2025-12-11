@@ -1,0 +1,225 @@
+workflow:
+  name: coverage-tools-find-widgets
+  title: Coverage - Find Widgets
+  description: Load event and widgets
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    tallysight:
+      key: $TEMP_CONTEXT_VARIABLE_TALLYSIGHT_API_KEY
+  inputs:
+    document_id: $.get('document_id')
+    league_code: $.get('league_code', 'bra-serie-a')
+  outputs:
+    selected-event-widgets: $.get('selected-event-widgets', [])
+    selected-player-widgets: $.get('selected-player-widgets', [])
+    anytime-goalscorer-widget: $.get('anytime-goalscorer-widget')
+    workflow-status: (len($.get('selected-event-widgets', [])) > 0 or len($.get('selected-player-widgets', [])) > 0) and 'executed' or 'skipped'
+  tasks:
+
+    # load-event
+    - type: document
+      name: load-event
+      description: Load individual event by ID
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        event: $
+        event-document: $.get('documents', [])[0] if $.get('documents', []) else None
+        event-document-id: $.get('documents', [])[0].get('_id', None) if $.get('documents', []) else None
+        event_start_date: $.get('documents', [])[0].get('value', {}).get('schema:startDate', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('schema:startDate') else ''
+        competition_id: $.get('documents', [])[0].get('value', {}).get('sport:competition', {}).get('@id', '') if $.get('documents', []) else ''
+        team_a_name: $.get('documents', [])[0].get('value', {}).get('sport:competitors', [])[0].get('name', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('sport:competitors') else ''
+        team_b_name: $.get('documents', [])[0].get('value', {}).get('sport:competitors', [])[1].get('name', '') if $.get('documents', []) and $.get('documents', [])[0].get('value', {}).get('sport:competitors') else ''
+    
+    # normalize-team-names-and-league
+    - type: connector
+      name: normalize-teams
+      description: Normalize team names and map league code
+      condition: $.get('event-document-id') is not None
+      connector:
+        name: coverage-tools-normalize-teams
+        command: invoke_normalize_teams
+      inputs:
+        competition_id: $.get('competition_id')
+        team_a_name: $.get('team_a_name')
+        team_b_name: $.get('team_b_name')
+        league_code: $.get('league_code')
+      outputs:
+        league_code: $.get('league_code')
+        team_a_name: $.get('team_a_name_normalized')
+        team_b_name: $.get('team_b_name_normalized')
+    
+    # EVENT WIDGETS
+
+    # tallysight-load-event-embed
+    - type: connector
+      name: tallysight-load-event-embed
+      description: Load match embed from Tallysight
+      condition: $.get('event-document-id') is not None
+      continue_on_error: True
+      connector:
+        name: tallysight
+        command: get-api/v2/widgets/odds-tile/gamelines/leagues/{league}/matchup/{team1}/{team2}/{date}
+        command_attribute:
+          league: $.get('league_code')
+          team1: $.get('team_a_name')
+          team2: $.get('team_b_name')
+          date: str($.get('event_start_date')).split('T')[0]
+      inputs:
+        embed: "'wordpress'"
+        format: "'decimal'"
+        oddsby: "'best-odds'"
+        hideBrandLogo: "'false'"
+        locale: "'en'"
+      outputs:
+        selected-date: str(context.get('event_start_date')).split('T')[0]
+        selected-event-widgets: $
+        widget-event-embed: $
+
+    # tallysight-load-match-embed plus day before
+    - type: connector
+      name: tallysight-load-event-embed-day-before
+      description: Load match embed from Tallysight
+      condition: $.get('event-document-id') is not None and len($.get('widget-event-embed', [])) == 0
+      continue_on_error: True
+      connector:
+        name: tallysight
+        command: get-api/v2/widgets/odds-tile/gamelines/leagues/{league}/matchup/{team1}/{team2}/{date}
+        command_attribute:
+          league: $.get('league_code')
+          team1: $.get('team_a_name')
+          team2: $.get('team_b_name')
+          date: "(datetime.strptime($.get('selected-date'), '%Y-%m-%d') + timedelta(days=-1)).strftime('%Y-%m-%d')"
+      inputs:
+        date: $.get('selected-date')
+        embed: "'wordpress'"
+        format: "'decimal'"
+        oddsby: "'best-odds'"
+        hideBrandLogo: "'false'"
+        locale: "'en'"
+      outputs:
+        selected-date: "(datetime.strptime(context.get('selected-date'), '%Y-%m-%d') + timedelta(days=-1)).strftime('%Y-%m-%d')"
+        selected-event-widgets: $
+        widget-event-embed: $
+
+    # tallysight-load-anytime-goalscorer-widget
+    - type: connector
+      name: tallysight-load-anytime-goalscorer-widget
+      description: Load Anytime Goalscorer widget from Tallysight
+      condition: $.get('event-document-id') is not None
+      continue_on_error: True
+      connector:
+        name: tallysight
+        command: get-api/v2/widgets/odds-tile/props/leagues/{league}/matchup/{team1}/{team2}/{date}
+        command_attribute:
+          league: $.get('league_code')
+          team1: $.get('team_a_name')
+          team2: $.get('team_b_name')
+          date: $.get('selected-date')
+      inputs:
+        embed: "'wordpress'"
+        format: "'decimal'"
+        oddsby: "'best-odds'"
+        hideBrandLogo: "'false'"
+        locale: "'en'"
+      outputs:
+        widget-anytime-goalscorer-embed: $
+
+    # coverage-parse-widgets
+    - type: connector
+      name: coverage-parse-widgets-task
+      description: Parse and extract Anytime Goalscorer widget
+      condition: len($.get('widget-anytime-goalscorer-embed', [])) > 0
+      connector:
+        name: coverage-parse-widgets
+        command: invoke_parse_widgets
+      inputs:
+        widget_embed: $.get('widget-anytime-goalscorer-embed')
+      outputs:
+        anytime-goalscorer-widget: $.get('anytime_goalscorer_widget')
+
+    # PLAYER WIDGETS
+
+    # tallysight-load-player-embed
+    - type: connector
+      name: tallysight-load-player-embed
+      description: Load match embed from Tallysight
+      condition: $.get('event-document-id') is not None
+      continue_on_error: True
+      connector:
+        name: tallysight
+        command: get-api/v2/widgets/odds-tile/props/leagues/{league}/players/{player}
+        command_attribute:
+          league: $.get('league_code')
+          player: $.get('player_name')
+      inputs:
+        embed: "'wordpress'"
+        format: "'decimal'"
+        oddsby: "'best-odds'"
+        hideBrandLogo: "'false'"
+        locale: "'en'"
+      outputs:
+        widget-player-embed: $
+
+    # sportsinteraction-event-widgets-mapping
+    - type: mapping
+      name: sportsinteraction-event-widgets-mapping
+      description: Mapping event widgets
+      condition: len($.get('widget-player-embed', [])) > 0
+      inputs:
+        widget-markets: $.get('widget-player-embed', [])[0].get('markets', [])
+      outputs:
+        mapped-widgets: $.get('mapped-widgets')
+        mapped-widgets-types: $.get('mapped-widgets-types')
+
+    # sportsinteraction-widgets-selector
+    - type: prompt
+      name: sportsinteraction-widgets-selector
+      condition: len($.get('mapped-widgets-types', [])) > 0
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+      inputs:
+        _1-mapped_widgets_types: $.get('mapped-widgets-types')
+        _2-user_query: |
+          f"Select the widget for the player {$.get('player_name')}"
+      outputs:
+        selected-player-widgets: "[context.get('mapped-widgets')[int(i)] for i in $.get('selected_widgets',[])]"
+        selected-widgets-ids: $.get('selected_widgets')
+
+    # tallysight-load-player-bet-finder
+    - type: connector
+      name: tallysight-load-player-bet-finder
+      description: Load player bet finder from Tallysight
+      condition: $.get('event-document-id') is not None and len($.get('selected-player-widgets', [])) == 0
+      continue_on_error: True
+      connector:
+        name: tallysight
+        command: get-api/v2/widgets/bet-finder/leagues/{league}/players/{player}
+        command_attribute:
+          league: $.get('league_code')
+          player: $.get('player_name')
+      inputs:
+        embed: "'wordpress'"
+        format: "'decimal'"
+        locale: "'en'"
+        hideBrandLogo: "'false'"
+        oddsby: "'best-odds'"
+        sportsbooks: "'sports-interaction'"
+      outputs:
+        selected-player-widgets: |
+          [
+            {
+              'embed': $.get('embed', ''),
+              'entity': $.get('entity', '')
+            }
+          ]

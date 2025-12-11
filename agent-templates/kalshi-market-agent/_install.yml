@@ -1,0 +1,60 @@
+setup:
+  title: Kalshi Market Analyst
+  description: AI-powered agent that monitors Kalshi sports markets and provides analysis on trending events and probabilities.
+  category:
+    - sports
+    - analytics
+  estimatedTime: 1 minute
+  features:
+    - AI Agent to monitor and analyze Kalshi sports prediction markets
+    - Sync sports markets and events from Kalshi API
+    - Analyze market trends and identify high-volume opportunities
+  integrations:
+    - kalshi
+    - machina-ai
+  status: available
+  value: agent-templates/kalshi-market-agent
+  version: 1.0.0
+
+datasets:
+  
+  # Agent
+  - type: agent
+    path: agents/combo-analyst.yml
+
+  - type: agent
+    path: agents/market-analyst.yml
+  
+  # Prompts
+  - type: prompts
+    path: prompts/combo-analysis.yml
+
+  - type: prompts
+    path: prompts/market-analysis.yml
+
+  # Mappings
+  - type: mappings
+    path: mappings/kalshi-markets-summary.yml
+
+  # Scripts
+  - type: connector
+    path: scripts/market-event-matcher.yml
+
+  # Workflows
+  - type: workflow
+    path: workflows/event-matcher.yml
+    
+  - type: workflow
+    path: workflows/combo-analysis/executor.yml
+
+  - type: workflow
+    path: workflows/market-analysis/consumer.yml
+
+  - type: workflow
+    path: workflows/market-analysis/executor.yml
+
+  - type: workflow
+    path: workflows/market-analysis/update.yml
+  
+  - type: workflow
+    path: _folders.yml

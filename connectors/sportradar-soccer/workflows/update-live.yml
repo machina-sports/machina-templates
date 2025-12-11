@@ -49,13 +49,13 @@ workflow:
         action: "search"
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.version_control.updated", 1]
+        search-sorters: ["value.version_control.live-update-timestamp", 1]
       filters:
-        value.start_time: "{'$gt': datetime.utcnow() - timedelta(hours=8), '$lt': datetime.utcnow() + timedelta(hours=8)}"
+        value.start_time: "{'$gt': datetime.utcnow() - timedelta(hours=24), '$lt': datetime.utcnow() + timedelta(hours=24)}"
         value.sport_event_status.status: "{'$in': ['live', 'interrupted']}"
+        '$or': "[{'value.version_control.live-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=30)).isoformat()}}, {'value.version_control.live-update-timestamp': {'$exists': False}}]"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        updated: "{'$lt': datetime.utcnow() - timedelta(seconds=30)}"
       inputs:
         name: "{'$in': ['soccer-game']}"
       outputs:
@@ -99,7 +99,8 @@ workflow:
             'version_control': {
               **$.get('version_control', {}),
               'processing': True,
-              'update_event_summary_status': 'processing'
+              'update_event_summary_status': 'processing',
+              'live-update-timestamp': datetime.utcnow().isoformat()
             }
           }
       metadata:
@@ -314,7 +315,8 @@ workflow:
               'update_event_statistics_status': $.get('update_event_statistics_status') or $.get('version_control', {}).get('update_event_statistics_status', 'pending'),
               'update_event_timeline_count': $.get('update_event_timeline_count') or $.get('version_control', {}).get('update_event_timeline_count', 0),
               'update_event_timeline_status': $.get('update_event_timeline_status') or $.get('version_control', {}).get('update_event_timeline_status', 'pending'),
-              'updated': datetime.utcnow()
+              'updated': datetime.utcnow(),
+              'live-update-timestamp': datetime.utcnow().isoformat()
             }
           }
       metadata:

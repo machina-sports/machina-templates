@@ -12,3 +12,6 @@ connector:
 
     - name: Web Search
       value: invoke_search
+
+    - name: Video
+      value: invoke_video

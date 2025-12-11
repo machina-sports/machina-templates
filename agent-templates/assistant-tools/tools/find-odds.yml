@@ -1,0 +1,103 @@
+workflow:
+  
+  # assistant-tools-find-odds
+  name: assistant-tools-find-odds
+  title: Assistant - Tools Find Odds
+  description: Workflow to extract and filter odds from events' market_data.
+  context-variables:
+    debugger:
+      enabled: false
+  inputs:
+    document_id: $.get('document_id')
+  outputs:
+    step_find_markets_parsed: $.get('markets-parsed', [])
+    step_find_markets_objects: $.get('markets-parsed', [])
+    workflow-status: $.get('has_markets') is True and 'executed' or 'skipped'
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('document_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+        last_user_msg: |
+          (
+            [msg for msg in $.get('documents')[0].get('value', {}).get('messages', []) if msg.get('role') == 'user'][-1]
+            if len([msg for msg in $.get('documents')[0].get('value', {}).get('messages', []) if msg.get('role') == 'user']) > 0
+            else {}
+          )
+
+    # Load fixture events by IDs
+    - type: document
+      name: load-fixture-events
+      description: Load fixture events from document store by IDs (excluding closed events)
+      condition: $.get('last_user_msg', {}).get('fixture-event-ids') is not None and len($.get('last_user_msg', {}).get('fixture-event-ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: |
+          {'$in': $.get('last_user_msg', {}).get('fixture-event-ids', [])}
+        value.sport:status: "{'$ne': 'closed'}"
+      outputs:
+        fixture_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+        has_fixture_events: len($.get('documents', [])) > 0
+
+    # Load played events by IDs
+    - type: document
+      name: load-played-events
+      description: Load played events from document store by IDs (excluding closed events)
+      condition: $.get('last_user_msg', {}).get('played-event-ids') is not None and len($.get('last_user_msg', {}).get('played-event-ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.schema:startDate", -1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.sport:status: "{'$ne': 'closed'}"
+        metadata.event_code: |
+          {'$in': $.get('last_user_msg', {}).get('played-event-ids', [])}
+      outputs:
+        played_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+        has_played_events: len($.get('documents', [])) > 0
+        market_query: $.get('last_user_msg', {}).get('reasoning', {}).get('market_query', '')
+        reasoning: $.get('last_user_msg', {}).get('reasoning', {})
+
+    # Load next events by IDs
+    - type: document
+      name: load-next-events
+      description: Load next events from document store by IDs (excluding closed events)
+      condition: $.get('last_user_msg', {}).get('next-event-ids') is not None and len($.get('last_user_msg', {}).get('next-event-ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.sport:status: "{'$ne': 'closed'}"
+        metadata.event_code: |
+          {'$in': $.get('last_user_msg', {}).get('next-event-ids', [])}
+      outputs:
+        next_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+        has_next_events: len($.get('documents', [])) > 0
+
+

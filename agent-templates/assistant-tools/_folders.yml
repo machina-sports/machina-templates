@@ -1,7 +1,10 @@
 workflow:
   name: assistant-tools-folders
-  title: Assistant Tools - Folders
+  title: Assistant - Tools Folders
   description: Assistant Tools - Folders
+  context-variables:
+    debugger:
+      enabled: false
   outputs:
     workflow-status: "'executed'"
   tasks:
@@ -32,6 +35,17 @@ workflow:
               "isActive": True,
               "icon": "folder",
               "items": [
+                {
+                  "name": "assets",
+                  "title": "Assets",
+                  "description": "Configuration assets: setup, structure, translations, and policies",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-trending-news", "setup-playground", "site-structure", "doc-structure", "market-translations-pt-br", "sportingbot-character", "coverage-dispatch-config"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
                 {
                   "name": "content-article",
                   "title": "Content Article",
@@ -66,6 +80,17 @@ workflow:
                   "view": "list"
                 },
                 {
+                  "name": "content-matchday",
+                  "title": "Matchday",
+                  "description": "The matchday content available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["content-matchday"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "marketlist",
                   "title": "Market List",
                   "description": "The market list available in the BWIN API.",
@@ -83,6 +108,17 @@ workflow:
                   "category": "Catalogue",
                   "metadata": {
                     "name": ["sport:Event"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "sport-team",
+                  "title": "Sport Team",
+                  "description": "The sport teams available",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["sport:Team"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"

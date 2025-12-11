@@ -1,5 +1,0 @@
-connector:
-  name: "kalshi"
-  description: "Kalshi Prediction Markets API - Access events, markets, and trading data"
-  filename: "kalshi.json"
-  filetype: "restapi"

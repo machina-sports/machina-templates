@@ -4,6 +4,8 @@ agent:
   name: assistant-chat-executor
   title: Assistant - Chat Executor
   description: Assistant Executor Agent.
+  context:
+    status: "inactive"
   context-agent:
     event_document_id: $.get('event_document_id', None)
     messages: $.get('messages', [])

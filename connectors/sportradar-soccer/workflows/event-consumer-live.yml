@@ -1,0 +1,129 @@
+workflow:
+
+  # sportradar-soccer-event-consumer-live
+  name: sportradar-soccer-event-consumer-live
+  title: Sportradar Soccer - Event Consumer (Live)
+  description: Workflow to consume live soccer games from SportRadar API by event code. Handles live, interrupted, post-live, and stuck events.
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    event_code: $.get('event_code')
+  outputs:
+    event_document_id: $.get('event_document_id')
+    event_exists: $.get('event_exists')
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (sportradar) by code.
+      condition: $.get('event_code') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # load event filtering by live events (live, interrupted)
+    - type: document
+      name: load-event-by-schedule
+      description: Search for live schedule events (sportradar).
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
+        value.sport:status: "{'$in': ['live', 'interrupted']}"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+    
+    # load event filtering by postlive events (closed, ended)
+    - type: document
+      name: load-event-by-schedule
+      description: Search for post-live schedule events (sportradar).
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
+        value.sport:status: "{'$in': ['closed', 'ended']}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(hours=1)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+    
+    # load-stuck-events - safety mechanism to recover stuck events
+    - type: document
+      name: load-stuck-events
+      description: Find events stuck in processing state for more than 5 minutes.
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.version_control.processing: "True"
+        value.version_control.finished: "{'$ne': True}"
+        updated: "{'$lt': datetime.utcnow() - timedelta(minutes=5)}"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }
+

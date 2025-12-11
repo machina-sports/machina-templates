@@ -6,7 +6,7 @@ workflow:
   description: "Workflow to sync fixtures events from Sportradar Soccer with detailed match events like goals, cards, substitutions using timeline endpoint."
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     sportradar-soccer:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:

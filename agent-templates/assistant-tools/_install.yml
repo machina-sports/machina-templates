@@ -19,14 +19,6 @@ datasets:
   - type: agent
     path: agents/chat-executor.yml
 
-  # competitions
-
-  - type: agent
-    path: competitions/bw-markets-br.yml
-
-  - type: agent
-    path: competitions/sr-schedule-br.yml
-
   # mappings
 
   - type: mappings
@@ -78,7 +70,31 @@ datasets:
   - type: connector
     path: scripts/persona-randomizer.yml
 
+  - type: connector
+    path: scripts/team-matcher.yml
+
+  - type: connector
+    path: scripts/event-processor.yml
+
+  - type: connector
+    path: scripts/event-summarizer.yml
+
+  - type: connector
+    path: scripts/market-extractor.yml
+
+  - type: connector
+    path: scripts/message-data-transformer.yml
+
+  - type: connector
+    path: scripts/market-event-matcher.yml
+
   # tools
+
+  - type: connector
+    path: tools/event-id-collector.yml
+  
+  - type: workflow
+    path: tools/event-matcher.yml
 
   - type: workflow
     path: tools/find-faq.yml
@@ -95,6 +111,9 @@ datasets:
   - type: workflow
     path: tools/find-upcoming.yml
 
+  - type: workflow
+    path: tools/find-odds.yml
+
   # workflows
 
   - type: workflow
@@ -110,3 +129,11 @@ datasets:
 
   - type: workflow
     path: _folders.yml
+
+  # assets (translation policies, etc)
+
+  - type: workflow
+    path: assets/market-translations-pt-br.yml
+
+  - type: workflow
+    path: assets/market-translations-es.yml

@@ -22,6 +22,8 @@ import requests
 
 import tempfile
 
+import time
+
 
 def invoke_prompt(params):
     """
@@ -170,8 +172,8 @@ def invoke_image(request_data):
     if image_path and image_path not in image_paths:
         image_paths.append(image_path)
 
-    prompt = params.get("prompt", "Um gato fofo brincando com uma bola de lã")
-    model_name = params.get("model-name", "gemini-2.5-flash-image-preview")
+    prompt = params.get("prompt", "Ronaldinho Gaúcho brincando com uma bola de lã")
+    model_name = params.get("model_name") or "gemini-2.5-flash-image-preview"
     aspect_ratio = params.get("aspect_ratio")  # e.g., "16:9", "1:1", "9:16"
 
     try:
@@ -430,3 +432,152 @@ def invoke_search(request_data):
 
     except Exception as e:
         return {"status": False, "message": f"Exception during search: {e}"}
+
+
+def invoke_video(request_data):
+    """
+    Generate videos using Google's Veo model.
+    
+    Supports both AI Studio (default) and Vertex AI providers.
+    
+    Parameters:
+    - provider: "ai_studio" (default) or "vertex_ai"
+    - model_name: Model name (e.g., "veo-3.1-fast-generate-001")
+    
+    AI Studio Parameters:
+    - api_key: Required - Get from https://aistudio.google.com/apikey
+    
+    Vertex AI Parameters:
+    - project_id: Required - Your GCP Project ID
+    - location: Optional (default: "us-central1")
+    - credential: Optional - Service account JSON (string or dict)
+    """
+    
+    params = request_data.get("params")
+    headers = request_data.get("headers")
+    
+    # Get provider (default to ai_studio for backward compatibility)
+    provider = params.get("provider", "ai_studio").lower()
+    
+    # Get parameters
+    prompt = params.get("prompt")
+    model_name = params.get("model_name", "veo-3.1-fast-generate-001")
+    poll_interval = params.get("poll_interval", 10)  # seconds
+    output_path = params.get("output_path")  # Optional custom output path
+    
+    if not prompt:
+        return {"status": False, "message": "Prompt is required for video generation."}
+    
+    try:
+        # Initialize client based on provider
+        if provider == "vertex_ai":
+            project_id = headers.get("project_id")
+            location = params.get("location", "us-central1")
+            credential = headers.get("credential")
+            
+            if not project_id:
+                return {"status": False, "message": "project_id is required for Vertex AI."}
+            
+            # Handle credentials
+            credentials = None
+            if credential:
+                if isinstance(credential, str):
+                    try:
+                        credential = json.loads(credential)
+                    except json.JSONDecodeError:
+                        return {"status": False, "message": "credential must be valid JSON"}
+                
+                credentials = service_account.Credentials.from_service_account_info(credential)
+            
+            # Initialize Vertex AI client
+            client = genai.Client(
+                vertexai=True,
+                project=project_id,
+                location=location,
+                credentials=credentials,
+            )
+            print(f"🔐 Using Vertex AI authentication (project: {project_id}, location: {location})")
+        else:
+            # AI Studio (default)
+            api_key = headers.get("api_key")
+            
+            if not api_key:
+                return {"status": False, "message": "API key is required for AI Studio."}
+            
+            client = genai.Client(api_key=api_key)
+            print("🔐 Using AI Studio API key authentication")
+        
+        print(f"🎬 Starting video generation with model: {model_name}")
+        print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
+        
+        # Start video generation
+        operation = client.models.generate_videos(
+            model=model_name,
+            prompt=prompt,
+        )
+        
+        print(f"⏳ Video generation operation started. Polling every {poll_interval} seconds...")
+        
+        # Poll the operation status until the video is ready
+        while not operation.done:
+            print("⏳ Waiting for video generation to complete...")
+            time.sleep(poll_interval)
+            operation = client.operations.get(operation)
+        
+        print("✅ Video generation completed!")
+        
+        # Check if operation was successful
+        if not hasattr(operation, "response") or not operation.response:
+            return {
+                "status": False,
+                "message": "Video generation completed but no response received.",
+            }
+        
+        if not hasattr(operation.response, "generated_videos") or not operation.response.generated_videos:
+            return {
+                "status": False,
+                "message": "Video generation completed but no videos were generated.",
+            }
+        
+        # Get the first generated video
+        generated_video = operation.response.generated_videos[0]
+        
+        if not hasattr(generated_video, "video"):
+            return {
+                "status": False,
+                "message": "Generated video object does not contain video file reference.",
+            }
+        
+        # Determine output path
+        if not output_path:
+            # Create a temporary file
+            temp_file = tempfile.NamedTemporaryFile(
+                delete=False, suffix=".mp4"
+            )
+            output_path = temp_file.name
+            temp_file.close()
+        
+        # Download and save the generated video
+        print(f"💾 Downloading video to: {output_path}")
+        client.files.download(file=generated_video.video)
+        generated_video.video.save(output_path)
+        
+        # Extract filename from output_path
+        filename = os.path.basename(output_path)
+        
+        print(f"✅ Video saved successfully: {filename}")
+        
+        return {
+            "status": True,
+            "data": {
+                "video_path": output_path,
+                "filename": filename,
+                "video_format": "MP4",
+                "prompt": prompt,
+                "model": model_name,
+            },
+            "message": "Video generated successfully.",
+        }
+        
+    except Exception as e:
+        return {"status": False, "message": f"Exception when generating video: {e}"}

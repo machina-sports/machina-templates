@@ -26,6 +26,9 @@ datasets:
   - type: mappings
     path: mappings/iptc-sport-event.yml
 
+  - type: mappings
+    path: mappings/iptc-team.yml
+
   - type: workflow
     path: workflows/invoke-request.yml
 
@@ -50,5 +53,29 @@ datasets:
   - type: workflow
     path: workflows/sync-transfers.yml
 
+  - type: workflow
+    path: workflows/sync-teams.yml
+
+  - type: workflow
+    path: workflows/sync-update-live.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-consumer-live.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-consumer-prelive.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-synchronize.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-sync-markets.yml
+
+  - type: workflow
+    path: workflows/sp-opta-event-update.yml
+
   - type: agent
-    path: agents/sp-opta-sync.yml
+    path: agents/sp-opta-event-live-update.yml
+
+  - type: agent
+    path: agents/sp-opta-event-prelive-update.yml

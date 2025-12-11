@@ -16,7 +16,7 @@ mappings:
             "@id": f"urn:opta:sport_event:{match.get('matchInfo', {}).get('id')}",
             "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{match.get('matchInfo', {}).get('contestant', [{}])[0].get('name', 'TBD')} vs {match.get('matchInfo', {}).get('contestant', [{}])[1].get('name', 'TBD')}",
-            "schema:startDate": f"{match.get('matchInfo', {}).get('date')}T{match.get('matchInfo', {}).get('time', '00:00:00Z')}",
+            "schema:startDate": f"{match.get('matchInfo', {}).get('date', '').rstrip('Z')}T{match.get('matchInfo', {}).get('time', '00:00:00').rstrip('Z')}Z",
             "schema:sportName": "football",
             "sport:localDate": match.get('matchInfo', {}).get('localDate'),
             "sport:localTime": match.get('matchInfo', {}).get('localTime'),
@@ -88,6 +88,12 @@ mappings:
               "sport:periodLength": match.get('matchInfo', {}).get('periodLength'),
               "sport:attendance": match.get('liveData', {}).get('matchDetailsExtra', {}).get('attendance'),
               "sport:winner": match.get('liveData', {}).get('matchDetails', {}).get('winner')
+            },
+            "version_control": {
+              "processing": False,
+              "finished": False,
+              "counter": 0,
+              "consumer-update-timestamp": None
             },
             "sport:timeline": [
               {

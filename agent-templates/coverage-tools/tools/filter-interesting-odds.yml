@@ -1,0 +1,84 @@
+workflow:
+  name: coverage-tools-filter-interesting-odds
+  title: Coverage - Filter Interesting Odds (Total Goals, Team Goals, First Scorer)
+  description: Load all markets and filter odds 1.50-3.00 for Total Goals, Team Total Goals, and First To Score markets
+  context-variables:
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    debugger:
+      enabled: true
+  inputs:
+    country: $.get('country', 'br')
+    sport_id: $.get('sport_id', '4')
+    fixture_ids: $.get('fixture_ids', [])
+  outputs:
+    interesting_odds_text: $.get('interesting_odds_text', '')
+    has_interesting_odds: $.get('has_interesting_odds', False)
+    special_odds: $.get('special_odds', {})
+    special_odds_text: $.get('special_odds_text', '')
+    workflow-status: $.get('has_interesting_odds', False) and 'executed' or 'skipped'
+  tasks:
+
+    # load-all-market-odds (NO filtering, ALL markets)
+    - type: connector
+      name: load-all-market-odds
+      description: Get ALL market odds from Bwin without filtering
+      condition: len($.get('fixture_ids', [])) > 0
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          country: $.get('country')
+          sportId: $.get('sport_id')
+      inputs:
+        fixtureIds: $.get('fixture_ids')
+        marketsFilterCriteria: "'All'"
+        onlyMainMarkets: "'false'"
+        isInPlay: "'false'"
+      outputs:
+        bulk-odds: |
+          [
+            {
+              **m,
+              'id': m.get('id'),
+              'name': m.get('name', {}).get('text', ''),
+              'metadata': {
+                'market_code': str(f.get('id', {}).get('full', '')),
+                'market_id': str(m.get('id', {}))
+              },
+              'competition_name': f.get('competition', {}).get('name', {}).get('text', ''),
+              'title': f"{f.get('name', {}).get('text', '')} | {m.get('name', {}).get('text', '')}"
+            }
+            for f in $.get('items', [])
+            for m in f.get('markets', [])
+          ]
+
+    # map-market-odds
+    - type: mapping
+      name: assistant-find-markets-odds-mapping
+      description: Map odds to standard format
+      condition: len($.get('bulk-odds', [])) > 0
+      inputs:
+        market-odds: $.get('bulk-odds')
+      outputs:
+        mapped-odds: $.get('mapped-odds')
+        mapped-runners: $.get('mapped-runners')
+        market-types: $.get('market-types')
+
+    # filter-odds
+    - type: connector
+      name: filter-odds
+      description: Filter odds 1.50-3.00 (Total Goals, Team Goals, First Scorer) + Extract special odds
+      condition: len($.get('mapped-runners', [])) > 0
+      connector:
+        name: coverage-filter-interesting-odds
+        command: invoke_filter_interesting_odds
+      inputs:
+        all_markets_mapped: $.get('mapped-runners', [])
+      outputs:
+        interesting_odds_text: $.get('interesting_odds_text', '')
+        has_interesting_odds: $.get('has_interesting_odds', False)
+        special_odds: $.get('special_odds', {})
+        special_odds_text: $.get('special_odds_text', '')
+

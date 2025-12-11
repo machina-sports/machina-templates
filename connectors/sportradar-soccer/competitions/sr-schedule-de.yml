@@ -1,0 +1,23 @@
+agent:
+  name: competitions-schedule-football-de
+  title: Competitions Schedule - Football - DE
+  description: Agent to schedule Football Competitions
+  context:
+    config-frequency: 10
+    status: "inactive"
+  workflows:
+
+    # sync Germany Bundesliga (130571)
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:130571'"
+      outputs:
+        sync-seasons-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:130571'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)

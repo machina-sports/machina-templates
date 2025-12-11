@@ -52,6 +52,50 @@ datasets:
   - type: "agent"
     path: "agents/event-live-update.yml"
 
+  - type: "agent"
+    path: "agents/event-prelive-update.yml"
+
+  - type: "agent"
+    path: "agents/update-by-round.yml"
+
+  # competitions
+
+  - type: agent
+    path: competitions/bw-markets-br.yml
+
+  - type: agent
+    path: competitions/bw-markets-de.yml
+
+  - type: agent
+    path: competitions/bw-markets-en.yml
+
+  - type: agent
+    path: competitions/bw-markets-es.yml
+
+  - type: agent
+    path: competitions/bw-markets-it.yml
+
+  - type: agent
+    path: competitions/bw-markets-uefa.yml
+
+  - type: agent
+    path: competitions/sr-schedule-br.yml
+
+  - type: agent
+    path: competitions/sr-schedule-de.yml
+
+  - type: agent
+    path: competitions/sr-schedule-en.yml
+
+  - type: agent
+    path: competitions/sr-schedule-es.yml
+
+  - type: agent
+    path: competitions/sr-schedule-it.yml
+
+  - type: agent
+    path: competitions/sr-schedule-uefa.yml
+    
   # mappings
 
   - type: "mappings"
@@ -62,6 +106,9 @@ datasets:
 
   - type: "mappings"
     path: "mappings/iptc-sport-event.yml"
+
+  - type: "mappings"
+    path: "mappings/iptc-team.yml"
 
   - type: "mappings"
     path: "mappings/last-match.yml"
@@ -93,6 +140,9 @@ datasets:
     path: "workflows/sync-standings.yml"
 
   - type: "workflow"
+    path: "workflows/sync-season-leaders.yml"
+
+  - type: "workflow"
     path: "workflows/sync-transfers.yml"
 
   - type: "workflow"
@@ -104,22 +154,34 @@ datasets:
     path: "workflows/event-consumer.yml"
 
   - type: "workflow"
+    path: "workflows/event-consumer-live.yml"
+
+  - type: "workflow"
+    path: "workflows/event-consumer-prelive.yml"
+
+  - type: "workflow"
+    path: "workflows/event-sync-markets.yml"
+
+  - type: "workflow"
     path: "workflows/event-synchronize.yml"
 
   - type: "workflow"
     path: "workflows/event-update.yml"
 
   - type: "workflow"
-    path: "workflows/update-competition.yml"
+    path: "workflows/load-round-events.yml"
+
+  # - type: "workflow"
+  #   path: "workflows/update-competition.yml"
   
-  - type: "workflow"
-    path: "workflows/update-live.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-live.yml"
   
-  - type: "workflow"
-    path: "workflows/update-longterm.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-longterm.yml"
   
-  - type: "workflow"
-    path: "workflows/update-postlive.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-postlive.yml"
   
-  - type: "workflow"
-    path: "workflows/update-prelive.yml"
+  # - type: "workflow"
+  #   path: "workflows/update-prelive.yml"

@@ -1,71 +1,63 @@
 workflow:
-  name: "kalshi-sync-events"
-  title: "Kalshi - Sync Events"
-  description: "Workflow to synchronize event data from Kalshi API to Machina."
+  name: kalshi-sync-events
+  title: Kalshi - Sync Events
+  description: Workflow to synchronize event data from Kalshi API to Machina.
   context-variables:
     debugger:
       enabled: true
-    kalshi:
-      Kalshi-API-Key: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
-      Kalshi-User-Id: "$TEMP_CONTEXT_VARIABLE_KALSHI_USER_ID"
     machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    limit: "$.get('limit', 100)"
-    cursor: "$.get('cursor')"
-    status: "$.get('status')"
-    series_ticker: "$.get('series_ticker')"
-    min_close_ts: "$.get('min_close_ts')"
-    force-update: "($.get('force-update') == 'true')"
+    category: $.get('category', '')
+    tags: $.get('tags')
+    series_ticker: $.get('series_ticker')
   outputs:
-    workflow-status: "$.get('workflow-status', 'skipped')"
+    workflow-status: $.get('workflow-status', 'skipped')
   tasks:
 
     # 1 load-events
-    - type: "connector"
-      name: "load-events"
-      description: "Get events from Kalshi API"
+    - type: connector
+      name: load-events
+      description: Get events from Kalshi API
       connector:
-        name: "kalshi"
-        command: "get-events"
-        command_attribute:
-          limit: "$.get('limit')"
-          cursor: "$.get('cursor')"
-          status: "$.get('status')"
-          series_ticker: "$.get('series_ticker')"
-          min_close_ts: "$.get('min_close_ts')"
+        name: kalshi
+        command: get-events
+      inputs:
+        category: $.get('category')
+        tags: $.get('tags')
+        series_ticker: $.get('series_ticker')
       outputs:
-        event_data: "$.get('events', [])"
-        next_cursor: "$.get('cursor')"
+        events: $.get('events', [])
         workflow-status: "'executed'"
 
     # kalshi-event-mapping
     - type: mapping
       name: kalshi-event-mapping
-      title: "Kalshi - Event Data Mapping"
-      description: "Mapping data from Kalshi event API responses"
-      condition: "$.get('event_data') is not None and len($.get('event_data', [])) > 0"
+      title: Kalshi - Event Data Mapping
+      description: Mapping data from Kalshi event API responses
+      condition: $.get('events') is not None and len($.get('events', [])) > 0
       inputs:
-        events: "$.get('event_data', [])"
+        events: $.get('events', [])
       outputs:
-        bulk-events: "$.get('mapped-events', [])"
+        bulk-events: $.get('mapped-events', [])
 
     # 2 bulk-save-events
-    - type: "document"
-      name: "bulk-save-events"
-      description: "Bulk save the event data."
-      condition: "$.get('event_data') is not None and len($.get('event_data', [])) > 0"
+    - type: document
+      name: bulk-save-events
+      description: Bulk save the event data.
+      condition: $.get('bulk-events') is not None and len($.get('bulk-events', [])) > 0
       config:
-        action: "bulk-update"
-        embed-selector: "$.get('title')"
+        action: bulk-update
+        embed-selector: $.get('title')
         embed-vector: true
-        force-update: "$.get('force-update')"
+        force-update: $.get('force-update')
       connector:
-        name: "machina-ai"
-        command: "invoke_embedding"
-        model: "text-embedding-3-small"
-      document_name: "'kalshi-event'"
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'kalshi-events'"
       documents:
-        items: "$.get('parsedItems', [])"
+        items: $.get('bulk-events', [])
       inputs:
-        parsedItems: "$.get('bulk-events', [])"
+        bulk-events: $.get('bulk-events', [])
+

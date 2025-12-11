@@ -1,0 +1,9 @@
+connector:
+  name: coverage-suspension-validator
+  title: Coverage - Suspension Validator
+  description: Validate suspension stories by checking actual card data from the most recent matches in the same competition
+  filename: suspension_validator.py
+  filetype: pyscript
+  commands:
+    - name: invoke_suspension_validator
+      value: invoke_suspension_validator

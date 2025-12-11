@@ -1,0 +1,133 @@
+workflow:
+  name: kalshi-combo-analysis-executor
+  title: Kalshi - Combo Analysis Executor
+  description: Workflow to execute a combo analysis.
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    seasonId: $.get('seasonId')
+  outputs:
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load event filtering by competitor
+    - type: document
+      name: load-event-by-competitor
+      description: Search for events by competitor in the same competition.
+      condition: $.get('seasonId') is not None
+      config:
+        action: search
+        search-limit: 12
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        value.sport:competition.@id: "{'$in': [$.get('seasonId')]}"
+        value.sport:status: "{'$in': ['NS']}"
+      inputs:
+        name: "{'$in': ['sport:Event']}"
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_list: $.get('documents', []) if $.get('documents') else None
+        event_list_ids: |
+          [
+            event.get('value', {}).get('@id').replace('urn:sportradar:sport_event:', '')
+            for event in $.get('documents', [])
+          ]
+        event_list_parsed: |
+          [
+            {
+              **event.get('value', {}),
+            }
+            for event in $.get('documents', [])
+          ]
+
+    # iptc-mapping-past-events
+    - type: mapping
+      name: iptc-events-summary
+      condition: $.get('event_exists') is True
+      inputs:
+        events: $.get('event_list_parsed')
+      outputs:
+        events_ids: $.get('events_ids')
+        events_summary: $.get('events_summary')
+
+    # load-market-analysis-by-event-codes
+    - type: document
+      name: load-market-analysis-by-event-codes
+      description: Load market analysis by event codes.
+      condition: $.get('events_ids') is not None and len($.get('events_ids', [])) > 0
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        metadata.eventCode: "{'$in': $.get('events_ids')}"
+      inputs:
+        name: "'kalshi-market-analysis'"
+      outputs:
+        market_analysis_list: $.get('documents', [])
+        market_analysis_list_count: len($.get('documents', []))
+        market_analysis_list_exists: len($.get('documents', [])) > 0
+        market_analysis_list_ids: |
+          [
+            market_analysis.get('metadata', {}).get('eventCode', '')
+            for market_analysis in $.get('documents', [])
+          ]
+        market_analysis_list_parsed: |
+          [
+            {
+              **market_analysis.get('metadata', {}),
+              **market_analysis.get('value', {}),
+            }
+            for market_analysis in $.get('documents', [])
+          ]
+
+    # ## CONTENT STORIES FROM PAST EVENTS
+
+    # kalshi-market-analysis-prompt
+    - type: prompt
+      name: kalshi-combo-analysis-prompt
+      description: Kalshi Combo Analysis Prompt
+      condition: $.get('market_analysis_list_exists') is True
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        market_analysis_list_parsed: $.get('market_analysis_list_parsed', [])
+      outputs:
+        analysis: "$.get('analysis')"
+        summary: "$.get('summary')"
+        selected_combo: "$.get('selected_combo')"
+
+    # kalshi-combo-analysis-update
+    - type: document
+      name: kalshi-combo-analysis-update
+      description: Update the kalshi combo analysis document.
+      condition: $.get('analysis') is not None and $.get('summary') is not None
+      config:
+        action: save
+        embed-vector: false
+        force-update: true
+      filters:
+        metadata.seasonId: $.get('seasonId')
+      documents:
+        kalshi-combo-analysis: |
+          {
+            "title": f"Kalshi Combo Analysis - {$.get('seasonId')}",
+            "analysis": $.get('analysis'),
+            "summary": $.get('summary'),
+            "selected": $.get('selected_combo')
+          }
+      metadata:
+        seasonId: $.get('seasonId')

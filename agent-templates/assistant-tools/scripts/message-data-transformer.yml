@@ -1,0 +1,8 @@
+connector:
+  name: message-data-transformer
+  description: Transform message data to LLM-friendly summaries
+  filename: message-data-transformer.py
+  filetype: pyscript
+  commands:
+    - name: summarize_message_data
+      value: summarize_message_data

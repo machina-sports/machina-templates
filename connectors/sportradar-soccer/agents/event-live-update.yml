@@ -1,16 +1,17 @@
 agent:
   name: sportradar-event-live-update
-  title: Sportradar Event Live Update
-  description: Workflow to consume Sportradar.
+  title: Sportradar - Event Live Update
+  description: Agent to consume and update live Sportradar events (live, interrupted, post-live).
   context:
     config-frequency: 0.1
+    status: "inactive"
   context-agent:
     event_code: $.get('event_code')
   workflows:
 
-    # Workflow Event Consumer
-    - name: sportradar-soccer-event-consumer
-      description: Soccer Event Consumer
+    # Workflow Event Consumer - Live
+    - name: sportradar-soccer-event-consumer-live
+      description: Soccer Event Consumer (Live)
       inputs:
         event_code: $.get('event_code')
       outputs:
@@ -26,6 +27,14 @@ agent:
       outputs:
         event-synchronize-status: $.get('workflow-status', False)
 
+    # Workflow Event Sync Markets
+    - name: sportradar-soccer-event-sync-markets
+      description: Soccer Event Sync Markets
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-sync-markets-status: $.get('workflow-status', False)
+
     # Workflow Event Update
     - name: sportradar-soccer-event-update
       description: Soccer Event Update
@@ -34,22 +43,3 @@ agent:
         event_document_id: $.get('event_document_id')
       outputs:
         event-update-status: $.get('workflow-status', False)
-        
-    # # Workflow Event Update Pre-Live
-    # - name: sportradar-soccer-update-prelive
-    #   description: Soccer Event Update Pre-Live
-    #   outputs:
-    #     soccer-event-update: "$.get('workflow-status', False)"
-
-    # # Workflow Event Update Live
-    # - name: sportradar-soccer-update-live
-    #   description: Soccer Event Update Live
-    #   outputs:
-    #     soccer-event-update: "$.get('workflow-status', False)"
-
-    # # Workflow Event Update Post-Live
-    # - name: sportradar-soccer-update-postlive
-    #   description: Soccer Event Update Post-Live
-    #   outputs:
-    #     soccer-event-update: "$.get('workflow-status', False)"
-        

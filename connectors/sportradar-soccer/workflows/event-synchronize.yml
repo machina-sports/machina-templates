@@ -6,7 +6,7 @@ workflow:
   description: Workflow to synchronize a soccer game from SportRadar API by event code.
   context-variables:
     debugger:
-      enabled: true
+      enabled: false
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     sportradar-soccer:
@@ -137,8 +137,7 @@ workflow:
             'schema:statistics': $.get('iptc_events_statistics', []),
             'schema:timeline': $.get('iptc_events_timeline', []),
             'version_control': {
-              **$.get('event_value', {}).get('version_control', {}),
-              'processing': True
+              **$.get('event_value', {}).get('version_control', {})
             }
           }
       
