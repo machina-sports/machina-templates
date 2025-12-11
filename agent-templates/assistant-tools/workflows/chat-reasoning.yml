@@ -55,8 +55,7 @@ workflow:
           {
             'messages': [],
             'status': 'created',
-            'status_message': 'Thread created',
-            'created_at': '{{ now() }}'
+            'status_message': 'Thread created'
           }
       inputs:
         document_id: $.get('thread_id')
