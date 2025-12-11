@@ -1,36 +1,36 @@
 workflow:
-  name: "bwin-zendesk-generate-snippets"
-  title: "Zendesk Generate Snippets"
-  description: "Workflow to generate snippets from Zendesk articles for search and retrieval"
+  name: zendesk-generate-snippets
+  title: Zendesk Generate Snippets
+  description: Workflow to generate snippets from Zendesk articles for search and retrieval
   context-variables:
     debugger:
       enabled: true
     google-genai:
-      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
-      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
-      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $MACHINA_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
     machina-ai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+      api_key: $MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY
   inputs:
-    limit: "$.get('limit', 100)"
+    limit: $.get('limit', 100)
   outputs:
-    snippets_count: "$.get('snippets_count', 0)"
-    workflow-status: "$.get('snippets_bulk', []) is None or len($.get('snippets_bulk', [])) == 0 and 'skipped' or 'executed'"
+    snippets_count: $.get('snippets_count', 0)
+    workflow-status: $.get('snippets_bulk', []) is None or len($.get('snippets_bulk', [])) == 0 and 'skipped' or 'executed'
   tasks:
 
     # load-articles
-    - type: "document"
-      name: "load-articles"
-      description: "Load articles from database (new version)"
+    - type: document
+      name: load-articles
+      description: Load articles from database (new version)
       config:
-        action: "search"
+        action: search
         search-limit: 1000
         search-vector: false
       inputs:
-        name: "'bwin-zendesk-article'"
-        search-limit: "$.get('limit')"
+        name: 'zendesk-article'
+        search-limit: $.get('limit')
       outputs:
-        articles: "$.get('documents', [])"
+        articles: $.get('documents', [])
         articles_parsed: |
           [
             {
@@ -52,17 +52,17 @@ workflow:
           ]
 
     # load-labels
-    - type: "document"
-      name: "load-labels"
-      description: "Load labels from database"
+    - type: document
+      name: load-labels
+      description: Load labels from database
       config:
-        action: "search"
+        action: search
         search-limit: 1000
         search-vector: false
       inputs:
-        name: "'bwin-zendesk-label'"
+        name: 'zendesk-label'
       outputs:
-        labels: "$.get('documents', [])"
+        labels: $.get('documents', [])
         labels_parsed: |
           [
             {
@@ -80,11 +80,11 @@ workflow:
             }
             for label in $.get('documents', [])
           ]
- 
-    - type: "prompt"
-      name: "content-snippet-prompt"
-      description: "Generate snippets from articles using AI"
-      condition: "$.get('articles_parsed') is not None and len($.get('articles_parsed', [])) > 0 and $.get('labels_parsed') is not None and len($.get('labels_parsed', [])) > 0"
+
+    - type: prompt
+      name: content-snippet-prompt
+      description: Generate snippets from articles using AI
+      condition: $.get('articles_parsed') is not None and len($.get('articles_parsed', [])) > 0 and $.get('labels_parsed') is not None and len($.get('labels_parsed', [])) > 0
       connector:
         command: invoke_prompt
         name: google-genai
@@ -92,8 +92,8 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        articles: "$.get('articles_parsed', [])"
-        labels: "$.get('labels_parsed', [])"
+        articles: $.get('articles_parsed', [])
+        labels: $.get('labels_parsed', [])
       outputs:
         snippets_bulk: |
           [
@@ -113,19 +113,19 @@ workflow:
           ]
 
     # bulk-save-snippets
-    - type: "document"
-      name: "bulk-save-snippets"
-      condition: "$.get('snippets_bulk') is not None and len($.get('snippets_bulk', [])) > 0"
-      description: "Bulk save snippets to the database"
+    - type: document
+      name: bulk-save-snippets
+      condition: $.get('snippets_bulk') is not None and len($.get('snippets_bulk', [])) > 0
+      description: Bulk save snippets to the database
       config:
-        action: "bulk-update"
+        action: bulk-update
         embed-vector: true
         force-update: true
-      document_name: "'bwin-zendesk-content-snippet'"
+      document_name: 'zendesk-content-snippet'
       documents:
-        items: "$.get('snippets_bulk', [])"
+        items: $.get('snippets_bulk', [])
       inputs:
-        snippets_bulk: "$.get('snippets_bulk', [])"
+        snippets_bulk: $.get('snippets_bulk', [])
       outputs:
-        saved_count: "len($.get('documents', [])) if $.get('documents') else 0"
+        saved_count: len($.get('documents', [])) if $.get('documents') else 0
 

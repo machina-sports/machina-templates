@@ -1,9 +1,9 @@
 prompts:
 
-  - type: "prompt"
-    title: "Content Snippet Prompt"
-    name: "content-snippet-prompt"
-    description: "This prompt generates a content snippet to summarize the content."
+  - type: prompt
+    name: zendesk-content-snippet-prompt
+    title: Zendesk Content Snippet Prompt
+    description: This prompt generates a content snippet to summarize the content.
     instruction: |
       Analise cuidadosamente os artigos e os labels fornecidos e crie o máximo de snippets possível para fragmentar o conteúdo em chunks menores e mais específicos. 
 
@@ -26,13 +26,13 @@ prompts:
 
       Objetivo: Transformar múltiplos artigos grandes em vários chunks detalhados e precisos para otimizar a busca e recuperação de informações.
     schema:
-      title: "ContentSnippet"
-      description: "Schema para gerar snippets de conteúdo."
-      type: "object"
+      title: ContentSnippet
+      description: Schema para gerar snippets de conteúdo.
+      type: object
       required: ["snippets"]
       properties:
         snippets:
-          type: "array"
+          type: array
           description: "Array de snippets do conteúdo."
           items:
             type: "object"
@@ -56,10 +56,10 @@ prompts:
           minItems: 1
           maxItems: 30
 
-  - type: "prompt"
-    title: "HTML to Structured Text Converter"
-    name: "html-to-structured-text-prompt"
-    description: "Convert HTML content to clean, structured text format without HTML tags"
+  - type: prompt
+    name: zendesk-html-to-structured-text-prompt
+    title: Zendesk HTML to Structured Text Prompt
+    description: Convert HTML content to clean, structured text format without HTML tags
     instruction: |
       Você receberá um artigo do Zendesk Help Center com conteúdo HTML. Sua tarefa é converter o HTML em texto limpo e estruturado, removendo todas as tags HTML e mantendo apenas o conteúdo textual de forma organizada.
 
@@ -85,26 +85,26 @@ prompts:
       Objetivo: Converter o conteúdo HTML do artigo em texto puro e estruturado para armazenamento e busca.
 
     schema:
-      title: "StructuredText"
-      description: "Este schema define a estrutura para converter o conteúdo HTML para texto estruturado."
-      type: "object"
+      title: StructuredText
+      description: Este schema define a estrutura para converter o conteúdo HTML para texto estruturado.
+      type: object
       required: ["snippets"]
       properties:
         snippets:
-          type: "array"
-          description: "Um array com o snippet convertido de HTML para texto (um por artigo)."
+          type: array
+          description: Um array com o snippet convertido de HTML para texto (um por artigo).
           items:
-            type: "object"
+            type: object
             properties:
               title:
-                type: "string"
-                description: "O título do artigo convertido de HTML para texto."
+                type: string
+                description: O título do artigo convertido de HTML para texto.
               body_text:
-                type: "string"
-                description: "O conteúdo do artigo convertido de HTML para texto, sem tags HTML."
+                type: string
+                description: O conteúdo do artigo convertido de HTML para texto, sem tags HTML.
               article_id:
-                type: "string"
-                description: "O ID do artigo convertido de HTML para texto."
+                type: string
+                description: O ID do artigo convertido de HTML para texto.
             required: ["title", "body_text", "article_id"]
           minItems: 1
           maxItems: 1

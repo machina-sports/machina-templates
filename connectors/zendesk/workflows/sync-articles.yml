@@ -1,47 +1,47 @@
 workflow:
-  name: "bwin-zendesk-sync-articles"
-  title: "Zendesk Sync Articles"
-  description: "Workflow to fetch articles from Zendesk Help Center and save them to the database"
+  name: zendesk-sync-articles
+  title: Zendesk Sync Articles
+  description: Workflow to fetch articles from Zendesk Help Center and save them to the database
   context-variables:
     debugger:
       enabled: true
     zendesk:
-      username: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME"
-      password: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD"
+      username: $MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME
+      password: $MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD
     google-genai:
-      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
-      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
-      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $MACHINA_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
   inputs:
-    locale: "$.get('locale', 'en-gb')"
-    sort_by: "$.get('sort_by', 'updated_at')"
-    sort_order: "$.get('sort_order', 'asc')"
-    page: "$.get('page', 1)"
-    per_page: "$.get('per_page', 30)"
+    locale: $.get('locale', 'en-gb')
+    sort_by: $.get('sort_by', 'updated_at')
+    sort_order: $.get('sort_order', 'asc')
+    page: $.get('page', 1)
+    per_page: $.get('per_page', 30)
   outputs:
-    articles_count: "$.get('articles_count', 0)"
-    saved_count: "$.get('saved_count', 0)"
-    saved_articles: "$.get('saved_articles', [])"
-    workflow-status: "$.get('articles_parsed', []) is None or len($.get('articles_parsed', [])) == 0 and 'skipped' or 'executed'"
+    articles_count: $.get('articles_count', 0)
+    saved_count: $.get('saved_count', 0)
+    saved_articles: $.get('saved_articles', [])
+    workflow-status: $.get('articles_parsed', []) is None or len($.get('articles_parsed', [])) == 0 and 'skipped' or 'executed'
   tasks:
 
     # task-fetch-articles
-    - type: "connector"
-      name: "task-fetch-articles"
-      description: "Fetch articles from Zendesk Help Center"
+    - type: connector
+      name: task-fetch-articles
+      description: Fetch articles from Zendesk Help Center
       connector:
-        name: "zendesk"
-        command: "list_articles"
+        name: zendesk
+        command: list_articles
       inputs:
-        locale: "$.get('locale')"
-        sort_by: "$.get('sort_by')"
-        sort_order: "$.get('sort_order')"
-        page: "$.get('page')"
-        per_page: "$.get('per_page')"
+        locale: $.get('locale')
+        sort_by: $.get('sort_by')
+        sort_order: $.get('sort_order')
+        page: $.get('page')
+        per_page: $.get('per_page')
       outputs:
-        articles_response: "$.get('data', {})"
-        articles: "$.get('data', {}).get('articles', [])"
-        articles_count: "$.get('data', {}).get('count', 0)"
+        articles_response: $.get('data', {})
+        articles: $.get('data', {}).get('articles', [])
+        articles_count: $.get('data', {}).get('count', 0)
         articles_raw: |
           [
             {
@@ -70,30 +70,31 @@ workflow:
             if article.get('body')
           ]
 
-    - type: "mapping"
-      name: "bwin-zendesk-articles-html-to-text-mapping"
-      description: "Convert HTML content to clean text using bs4"
-      condition: "$.get('articles_raw') is not None and len($.get('articles_raw', [])) > 0"
+    # zendesk-articles-html-to-text-mapping
+    - type: mapping
+      name: zendesk-articles-html-to-text-mapping
+      description: Convert HTML content to clean text using bs4
+      condition: $.get('articles_raw') is not None and len($.get('articles_raw', [])) > 0
       inputs:
-        articles_raw: "$.get('articles_raw', [])"
+        articles_raw: $.get('articles_raw', [])
       outputs:
-        articles_parsed: "$.get('articles_parsed', [])"
+        articles_parsed: $.get('articles_parsed', [])
 
     # bulk-save-articles
-    - type: "document"
-      name: "bulk-save-articles"
-      condition: "$.get('articles_parsed') is not None and len($.get('articles_parsed', [])) > 0"
-      description: "Bulk save articles to the database"
+    - type: document
+      name: bulk-save-articles
+      condition: $.get('articles_parsed') is not None and len($.get('articles_parsed', [])) > 0
+      description: Bulk save articles to the database
       config:
-        action: "bulk-update"
+        action: bulk-update
         embed-vector: false
         force-update: true
-      document_name: "'bwin-zendesk-article'"
+      document_name: 'zendesk-article'
       documents:
-        items: "$.get('articles_parsed')"
+        items: $.get('articles_parsed')
       inputs:
-        articles_parsed: "$.get('articles_parsed')"
+        articles_parsed: $.get('articles_parsed')
       outputs:
-        saved_count: "len($.get('documents', [])) if $.get('documents') else 0"
-        saved_articles: "$.get('documents', []) if $.get('documents') else $.get('articles_parsed', [])"
+        saved_count: len($.get('documents', [])) if $.get('documents') else 0
+        saved_articles: $.get('documents', []) if $.get('documents') else $.get('articles_parsed', [])
 

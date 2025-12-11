@@ -1,30 +1,30 @@
 workflow:
-  name: "bwin-zendesk-sync-labels"
-  title: "Zendesk Sync Labels"
-  description: "Workflow to fetch labels from Zendesk Help Center and save them to the database"
+  name: zendesk-sync-labels
+  title: Zendesk Sync Labels
+  description: Workflow to fetch labels from Zendesk Help Center and save them to the database
   context-variables:
     debugger:
       enabled: true
     zendesk:
-      username: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME"
-      password: "$MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD"
+      username: $MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME
+      password: $MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD
   inputs: {}
   outputs:
-    labels_count: "$.get('labels_count', 0)"
-    workflow-status: "$.get('labels_parsed', []) is None or len($.get('labels_parsed', [])) == 0 and 'skipped' or 'executed'"
+    labels_count: $.get('labels_count', 0)
+    workflow-status: $.get('labels_parsed', []) is None or len($.get('labels_parsed', [])) == 0 and 'skipped' or 'executed'
   tasks:
 
     # task-fetch-labels
-    - type: "connector"
-      name: "task-fetch-labels"
-      description: "Fetch labels from Zendesk Help Center"
+    - type: connector
+      name: task-fetch-labels
+      description: Fetch labels from Zendesk Help Center
       connector:
-        name: "zendesk"
-        command: "list_labels"
+        name: zendesk
+        command: list_labels
       outputs:
-        labels_response: "$"
-        labels: "$.get('labels', [])"
-        labels_count: "len($.get('labels', []))"
+        labels_response: $
+        labels: $.get('labels', [])
+        labels_count: len($.get('labels', []))
         labels_parsed: |
           [
             {
@@ -43,19 +43,19 @@ workflow:
           ]
 
     # bulk-save-labels
-    - type: "document"
-      name: "bulk-save-labels"
-      condition: "$.get('labels_parsed') is not None and len($.get('labels_parsed', [])) > 0"
-      description: "Bulk save labels to the database"
+    - type: document
+      name: bulk-save-labels
+      condition: $.get('labels_parsed') is not None and len($.get('labels_parsed', [])) > 0
+      description: Bulk save labels to the database
       config:
-        action: "bulk-update"
+        action: bulk-update
         embed-vector: false
         force-update: true
-      document_name: "'bwin-zendesk-label'"
+      document_name: 'zendesk-label'
       documents:
-        items: "$.get('labels_parsed')"
+        items: $.get('labels_parsed')
       inputs:
-        labels_parsed: "$.get('labels_parsed')"
+        labels_parsed: $.get('labels_parsed')
       outputs:
-        saved_count: "len($.get('documents', [])) if $.get('documents') else 0"
+        saved_count: len($.get('documents', [])) if $.get('documents') else 0
 

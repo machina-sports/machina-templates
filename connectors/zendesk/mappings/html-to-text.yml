@@ -1,9 +1,9 @@
 mappings:
 
-  - type: "mapping"
-    title: "Zendesk Articles - HTML to Text Mapping"
-    name: "bwin-zendesk-articles-html-to-text-mapping"
-    description: "Convert HTML content to clean text using bs4"
+  - type: mapping
+    title: Zendesk Articles - HTML to Text Mapping
+    name: zendesk-articles-html-to-text-mapping
+    description: Convert HTML content to clean text using bs4
     outputs:
       articles_parsed: |
         [
