@@ -18,6 +18,36 @@ mappings:
     title: Coverage - Events Summary with BRT timezone
     description: Convert event data to summary format with UTC to BRT (UTC-3) conversion
     outputs:
+      event_summary_cet: |
+        [
+          f"{event.get('name', '')} | "
+          f"{event.get('schema:sportName', '')} | "
+          f"{(datetime.fromisoformat(event.get('schema:startDate', '').replace('Z', '+00:00')) + timedelta(hours=1)).strftime('%d/%m/%y %H:%M (CET)') if event.get('schema:startDate') else 'N/A'} | "
+          f"{event.get('sport:competition', {}).get('name', '')} | "
+          f"{event.get('sport:competition', {}).get('sport:season', {}).get('name', '')} | "
+          f"{event.get('sport:round', {}).get('name') or ''} | "
+          f"{event.get('sport:stage', {}).get('name') or event.get('sport:stage', {}).get('phase') or ''} | "
+          f"{event.get('sport:status', '')} | "
+          f"{str(event.get('sport:score', {}).get('sport:homeScore')) + ' x ' + str(event.get('sport:score', {}).get('sport:awayScore')) if event.get('sport:score', {}).get('sport:homeScore') is not None and event.get('sport:score', {}).get('sport:awayScore') is not None else ''} | "
+          f"{event.get('sport:venue', {}).get('name', '')} | "
+          f"{event.get('sport:venue', {}).get('schema:addressLocality', '')}"
+          for event in $.get('events', [])
+        ]
+      event_summary_utc: |
+        [
+          f"{event.get('name', '')} | "
+          f"{event.get('schema:sportName', '')} | "
+          f"{(datetime.fromisoformat(event.get('schema:startDate', '').replace('Z', '+00:00')) + timedelta(hours=0)).strftime('%d/%m/%y %H:%M (UTC)') if event.get('schema:startDate') else 'N/A'} | "
+          f"{event.get('sport:competition', {}).get('name', '')} | "
+          f"{event.get('sport:competition', {}).get('sport:season', {}).get('name', '')} | "
+          f"{event.get('sport:round', {}).get('name') or ''} | "
+          f"{event.get('sport:stage', {}).get('name') or event.get('sport:stage', {}).get('phase') or ''} | "
+          f"{event.get('sport:status', '')} | "
+          f"{str(event.get('sport:score', {}).get('sport:homeScore')) + ' x ' + str(event.get('sport:score', {}).get('sport:awayScore')) if event.get('sport:score', {}).get('sport:homeScore') is not None and event.get('sport:score', {}).get('sport:awayScore') is not None else ''} | "
+          f"{event.get('sport:venue', {}).get('name', '')} | "
+          f"{event.get('sport:venue', {}).get('schema:addressLocality', '')}"
+          for event in $.get('events', [])
+        ]
       events_summary: |
         [
           f"{event.get('name', '')} | "
