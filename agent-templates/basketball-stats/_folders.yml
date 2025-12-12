@@ -1,0 +1,154 @@
+workflow:
+  name: basketball-stats-folders
+  title: Basketball Stats - Folders
+  description: Basketball Stats Agent - Document Folders Structure
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Setup folder structure
+    - type: document
+      name: install-documents
+      description: Install documents and folder structure.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        doc-structure: |
+          [
+            {
+              "title": "Games & Predictions",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "basketball-game",
+                  "title": "Games",
+                  "description": "Basketball games with scheduling and matchup information",
+                  "category": "Games",
+                  "metadata": {
+                    "name": ["basketball-game"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-prediction",
+                  "title": "Predictions",
+                  "description": "AI-generated game predictions with win probabilities and spreads",
+                  "category": "Predictions",
+                  "metadata": {
+                    "name": ["basketball-prediction"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-simulation",
+                  "title": "Simulations",
+                  "description": "Monte Carlo simulation results for uncertainty quantification",
+                  "category": "Simulations",
+                  "metadata": {
+                    "name": ["basketball-simulation"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "Teams & Statistics",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "basketball-team",
+                  "title": "Teams",
+                  "description": "Basketball teams with canonical names and league information",
+                  "category": "Teams",
+                  "metadata": {
+                    "name": ["basketball-team"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-standing",
+                  "title": "Standings",
+                  "description": "League standings and season strength snapshots",
+                  "category": "Standings",
+                  "metadata": {
+                    "name": ["basketball-standing"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "sport:TeamParticipation",
+                  "title": "Team Statistics",
+                  "description": "Game-level team statistics and performance metrics",
+                  "category": "Statistics",
+                  "metadata": {
+                    "name": ["sport:TeamParticipation"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "sport:IndividualParticipation",
+                  "title": "Player Statistics",
+                  "description": "Game-level player statistics and performance metrics",
+                  "category": "Statistics",
+                  "metadata": {
+                    "name": ["sport:IndividualParticipation"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "News & Evidence",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "basketball-news-evidence",
+                  "title": "News Evidence",
+                  "description": "Structured news evidence extracted from web search",
+                  "category": "Evidence",
+                  "metadata": {
+                    "name": ["basketball-news-evidence"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-news-deltas",
+                  "title": "News Deltas",
+                  "description": "News-driven adjustments to team performance expectations",
+                  "category": "Evidence",
+                  "metadata": {
+                    "name": ["basketball-news-deltas"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-feature-payload",
+                  "title": "Feature Payloads",
+                  "description": "Canonical feature payloads used for forecasting",
+                  "category": "Features",
+                  "metadata": {
+                    "name": ["basketball-feature-payload"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]

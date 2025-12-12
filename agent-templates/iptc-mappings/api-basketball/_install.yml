@@ -1,0 +1,28 @@
+setup:
+  title: IPTC Mappings for API Basketball
+  description: IPTC Sports Schema mappings for API Basketball data transformation
+  category:
+    - data-transformation
+    - basketball
+    - iptc
+  estimatedTime: 1 minute
+  features:
+    - Convert API Basketball data to IPTC Sports Schema format
+    - Standardized sports data representation
+    - Event and statistics mapping
+  integrations:
+    - machina-ai
+  status: available
+  value: agent-templates/iptc-mappings/api-basketball
+  version: 1.0.0
+
+datasets:
+
+  - type: mappings
+    path: event-teams-stats.yml
+
+  - type: mappings
+    path: event-players-stats.yml
+
+  - type: mappings
+    path: event-mapping.yml

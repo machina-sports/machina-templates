@@ -1,0 +1,41 @@
+workflow:
+
+  # api-basketball-get-leagues
+  name: "api-basketball-get-leagues"
+  title: "API Basketball - Get Leagues"
+  description: "Workflow to get leagues from API Basketball with multiple filter options."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    name: "$.get('name')"
+    country: "$.get('country')"
+    code: "$.get('code')"
+    season: "$.get('season')"
+    team: "$.get('team')"
+    search: "$.get('search')"
+    type: "$.get('type')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-leagues"
+      description: "Get leagues from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-leagues"
+      inputs:
+        id: "$.get('id')"
+        name: "$.get('name')"
+        country: "$.get('country')"
+        code: "$.get('code')"
+        season: "$.get('season')"
+        team: "$.get('team')"
+        search: "$.get('search')"
+        type: "$.get('type')"
+      outputs:
+        leagues: "$"

@@ -1,0 +1,58 @@
+mappings:
+
+  # iptc-api-basketball-event-players-stats
+  - type: mapping
+    title: "IPTC | API Basketball Players Statistics Mapping"
+    name: "iptc-api-basketball-event-players-stats"
+    description: "Maps API Basketball players statistics to IPTC Basketball Statistics schema format"
+    outputs:
+      iptc_players_statistics: |
+        [
+          {
+            "metadata": {
+              "document_type": "sport:IndividualParticipation",
+              "event_code": f"urn:apibasketball:game:{$.get('game_id', '')}",
+              "player_code": f"urn:apibasketball:player:{player.get('player', {}).get('id', '')}",
+              "team_code": f"urn:apibasketball:team:{team_data.get('team', {}).get('id', '')}"
+            },
+            "@context": {
+              "sport": "https://sportschema.org/ontologies/main/",
+              "spstat": "https://sportschema.org/ontologies/corestatistics/"
+            },
+            "@id": f"urn:apibasketball:player-participation:{player.get('player', {}).get('id', '')}:{$.get('game_id', '')}",
+            "@type": "sport:IndividualParticipation",
+            "rdfs:label": f"{player.get('player', {}).get('name', '')} participation in game {$.get('game_id', '')}",
+            "sport:participationBy": {
+              "@id": f"urn:apibasketball:player:{player.get('player', {}).get('id', '')}",
+              "@type": "sport:Athlete",
+              "rdfs:label": player.get('player', {}).get('name', ''),
+              "sport:position": player.get('statistics', [{}])[0].get('games', {}).get('position', player.get('player', {}).get('pos', '')),
+              "sport:jerseyNumber": str(player.get('statistics', [{}])[0].get('games', {}).get('number', player.get('player', {}).get('number', ''))),
+              "schema:image": player.get('player', {}).get('photo', ''),
+              "schema:teamName": team_data.get('team', {}).get('name', ''),
+              "schema:teamLogo": team_data.get('team', {}).get('logo', '')
+            },
+            "sport:playerStatus": f"http://cv.iptc.org/newscodes/spplayerstatus/{'starter' if not player.get('statistics', [{}])[0].get('games', {}).get('substitute', True) else 'bench'}",
+            "sport:minutesPlayed": int(player.get('statistics', [{}])[0].get('games', {}).get('minutes', 0) or 0),
+            "sport:rating": float(player.get('statistics', [{}])[0].get('games', {}).get('rating', 0.0) or 0.0),
+            "spstat:pointsTotal": int(player.get('statistics', [{}])[0].get('points', {}).get('total', 0) or 0),
+            "spstat:fieldGoalsMade": int(player.get('statistics', [{}])[0].get('field_goals', {}).get('made', 0) or 0),
+            "spstat:fieldGoalsAttempted": int(player.get('statistics', [{}])[0].get('field_goals', {}).get('attempted', 0) or 0),
+            "spstat:threePointersMade": int(player.get('statistics', [{}])[0].get('three_pointers', {}).get('made', 0) or 0),
+            "spstat:threePointersAttempted": int(player.get('statistics', [{}])[0].get('three_pointers', {}).get('attempted', 0) or 0),
+            "spstat:freeThrowsMade": int(player.get('statistics', [{}])[0].get('free_throws', {}).get('made', 0) or 0),
+            "spstat:freeThrowsAttempted": int(player.get('statistics', [{}])[0].get('free_throws', {}).get('attempted', 0) or 0),
+            "spstat:reboundsTotal": int(player.get('statistics', [{}])[0].get('rebounds', {}).get('total', 0) or 0),
+            "spstat:offensiveRebounds": int(player.get('statistics', [{}])[0].get('rebounds', {}).get('offensive', 0) or 0),
+            "spstat:defensiveRebounds": int(player.get('statistics', [{}])[0].get('rebounds', {}).get('defensive', 0) or 0),
+            "spstat:assists": int(player.get('statistics', [{}])[0].get('assists', {}).get('total', 0) or 0),
+            "spstat:steals": int(player.get('statistics', [{}])[0].get('steals', {}).get('total', 0) or 0),
+            "spstat:blocks": int(player.get('statistics', [{}])[0].get('blocks', {}).get('total', 0) or 0),
+            "spstat:turnovers": int(player.get('statistics', [{}])[0].get('turnovers', {}).get('total', 0) or 0),
+            "spstat:foulsTotal": int(player.get('statistics', [{}])[0].get('fouls', {}).get('total', 0) or 0),
+            "spstat:foulsPersonal": int(player.get('statistics', [{}])[0].get('fouls', {}).get('personal', 0) or 0),
+            "spstat:plusMinus": int(player.get('statistics', [{}])[0].get('plus_minus', {}).get('total', 0) or 0)
+          }
+          for team_data in $.get('games_statistics', [])
+          for player in team_data.get('players', [])
+        ]

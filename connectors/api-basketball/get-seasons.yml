@@ -1,0 +1,23 @@
+workflow:
+
+  # api-basketball-get-seasons
+  name: "api-basketball-get-seasons"
+  title: "API Basketball - Get Seasons"
+  description: "Workflow to get all available seasons from API Basketball."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-seasons"
+      description: "Get seasons from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-seasons"
+      outputs:
+        seasons: "$"

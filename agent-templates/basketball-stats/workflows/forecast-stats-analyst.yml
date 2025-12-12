@@ -1,0 +1,31 @@
+workflow:
+  name: basketball-stats-forecast-stats-analyst
+  title: Basketball Stats Forecast Stats Analyst
+  description: Generate statistical baseline forecast for basketball matchup
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    feature_payload: "$.get('feature_payload')"
+  outputs:
+    workflow-status: "'executed'"
+    stats_component: "$.get('stats_component')"
+  tasks:
+
+    - type: prompt
+      name: forecast-stats-analysis
+      description: Generate statistical baseline forecast using stats analyst prompt
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        feature_payload: "$.get('feature_payload')"
+      outputs:
+        stats_component: "$"

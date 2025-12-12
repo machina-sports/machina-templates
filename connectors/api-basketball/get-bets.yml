@@ -1,0 +1,29 @@
+workflow:
+
+  # api-basketball-get-bets
+  name: "api-basketball-get-bets"
+  title: "API Basketball - Get Bets"
+  description: "Workflow to get all available bet types from API Basketball."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    search: "$.get('search')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-bets"
+      description: "Get bets from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-bets"
+      inputs:
+        id: "$.get('id')"
+        search: "$.get('search')"
+      outputs:
+        bets: "$"

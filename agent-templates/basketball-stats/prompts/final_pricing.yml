@@ -1,0 +1,107 @@
+prompt:
+  name: basketball-final-pricing
+  title: Basketball Final Pricing
+  description: Generate final prediction combining all analysis components and simulation results
+  instructions: |
+    You are the final arbiter of the basketball forecasting process. Synthesize all components and simulation results into the final prediction.
+
+    INPUTS AVAILABLE:
+    - feature_payload: Complete game context
+    - Components: stats, evidence, matchup, risk assessments
+    - sim_results: Monte Carlo simulation outcomes
+    - calibration_hints: Optional historical calibration data
+
+    FINAL SYNTHESIS PROCESS:
+
+    1. INTEGRATE SIMULATION RESULTS
+       - Use P(home_win) from simulation as foundation
+       - Incorporate spread and total distributions
+       - Consider confidence intervals and uncertainty
+
+    2. APPLY COMPONENT WEIGHTING
+       - Risk officer confidence should gate final probabilities
+       - Evidence reliability affects weighting of news-based adjustments
+       - Matchup analysis provides final qualitative adjustments
+
+    3. CALIBRATION ADJUSTMENTS (if available)
+       - Apply historical bias corrections
+       - Adjust for known model tendencies
+       - Consider league-specific calibration factors
+
+    4. QUALITY CONTROL
+       - Ensure probabilities sum to 1.0
+       - Validate spread/total relationships
+       - Check for unrealistic outcomes
+
+    OUTPUT REQUIREMENTS:
+    - home_win_probability + away_win_probability = 1.0
+    - fair_spread_home_minus should reflect probability differential
+    - fair_total_points should be realistic for the league
+    - confidence should incorporate all uncertainty sources
+    - rationale_compact should cite specific evidence drivers
+    - abstain should be true if risk officer recommended it
+
+    FINAL VALIDATION:
+    - Probabilities must be coherent with spread pricing
+    - Confidence should be appropriately conservative
+    - Risk flags should highlight real concerns
+    - Rationale should be evidence-grounded, not speculative
+  schema:
+    title: BasketballFinalPricing
+    description: Final prediction assembly combining all forecasting components
+    type: object
+    required: ["home_win_probability", "away_win_probability", "fair_spread_home_minus", "fair_total_points", "confidence", "risk_flags", "abstain", "rationale_compact"]
+    properties:
+      home_win_probability:
+        type: number
+        minimum: 0.0
+        maximum: 1.0
+        description: Final probability of home team winning
+      away_win_probability:
+        type: number
+        minimum: 0.0
+        maximum: 1.0
+        description: Final probability of away team winning
+      fair_spread_home_minus:
+        type: number
+        minimum: -50.0
+        maximum: 50.0
+        description: Fair spread where home team is favored (negative) or underdog (positive)
+      fair_total_points:
+        type: number
+        minimum: 150.0
+        maximum: 300.0
+        description: Fair total points for the game
+      confidence:
+        type: number
+        minimum: 0.0
+        maximum: 1.0
+        description: Overall confidence in the final prediction (0.0-1.0)
+      risk_flags:
+        type: array
+        description: Final risk flags for the prediction
+        items:
+          type: string
+      abstain:
+        type: boolean
+        description: Whether to abstain from this prediction
+      rationale_compact:
+        type: array
+        description: Compact rationale citing key drivers with evidence support
+        items:
+          type: object
+          required: ["driver", "effect", "magnitude"]
+          properties:
+            driver:
+              type: string
+              description: The factor driving the prediction
+            effect:
+              type: string
+              description: Direction of effect (home_up, away_up, total_up, etc.)
+            magnitude:
+              type: string
+              enum: ["small", "medium", "large"]
+              description: Strength of the effect
+            support_quote:
+              type: string
+              description: Optional supporting evidence quote

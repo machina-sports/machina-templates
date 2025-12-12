@@ -1,0 +1,100 @@
+setup:
+  title: API Basketball
+  description: Connect to the API Basketball API to get basketball data.
+  category:
+    - data-acquisition
+    - basketball
+  estimatedTime: 1 minute
+  features:
+    - Real-time basketball data
+    - Scrape any website
+    - Get the content of the basketball data
+    - Get the HTML of the basketball data
+    - Get the text of the basketball data
+    - Get the images of the web page
+    - Get the links of the web page
+    - Get the title of the web page
+
+  integrations:
+    - api-basketball
+  status: available
+  value: connectors/api-basketball
+  version: 1.0.0
+
+
+datasets:
+
+  - type: "workflow"
+    path: "_folders.yml"
+
+  - type: "connector"
+    path: "api-basketball.yml"
+
+  - type: "install"
+    path: "../../agent-templates/iptc-mappings/api-basketball/_install.yml"
+
+  - type: "workflow"
+    path: "get-leagues.yml"
+
+  - type: "workflow"
+    path: "get-games.yml"
+
+  - type: "workflow"
+    path: "get-teams.yml"
+
+  - type: "workflow"
+    path: "get-players.yml"
+
+  - type: "workflow"
+    path: "get-standings.yml"
+
+  - type: "workflow"
+    path: "get-standings-stages.yml"
+
+  - type: "workflow"
+    path: "get-standings-groups.yml"
+
+  - type: "workflow"
+    path: "get-games-statistics-teams.yml"
+
+  - type: "workflow"
+    path: "get-games-statistics-players.yml"
+
+  - type: "workflow"
+    path: "get-odds.yml"
+
+  - type: "workflow"
+    path: "get-bookmakers.yml"
+
+  - type: "workflow"
+    path: "get-bets.yml"
+
+  - type: "workflow"
+    path: "get-timezone.yml"
+
+  - type: "workflow"
+    path: "get-seasons.yml"
+
+  - type: "workflow"
+    path: "get-countries.yml"
+
+  - type: "workflow"
+    path: "sync-leagues.yml"
+
+  - type: "workflow"
+    path: "sync-games.yml"
+
+  - type: "workflow"
+    path: "sync-teams.yml"
+
+  - type: "workflow"
+    path: "sync-players.yml"
+
+  - type: "workflow"
+    path: "sync-standings.yml"
+
+  - type: "workflow"
+    path: "sync-games-statistics-teams.yml"
+
+  - type: "workflow"
+    path: "sync-games-statistics-players.yml"

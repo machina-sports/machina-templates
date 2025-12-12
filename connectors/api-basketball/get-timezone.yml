@@ -1,0 +1,23 @@
+workflow:
+
+  # api-basketball-get-timezone
+  name: "api-basketball-get-timezone"
+  title: "API Basketball - Get Timezone"
+  description: "Workflow to get available timezones from API Basketball."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-timezone"
+      description: "Get timezone from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-timezone"
+      outputs:
+        timezone: "$"

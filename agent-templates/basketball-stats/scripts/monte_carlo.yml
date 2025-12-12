@@ -1,0 +1,8 @@
+connector:
+  name: "basketball-monte-carlo"
+  description: "Run Monte Carlo simulations for basketball game forecasting"
+  filename: "monte_carlo.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Run Monte Carlo Simulation"
+      value: "run_monte_carlo_simulation"

@@ -1,0 +1,45 @@
+workflow:
+  name: basketball-stats-monte-carlo-simulation
+  title: Basketball Stats Monte Carlo Simulation
+  description: Run Monte Carlo simulations using parameterized model
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    simulation_parameters: "$.get('simulation_parameters')"
+    num_simulations: "$.get('num_simulations', 10000)"
+  outputs:
+    workflow-status: "'executed'"
+    sim_results: "$.get('sim_results')"
+  tasks:
+
+    - type: connector
+      name: run-monte-carlo
+      description: Execute Monte Carlo simulation with provided parameters
+      connector:
+        name: basketball-monte-carlo
+        command: run_monte_carlo_simulation
+      inputs:
+        simulation_parameters: "$.get('simulation_parameters')"
+        num_simulations: "$.get('num_simulations', 10000)"
+      outputs:
+        sim_results: "$.get('simulation_results')"
+
+    # Store simulation results
+    - type: document
+      name: store-simulation-results
+      description: Store the Monte Carlo simulation results
+      condition: "$.get('sim_results') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        simulation-results: |
+          {
+            **$.get('sim_results'),
+            'title': f"Monte Carlo Simulation Results",
+            'execution_timestamp': datetime.utcnow()
+          }
+      metadata:
+        document_type: "'basketball-simulation'"

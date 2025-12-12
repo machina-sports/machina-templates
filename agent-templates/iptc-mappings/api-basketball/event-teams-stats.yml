@@ -1,0 +1,49 @@
+mappings:
+
+  # iptc-api-basketball-event-teams-stats
+  - type: mapping
+    title: "IPTC | API Basketball Event Teams Statistics Mapping"
+    name: "iptc-api-basketball-event-teams-stats"
+    description: "Maps API Basketball match statistics to IPTC Basketball Statistics schema format"
+    outputs:
+      iptc_teams_statistics: |
+        {
+          "@context": {
+            "sport": "https://sportschema.org/ontologies/main/",
+            "spstat": "https://sportschema.org/ontologies/corestatistics/"
+          },
+          "@id": f"urn:apibasketball:sport_event:{$.get('game_id', '')}",
+          "@type": "sport:Event",
+          "rdfs:label": f"{$.get('home_team_name', 'Home')} vs {$.get('away_team_name', 'Away')}",
+          "sport:participation": [
+            {
+              "@id": f"urn:apibasketball:team-participation:{team.get('team', {}).get('id', '')}",
+              "@type": "sport:TeamParticipation",
+              "rdfs:label": f"{team.get('team', {}).get('name', '')} participation",
+              "sport:participationBy": {
+                "@id": f"urn:apibasketball:team:{team.get('team', {}).get('id', '')}",
+                "@type": "sport:Team",
+                "rdfs:label": team.get('team', {}).get('name', ''),
+                "schema:logo": team.get('team', {}).get('logo', '')
+              },
+              "sport:alignment": "home" if i == 0 else "away",
+              "spstat:pointsTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Points'), 0) or 0),
+              "spstat:fieldGoalsMade": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Field Goals Made'), 0) or 0),
+              "spstat:fieldGoalsAttempted": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Field Goals Attempted'), 0) or 0),
+              "spstat:threePointersMade": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Three Pointers Made'), 0) or 0),
+              "spstat:threePointersAttempted": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Three Pointers Attempted'), 0) or 0),
+              "spstat:freeThrowsMade": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Free Throws Made'), 0) or 0),
+              "spstat:freeThrowsAttempted": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Free Throws Attempted'), 0) or 0),
+              "spstat:reboundsTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Total Rebounds'), 0) or 0),
+              "spstat:offensiveRebounds": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Offensive Rebounds'), 0) or 0),
+              "spstat:defensiveRebounds": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Defensive Rebounds'), 0) or 0),
+              "spstat:assists": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Assists'), 0) or 0),
+              "spstat:steals": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Steals'), 0) or 0),
+              "spstat:blocks": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Blocks'), 0) or 0),
+              "spstat:turnovers": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Turnovers'), 0) or 0),
+              "spstat:foulsTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Fouls'), 0) or 0),
+              "spstat:timeoutsRemaining": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Timeouts Remaining'), 0) or 0)
+            }
+            for i, team in enumerate($.get('games_statistics', []))
+          ]
+        }

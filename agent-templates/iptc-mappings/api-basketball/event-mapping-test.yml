@@ -1,0 +1,43 @@
+workflow:
+
+  # iptc-api-basketball-event-mapping-test
+  name: iptc-api-basketball-event-mapping-test
+  title: "IPTC | API Basketball Event Mapping Test"
+  description: "Workflow to map event from API Basketball to Sportschema."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    game: "$.get('game')"
+  outputs:
+    workflow-status: "$.get('has-game') is True and 'executed' or 'skipped'"
+    sport-schema-event: "$.get('sport-schema-event')"
+  tasks:
+
+    # api-basketball-search-game
+    - type: document
+      name: api-basketball-search-games
+      description: "API Basketball Search Game"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.game_id: "$.get('game')"
+      inputs:
+        name: "'basketball-game'"
+      outputs:
+        data-game: "$.get('documents', [])"
+        has-game: "len($.get('documents', [])) > 0"
+        selected-game: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+
+    # iptc-api-basketball-event-mapping
+    - type: mapping
+      name: iptc-api-basketball-event-mapping
+      title: "IPTC | API Basketball Event Mapping"
+      description: "Mapping data from api-basketball to IPTC events"
+      condition: "$.get('has-game') is True"
+      inputs:
+        games: "[$.get('selected-game', {}).get('value', {})]"
+      outputs:
+        sport-schema-event: "$.get('sport_schema_events', [])[0] if $.get('sport_schema_events') else None"

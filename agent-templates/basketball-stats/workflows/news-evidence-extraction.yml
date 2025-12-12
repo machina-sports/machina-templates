@@ -1,0 +1,102 @@
+workflow:
+  name: basketball-stats-news-evidence-extraction
+  title: Basketball Stats - News Evidence Extraction
+  description: Extract structured evidence from search results for basketball matchup analysis
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    game_id: "$.get('game_id')"
+    league: "$.get('league')"
+    game_date: "$.get('game_date')"
+    home_team: "$.get('home_team')"
+    away_team: "$.get('away_team')"
+    filtered_search_results: "$.get('filtered_search_results')"
+  outputs:
+    workflow-status: "'executed'"
+    news_evidence: "$.get('news_evidence')"
+    news_deltas: "$.get('news_deltas')"
+  tasks:
+
+    - type: prompt
+      name: extract-news-evidence
+      description: Extract structured evidence and deltas from search results
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        league: "$.get('league')"
+        game_date: "$.get('game_date')"
+        home_team: "$.get('home_team')"
+        away_team: "$.get('away_team')"
+        search_results: "$.get('filtered_search_results')"
+      outputs:
+        evidence_items: "$.get('evidence_items', [])"
+        team_level_deltas: "$.get('team_level_deltas', {})"
+        news_reliability: "$.get('news_reliability', 0.0)"
+        missing_info_flags: "$.get('missing_info_flags', [])"
+
+    # Store news evidence
+    - type: document
+      name: store-news-evidence
+      description: Store the extracted news evidence
+      condition: "$.get('evidence_items') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        news-evidence: |
+          {
+            'game_id': $.get('game_id'),
+            'evidence_items': $.get('evidence_items', []),
+            'execution_timestamp': datetime.utcnow(),
+            'title': f"News Evidence - Game {$.get('game_id')}"
+          }
+      metadata:
+        document_type: "'basketball-news-evidence'"
+
+    # Store news deltas
+    - type: document
+      name: store-news-deltas
+      description: Store the news-driven performance deltas
+      condition: "$.get('team_level_deltas') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        news-deltas: |
+          {
+            'game_id': $.get('game_id'),
+            'deltas': $.get('team_level_deltas', {}),
+            'news_reliability': $.get('news_reliability', 0.0),
+            'missing_info_flags': $.get('missing_info_flags', []),
+            'execution_timestamp': datetime.utcnow(),
+            'title': f"News Deltas - Game {$.get('game_id')}"
+          }
+      metadata:
+        document_type: "'basketball-news-deltas'"
+
+    # Format outputs for downstream workflows
+    - type: connector
+      name: format-evidence-outputs
+      description: Format evidence and deltas for workflow outputs
+      connector:
+        name: basketball-aggregate-features
+        command: format_evidence_outputs
+      inputs:
+        evidence_items: "$.get('evidence_items', [])"
+        team_level_deltas: "$.get('team_level_deltas', {})"
+        news_reliability: "$.get('news_reliability', 0.0)"
+        missing_info_flags: "$.get('missing_info_flags', [])"
+      outputs:
+        news_evidence: "$.get('news_evidence')"
+        news_deltas: "$.get('news_deltas')"

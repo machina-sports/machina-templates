@@ -1,0 +1,33 @@
+workflow:
+  name: basketball-stats-forecast-risk-officer
+  title: Basketball Stats Forecast Risk Officer
+  description: Assess overall risk and determine final confidence in forecast
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    components: "$.get('components')"
+    feature_payload: "$.get('feature_payload')"
+  outputs:
+    workflow-status: "'executed'"
+    risk_component: "$.get('risk_component')"
+  tasks:
+
+    - type: prompt
+      name: forecast-risk-assessment
+      description: Assess overall risk and determine final confidence
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        components: "$.get('components')"
+        feature_payload: "$.get('feature_payload')"
+      outputs:
+        risk_component: "$"

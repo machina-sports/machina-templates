@@ -1,0 +1,74 @@
+workflow:
+  name: basketball-stats-league-discovery
+  title: Basketball Stats - League Discovery
+  description: Verify league coverage and data availability for basketball forecasting
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    league: "$.get('league')"
+  outputs:
+    workflow-status: "'executed'"
+    coverage_fixtures: "$.get('coverage_fixtures')"
+    coverage_players: "$.get('coverage_players')"
+    coverage_standings: "$.get('coverage_standings')"
+    low_data_flag: "$.get('low_data_flag')"
+  tasks:
+
+    # Get league information from API-Basketball
+    - type: connector
+      name: get-league-coverage
+      description: Get league coverage information to verify data availability
+      connector:
+        name: api-basketball
+        command: get-leagues
+      inputs:
+        id: "$.get('league')"
+      outputs:
+        league_data: "$.get('response')"
+        coverage_fixtures: "$.get('response', [{}])[0].get('coverage', {}).get('fixtures', {}).get('statistics_fixtures', False)"
+        coverage_players: "$.get('response', [{}])[0].get('coverage', {}).get('players', False)"
+        coverage_standings: "$.get('response', [{}])[0].get('coverage', {}).get('standings', False)"
+
+    # Evaluate data coverage quality
+    - type: connector
+      name: evaluate-coverage
+      description: Evaluate overall data coverage quality and set flags
+      connector:
+        name: api-basketball
+        command: get-leagues
+      inputs:
+        id: "$.get('league')"
+      outputs:
+        low_data_flag: |
+          not ($.get('coverage_fixtures', False) and
+               $.get('coverage_players', False) and
+               $.get('coverage_standings', False))
+
+    # Store league coverage assessment
+    - type: document
+      name: store-league-assessment
+      description: Store league coverage assessment for reference
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        league-coverage: |
+          {
+            'league_id': $.get('league'),
+            'coverage': {
+              'fixtures_statistics': $.get('coverage_fixtures'),
+              'players': $.get('coverage_players'),
+              'standings': $.get('coverage_standings')
+            },
+            'low_data_flag': $.get('low_data_flag'),
+            'assessment_date': datetime.utcnow(),
+            'recommendation': 'conservative_forecasting' if $.get('low_data_flag') else 'normal_forecasting'
+          }
+      metadata:
+        document_type: "'league_assessment'"

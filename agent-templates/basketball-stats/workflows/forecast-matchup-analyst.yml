@@ -1,0 +1,31 @@
+workflow:
+  name: basketball-stats-forecast-matchup-analyst
+  title: Basketball Stats Forecast Matchup Analyst
+  description: Analyze specific matchup dynamics and team interactions
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    feature_payload: "$.get('feature_payload')"
+  outputs:
+    workflow-status: "'executed'"
+    matchup_component: "$.get('matchup_component')"
+  tasks:
+
+    - type: prompt
+      name: forecast-matchup-analysis
+      description: Analyze specific matchup dynamics and team interactions
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        feature_payload: "$.get('feature_payload')"
+      outputs:
+        matchup_component: "$"

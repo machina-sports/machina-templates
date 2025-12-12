@@ -1,0 +1,29 @@
+workflow:
+
+  # api-basketball-get-bookmakers
+  name: "api-basketball-get-bookmakers"
+  title: "API Basketball - Get Bookmakers"
+  description: "Workflow to get all available bookmakers from API Basketball."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    search: "$.get('search')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-bookmakers"
+      description: "Get bookmakers from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-bookmakers"
+      inputs:
+        id: "$.get('id')"
+        search: "$.get('search')"
+      outputs:
+        bookmakers: "$"

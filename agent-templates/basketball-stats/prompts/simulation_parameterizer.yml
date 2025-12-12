@@ -1,0 +1,110 @@
+prompt:
+  name: basketball-simulation-parameterizer
+  title: Basketball Simulation Parameterizer
+  description: Convert forecast components into Monte Carlo simulation parameters
+  instructions: |
+    You are responsible for translating the qualitative forecast components into quantitative parameters for Monte Carlo simulation.
+
+    INPUTS AVAILABLE:
+    - feature_payload: Complete game features and statistics
+    - stats_component: Statistical baseline analysis
+    - evidence_component: Evidence-adjusted probabilities
+    - matchup_component: Matchup-specific analysis
+    - risk_component: Risk assessment and confidence
+
+    SIMULATION PARAMETER REQUIREMENTS:
+
+    1. LATENT PARAMETERS (underlying game characteristics)
+       - pace_mean: Expected possessions per game (85-110 range)
+       - pace_sd: Pace variability (standard deviation)
+       - home_off_eff_mean: Home team offensive efficiency (points per possession)
+       - home_off_eff_sd: Home offense variability
+       - away_off_eff_mean: Away team offensive efficiency
+       - away_off_eff_sd: Away offense variability
+       - injury_variance_multiplier: Scale factor for injury-related uncertainty (0.8-1.5)
+
+    2. CORRELATIONS (relationships between parameters)
+       - pace_off_eff_corr: Correlation between pace and offensive efficiency
+
+    DERIVATION RULES:
+
+    1. BASE PROBABILITIES TO EFFICIENCY
+       - Convert win probabilities to efficiency differentials
+       - Home court advantage typically adds 2-4 points per 100 possessions
+
+    2. VARIABILITY BASED ON CONFIDENCE
+       - Higher confidence = lower standard deviations
+       - Lower confidence = higher uncertainty in parameters
+
+    3. INCORPORATE EVIDENCE DELTAS
+       - Adjust efficiency means based on news evidence
+       - Scale injury impacts appropriately
+
+    4. MATCHUP-SPECIFIC ADJUSTMENTS
+       - Style clashes affect correlations
+       - Historical trends influence parameter relationships
+
+    OUTPUT REQUIREMENTS:
+    - All parameters must be physically plausible
+    - Include notes explaining parameter derivation
+    - Ensure parameters create realistic game score distributions
+    - Parameters should reflect the combined analysis from all components
+  schema:
+    title: BasketballSimulationParameterizer
+    description: Parameter specification for Monte Carlo basketball simulation
+    type: object
+    required: ["latent_parameters", "correlations", "notes"]
+    properties:
+      latent_parameters:
+        type: object
+        required: ["pace_mean", "pace_sd", "home_off_eff_mean", "home_off_eff_sd", "away_off_eff_mean", "away_off_eff_sd", "injury_variance_multiplier"]
+        properties:
+          pace_mean:
+            type: number
+            minimum: 80
+            maximum: 120
+            description: Mean pace (possessions per game)
+          pace_sd:
+            type: number
+            minimum: 1.0
+            maximum: 10.0
+            description: Pace standard deviation
+          home_off_eff_mean:
+            type: number
+            minimum: 0.8
+            maximum: 1.4
+            description: Home team offensive efficiency mean (points per possession)
+          home_off_eff_sd:
+            type: number
+            minimum: 0.01
+            maximum: 0.2
+            description: Home team offensive efficiency standard deviation
+          away_off_eff_mean:
+            type: number
+            minimum: 0.8
+            maximum: 1.4
+            description: Away team offensive efficiency mean
+          away_off_eff_sd:
+            type: number
+            minimum: 0.01
+            maximum: 0.2
+            description: Away team offensive efficiency standard deviation
+          injury_variance_multiplier:
+            type: number
+            minimum: 0.5
+            maximum: 2.0
+            description: Multiplier for injury-related uncertainty
+      correlations:
+        type: object
+        required: ["pace_off_eff_corr"]
+        properties:
+          pace_off_eff_corr:
+            type: number
+            minimum: -1.0
+            maximum: 1.0
+            description: Correlation between pace and offensive efficiency
+      notes:
+        type: array
+        description: Explanations of parameter derivation and assumptions
+        items:
+          type: string

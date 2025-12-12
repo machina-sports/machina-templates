@@ -1,0 +1,59 @@
+workflow:
+  name: basketball-stats-news-search
+  title: Basketball Stats - News Search
+  description: Execute web search for basketball news using Google Search grounding
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    news_queries: "$.get('news_queries')"
+    recency_days: "$.get('recency_days', 3)"
+    language: "$.get('language', 'en')"
+    location: "$.get('location', 'global')"
+  outputs:
+    workflow-status: "'executed'"
+    search_results: "$.get('search_results')"
+    filtered_search_results: "$.get('filtered_search_results')"
+  tasks:
+
+    # Execute search for each query in parallel
+    - type: connector
+      name: search-google
+      description: Search the Google Gemini using Google Search grounding.
+      condition: "$.get('news_queries') is not None and len($.get('news_queries', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3-pro-preview
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: $.get('news_queries')
+      inputs:
+        search_query: $.get('search_query', '')
+        recency_days: $.get('recency_days', 3)
+        language: $.get('language', 'en')
+        location: $.get('location', 'global')
+      outputs:
+        search_results: |
+          [
+            $.get('answer', '')
+          ]
+
+    # Filter and deduplicate search results
+    - type: connector
+      name: filter-search-results
+      description: Filter search results by recency, deduplicate by URL, and drop irrelevant results
+      connector:
+        name: basketball-aggregate-features
+        command: filter_search_results
+      inputs:
+        search_results: "$.get('search_results', [])"
+        recency_days: "$.get('recency_days', 3)"
+      outputs:
+        filtered_search_results: "$.get('filtered_search_results', [])"

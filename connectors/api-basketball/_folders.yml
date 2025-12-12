@@ -1,0 +1,127 @@
+workflow:
+  name: "api-basketball-folders"
+  title: "Setup Folders"
+  description: "Setup Folders"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # documents-structure
+    - type: "document"
+      name: "install-documents"
+      description: "Install documents."
+      condition: "$.get('setup-register') is not True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-register: |
+          {
+            "setup": True
+          }
+        site-structure: |
+          [
+            {
+              "title": "API Docs",
+              "url": "https://docs.machina.gg/api-reference/introduction",
+              "icon": "globe"
+            }
+          ]
+        doc-structure: |
+          [
+            {
+              "title": "Catalogue",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "basketball-league",
+                  "title": "Leagues",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["basketball-league"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-game",
+                  "title": "Games",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["basketball-game"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-team",
+                  "title": "Teams",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["basketball-team"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-player",
+                  "title": "Players",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["basketball-player"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "basketball-standing",
+                  "title": "Standings",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["basketball-standing"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "leagues",
+                  "title": "Leagues Data",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["leagues"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "Content",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "content-quizzes",
+                  "title": "Quizzes",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-quiz"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-snippets",
+                  "title": "Snippets",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-snippet"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]

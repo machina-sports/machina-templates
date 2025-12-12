@@ -1,0 +1,29 @@
+workflow:
+
+  # api-basketball-get-standings-stages
+  name: "api-basketball-get-standings-stages"
+  title: "API Basketball - Get Standings Stages"
+  description: "Workflow to get available stages for league standings from API Basketball."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    season: "$.get('season')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-standings-stages"
+      description: "Get standings stages from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-standings-stages"
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+      outputs:
+        standings-stages: "$"

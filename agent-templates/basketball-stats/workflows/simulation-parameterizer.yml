@@ -1,0 +1,35 @@
+workflow:
+  name: basketball-stats-simulation-parameterizer
+  title: Basketball Stats Simulation Parameterizer
+  description: Convert forecast components into Monte Carlo simulation parameters
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    feature_payload: "$.get('feature_payload')"
+    components: "$.get('components')"
+    risk: "$.get('risk_component')"
+  outputs:
+    workflow-status: "'executed'"
+    simulation_parameters: "$.get('simulation_parameters')"
+  tasks:
+
+    - type: prompt
+      name: simulation-parameter-generation
+      description: Generate Monte Carlo simulation parameters from forecast components
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        feature_payload: "$.get('feature_payload')"
+        components: "$.get('components')"
+        risk: "$.get('risk_component')"
+      outputs:
+        simulation_parameters: "$"

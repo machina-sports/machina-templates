@@ -1,0 +1,80 @@
+workflow:
+
+  # api-basketball-sync-teams
+  name: "api-basketball-sync-teams"
+  title: "API Basketball - Sync Teams"
+  description: "Workflow to sync teams from API Basketball with multiple filter options."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    name: "$.get('name')"
+    country_id: "$.get('country_id')"
+    country: "$.get('country')"
+    league: "$.get('league')"
+    season: "$.get('season')"
+    search: "$.get('search')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-teams"
+      description: "Get teams from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-teams"
+      inputs:
+        id: "$.get('id')"
+        name: "$.get('name')"
+        country_id: "$.get('country_id')"
+        country: "$.get('country')"
+        league: "$.get('league')"
+        season: "$.get('season')"
+        search: "$.get('search')"
+      outputs:
+        teams: "$.get('response')"
+
+    # task-update-teams
+    - type: "document"
+      name: "task-update-teams"
+      description: "Update the teams document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        teams: |
+          {
+            'data': $.get('teams'),
+            'title': 'All Teams',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-teams
+    - type: "document"
+      name: "task-bulk-save-teams"
+      description: "Bulk save the teams."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "basketball-team"
+      documents:
+        items: |
+          [
+            {
+              **c,
+              'title': f"{c.get('team', {}).get('name', '')} ({c.get('country', {}).get('name', '')})",
+              'selected': False
+            }
+            for c in $.get('teams')
+          ]
+      metadata:
+        document_type: "'team'"

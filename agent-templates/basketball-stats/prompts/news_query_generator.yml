@@ -1,0 +1,54 @@
+prompt:
+  name: basketball-news-query-generator
+  title: Basketball News Query Generator
+  description: Generate search queries for basketball matchup news and recent developments
+  instructions: |
+    Generate exactly 8 Google Search queries for basketball content about a specific matchup.
+
+    Use the provided parameters:
+    - league: The basketball league (e.g., NBA, EuroLeague, CBA)
+    - season: The season year
+    - matchup: The two teams playing (e.g., "Lakers vs Celtics")
+    - game_date: The date of the game (YYYY-MM-DD)
+    - recency_days: How many days back to look for recent news
+    - max_queries: Maximum number of queries to generate (should be 8)
+
+    CRITICAL: Focus MOSTLY on the most recent updates, latest news, and current developments. At least 6 out of 8 queries should emphasize recency with terms like "latest", "recent", "breaking", "just", "now", "current", "today", etc.
+
+    ALWAYS include these 2 core queries about the specific matchup:
+    1. Latest news and updates for [matchup] [league] [season]
+    2. Breaking developments and recent performance for [matchup] [league]
+
+    Add 6 more queries about the specific matchup (prioritizing recent updates):
+    - Recent injuries and player status for [matchup] [league]
+    - Latest coaching changes and strategies for [matchup] [league]
+    - Current form and momentum for [matchup] [league]
+    - Recent travel and rest advantages for [matchup] [league]
+    - Latest betting trends and line movements for [matchup] [league]
+    - Breaking news and last-minute updates for [matchup] [league]
+
+    ALL queries must be about the specific matchup mentioned by the user.
+    Do NOT generate general league queries or team-specific queries without mentioning both teams.
+    Focus on the MOST RECENT and CURRENT matchup-specific information, prioritizing latest updates and news for the [league]
+
+    IMPORTANT: Every query MUST include both team names and the league name to enhance search specificity and relevance.
+
+    Generate all queries in English.
+    Every query must include both teams from the matchup and the league name provided.
+    Every query should emphasize recency and focus on the most recent updates, news, or developments.
+
+    Output only the 8 queries in the schema format.
+  schema:
+    title: BasketballNewsQueryGenerator
+    description: Search queries focused on most recent updates for basketball matchup analysis
+    type: object
+    required: [ "news_queries" ]
+    properties:
+      news_queries:
+        type: array
+        description: Array of 8 search queries focused on most recent updates for basketball matchup
+        minItems: 8
+        maxItems: 8
+        items:
+          type: string
+          description: Search query focused on recent updates for basketball matchup about the specified teams

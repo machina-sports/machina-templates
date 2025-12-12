@@ -1,0 +1,111 @@
+setup:
+  title: Basketball Stats Agent
+  description: AI-powered basketball forecasting agent that analyzes games, predicts outcomes, and provides betting insights using API-Basketball data and Gemini 3 Pro Preview.
+  category:
+    - sports
+    - analytics
+    - basketball
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to forecast basketball games with multi-step analysis
+    - League-agnostic support for NBA, EuroLeague, CBA, and domestic leagues
+    - Evidence-based predictions using news search and statistical modeling
+    - Monte Carlo simulation for uncertainty quantification
+    - Real-time game synchronization from API-Basketball
+  integrations:
+    - api-basketball
+    - google-genai
+    - machina-ai
+  status: available
+  value: agent-templates/basketball-stats
+  version: 1.0.0
+
+datasets:
+
+  # Agent
+  - type: agent
+    path: agents/basketball-stats-agent.yml
+
+  # Connectors
+  - type: connector
+    path: scripts/aggregate_features.yml
+
+  - type: connector
+    path: scripts/monte_carlo.yml
+
+  # Prompts
+  - type: prompt
+    path: prompts/news_query_generator.yml
+
+  - type: prompt
+    path: prompts/news_evidence_extractor.yml
+
+  - type: prompt
+    path: prompts/forecast_stats_analyst.yml
+
+  - type: prompt
+    path: prompts/forecast_evidence_analyst.yml
+
+  - type: prompt
+    path: prompts/forecast_matchup_analyst.yml
+
+  - type: prompt
+    path: prompts/forecast_risk_officer.yml
+
+  - type: prompt
+    path: prompts/simulation_parameterizer.yml
+
+  - type: prompt
+    path: prompts/final_pricing.yml
+
+  # Workflows
+  - type: workflow
+    path: _folders.yml
+
+  - type: workflow
+    path: workflows/league-discovery.yml
+
+  - type: workflow
+    path: workflows/sync-games.yml
+
+  - type: workflow
+    path: workflows/sync-teams.yml
+
+  - type: workflow
+    path: workflows/sync-standings.yml
+
+  - type: workflow
+    path: workflows/sync-game-statistics.yml
+
+  - type: workflow
+    path: workflows/aggregate-features.yml
+
+  - type: workflow
+    path: workflows/news-query-generation.yml
+
+  - type: workflow
+    path: workflows/news-search.yml
+
+  - type: workflow
+    path: workflows/news-evidence-extraction.yml
+
+  - type: workflow
+    path: workflows/forecast-stats-analyst.yml
+
+  - type: workflow
+    path: workflows/forecast-evidence-analyst.yml
+
+  - type: workflow
+    path: workflows/forecast-matchup-analyst.yml
+
+  - type: workflow
+    path: workflows/forecast-risk-officer.yml
+
+  - type: workflow
+    path: workflows/simulation-parameterizer.yml
+
+  - type: workflow
+    path: workflows/monte-carlo-simulation.yml
+
+  - type: workflow
+    path: workflows/forecast-game.yml

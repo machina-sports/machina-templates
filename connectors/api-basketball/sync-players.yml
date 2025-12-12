@@ -1,0 +1,74 @@
+workflow:
+
+  # api-basketball-sync-players
+  name: "api-basketball-sync-players"
+  title: "API Basketball - Sync Players"
+  description: "Workflow to sync players from API Basketball with multiple filter options."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    team: "$.get('team')"
+    season: "$.get('season')"
+    search: "$.get('search')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-players"
+      description: "Get players from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-players"
+      inputs:
+        id: "$.get('id')"
+        team: "$.get('team')"
+        season: "$.get('season')"
+        search: "$.get('search')"
+      outputs:
+        players: "$.get('response')"
+
+    # task-update-players
+    - type: "document"
+      name: "task-update-players"
+      description: "Update the players document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        players: |
+          {
+            'data': $.get('players'),
+            'title': 'All Players',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-players
+    - type: "document"
+      name: "task-bulk-save-players"
+      description: "Bulk save the players."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "basketball-player"
+      documents:
+        items: |
+          [
+            {
+              **p,
+              'title': f"{p.get('player', {}).get('name', '')} ({p.get('team', {}).get('name', '')})",
+              'selected': False
+            }
+            for p in $.get('players')
+          ]
+      metadata:
+        document_type: "'player'"

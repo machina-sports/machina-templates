@@ -1,0 +1,43 @@
+workflow:
+  name: basketball-stats-news-query-generation
+  title: Basketball Stats - News Query Generation
+  description: Generate search queries for news evidence about a basketball matchup
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    game_id: "$.get('game_id')"
+    league: "$.get('league')"
+    season: "$.get('season')"
+    home_team: "$.get('home_team')"
+    away_team: "$.get('away_team')"
+    game_date: "$.get('game_date')"
+    recency_days: "$.get('recency_days', 3)"
+    max_queries: "$.get('max_queries', 8)"
+  outputs:
+    workflow-status: "'executed'"
+    news_queries: "$.get('news_queries')"
+  tasks:
+
+    - type: prompt
+      name: generate-news-queries
+      description: Generate search queries for news about the basketball matchup
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+        matchup: "$.get('home_team') + ' vs ' + $.get('away_team')"
+        game_date: "$.get('game_date')"
+        recency_days: "$.get('recency_days', 3)"
+        max_queries: "$.get('max_queries', 8)"
+      outputs:
+        news_queries: "$.get('news_queries', [])"

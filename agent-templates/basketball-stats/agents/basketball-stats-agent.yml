@@ -1,0 +1,61 @@
+agent:
+  name: basketball-stats-agent
+  title: Basketball Stats Forecasting Agent
+  description: AI-powered basketball game forecasting agent that analyzes games, predicts outcomes, and provides betting insights using API-Basketball data and Gemini 3 Pro Preview.
+  context:
+    config-frequency: 30
+    status: "inactive"
+  context-agent:
+    league: $.get('league')
+    season: $.get('season')
+    game_id: $.get('game_id')
+  workflows:
+
+    # Main forecasting workflow
+    - name: basketball-stats-forecast-game
+      description: "Forecast a basketball game using multi-step AI analysis"
+      inputs:
+        game_id: $.get('game_id')
+        league: $.get('league')
+        season: $.get('season')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    # Data synchronization workflows
+    - name: basketball-stats-league-discovery
+      description: "Verify league coverage and data availability"
+      inputs:
+        league: $.get('league')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    - name: basketball-stats-sync-games
+      description: "Sync games from API-Basketball"
+      inputs:
+        league: $.get('league')
+        season: $.get('season')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    - name: basketball-stats-sync-teams
+      description: "Sync teams from API-Basketball"
+      inputs:
+        league: $.get('league')
+        season: $.get('season')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    - name: basketball-stats-sync-standings
+      description: "Sync standings from API-Basketball"
+      inputs:
+        league: $.get('league')
+        season: $.get('season')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    - name: basketball-stats-sync-game-statistics
+      description: "Sync game statistics from API-Basketball"
+      inputs:
+        game_id: $.get('game_id')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'

@@ -1,0 +1,33 @@
+workflow:
+
+  # api-basketball-get-countries
+  name: "api-basketball-get-countries"
+  title: "API Basketball - Get Countries"
+  description: "Workflow to get countries from API Basketball with multiple filter options."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    name: "$.get('name')"
+    code: "$.get('code')"
+    search: "$.get('search')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-countries"
+      description: "Get countries from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-countries"
+      inputs:
+        id: "$.get('id')"
+        name: "$.get('name')"
+        code: "$.get('code')"
+        search: "$.get('search')"
+      outputs:
+        countries: "$"

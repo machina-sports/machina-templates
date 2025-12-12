@@ -1,0 +1,29 @@
+workflow:
+
+  # api-basketball-get-games-statistics-teams
+  name: "api-basketball-get-games-statistics-teams"
+  title: "API Basketball - Get Games Statistics Teams"
+  description: "Workflow to get team statistics from games from API Basketball."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    ids: "$.get('ids')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-games-statistics-teams"
+      description: "Get games statistics teams from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-games-statistics-teams"
+      inputs:
+        id: "$.get('id')"
+        ids: "$.get('ids')"
+      outputs:
+        games-statistics-teams: "$"

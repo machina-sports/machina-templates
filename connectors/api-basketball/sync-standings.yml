@@ -1,0 +1,83 @@
+workflow:
+
+  # api-basketball-sync-standings
+  name: "api-basketball-sync-standings"
+  title: "API Basketball - Sync Standings"
+  description: "Workflow to sync standings from API Basketball with league and season filters."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    season: "$.get('season')"
+    team: "$.get('team')"
+    stage: "$.get('stage')"
+    group: "$.get('group')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-standings"
+      description: "Get standings from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-standings"
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+        team: "$.get('team')"
+        stage: "$.get('stage')"
+        group: "$.get('group')"
+      outputs:
+        standings: "$.get('response')"
+
+    # task-update-standings
+    - type: "document"
+      name: "task-update-standings"
+      description: "Update the standings document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        standings: |
+          {
+            'data': $.get('standings'),
+            'title': f"Standings - League {$.get('league')} - {$.get('season')}",
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'parameters': {
+              'league': $.get('league'),
+              'season': $.get('season'),
+              'team': $.get('team'),
+              'stage': $.get('stage'),
+              'group': $.get('group')
+            }
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-standings
+    - type: "document"
+      name: "task-bulk-save-standings"
+      description: "Bulk save the standings."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "basketball-standing"
+      documents:
+        items: |
+          [
+            {
+              **s,
+              'title': f"Standings - {s.get('league', {}).get('name', '')} - {s.get('league', {}).get('season', '')}",
+              'selected': False
+            }
+            for s in $.get('standings')
+          ]
+      metadata:
+        document_type: "'standing'"

@@ -1,0 +1,2265 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "API-Basketball",
+    "description": "Basketball data API providing comprehensive information about basketball leagues, teams, players, games, and more. This API covers basketball leagues from around the world with detailed season information, game data, and comprehensive coverage details.",
+    "version": "1.5.2",
+    "contact": {
+      "name": "API-Sports",
+      "url": "https://www.api-basketball.com",
+      "email": "contact@api-sports.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://v1.basketball.api-sports.io",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "x-apisports-key": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "x-apisports-key": {
+        "type": "apiKey",
+        "description": "Token",
+        "name": "x-apisports-key",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "League": {
+        "type": "object",
+        "properties": {
+          "league": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "League ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "League name"
+              },
+              "type": {
+                "type": "string",
+                "description": "League type (League, Cup)",
+                "enum": ["League", "Cup"]
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "League logo URL"
+              }
+            }
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Country name"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country code (2 letters)"
+              },
+              "flag": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country flag URL"
+              }
+            }
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "year": {
+                  "type": "integer",
+                  "description": "Season year"
+                },
+                "start": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "Season start date"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "Season end date"
+                },
+                "current": {
+                  "type": "boolean",
+                  "description": "Whether this season is current"
+                },
+                "coverage": {
+                  "type": "object",
+                  "properties": {
+                    "fixtures": {
+                      "type": "object",
+                      "properties": {
+                        "events": {
+                          "type": "boolean"
+                        },
+                        "lineups": {
+                          "type": "boolean"
+                        },
+                        "statistics_fixtures": {
+                          "type": "boolean"
+                        },
+                        "statistics_players": {
+                          "type": "boolean"
+                        }
+                      }
+                    },
+                    "standings": {
+                      "type": "boolean"
+                    },
+                    "players": {
+                      "type": "boolean"
+                    },
+                    "top_scorers": {
+                      "type": "boolean"
+                    },
+                    "injuries": {
+                      "type": "boolean"
+                    },
+                    "odds": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "LeagueApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/League"
+            }
+          }
+        }
+      },
+      "Game": {
+        "type": "object",
+        "properties": {
+          "game": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Game ID"
+              },
+              "date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Game date and time"
+              },
+              "time": {
+                "type": "string",
+                "description": "Game time"
+              },
+              "timestamp": {
+                "type": "integer",
+                "description": "Unix timestamp"
+              },
+              "timezone": {
+                "type": "string",
+                "description": "Timezone"
+              },
+              "stage": {
+                "type": "string",
+                "nullable": true,
+                "description": "Game stage"
+              },
+              "week": {
+                "type": "string",
+                "nullable": true,
+                "description": "Game week"
+              },
+              "venue": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "name": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "city": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "status": {
+                "type": "object",
+                "properties": {
+                  "long": {
+                    "type": "string"
+                  },
+                  "short": {
+                    "type": "string"
+                  },
+                  "timer": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          },
+          "league": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "season": {
+                "type": "integer"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "flag": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "teams": {
+            "type": "object",
+            "properties": {
+              "home": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "logo": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              },
+              "away": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "logo": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          },
+          "scores": {
+            "type": "object",
+            "properties": {
+              "home": {
+                "type": "object",
+                "properties": {
+                  "quarter_1": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "quarter_2": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "quarter_3": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "quarter_4": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "over_time": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "total": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              },
+              "away": {
+                "type": "object",
+                "properties": {
+                  "quarter_1": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "quarter_2": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "quarter_3": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "quarter_4": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "over_time": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "total": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "GameApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Game"
+            }
+          }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Team ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Team name"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "Team logo URL"
+              }
+            }
+          },
+          "country": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Country ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Country name"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country code (2 letters)"
+              },
+              "flag": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country flag URL"
+              }
+            }
+          }
+        }
+      },
+      "TeamApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            }
+          }
+        }
+      },
+      "Player": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Player ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Player name"
+              },
+              "firstname": {
+                "type": "string",
+                "nullable": true,
+                "description": "Player first name"
+              },
+              "lastname": {
+                "type": "string",
+                "nullable": true,
+                "description": "Player last name"
+              }
+            }
+          },
+          "team": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Team ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Team name"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "Team logo URL"
+              }
+            }
+          },
+          "games": {
+            "type": "object",
+            "properties": {
+              "appearences": {
+                "type": "integer",
+                "description": "Number of appearances"
+              },
+              "minutes_played": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Minutes played"
+              },
+              "position": {
+                "type": "string",
+                "description": "Player position"
+              }
+            }
+          }
+        }
+      },
+      "PlayerApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Player"
+            }
+          }
+        }
+      },
+      "Standing": {
+        "type": "object",
+        "properties": {
+          "league": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "League ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "League name"
+              },
+              "country": {
+                "type": "string",
+                "description": "Country name"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "League logo URL"
+              },
+              "flag": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country flag URL"
+              },
+              "season": {
+                "type": "integer",
+                "description": "Season year"
+              },
+              "standings": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "rank": {
+                        "type": "integer",
+                        "description": "Team rank"
+                      },
+                      "team": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "description": "Team ID"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Team name"
+                          },
+                          "logo": {
+                            "type": "string",
+                            "nullable": true,
+                            "description": "Team logo URL"
+                          }
+                        }
+                      },
+                      "points": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Total points"
+                      },
+                      "goalsDiff": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Goal difference"
+                      },
+                      "group": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Group name"
+                      },
+                      "form": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Recent form"
+                      },
+                      "status": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Team status"
+                      },
+                      "description": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Status description"
+                      },
+                      "all": {
+                        "type": "object",
+                        "properties": {
+                          "played": {
+                            "type": "integer",
+                            "description": "Games played"
+                          },
+                          "win": {
+                            "type": "integer",
+                            "description": "Games won"
+                          },
+                          "draw": {
+                            "type": "integer",
+                            "description": "Games drawn"
+                          },
+                          "lose": {
+                            "type": "integer",
+                            "description": "Games lost"
+                          },
+                          "goals": {
+                            "type": "object",
+                            "properties": {
+                              "for": {
+                                "type": "integer",
+                                "description": "Goals scored"
+                              },
+                              "against": {
+                                "type": "integer",
+                                "description": "Goals conceded"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "home": {
+                        "type": "object",
+                        "properties": {
+                          "played": {
+                            "type": "integer",
+                            "description": "Home games played"
+                          },
+                          "win": {
+                            "type": "integer",
+                            "description": "Home games won"
+                          },
+                          "draw": {
+                            "type": "integer",
+                            "description": "Home games drawn"
+                          },
+                          "lose": {
+                            "type": "integer",
+                            "description": "Home games lost"
+                          },
+                          "goals": {
+                            "type": "object",
+                            "properties": {
+                              "for": {
+                                "type": "integer",
+                                "description": "Home goals scored"
+                              },
+                              "against": {
+                                "type": "integer",
+                                "description": "Home goals conceded"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "away": {
+                        "type": "object",
+                        "properties": {
+                          "played": {
+                            "type": "integer",
+                            "description": "Away games played"
+                          },
+                          "win": {
+                            "type": "integer",
+                            "description": "Away games won"
+                          },
+                          "draw": {
+                            "type": "integer",
+                            "description": "Away games drawn"
+                          },
+                          "lose": {
+                            "type": "integer",
+                            "description": "Away games lost"
+                          },
+                          "goals": {
+                            "type": "object",
+                            "properties": {
+                              "for": {
+                                "type": "integer",
+                                "description": "Away goals scored"
+                              },
+                              "against": {
+                                "type": "integer",
+                                "description": "Away goals conceded"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "update": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Last update timestamp"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "StandingApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Standing"
+            }
+          }
+        }
+      },
+      "GameTeamStatistics": {
+        "type": "object",
+        "properties": {
+          "team": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Team ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Team name"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "Team logo URL"
+              }
+            }
+          },
+          "statistics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Statistic type"
+                },
+                "value": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Statistic value"
+                }
+              }
+            }
+          }
+        }
+      },
+      "GameTeamStatisticsApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GameTeamStatistics"
+            }
+          }
+        }
+      },
+      "GamePlayerStatistics": {
+        "type": "object",
+        "properties": {
+          "player": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Player ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Player name"
+              }
+            }
+          },
+          "team": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Team ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Team name"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "Team logo URL"
+              }
+            }
+          },
+          "game": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Game ID"
+              }
+            }
+          },
+          "statistics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Statistic type"
+                },
+                "value": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Statistic value"
+                }
+              }
+            }
+          }
+        }
+      },
+      "GamePlayerStatisticsApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GamePlayerStatistics"
+            }
+          }
+        }
+      },
+      "Odds": {
+        "type": "object",
+        "properties": {
+          "league": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "League ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "League name"
+              },
+              "country": {
+                "type": "string",
+                "description": "Country name"
+              },
+              "logo": {
+                "type": "string",
+                "nullable": true,
+                "description": "League logo URL"
+              },
+              "flag": {
+                "type": "string",
+                "nullable": true,
+                "description": "Country flag URL"
+              },
+              "season": {
+                "type": "integer",
+                "description": "Season year"
+              }
+            }
+          },
+          "game": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "description": "Game ID"
+              },
+              "date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Game date and time"
+              }
+            }
+          },
+          "bookmakers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "description": "Bookmaker ID"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Bookmaker name"
+                },
+                "bets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "description": "Bet ID"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Bet name"
+                      },
+                      "values": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "type": "string",
+                              "description": "Bet value"
+                            },
+                            "odd": {
+                              "type": "string",
+                              "description": "Bet odds"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "OddsApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Odds"
+            }
+          }
+        }
+      },
+      "Bookmaker": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Bookmaker ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Bookmaker name"
+          }
+        }
+      },
+      "BookmakerApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bookmaker"
+            }
+          }
+        }
+      },
+      "Bet": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Bet ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Bet name"
+          }
+        }
+      },
+      "BetApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bet"
+            }
+          }
+        }
+      },
+      "TimezoneApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SeasonApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Country": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Country ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Country name"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Country code (2 letters)"
+          },
+          "flag": {
+            "type": "string",
+            "nullable": true,
+            "description": "Country flag URL"
+          }
+        }
+      },
+      "CountryApiResponse": {
+        "type": "object",
+        "properties": {
+          "get": {
+            "type": "string",
+            "description": "Endpoint name"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Request parameters"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "results": {
+            "type": "integer",
+            "description": "Number of results"
+          },
+          "response": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Country"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/leagues": {
+      "get": {
+        "summary": "Get leagues",
+        "description": "Retrieve basketball leagues/cups based on various filters",
+        "operationId": "get-leagues",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "League ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "League name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "nba"
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "description": "Country name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "USA"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "Country code (2 letters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "US"
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID to find leagues where the team has played",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 139
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search text for league name or country",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "nba"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "League type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["league", "cup"],
+              "example": "league"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeagueApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games": {
+      "get": {
+        "summary": "Get games",
+        "description": "Retrieve basketball games based on various filters",
+        "operationId": "get-games",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Game ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 391053
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Game date (YYYY-MM-DD)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2019-11-23"
+            }
+          },
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "2019-2020"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 137
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "description": "Timezone for the response",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Europe/London"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams": {
+      "get": {
+        "summary": "Get teams",
+        "description": "Retrieve basketball teams based on various filters",
+        "operationId": "get-teams",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Team ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 139
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Team name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Denver Nuggets"
+            }
+          },
+          {
+            "name": "country_id",
+            "in": "query",
+            "description": "Country ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 5
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "description": "Country name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "USA"
+            }
+          },
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search text for team name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Denver"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players": {
+      "get": {
+        "summary": "Get players",
+        "description": "Retrieve basketball players based on various filters",
+        "operationId": "get-players",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Player ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 139
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search text for player name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Malith"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/standings": {
+      "get": {
+        "summary": "Get standings",
+        "description": "Retrieve basketball league standings",
+        "operationId": "get-standings",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 137
+            }
+          },
+          {
+            "name": "stage",
+            "in": "query",
+            "description": "Stage name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "NBA - Regular Season"
+            }
+          },
+          {
+            "name": "group",
+            "in": "query",
+            "description": "Group name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Eastern Conference"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandingApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/standings/stages": {
+      "get": {
+        "summary": "Get standings stages",
+        "description": "Retrieve available stages for league standings",
+        "operationId": "get-standings-stages",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": {
+                      "type": "string"
+                    },
+                    "parameters": {
+                      "type": "object"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "results": {
+                      "type": "integer"
+                    },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/standings/groups": {
+      "get": {
+        "summary": "Get standings groups",
+        "description": "Retrieve available groups for league standings",
+        "operationId": "get-standings-groups",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": {
+                      "type": "string"
+                    },
+                    "parameters": {
+                      "type": "object"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "results": {
+                      "type": "integer"
+                    },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/statistics/teams": {
+      "get": {
+        "summary": "Get games teams statistics",
+        "description": "Retrieve team statistics from one or several games",
+        "operationId": "get-games-statistics-teams",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Game ID",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "391053"
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "description": "Game IDs (maximum 20)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "391053-391054"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameTeamStatisticsApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/statistics/players": {
+      "get": {
+        "summary": "Get games players statistics",
+        "description": "Retrieve player statistics from one or several games",
+        "operationId": "get-games-statistics-players",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Game ID",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "391053"
+            }
+          },
+          {
+            "name": "ids",
+            "in": "query",
+            "description": "Game IDs (maximum 20)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "391053-391054"
+            }
+          },
+          {
+            "name": "player",
+            "in": "query",
+            "description": "Player ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GamePlayerStatisticsApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/odds": {
+      "get": {
+        "summary": "Get odds",
+        "description": "Retrieve betting odds from games or leagues",
+        "operationId": "get-odds",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 12
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "2023-2024"
+            }
+          },
+          {
+            "name": "game",
+            "in": "query",
+            "description": "Game ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 391053
+            }
+          },
+          {
+            "name": "bookmaker",
+            "in": "query",
+            "description": "Bookmaker ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 6
+            }
+          },
+          {
+            "name": "bet",
+            "in": "query",
+            "description": "Bet ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OddsApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bookmakers": {
+      "get": {
+        "summary": "Get bookmakers",
+        "description": "Retrieve all available bookmakers",
+        "operationId": "get-bookmakers",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Bookmaker ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 6
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search text for bookmaker name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Bwin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmakerApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bets": {
+      "get": {
+        "summary": "Get bets",
+        "description": "Retrieve all available bet types",
+        "operationId": "get-bets",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Bet ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search text for bet name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "under"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/timezone": {
+      "get": {
+        "summary": "Get timezones",
+        "description": "Retrieve the list of available timezones",
+        "operationId": "get-timezone",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimezoneApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons": {
+      "get": {
+        "summary": "Get seasons",
+        "description": "Retrieve all available seasons",
+        "operationId": "get-seasons",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeasonApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/countries": {
+      "get": {
+        "summary": "Get countries",
+        "description": "Retrieve the list of available countries",
+        "operationId": "get-countries",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Country ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 5
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Country name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "USA"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "description": "Country code (2 letters)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "US"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search text for country name",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "USA"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountryApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

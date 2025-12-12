@@ -1,0 +1,129 @@
+prompt:
+  name: basketball-news-evidence-extractor
+  title: Basketball News Evidence Extractor
+  description: Extract structured evidence from search results for basketball matchup analysis
+  instructions: |
+    Convert raw search results into structured evidence with explicit confidence scores for basketball matchup prediction.
+
+    Analyze the provided search results and extract evidence that could impact the outcome of the basketball game between the home team and away team.
+
+    For each piece of evidence found, create an evidence item with:
+
+    REQUIRED FIELDS:
+    - type: Must be one of ["injury", "rotation", "coach", "travel", "other"]
+    - team_side: Must be "home" or "away" (which team does this evidence affect?)
+    - entity: The specific player, coach, or entity mentioned
+    - claim: What specific claim is being made about this entity?
+    - confidence: 0.0 to 1.0 - how confident are you this information is accurate and relevant?
+    - support: Object with source (website), timestamp (ISO format), and quote (short excerpt)
+
+    ADDITIONAL OUTPUTS:
+    - team_level_deltas: Performance adjustments based on evidence
+      * home_offense_delta: -1.0 to +1.0 (negative = worse offense, positive = better)
+      * home_defense_delta: -1.0 to +1.0 (negative = worse defense, positive = better)
+      * away_offense_delta: -1.0 to +1.0
+      * away_defense_delta: -1.0 to +1.0
+      * pace_delta: -1.0 to +1.0 (negative = slower pace, positive = faster)
+    - news_reliability: 0.0 to 1.0 - overall reliability of the news sources
+    - missing_info_flags: Array of strings indicating important information gaps
+
+    EVIDENCE EXTRACTION RULES:
+    1. Only extract evidence that is RECENT (within the last few days) and RELEVANT to game outcome
+    2. Each evidence item must have a SPECIFIC claim backed by a QUOTE
+    3. Confidence should reflect both source credibility and information specificity
+    4. Team deltas should be small adjustments (-0.3 to +0.3) unless evidence is very strong
+    5. Set confidence lower if information is contradictory or vague
+    6. Flag missing information like "key player status unknown" or "no recent coaching updates"
+
+    PRIORITY ORDER for evidence types:
+    1. Player injuries/health status
+    2. Starting lineup changes
+    3. Coaching strategy changes
+    4. Travel/rest issues
+    5. Other game-relevant factors
+
+    If no relevant evidence is found, return empty evidence_items array but still provide reasonable deltas and reliability score.
+  schema:
+    title: BasketballNewsEvidenceExtractor
+    description: Structured extraction of basketball news evidence for matchup prediction
+    type: object
+    required: ["evidence_items", "team_level_deltas", "news_reliability", "missing_info_flags"]
+    properties:
+      evidence_items:
+        type: array
+        description: Array of evidence items extracted from search results
+        items:
+          type: object
+          required: ["type", "team_side", "entity", "claim", "confidence", "support"]
+          properties:
+            type:
+              type: string
+              enum: ["injury", "rotation", "coach", "travel", "other"]
+              description: Type of evidence
+            team_side:
+              type: string
+              enum: ["home", "away"]
+              description: Which team this evidence affects
+            entity:
+              type: string
+              description: Specific player, coach, or entity mentioned
+            claim:
+              type: string
+              description: Specific claim being made
+            confidence:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+              description: Confidence in this evidence (0.0-1.0)
+            support:
+              type: object
+              required: ["source", "timestamp", "quote"]
+              properties:
+                source:
+                  type: string
+                  description: Source website or publication
+                timestamp:
+                  type: string
+                  description: ISO timestamp of the article
+                quote:
+                  type: string
+                  description: Short excerpt supporting the claim
+      team_level_deltas:
+        type: object
+        required: ["home_offense_delta", "home_defense_delta", "away_offense_delta", "away_defense_delta", "pace_delta"]
+        properties:
+          home_offense_delta:
+            type: number
+            minimum: -1.0
+            maximum: 1.0
+            description: Offensive performance adjustment for home team
+          home_defense_delta:
+            type: number
+            minimum: -1.0
+            maximum: 1.0
+            description: Defensive performance adjustment for home team
+          away_offense_delta:
+            type: number
+            minimum: -1.0
+            maximum: 1.0
+            description: Offensive performance adjustment for away team
+          away_defense_delta:
+            type: number
+            minimum: -1.0
+            maximum: 1.0
+            description: Defensive performance adjustment for away team
+          pace_delta:
+            type: number
+            minimum: -1.0
+            maximum: 1.0
+            description: Pace adjustment affecting both teams
+      news_reliability:
+        type: number
+        minimum: 0.0
+        maximum: 1.0
+        description: Overall reliability score of the news sources (0.0-1.0)
+      missing_info_flags:
+        type: array
+        description: Important information gaps that could affect prediction
+        items:
+          type: string

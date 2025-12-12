@@ -1,0 +1,49 @@
+workflow:
+  name: basketball-stats-aggregate-features
+  title: Basketball Stats - Aggregate Features
+  description: Aggregate basketball game features from API-Basketball data for forecasting
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    game_id: "$.get('game_id')"
+    league: "$.get('league')"
+    season: "$.get('season')"
+  outputs:
+    workflow-status: "'executed'"
+    feature_payload: "$.get('feature_payload')"
+  tasks:
+
+    - type: connector
+      name: aggregate-features
+      description: Aggregate features for the specified game
+      connector:
+        name: basketball-aggregate-features
+        command: aggregate_features
+      inputs:
+        game_id: "$.get('game_id')"
+        league: "$.get('league')"
+        season: "$.get('season')"
+      outputs:
+        feature_payload: "$.get('feature_payload')"
+
+    # Store the feature payload for later use
+    - type: document
+      name: store-feature-payload
+      description: Store the aggregated feature payload
+      condition: "$.get('feature_payload') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        feature-payload: |
+          {
+            **$.get('feature_payload'),
+            'title': f"Feature Payload - Game {$.get('game_id')}",
+            'execution_timestamp': datetime.utcnow()
+          }
+      metadata:
+        document_type: "'basketball-feature-payload'"

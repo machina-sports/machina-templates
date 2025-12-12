@@ -1,0 +1,79 @@
+workflow:
+
+  # api-basketball-sync-games-statistics-players
+  name: "api-basketball-sync-games-statistics-players"
+  title: "API Basketball - Sync Games Statistics Players"
+  description: "Workflow to sync games statistics players from API Basketball with IPTC mapping."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    id: "$.get('id')"
+    ids: "$.get('ids')"
+    player: "$.get('player')"
+    season: "$.get('season')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-games-statistics-players"
+      description: "Get games statistics players from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-games-statistics-players"
+      inputs:
+        id: "$.get('id')"
+        ids: "$.get('ids')"
+        player: "$.get('player')"
+        season: "$.get('season')"
+      outputs:
+        games-statistics-players: "$.get('response')"
+        game-id: "$.get('id') or ($.get('ids', '').split('-')[0] if $.get('ids') else None)"
+
+    # iptc-api-basketball-event-players-stats
+    - type: mapping
+      name: "iptc-api-basketball-event-players-stats"
+      title: "Convert to IPTC Players Statistics"
+      description: "Convert API Basketball players statistics to IPTC Basketball Statistics format"
+      condition: "len($.get('games-statistics-players', [])) > 0"
+      inputs:
+        games_players_statistics: "$.get('games-statistics-players', [])"
+        game_id: "$.get('game-id')"
+        team: "$.get('team')"
+      outputs:
+        iptc_players_statistics: "$.get('iptc_players_statistics', {})"
+
+    # task-bulk-save-games-players-statistics
+    - type: "document"
+      name: "task-bulk-save-games-players-statistics"
+      description: "Bulk save the individual games players statistics."
+      condition: "len($.get('games-statistics-players', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:IndividualParticipation'"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                **f.get('metadata', {}),
+                'action_code': str(f.get('@id', '')),
+                'event_code': f"urn:apibasketball:game:{$.get('game-id')}",
+              },
+              'title': f.get('rdfs:label', '')
+            }
+            for f in $.get('iptc_players_statistics', [])
+          ]

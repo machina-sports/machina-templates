@@ -1,0 +1,5 @@
+connector:
+  name: "api-basketball"
+  description: "API Basketball API"
+  filename: "api-basketball.json"
+  filetype: "restapi"

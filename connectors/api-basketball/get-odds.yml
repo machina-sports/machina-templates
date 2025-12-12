@@ -1,0 +1,35 @@
+workflow:
+
+  # api-basketball-get-odds
+  name: "api-basketball-get-odds"
+  title: "API Basketball - Get Odds"
+  description: "Workflow to get betting odds from API Basketball with multiple filter options."
+  context-variables:
+    debugger:
+      enabled: true
+    api-basketball:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_BASKETBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    season: "$.get('season')"
+    game: "$.get('game')"
+    bookmaker: "$.get('bookmaker')"
+    bet: "$.get('bet')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "api-basketball-get-odds"
+      description: "Get odds from API Basketball."
+      connector:
+        name: "api-basketball"
+        command: "get-odds"
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+        game: "$.get('game')"
+        bookmaker: "$.get('bookmaker')"
+        bet: "$.get('bet')"
+      outputs:
+        odds: "$"
