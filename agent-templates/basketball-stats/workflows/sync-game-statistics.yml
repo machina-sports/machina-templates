@@ -21,7 +21,7 @@ workflow:
       description: Get games statistics teams from API Basketball.
       connector:
         name: api-basketball
-        command: get-games-statistics-teams
+        command: "get-games-statistics-teams"
       inputs:
         id: "$.get('game_id')"
       outputs:
@@ -55,7 +55,7 @@ workflow:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "'sport:TeamParticipation'"
+      document_name: "sport:TeamParticipation"
       documents:
         items: |
           [
@@ -78,7 +78,7 @@ workflow:
       description: Get games statistics players from API Basketball.
       connector:
         name: api-basketball
-        command: get-games-statistics-players
+        command: "get-games-statistics-players"
       inputs:
         id: "$.get('game_id')"
       outputs:
@@ -110,7 +110,7 @@ workflow:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "'sport:IndividualParticipation'"
+      document_name: "sport:IndividualParticipation"
       documents:
         items: |
           [

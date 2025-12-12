@@ -16,6 +16,28 @@ def run_monte_carlo_simulation(params):
         Dictionary with simulation results
     """
 
+    def _correlation_to_covariance(corr_matrix, std_devs):
+        """
+        Convert correlation matrix to covariance matrix.
+
+        Args:
+            corr_matrix: Correlation matrix
+            std_devs: Array of standard deviations
+
+        Returns:
+            Covariance matrix
+        """
+        # Create diagonal matrix of variances
+        var_matrix = np.diag(std_devs ** 2)
+
+        # Cholesky decomposition of correlation matrix
+        chol_corr = np.linalg.cholesky(corr_matrix)
+
+        # Covariance = L * Var * L^T where L is Cholesky decomposition
+        cov_matrix = chol_corr @ var_matrix @ chol_corr.T
+
+        return cov_matrix
+
     sim_params = params.get('simulation_parameters', {})
     num_simulations = params.get('num_simulations', 10000)
 
@@ -130,25 +152,3 @@ def run_monte_carlo_simulation(params):
 
     except Exception as e:
         return {"error": f"Monte Carlo simulation failed: {str(e)}"}
-
-def _correlation_to_covariance(corr_matrix, std_devs):
-    """
-    Convert correlation matrix to covariance matrix.
-
-    Args:
-        corr_matrix: Correlation matrix
-        std_devs: Array of standard deviations
-
-    Returns:
-        Covariance matrix
-    """
-    # Create diagonal matrix of variances
-    var_matrix = np.diag(std_devs ** 2)
-
-    # Cholesky decomposition of correlation matrix
-    chol_corr = np.linalg.cholesky(corr_matrix)
-
-    # Covariance = L * Var * L^T where L is Cholesky decomposition
-    cov_matrix = chol_corr @ var_matrix @ chol_corr.T
-
-    return cov_matrix

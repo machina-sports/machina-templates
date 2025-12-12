@@ -66,7 +66,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -86,7 +86,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
       foreach:
         concurrent: true
         name: search_query
@@ -123,7 +123,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -178,7 +178,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -193,7 +193,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -209,7 +209,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -224,7 +224,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -245,7 +245,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -280,7 +280,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -302,7 +302,7 @@ workflow:
       description: Store the complete game prediction
       condition: "$.get('final_prediction') is not None"
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:

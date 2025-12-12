@@ -24,7 +24,7 @@ workflow:
       description: Get teams from API Basketball.
       connector:
         name: api-basketball
-        command: get-teams
+        command: "get-teams"
       inputs:
         id: "$.get('id')"
         name: "$.get('name')"
@@ -41,7 +41,7 @@ workflow:
       name: task-update-teams
       description: Update the teams document.
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:

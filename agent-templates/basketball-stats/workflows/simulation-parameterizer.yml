@@ -22,9 +22,9 @@ workflow:
       name: simulation-parameter-generation
       description: Generate Monte Carlo simulation parameters from forecast components
       connector:
-        command: invoke_prompt
+        command: "invoke_prompt"
         name: google-genai
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:

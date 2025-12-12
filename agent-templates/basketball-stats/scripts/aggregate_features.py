@@ -23,82 +23,6 @@ def aggregate_features(params):
         Dictionary with aggregated features
     """
 
-    game_id = params.get('game_id')
-    league = params.get('league')
-    season = params.get('season')
-
-    if not all([game_id, league, season]):
-        return {"error": "Missing required parameters: game_id, league, season"}
-
-    try:
-        # Load game data
-        game_data = _load_game_data(game_id)
-        if not game_data:
-            return {"error": f"Game {game_id} not found"}
-
-        home_team_id = game_data['teams']['home']['id']
-        away_team_id = game_data['teams']['away']['id']
-
-        # Load season data
-        season_games = _load_season_games(league, season)
-        standings_data = _load_standings_data(league, season)
-        team_stats = _load_team_statistics(league, season)
-
-        # Compute season strength metrics
-        home_strength = _compute_team_strength(home_team_id, season_games, standings_data, team_stats)
-        away_strength = _compute_team_strength(away_team_id, season_games, standings_data, team_stats)
-
-        # Compute rolling form features
-        home_form = _compute_rolling_form(home_team_id, season_games, game_data['date'])
-        away_form = _compute_rolling_form(away_team_id, season_games, game_data['date'])
-
-        # Compute schedule features
-        home_schedule = _compute_schedule_features(home_team_id, season_games, game_data['date'])
-        away_schedule = _compute_schedule_features(away_team_id, season_games, game_data['date'])
-
-        # Compute matchup style features
-        matchup_style = _compute_matchup_style(home_team_id, away_team_id, team_stats)
-
-        # Build feature payload
-        feature_payload = {
-            "meta": {
-                "league": league,
-                "season": season,
-                "game_id": game_id,
-                "date": game_data['date'],
-                "low_data_flag": False,  # Will be set based on data quality checks
-                "player_depth_flag": True  # Will be set based on player stats availability
-            },
-            "home": {
-                "team_id": home_team_id,
-                "name": game_data['teams']['home']['name'],
-                "season_strength": home_strength,
-                "rolling_form": home_form,
-                "schedule": home_schedule
-            },
-            "away": {
-                "team_id": away_team_id,
-                "name": game_data['teams']['away']['name'],
-                "season_strength": away_strength,
-                "rolling_form": away_form,
-                "schedule": away_schedule
-            },
-            "matchup": {
-                "style": matchup_style
-            },
-            "news": {
-                "deltas": {"home_offense_delta": 0.0, "home_defense_delta": 0.0, "pace_delta": 0.0},
-                "reliability": 0.0,
-                "evidence_count": 0,
-                "missing_info_flags": []
-            }
-        }
-
-        return {"feature_payload": feature_payload}
-
-    except Exception as e:
-        return {"error": f"Feature aggregation failed: {str(e)}"}
-
 def _load_game_data(game_id):
     """Load game data from documents"""
     # This would typically query the document database
@@ -240,6 +164,89 @@ def _compute_matchup_style(home_team_id, away_team_id, team_stats):
         "turnover_edge_proxy": 0.0
     }
 
+    def _did_team_win(game, team_id):
+        """Helper function to determine if team won the game"""
+        # This would need actual score data from the game
+        # Placeholder logic
+        return team_id == game.get('teams', {}).get('home', {}).get('id')  # Assume home team wins
+
+    game_id = params.get('game_id')
+    league = params.get('league')
+    season = params.get('season')
+
+    if not all([game_id, league, season]):
+        return {"error": "Missing required parameters: game_id, league, season"}
+
+    try:
+        # Load game data
+        game_data = _load_game_data(game_id)
+        if not game_data:
+            return {"error": f"Game {game_id} not found"}
+
+        home_team_id = game_data['teams']['home']['id']
+        away_team_id = game_data['teams']['away']['id']
+
+        # Load season data
+        season_games = _load_season_games(league, season)
+        standings_data = _load_standings_data(league, season)
+        team_stats = _load_team_statistics(league, season)
+
+        # Compute season strength metrics
+        home_strength = _compute_team_strength(home_team_id, season_games, standings_data, team_stats)
+        away_strength = _compute_team_strength(away_team_id, season_games, standings_data, team_stats)
+
+        # Compute rolling form features
+        home_form = _compute_rolling_form(home_team_id, season_games, game_data['date'])
+        away_form = _compute_rolling_form(away_team_id, season_games, game_data['date'])
+
+        # Compute schedule features
+        home_schedule = _compute_schedule_features(home_team_id, season_games, game_data['date'])
+        away_schedule = _compute_schedule_features(away_team_id, season_games, game_data['date'])
+
+        # Compute matchup style features
+        matchup_style = _compute_matchup_style(home_team_id, away_team_id, team_stats)
+
+        # Build feature payload
+        feature_payload = {
+            "meta": {
+                "league": league,
+                "season": season,
+                "game_id": game_id,
+                "date": game_data['date'],
+                "low_data_flag": False,  # Will be set based on data quality checks
+                "player_depth_flag": True  # Will be set based on player stats availability
+            },
+            "home": {
+                "team_id": home_team_id,
+                "name": game_data['teams']['home']['name'],
+                "season_strength": home_strength,
+                "rolling_form": home_form,
+                "schedule": home_schedule
+            },
+            "away": {
+                "team_id": away_team_id,
+                "name": game_data['teams']['away']['name'],
+                "season_strength": away_strength,
+                "rolling_form": away_form,
+                "schedule": away_schedule
+            },
+            "matchup": {
+                "style": matchup_style
+            },
+            "news": {
+                "deltas": {"home_offense_delta": 0.0, "home_defense_delta": 0.0, "pace_delta": 0.0},
+                "reliability": 0.0,
+                "evidence_count": 0,
+                "missing_info_flags": []
+            }
+        }
+
+        return {"feature_payload": feature_payload}
+
+    except Exception as e:
+        return {"error": f"Feature aggregation failed: {str(e)}"}
+
+
 def filter_search_results(params):
     """
     Filter and deduplicate search results.
@@ -312,8 +319,3 @@ def format_evidence_outputs(params):
         }
     }
 
-def _did_team_win(game, team_id):
-    """Helper function to determine if team won the game"""
-    # This would need actual score data from the game
-    # Placeholder logic
-    return team_id == game.get('teams', {}).get('home', {}).get('id')  # Assume home team wins

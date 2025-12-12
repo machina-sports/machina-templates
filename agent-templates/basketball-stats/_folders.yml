@@ -14,7 +14,7 @@ workflow:
       name: install-documents
       description: Install documents and folder structure.
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:

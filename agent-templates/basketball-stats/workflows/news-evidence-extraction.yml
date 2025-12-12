@@ -26,9 +26,9 @@ workflow:
       name: extract-news-evidence
       description: Extract structured evidence and deltas from search results
       connector:
-        command: invoke_prompt
+        command: "invoke_prompt"
         name: google-genai
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:
@@ -49,7 +49,7 @@ workflow:
       description: Store the extracted news evidence
       condition: "$.get('evidence_items') is not None"
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:
@@ -69,7 +69,7 @@ workflow:
       description: Store the news-driven performance deltas
       condition: "$.get('team_level_deltas') is not None"
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:
@@ -91,7 +91,7 @@ workflow:
       description: Format evidence and deltas for workflow outputs
       connector:
         name: basketball-aggregate-features
-        command: format_evidence_outputs
+        command: "format_evidence_outputs"
       inputs:
         evidence_items: "$.get('evidence_items', [])"
         team_level_deltas: "$.get('team_level_deltas', {})"

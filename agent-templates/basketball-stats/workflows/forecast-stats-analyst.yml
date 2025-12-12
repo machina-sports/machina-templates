@@ -20,9 +20,9 @@ workflow:
       name: forecast-stats-analysis
       description: Generate statistical baseline forecast using stats analyst prompt
       connector:
-        command: invoke_prompt
+        command: "invoke_prompt"
         name: google-genai
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
         location: global
         provider: vertex_ai
       inputs:

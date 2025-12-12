@@ -2,7 +2,7 @@ prompt:
   name: basketball-news-evidence-extractor
   title: Basketball News Evidence Extractor
   description: Extract structured evidence from search results for basketball matchup analysis
-  instructions: |
+  instruction: |
     Convert raw search results into structured evidence with explicit confidence scores for basketball matchup prediction.
 
     Analyze the provided search results and extract evidence that could impact the outcome of the basketball game between the home team and away team.

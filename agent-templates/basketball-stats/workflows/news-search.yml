@@ -28,7 +28,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
-        model: gemini-3-pro-preview
+        model: "gemini-3-pro-preview"
       foreach:
         concurrent: true
         name: search_query

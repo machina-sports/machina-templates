@@ -25,7 +25,7 @@ workflow:
       description: Get games from API Basketball.
       connector:
         name: api-basketball
-        command: get-games
+        command: "get-games"
       inputs:
         id: "$.get('id')"
         date: "$.get('date')"

@@ -2,7 +2,7 @@ prompt:
   name: basketball-final-pricing
   title: Basketball Final Pricing
   description: Generate final prediction combining all analysis components and simulation results
-  instructions: |
+  instruction: |
     You are the final arbiter of the basketball forecasting process. Synthesize all components and simulation results into the final prediction.
 
     INPUTS AVAILABLE:

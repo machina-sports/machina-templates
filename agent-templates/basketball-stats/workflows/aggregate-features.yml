@@ -35,7 +35,7 @@ workflow:
       description: Store the aggregated feature payload
       condition: "$.get('feature_payload') is not None"
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:

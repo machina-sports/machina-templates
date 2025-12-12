@@ -25,7 +25,7 @@ workflow:
       description: Get league coverage information to verify data availability
       connector:
         name: api-basketball
-        command: get-leagues
+        command: "get-leagues"
       inputs:
         id: "$.get('league')"
       outputs:
@@ -40,7 +40,7 @@ workflow:
       description: Evaluate overall data coverage quality and set flags
       connector:
         name: api-basketball
-        command: get-leagues
+        command: "get-leagues"
       inputs:
         id: "$.get('league')"
       outputs:
@@ -54,7 +54,7 @@ workflow:
       name: store-league-assessment
       description: Store league coverage assessment for reference
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:

@@ -37,7 +37,7 @@ workflow:
       name: task-update-standings
       description: Update the standings document.
       config:
-        action: update
+        action: "update"
         embed-vector: false
         force-update: true
       documents:

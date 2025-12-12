@@ -2,7 +2,7 @@ prompt:
   name: basketball-simulation-parameterizer
   title: Basketball Simulation Parameterizer
   description: Convert forecast components into Monte Carlo simulation parameters
-  instructions: |
+  instruction: |
     You are responsible for translating the qualitative forecast components into quantitative parameters for Monte Carlo simulation.
 
     INPUTS AVAILABLE:

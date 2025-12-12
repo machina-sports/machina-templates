@@ -30,8 +30,14 @@ datasets:
   - type: "connector"
     path: "api-basketball.yml"
 
-  - type: "install"
-    path: "../../agent-templates/iptc-mappings/api-basketball/_install.yml"
+  - type: "mappings"
+    path: "../../agent-templates/iptc-mappings/api-basketball/event-teams-stats.yml"
+
+  - type: "mappings"
+    path: "../../agent-templates/iptc-mappings/api-basketball/event-players-stats.yml"
+
+  - type: "mappings"
+    path: "../../agent-templates/iptc-mappings/api-basketball/event-mapping.yml"
 
   - type: "workflow"
     path: "get-leagues.yml"

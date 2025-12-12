@@ -2,7 +2,7 @@ prompt:
   name: basketball-forecast-evidence-analyst
   title: Basketball Forecast Evidence Analyst
   description: Analyze news evidence to adjust statistical forecast for basketball matchup
-  instructions: |
+  instruction: |
     You are an evidence analyst specializing in basketball forecasting. Review the news evidence and adjust the statistical baseline forecast accordingly.
 
     STARTING POINT: You have access to the statistical baseline forecast and the news evidence extracted from recent articles.

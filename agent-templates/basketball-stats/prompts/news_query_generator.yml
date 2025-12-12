@@ -2,7 +2,7 @@ prompt:
   name: basketball-news-query-generator
   title: Basketball News Query Generator
   description: Generate search queries for basketball matchup news and recent developments
-  instructions: |
+  instruction: |
     Generate exactly 8 Google Search queries for basketball content about a specific matchup.
 
     Use the provided parameters:

@@ -2,7 +2,7 @@ prompt:
   name: basketball-forecast-matchup-analyst
   title: Basketball Forecast Matchup Analyst
   description: Analyze team matchup dynamics and game-specific factors for basketball forecasting
-  instructions: |
+  instruction: |
     You are a matchup analyst specializing in basketball game prediction. Evaluate the specific dynamics between these two teams in this particular game.
 
     INTEGRATE MULTIPLE PERSPECTIVES:
