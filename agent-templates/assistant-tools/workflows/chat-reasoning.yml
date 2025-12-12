@@ -62,7 +62,7 @@ workflow:
       outputs:
         document_id: $.get('thread_id')
         document_exists: True
-        document_value: {'messages': []}
+        document_value: "{'messages': []}"
 
     # Load event object (sport:Event)
     - type: document
