@@ -28,7 +28,7 @@ workflow:
     - type: document
       name: load-thread-document
       description: Load thread document
-      condition: $.get('thread_id') is not None
+      condition: $.get('thread_id') is not None and $.get('thread_id') !== ''
       config:
         action: search
         search-limit: 1
@@ -46,10 +46,11 @@ workflow:
     - type: document
       name: create-thread-document
       description: Create a new thread document if it doesn't exist
-      condition: $.get('thread_id') is not None and $.get('document_exists') is False
+      condition: ($.get('thread_id') is None or $.get('thread_id') == '') and ($.get('document_exists') is False or $.get('document_exists') is None)
       config:
-        action: create
+        action: save
         embed-vector: false
+        force-update: true
       documents:
         thread: |
           {
@@ -57,12 +58,16 @@ workflow:
             'status': 'created',
             'status_message': 'Thread created'
           }
-      inputs:
-        document_id: $.get('thread_id')
+      metadata:
+        agent_id: "'assistant-tools-chat-reasoning'"
+        created_at: datetime.now().isoformat()
+        created_from: "'assistant-tools'"
+        source: "'assistant-tools'"
+        user_id: "'anonymous'"
       outputs:
-        document_id: $.get('thread_id')
-        document_exists: True
-        document_value: "{'messages': []}"
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
 
     # Load event object (sport:Event)
     - type: document
