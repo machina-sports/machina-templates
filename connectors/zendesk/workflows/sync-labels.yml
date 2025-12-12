@@ -1,0 +1,61 @@
+workflow:
+  name: zendesk-sync-labels
+  title: Zendesk Sync Labels
+  description: Workflow to fetch labels from Zendesk Help Center and save them to the database
+  context-variables:
+    debugger:
+      enabled: true
+    zendesk:
+      username: $MACHINA_CONTEXT_VARIABLE_ZENDESK_USERNAME
+      password: $MACHINA_CONTEXT_VARIABLE_ZENDESK_PASSWORD
+  inputs: {}
+  outputs:
+    labels_count: $.get('labels_count', 0)
+    workflow-status: $.get('labels_parsed', []) is None or len($.get('labels_parsed', [])) == 0 and 'skipped' or 'executed'
+  tasks:
+
+    # task-fetch-labels
+    - type: connector
+      name: task-fetch-labels
+      description: Fetch labels from Zendesk Help Center
+      connector:
+        name: zendesk
+        command: list_labels
+      outputs:
+        labels_response: $
+        labels: $.get('labels', [])
+        labels_count: len($.get('labels', []))
+        labels_parsed: |
+          [
+            {
+              'metadata': {
+                'label_id': str(label.get('id', '')),
+                'name': str(label.get('name', ''))
+              },
+              'title': str(label.get('name', '')),
+              'name': str(label.get('name', '')),
+              'created_at': str(label.get('created_at', '')) if label.get('created_at') else '',
+              'updated_at': str(label.get('updated_at', '')) if label.get('updated_at') else '',
+              'id': str(label.get('id', '')),
+              'url': str(label.get('url', '')) if label.get('url') else ''
+            }
+            for label in $.get('labels', [])
+          ]
+
+    # bulk-save-labels
+    - type: document
+      name: bulk-save-labels
+      condition: $.get('labels_parsed') is not None and len($.get('labels_parsed', [])) > 0
+      description: Bulk save labels to the database
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: 'zendesk-label'
+      documents:
+        items: $.get('labels_parsed')
+      inputs:
+        labels_parsed: $.get('labels_parsed')
+      outputs:
+        saved_count: len($.get('documents', [])) if $.get('documents') else 0
+

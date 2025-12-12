@@ -1,0 +1,11 @@
+connector:
+  name: "zendesk"
+  description: "Zendesk Help Center API - Access articles and help center content"
+  filename: "zendesk.py"
+  filetype: "pyscript"
+  commands:
+    - name: "List Articles"
+      value: "list_articles"
+    - name: "List Labels"
+      value: "list_labels"
+
