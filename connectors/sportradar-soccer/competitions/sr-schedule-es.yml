@@ -21,3 +21,18 @@ agent:
         season_id: "'sr:season:130805'"
       outputs:
         sync-competitors-status: $.get('workflow-status', False)
+
+    # sync Spain La Liga 2 (132048)
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      inputs:
+        season_id: "'sr:season:132048'"
+      outputs:
+        sync-seasons-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      inputs:
+        season_id: "'sr:season:132048'"
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)
