@@ -25,6 +25,9 @@ datasets:
   - type: connector
     path: zendesk.yml
 
+  - type: mappings
+    path: mappings/html-to-text.yml
+
   - type: workflow
     path: workflows/sync-articles.yml
 
