@@ -1,7 +1,9 @@
 workflow:
-  name: coverage-tools-filter-interesting-odds
-  title: Coverage - Filter Interesting Odds (Total Goals, Team Goals, First Scorer)
-  description: Load all markets and filter odds 1.50-3.00 for Total Goals, Team Total Goals, and First To Score markets
+
+  # coverage-tools-soccer-interesting-odds
+  name: coverage-tools-soccer-interesting-odds
+  title: Coverage Tools - Soccer Interesting Odds
+  description: Workflow to filter interesting odds for a soccer event
   context-variables:
     bwin:
       Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID

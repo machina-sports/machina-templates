@@ -1,5 +1,5 @@
 workflow:
-  name: assistant-market-translations
+  name: assistant-market-translations-pt-br
   title: Assistant - Market Translations
   description: Assistant - Market Translations
   context-variables:

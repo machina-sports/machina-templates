@@ -14,7 +14,6 @@ setup:
 
 datasets:
 
-
   # mappings
 
   - type: mappings
@@ -52,16 +51,22 @@ datasets:
   # tools
 
   - type: workflow
-    path: tools/filter-interesting-odds.yml
+    path: tools/soccer/interesting-odds.yml
+
+  - type: connector
+    path: tools/soccer/preview-boxes-connector.yml
+
+  - type: workflow
+    path: tools/soccer/preview-boxes.yml
+
+  - type: workflow
+    path: tools/soccer/tallysight-widgets.yml
     
   - type: workflow
     path: tools/find-all-markets.yml
 
   - type: workflow
     path: tools/find-images.yml
-
-  - type: workflow
-    path: tools/find-widgets.yml
 
   - type: connector
     path: tools/normalize-teams.yml

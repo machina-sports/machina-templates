@@ -1,7 +1,9 @@
 workflow:
-  name: coverage-tools-find-widgets
-  title: Coverage - Find Widgets
-  description: Load event and widgets
+
+  # coverage-tools-soccer-tallysight-widgets
+  name: coverage-tools-soccer-tallysight-widgets
+  title: Coverage Tools - Soccer Tallysight Widgets
+  description: Workflow to find Tallysight widgets for a soccer event
   context-variables:
     debugger:
       enabled: true
