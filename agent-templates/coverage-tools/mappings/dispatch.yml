@@ -11,6 +11,7 @@ mappings:
       enable-machina-wordpress: $.get('dispatch-config', {}).get('enable_machina_wordpress', False)
       enable-sportingbet-wordpress: $.get('dispatch-config', {}).get('enable_sportingbet_wordpress', False)
       enable-slack: $.get('dispatch-config', {}).get('enable_slack', False)
+      machina-news-domain: $.get('dispatch-config', {}).get('machina_news_domain', '')
       slack-channel-id: $.get('dispatch-config', {}).get('slack_channel_id', '')
       slack-username: $.get('dispatch-config', {}).get('slack_username', '')
       site_id: $.get('dispatch-config', {}).get('wp_site_id', '')
