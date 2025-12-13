@@ -19,6 +19,17 @@ datasets:
   - type: agent
     path: agents/chat-executor.yml
 
+  # connectors
+
+  - type: connector
+    path: dispatch/format_slack_messages.yml
+
+  - type: workflow
+    path: dispatch/notify-slack.yml
+
+  - type: connector
+    path: dispatch/send-slack.yml
+
   # mappings
 
   - type: mappings

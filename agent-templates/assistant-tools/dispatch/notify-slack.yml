@@ -1,0 +1,153 @@
+workflow:
+
+  # assistant-tools-notify-slack
+  name: assistant-tools-notify-slack
+  title: Assistant Tools - Notify Slack Channel
+  description: Send conversation notifications to Slack channel with thread support
+  context-variables:
+    debugger:
+      enabled: true
+    sdk-slack-sender:
+      api_key: $TEMP_CONTEXT_VARIABLE_SLACK_BOT_TOKEN
+  inputs:
+    document_id: $.get('document_id')
+    document_content: $.get('document_content', [])
+    username: $.get('username', 'Anónimo')
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # load-thread-document
+    - type: document
+      name: load-thread-document
+      description: Load thread document to get messages and slack_thread_ts
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+        name: "'thread'"
+      outputs:
+        thread_document_exists: len($.get('documents', [])) > 0
+        thread_document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        thread_messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+        thread_userid: $.get('documents')[0].get('value', {}).get('userid', None) if len($.get('documents', [])) > 0 else None
+        slack_thread_ts: $.get('documents')[0].get('value', {}).get('slack_thread_ts', None) if len($.get('documents', [])) > 0 else None
+
+    # load coverage-dispatch-config
+    - type: document
+      name: load-coverage-dispatch-config
+      description: Load coverage-dispatch-config to get slack channel id
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-dispatch-config'"
+      outputs:
+        assistant_config: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        slack_channel_id: $.get('documents')[0].get('value', {}).get('slack_channel_id', None) if len($.get('documents', [])) > 0 else None
+        slack_emoji: $.get('documents')[0].get('value', {}).get('slack_emoji', None) if len($.get('documents', [])) > 0 else None
+        slack_username: $.get('documents')[0].get('value', {}).get('slack_username', None) if len($.get('documents', [])) > 0 else None
+
+    # format slack messages
+    - type: connector
+      name: format-slack-messages
+      description: Format chat conversation data into structured Slack messages
+      condition: $.get('thread_document_exists') is True and len($.get('thread_messages', [])) > 0
+      connector:
+        name: assistant-tools-slack-formatter
+        command: format_chat_slack_messages
+      inputs:
+        document_content: $.get('thread_messages', [])
+        username: $.get('username', 'Anónimo')
+        userid: $.get('thread_userid', None)
+      outputs:
+        slack_main_message: $.get('main_message', '')
+        slack_user_message: $.get('user_message', '')
+        slack_reasoning_summary: $.get('reasoning_summary', '')
+        slack_response_message: $.get('response_message', '')
+
+    # create or get slack thread
+    - type: connector
+      name: create-slack-thread
+      description: Create main Slack message if thread doesn't exist, or use existing thread
+      condition: $.get('slack_thread_ts') is None and $.get('slack_main_message') is not None
+      connector:
+        name: sdk-slack-sender
+        command: send_slack_message
+      inputs:
+        channel_id: $.get('slack_channel_id')
+        message: $.get('slack_main_message')
+        slack_emoji: $.get('slack_emoji')
+        slack_username: $.get('slack_username')
+      outputs:
+        thread_ts: $.get('thread_ts')
+
+    # update thread document with slack_thread_ts
+    - type: document
+      name: update-thread-with-slack-ts
+      description: Save slack_thread_ts to thread document value
+      condition: $.get('thread_ts') is not None and $.get('document_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        thread: |
+          {
+            **$.get('thread_document_value', {}),
+            'slack_thread_ts': $.get('thread_ts')
+          }
+      filters:
+        document_id: $.get('document_id')
+
+    # send user message in thread
+    - type: connector
+      name: send-user-message-in-thread
+      description: Send user message in Slack thread
+      condition: ($.get('thread_ts') is not None or $.get('slack_thread_ts') is not None) and $.get('slack_user_message') is not None and len($.get('slack_user_message', '')) > 0
+      connector:
+        name: sdk-slack-sender
+        command: send_slack_message
+      inputs:
+        channel_id: $.get('slack_channel_id')
+        thread-id: $.get('thread_ts') if $.get('thread_ts') is not None else $.get('slack_thread_ts')
+        message: $.get('slack_user_message')
+        slack_emoji: $.get('slack_emoji')
+        slack_username: $.get('slack_username')
+
+    # send reasoning summary in thread
+    - type: connector
+      name: send-reasoning-summary-in-thread
+      description: Send chat reasoning summary in Slack thread
+      condition: ($.get('thread_ts') is not None or $.get('slack_thread_ts') is not None) and $.get('slack_reasoning_summary') is not None and len($.get('slack_reasoning_summary', '')) > 0
+      connector:
+        name: sdk-slack-sender
+        command: send_slack_message
+      inputs:
+        channel_id: $.get('slack_channel_id')
+        thread-id: $.get('thread_ts') if $.get('thread_ts') is not None else $.get('slack_thread_ts')
+        message: $.get('slack_reasoning_summary')
+        slack_emoji: $.get('slack_emoji')
+        slack_username: $.get('slack_username')
+
+    # send response message in thread
+    - type: connector
+      name: send-response-message-in-thread
+      description: Send chat response with suggested questions in Slack thread
+      condition: ($.get('thread_ts') is not None or $.get('slack_thread_ts') is not None) and $.get('slack_response_message') is not None and len($.get('slack_response_message', '')) > 0
+      connector:
+        name: sdk-slack-sender
+        command: send_slack_message
+      inputs:
+        channel_id: $.get('slack_channel_id')
+        thread-id: $.get('thread_ts') if $.get('thread_ts') is not None else $.get('slack_thread_ts')
+        message: $.get('slack_response_message')
+        slack_emoji: $.get('slack_emoji')
+        slack_username: $.get('slack_username')
+
+
