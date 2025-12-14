@@ -1,0 +1,40 @@
+agent:
+  name: sportradar-soccer-config-seasons
+  title: Sportradar - Soccer Config Seasons
+  description: Agent to config seasons for coverage tools
+  context:
+    config-frequency: 10
+    status: inactive
+  workflows:
+
+    # sportradar-soccer-config-seasons-workflow
+    - name: sportradar-soccer-config-seasons-workflow
+      description: config-seasons-workflow
+      outputs:
+        competition-ids: $.get('competition-ids')
+        current-seasons: $.get('current-seasons')
+        current-seasons-id: $.get('current-seasons-id')
+
+    # sportradar-soccer-sync-schedules
+    - name: sportradar-soccer-sync-schedules
+      description: sync-schedules
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id')
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-schedules-status: $.get('workflow-status', False)
+
+    # sportradar-soccer-sync-competitors
+    - name: sportradar-soccer-sync-competitors
+      description: sync-competitors
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id')
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)

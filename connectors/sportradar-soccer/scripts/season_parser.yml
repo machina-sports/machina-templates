@@ -1,0 +1,8 @@
+connector:
+  name: coverage-get-current-season
+  description: Coverage Current Season Parser
+  filename: season_parser.py
+  filetype: pyscript
+  commands:
+    - name: Invoke Get Current Season
+      value: invoke_get_current_season

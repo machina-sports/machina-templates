@@ -44,6 +44,7 @@ workflow:
                     "name": [
                       "content-trending-news",
                       "coverage-dispatch-config",
+                      "coverage-soccer-markets-config",
                       "coverage-soccer-preview-config",
                       "doc-structure",
                       "market-translations-es",

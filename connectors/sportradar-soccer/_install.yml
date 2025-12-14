@@ -58,44 +58,6 @@ datasets:
   - type: "agent"
     path: "agents/update-by-round.yml"
 
-  # competitions
-
-  - type: agent
-    path: competitions/bw-markets-br.yml
-
-  - type: agent
-    path: competitions/bw-markets-de.yml
-
-  - type: agent
-    path: competitions/bw-markets-en.yml
-
-  - type: agent
-    path: competitions/bw-markets-es.yml
-
-  - type: agent
-    path: competitions/bw-markets-it.yml
-
-  - type: agent
-    path: competitions/bw-markets-uefa.yml
-
-  - type: agent
-    path: competitions/sr-schedule-br.yml
-
-  - type: agent
-    path: competitions/sr-schedule-de.yml
-
-  - type: agent
-    path: competitions/sr-schedule-en.yml
-
-  - type: agent
-    path: competitions/sr-schedule-es.yml
-
-  - type: agent
-    path: competitions/sr-schedule-it.yml
-
-  - type: agent
-    path: competitions/sr-schedule-uefa.yml
-    
   # mappings
 
   - type: "mappings"
@@ -185,3 +147,20 @@ datasets:
   
   # - type: "workflow"
   #   path: "workflows/update-prelive.yml"
+
+  # competition / leagues
+
+  - type: agent
+    path: agents/config-markets.yml
+
+  - type: agent
+    path: agents/config-seasons.yml
+
+  - type: connector
+    path: scripts/season_parser.yml
+
+  - type: workflow
+    path: workflows/config-markets.yml
+
+  - type: workflow
+    path: workflows/config-seasons.yml

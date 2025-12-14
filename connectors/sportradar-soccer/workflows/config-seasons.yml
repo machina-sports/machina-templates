@@ -1,0 +1,84 @@
+workflow:
+
+  name: sportradar-soccer-config-seasons-workflow
+  title: Sportradar Soccer - Config Seasons Workflow
+  description: Workflow to load seasons for coverage tools
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  outputs:
+    competition-ids: $.get('competition-ids')
+    current-seasons: $.get('current-seasons')
+    current-seasons-id: $.get('current-seasons-id')
+    workflow-status: "'executed'"
+  tasks:
+
+    # load dispatch configuration
+    - type: document
+      name: coverage-soccer-preview-config
+      description: Load dispatch configuration to control player article execution
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-soccer-preview-config'"
+      outputs:
+        coverage-soccer-preview: $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', []) if len($.get('documents', [])) > 0 else []
+        competition-ids: |
+          [
+            competition_id.replace('urn:sportradar:competition:', '')
+            for competition_id in $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', [])
+          ]
+
+    # task-load-seasons
+    - type: connector
+      name: task-load-seasons
+      description: Get Seasons from SportRadar
+      condition: $.get('competition-ids') is not None and len($.get('competition-ids', [])) > 0
+      connector:
+        name: sportradar-soccer
+        command: get-competitions/{competition_id}/seasons.json
+        command_attribute:
+          competition_id: $.get('competition-id')
+      foreach:
+        name: competition-id
+        expr: $
+        value: $.get('competition-ids')
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        competitions-seasons: |
+          [
+            $.get('seasons', [])
+          ]
+
+    # task-parse-season
+    - type: connector
+      name: task-parse-season
+      description: Parse Season
+      connector:
+        name: coverage-get-current-season
+        command: invoke_get_current_season
+      foreach:
+        name: seasons
+        expr: $
+        value: $.get('competitions-seasons', [])
+      inputs:
+        seasons: $.get('seasons')
+      outputs:
+        current-seasons: |
+          [
+            $.get('current-season')
+          ]
+        current-seasons-id: |
+          [
+            $.get('current-season', {}).get('id', '')
+          ]

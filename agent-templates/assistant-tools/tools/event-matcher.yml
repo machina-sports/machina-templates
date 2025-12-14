@@ -10,7 +10,10 @@ workflow:
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    externalSeasonId: $.get('externalSeasonId')
+    competitionIds: $.get('competitionIds') or $.get('competitionItem', {}).get('competitionIds')
+    competitionItem: $.get('competitionItem')
+    externalCompetitionId: $.get('externalCompetitionId') or $.get('competitionItem', {}).get('externalCompetitionId')
+    externalSeasonId: $.get('externalSeasonId') or $.get('competitionItem', {}).get('externalSeasonId')
     limit: "$.get('limit', 50)"
     market_id: "$.get('market_id', None)"
   outputs:
@@ -47,7 +50,8 @@ workflow:
         search-vector: false
         search-sorters: ["updated", -1]
       filters:
-        metadata.external_season_id: "$.get('externalSeasonId')"
+        metadata.externalCompetitionId: "$.get('externalCompetitionId')"
+        # metadata.external_season_id: "$.get('externalSeasonId')"
         metadata.market_type: "{'$ne': 'Tournament'}"
         value.event_code: "{'$exists': False}"
         value.isOpenForBetting: "{'$eq': True}"
@@ -71,7 +75,8 @@ workflow:
         search-vector: false
         search-sorters: ["value.schema:startDate", 1]
       filters:
-        value.sport:competition.sport:season.@id: $.get('externalSeasonId')
+        value.sport:competition.@id: $.get('externalCompetitionId')
+        # value.sport:competition.sport:season.@id: $.get('externalSeasonId')
         value.sport:status: "{'$nin': ['Played', 'closed', 'ended']}"
         value.schema:startDate: |
           {
