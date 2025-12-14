@@ -50,7 +50,8 @@ workflow:
                       "market-translations-pt-br",
                       "setup-playground",
                       "site-structure",
-                      "sportingbot-character"
+                      "sportingbot-character",
+                      "website-competition-filters"
                     ]
                   },
                   "sorters": ['_id', -1],
