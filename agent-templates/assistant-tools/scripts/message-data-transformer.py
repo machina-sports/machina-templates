@@ -643,6 +643,86 @@ def summarize_message_data(request_data):
         
         return summaries
     
+    def summarize_standings(standings):
+        """Summarize standings to concise docs for LLM grouped by team with classification."""
+        standings_summary = []
+        
+        # Validate input
+        if standings is None:
+            print(f"[DEBUG] summarize_standings: standings is None")
+            return standings_summary
+        
+        if not isinstance(standings, list):
+            print(f"[DEBUG] summarize_standings: standings is not a list, type: {type(standings)}")
+            return standings_summary
+        
+        if len(standings) == 0:
+            print(f"[DEBUG] summarize_standings: standings is an empty list")
+            return standings_summary
+        
+        for team in standings:
+            try:
+                if not isinstance(team, dict):
+                    continue
+                
+                # Extract team information
+                rank = team.get("rank", "")
+                competitor = team.get("competitor", {})
+                
+                if not isinstance(competitor, dict):
+                    competitor = {}
+                
+                team_name = normalize_team_name(competitor.get("name", "Unknown"))
+                team_abbreviation = competitor.get("abbreviation", "")
+                
+                # Extract standings statistics
+                points = team.get("points", 0)
+                played = team.get("played", 0)
+                wins = team.get("win", 0)
+                draws = team.get("draw", 0)
+                losses = team.get("loss", 0)
+                goals_for = team.get("goals_for", 0)
+                goals_against = team.get("goals_against", 0)
+                goals_diff = team.get("goals_diff", 0)
+                current_outcome = team.get("current_outcome", "")
+                
+                # Extract additional info
+                form = competitor.get("form", "")
+                points_per_game = team.get("points_per_game", 0)
+                
+                # Build summary string
+                summary_parts = []
+                
+                # Main info: Rank, Team, Points
+                summary_parts.append(f"#{rank} {team_name} ({team_abbreviation})")
+                summary_parts.append(f"Pts: {points}")
+                
+                # Record
+                summary_parts.append(f"{played}J ({wins}V {draws}E {losses}D)")
+                
+                # Goals
+                summary_parts.append(f"G: {goals_for}-{goals_against} ({goals_diff:+d})")
+                
+                # Classification zone if available
+                if current_outcome:
+                    summary_parts.append(f"Zone: {current_outcome}")
+                
+                # Form if available
+                if form:
+                    summary_parts.append(f"Form: {form}")
+                
+                # Average points per game
+                if points_per_game:
+                    summary_parts.append(f"PPG: {points_per_game:.2f}")
+                
+                standings_summary.append(" | ".join(summary_parts))
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to process team standing: {str(e)}")
+                continue
+        
+        return standings_summary
+    
     def summarize_markets(markets_parsed):
         """Summarize markets-parsed to concise docs for LLM."""
         markets_docs = []
@@ -707,6 +787,7 @@ def summarize_message_data(request_data):
         next_events = params.get("next_events", [])
         markets_docs = params.get("markets_docs", [])
         markets_parsed = params.get("markets_parsed", [])
+        season_standings = params.get("season_standings", [])
         
         if not isinstance(last_user_msg, dict):
             return {
@@ -718,6 +799,7 @@ def summarize_message_data(request_data):
                     "played_events_summary": [],
                     "head_to_head_events_summary": [],
                     "next_events_summary": [],
+                    "season_standings_summary": [],
                     "faq_docs": [],
                     "insights_docs": [],
                     "markets_docs": [],
@@ -748,6 +830,14 @@ def summarize_message_data(request_data):
         # Create compact context (summary + user question) for token efficiency
         context_summary = last_user_msg.get("reasoning", {}).get("short_message", "")
         user_question = last_user_msg.get("content", "")
+        
+        # Summarize standings by team
+        try:
+            season_standings_summary = summarize_standings(season_standings)
+            print(f"[DEBUG] season_standings_summary generated with {len(season_standings_summary)} entries")
+        except Exception as e:
+            print(f"[ERROR] Failed to summarize standings: {str(e)}")
+            season_standings_summary = []
         
         # Flatten markets-parsed into individual market objects for UI widgets
         markets_objects = []
@@ -785,6 +875,7 @@ def summarize_message_data(request_data):
                 "played_events_summary": played_events_summary,
                 "head_to_head_events_summary": head_to_head_events_summary,
                 "next_events_summary": next_events_summary,
+                "season_standings_summary": season_standings_summary,
                 "faq_docs": faq_docs,
                 "insights_docs": insights_docs,
                 "markets_docs": markets_docs,
@@ -809,6 +900,7 @@ def summarize_message_data(request_data):
                 "played_events_summary": [],
                 "head_to_head_events_summary": [],
                 "next_events_summary": [],
+                "season_standings_summary": [],
                 "faq_docs": [],
                 "insights_docs": [],
                 "markets_docs": [],
