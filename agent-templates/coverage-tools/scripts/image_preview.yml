@@ -1,8 +1,0 @@
-connector:
-  name: sbot-article-image
-  description: This connector is to create the image for the article
-  filename: image_preview.py
-  filetype: pyscript
-  commands:
-    - name: create_image
-      value: create_image

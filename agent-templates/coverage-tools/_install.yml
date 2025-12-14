@@ -37,9 +37,6 @@ datasets:
     path: scripts/image_parser.yml
 
   - type: connector
-    path: scripts/image_preview.yml
-
-  - type: connector
     path: scripts/layout_randomizer.yml
 
   - type: connector
