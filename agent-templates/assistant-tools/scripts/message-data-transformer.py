@@ -732,12 +732,21 @@ def summarize_message_data(request_data):
             print(f"[DEBUG] summarize_leaders: leaders_data is None")
             return leaders_summary
         
-        if not isinstance(leaders_data, dict):
-            print(f"[DEBUG] summarize_leaders: leaders_data is not a dict, type: {type(leaders_data)}")
+        # Handle both array format (new) and dict format (legacy)
+        lists = []
+        
+        if isinstance(leaders_data, list):
+            # New format: leaders_data is directly an array of list objects
+            lists = leaders_data
+            print(f"[DEBUG] summarize_leaders: leaders_data is array format with {len(lists)} items")
+        elif isinstance(leaders_data, dict):
+            # Legacy format: leaders_data is a dict with "lists" property
+            lists = leaders_data.get("lists", [])
+            print(f"[DEBUG] summarize_leaders: leaders_data is dict format with {len(lists)} lists")
+        else:
+            print(f"[DEBUG] summarize_leaders: leaders_data is neither list nor dict, type: {type(leaders_data)}")
             return leaders_summary
         
-        # Extract lists from leaders_data
-        lists = leaders_data.get("lists", [])
         if not isinstance(lists, list) or len(lists) == 0:
             print(f"[DEBUG] summarize_leaders: lists is empty or not a list")
             return leaders_summary
