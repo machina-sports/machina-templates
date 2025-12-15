@@ -1,0 +1,62 @@
+workflow:
+
+  # machina-assistant-update
+  name: machina-assistant-update
+  title: Machina Assistant - Update Thread
+  description: Updates conversation thread with final response and metadata
+  
+  context-variables:
+    debugger:
+      enabled: false
+  
+  inputs:
+    document_id: $.get('document_id')
+    response_content: $.get('response_content', [])
+  
+  outputs:
+    thread_id: $.get('document_id')
+    workflow-status: $.get('update_success') is True and 'executed' or 'skipped'
+  
+  tasks:
+
+    # Load current thread state
+    - type: document
+      name: load-thread
+      description: Load current thread state
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        thread_data: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+
+    # Update thread with final response
+    - type: document
+      name: update-thread-final
+      description: Update thread with assistant response
+      condition: $.get('document_id') is not None and $.get('response_content') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        thread: |
+          {
+            **$.get('thread_data'),
+            'messages': [
+              *$.get('thread_data').get('messages', []),
+              *$.get('response_content')
+            ],
+            'status': 'idle',
+            'status_message': 'Ready for next question',
+            'updated_at': datetime.now().isoformat()
+          }
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        update_success: len($.get('documents', [])) > 0
+        thread_id: $.get('document_id')
+

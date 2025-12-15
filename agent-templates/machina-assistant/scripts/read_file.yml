@@ -1,0 +1,6 @@
+name: read_file
+description: Read file content from the filesystem
+filename: read_file.py
+filetype: pyscript
+commands:
+  - read_file

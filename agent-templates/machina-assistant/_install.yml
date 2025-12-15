@@ -1,0 +1,50 @@
+setup:
+  title: Machina Assistant
+  description: AI-powered assistant for the Machina platform - helps users understand and implement workflows, connectors, agents, deployment, and more.
+  category:
+    - special-templates
+    - assistant
+  estimatedTime: 10 minutes
+  features:
+    - Conversational AI assistant for Machina platform
+    - Knowledge base with comprehensive documentation
+    - Helps with architecture, deployment, chat completion, podcasts, quizzes, APIs, and more
+    - Structured responses with code examples
+    - Context-aware conversation threads
+  status: available
+  integrations:
+    - machina-ai
+    - google-vertex
+  value: agent-templates/machina-assistant
+  version: 1.0.0
+
+datasets:
+
+  # Agent
+  - type: agent
+    path: agents/assistant-executor.yml
+
+  # Prompts
+  - type: prompts
+    path: prompts/assistant-reasoning.yml
+
+  - type: prompts
+    path: prompts/assistant-response.yml
+
+  # Workflows
+  - type: workflow
+    path: workflows/assistant-reasoning.yml
+
+  - type: workflow
+    path: workflows/assistant-response.yml
+
+  - type: workflow
+    path: workflows/assistant-update.yml
+
+  # Configuration
+  - type: workflow
+    path: _folders.yml
+
+  - type: workflow
+    path: _populate-knowledge.yml
+
