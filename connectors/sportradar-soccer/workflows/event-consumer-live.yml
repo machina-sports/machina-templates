@@ -65,8 +65,8 @@ workflow:
         search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
-        value.sport:status: "{'$in': ['live', 'interrupted']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=1)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
+        value.sport:status: "{'$in': ['not-started', 'live', 'interrupted']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
