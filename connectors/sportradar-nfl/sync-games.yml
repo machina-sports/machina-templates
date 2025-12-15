@@ -1,37 +1,37 @@
 workflow:
-  name: "sportradar-nfl-sync-games"
-  title: "Sportradar NFL Sync Games"
-  description: "Workflow to sync NFL games."
+  name: sportradar-nfl-sync-games
+  title: Sportradar NFL Sync Games
+  description: Workflow to sync NFL games.
   context-variables:
     debugger:
       enabled: true
     sportradar-nfl:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
     machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    season_year: "$.get('season_year', '2025')"
-    season_type: "$.get('season_type', 'PRE')"
+    season_year: $.get('season_year', '2025')
+    season_type: $.get('season_type', 'PRE')
   outputs:
-    events: "$.get('events')"
-    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+    events: $.get('events')
+    workflow-status: $.get('events', []) is None and 'skipped' or 'executed'
   tasks:
 
     # task-load-games
-    - type: "connector"
-      name: "task-load-games"
-      description: "Get a season games from SportRadar"
+    - type: connector
+      name: task-load-games
+      description: Get a season games from SportRadar
       connector:
-        name: "sportradar-nfl"
-        command: "get-games/{season_year}/{season_type}/{data_type}"
+        name: sportradar-nfl
+        command: get-games/{season_year}/{season_type}/{data_type}
         command_attribute:
-          season_year: "$.get('season_year')"
-          season_type: "$.get('season_type')"
+          season_year: $.get('season_year')
+          season_type: $.get('season_type')
           data_type: "'schedule.json'"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: $.get('api_key')
       outputs:
-        games: "$"
+        games: $
         games_parsed: |
           [
             {
@@ -48,20 +48,20 @@ workflow:
             for game in week.get('games', [])
           ]
 
-    # bulk-save-games
-    - type: "document"
-      name: "bulk-save-games"
-      condition: "$.get('games_parsed') is not None"
-      description: "Bulk save the games."
-      config:
-        action: "bulk-update"
-        embed-vector: false
-        force-update: true
-      document_name: "'nfl-game'"
-      documents:
-        items: "$.get('games_parsed')"
-      inputs:
-        games_parsed: "$.get('games_parsed')"
+    # # bulk-save-games
+    # - type: "document"
+    #   name: "bulk-save-games"
+    #   condition: "$.get('games_parsed') is not None"
+    #   description: "Bulk save the games."
+    #   config:
+    #     action: "bulk-update"
+    #     embed-vector: false
+    #     force-update: true
+    #   document_name: "'nfl-game'"
+    #   documents:
+    #     items: "$.get('games_parsed')"
+    #   inputs:
+    #     games_parsed: "$.get('games_parsed')"
 
     # iptc-sportradar-event-nfl-mapping
     - type: mapping
