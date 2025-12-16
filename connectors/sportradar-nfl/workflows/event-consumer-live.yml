@@ -1,21 +1,22 @@
 workflow:
 
-  # sportradar-soccer-event-consumer-live
-  name: sportradar-soccer-event-consumer-live
-  title: Sportradar Soccer - Event Consumer (Live)
-  description: Workflow to consume live soccer games from SportRadar API by event code. Handles live, interrupted, post-live, and stuck events.
+  # sportradar-nfl-event-consumer-live
+  name: sportradar-nfl-event-consumer-live
+  title: Sportradar NFL - Event Consumer (Live)
+  description: Workflow to consume live NFL games from SportRadar API by event code. Handles live, interrupted, post-live, and stuck events.
   context-variables:
     debugger:
       enabled: false
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
-    sportradar-soccer:
+    sportradar-nfl:
       api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
     event_code: $.get('event_code')
   outputs:
     event_document_id: $.get('event_document_id')
     event_exists: $.get('event_exists')
+    market_code: $.get('event_value', {}).get('market_code') if $.get('event_exists') is True else None
     workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
   tasks:
 
@@ -40,15 +41,15 @@ workflow:
 
     # load soccer preview configuration
     - type: document
-      name: coverage-soccer-preview-config
-      description: Load soccer preview configuration to control soccer preview execution
+      name: sports-interaction-nfl-preview-config
+      description: Load NFL preview configuration to control NFL preview execution
       condition: $.get('event_exists') is not True
       config:
         action: search
         search-limit: 1
         search-vector: false
       filters:
-        name: "'coverage-soccer-preview-config'"
+        name: "'sports-interaction-nfl-preview-config'"
       outputs:
         coverage-config-exists: len($.get('documents', [])) > 0 if $.get('documents') else False
         coverage-events-live: $.get('documents', [])[0].get('value', {}).get('coverage-events-live', []) if len($.get('documents', [])) > 0 else []
@@ -65,8 +66,9 @@ workflow:
         search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=1)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
-        value.sport:status: "{'$in': ['not_started', 'live', 'interrupted']}"
+        value.schema:sportName: "{'$in': ['nfl']}"
+        value.sport:status: "{'$in': ['not_started', 'scheduled', 'live', 'interrupted']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=2)).isoformat() + '+00:00', '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat() + '+00:00'}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"

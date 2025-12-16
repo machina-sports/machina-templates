@@ -18,8 +18,8 @@ mappings:
             "name": f"{f.get('home', {}).get('name', 'TBD')} vs {f.get('away', {}).get('name', 'TBD')}",
             "schema:startDate": f.get('scheduled') or f.get('start_time'),
             "schema:sportName": "nfl",
-            "sport:status": f.get('status'),
-            "sport:matchStatus": f.get('status'),
+            "sport:status": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+            "sport:matchStatus": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
             "sport:competition": {
               "@id": f"urn:sportradar:competition:nfl",
               "@type": "sport:Competition",
@@ -168,4 +168,140 @@ mappings:
             )
           }
           for event in $.get('iptc_events_timeline', [])
+        ]
+
+  # iptc-sportradar-event-update-mapping
+  - type: mapping
+    name: iptc-sportradar-event-update-mapping
+    title: IPTC | Sportradar Event Update Mapping
+    description: Update main event information from game statistics
+    outputs:
+      event_updated: |
+        {
+          "sport:status": ($.get('game-statistics', {}).get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+          "sport:matchStatus": ($.get('game-statistics', {}).get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+          "sport:attendance": $.get('game-statistics', {}).get('attendance'),
+          "sport:duration": $.get('game-statistics', {}).get('duration'),
+          "sport:quarter": $.get('game-statistics', {}).get('quarter'),
+          "sport:clock": $.get('game-statistics', {}).get('clock'),
+          "sport:broadcast": $.get('game-statistics', {}).get('broadcast'),
+          "sport:weather": $.get('game-statistics', {}).get('weather'),
+          "sport:score": {
+            "sport:homeScore": $.get('game-statistics', {}).get('summary', {}).get('home', {}).get('points'),
+            "sport:awayScore": $.get('game-statistics', {}).get('summary', {}).get('away', {}).get('points')
+          }
+        }
+
+  # iptc-sportradar-game-statistics-mapping
+  - type: mapping
+    name: iptc-sportradar-game-statistics-mapping
+    title: IPTC | Sportradar Game Statistics Mapping
+    description: Convert Sportradar game statistics to IPTC Sports Schema format
+    outputs:
+      iptc_game_statistics: |
+        {
+          "@context": {
+            "sport": "https://sportschema.org/ontologies/main/",
+            "spstat": "http://cv.iptc.org/newscodes/spstat/"
+          },
+          "@type": "sport:GameStatistics",
+          "sport:attendance": $.get('game-statistics', {}).get('attendance'),
+          "sport:duration": $.get('game-statistics', {}).get('duration'),
+          "sport:quarter": $.get('game-statistics', {}).get('quarter'),
+          "sport:clock": $.get('game-statistics', {}).get('clock'),
+          "sport:broadcast": $.get('game-statistics', {}).get('broadcast'),
+          "sport:weather": $.get('game-statistics', {}).get('weather'),
+          "sport:teamStatistics": [
+            {
+              "@id": f"urn:sportradar:team-statistics:{$.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('id')}",
+              "@type": "sport:TeamStatistics",
+              "sport:qualifier": "away",
+              "sport:team": {
+                "@id": f"urn:sportradar:team:{$.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('id')}",
+                "@type": "sport:Team",
+                "name": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('name'),
+                "abbreviation": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('alias')
+              },
+              "sport:summary": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('summary', {}),
+              "sport:firstDowns": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('first_downs', {}),
+              "sport:efficiency": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('efficiency', {}),
+              "sport:touchdowns": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('touchdowns', {}),
+              "sport:passing": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('passing', {}).get('totals', {}),
+              "sport:rushing": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('rushing', {}).get('totals', {}),
+              "sport:receiving": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('receiving', {}).get('totals', {}),
+              "sport:defense": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('defense', {}).get('totals', {}),
+              "sport:penalties": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('penalties', {}).get('totals', {}),
+              "sport:fieldGoals": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('field_goals', {}).get('totals', {}),
+              "sport:extraPoints": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('extra_points', {}),
+              "sport:kickReturns": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('kick_returns', {}).get('totals', {}),
+              "sport:puntReturns": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('punt_returns', {}).get('totals', {}),
+              "sport:punts": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('punts', {}).get('totals', {}),
+              "sport:kickoffs": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('kickoffs', {}).get('totals', {}),
+              "sport:fumbles": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('fumbles', {}).get('totals', {}),
+              "sport:interceptions": $.get('game-statistics', {}).get('statistics', {}).get('away', {}).get('interceptions', {})
+            },
+            {
+              "@id": f"urn:sportradar:team-statistics:{$.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('id')}",
+              "@type": "sport:TeamStatistics",
+              "sport:qualifier": "home",
+              "sport:team": {
+                "@id": f"urn:sportradar:team:{$.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('id')}",
+                "@type": "sport:Team",
+                "name": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('name'),
+                "abbreviation": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('alias')
+              },
+              "sport:summary": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('summary', {}),
+              "sport:firstDowns": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('first_downs', {}),
+              "sport:efficiency": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('efficiency', {}),
+              "sport:touchdowns": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('touchdowns', {}),
+              "sport:passing": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('passing', {}).get('totals', {}),
+              "sport:rushing": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('rushing', {}).get('totals', {}),
+              "sport:receiving": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('receiving', {}).get('totals', {}),
+              "sport:defense": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('defense', {}).get('totals', {}),
+              "sport:penalties": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('penalties', {}).get('totals', {}),
+              "sport:fieldGoals": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('field_goals', {}).get('totals', {}),
+              "sport:extraPoints": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('extra_points', {}),
+              "sport:kickReturns": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('kick_returns', {}).get('totals', {}),
+              "sport:puntReturns": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('punt_returns', {}).get('totals', {}),
+              "sport:punts": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('punts', {}).get('totals', {}),
+              "sport:kickoffs": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('kickoffs', {}).get('totals', {}),
+              "sport:fumbles": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('fumbles', {}).get('totals', {}),
+              "sport:interceptions": $.get('game-statistics', {}).get('statistics', {}).get('home', {})
+            }
+          ]
+        }
+
+  # iptc-sportradar-player-statistics-mapping
+  - type: mapping
+    name: iptc-sportradar-player-statistics-mapping
+    title: IPTC | Sportradar Player Statistics Mapping
+    description: Convert Sportradar player statistics to IPTC Sports Schema format
+    outputs:
+      iptc_player_statistics: |
+        [
+          {
+            "@id": f"urn:sportradar:player-statistics:{player.get('id')}",
+            "@type": "sport:PlayerStatistics",
+            "sport:player": {
+              "@id": f"urn:sportradar:player:{player.get('id')}",
+              "@type": "sport:Athlete",
+              "name": player.get('name'),
+              "sport:jersey": player.get('jersey'),
+              "sport:position": player.get('position')
+            },
+            "sport:team": {
+              "@id": f"urn:sportradar:team:{team_stats.get('id')}",
+              "@type": "sport:Team",
+              "sport:qualifier": qualifier
+            },
+            "sport:category": category,
+            "sport:statistics": player
+          }
+          for qualifier, team_stats in [
+            ('away', $.get('game-statistics', {}).get('statistics', {}).get('away', {})),
+            ('home', $.get('game-statistics', {}).get('statistics', {}).get('home', {}))
+          ]
+          for category in ['passing', 'rushing', 'receiving', 'defense', 'fumbles', 'kick_returns', 'punt_returns', 'int_returns']
+          for player in team_stats.get(category, {}).get('players', [])
+          if team_stats.get(category, {}).get('players')
         ]
