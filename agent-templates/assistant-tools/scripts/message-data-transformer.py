@@ -397,31 +397,39 @@ def summarize_message_data(request_data):
         return cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red
     
     def extract_goals_from_timeline(event):
-        """Extract goals (score_change events) from schema:timeline separated by home/away."""
+        """Extract goals (score_change) and penalty_shootout events from schema:timeline separated by home/away."""
         timeline = event.get("schema:timeline", [])
         print(f"[DEBUG] schema:timeline type: {type(timeline)}, length: {len(timeline) if isinstance(timeline, list) else 'N/A'}")
         
         goals_home = []
         goals_away = []
+        penalties_home = []
+        penalties_away = []
         
         if isinstance(timeline, list):
             for timeline_idx, action in enumerate(timeline):
                 if isinstance(action, dict):
-                    # Check if this is a score_change action
+                    # Check if this is a score_change or penalty_shootout action
                     action_type = action.get("type") or action.get("@type")
                     is_score_change = (
                         action_type == "score_change" or 
                         (isinstance(action_type, str) and "score-change" in action_type.lower())
                     )
+                    is_penalty_shootout = (
+                        action_type == "penalty_shootout" or 
+                        (isinstance(action_type, str) and "penalty-shootout" in action_type.lower()) or
+                        (isinstance(action_type, str) and "penalty_shootout" in action_type.lower())
+                    )
                     
-                    if is_score_change:
-                        print(f"[DEBUG] Found score_change at timeline index {timeline_idx}")
+                    if is_score_change or is_penalty_shootout:
+                        event_name = "penalty_shootout" if is_penalty_shootout else "score_change"
+                        print(f"[DEBUG] Found {event_name} at timeline index {timeline_idx}")
                         
                         # Get competitor (home or away)
                         competitor = action.get("competitor", "")
                         print(f"[DEBUG] Competitor: {competitor}")
                         
-                        # Get time of goal
+                        # Get time of goal/penalty
                         minutes = action.get("sport:minutesElapsed", "")
                         print(f"[DEBUG] Minutes elapsed: {minutes}")
                         
@@ -438,31 +446,37 @@ def summarize_message_data(request_data):
                                             participants.append(player_label)
                                             print(f"[DEBUG] Participant {p_idx}: {player_label}")
                         
-                        # Format goal entry: "Minutes' Player1 (assist: Player2, ...)"
-                        goal_entry = ""
+                        # Format entry: "Minutes' Player1 (assist: Player2, ...)"
+                        entry = ""
                         
                         if minutes:
-                            goal_entry = f"{minutes}'"
+                            entry = f"{minutes}'"
                         
                         if len(participants) > 0:
-                            if goal_entry:
-                                goal_entry += f" {participants[0]}"
+                            if entry:
+                                entry += f" {participants[0]}"
                             else:
-                                goal_entry = participants[0]
+                                entry = participants[0]
                             # Add assisters if there are more than 1 participant
                             if len(participants) > 1:
                                 assisters = ", ".join(participants[1:])
-                                goal_entry += f" (assist: {assisters})"
+                                entry += f" (assist: {assisters})"
                         
-                        print(f"[DEBUG] Goal entry: {goal_entry}")
+                        print(f"[DEBUG] Entry: {entry}")
                         
-                        # Add to appropriate list
-                        if competitor.lower() == "home":
-                            goals_home.append(goal_entry)
-                        elif competitor.lower() == "away":
-                            goals_away.append(goal_entry)
+                        # Add to appropriate list based on type and competitor
+                        if is_score_change:
+                            if competitor.lower() == "home":
+                                goals_home.append(entry)
+                            elif competitor.lower() == "away":
+                                goals_away.append(entry)
+                        elif is_penalty_shootout:
+                            if competitor.lower() == "home":
+                                penalties_home.append(entry)
+                            elif competitor.lower() == "away":
+                                penalties_away.append(entry)
         
-        return goals_home, goals_away
+        return goals_home, goals_away, penalties_home, penalties_away
     
     def format_event_summary(event, tz_offset=-3):
         """Format event dict to: Home vs Away | Competition | Date Time | Status | Score | Channel | Statistics"""
@@ -573,8 +587,10 @@ def summarize_message_data(request_data):
                         parts.append(f"[Away: {stats_away_str}]")
                         print(f"[DEBUG] Added Away stats: {stats_away_str}")
             
-            # Timeline - Extract goals from schema:timeline
-            goals_home, goals_away = extract_goals_from_timeline(event)
+            # Timeline - Extract goals and penalties from schema:timeline
+            goals_home, goals_away, penalties_home, penalties_away = extract_goals_from_timeline(event)
+            
+            # Add goals section
             if goals_home or goals_away:
                 if goals_home:
                     goals_home_str = " | ".join(goals_home)
@@ -585,6 +601,18 @@ def summarize_message_data(request_data):
                     goals_away_str = " | ".join(goals_away)
                     parts.append(f"[Away Goals: {goals_away_str}]")
                     print(f"[DEBUG] Added Away goals: {goals_away_str}")
+            
+            # Add penalties section
+            if penalties_home or penalties_away:
+                if penalties_home:
+                    penalties_home_str = " | ".join(penalties_home)
+                    parts.append(f"[Home Penalties: {penalties_home_str}]")
+                    print(f"[DEBUG] Added Home penalties: {penalties_home_str}")
+                
+                if penalties_away:
+                    penalties_away_str = " | ".join(penalties_away)
+                    parts.append(f"[Away Penalties: {penalties_away_str}]")
+                    print(f"[DEBUG] Added Away penalties: {penalties_away_str}")
             
             # Timeline - Extract cards from schema:timeline
             cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red = extract_cards_from_timeline(event)
