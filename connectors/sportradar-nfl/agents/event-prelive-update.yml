@@ -20,6 +20,7 @@ agent:
         event_document_id: $.get('event_document_id')
         event_exists: $.get('event_exists')
         event-consumer-status: $.get('workflow-status', False)
+        market_code: $.get('market_code')
 
     # Workflow Event Sync Timeline
     - name: sportradar-nfl-event-sync-timeline
@@ -46,3 +47,14 @@ agent:
       outputs:
         event-update-status: $.get('workflow-status', False)
 
+    # Workflow Event Update
+    - name: bwin-sync-variation
+      description: NFL Event Update
+      condition: $.get('event_exists') is True and $.get('market_code') is not None
+      inputs:
+        country: "'en'"
+        competitionIds: "'35'"
+        fixtureIds: $.get('market_code')
+        sportId: "'11'"
+      outputs:
+        event-update-status: $.get('workflow-status', False)

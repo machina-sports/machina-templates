@@ -45,3 +45,11 @@ datasets:
 
   - type: workflow
     path: workflows/sync-variation.yml
+
+  # external connectors
+
+  - type: connector
+    path: ../../agent-templates/assistant-tools/scripts/market-event-matcher.yml
+  
+  - type: workflow
+    path: ../../agent-templates/assistant-tools/tools/event-matcher.yml

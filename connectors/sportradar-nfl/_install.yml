@@ -44,6 +44,9 @@ datasets:
   # workflows
 
   - type: workflow
+    path: workflows/config-markets.yml
+
+  - type: workflow
     path: workflows/event-consumer-live.yml
 
   - type: workflow

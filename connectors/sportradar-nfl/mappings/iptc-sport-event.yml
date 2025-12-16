@@ -18,8 +18,8 @@ mappings:
             "name": f"{f.get('home', {}).get('name', 'TBD')} vs {f.get('away', {}).get('name', 'TBD')}",
             "schema:startDate": f.get('scheduled') or f.get('start_time'),
             "schema:sportName": "nfl",
-            "sport:status": (f.get('status') or 'not_started').replace('created', 'not_started'),
-            "sport:matchStatus": (f.get('status') or 'not_started').replace('created', 'not_started'),
+            "sport:status": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+            "sport:matchStatus": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
             "sport:competition": {
               "@id": f"urn:sportradar:competition:nfl",
               "@type": "sport:Competition",
@@ -178,8 +178,8 @@ mappings:
     outputs:
       event_updated: |
         {
-          "sport:status": ($.get('game-statistics', {}).get('status') or 'not_started').replace('created', 'not_started'),
-          "sport:matchStatus": ($.get('game-statistics', {}).get('status') or 'not_started').replace('created', 'not_started'),
+          "sport:status": ($.get('game-statistics', {}).get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
+          "sport:matchStatus": ($.get('game-statistics', {}).get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
           "sport:attendance": $.get('game-statistics', {}).get('attendance'),
           "sport:duration": $.get('game-statistics', {}).get('duration'),
           "sport:quarter": $.get('game-statistics', {}).get('quarter'),
