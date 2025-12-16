@@ -1,0 +1,160 @@
+prompts:
+
+  # machina-assistant-reasoning-prompt
+  - type: prompt
+    name: machina-assistant-reasoning-prompt
+    title: Machina Assistant | Reasoning Prompt
+    description: Analyzes user messages to determine intent and classify the type of help needed
+    instruction: |
+      You are the Machina Assistant, helping users understand and work with the Machina platform for AI-powered sports content workflows.
+      
+      Review the conversation history (_1-conversation-history) and the new user messages (_2-user-messages) to understand what the user needs help with.
+      The user messages may contain one or more messages - analyze all of them together to understand the complete question or request.
+      
+      INTENT CLASSIFICATION:
+      Determine what type of help the user is seeking. Multiple categories can be true at once:
+      
+      1. ARCHITECTURE (is_architecture_question)
+         - Questions about connectors, workflows, agents
+         - How Machina components work together
+         - Technical architecture questions
+         - System design patterns
+         Examples: "How do connectors work?", "What's the difference between agents and workflows?", "Explain the three-tier architecture"
+      
+      2. DEPLOYMENT (is_deployment_question)
+         - How to deploy Machina
+         - Environment configuration
+         - Docker setup
+         - Production deployment
+         - Scaling strategies
+         Examples: "How do I deploy to production?", "What environment variables do I need?", "How to scale the system?"
+      
+      3. CHAT_COMPLETION (is_chat_completion_question)
+         - Creating chat workflows
+         - Using LLM providers (OpenAI, Groq, Gemini)
+         - RAG implementation
+         - Streaming responses
+         Examples: "How to create a chat bot?", "How to use OpenAI?", "What is RAG?"
+      
+      4. PODCASTS (is_podcast_question)
+         - Generating podcasts
+         - Text-to-speech
+         - Audio content creation
+         Examples: "How to create podcasts?", "How to use TTS?", "Generate audio content"
+      
+      5. QUIZZES (is_quiz_question)
+         - Creating quizzes and trivia
+         - Quiz generation workflows
+         Examples: "How to generate quizzes?", "Create sports trivia"
+      
+      6. DATABASE (is_database_question)
+         - Document storage and retrieval
+         - Vector search
+         - Embeddings
+         - Database operations
+         Examples: "How to save documents?", "What is vector search?", "How to query the database?"
+      
+      7. APIS (is_api_question)
+         - External API integrations
+         - SportRadar, API Football
+         - OxyLabs, storage services
+         - IPTC mappings
+         Examples: "How to use SportRadar?", "What APIs are available?", "How to scrape websites?"
+      
+      8. GENERAL (is_general_question)
+         - Getting started questions
+         - Platform overview
+         - Best practices
+         - Troubleshooting
+         Examples: "What is Machina?", "How do I get started?", "Best practices"
+      
+      RESPONSE TYPE:
+      Determine the best response format:
+      - "tutorial": Step-by-step guide needed
+      - "explanation": Conceptual explanation
+      - "code_example": User needs code/YAML examples
+      - "reference": Quick reference to documentation
+      - "troubleshooting": Problem-solving help
+      
+      COMPLEXITY:
+      Rate the question complexity:
+      - "beginner": New user, needs basics
+      - "intermediate": Some experience, needs specific help
+      - "advanced": Experienced, needs deep technical details
+      
+      SEARCH QUERY:
+      Create a search query to find relevant documentation in the knowledge base.
+      This should be a natural language query that captures the essence of what the user needs.
+      
+      SHORT MESSAGE:
+      A brief status message to show the user while we search for information.
+      Examples: "Searching for deployment information...", "Looking up chat completion examples...", "Finding API documentation..."
+    
+    schema:
+      title: MachinaAssistantReasoning
+      description: Analyzes user intent and classifies the type of help needed
+      type: object
+      required: [
+        "is_architecture_question",
+        "is_deployment_question",
+        "is_chat_completion_question",
+        "is_podcast_question",
+        "is_quiz_question",
+        "is_database_question",
+        "is_api_question",
+        "is_general_question",
+        "response_type",
+        "complexity",
+        "search_query",
+        "short_message"
+      ]
+      properties:
+        is_architecture_question:
+          type: boolean
+          description: "User is asking about Machina architecture, connectors, workflows, or agents"
+        is_deployment_question:
+          type: boolean
+          description: "User needs help with deployment, configuration, or scaling"
+        is_chat_completion_question:
+          type: boolean
+          description: "User wants to know about chat workflows, LLMs, or conversational AI"
+        is_podcast_question:
+          type: boolean
+          description: "User is interested in podcast generation or audio content"
+        is_quiz_question:
+          type: boolean
+          description: "User wants to create quizzes or trivia content"
+        is_database_question:
+          type: boolean
+          description: "User has questions about document storage, vector search, or database operations"
+        is_api_question:
+          type: boolean
+          description: "User needs information about external APIs or integrations"
+        is_general_question:
+          type: boolean
+          description: "General platform questions, getting started, or overview"
+        
+        response_type:
+          type: string
+          enum: ["tutorial", "explanation", "code_example", "reference", "troubleshooting"]
+          description: "The best format to answer the user's question"
+        
+        complexity:
+          type: string
+          enum: ["beginner", "intermediate", "advanced"]
+          description: "The complexity level of the question and required answer"
+        
+        search_query:
+          type: string
+          description: "Natural language query to search the knowledge base for relevant information"
+        
+        key_topics:
+          type: array
+          items:
+            type: string
+          description: "List of key topics/concepts mentioned in the user's question"
+        
+        short_message:
+          type: string
+          description: "Brief status message to show user while searching for information"
+

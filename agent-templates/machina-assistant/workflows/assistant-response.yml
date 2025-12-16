@@ -1,0 +1,128 @@
+workflow:
+
+  # machina-assistant-response
+  name: machina-assistant-response
+  title: Machina Assistant - Response
+  description: Generates helpful responses using knowledge base and LLM
+  
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  
+  inputs:
+    document_id: $.get('document_id')
+    reasoning: $.get('reasoning', {})
+  
+  outputs:
+    response_text: $.get('response_text', '')
+    suggestions: $.get('suggestions', [])
+    response_content: |
+      [
+        {
+          'content': $.get('response_text', ''),
+          'role': 'assistant',
+          'suggestions': $.get('suggestions', []),
+          'timestamp': datetime.now().isoformat()
+        }
+      ]
+    workflow-status: $.get('response_text') is not None and 'executed' or 'skipped'
+  
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load conversation thread
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('document_id')
+      outputs:
+        thread_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        thread_messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    # Search knowledge base for relevant documentation
+    - type: document
+      name: search-knowledge-base
+      description: Find relevant documentation using vector search
+      condition: $.get('document_id') is not None and $.get('reasoning', {}).get('search_query') is not None
+      config:
+        action: search
+        threshold-docs: 5
+        threshold-similarity: 0.3
+        search-limit: 100
+        search-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "'machina-knowledge'"
+        search-query: $.get('reasoning', {}).get('search_query')
+      outputs:
+        knowledge_docs: |
+          [
+            {
+              'title': d.get('value', {}).get('title', 'Untitled'),
+              'content': d.get('value', {}).get('content', ''),
+              'category': d.get('value', {}).get('category', 'general'),
+              'similarity': d.get('similarity_score', 0)
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # Generate response using LLM with knowledge context
+    - type: prompt
+      name: machina-assistant-response-prompt
+      condition: $.get('document_id') is not None
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        conversation_history: $.get('thread_messages', [])[-5:]
+        user_question: $.get('thread_messages', [])[-1].get('content', '') if len($.get('thread_messages', [])) > 0 else ''
+        reasoning: $.get('reasoning', {})
+        knowledge_docs: $.get('knowledge_docs', [])
+      outputs:
+        response_text: $.get('response', '')
+        suggestions: $.get('suggestions', [])
+        related_topics: $.get('related_topics', [])
+        code_included: $.get('code_included', False)
+
+    # Update thread status
+    - type: document
+      name: update-thread-status
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      condition: $.get('document_id') is not None
+      documents:
+        thread: |
+          {
+            **$.get('thread_value'),
+            'status': 'complete',
+            'status_message': 'Response generated',
+            'last_response': {
+              'text': $.get('response_text'),
+              'suggestions': $.get('suggestions', []),
+              'related_topics': $.get('related_topics', [])
+            }
+          }
+      filters:
+        document_id: $.get('document_id')
+

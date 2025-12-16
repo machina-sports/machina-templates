@@ -1,0 +1,232 @@
+workflow:
+  name: machina-assistant-populate-knowledge
+  title: Machina Assistant - Populate Knowledge Base
+  description: Load documentation into the knowledge base with embeddings for semantic search
+  
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  
+  outputs:
+    workflow-status: "'executed'"
+  
+  tasks:
+
+    # Architecture documentation
+    - type: document
+      name: save-architecture-docs
+      description: Save Machina architecture documentation
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Machina Architecture Overview',
+            'category': 'architecture',
+            'content': 'Machina is a platform for creating AI-powered sports content workflows with a three-tier architecture: 1) Connectors - Interfaces to external services (APIs, SDKs, Databases), 2) Workflows - Logic pipelines that chain tasks, 3) Agents - Autonomous entities that execute workflows. Connectors bridge Machina and external services. They are defined in YAML with Python or REST implementations. Workflows are stateless pipelines with inputs, outputs, and tasks. Tasks can be connector calls, database operations, or prompt executions. Agents govern when and how workflows execute.',
+            'tags': ['architecture', 'connectors', 'workflows', 'agents', 'overview']
+          }
+      metadata:
+        category: "'architecture'"
+        topic: "'overview'"
+
+    # Deployment documentation
+    - type: document
+      name: save-deployment-docs
+      description: Save deployment guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Machina Deployment Guide',
+            'category': 'deployment',
+            'content': 'Quick Start: Create .env file with REDIS_URL, REDIS_PUBSUB_URL, MONGODB_URL, GUNICORN_WORKERS (default 4), MAX_CONCURRENT_STREAMS (default 10). Starting Services: Option A - Docker: docker-compose up -d. Option B - Manual: Run gunicorn with ./start-prod.sh and Celery workers. Architecture: Single gunicorn instance with gevent workers on port 5003. Celery workers handle heavy execution. Redis Pub/Sub for streaming. Verification: Health check at http://localhost:5003/system/client-health-check and streaming health at http://localhost:5003/system/streaming-health. Scaling: Vertical - Increase GUNICORN_WORKERS and Celery worker count. Horizontal - Multiple API instances behind load balancer.',
+            'tags': ['deployment', 'docker', 'production', 'scaling', 'configuration']
+          }
+      metadata:
+        category: "'deployment'"
+        topic: "'production'"
+
+    # Chat completion documentation
+    - type: document
+      name: save-chat-docs
+      description: Save chat completion guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Chat Completion Guide',
+            'category': 'chat',
+            'content': 'Chat workflows use prompt tasks with LLM connectors: OpenAI (machina-ai) for GPT-4o and GPT-4o-mini, Groq (machina-ai-fast) for Llama models with fast inference, Google Gemini (google-genai) for Gemini 2.5 Pro/Flash. RAG Implementation: Combine vector search with chat by searching documents using embeddings, passing context to LLM prompt, and generating contextual responses. Streaming: Use /agent/stream/{agent_id} endpoint with stream_workflows: true. Structured Output: Define schemas in prompts for predictable response formats. Best Practices: Choose appropriate models for speed/quality tradeoff, implement RAG for domain-specific knowledge, use structured output for data extraction, handle errors gracefully.',
+            'tags': ['chat', 'llm', 'openai', 'groq', 'gemini', 'rag', 'streaming']
+          }
+      metadata:
+        category: "'chat'"
+        topic: "'completion'"
+
+    # Podcast documentation
+    - type: document
+      name: save-podcast-docs
+      description: Save podcast generation guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Creating Podcasts with Machina',
+            'category': 'podcasts',
+            'content': 'Podcast Generation Workflow: 1) Content Generation using LLMs to create scripts, 2) Speech Synthesis to convert text to audio with TTS, 3) Storage to save audio files to Google Cloud Storage. TTS Options: OpenAI TTS with tts-1 (standard) and tts-1-hd (high quality). Available voices: alloy, echo, fable, onyx, nova, shimmer. Podcast Types: Match-based for pre/post-game content, Player profiles for career highlights, Competition summaries for league roundups, Personalized for user-specific content. Best Practices: Invest in prompt engineering for engaging scripts, choose voices that match content style, keep episodes 5-15 minutes for social media, test generated content before publishing.',
+            'tags': ['podcast', 'tts', 'audio', 'speech', 'content-generation']
+          }
+      metadata:
+        category: "'podcasts'"
+        topic: "'generation'"
+
+    # Quiz documentation
+    - type: document
+      name: save-quiz-docs
+      description: Save quiz generation guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Creating Quizzes with Machina',
+            'category': 'quizzes',
+            'content': 'Quiz Generation Basic Workflow: 1) Load event/player/competition data, 2) Generate quiz using LLM with structured schema, 3) Save to database with embeddings. Quiz Schema: Define schema with title (engaging quiz title), questions (array of question objects), and each question should have question text, options, correct_answer, and explanation. Question Types: Multiple choice, True/False, Numeric answers. Quiz Types: Match-based (specific game quizzes), Player quizzes (career and statistics), Competition (league history and facts), Topic-based (general sports knowledge). Best Practices: Fact-check all answers, mix difficulty levels, write clear questions, provide rich explanations, and test before publishing.',
+            'tags': ['quiz', 'trivia', 'questions', 'games', 'interactive']
+          }
+      metadata:
+        category: "'quizzes'"
+        topic: "'generation'"
+
+    # Database documentation
+    - type: document
+      name: save-database-docs
+      description: Save database and vector search guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Document Database and Vector Search',
+            'category': 'database',
+            'content': 'Document Database: Document Structure includes _id (unique identifier), name (document type like sport:Event, content-snippet, thread, etc.), value (content as JSON object), metadata (additional filterable fields), and embedding (vector for semantic search). Operations: save (create new documents), search (find with filters), update (modify existing), bulk-update (update multiple documents). Vector Search: Use embeddings for semantic search by setting search-vector to true, providing connector for embeddings (text-embedding-3-small), and configuring thresholds for similarity. Common Document Types: sport:Event (sports matches/events), sport:Team (team information), content-snippet (knowledge articles), thread (conversation threads), game-market (betting markets). Best Practices: Use meaningful document names, add comprehensive metadata, enable embeddings for semantic search, batch operations when possible.',
+            'tags': ['database', 'mongodb', 'vector-search', 'embeddings', 'documents']
+          }
+      metadata:
+        category: "'database'"
+        topic: "'operations'"
+
+    # API documentation
+    - type: document
+      name: save-api-docs
+      description: Save API integration guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'External APIs and Storage',
+            'category': 'apis',
+            'content': 'External APIs - Sports Data APIs: SportRadar provides comprehensive sports data for soccer, NBA, NFL, rugby including match information, league standings, and player statistics. API Football is an alternative football data API with fixtures and results, league information, and live scores. Web Services: OxyLabs offers web scraping and proxy services with website scraping with JS rendering, Google search integration, and e-commerce data extraction. Perplexity AI provides web search with citations. Exa Search offers semantic web search. Storage: Google Cloud Storage supports file operations - upload files (storage.upload_file), download files (storage.download_file), and list files (storage.list_files). Best Practices: Implement rate limiting, cache API responses, handle errors gracefully, monitor API usage, and use appropriate endpoints.',
+            'tags': ['api', 'sportradar', 'storage', 'oxylabs', 'integrations']
+          }
+      metadata:
+        category: "'apis'"
+        topic: "'integrations'"
+
+    # Connector development
+    - type: document
+      name: save-connector-dev-docs
+      description: Save connector development guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Creating Custom Connectors',
+            'category': 'development',
+            'content': 'Custom Connector Development: Structure uses connectors/<name>/<name>.yml and <name>.py files. Definition in YAML includes name (unique connector identifier), description (what the connector does), filename (implementation file), filetype (pyscript or restapi), and commands (list of available commands). Implementation in Python uses functions that match command values - function takes params dictionary as input and returns result dictionary. Environment Variables use $MACHINA_CONTEXT_VARIABLE_ prefix like $MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY or $MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY. Best Practices: Use clear function names, handle errors gracefully, return consistent data structures, document parameters, and test thoroughly.',
+            'tags': ['connector', 'development', 'custom', 'python', 'pyscript']
+          }
+      metadata:
+        category: "'development'"
+        topic: "'connectors'"
+
+    # Workflow development
+    - type: document
+      name: save-workflow-dev-docs
+      description: Save workflow development guide
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Creating Workflows',
+            'category': 'development',
+            'content': 'Workflow Development Structure: Workflows have name (unique identifier), context-variables (API keys and secrets), inputs (data from trigger using JSONPath), outputs (results to return), and tasks (sequence of operations). Task Types: Connector Tasks execute external service calls with type connector, connector name and command, inputs and outputs. Document Tasks handle database operations with type document, config for action and embed-vector, and documents. Prompt Tasks handle LLM interactions with type prompt, connector name and model, and inputs for messages. JSONPath: Use $.get(key) to access workflow state, $.get(key, default) for default values, and inline Python in outputs. Best Practices: Use descriptive task names, add conditions for flow control, transform data in outputs, and handle missing data gracefully.',
+            'tags': ['workflow', 'development', 'tasks', 'jsonpath', 'yaml']
+          }
+      metadata:
+        category: "'development'"
+        topic: "'workflows'"
+
