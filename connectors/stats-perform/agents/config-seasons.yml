@@ -1,0 +1,46 @@
+agent:
+  name: statsperform-soccer-config-seasons
+  title: StatsPerform - Soccer Config Seasons
+  description: Agent to config seasons for coverage tools
+  context:
+    config-frequency: 10
+    status: inactive
+  workflows:
+
+    # statsperform-soccer-config-markets-workflow
+    - name: statsperform-soccer-config-markets-workflow
+      description: config-markets-workflow
+      outputs:
+        coverage-markets-country: $.get('coverage-markets-country')
+        coverage-markets-sport-id: $.get('coverage-markets-sport-id')
+        coverage-markets-mapping: $.get('coverage-markets-mapping')
+        bwin-competition-ids: $.get('bwin-competition-ids')
+        opta-competition-ids: $.get('opta-competition-ids')
+        opta-season-ids: $.get('opta-season-ids')
+
+    # sp-opta-sync-schedules
+    - name: sp-opta-sync-schedules
+      description: sp-opta-sync-schedules
+      foreach:
+        name: coverage-item
+        expr: $
+        value: $.get('coverage-markets-mapping')
+      inputs:
+        competition_id: $.get('coverage-item').get('opta_competition_id', '')
+        season_id: $.get('coverage-item').get('opta_season_id', '')
+        pages_to_fetch: $.get('coverage-item').get('pages_to_fetch', [1, 2])
+        page_size: $.get('coverage-item').get('page_size', 10)
+      outputs:
+        sp-opta-sync-schedules-status: $.get('workflow-status', False)
+
+    # sp-opta-sync-teams
+    - name: sp-opta-sync-teams
+      description: sp-opta-sync-teams
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('opta-season-ids')
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sp-opta-sync-teams-status: $.get('workflow-status', False)
