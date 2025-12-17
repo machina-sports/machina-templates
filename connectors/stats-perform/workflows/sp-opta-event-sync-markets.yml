@@ -32,36 +32,35 @@ workflow:
       filters:
         document_id: $.get('event_document_id')
       outputs:
-        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
-        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
-        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+        event_code: $.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
 
-    # load-game-market
+    # 5 load-game-market
     - type: document
       name: load-game-market
       description: Search for game-market related to the event.
-      condition: $.get('event_code') is not None and $.get('event_exists') is True
+      condition: $.get('event_exists') is True and $.get('event_code') is not None
       config:
         action: search
         search-limit: 1
         search-vector: false
         search-sorters: ["updated", -1]
       filters:
-        value.event_code: "$.get('event_code')"
+        value.event_code: $.get('event_code')
       inputs:
         name: "'game-market'"
       outputs:
-        market_exists: "len($.get('documents', [])) > 0"
-        market_code: "str($.get('documents', [])[0].get('metadata', {}).get('market_code', '')) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('metadata', {}).get('market_code') else None"
-        market_fixture_id: "int($.get('documents', [])[0].get('value', {}).get('id', 0)) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('value', {}).get('id') else None"
-        market_document_id: "$.get('documents', [])[0].get('_id') if $.get('documents') and len($.get('documents', [])) > 0 else None"
+        market_exists: len($.get('documents', [])) > 0
+        market_code: str($.get('documents', [])[0].get('metadata', {}).get('market_code', '')) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('metadata', {}).get('market_code') else None
+        market_fixture_id: int($.get('documents', [])[0].get('value', {}).get('id', 0)) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('value', {}).get('id') else None
+        market_document_id: $.get('documents', [])[0].get('_id') if $.get('documents') and len($.get('documents', [])) > 0 else None
 
     # fetch-market-from-bwin
     - type: connector
       name: fetch-market-from-bwin
       description: Get market from Bwin API for the event using fixture ID from game-market.
-      condition: $.get('event_code') is not None and $.get('market_fixture_id') is not None and $.get('market_exists') is True
+      condition: $.get('market_exists') is True and $.get('market_fixture_id') is not None
       connector:
         name: bwin
         command: get-offer/api/{sportId}/{country}/fixtures
@@ -90,11 +89,11 @@ workflow:
         sport:Event: |
           {
             **$.get('event_value', {}),
-            'market_data': $.get('market_data') if $.get('market_data') is not None else $.get('event_value', {}).get('market_data'),
-            'market_code': $.get('market_code') if $.get('market_code') is not None else ($.get('event_value', {}).get('market_code') if $.get('event_value', {}).get('market_code') else None),
+            **$.get('event_updated', {}),
+            'market_code': $.get('market_code'),
+            'market_data': $.get('market_data', []),
             'version_control': {
-              **$.get('event_value', {}).get('version_control', {}),
-              'hasMarketCode': ($.get('market_code') is not None and $.get('market_code') != '') or ($.get('event_value', {}).get('market_code') is not None and $.get('event_value', {}).get('market_code') != '')
+              **$.get('event_value', {}).get('version_control', {})
             }
           }
-
+      

@@ -1,0 +1,43 @@
+agent:
+  name: statsperform-soccer-config-markets
+  title: StatsPerform - Soccer Config Markets
+  description: Agent to config markets for coverage tools
+  context:
+    config-frequency: 10
+    status: inactive
+  workflows:
+
+    # statsperform-soccer-config-markets-workflow
+    - name: statsperform-soccer-config-markets-workflow
+      description: config-markets-workflow
+      outputs:
+        coverage-markets-country: $.get('coverage-markets-country')
+        coverage-markets-sport-id: $.get('coverage-markets-sport-id')
+        coverage-markets-mapping: $.get('coverage-markets-mapping')
+
+    # bwin-sync-markets
+    - name: bwin-sync-markets
+      description: sync-markets
+      foreach:
+        name: coverage-item
+        expr: $
+        value: $.get('coverage-markets-mapping')
+      inputs:
+        competitionIds: $.get('coverage-item').get('bwin_competition_id', [])
+        externalCompetitionId: f"urn:opta:competition:{$.get('coverage-item').get('opta_competition_id', '')}"
+        country: context.get('coverage-markets-country')
+        sportId: context.get('coverage-markets-sport-id')
+
+    # assistant-tools-event-matcher
+    - name: assistant-tools-event-matcher
+      description: Associate game-markets to sport:Event documents by similarity
+      foreach:
+        name: coverage-item
+        expr: $
+        value: $.get('coverage-markets-mapping')
+      inputs:
+        limit: "250"
+        externalCompetitionId: f"urn:opta:competition:{$.get('coverage-item').get('opta_competition_id', '')}"
+      outputs:
+        associate-markets-status: "$.get('workflow-status', 'skipped')"
+        markets_matched: "$.get('markets_matched', [])"

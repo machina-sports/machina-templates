@@ -29,6 +29,11 @@ datasets:
   - type: mappings
     path: mappings/iptc-team.yml
 
+  # workflows
+
+  - type: workflow
+    path: workflows/config-markets.yml
+
   - type: workflow
     path: workflows/invoke-request.yml
 
@@ -73,6 +78,14 @@ datasets:
 
   - type: workflow
     path: workflows/sp-opta-event-update.yml
+
+  # agents
+
+  - type: agent
+    path: agents/config-markets.yml
+
+  - type: agent
+    path: agents/config-seasons.yml
 
   - type: agent
     path: agents/sp-opta-event-live-update.yml
