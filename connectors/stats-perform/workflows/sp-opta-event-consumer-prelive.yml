@@ -49,8 +49,8 @@ workflow:
         search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=80)).isoformat()}"
-        value.sport:status: "'Fixture'"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}"
+        value.sport:status: "{'$in': ['Fixture']}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
         '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
@@ -60,29 +60,6 @@ workflow:
         event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
         event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
     
-    # load event filtering by longterm events (Fixture) - long-term (8-72h)
-    - type: document
-      name: load-event-by-schedule
-      description: Search for long-term schedule events (opta) - Fixture status, long-term (8-72h).
-      condition: $.get('event_exists') is not True
-      config:
-        action: search
-        search-limit: 1
-        search-vector: false
-        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
-      filters:
-        name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() + timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}"
-        value.sport:status: "'Fixture'"
-        value.version_control.finished: "{'$ne': True}"
-        value.version_control.processing: "{'$ne': True}"
-        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
-      outputs:
-        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
-        event_exists: len($.get('documents', [])) > 0
-        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
-        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
-
     # version-control-update
     - type: document
       name: version-control-update
