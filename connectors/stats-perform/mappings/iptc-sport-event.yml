@@ -76,12 +76,20 @@ mappings:
               }
             ],
             "sport:score": {
-              "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('total', {}).get('home'),
-              "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('total', {}).get('away'),
+              "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ft', {}).get('home'),
+              "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ft', {}).get('away'),
               "sport:halfTime": {
                 "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht', {}).get('home'),
                 "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht', {}).get('away')
-              } if match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht') else None
+              } if match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('ht') else None,
+              "sport:penalties": {
+                "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('pen', {}).get('home'),
+                "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('pen', {}).get('away')
+              } if match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('pen') else None,
+              "sport:aggregate": {
+                "sport:homeScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('aggregate', {}).get('home'),
+                "sport:awayScore": match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('aggregate', {}).get('away')
+              } if match.get('liveData', {}).get('matchDetails', {}).get('scores', {}).get('aggregate') else None
             } if match.get('liveData', {}).get('matchDetails', {}).get('scores') else None,
             "sport:matchInfo": {
               "sport:numberOfPeriods": match.get('matchInfo', {}).get('numberOfPeriods'),
