@@ -749,6 +749,185 @@ def summarize_message_data(request_data):
         
         return summaries
     
+    def summarize_standings(standings):
+        """Summarize standings to concise docs for LLM grouped by team with classification."""
+        standings_summary = []
+        
+        # Validate input
+        if standings is None:
+            print(f"[DEBUG] summarize_standings: standings is None")
+            return standings_summary
+        
+        if not isinstance(standings, list):
+            print(f"[DEBUG] summarize_standings: standings is not a list, type: {type(standings)}")
+            return standings_summary
+        
+        if len(standings) == 0:
+            print(f"[DEBUG] summarize_standings: standings is an empty list")
+            return standings_summary
+        
+        for team in standings:
+            try:
+                if not isinstance(team, dict):
+                    continue
+                
+                # Extract team information
+                rank = team.get("rank", "")
+                competitor = team.get("competitor", {})
+                
+                if not isinstance(competitor, dict):
+                    competitor = {}
+                
+                team_name = normalize_team_name(competitor.get("name", "Unknown"))
+                team_abbreviation = competitor.get("abbreviation", "")
+                
+                # Extract standings statistics
+                points = team.get("points", 0)
+                played = team.get("played", 0)
+                wins = team.get("win", 0)
+                draws = team.get("draw", 0)
+                losses = team.get("loss", 0)
+                goals_for = team.get("goals_for", 0)
+                goals_against = team.get("goals_against", 0)
+                goals_diff = team.get("goals_diff", 0)
+                current_outcome = team.get("current_outcome", "")
+                
+                # Extract additional info
+                form = competitor.get("form", "")
+                points_per_game = team.get("points_per_game", 0)
+                
+                # Build summary string
+                summary_parts = []
+                
+                # Main info: Rank, Team, Points
+                summary_parts.append(f"#{rank} {team_name} ({team_abbreviation})")
+                summary_parts.append(f"Pts: {points}")
+                
+                # Record
+                summary_parts.append(f"{played}J ({wins}V {draws}E {losses}D)")
+                
+                # Goals
+                summary_parts.append(f"G: {goals_for}-{goals_against} ({goals_diff:+d})")
+                
+                # Classification zone if available
+                if current_outcome:
+                    summary_parts.append(f"Zone: {current_outcome}")
+                
+                # Form if available
+                if form:
+                    summary_parts.append(f"Form: {form}")
+                
+                # Average points per game
+                if points_per_game:
+                    summary_parts.append(f"PPG: {points_per_game:.2f}")
+                
+                standings_summary.append(" | ".join(summary_parts))
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to process team standing: {str(e)}")
+                continue
+        
+        return standings_summary
+    
+    def summarize_leaders(leaders_data):
+        """Summarize season leaders to concise docs for LLM grouped by player, team and stats."""
+        leaders_summary = []
+        
+        # Validate input
+        if leaders_data is None:
+            print(f"[DEBUG] summarize_leaders: leaders_data is None")
+            return leaders_summary
+        
+        # Handle both array format (new) and dict format (legacy)
+        lists = []
+        
+        if isinstance(leaders_data, list):
+            # New format: leaders_data is directly an array of list objects
+            lists = leaders_data
+            print(f"[DEBUG] summarize_leaders: leaders_data is array format with {len(lists)} items")
+        elif isinstance(leaders_data, dict):
+            # Legacy format: leaders_data is a dict with "lists" property
+            lists = leaders_data.get("lists", [])
+            print(f"[DEBUG] summarize_leaders: leaders_data is dict format with {len(lists)} lists")
+        else:
+            print(f"[DEBUG] summarize_leaders: leaders_data is neither list nor dict, type: {type(leaders_data)}")
+            return leaders_summary
+        
+        if not isinstance(lists, list) or len(lists) == 0:
+            print(f"[DEBUG] summarize_leaders: lists is empty or not a list")
+            return leaders_summary
+        
+        # Process each leader list (usually one per stat type)
+        for list_obj in lists:
+            try:
+                if not isinstance(list_obj, dict):
+                    continue
+                
+                leaders = list_obj.get("leaders", [])
+                if not isinstance(leaders, list):
+                    continue
+                
+                # Process each leader ranking
+                for leader in leaders:
+                    if not isinstance(leader, dict):
+                        continue
+                    
+                    rank = leader.get("rank", "")
+                    players = leader.get("players", [])
+                    
+                    if not isinstance(players, list):
+                        continue
+                    
+                    # Process each player in this ranking
+                    for player in players:
+                        if not isinstance(player, dict):
+                            continue
+                        
+                        player_name = player.get("name", "Unknown")
+                        competitors = player.get("competitors", [])
+                        
+                        if not isinstance(competitors, list):
+                            continue
+                        
+                        # Process each competitor (team) for this player
+                        for competitor in competitors:
+                            if not isinstance(competitor, dict):
+                                continue
+                            
+                            team_name = normalize_team_name(competitor.get("name", "Unknown"))
+                            team_abbreviation = competitor.get("abbreviation", "")
+                            datapoints = competitor.get("datapoints", [])
+                            
+                            # Extract stats from datapoints
+                            stats_parts = []
+                            if isinstance(datapoints, list):
+                                for datapoint in datapoints:
+                                    if isinstance(datapoint, dict):
+                                        stat_type = datapoint.get("type", "")
+                                        stat_value = datapoint.get("value", 0)
+                                        if stat_type:
+                                            stats_parts.append(f"{stat_type}: {stat_value}")
+                            
+                            # Build summary string: Rank - Player - Team - Stats
+                            summary_parts = []
+                            
+                            if rank:
+                                summary_parts.append(f"#{rank}")
+                            
+                            summary_parts.append(player_name)
+                            summary_parts.append(f"{team_name} ({team_abbreviation})")
+                            
+                            if stats_parts:
+                                summary_parts.append(" | ".join(stats_parts))
+                            
+                            leaders_summary.append(" - ".join(summary_parts))
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to process leaders: {str(e)}")
+                continue
+        
+        return leaders_summary
+    
     def summarize_markets(markets_parsed):
         """Summarize markets-parsed to concise docs for LLM."""
         markets_docs = []
@@ -813,6 +992,8 @@ def summarize_message_data(request_data):
         next_events = params.get("next_events", [])
         markets_docs = params.get("markets_docs", [])
         markets_parsed = params.get("markets_parsed", [])
+        season_standings = params.get("season_standings", [])
+        leaders_data = params.get("leaders_data", {})
         
         if not isinstance(last_user_msg, dict):
             return {
@@ -824,6 +1005,8 @@ def summarize_message_data(request_data):
                     "played_events_summary": [],
                     "head_to_head_events_summary": [],
                     "next_events_summary": [],
+                    "season_standings_summary": [],
+                    "season_leaders_summary": [],
                     "faq_docs": [],
                     "insights_docs": [],
                     "markets_docs": [],
@@ -854,6 +1037,22 @@ def summarize_message_data(request_data):
         # Create compact context (summary + user question) for token efficiency
         context_summary = last_user_msg.get("reasoning", {}).get("short_message", "")
         user_question = last_user_msg.get("content", "")
+        
+        # Summarize standings by team
+        try:
+            season_standings_summary = summarize_standings(season_standings)
+            print(f"[DEBUG] season_standings_summary generated with {len(season_standings_summary)} entries")
+        except Exception as e:
+            print(f"[ERROR] Failed to summarize standings: {str(e)}")
+            season_standings_summary = []
+        
+        # Summarize leaders by player, team and stats
+        try:
+            season_leaders_summary = summarize_leaders(leaders_data)
+            print(f"[DEBUG] season_leaders_summary generated with {len(season_leaders_summary)} entries")
+        except Exception as e:
+            print(f"[ERROR] Failed to summarize leaders: {str(e)}")
+            season_leaders_summary = []
         
         # Flatten markets-parsed into individual market objects for UI widgets
         markets_objects = []
@@ -891,6 +1090,8 @@ def summarize_message_data(request_data):
                 "played_events_summary": played_events_summary,
                 "head_to_head_events_summary": head_to_head_events_summary,
                 "next_events_summary": next_events_summary,
+                "season_standings_summary": season_standings_summary,
+                "season_leaders_summary": season_leaders_summary,
                 "faq_docs": faq_docs,
                 "insights_docs": insights_docs,
                 "markets_docs": markets_docs,
@@ -915,6 +1116,8 @@ def summarize_message_data(request_data):
                 "played_events_summary": [],
                 "head_to_head_events_summary": [],
                 "next_events_summary": [],
+                "season_standings_summary": [],
+                "season_leaders_summary": [],
                 "faq_docs": [],
                 "insights_docs": [],
                 "markets_docs": [],

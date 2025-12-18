@@ -38,3 +38,27 @@ agent:
         season_id: $.get('current-season-id')
       outputs:
         sync-competitors-status: $.get('workflow-status', False)
+
+    # sportradar-soccer-sync-standings
+    - name: sportradar-soccer-sync-standings
+      description: sync-standings
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id')
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-standings-status: $.get('workflow-status', False)
+
+    # sportradar-soccer-sync-season-leaders
+    - name: sportradar-soccer-sync-season-leaders
+      description: sync-season-leaders
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id')
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-season-leaders-status: $.get('workflow-status', False)
