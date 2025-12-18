@@ -1,33 +1,35 @@
 workflow:
 
-  # sp-opta-event-consumer-live
-  name: sp-opta-event-consumer-live
-  title: Stats Perform Opta - Event Consumer (Live)
-  description: Workflow to consume live soccer games from Stats Perform Opta API by event code. Handles Playing events and stuck events.
+  # sportradar-nfl-event-consumer-live
+  name: sportradar-nfl-event-consumer-live
+  title: Sportradar NFL - Event Consumer (Live)
+  description: Workflow to consume live NFL games from SportRadar API by event code. Handles live, interrupted, post-live, and stuck events.
   context-variables:
     debugger:
       enabled: false
-    opta:
-      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
-      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-nfl:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
     event_code: $.get('event_code')
   outputs:
     event_document_id: $.get('event_document_id')
     event_exists: $.get('event_exists')
+    market_code: $.get('event_value', {}).get('market_code') if $.get('event_exists') is True else None
     workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
   tasks:
 
     # load-event-by-code
     - type: document
       name: load-event-by-code
-      description: Search event (opta) by code.
+      description: Search event (sportradar) by code.
       condition: $.get('event_code') is not None
       config:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.schema:startDate", 1]
+        search-sorters: ["value.start_time", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
         metadata.event_code: $.get('event_code')
@@ -37,10 +39,25 @@ workflow:
         event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
         event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
 
-    # load event filtering by live events (Playing)
+    # load soccer preview configuration
+    - type: document
+      name: sports-interaction-nfl-preview-config
+      description: Load NFL preview configuration to control NFL preview execution
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'sports-interaction-nfl-preview-config'"
+      outputs:
+        coverage-config-exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        coverage-events-live: $.get('documents', [])[0].get('value', {}).get('coverage-events-live', []) if len($.get('documents', [])) > 0 else []
+
+    # load event filtering by live events (live, interrupted)
     - type: document
       name: load-event-by-schedule
-      description: Search for live schedule events (opta) - Playing status.
+      description: Search for live schedule events (sportradar).
       condition: $.get('event_exists') is not True
       config:
         action: search
@@ -49,11 +66,14 @@ workflow:
         search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=2)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}"
-        value.sport:status: "{'$in': ['Fixture', 'Playing']}"
+        value.schema:sportName: "{'$in': ['nfl']}"
+        value.sport:status: "{'$in': ['not_started', 'scheduled', 'live', 'interrupted']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=2)).isoformat() + '+00:00', '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat() + '+00:00'}"
         value.version_control.finished: "{'$ne': True}"
         value.version_control.processing: "{'$ne': True}"
-        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}, {'value.version_control.consumer-update-timestamp': None}]"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        value.sport:competition.@id: |
+          $.get('coverage-config-exists') and {'$in': $.get('coverage-events-live')} or None
       outputs:
         event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
         event_exists: len($.get('documents', [])) > 0
@@ -69,7 +89,7 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1]
       filters:
         name: "{'$in': ['sport:Event']}"
         value.version_control.processing: "True"

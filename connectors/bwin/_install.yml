@@ -21,18 +21,35 @@ setup:
     - Bwin-AccessId
     - Bwin-AccessIdToken
   status: available
-  value: "connectors/bwin"
+  value: connectors/bwin
   version: 1.0.0
 
 datasets:
-  - type: "connector"
-    path: "bwin.yml" 
+  - type: connector
+    path: bwin.yml 
 
-  - type: "workflow"
-    path: "workflows/sync-markets.yml"
+  - type: connector
+    path: scripts/grep-sports.yml
 
-  - type: "workflow"
-    path: "workflows/sync-odds.yml"
+  - type: connector
+    path: scripts/odds-delta.yml
 
-  - type: "mappings"
-    path: "mappings/markets.yml"
+  - type: mappings
+    path: mappings/markets.yml
+
+  - type: workflow
+    path: workflows/sync-markets.yml
+
+  - type: workflow
+    path: workflows/sync-odds.yml
+
+  - type: workflow
+    path: workflows/sync-variation.yml
+
+  # external connectors
+
+  - type: connector
+    path: ../../agent-templates/assistant-tools/scripts/market-event-matcher.yml
+  
+  - type: workflow
+    path: ../../agent-templates/assistant-tools/tools/event-matcher.yml

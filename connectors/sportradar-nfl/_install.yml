@@ -22,29 +22,62 @@ setup:
   version: 7.0.0
 
 datasets:
-  - type: "connector"
-    path: "sportradar-nfl.yml"
+  
+  # agents
 
-  - type: "mappings"
-    path: "mappings/iptc-sport-event.yml"
+  - type: agent
+    path: agents/event-live-update.yml
 
-  - type: "workflow"
-    path: "sync-games.yml"
+  - type: agent
+    path: agents/event-prelive-update.yml
 
-  - type: "workflow"
-    path: "sync-teams.yml"
+  # connectors
+  
+  - type: connector
+    path: sportradar-nfl.yml
 
-  - type: "workflow"
-    path: "sync-players.yml"
+  # mappings
+  
+  - type: mappings
+    path: mappings/iptc-sport-event.yml
 
-  - type: "workflow"
-    path: "sync-profile.yml"
+  # workflows
 
-  - type: "workflow"
-    path: "sync-transactions.yml"
+  - type: workflow
+    path: workflows/config-markets.yml
 
-  - type: "workflow"
-    path: "sync-injuries.yml"
+  - type: workflow
+    path: workflows/event-consumer-live.yml
 
-  - type: "workflow"
-    path: "sync-weekly.yml"
+  - type: workflow
+    path: workflows/event-consumer-prelive.yml
+
+  - type: workflow
+    path: workflows/event-sync-markets.yml
+
+  - type: workflow
+    path: workflows/event-sync-timeline.yml
+
+  - type: workflow
+    path: workflows/event-update.yml
+
+  - type: workflow
+    path: sync-games.yml
+
+  - type: workflow
+    path: sync-teams.yml
+
+  - type: workflow
+    path: sync-players.yml
+
+  - type: workflow
+    path: sync-profile.yml
+
+  - type: workflow
+    path: sync-transactions.yml
+
+  - type: workflow
+    path: sync-injuries.yml
+
+  - type: workflow
+    path: sync-weekly.yml

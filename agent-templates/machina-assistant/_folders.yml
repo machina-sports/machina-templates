@@ -1,0 +1,67 @@
+workflow:
+  name: machina-assistant-folders
+  title: Machina Assistant - Folders
+  description: Configure document structure and playground setup for Machina Assistant
+  
+  context-variables:
+    debugger:
+      enabled: false
+  
+  outputs:
+    workflow-status: "'executed'"
+  
+  tasks:
+
+    # Install document structure
+    - type: document
+      name: install-documents
+      description: Install document structure for Machina Assistant
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-playground: |
+          [
+            {
+              "title": "Machina Assistant",
+              "name": "machina-assistant-executor",
+              "type": "agent",
+              "description": "AI-powered assistant for Machina platform guidance"
+            }
+          ]
+        site-structure: |
+          []
+        doc-structure: |
+          [
+            {
+              "title": "Assistant",
+              "isActive": True,
+              "icon": "message-circle",
+              "items": [
+                {
+                  "name": "conversations",
+                  "title": "Conversations",
+                  "description": "Chat threads with Machina Assistant",
+                  "category": "Assistant",
+                  "metadata": {
+                    "name": ["thread"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "knowledge-base",
+                  "title": "Knowledge Base",
+                  "description": "Documentation and guides for the Machina platform",
+                  "category": "Assistant",
+                  "metadata": {
+                    "name": ["machina-knowledge"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
+

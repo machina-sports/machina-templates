@@ -97,6 +97,7 @@ workflow:
           {
             **$.get('event_value', {}),
             **$.get('updated_event', {}),
+            'title': f"{$.get('updated_event', {}).get('sport:competition', {}).get('name', '')} - {$.get('updated_event', {}).get('name', '')}",
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
               'update_event_summary_count': $.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0) + 1,

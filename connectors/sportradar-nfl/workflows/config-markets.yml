@@ -1,9 +1,9 @@
 workflow:
 
-  # sportradar-soccer-config-markets-workflow
-  name: sportradar-soccer-config-markets-workflow
-  title: Sportradar Soccer - Config Markets Workflow
-  description: Workflow to load markets for coverage tools
+  # sports-interaction-config-nfl-markets-workflow
+  name: sports-interaction-config-nfl-markets-workflow
+  title: Sports Interaction - Config NFL Markets Workflow
+  description: Workflow to load NFL markets for coverage tools
   context-variables:
     debugger:
       enabled: true
@@ -12,7 +12,7 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
-    sportradar-soccer:
+    sportradar-nfl:
       api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   outputs:
     coverage-markets-country: $.get('coverage-markets-country')
@@ -31,7 +31,7 @@ workflow:
         search-limit: 1
         search-vector: false
       filters:
-        name: "'coverage-soccer-markets-config'"
+        name: "'sports-interaction-nfl-markets-config'"
       outputs:
         coverage-markets-country: $.get('documents', [])[0].get('value', {}).get('coverage-markets-country', '') if len($.get('documents', [])) > 0 else ''
         coverage-markets-sport-id: $.get('documents', [])[0].get('value', {}).get('coverage-markets-sport-id', '') if len($.get('documents', [])) > 0 else ''
