@@ -320,6 +320,21 @@ def summarize_message_data(request_data):
         }
         return stat_abbreviations.get(stat_label, stat_label)
     
+    def extract_penalties_from_score(event):
+        """Extract penalty shootout score information from sport:score."""
+        score = event.get("sport:score", {})
+        if not isinstance(score, dict):
+            return None, None
+        
+        penalties = score.get("sport:penalties", {})
+        if isinstance(penalties, dict) and penalties.get("sport:homeScore") is not None:
+            pen_home = penalties.get("sport:homeScore")
+            pen_away = penalties.get("sport:awayScore")
+            print(f"[DEBUG] Extracted penalties from sport:score: {pen_home}-{pen_away}")
+            return pen_home, pen_away
+        
+        return None, None
+    
     def extract_cards_from_timeline(event):
         """Extract cards (yellow_card, red_card events) from schema:timeline separated by home/away."""
         timeline = event.get("schema:timeline", [])
@@ -433,6 +448,12 @@ def summarize_message_data(request_data):
                         minutes = action.get("sport:minutesElapsed", "")
                         print(f"[DEBUG] Minutes elapsed: {minutes}")
                         
+                        # For penalty_shootout: Get penalty status (scored/missed)
+                        penalty_status = ""
+                        if is_penalty_shootout:
+                            penalty_status = action.get("sport:penaltyStatus", "")
+                            print(f"[DEBUG] Penalty status: {penalty_status}")
+                        
                         # Get all participants (scorer + assisters)
                         participants = []
                         participation = action.get("sport:participation", [])
@@ -446,7 +467,7 @@ def summarize_message_data(request_data):
                                             participants.append(player_label)
                                             print(f"[DEBUG] Participant {p_idx}: {player_label}")
                         
-                        # Format entry: "Minutes' Player1 (assist: Player2, ...)"
+                        # Format entry: "Minutes' Player1 (assist: Player2, ...)" or "Minutes' Player1 (status)"
                         entry = ""
                         
                         if minutes:
@@ -462,19 +483,28 @@ def summarize_message_data(request_data):
                                 assisters = ", ".join(participants[1:])
                                 entry += f" (assist: {assisters})"
                         
+                        # Add penalty status if it's a penalty shootout
+                        if is_penalty_shootout and penalty_status:
+                            if entry:
+                                entry += f" ({penalty_status})"
+                            else:
+                                entry = penalty_status
+                        
                         print(f"[DEBUG] Entry: {entry}")
                         
-                        # Add to appropriate list based on type and competitor
-                        if is_score_change:
-                            if competitor.lower() == "home":
-                                goals_home.append(entry)
-                            elif competitor.lower() == "away":
-                                goals_away.append(entry)
-                        elif is_penalty_shootout:
-                            if competitor.lower() == "home":
-                                penalties_home.append(entry)
-                            elif competitor.lower() == "away":
-                                penalties_away.append(entry)
+                        # Only add non-empty entries (filter out empty strings, whitespace, and "0'")
+                        if entry and entry.strip() and entry.strip() != "0'":
+                            # Add to appropriate list based on type and competitor
+                            if is_score_change:
+                                if competitor.lower() == "home":
+                                    goals_home.append(entry)
+                                elif competitor.lower() == "away":
+                                    goals_away.append(entry)
+                            elif is_penalty_shootout:
+                                if competitor.lower() == "home":
+                                    penalties_home.append(entry)
+                                elif competitor.lower() == "away":
+                                    penalties_away.append(entry)
         
         return goals_home, goals_away, penalties_home, penalties_away
     
@@ -526,7 +556,23 @@ def summarize_message_data(request_data):
             if isinstance(score, dict) and score.get("sport:homeScore") is not None:
                 home_score = score.get("sport:homeScore")
                 away_score = score.get("sport:awayScore")
-                parts.append(f"{home_score}-{away_score}")
+                score_str = f"{home_score}-{away_score}"
+                
+                # Add extra time score if available
+                aggregate = score.get("sport:aggregate", {})
+                if isinstance(aggregate, dict) and aggregate.get("sport:homeScore") is not None:
+                    agg_home = aggregate.get("sport:homeScore")
+                    agg_away = aggregate.get("sport:awayScore")
+                    score_str += f" (AET: {agg_home}-{agg_away})"
+                
+                # Add penalty shootout score if available
+                penalties = score.get("sport:penalties", {})
+                if isinstance(penalties, dict) and penalties.get("sport:homeScore") is not None:
+                    pen_home = penalties.get("sport:homeScore")
+                    pen_away = penalties.get("sport:awayScore")
+                    score_str += f" (Penalties: {pen_home}-{pen_away})"
+                
+                parts.append(score_str)
             
             # Channel (for fixtures)
             channels = event.get("sport:channels", [])
@@ -590,29 +636,37 @@ def summarize_message_data(request_data):
             # Timeline - Extract goals and penalties from schema:timeline
             goals_home, goals_away, penalties_home, penalties_away = extract_goals_from_timeline(event)
             
+            # Also extract penalty shootout scores from sport:score if available
+            penalties_home_score, penalties_away_score = extract_penalties_from_score(event)
+            
             # Add goals section
             if goals_home or goals_away:
                 if goals_home:
                     goals_home_str = " | ".join(goals_home)
-                    parts.append(f"[Home Goals: {goals_home_str}]")
+                    parts.append(f"[Home Players Goals: {goals_home_str}]")
                     print(f"[DEBUG] Added Home goals: {goals_home_str}")
                 
                 if goals_away:
                     goals_away_str = " | ".join(goals_away)
-                    parts.append(f"[Away Goals: {goals_away_str}]")
+                    parts.append(f"[Away Players Goals: {goals_away_str}]")
                     print(f"[DEBUG] Added Away goals: {goals_away_str}")
             
-            # Add penalties section
+            # Add penalties section (from timeline events)
             if penalties_home or penalties_away:
                 if penalties_home:
                     penalties_home_str = " | ".join(penalties_home)
-                    parts.append(f"[Home Penalties: {penalties_home_str}]")
+                    parts.append(f"[Home Players Penalties: {penalties_home_str}]")
                     print(f"[DEBUG] Added Home penalties: {penalties_home_str}")
                 
                 if penalties_away:
                     penalties_away_str = " | ".join(penalties_away)
-                    parts.append(f"[Away Penalties: {penalties_away_str}]")
+                    parts.append(f"[Away Players Penalties: {penalties_away_str}]")
                     print(f"[DEBUG] Added Away penalties: {penalties_away_str}")
+            
+            # Add penalty shootout score summary if available (from sport:score)
+            if penalties_home_score is not None or penalties_away_score is not None:
+                parts.append(f"[Shootout Score: {penalties_home_score}-{penalties_away_score}]")
+                print(f"[DEBUG] Added Shootout Score: {penalties_home_score}-{penalties_away_score}")
             
             # Timeline - Extract cards from schema:timeline
             cards_home_yellow, cards_home_red, cards_away_yellow, cards_away_red = extract_cards_from_timeline(event)
@@ -644,6 +698,30 @@ def summarize_message_data(request_data):
                     away_cards_str = " | ".join(card_parts)
                     parts.append(f"[Away Cards: {away_cards_str}]")
                     print(f"[DEBUG] Added Away cards: {away_cards_str}")
+            
+            # Add goal and penalty count summaries
+            goals_home_count = len(goals_home)
+            goals_away_count = len(goals_away)
+            
+            # Count only scored penalties (not missed ones)
+            penalties_home_scored = sum(1 for p in penalties_home if "scored" in p.lower())
+            penalties_away_scored = sum(1 for p in penalties_away if "scored" in p.lower())
+            
+            if goals_home_count > 0 or goals_away_count > 0:
+                if goals_home_count > 0:
+                    parts.append(f"[Home Goals: {goals_home_count}]")
+                    print(f"[DEBUG] Added Home goals count: {goals_home_count}")
+                if goals_away_count > 0:
+                    parts.append(f"[Away Goals: {goals_away_count}]")
+                    print(f"[DEBUG] Added Away goals count: {goals_away_count}")
+            
+            if penalties_home_scored > 0 or penalties_away_scored > 0:
+                if penalties_home_scored > 0:
+                    parts.append(f"[Home Penalties Goals: {penalties_home_scored}]")
+                    print(f"[DEBUG] Added Home penalties goals count: {penalties_home_scored}")
+                if penalties_away_scored > 0:
+                    parts.append(f"[Away Penalties Goals: {penalties_away_scored}]")
+                    print(f"[DEBUG] Added Away penalties goals count: {penalties_away_scored}")
             
             return " | ".join(parts)
             

@@ -73,7 +73,30 @@ mappings:
             "sport:score": {
               "sport:homeScore": f.get('sport_event_status', {}).get('home_score'),
               "sport:awayScore": f.get('sport_event_status', {}).get('away_score'),
-              "sport:halfTime": f.get('sport_event_status', {}).get('period_scores', [{}])[0] if f.get('sport_event_status', {}).get('period_scores', []) else {}
+              **(
+                {
+                  "sport:halfTime": {
+                    "sport:homeScore": f.get('sport_event_status', {}).get('period_scores', [{}])[0].get('home_score') if f.get('sport_event_status', {}).get('period_scores', []) else None,
+                    "sport:awayScore": f.get('sport_event_status', {}).get('period_scores', [{}])[0].get('away_score') if f.get('sport_event_status', {}).get('period_scores', []) else None
+                  }
+                } if f.get('sport_event_status', {}).get('period_scores', []) else {}
+              ),
+              **(
+                {
+                  "sport:aggregate": {
+                    "sport:homeScore": f.get('sport_event_status', {}).get('aggregate', {}).get('home_score'),
+                    "sport:awayScore": f.get('sport_event_status', {}).get('aggregate', {}).get('away_score')
+                  }
+                } if f.get('sport_event_status', {}).get('aggregate') else {}
+              ),
+              **(
+                {
+                  "sport:penalties": {
+                    "sport:homeScore": f.get('sport_event_status', {}).get('penalties', {}).get('home_score'),
+                    "sport:awayScore": f.get('sport_event_status', {}).get('penalties', {}).get('away_score')
+                  }
+                } if f.get('sport_event_status', {}).get('penalties') else {}
+              )
             }
           }
           for f in $.get('schedules', [])
@@ -149,13 +172,35 @@ mappings:
             "@type": "sport:Action",
             "type": event.get('type', ''),
             "competitor": event.get('competitor', ''),
-            "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('match_time', 0)}' - Period {event.get('period', 0)}",
-            "sport:actionType": f"http://cv.iptc.org/newscodes/spsocaction/{event.get('type', '').lower().replace('_', '-')}",
+            "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('match_time', 0)}' - {event.get('period_type', 'unknown').replace('_', ' ').title()}",
+            "sport:actionType": f"spsocaction:{event.get('type', '').lower().replace('_', '-')}",
             "sport:minutesElapsed": str(event.get('match_time', 0)),
             "sport:actionDateTime": event.get('time'),
             "sport:periodValue": str(event.get('period', 0)),
+            "sport:periodType": event.get('period_type', 'regular_period'),
             "sport:fieldLocation": f"{event.get('x', 0)},{event.get('y', 0)}" if event.get('x') is not None and event.get('y') is not None else None,
             "commentaries": event.get('commentaries', []),
+            **(
+              {
+                "sport:homeScore": event.get('sport:homeScore') or event.get('home_score'),
+                "sport:awayScore": event.get('sport:awayScore') or event.get('away_score'),
+                "sport:scoreMethod": event.get('sport:scoreMethod') or event.get('method', ''),
+                "sport:shootoutHomeScore": event.get('sport:shootoutHomeScore') or event.get('shootout_home_score'),
+                "sport:shootoutAwayScore": event.get('sport:shootoutAwayScore') or event.get('shootout_away_score')
+              } if event.get('type') == 'score_change' else {}
+            ),
+            **(
+              {
+                "sport:penaltyStatus": event.get('sport:penaltyStatus') or event.get('status', ''),
+                "sport:shootoutAttempt": event.get('sport:shootoutAttempt', True)
+              } if event.get('type') == 'penalty_shootout' else {}
+            ),
+            **(
+              {
+                "sport:cardType": event.get('card_type', ''),
+                "sport:cardColor": 'yellow' if 'yellow' in event.get('type', '').lower() else 'red' if 'red' in event.get('type', '').lower() else ''
+              } if 'card' in event.get('type', '') else {}
+            ),
             "sport:participation": (
               ([
                 {
@@ -180,7 +225,8 @@ mappings:
                     "@id": f"urn:sportradar:player:{player.get('id')}",
                     "@type": "sport:Athlete",
                     "sport:label": player.get('name', 'Unknown Player')
-                  }
+                  },
+                  "sport:playerRole": player.get('type', '')
                 }
                 for player in event.get('players', [])
               ] if event.get('players') else [])
