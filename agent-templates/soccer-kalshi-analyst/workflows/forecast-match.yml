@@ -1,0 +1,322 @@
+workflow:
+  name: soccer-forecast-match
+  title: Soccer Match Forecast
+  description: Complete pipeline from stats to Monte Carlo prediction for soccer.
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    fixture_id: "$.get('fixture_id')"
+    league: "$.get('league')"
+    season: "$.get('season')"
+  outputs:
+    workflow-status: "'executed'"
+    prediction_document_id: "$.get('prediction_document_id')"
+  tasks:
+    - type: connector
+      name: load-game-data
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        id: "$.get('fixture_id')"
+      outputs:
+        fixture_data: "$.get('response')[0]"
+        home_team: "$.get('fixture_data', {}).get('teams', {}).get('home', {}).get('name')"
+        away_team: "$.get('fixture_data', {}).get('teams', {}).get('away', {}).get('name')"
+
+    - type: connector
+      name: fetch-match-stats
+      description: Get detailed match statistics
+      connector:
+        name: api-football
+        command: get-fixtures/statistics
+      inputs:
+        fixture: "$.get('fixture_id')"
+      outputs:
+        match_stats: "$.get('response')"
+
+    - type: connector
+      name: fetch-match-events
+      description: Get match events (goals, cards, subs)
+      connector:
+        name: api-football
+        command: get-fixtures/events
+      inputs:
+        fixture: "$.get('fixture_id')"
+      outputs:
+        match_events: "$.get('response')"
+
+    - type: connector
+      name: aggregate-features
+      connector:
+        name: soccer-aggregate-features
+        command: aggregate_features
+      inputs:
+        fixture_id: "$.get('fixture_id')"
+        league: "$.get('league')"
+        season: "$.get('season')"
+        match_stats: "$.get('match_stats')"
+        match_events: "$.get('match_events')"
+      outputs:
+        feature_payload: "$.get('feature_payload')"
+
+    # 5. Generate news queries
+    - type: connector
+      name: generate-news-queries
+      description: Generate search queries for match news
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: news_query_generator
+        league: "$.get('league')"
+        season: "$.get('season')"
+        matchup: "$.get('home_team') + ' vs ' + $.get('away_team')"
+        game_date: "$.get('fixture_data', {}).get('fixture', {}).get('date')"
+      outputs:
+        news_queries: "$.get('news_queries', [])"
+
+    # 6. Search news
+    - type: connector
+      name: search-news
+      description: Execute web search for soccer news
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: "gemini-3-pro-preview"
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: $.get('news_queries')
+      inputs:
+        search_query: $.get('search_query', '')
+        recency_days: 3
+        language: 'en'
+        location: 'global'
+      outputs:
+        search_results: |
+          [
+            $.get('answer', '')
+          ]
+
+    # 7. Filter search results
+    - type: connector
+      name: filter-search-results
+      description: Filter and deduplicate search results
+      connector:
+        name: soccer-aggregate-features
+        command: filter_search_results
+      inputs:
+        search_results: "$.get('search_results', [])"
+        recency_days: 3
+      outputs:
+        filtered_search_results: "$.get('filtered_search_results', [])"
+
+    # 8. Extract news evidence
+    - type: connector
+      name: extract-news-evidence
+      description: Extract structured evidence from search results
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: news_evidence_extractor
+        matchup: "$.get('home_team') + ' vs ' + $.get('away_team')"
+        search_results: "$.get('filtered_search_results')"
+      outputs:
+        evidence_items: "$.get('evidence_items', [])"
+        team_level_deltas: "$.get('team_level_deltas', {})"
+        news_reliability: "$.get('news_reliability', 0.0)"
+        missing_info_flags: "$.get('missing_info_flags', [])"
+
+    # 9. Format evidence outputs
+    - type: connector
+      name: format-evidence-outputs
+      description: Format evidence for downstream workflows
+      connector:
+        name: soccer-aggregate-features
+        command: format_evidence_outputs
+      inputs:
+        evidence_items: "$.get('evidence_items', [])"
+        team_level_deltas: "$.get('team_level_deltas', {})"
+        news_reliability: "$.get('news_reliability', 0.0)"
+        missing_info_flags: "$.get('missing_info_flags', [])"
+      outputs:
+        news_evidence: "$.get('news_evidence')"
+        news_deltas: "$.get('news_deltas')"
+
+    # 10. Update feature payload with news deltas
+    - type: connector
+      name: update-feature-payload
+      description: Update feature payload with news evidence
+      connector:
+        name: soccer-aggregate-features
+        command: aggregate_features
+      inputs:
+        feature_payload: "$.get('feature_payload')"
+        news_deltas: "$.get('news_deltas')"
+      outputs:
+        updated_feature_payload: |
+          {
+            **$.get('feature_payload'),
+            'news': $.get('news_deltas')
+          }
+
+    # 11. Stats analyst forecast
+    - type: connector
+      name: stats-analyst
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: forecast_stats_analyst
+        feature_payload: "$.get('updated_feature_payload')"
+      outputs:
+        stats_component: "$"
+
+    # 12. Evidence analyst forecast
+    - type: connector
+      name: evidence-analyst
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: forecast_evidence_analyst
+        feature_payload: "$.get('updated_feature_payload')"
+        news_evidence: "$.get('news_evidence')"
+      outputs:
+        evidence_component: "$"
+
+    # 13. Matchup analyst forecast
+    - type: connector
+      name: matchup-analyst
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: forecast_matchup_analyst
+        feature_payload: "$.get('updated_feature_payload')"
+      outputs:
+        matchup_component: "$"
+
+    # 14. Risk officer assessment
+    - type: connector
+      name: risk-officer
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: forecast_risk_officer
+        components: |
+          {
+            'stats': $.get('stats_component'),
+            'evidence': $.get('evidence_component'),
+            'matchup': $.get('matchup_component')
+          }
+        feature_payload: "$.get('updated_feature_payload')"
+      outputs:
+        risk_component: "$"
+
+    # 15. Simulation parameterization
+    - type: connector
+      name: sim-parameterizer
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: simulation_parameterizer
+        feature_payload: "$.get('updated_feature_payload')"
+        components: |
+          {
+            'stats': $.get('stats_component'),
+            'evidence': $.get('evidence_component'),
+            'matchup': $.get('matchup_component')
+          }
+        risk: "$.get('risk_component')"
+      outputs:
+        sim_params: "$"
+
+    # 16. Monte Carlo simulation
+    - type: connector
+      name: monte-carlo
+      connector:
+        name: soccer-monte-carlo
+        command: run_monte_carlo_simulation
+      inputs:
+        simulation_parameters: "$.get('sim_params')"
+        num_simulations: 10000
+      outputs:
+        sim_results: "$.get('simulation_results')"
+
+    # 17. Final pricing
+    - type: connector
+      name: final-pricing
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: final_pricing
+        feature_payload: "$.get('updated_feature_payload')"
+        components: |
+          {
+            'stats': $.get('stats_component'),
+            'evidence': $.get('evidence_component'),
+            'matchup': $.get('matchup_component'),
+            'risk': $.get('risk_component')
+          }
+        sim_results: "$.get('sim_results')"
+      outputs:
+        final_prediction: "$"
+
+    # 18. Store final prediction
+    - type: document
+      name: store-prediction
+      config:
+        action: update
+        force-update: true
+      documents:
+        soccer-prediction: |
+          {
+            'fixture_id': $.get('fixture_id'),
+            'prediction': $.get('final_prediction'),
+            'feature_payload': $.get('updated_feature_payload'),
+            'components': {
+              'stats': $.get('stats_component'),
+              'evidence': $.get('evidence_component'),
+              'matchup': $.get('matchup_component'),
+              'risk': $.get('risk_component')
+            },
+            'simulation_results': $.get('sim_results'),
+            'timestamp': datetime.utcnow()
+          }
+      outputs:
+        prediction_document_id: "$.get('document_id')"
+

@@ -20,7 +20,7 @@ workflow:
       description: "Get next Corinthians fixtures from API-Football"
       connector:
         name: "api-football"
-        command: "fixtures"
+        command: "get-fixtures"
       condition: "$.get('team_id') is not None"
       inputs:
         team: "$.get('team_id')"
@@ -54,7 +54,7 @@ workflow:
       description: "Get last Corinthians fixtures from API-Football"
       connector:
         name: "api-football"
-        command: "fixtures"
+        command: "get-fixtures"
       condition: "$.get('team_id') is not None"
       inputs:
         team: "$.get('team_id')"

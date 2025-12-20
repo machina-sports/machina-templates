@@ -1,0 +1,22 @@
+workflow:
+  name: soccer-sync-standings
+  title: Soccer - Sync Standings
+  description: Sync league standings from API-Football.
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    season: "$.get('season')"
+  tasks:
+    - type: connector
+      name: get-standings
+      connector:
+        name: api-football
+        command: get-standings
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+      outputs:
+        standings: "$.get('response')"
+

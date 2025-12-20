@@ -1,0 +1,82 @@
+setup:
+  title: Soccer Kalshi Analyst
+  description: AI-powered soccer forecasting agent that analyzes matches, predicts outcomes, and provides Kalshi betting insights using API-Football data and Gemini 3 Pro Preview.
+  category:
+    - sports
+    - analytics
+    - soccer
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to forecast soccer matches with Poisson Monte Carlo simulation
+    - Integrated with API-Football for real-time fixtures and stats
+    - Automated Kalshi market matching and edge analysis
+    - Evidence-based predictions using news search and statistical modeling
+  integrations:
+    - api-football
+    - google-genai
+    - machina-ai
+    - kalshi
+  status: available
+  value: agent-templates/soccer-kalshi-analyst
+  version: 1.0.0
+
+datasets:
+
+  # Agent
+  - type: agent
+    path: agents/soccer-kalshi-analyst.yml
+
+  # Scripts
+  - type: connector
+    path: scripts/aggregate_features.yml
+
+  - type: connector
+    path: scripts/monte_carlo.yml
+
+  # Prompts
+  - type: prompt
+    path: prompts/news_query_generator.yml
+
+  - type: prompt
+    path: prompts/news_evidence_extractor.yml
+
+  - type: prompt
+    path: prompts/forecast_stats_analyst.yml
+
+  - type: prompt
+    path: prompts/forecast_evidence_analyst.yml
+
+  - type: prompt
+    path: prompts/forecast_matchup_analyst.yml
+
+  - type: prompt
+    path: prompts/forecast_risk_officer.yml
+
+  - type: prompt
+    path: prompts/simulation_parameterizer.yml
+
+  - type: prompt
+    path: prompts/final_pricing.yml
+
+  - type: prompt
+    path: prompts/kalshi_edge_analyst.yml
+
+  # Workflows
+  - type: workflow
+    path: _folders.yml
+
+  - type: workflow
+    path: workflows/sync-fixtures.yml
+
+  - type: workflow
+    path: workflows/sync-teams.yml
+
+  - type: workflow
+    path: workflows/sync-standings.yml
+
+  - type: workflow
+    path: workflows/forecast-match.yml
+
+  - type: workflow
+    path: workflows/kalshi-market-integration.yml
+

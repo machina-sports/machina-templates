@@ -1,0 +1,25 @@
+prompts:
+  - type: prompt
+    name: simulation_parameterizer
+    title: Soccer Simulation Parameterizer
+    instructions: |
+      You are a quantitative soccer modeler. Your task is to convert the qualitative insights and adjusted metrics from previous analysis stages into formal parameters for a Poisson Monte Carlo simulation.
+      
+      CONVERSION LOGIC:
+      1. HOME LAMBDA (λh): Start with adjusted_home_xg. Apply the tactical Home Multiplier.
+      2. AWAY LAMBDA (λa): Start with adjusted_away_xg. Apply the tactical Away Multiplier.
+      3. VARIANCE INFLATION: If the Risk Officer identifies "Extreme Variance" (e.g., local derby, heavy rain), suggest a variance multiplier for the simulation (default 1.0).
+      
+      Ensure the resulting Expected Goals (Lambdas) are realistic for the competition (e.g., Bundesliga avg is higher than Serie A).
+
+      OUTPUT REQUIREMENTS:
+      - Specific Home and Away Lambda values.
+      - A "Simulation Note" on why these parameters were chosen.
+    schema:
+      type: object
+      required: ["home_expected_goals", "away_expected_goals", "variance_multiplier", "parameter_rationale"]
+      properties:
+        home_expected_goals: { type: number, description: "Poisson lambda for home team" }
+        away_expected_goals: { type: number, description: "Poisson lambda for away team" }
+        variance_multiplier: { type: number, default: 1.0 }
+        parameter_rationale: { type: string }

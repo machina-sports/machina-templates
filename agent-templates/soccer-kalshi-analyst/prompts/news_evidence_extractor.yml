@@ -1,0 +1,45 @@
+prompts:
+  - type: prompt
+    name: news_evidence_extractor
+    title: Soccer News Evidence Extractor
+    instructions: |
+      Extract structured evidence from the provided soccer news search results for the match: {{matchup}}.
+      
+      You must identify specific "drivers" that will impact the statistical baseline of the match.
+      
+      FOCUS AREAS:
+      1. CRITICAL ABSENCES: Identify starting players missing due to injury or suspension. Categorize by position (GK, DEF, MID, FWD).
+      2. MANAGER QUOTES: Look for indications of squad rotation (e.g., resting players for a future cup match) or tactical shifts.
+      3. TEAM MORALE: Identify signs of crisis (unpaid wages, manager under pressure) or high motivation (new manager "bounce", title decider).
+      4. VENUE/PITCH: Any mention of poor pitch quality or closed-door matches (no fans).
+
+      Assign a RELIABILITY score (0.0 to 1.0) to the news source based on its type (Official Team Site > Tier 1 Sports News > General News).
+    schema:
+      type: object
+      required: ["evidence_items", "team_level_deltas", "news_reliability", "missing_info_flags"]
+      properties:
+        evidence_items:
+          type: array
+          items:
+            type: object
+            required: ["player_or_team", "finding", "impact_score", "source_reliability"]
+            properties:
+              player_or_team: { type: string }
+              finding: { type: string }
+              impact_score: { type: number, description: "Scale of -5 to +5 on team strength" }
+              source_reliability: { type: number }
+        team_level_deltas:
+          type: object
+          description: Aggregated impacts on Home/Away performance (Attack/Defense).
+          properties:
+            home_attack_delta: { type: number }
+            home_defense_delta: { type: number }
+            away_attack_delta: { type: number }
+            away_defense_delta: { type: number }
+        news_reliability:
+          type: number
+          description: Overall reliability of the evidence set (0-1).
+        missing_info_flags:
+          type: array
+          items: { type: string }
+          description: List what information was NOT found but is critical (e.g., 'Starting GK status unknown').

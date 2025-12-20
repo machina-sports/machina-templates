@@ -104,7 +104,7 @@ workflow:
       condition: "$.get('event_exists') is True"
       connector:
         name: "api-football"
-        command: "fixtures/headtohead"
+        command: "get-fixtures/headtohead"
       inputs:
         h2h: f"{$.get('team_home_id')}-{$.get('team_away_id')}"
       outputs:

@@ -105,7 +105,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "standings"
+        command: "get-standings"
       inputs:
         season: "$.get('season')"
         league: "$.get('league_id')"
@@ -147,7 +147,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "fixtures"
+        command: "get-fixtures"
       inputs:
         team: "$.get('team_home_id')"
         last: 5
@@ -162,7 +162,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "fixtures"
+        command: "get-fixtures"
       inputs:
         team: "$.get('team_away_id')"
         last: 5
@@ -177,7 +177,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "fixtures/headtohead"
+        command: "get-fixtures/headtohead"
       inputs:
         h2h: f"{$.get('team_home_id')}-{$.get('team_away_id')}"
       outputs:
@@ -220,7 +220,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "players/squad"
+        command: "get-players/squad"
       inputs:
         team: "$.get('team_home_id')"
       outputs:
@@ -233,7 +233,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "players/squad"
+        command: "get-players/squad"
       inputs:
         team: "$.get('team_away_id')"
       outputs:

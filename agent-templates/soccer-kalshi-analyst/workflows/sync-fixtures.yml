@@ -1,0 +1,61 @@
+workflow:
+  name: soccer-sync-fixtures
+  title: Soccer - Sync Fixtures
+  description: Sync fixtures from API-Football and store as sport:Event documents.
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    season: "$.get('season')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    - type: connector
+      name: get-fixtures
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+      outputs:
+        fixtures: "$.get('response')"
+
+    - type: mapping
+      name: iptc-api-football-event-mapping
+      condition: $.get('fixtures') is not None
+      inputs:
+        fixtures: "$.get('fixtures')"
+      outputs:
+        events: "$.get('sport_schema_events')"
+
+    - type: document
+      name: bulk-save-fixtures
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "sport:Event"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+              },
+              'title': f.get('name', '')
+            }
+            for f in $.get('events', [])
+          ]
+      metadata:
+        document_type: "'fixture'"
+

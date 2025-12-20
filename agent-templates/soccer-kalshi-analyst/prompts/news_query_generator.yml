@@ -1,0 +1,27 @@
+prompts:
+  - type: prompt
+    name: news_query_generator
+    title: Soccer News Query Generator
+    instructions: |
+      Generate a set of optimized search queries to find high-signal information for the upcoming soccer match: {{matchup}}.
+      Competition: {{league}}
+      Match Date: {{game_date}}
+
+      Your goal is to find information that directly impacts match outcome and betting value.
+      Focus on these key soccer areas:
+      1. TEAM NEWS & LINEUPS: Search for "predicted XI", "confirmed lineups", "latest injury news", and "squad availability".
+      2. SUSPENSIONS: Check for red card suspensions or accumulation of yellow cards for key players.
+      3. MANAGER PRESS CONFERENCES: Search for the most recent pre-match quotes from both managers.
+      4. MOTIVATIONAL FACTORS: Check for "must-win" scenarios, "relegation battle", "title race", or "local derby" intensity.
+      5. EXTERNAL CONDITIONS: Search for pitch conditions or extreme weather reports at the specific venue.
+
+      GENERATE 6-8 specific queries in English and the local language of the home team (if applicable).
+    schema:
+      type: object
+      required: ["news_queries"]
+      properties:
+        news_queries:
+          type: array
+          description: A list of search queries to be executed.
+          items:
+            type: string

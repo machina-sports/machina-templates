@@ -1,0 +1,87 @@
+workflow:
+  name: soccer-kalshi-market-integration
+  title: Soccer Kalshi Integration
+  description: Connects soccer forecasts with real-time Kalshi markets.
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    prediction_document_id: "$.get('document_id')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: load-prediction
+      config:
+        action: search
+      filters:
+        document_id: "$.get('prediction_document_id')"
+      outputs:
+        prediction_val: "$.get('documents')[0].get('value')"
+        fixture_id: "$.get('prediction_val', {}).get('fixture_id')"
+
+    - type: document
+      name: load-kalshi-event
+      config:
+        action: search
+      filters:
+        value.eventCode: f"urn:apifootball:sport_event:{$.get('fixture_id')}"
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if $.get('documents') else None"
+
+    - type: connector
+      name: load-markets
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: kalshi
+        command: get-markets
+      inputs:
+        event_ticker: "$.get('event_ticker')"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    - type: mapping
+      name: kalshi-markets-summary
+      condition: "len($.get('markets', [])) > 0"
+      inputs:
+        markets: "$.get('markets')"
+      outputs:
+        markets_summary: "$.get('markets_summary')"
+        markets_count: "$.get('markets_count')"
+
+    - type: connector
+      name: edge-analyst
+      condition: "$.get('markets_count', 0) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: kalshi_edge_analyst
+        prediction_data: "$.get('prediction_val')"
+        markets_summary: "$.get('markets_summary')"
+      outputs:
+        edge_analysis: "$"
+
+    - type: document
+      name: store-analysis
+      condition: "$.get('edge_analysis') is not None"
+      config:
+        action: "update"
+        force-update: true
+      documents:
+        soccer-kalshi-analysis: |
+          {
+            'prediction_id': $.get('prediction_document_id'),
+            'fixture_id': $.get('fixture_id'),
+            'analysis': $.get('edge_analysis'),
+            'timestamp': datetime.utcnow()
+          }
+

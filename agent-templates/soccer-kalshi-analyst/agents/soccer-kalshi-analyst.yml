@@ -1,0 +1,33 @@
+agent:
+  name: soccer-kalshi-analyst
+  title: Soccer Kalshi Analyst Agent
+  description: Expert AI agent for soccer match forecasting and Kalshi market analysis.
+  context:
+    config-frequency: 60
+    status: "inactive"
+  workflows:
+    - name: soccer-forecast-match
+      description: "Forecast a soccer match using statistical and evidence-based AI analysis"
+      inputs:
+        fixture_id: $.get('fixture_id')
+        league: $.get('league')
+        season: $.get('season')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+        prediction_document_id: $.get('prediction_document_id')
+
+    - name: soccer-kalshi-market-integration
+      description: "Match soccer forecasts to Kalshi markets and identify betting edges"
+      inputs:
+        prediction_document_id: $.get('prediction_document_id')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    - name: soccer-sync-fixtures
+      description: "Sync match data from API-Football"
+      inputs:
+        league: $.get('league')
+        season: $.get('season')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+

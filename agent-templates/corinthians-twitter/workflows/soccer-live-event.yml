@@ -104,7 +104,7 @@ workflow:
       condition: "$.get('event_exists') is True"
       connector:
         name: "api-football"
-        command: "fixtures"
+        command: "get-fixtures"
       inputs:
         id: "$.get('event_code')"
       outputs:
@@ -122,7 +122,7 @@ workflow:
       condition: "$.get('event_exists') is True"
       connector:
         name: "api-football"
-        command: "fixtures/statistics"
+        command: "get-fixtures/statistics"
       inputs:
         fixture: "$.get('event_code')"
       outputs:

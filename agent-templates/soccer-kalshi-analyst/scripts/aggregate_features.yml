@@ -1,0 +1,13 @@
+connector:
+  name: "soccer-aggregate-features"
+  description: "Aggregate soccer match features from API-Football data"
+  filename: "aggregate_features.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Aggregate Features"
+      value: "aggregate_features"
+    - name: "Filter Search Results"
+      value: "filter_search_results"
+    - name: "Format Evidence Outputs"
+      value: "format_evidence_outputs"
+
