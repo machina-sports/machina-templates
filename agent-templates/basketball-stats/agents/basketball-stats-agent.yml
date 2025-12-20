@@ -20,6 +20,7 @@ agent:
         season: $.get('season')
       outputs:
         workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+        prediction_document_id: $.get('prediction_document_id')
 
     # Data synchronization workflows
     - name: basketball-stats-league-discovery
@@ -57,5 +58,13 @@ agent:
       description: "Sync game statistics from API-Basketball"
       inputs:
         game_id: $.get('game_id')
+      outputs:
+        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+
+    # Kalshi Integration workflow
+    - name: basketball-stats-kalshi-integration
+      description: "Match AI forecasts to Kalshi markets and identify betting edges"
+      inputs:
+        prediction_document_id: $.get('prediction_document_id')
       outputs:
         workflow-status: $.get('workflow-status', 'skipped') == 'executed'

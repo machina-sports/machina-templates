@@ -19,6 +19,7 @@ workflow:
     season: "$.get('season')"
   outputs:
     workflow-status: "'executed'"
+    prediction_document_id: "$.get('prediction_document_id')"
     final_prediction: "$.get('final_prediction')"
     home_win_probability: "$.get('home_win_probability')"
     away_win_probability: "$.get('away_win_probability')"
@@ -326,5 +327,7 @@ workflow:
             'execution_timestamp': datetime.utcnow(),
             'title': f"Prediction - {$.get('home_team')} vs {$.get('away_team')}"
           }
+      outputs:
+        prediction_document_id: "$.get('document_id')"
       metadata:
         document_type: "'basketball-prediction'"

@@ -36,6 +36,9 @@ datasets:
   - type: mappings
     path: mappings/kalshi-markets-summary.yml
 
+  - type: mappings
+    path: mappings/kalshi-past-events-formatter.yml
+
   # Scripts
   - type: connector
     path: scripts/market-event-matcher.yml

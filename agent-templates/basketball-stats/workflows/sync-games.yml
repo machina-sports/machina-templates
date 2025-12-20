@@ -36,6 +36,17 @@ workflow:
       outputs:
         games: "$.get('response')"
 
+    # iptc-api-basketball-event-mapping
+    - type: mapping
+      name: iptc-api-basketball-event-mapping
+      title: "IPTC | API Basketball Event Mapping"
+      description: "Mapping data from api-basketball to sportschema event"
+      condition: $.get('games') is not None
+      inputs:
+        games: $.get('games', [])
+      outputs:
+        events: $.get('sport_schema_events')
+
     # task-bulk-save-games
     - type: document
       name: task-bulk-save-games
@@ -49,18 +60,18 @@ workflow:
         name: "machina-ai"
         command: "invoke_embedding"
         model: "text-embedding-3-small"
-      document_name: "basketball-game"
+      document_name: "sport:Event"
       documents:
         items: |
           [
             {
-              **g,
+              **f,
               'metadata': {
-                'game_id': str(g.get('game', {}).get('id', '')),
+                'event_code': str(f.get('@id', '')),
               },
-              'title': f"{g.get('teams', {}).get('home', {}).get('name', '')} vs {g.get('teams', {}).get('away', {}).get('name', '')}"
+              'title': f.get('name', '')
             }
-            for g in $.get('games', [])
+            for f in $.get('events', [])
           ]
       metadata:
         document_type: "'game'"

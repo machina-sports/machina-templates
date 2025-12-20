@@ -34,7 +34,8 @@ workflow:
         document-exists: len($.get('documents', [])) > 0
         document-selected: $.get('documents', [])[0] if len($.get('documents', [])) > 0 else None
         document-value: $.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else None
-        event_code: $.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        competition_name: $.get('documents')[0].get('value', {}).get('sport:competition', {}).get('name', 'Unknown Competition') if $.get('documents') else 'Unknown Competition'
         event_competititors: |
           [
             competitor.get('@id')
@@ -74,7 +75,7 @@ workflow:
 
     # iptc-mapping-past-events
     - type: mapping
-      name: iptc-events-summary
+      name: kalshi-past-events-formatter
       condition: $.get('document_id') is not None and $.get('document-exists') is True
       inputs:
         events: $.get('event_list_parsed')
@@ -143,6 +144,7 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
+        competition_name: $.get('competition_name')
         markets_summary: $.get('markets_summary')
         past_events_summary: $.get('past_events_summary')
       outputs:
@@ -180,4 +182,3 @@ workflow:
       metadata:
         eventCode: $.get('event_code')
         eventTicker: $.get('event_ticker')
-      

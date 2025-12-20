@@ -1,0 +1,124 @@
+workflow:
+  name: basketball-stats-kalshi-integration
+  title: Basketball Stats - Kalshi Integration
+  description: Bridges basketball forecasting with real-time Kalshi prediction markets to identify value trades.
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    prediction_document_id: "$.get('document_id')" # The ID of the basketball-prediction document
+  outputs:
+    workflow-status: "$.get('workflow-status', 'executed')"
+  tasks:
+
+    # 1. Load prediction data
+    - type: document
+      name: load-prediction
+      description: Load the AI forecast result
+      config:
+        action: search
+      filters:
+        document_id: "$.get('prediction_document_id')"
+      outputs:
+        document_value: "$.get('documents')[0].get('value') if $.get('documents') else {}"
+        prediction: "$.get('document_value', {}).get('prediction', {})"
+        game_id: "$.get('document_value', {}).get('game_id')"
+        home_team: "$.get('document_value', {}).get('home_team')"
+        away_team: "$.get('document_value', {}).get('away_team')"
+
+    # 2. Find Kalshi Event
+    # We use the fact that sync-games now stores as sport:Event with event_code = urn:apibasketball:sport_event:{id}
+    - type: document
+      name: load-kalshi-event
+      description: Find the corresponding Kalshi event document
+      config:
+        action: search
+      filters:
+        value.eventCode: f"urn:apibasketball:sport_event:{$.get('game_id')}"
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if $.get('documents') else None"
+
+    # 3. Load Markets from Kalshi
+    - type: connector
+      name: load-kalshi-markets
+      description: Get active markets for this game
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: kalshi
+        command: get-markets
+      inputs:
+        event_ticker: "$.get('event_ticker')"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    # 4. Summarize Markets
+    - type: mapping
+      name: kalshi-markets-summary
+      condition: "len($.get('markets', [])) > 0"
+      inputs:
+        markets: "$.get('markets')"
+      outputs:
+        markets_summary: "$.get('markets_summary')"
+        markets_count: "$.get('markets_count')"
+
+    # 5. Run Edge Analyst Prompt
+    - type: prompt
+      name: basketball-kalshi-edge-analyst
+      description: Identify betting value
+      condition: "$.get('markets_count', 0) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prediction_data: |
+          {
+            'fair_probabilities': {
+              'home': $.get('prediction', {}).get('home_win_probability'),
+              'away': $.get('prediction', {}).get('away_win_probability')
+            },
+            'fair_spread': $.get('prediction', {}).get('fair_spread_home_minus'),
+            'fair_total_points': $.get('prediction', {}).get('fair_total_points'),
+            'confidence_score': $.get('prediction', {}).get('confidence'),
+            'risk_flags': $.get('prediction', {}).get('risk_flags', []),
+            'rationale': $.get('prediction', {}).get('rationale_compact')
+          }
+        markets_summary: "$.get('markets_summary')"
+      outputs:
+        edge_analysis: "$"
+
+    # 6. Store Kalshi Analysis
+    - type: document
+      name: store-kalshi-analysis
+      description: Save the final trade recommendations
+      condition: "$.get('edge_analysis') is not None"
+      config:
+        action: "update"
+        force-update: true
+      documents:
+        basketball-kalshi-analysis: |
+          {
+            'prediction_id': $.get('prediction_document_id'),
+            'game_id': $.get('game_id'),
+            'teams': f"{$.get('home_team')} vs {$.get('away_team')}",
+            'kalshi_ticker': $.get('event_ticker'),
+            'analysis': $.get('edge_analysis', {}).get('analysis'),
+            'summary': $.get('edge_analysis', {}).get('summary'),
+            'should_trade': $.get('edge_analysis', {}).get('should_trade'),
+            'selected_market': $.get('edge_analysis', {}).get('selected_market'),
+            'markets_ranked': $.get('edge_analysis', {}).get('markets_ranked'),
+            'timestamp': datetime.utcnow()
+          }
+      metadata:
+        document_type: "'basketball-kalshi-analysis'"
+        game_id: "$.get('game_id')"
+

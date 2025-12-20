@@ -1,0 +1,21 @@
+mappings:
+
+  # kalshi-past-events-formatter
+  - type: mapping
+    name: kalshi-past-events-formatter
+    title: Kalshi | Past Events Formatter
+    description: "Formats a list of past sport events into a readable text summary for analysis, including ids."
+    inputs:
+      events: $.get('events', [])
+    outputs:
+      events_ids: |
+        [
+          event.get('@id')
+          for event in $.get('events', [])
+          if event.get('@id')
+        ]
+      events_summary: |
+        "\n".join([
+          f"{e.get('schema:startDate', '').split('T')[0]} | {next((c.get('name') for c in e.get('sport:competitors', []) if c.get('sport:qualifier')=='home'), 'Home')} {e.get('sport:score', {}).get('sport:homeScore', '?')}-{e.get('sport:score', {}).get('sport:awayScore', '?')} {next((c.get('name') for c in e.get('sport:competitors', []) if c.get('sport:qualifier')=='away'), 'Away')}"
+          for e in $.get('events', [])
+        ])

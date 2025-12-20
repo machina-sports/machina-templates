@@ -58,6 +58,9 @@ datasets:
   - type: prompt
     path: prompts/final_pricing.yml
 
+  - type: prompt
+    path: prompts/kalshi_edge_analyst.yml
+
   # Workflows
   - type: workflow
     path: _folders.yml
@@ -106,6 +109,9 @@ datasets:
 
   - type: workflow
     path: workflows/monte-carlo-simulation.yml
+
+  - type: workflow
+    path: workflows/kalshi-market-integration.yml
 
   - type: workflow
     path: workflows/forecast-game.yml
