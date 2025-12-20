@@ -6,3 +6,5 @@ connector:
   commands:
     - name: "Upload"
       value: "invoke_upload"
+    - name: "Generate Signed URL"
+      value: "generate_signed_url"

@@ -50,8 +50,14 @@ def invoke_transcribe(request_data):
             
         client = speech.SpeechClient.from_service_account_json(temp_sa_path)
         
+        audio = None
+        
         # Handle Audio Path
-        if audio_path.startswith(('http://', 'https://')):
+        if audio_path.startswith("gs://"):
+            # Use Google Cloud Storage URI directly
+            audio = speech.RecognitionAudio(uri=audio_path)
+            
+        elif audio_path.startswith(('http://', 'https://')):
             try:
                 # Basic check for Google Drive viewer links
                 if "drive.google.com" in audio_path and "/view" in audio_path:
@@ -75,11 +81,11 @@ def invoke_transcribe(request_data):
                 return {"status": False, "message": f"Audio file not found: {audio_path}. Remember that Docker only sees files inside the mapped volumes."}
             temp_audio_path = audio_path
             
-        # Read the audio file
-        with open(temp_audio_path, "rb") as audio_file:
-            content = audio_file.read()
-            
-        audio = speech.RecognitionAudio(content=content)
+        if not audio:
+            # Read the audio file if not using GCS URI
+            with open(temp_audio_path, "rb") as audio_file:
+                content = audio_file.read()
+            audio = speech.RecognitionAudio(content=content)
         
         # Configure transcription using v1p1beta1 features
         config_params = {

@@ -1,7 +1,7 @@
 workflow:
   name: "google-storage-test-upload"
   title: "Google Storage Test Upload"
-  description: "Workflow to test the Google Storage upload."
+  description: "Workflow to test the Google Storage upload (supports images and audio)."
   context-variables:
     debugger:
       enabled: true
@@ -9,9 +9,10 @@ workflow:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
     openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
-    image_path: "$.get('image_path')" # Can be a local file path or HTTP/HTTPS URL
+    file_path: "$.get('file_path') or $.get('image_path')"
+    filename: "$.get('filename')"
   outputs:
     data: "$.get('data')"
     url: "$.get('data.url')"
@@ -23,13 +24,13 @@ workflow:
     # 1 test-upload
     - type: "connector"
       name: "test-upload"
-      description: "Test the Google Storage upload (supports both local file paths and HTTP/HTTPS URLs)."
+      description: "Uploads a file to Google Cloud Storage."
       connector:
         name: "google-storage"
         command: "invoke_upload"
       inputs:
-        api_key: "$.get('api_key')"
-        image_path: "$.get('image_path')"
+        file_path: "$.get('file_path')"
+        filename: "$.get('filename')"
       outputs:
         data: "$"
         workflow-status: "'executed'"
