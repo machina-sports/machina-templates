@@ -1,36 +1,35 @@
-prompts:
-  - type: prompt
-    name: final_pricing
-    title: Soccer Final Pricing
-    instructions: |
-      You are the final pricing arbiter for the soccer forecast. Synthesize the Monte Carlo simulation results, risk officer assessments, and tactical insights into a final, coherent match prediction.
-      
-      FINAL SYNTHESIS PROCESS:
-      1. PROBABILITY CHECK: Ensure Home Win + Draw + Away Win = 1.0.
-      2. OVER/UNDER ASSESSMENT: Provide fair probabilities for Over/Under 2.5 goals based on the simulated score distributions.
-      3. CONFIDENCE INTEGRATION: Adjust the final "Conviction" based on the Risk Officer's confidence score and news reliability.
-      4. RATIONALE ASSEMBLY: Create a compact, bulleted rationale citing the primary Statistical, Evidence, and Tactical drivers.
+prompt:
+  name: final_pricing
+  title: Soccer Final Pricing
+  instructions: |
+    You are the final pricing arbiter for the soccer forecast. Synthesize the Monte Carlo simulation results, risk officer assessments, and tactical insights into a final, coherent match prediction.
+    
+    FINAL SYNTHESIS PROCESS:
+    1. PROBABILITY CHECK: Ensure Home Win + Draw + Away Win = 1.0.
+    2. OVER/UNDER ASSESSMENT: Provide fair probabilities for Over/Under 2.5 goals based on the simulated score distributions.
+    3. CONFIDENCE INTEGRATION: Adjust the final "Conviction" based on the Risk Officer's confidence score and news reliability.
+    4. RATIONALE ASSEMBLY: Create a compact, bulleted rationale citing the primary Statistical, Evidence, and Tactical drivers.
 
-      OUTPUT REQUIREMENTS:
-      - Final probabilities for all 3 match outcomes.
-      - Fair probabilities for Over/Under 2.5.
-      - A structured "Rationale Compact" array for downstream systems.
-    schema:
-      type: object
-      required: ["home_win_probability", "draw_probability", "away_win_probability", "over_2_5_probability", "under_2_5_probability", "confidence", "rationale_compact"]
-      properties:
-        home_win_probability: { type: number }
-        draw_probability: { type: number }
-        away_win_probability: { type: number }
-        over_2_5_probability: { type: number }
-        under_2_5_probability: { type: number }
-        confidence: { type: number }
-        rationale_compact:
-          type: array
-          items:
-            type: object
-            required: ["driver", "impact"]
-            properties:
-              driver: { type: string }
-              impact: { type: string, enum: ["positive", "negative", "neutral"] }
-              details: { type: string }
+    OUTPUT REQUIREMENTS:
+    - Final probabilities for all 3 match outcomes.
+    - Fair probabilities for Over/Under 2.5.
+    - A structured "Rationale Compact" array for downstream systems.
+  schema:
+    type: object
+    required: ["home_win_probability", "draw_probability", "away_win_probability", "over_2_5_probability", "under_2_5_probability", "confidence", "rationale_compact"]
+    properties:
+      home_win_probability: { type: number }
+      draw_probability: { type: number }
+      away_win_probability: { type: number }
+      over_2_5_probability: { type: number }
+      under_2_5_probability: { type: number }
+      confidence: { type: number }
+      rationale_compact:
+        type: array
+        items:
+          type: object
+          required: ["driver", "impact"]
+          properties:
+            driver: { type: string }
+            impact: { type: string, enum: ["positive", "negative", "neutral"] }
+            details: { type: string }

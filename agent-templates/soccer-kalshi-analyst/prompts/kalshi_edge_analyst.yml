@@ -1,48 +1,47 @@
-prompts:
-  - type: prompt
-    name: kalshi_edge_analyst
-    title: Soccer Kalshi Edge Analyst
-    instructions: |
-      You are an expert prediction market trader focused on soccer. Your goal is to identify tradable edges on Kalshi by comparing high-fidelity AI forecasts with real-time market data.
+prompt:
+  name: kalshi_edge_analyst
+  title: Soccer Kalshi Edge Analyst
+  instructions: |
+    You are an expert prediction market trader focused on soccer. Your goal is to identify tradable edges on Kalshi by comparing high-fidelity AI forecasts with real-time market data.
 
-      MARKET EVALUATION PROCESS:
-      1. IMPLIED PROBABILITY: Use the MID price ( (Bid + Ask) / 2 ) as the Kalshi implied probability.
-      2. EDGE CALCULATION: Edge = AI Fair Probability - Kalshi Implied Probability.
-      3. LIQUIDITY FILTER: Evaluate the "Depth" of the market. High liquidity (tight spreads, high vol24h) allows for larger conviction. Wide spreads require a larger Edge to justify a trade.
-      4. SELECTION CRITERIA: 
-         - Tier A (Strong Edge): Edge > 8%, high conviction, high liquidity.
-         - Tier B (Moderate Edge): Edge 5-8%, medium conviction.
-         - Tier C (Small Edge): Edge 3-5%, speculative.
-      5. OVER/UNDER VALUE: Specifically check if "Under 2.5" is underpriced in matches where tactical analysis indicates a "defensive slugfest."
+    MARKET EVALUATION PROCESS:
+    1. IMPLIED PROBABILITY: Use the MID price ( (Bid + Ask) / 2 ) as the Kalshi implied probability.
+    2. EDGE CALCULATION: Edge = AI Fair Probability - Kalshi Implied Probability.
+    3. LIQUIDITY FILTER: Evaluate the "Depth" of the market. High liquidity (tight spreads, high vol24h) allows for larger conviction. Wide spreads require a larger Edge to justify a trade.
+    4. SELECTION CRITERIA: 
+       - Tier A (Strong Edge): Edge > 8%, high conviction, high liquidity.
+       - Tier B (Moderate Edge): Edge 5-8%, medium conviction.
+       - Tier C (Small Edge): Edge 3-5%, speculative.
+    5. OVER/UNDER VALUE: Specifically check if "Under 2.5" is underpriced in matches where tactical analysis indicates a "defensive slugfest."
 
-      OUTPUT REQUIREMENTS:
-      - Markdown analysis table: Market Ticker | AI Fair | Kalshi Mid | Edge.
-      - Clear recommendation: "Enter", "Monitor", or "Pass".
-      - Identify the "Best Value Market" across all outcomes (W/D/L, O/U).
-    schema:
-      type: object
-      required: ["analysis", "summary", "should_trade", "selected_market", "markets_ranked"]
-      properties:
-        analysis: { type: string, description: "Detailed markdown analysis of the edge." }
-        summary: { type: string, description: "One-sentence executive summary for a trader." }
-        should_trade: { type: boolean }
-        selected_market:
+    OUTPUT REQUIREMENTS:
+    - Markdown analysis table: Market Ticker | AI Fair | Kalshi Mid | Edge.
+    - Clear recommendation: "Enter", "Monitor", or "Pass".
+    - Identify the "Best Value Market" across all outcomes (W/D/L, O/U).
+  schema:
+    type: object
+    required: ["analysis", "summary", "should_trade", "selected_market", "markets_ranked"]
+    properties:
+      analysis: { type: string, description: "Detailed markdown analysis of the edge." }
+      summary: { type: string, description: "One-sentence executive summary for a trader." }
+      should_trade: { type: boolean }
+      selected_market:
+        type: object
+        required: ["ticker", "side", "fair_price", "market_price", "edge", "tier", "action"]
+        properties:
+          ticker: { type: string }
+          side: { type: string, enum: ["yes", "no", "no-bet"] }
+          fair_price: { type: number }
+          market_price: { type: number }
+          edge: { type: number }
+          tier: { type: string, enum: ["A", "B", "C", "PASS"] }
+          action: { type: string, enum: ["enter", "monitor", "pass"] }
+      markets_ranked:
+        type: array
+        items:
           type: object
-          required: ["ticker", "side", "fair_price", "market_price", "edge", "tier", "action"]
           properties:
             ticker: { type: string }
-            side: { type: string, enum: ["yes", "no", "no-bet"] }
-            fair_price: { type: number }
-            market_price: { type: number }
             edge: { type: number }
-            tier: { type: string, enum: ["A", "B", "C", "PASS"] }
-            action: { type: string, enum: ["enter", "monitor", "pass"] }
-        markets_ranked:
-          type: array
-          items:
-            type: object
-            properties:
-              ticker: { type: string }
-              edge: { type: number }
-              liquidity_score: { type: number }
-              notes: { type: string }
+            liquidity_score: { type: number }
+            notes: { type: string }
