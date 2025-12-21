@@ -238,13 +238,15 @@ workflow:
     - type: document
       name: store-prediction
       config:
-        action: update
-        force-update: true
+        action: save
       documents:
         soccer-prediction: |
           {
+            'title': $.get('h_name', '') + ' vs ' + $.get('a_name', '') + ' - AI Forecast',
             'fixture_id': str($.get('fixture_id')),
             'matchup': $.get('h_name', '') + ' vs ' + $.get('a_name', ''),
+            'home_team': $.get('h_name', ''),
+            'away_team': $.get('a_name', ''),
             'league': $.get('league'),
             'season': $.get('season'),
             'match_date': $.get('event_doc', {}).get('schema:startDate'),
@@ -265,6 +267,16 @@ workflow:
             'abstain_recommended': $.get('risk_out', {}).get('abstain', False),
             'timestamp': datetime.utcnow().isoformat()
           }
+      metadata:
+        fixture_id: "str($.get('fixture_id'))"
+        home_team: "$.get('h_name', '')"
+        away_team: "$.get('a_name', '')"
+        league: "$.get('league')"
+        season: "$.get('season')"
+        match_date: "$.get('event_doc', {}).get('schema:startDate')"
+        confidence: "$.get('risk_out', {}).get('confidence', 0.5)"
+        abstain: "$.get('risk_out', {}).get('abstain', False)"
+        document_type: "'prediction'"
       outputs:
         prediction_document_id: "$.get('document_id')"
 
@@ -320,17 +332,32 @@ workflow:
       name: store-edge
       condition: "$.get('edge_analysis') is not None"
       config:
-        action: update
-        force-update: true
+        action: save
       documents:
         soccer-kalshi-analysis: |
           {
+            'title': $.get('h_name', '') + ' vs ' + $.get('a_name', '') + ' - Kalshi Edge Analysis',
             'fixture_id': str($.get('fixture_id')),
+            'matchup': $.get('h_name', '') + ' vs ' + $.get('a_name', ''),
+            'home_team': $.get('h_name', ''),
+            'away_team': $.get('a_name', ''),
             'prediction_id': $.get('prediction_document_id'),
             'analysis': $.get('edge_analysis', {}).get('analysis'),
             'summary': $.get('edge_analysis', {}).get('summary'),
             'selected': $.get('edge_analysis', {}).get('selected_market'),
             'markets_ranked': $.get('edge_analysis', {}).get('markets_ranked'),
             'should_trade': $.get('edge_analysis', {}).get('should_trade'),
+            'confidence': $.get('edge_analysis', {}).get('overall_confidence'),
+            'risk_warnings': $.get('edge_analysis', {}).get('risk_warnings', []),
             'timestamp': datetime.utcnow().isoformat()
           }
+      metadata:
+        fixture_id: "str($.get('fixture_id'))"
+        home_team: "$.get('h_name', '')"
+        away_team: "$.get('a_name', '')"
+        match_date: "$.get('event_doc', {}).get('schema:startDate')"
+        should_trade: "$.get('edge_analysis', {}).get('should_trade', False)"
+        selected_ticker: "$.get('edge_analysis', {}).get('selected_market', {}).get('ticker', '')"
+        selected_tier: "$.get('edge_analysis', {}).get('selected_market', {}).get('tier', 'PASS')"
+        confidence: "$.get('edge_analysis', {}).get('overall_confidence', 0)"
+        document_type: "'kalshi-edge'"
