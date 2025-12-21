@@ -1,33 +1,39 @@
 agent:
   name: soccer-kalshi-analyst
   title: Soccer Kalshi Analyst Agent
-  description: Expert AI agent for soccer match forecasting and Kalshi market analysis.
+  description: Monitors upcoming soccer fixtures, generates high-fidelity AI forecasts using Poisson Monte Carlo simulations, and identifies tradable edges on Kalshi prediction markets.
   context:
-    config-frequency: 60
+    config-frequency: 10
     status: "inactive"
+  context-agent:
+    fixture_id: "$.get('fixture_id')"
   workflows:
-    - name: soccer-forecast-match
-      description: "Forecast a soccer match using statistical and evidence-based AI analysis"
+  
+    # 1. Consumer: Find upcoming fixtures needing analysis
+    - name: soccer-kalshi-analysis-consumer
+      description: Identify upcoming soccer fixtures for AI forecasting
       inputs:
         fixture_id: $.get('fixture_id')
-        league: $.get('league')
-        season: $.get('season')
       outputs:
-        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
-        prediction_document_id: $.get('prediction_document_id')
+        analysis_fixture_id: $.get('fixture_id')
+        analysis_fixture_exists: $.get('workflow-status', 'skipped') == 'executed'
 
-    - name: soccer-kalshi-market-integration
-      description: "Match soccer forecasts to Kalshi markets and identify betting edges"
+    # 2. Executor: Run the full forecasting and market integration pipeline
+    - name: soccer-forecast-match
+      description: Execute statistical modeling, news gathering, and Kalshi market analysis
+      condition: $.get('analysis_fixture_exists') is True
       inputs:
-        prediction_document_id: $.get('prediction_document_id')
+        fixture_id: $.get('analysis_fixture_id')
       outputs:
-        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
+        forecast_document_id: $.get('prediction_document_id')
+        forecast_executor_status: $.get('workflow-status', 'skipped') == 'executed'
 
-    - name: soccer-sync-fixtures
-      description: "Sync match data from API-Football"
+    # 3. Update: Finalize version control and status
+    - name: soccer-kalshi-analysis-update
+      description: Finalize analysis status and update document versioning
+      condition: $.get('analysis_fixture_exists') is True
       inputs:
-        league: $.get('league')
-        season: $.get('season')
+        fixture_id: $.get('analysis_fixture_id')
+        is_finished: $.get('forecast_executor_status') == 'executed'
       outputs:
-        workflow-status: $.get('workflow-status', 'skipped') == 'executed'
-
+        analysis_update_status: $.get('workflow-status', 'skipped') == 'executed'

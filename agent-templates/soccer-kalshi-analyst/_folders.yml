@@ -1,7 +1,7 @@
 workflow:
   name: soccer-kalshi-analyst-folders
   title: Soccer Kalshi Analyst - Folders
-  description: Folder structure for Soccer Kalshi Analyst agent.
+  description: UI Folder structure for Soccer Kalshi Analyst findings.
   context-variables:
     debugger:
       enabled: false
@@ -10,7 +10,7 @@ workflow:
   tasks:
     - type: document
       name: install-documents
-      description: Install documents and folder structure.
+      description: Install folders for Match Predictions and Kalshi Edge Analysis.
       config:
         action: update
         embed-vector: false
@@ -19,15 +19,15 @@ workflow:
         doc-structure: |
           [
             {
-              "title": "Soccer Analysis",
+              "title": "Soccer AI Forecasts",
               "isActive": True,
               "icon": "folder",
               "items": [
                 {
                   "name": "soccer-prediction",
-                  "title": "Match Predictions",
-                  "description": "AI-powered soccer match predictions",
-                  "category": "Soccer Analysis",
+                  "title": "Fair Price Models",
+                  "description": "AI-calculated fair probabilities based on stats and news.",
+                  "category": "Soccer AI Forecasts",
                   "metadata": {
                     "name": ["soccer-prediction"]
                   },
@@ -36,9 +36,9 @@ workflow:
                 },
                 {
                   "name": "soccer-kalshi-analysis",
-                  "title": "Kalshi Recommendations",
-                  "description": "Trading recommendations for Kalshi soccer markets",
-                  "category": "Soccer Analysis",
+                  "title": "Kalshi Edge Alerts",
+                  "description": "Real-time trading opportunities on Kalshi.",
+                  "category": "Soccer AI Forecasts",
                   "metadata": {
                     "name": ["soccer-kalshi-analysis"]
                   },
@@ -48,4 +48,3 @@ workflow:
               ]
             }
           ]
-

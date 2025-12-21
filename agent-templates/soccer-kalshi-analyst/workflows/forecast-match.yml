@@ -1,8 +1,10 @@
 workflow:
   name: soccer-forecast-match
-  title: Soccer Match Forecast
-  description: Complete pipeline from stats to Monte Carlo prediction for soccer.
+  title: Soccer Match Forecast (Executor)
+  description: Full execution pipeline from statistical modeling to Kalshi market edge analysis.
   context-variables:
+    debugger:
+      enabled: true
     api-football:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     google-genai:
@@ -11,64 +13,68 @@ workflow:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     fixture_id: "$.get('fixture_id')"
-    league: "$.get('league')"
-    season: "$.get('season')"
   outputs:
     workflow-status: "'executed'"
     prediction_document_id: "$.get('prediction_document_id')"
   tasks:
-    - type: connector
-      name: load-game-data
-      connector:
-        name: api-football
-        command: get-fixtures
+    # 1. Load match details from DB (Standardizing IDs)
+    - type: document
+      name: load-event-from-db
+      config:
+        action: search
+      filters:
+        metadata.fixture_id: str($.get('fixture_id'))
       inputs:
-        id: "$.get('fixture_id')"
+        name: "'sport:Event'"
       outputs:
-        fixture_data: "$.get('response')[0]"
-        home_team: "$.get('fixture_data', {}).get('teams', {}).get('home', {}).get('name')"
-        away_team: "$.get('fixture_data', {}).get('teams', {}).get('away', {}).get('name')"
+        event_exists: "len($.get('documents', [])) > 0"
+        event_doc: "$.get('documents')[0].get('value') if $.get('documents') else None"
+        league: "$.get('documents')[0].get('metadata', {}).get('league')"
+        season: "$.get('documents')[0].get('metadata', {}).get('season')"
 
+    # 2. Extract basic team info
     - type: connector
-      name: fetch-match-stats
-      description: Get detailed match statistics
-      connector:
-        name: api-football
-        command: get-fixtures/statistics
-      inputs:
-        fixture: "$.get('fixture_id')"
-      outputs:
-        match_stats: "$.get('response')"
-
-    - type: connector
-      name: fetch-match-events
-      description: Get match events (goals, cards, subs)
-      connector:
-        name: api-football
-        command: get-fixtures/events
-      inputs:
-        fixture: "$.get('fixture_id')"
-      outputs:
-        match_events: "$.get('response')"
-
-    - type: connector
-      name: aggregate-features
+      name: extract-teams
       connector:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
+        event_doc: "$.get('event_doc')"
         fixture_id: "$.get('fixture_id')"
-        league: "$.get('league')"
-        season: "$.get('season')"
-        match_stats: "$.get('match_stats')"
-        match_events: "$.get('match_events')"
       outputs:
-        feature_payload: "$.get('feature_payload')"
+        home_team_id: "$.get('feature_payload', {}).get('home', {}).get('team_id')"
+        home_team_name: "$.get('feature_payload', {}).get('home', {}).get('name')"
+        away_team_id: "$.get('feature_payload', {}).get('away', {}).get('team_id')"
+        away_team_name: "$.get('feature_payload', {}).get('away', {}).get('name')"
 
-    # 5. Generate news queries
+    # 3. Fetch deep team stats
+    - type: connector
+      name: fetch-home-stats
+      connector:
+        name: api-football
+        command: get-teams/statistics
+      inputs:
+        team: "$.get('home_team_id')"
+        league: "$.get('league', '39')"
+        season: "$.get('season', '2025')"
+      outputs:
+        home_stats: "$.get('response')"
+
+    - type: connector
+      name: fetch-away-stats
+      connector:
+        name: api-football
+        command: get-teams/statistics
+      inputs:
+        team: "$.get('away_team_id')"
+        league: "$.get('league', '39')"
+        season: "$.get('season', '2025')"
+      outputs:
+        away_stats: "$.get('response')"
+
+    # 4. Gather Evidence (News Search)
     - type: connector
       name: generate-news-queries
-      description: Generate search queries for match news
       connector:
         name: google-genai
         command: invoke_prompt
@@ -78,16 +84,13 @@ workflow:
       inputs:
         prompt_name: news_query_generator
         league: "$.get('league')"
-        season: "$.get('season')"
-        matchup: "$.get('home_team') + ' vs ' + $.get('away_team')"
-        game_date: "$.get('fixture_data', {}).get('fixture', {}).get('date')"
+        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
+        game_date: "$.get('event_doc', {}).get('schema:startDate')"
       outputs:
         news_queries: "$.get('news_queries', [])"
 
-    # 6. Search news
     - type: connector
       name: search-news
-      description: Execute web search for soccer news
       connector:
         name: google-genai
         command: invoke_search
@@ -100,31 +103,11 @@ workflow:
       inputs:
         search_query: $.get('search_query', '')
         recency_days: 3
-        language: 'en'
-        location: 'global'
       outputs:
-        search_results: |
-          [
-            $.get('answer', '')
-          ]
+        search_results: "[$.get('answer', '')]"
 
-    # 7. Filter search results
-    - type: connector
-      name: filter-search-results
-      description: Filter and deduplicate search results
-      connector:
-        name: soccer-aggregate-features
-        command: filter_search_results
-      inputs:
-        search_results: "$.get('search_results', [])"
-        recency_days: 3
-      outputs:
-        filtered_search_results: "$.get('filtered_search_results', [])"
-
-    # 8. Extract news evidence
     - type: connector
       name: extract-news-evidence
-      description: Extract structured evidence from search results
       connector:
         name: google-genai
         command: invoke_prompt
@@ -133,18 +116,28 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: news_evidence_extractor
-        matchup: "$.get('home_team') + ' vs ' + $.get('away_team')"
-        search_results: "$.get('filtered_search_results')"
+        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
+        search_results: "$.get('search_results')"
       outputs:
         evidence_items: "$.get('evidence_items', [])"
         team_level_deltas: "$.get('team_level_deltas', {})"
         news_reliability: "$.get('news_reliability', 0.0)"
-        missing_info_flags: "$.get('missing_info_flags', [])"
 
-    # 9. Format evidence outputs
+    # 5. Build Comprehensive Feature Payload
+    - type: connector
+      name: final-aggregation
+      connector:
+        name: soccer-aggregate-features
+        command: aggregate_features
+      inputs:
+        event_doc: "$.get('event_doc')"
+        home_historical_stats: "$.get('home_stats')"
+        away_historical_stats: "$.get('away_stats')"
+      outputs:
+        feature_payload: "$.get('feature_payload')"
+
     - type: connector
       name: format-evidence-outputs
-      description: Format evidence for downstream workflows
       connector:
         name: soccer-aggregate-features
         command: format_evidence_outputs
@@ -152,29 +145,11 @@ workflow:
         evidence_items: "$.get('evidence_items', [])"
         team_level_deltas: "$.get('team_level_deltas', {})"
         news_reliability: "$.get('news_reliability', 0.0)"
-        missing_info_flags: "$.get('missing_info_flags', [])"
       outputs:
         news_evidence: "$.get('news_evidence')"
         news_deltas: "$.get('news_deltas')"
 
-    # 10. Update feature payload with news deltas
-    - type: connector
-      name: update-feature-payload
-      description: Update feature payload with news evidence
-      connector:
-        name: soccer-aggregate-features
-        command: aggregate_features
-      inputs:
-        feature_payload: "$.get('feature_payload')"
-        news_deltas: "$.get('news_deltas')"
-      outputs:
-        updated_feature_payload: |
-          {
-            **$.get('feature_payload'),
-            'news': $.get('news_deltas')
-          }
-
-    # 11. Stats analyst forecast
+    # 6. AI Multi-Agent Forecasting
     - type: connector
       name: stats-analyst
       connector:
@@ -185,11 +160,10 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: forecast_stats_analyst
-        feature_payload: "$.get('updated_feature_payload')"
+        feature_payload: "$.get('feature_payload')"
       outputs:
         stats_component: "$"
 
-    # 12. Evidence analyst forecast
     - type: connector
       name: evidence-analyst
       connector:
@@ -200,12 +174,11 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: forecast_evidence_analyst
-        feature_payload: "$.get('updated_feature_payload')"
+        feature_payload: "$.get('feature_payload')"
         news_evidence: "$.get('news_evidence')"
       outputs:
         evidence_component: "$"
 
-    # 13. Matchup analyst forecast
     - type: connector
       name: matchup-analyst
       connector:
@@ -216,11 +189,10 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: forecast_matchup_analyst
-        feature_payload: "$.get('updated_feature_payload')"
+        feature_payload: "$.get('feature_payload')"
       outputs:
         matchup_component: "$"
 
-    # 14. Risk officer assessment
     - type: connector
       name: risk-officer
       connector:
@@ -231,17 +203,12 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: forecast_risk_officer
-        components: |
-          {
-            'stats': $.get('stats_component'),
-            'evidence': $.get('evidence_component'),
-            'matchup': $.get('matchup_component')
-          }
-        feature_payload: "$.get('updated_feature_payload')"
+        components: "{'stats': $.get('stats_component'), 'evidence': $.get('evidence_component'), 'matchup': $.get('matchup_component')}"
+        feature_payload: "$.get('feature_payload')"
       outputs:
         risk_component: "$"
 
-    # 15. Simulation parameterization
+    # 7. Simulations & Pricing
     - type: connector
       name: sim-parameterizer
       connector:
@@ -252,18 +219,12 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: simulation_parameterizer
-        feature_payload: "$.get('updated_feature_payload')"
-        components: |
-          {
-            'stats': $.get('stats_component'),
-            'evidence': $.get('evidence_component'),
-            'matchup': $.get('matchup_component')
-          }
+        feature_payload: "$.get('feature_payload')"
+        components: "{'stats': $.get('stats_component'), 'evidence': $.get('evidence_component'), 'matchup': $.get('matchup_component')}"
         risk: "$.get('risk_component')"
       outputs:
         sim_params: "$"
 
-    # 16. Monte Carlo simulation
     - type: connector
       name: monte-carlo
       connector:
@@ -275,7 +236,6 @@ workflow:
       outputs:
         sim_results: "$.get('simulation_results')"
 
-    # 17. Final pricing
     - type: connector
       name: final-pricing
       connector:
@@ -286,19 +246,12 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: final_pricing
-        feature_payload: "$.get('updated_feature_payload')"
-        components: |
-          {
-            'stats': $.get('stats_component'),
-            'evidence': $.get('evidence_component'),
-            'matchup': $.get('matchup_component'),
-            'risk': $.get('risk_component')
-          }
+        feature_payload: "$.get('feature_payload')"
+        components: "{'stats': $.get('stats_component'), 'evidence': $.get('evidence_component'), 'matchup': $.get('matchup_component'), 'risk': $.get('risk_component')}"
         sim_results: "$.get('sim_results')"
       outputs:
         final_prediction: "$"
 
-    # 18. Store final prediction
     - type: document
       name: store-prediction
       config:
@@ -309,16 +262,76 @@ workflow:
           {
             'fixture_id': $.get('fixture_id'),
             'prediction': $.get('final_prediction'),
-            'feature_payload': $.get('updated_feature_payload'),
-            'components': {
-              'stats': $.get('stats_component'),
-              'evidence': $.get('evidence_component'),
-              'matchup': $.get('matchup_component'),
-              'risk': $.get('risk_component')
-            },
-            'simulation_results': $.get('sim_results'),
             'timestamp': datetime.utcnow()
           }
       outputs:
         prediction_document_id: "$.get('document_id')"
 
+    # 8. Kalshi Market Edge Detection (Parity with Market Agent)
+    - type: document
+      name: load-kalshi-event
+      config:
+        action: search
+      filters:
+        value.eventCode: f"urn:apifootball:sport_event:{$.get('fixture_id')}"
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        kalshi_event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if $.get('documents') else None"
+
+    - type: connector
+      name: load-markets
+      condition: "$.get('kalshi_event_ticker') is not None"
+      connector:
+        name: kalshi
+        command: get-markets
+      inputs:
+        event_ticker: "$.get('kalshi_event_ticker')"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    - type: mapping
+      name: kalshi-markets-summary
+      condition: "len($.get('markets', [])) > 0"
+      inputs:
+        markets: "$.get('markets')"
+      outputs:
+        markets_summary: "$.get('markets_summary')"
+        markets_count: "$.get('markets_count')"
+
+    - type: connector
+      name: edge-analyst
+      condition: "$.get('markets_count', 0) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt_name: kalshi_edge_analyst
+        prediction_data: "$.get('final_prediction')"
+        markets_summary: "$.get('markets_summary')"
+      outputs:
+        edge_analysis: "$"
+
+    # 9. Final Record (Parity Document Structure)
+    - type: document
+      name: store-edge-analysis
+      condition: "$.get('edge_analysis') is not None"
+      config:
+        action: update
+        force-update: true
+      documents:
+        soccer-kalshi-analysis: |
+          {
+            'fixture_id': $.get('fixture_id'),
+            'prediction_id': $.get('prediction_document_id'),
+            'title': f"Soccer Edge Analysis: {$.get('home_team_name')} vs {$.get('away_team_name')}",
+            'analysis': $.get('edge_analysis').get('analysis'),
+            'summary': $.get('edge_analysis').get('summary'),
+            'selected': $.get('edge_analysis').get('selected_market'),
+            'markets_ranked': $.get('edge_analysis').get('markets_ranked'),
+            'should_trade': $.get('edge_analysis').get('should_trade'),
+            'timestamp': datetime.utcnow()
+          }

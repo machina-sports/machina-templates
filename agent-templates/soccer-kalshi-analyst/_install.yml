@@ -1,16 +1,16 @@
 setup:
   title: Soccer Kalshi Analyst
-  description: AI-powered soccer forecasting agent that analyzes matches, predicts outcomes, and provides Kalshi betting insights using API-Football data and Gemini 3 Pro Preview.
+  description: Expert AI-powered soccer forecasting agent that pick up matches, executes Poisson Monte Carlo simulations, and identifies tradable edges on Kalshi.
   category:
     - sports
     - analytics
     - soccer
   estimatedTime: 5 minutes
   features:
-    - AI Agent to forecast soccer matches with Poisson Monte Carlo simulation
-    - Integrated with API-Football for real-time fixtures and stats
-    - Automated Kalshi market matching and edge analysis
-    - Evidence-based predictions using news search and statistical modeling
+    - Autonomous "Consumer" to scan database for upcoming fixtures
+    - Deep analytical pipeline (Statistical Baseline + News Evidence + Tactical Clash)
+    - High-fidelity Poisson Monte Carlo simulation (10,000 iterations)
+    - Automated Kalshi order book matching and edge detection
   integrations:
     - api-football
     - google-genai
@@ -18,7 +18,7 @@ setup:
     - kalshi
   status: available
   value: agent-templates/soccer-kalshi-analyst
-  version: 1.0.0
+  version: 1.1.0
 
 datasets:
 
@@ -75,8 +75,13 @@ datasets:
     path: workflows/sync-standings.yml
 
   - type: workflow
+    path: workflows/consumer.yml
+
+  - type: workflow
     path: workflows/forecast-match.yml
 
   - type: workflow
-    path: workflows/kalshi-market-integration.yml
+    path: workflows/update.yml
 
+  - type: workflow
+    path: workflows/kalshi-market-integration.yml
