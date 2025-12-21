@@ -1,0 +1,39 @@
+workflow:
+  name: "get-upload-url"
+  title: "Get Signed Upload URL"
+  description: "Generates a signed URL for direct file upload to Google Storage."
+  context-variables:
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    filename: "$.get('filename')"
+    content_type: "$.get('content_type', 'application/octet-stream')"
+    expiration_minutes: "$.get('expiration_minutes', 15)"
+  outputs:
+    upload_url: "$.get('upload_url')"
+    public_url: "$.get('public_url')"
+    gcs_uri: "$.get('gcs_uri')"
+    gs_path: "$.get('gs_path')"
+    filename: "$.get('filename')"
+    method: "$.get('method')"
+    workflow-status: "$.get('workflow-status', 'executed')"
+  tasks:
+    - type: "connector"
+      name: "generate-url"
+      connector:
+        name: "google-storage"
+        command: "generate_signed_url"
+      inputs:
+        filename: "$.get('filename')"
+        content_type: "$.get('content_type')"
+        expiration_minutes: "$.get('expiration_minutes')"
+      outputs:
+        upload_url: "$.get('upload_url')"
+        public_url: "$.get('public_url')"
+        gcs_uri: "$.get('gcs_uri')"
+        gs_path: "$.get('gcs_uri')"
+        filename: "$.get('filename')"
+        path: "$.get('path')"
+        method: "$.get('method')"
+        workflow-status: "'executed'"

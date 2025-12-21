@@ -1,22 +1,23 @@
-from google.cloud import storage
-import json
-import mimetypes
-import tempfile
-import urllib.request
-import urllib.error
-import urllib.parse
-import os
-import base64
-import re
-import datetime
 
 def invoke_upload(request_data):
+    from google.cloud import storage
+    import json
+    import mimetypes
+    import tempfile
+    import urllib.request
+    import urllib.error
+    import urllib.parse
+    import os
+    import base64
+    import re
+
     # Handle different Machina request structures (params vs inputs)
     params = request_data.get("params") or request_data.get("inputs") or {}
     headers = request_data.get("headers") or {}
 
-    api_key = headers.get("api_key")
-    bucket_name = headers.get("bucket_name")
+    # api_key and bucket_name can be in headers or params
+    api_key = headers.get("api_key") or params.get("api_key")
+    bucket_name = headers.get("bucket_name") or params.get("bucket_name")
 
     # Accept both image_path (legacy) and file_path (generic)
     file_input = params.get("file_path") or params.get("image_path")
@@ -29,7 +30,7 @@ def invoke_upload(request_data):
         file_input = str(file_input)
 
     # Check the type of input
-    is_url = isinstance(file_input, str) and file_input.startswith(('http://', 'https://'))
+    is_url = isinstance(file_input, str) and file_input.startswith(('http://', 'https://', 'gs://'))
     is_base64 = False
     is_raw_bytes = isinstance(file_input, bytes)
     base64_data = None
@@ -133,10 +134,36 @@ def invoke_upload(request_data):
                 with tempfile.NamedTemporaryFile(delete=False) as download_temp:
                     download_temp_path = download_temp.name
 
-                req = urllib.request.Request(file_input, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req) as response:
-                    with open(download_temp_path, 'wb') as f:
-                        f.write(response.read())
+                # Check if it's a GCS URL to use the authenticated client
+                is_gcs_url = False
+                source_bucket_name = None
+                source_blob_name = None
+
+                if file_input.startswith("gs://"):
+                    is_gcs_url = True
+                    parts = file_input[5:].split("/", 1)
+                    source_bucket_name = parts[0]
+                    source_blob_name = parts[1] if len(parts) > 1 else ""
+                elif "storage.googleapis.com" in file_input:
+                    is_gcs_url = True
+                    # Format: https://storage.googleapis.com/bucket-name/object-path
+                    parsed_url = urllib.parse.urlparse(file_input)
+                    path_parts = parsed_url.path.lstrip("/").split("/", 1)
+                    if len(path_parts) >= 2:
+                        source_bucket_name = path_parts[0]
+                        source_blob_name = path_parts[1]
+
+                if is_gcs_url and source_bucket_name and source_blob_name:
+                    # Use authenticated client for GCS URLs
+                    source_bucket = client.bucket(source_bucket_name)
+                    source_blob = source_bucket.blob(source_blob_name)
+                    source_blob.download_to_filename(download_temp_path)
+                else:
+                    # Regular URL download
+                    req = urllib.request.Request(file_input, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req) as response:
+                        with open(download_temp_path, 'wb') as f:
+                            f.write(response.read())
 
                 content_type, _ = mimetypes.guess_type(download_temp_path)
                 content_type = content_type or "application/octet-stream"
@@ -188,6 +215,12 @@ def generate_signed_url(request_data):
     Generates a signed URL for uploading a file directly to Google Cloud Storage.
     This allows the frontend to send raw bytes (PUT) without passing through the backend.
     """
+    from google.cloud import storage
+    import json
+    import tempfile
+    import os
+    from datetime import timedelta
+
     params = request_data.get("params") or request_data.get("inputs") or {}
     headers = request_data.get("headers") or {}
 
@@ -233,9 +266,8 @@ def generate_signed_url(request_data):
 
         url = blob.generate_signed_url(
             version="v4",
-            expiration=datetime.timedelta(minutes=expiration_minutes),
+            expiration=timedelta(minutes=expiration_minutes),
             method="PUT",
-            content_type=content_type,
         )
         
         if os.path.exists(temp_sa_path):
@@ -260,4 +292,8 @@ def generate_signed_url(request_data):
     except Exception as e:
         if temp_sa_path and os.path.exists(temp_sa_path):
             os.unlink(temp_sa_path)
-        return {"status": "error", "message": f"Exception generating signed URL: {str(e)}"}
+        
+        # Log error details for debugging
+        import traceback
+        traceback_str = traceback.format_exc()
+        return {"status": "error", "message": f"Exception generating signed URL: {str(e)}", "details": traceback_str}

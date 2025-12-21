@@ -12,7 +12,7 @@ setup:
     - google
   status: available
   value: connectors/google-storage
-  version: 1.0.0
+  version: 1.0.2
 
 datasets:
   
@@ -21,3 +21,6 @@ datasets:
 
   - type: "workflow"
     path: "test-upload.yml"
+
+  - type: "workflow"
+    path: "get-upload-url.yml"

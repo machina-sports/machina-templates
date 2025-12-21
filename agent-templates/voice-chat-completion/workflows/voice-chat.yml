@@ -6,21 +6,55 @@ workflow:
     debugger:
       enabled: true
     google-speech-to-text:
-      api_key: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
     google-genai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
+    audio_base64: "$.get('audio_base64')"
     audio_path: "$.get('audio_path')"
-    language_code: "$.get('language_code', 'pt-BR')"
+    language_code: "$.get('language_code', 'en-US')"
+    alternative_language_codes: "$.get('alternative_language_codes', ['pt-BR'])"
+    encoding: "$.get('encoding', 'LINEAR16')"
+    sample_rate_hertz: "$.get('sample_rate_hertz', 16000)"
   outputs:
     transcript: "$.get('transcript')"
     message: "$.get('message')"
     workflow-status: "$.get('message') is not None and 'executed' or 'skipped'"
   tasks:
 
-    # Transcribe audio
+    # 1. Save Base64 audio to temporary file (if provided)
+    - type: "connector"
+      name: "save-audio-to-tmp"
+      if: "$.get('audio_base64')"
+      connector:
+        name: "temp-downloader"
+        command: "invoke_save_to_tmp"
+      inputs:
+        image_base64: "$.get('audio_base64')"
+      outputs:
+        temp_audio_path: "$.get('data.image_path') or $.get('image_path')"
+
+    # 2. Upload audio to GCS (Server-side upload avoids CORS)
+    - type: "connector"
+      name: "upload-to-gcs"
+      if: "$.get('temp_audio_path')"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        api_key: "context.get('google-storage.api_key')"
+        bucket_name: "context.get('google-storage.bucket_name')"
+        file_path: "$.get('temp_audio_path')"
+      outputs:
+        gcs_uri: "$.get('data.gcs_uri') or $.get('gcs_uri')"
+
+    # 3. Transcribe audio
     - type: "connector"
       name: "transcribe-voice"
       description: "Transcribe voice input to text"
@@ -28,15 +62,20 @@ workflow:
         name: "google-speech-to-text"
         command: "invoke_transcribe"
       inputs:
-        audio_path: "$.get('audio_path')"
+        api_key: "context.get('google-speech-to-text.api_key')"
+        audio_path: "$.get('gcs_uri') or $.get('audio_path')"
         language_code: "$.get('language_code')"
+        alternative_language_codes: "$.get('alternative_language_codes')"
+        encoding: "$.get('encoding')"
+        sample_rate_hertz: "$.get('sample_rate_hertz')"
       outputs:
-        transcript: "$.get('transcript')"
+        transcript: "$.get('data.transcript') or $.get('transcript') or ''"
 
-    # Search Machina Assistant Knowledge base
+    # 4. Search Machina Assistant Knowledge base
     - type: "document"
       name: "load-similar-documents"
       description: "Load relevant documentation from Machina Assistant"
+      if: "$.get('transcript')"
       config:
         action: "search"
         threshold-docs: 5
@@ -62,14 +101,18 @@ workflow:
             for d in $.get('documents', [])
           ]
 
-    # Generate response using LLM
+    # 5. Generate response using LLM
     - type: "prompt"
       name: "chat-completions-prompt"
       description: "Generate response based on transcript and knowledge docs."
+      if: "$.get('transcript')"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
-        model: "gemini-2.5-pro"
+        model: "gemini-1.5-pro"
+        provider: "vertex_ai"
+        credential: "context.get('google-genai.credential')"
+        project_id: "context.get('google-genai.project_id')"
       inputs:
         parsed_documents: "$.get('parsed_documents', [])"
         question: "$.get('transcript')"
