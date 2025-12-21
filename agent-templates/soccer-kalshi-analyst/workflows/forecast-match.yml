@@ -1,10 +1,8 @@
 workflow:
   name: soccer-forecast-match
-  title: Soccer Match Forecast (Executor)
-  description: Full execution pipeline from statistical modeling to Kalshi market edge analysis.
+  title: Soccer Match Forecast
+  description: Full execution pipeline using statistical modeling and Kalshi market edge analysis.
   context-variables:
-    debugger:
-      enabled: true
     api-football:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     google-genai:
@@ -17,9 +15,9 @@ workflow:
     workflow-status: "'executed'"
     prediction_document_id: "$.get('prediction_document_id')"
   tasks:
-    # 1. Load match details from DB
+    # 1. Load match details
     - type: document
-      name: load-event-from-db
+      name: load-event
       config:
         action: search
       filters:
@@ -27,58 +25,52 @@ workflow:
       inputs:
         name: "'sport:Event'"
       outputs:
-        event_exists: "len($.get('documents', [])) > 0"
-        event_doc: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
-        league: "$.get('documents')[0].get('metadata', {}).get('league') if len($.get('documents', [])) > 0 else '39'"
-        season: "$.get('documents')[0].get('metadata', {}).get('season') if len($.get('documents', [])) > 0 else '2025'"
+        event_doc: "$.get('documents')[0].get('value')"
+        league: "$.get('documents')[0].get('metadata', {}).get('league')"
+        season: "$.get('documents')[0].get('metadata', {}).get('season')"
 
-    # 2. Extract basic team info
+    # 2. Extract IDs for stats
     - type: connector
-      name: extract-teams
-      condition: "$.get('event_exists') is True"
+      name: extract-ids
       connector:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
         event_doc: "$.get('event_doc')"
-        fixture_id: "$.get('fixture_id')"
       outputs:
-        home_team_id: "$.get('feature_payload', {}).get('home', {}).get('team_id')"
-        home_team_name: "$.get('feature_payload', {}).get('home', {}).get('name')"
-        away_team_id: "$.get('feature_payload', {}).get('away', {}).get('team_id')"
-        away_team_name: "$.get('feature_payload', {}).get('away', {}).get('name')"
+        h_id: "$.get('feature_payload', {}).get('home', {}).get('id')"
+        a_id: "$.get('feature_payload', {}).get('away', {}).get('id')"
+        h_name: "$.get('feature_payload', {}).get('home', {}).get('name')"
+        a_name: "$.get('feature_payload', {}).get('away', {}).get('name')"
 
-    # 3. Fetch deep team stats
+    # 3. Fetch Stats
     - type: connector
-      name: fetch-home-stats
-      condition: "$.get('event_exists') is True"
+      name: fetch-h-stats
       connector:
         name: api-football
         command: get-teams/statistics
       inputs:
-        team: "$.get('home_team_id')"
+        team: "$.get('h_id')"
         league: "$.get('league')"
         season: "$.get('season')"
       outputs:
-        home_stats: "$.get('response')"
+        h_stats: "$"
 
     - type: connector
-      name: fetch-away-stats
-      condition: "$.get('event_exists') is True"
+      name: fetch-a-stats
       connector:
         name: api-football
         command: get-teams/statistics
       inputs:
-        team: "$.get('away_team_id')"
+        team: "$.get('a_id')"
         league: "$.get('league')"
         season: "$.get('season')"
       outputs:
-        away_stats: "$.get('response')"
+        a_stats: "$"
 
-    # 4. Gather Evidence (News Search)
+    # 4. Gather News
     - type: connector
-      name: generate-news-queries
-      condition: "$.get('event_exists') is True"
+      name: gen-queries
       connector:
         name: google-genai
         command: invoke_prompt
@@ -88,32 +80,31 @@ workflow:
       inputs:
         prompt_name: news_query_generator
         league: "$.get('league')"
-        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
+        matchup: "$.get('h_name') + ' vs ' + $.get('a_name')"
         game_date: "$.get('event_doc', {}).get('schema:startDate')"
       outputs:
         news_queries: "$.get('news_queries', [])"
 
     - type: connector
       name: search-news
-      condition: "$.get('event_exists') is True and len($.get('news_queries', [])) > 0"
+      condition: "len($.get('news_queries', [])) > 0"
       connector:
         name: google-genai
         command: invoke_search
         model: "gemini-3-pro-preview"
       foreach:
         concurrent: true
-        name: search_query
+        name: query
         expr: $
         value: $.get('news_queries')
       inputs:
-        search_query: $.get('search_query', '')
+        search_query: "$.get('query')"
         recency_days: 3
       outputs:
-        search_results: "[$.get('answer', '')]"
+        results: "$"
 
     - type: connector
-      name: extract-news-evidence
-      condition: "$.get('event_exists') is True"
+      name: extract-news
       connector:
         name: google-genai
         command: invoke_prompt
@@ -122,45 +113,28 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: news_evidence_extractor
-        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
-        search_results: "$.get('search_results')"
+        matchup: "$.get('h_name') + ' vs ' + $.get('a_name')"
+        search_results: "$.get('results')"
       outputs:
-        evidence_items: "$.get('evidence_items', [])"
-        team_level_deltas: "$.get('team_level_deltas', {})"
-        news_reliability: "$.get('news_reliability', 0.0)"
+        evidence: "$"
 
-    # 5. Build Comprehensive Feature Payload
+    # 5. Build Final Feature Set
     - type: connector
       name: final-aggregation
-      condition: "$.get('event_exists') is True"
       connector:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
         event_doc: "$.get('event_doc')"
-        home_historical_stats: "$.get('home_stats')"
-        away_historical_stats: "$.get('away_stats')"
+        home_stats: "$.get('h_stats')"
+        away_stats: "$.get('a_stats')"
+        news_deltas: "$.get('evidence')"
       outputs:
         feature_payload: "$.get('feature_payload')"
 
-    - type: connector
-      name: format-evidence-outputs
-      condition: "$.get('event_exists') is True"
-      connector:
-        name: soccer-aggregate-features
-        command: format_evidence_outputs
-      inputs:
-        evidence_items: "$.get('evidence_items', [])"
-        team_level_deltas: "$.get('team_level_deltas', {})"
-        news_reliability: "$.get('news_reliability', 0.0)"
-      outputs:
-        news_evidence: "$.get('news_evidence')"
-        news_deltas: "$.get('news_deltas')"
-
-    # 6. AI Multi-Agent Forecasting
+    # 6. Forecast
     - type: connector
       name: stats-analyst
-      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -171,11 +145,10 @@ workflow:
         prompt_name: forecast_stats_analyst
         feature_payload: "$.get('feature_payload')"
       outputs:
-        stats_component: "$"
+        stats_out: "$"
 
     - type: connector
       name: evidence-analyst
-      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -185,13 +158,12 @@ workflow:
       inputs:
         prompt_name: forecast_evidence_analyst
         feature_payload: "$.get('feature_payload')"
-        news_evidence: "$.get('news_evidence')"
+        news_evidence: "$.get('feature_payload', {}).get('news')"
       outputs:
-        evidence_component: "$"
+        evidence_out: "$"
 
     - type: connector
       name: matchup-analyst
-      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -202,11 +174,10 @@ workflow:
         prompt_name: forecast_matchup_analyst
         feature_payload: "$.get('feature_payload')"
       outputs:
-        matchup_component: "$"
+        matchup_out: "$"
 
     - type: connector
       name: risk-officer
-      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -215,15 +186,13 @@ workflow:
         provider: vertex_ai
       inputs:
         prompt_name: forecast_risk_officer
-        components: "{'stats': $.get('stats_component'), 'evidence': $.get('evidence_component'), 'matchup': $.get('matchup_component')}"
+        components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out')}"
         feature_payload: "$.get('feature_payload')"
       outputs:
-        risk_component: "$"
+        risk_out: "$"
 
-    # 7. Simulations & Pricing
     - type: connector
-      name: sim-parameterizer
-      condition: "$.get('event_exists') is True"
+      name: sim-param
       connector:
         name: google-genai
         command: invoke_prompt
@@ -233,14 +202,13 @@ workflow:
       inputs:
         prompt_name: simulation_parameterizer
         feature_payload: "$.get('feature_payload')"
-        components: "{'stats': $.get('stats_component'), 'evidence': $.get('evidence_component'), 'matchup': $.get('matchup_component')}"
-        risk: "$.get('risk_component')"
+        components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out')}"
+        risk: "$.get('risk_out')"
       outputs:
         sim_params: "$"
 
     - type: connector
       name: monte-carlo
-      condition: "$.get('event_exists') is True"
       connector:
         name: soccer-monte-carlo
         command: run_monte_carlo_simulation
@@ -252,7 +220,6 @@ workflow:
 
     - type: connector
       name: final-pricing
-      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -262,14 +229,13 @@ workflow:
       inputs:
         prompt_name: final_pricing
         feature_payload: "$.get('feature_payload')"
-        components: "{'stats': $.get('stats_component'), 'evidence': $.get('evidence_component'), 'matchup': $.get('matchup_component'), 'risk': $.get('risk_component')}"
+        components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out'), 'risk': $.get('risk_out')}"
         sim_results: "$.get('sim_results')"
       outputs:
         final_prediction: "$"
 
     - type: document
       name: store-prediction
-      condition: "$.get('event_exists') is True"
       config:
         action: update
         force-update: true
@@ -283,42 +249,41 @@ workflow:
       outputs:
         prediction_document_id: "$.get('document_id')"
 
-    # 8. Kalshi Market Edge Detection
+    # 7. Kalshi Integration
     - type: document
-      name: load-kalshi-event
-      condition: "$.get('event_exists') is True"
+      name: load-kalshi
       config:
         action: search
       filters:
-        value.eventCode: f"urn:apifootball:sport_event:{$.get('fixture_id')}"
+        value.eventCode: "'urn:apifootball:sport_event:' + $.get('fixture_id')"
       inputs:
         name: "'kalshi-events'"
       outputs:
-        kalshi_event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if len($.get('documents', [])) > 0 else None"
+        k_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if len($.get('documents', [])) > 0 else None"
 
     - type: connector
       name: load-markets
-      condition: "$.get('event_exists') is True and $.get('kalshi_event_ticker') is not None"
+      condition: "$.get('k_ticker') is not None"
       connector:
         name: kalshi
         command: get-markets
       inputs:
-        event_ticker: "$.get('kalshi_event_ticker')"
+        event_ticker: "$.get('k_ticker')"
       outputs:
         markets: "$.get('markets', [])"
 
     - type: mapping
-      name: kalshi-markets-summary
-      condition: "$.get('event_exists') is True and len($.get('markets', [])) > 0"
+      name: k-summary
+      condition: "len($.get('markets', [])) > 0"
       inputs:
         markets: "$.get('markets')"
       outputs:
-        markets_summary: "$.get('markets_summary')"
-        markets_count: "$.get('markets_count')"
+        m_summary: "$.get('markets_summary')"
+        m_count: "$.get('markets_count')"
 
     - type: connector
       name: edge-analyst
-      condition: "$.get('event_exists') is True and $.get('markets_count', 0) > 0"
+      condition: "$.get('m_count', 0) > 0"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -328,14 +293,13 @@ workflow:
       inputs:
         prompt_name: kalshi_edge_analyst
         prediction_data: "$.get('final_prediction')"
-        markets_summary: "$.get('markets_summary')"
+        markets_summary: "$.get('m_summary')"
       outputs:
         edge_analysis: "$"
 
-    # 9. Final Record
     - type: document
-      name: store-edge-analysis
-      condition: "$.get('event_exists') is True and $.get('edge_analysis') is not None"
+      name: store-edge
+      condition: "$.get('edge_analysis') is not None"
       config:
         action: update
         force-update: true
@@ -344,7 +308,6 @@ workflow:
           {
             'fixture_id': $.get('fixture_id'),
             'prediction_id': $.get('prediction_document_id'),
-            'title': f"Soccer Edge Analysis: {$.get('home_team_name')} vs {$.get('away_team_name')}",
             'analysis': $.get('edge_analysis', {}).get('analysis'),
             'summary': $.get('edge_analysis', {}).get('summary'),
             'selected': $.get('edge_analysis', {}).get('selected_market'),

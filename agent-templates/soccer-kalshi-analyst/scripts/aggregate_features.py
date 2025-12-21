@@ -3,114 +3,104 @@ import json
 
 def aggregate_features(params):
     """
-    Aggregate soccer match features from API-Football data and IPTC sport:Event documents.
+    Super-robust feature aggregator. Standard library only.
+    Handles extraction, statistics merging, and state preparation.
     """
-    p = params
-    if isinstance(p, str):
-        try:
-            p = json.loads(p)
-        except Exception:
-            pass
-            
-    if not isinstance(p, dict):
-        return {"error": f"Params must be a dict, got {type(p).__name__}"}
+    try:
+        p = params
+        if isinstance(p, str):
+            try: p = json.loads(p)
+            except: pass
+        if not isinstance(p, dict): p = {}
 
-    # Extract match metadata from sport:Event document if provided
-    event_doc = p.get('event_doc', {})
-    fixture_id = p.get('fixture_id') or event_doc.get('metadata', {}).get('event_code')
-    league = p.get('league') or event_doc.get('sport:competition', {}).get('@id')
-    season = p.get('season') or event_doc.get('sport:competition', {}).get('sport:season', {}).get('sport:year')
+        # 1. Identity & Metadata
+        event_doc = p.get('event_doc', {})
+        if not isinstance(event_doc, dict): event_doc = {}
+        
+        fixture_id = p.get('fixture_id') or event_doc.get('metadata', {}).get('fixture_id')
+        
+        # 2. Competitors
+        competitors = event_doc.get('sport:competitors', [])
+        home_team_info = {}
+        away_team_info = {}
+        for c in competitors:
+            if c.get('sport:qualifier') == 'home': home_team_info = c
+            if c.get('sport:qualifier') == 'away': away_team_info = c
 
-    if not fixture_id:
-        return {"error": "Missing fixture_id"}
+        # 3. Statistics
+        home_stats_raw = p.get('home_historical_stats', p.get('home_stats', {}))
+        away_stats_raw = p.get('away_historical_stats', p.get('away_stats', {}))
 
-    # Competitors extraction from sport:Event
-    competitors = event_doc.get('sport:competitors', [])
-    home_team_info = next((c for c in competitors if c.get('sport:qualifier') == 'home'), {})
-    away_team_info = next((c for c in competitors if c.get('sport:qualifier') == 'away'), {})
+        def safe_extract_stats(stats_obj):
+            if not isinstance(stats_obj, dict): return {}
+            # API-Football returns stats in 'response' or directly
+            res = stats_obj.get('response', stats_obj)
+            if isinstance(res, list) and len(res) > 0: res = res[0]
+            if not isinstance(res, dict): return {}
+            return res
 
-    # Live Match Data
-    match_stats = p.get('match_stats', [])
-    match_events = p.get('match_events', [])
+        h_stats = safe_extract_stats(home_stats_raw)
+        a_stats = safe_extract_stats(away_stats_raw)
 
-    # Historical Data (if provided)
-    home_history = p.get('home_historical_stats', [])
-    away_history = p.get('away_historical_stats', [])
+        # 4. News Deltas
+        news_deltas = p.get('news_deltas', {}).get('deltas', {})
 
-    def parse_stats(stats_list):
-        if not isinstance(stats_list, list): return {}
-        return {str(item.get('type')): item.get('value') for item in stats_list if isinstance(item, dict)}
-
-    def calculate_form(history):
-        if not history: return {"avg_goals": 0, "win_rate": 0}
-        total_goals = 0
-        wins = 0
-        for match in history:
-            # Note: Logic here depends on API-Football response format for team statistics
-            # This is a placeholder for actual aggregation logic
-            pass
-        return {"avg_goals": 0, "win_rate": 0}
-
-    feature_payload = {
-        "meta": {
-            "league": league,
-            "season": season,
-            "fixture_id": fixture_id,
-            "status": event_doc.get('sport:status', 'NS'),
-            "venue": event_doc.get('sport:venue', {}).get('name'),
-            "start_date": event_doc.get('schema:startDate'),
-            "has_live_stats": len(match_stats) > 0,
-            "has_historical_stats": len(home_history) > 0
-        },
-        "home": {
-            "team_id": home_team_info.get('@id', 'home_id').split(':')[-1],
-            "name": home_team_info.get('name', 'Home Team'),
-            "logo": home_team_info.get('schema:logo'),
-            "live_stats": parse_stats(next((s for s in match_stats if str(s.get('team', {}).get('id')) == str(home_team_info.get('@id', '').split(':')[-1])), {}).get('statistics', [])),
-            "historical_summary": calculate_form(home_history)
-        },
-        "away": {
-            "team_id": away_team_info.get('@id', 'away_id').split(':')[-1],
-            "name": away_team_info.get('name', 'Away Team'),
-            "logo": away_team_info.get('schema:logo'),
-            "live_stats": parse_stats(next((s for s in match_stats if str(s.get('team', {}).get('id')) == str(away_team_info.get('@id', '').split(':')[-1])), {}).get('statistics', [])),
-            "historical_summary": calculate_form(away_history)
+        # 5. Build Payload
+        feature_payload = {
+            "meta": {
+                "fixture_id": fixture_id,
+                "league": event_doc.get('sport:competition', {}).get('@id', '39'),
+                "season": event_doc.get('sport:competition', {}).get('sport:season', {}).get('sport:year', '2025'),
+                "venue": event_doc.get('sport:venue', {}).get('name', 'Unknown'),
+                "status": event_doc.get('sport:status', 'NS')
+            },
+            "home": {
+                "id": home_team_info.get('@id', '').split(':')[-1],
+                "name": home_team_info.get('name', 'Home Team'),
+                "stats": h_stats
+            },
+            "away": {
+                "id": away_team_info.get('@id', '').split(':')[-1],
+                "name": away_team_info.get('name', 'Away Team'),
+                "stats": a_stats
+            },
+            "news": news_deltas
         }
-    }
-    
-    return {"feature_payload": feature_payload}
+
+        return {"feature_payload": feature_payload}
+    except Exception as e:
+        return {"error": f"Aggregation Exception: {str(e)}"}
 
 def filter_search_results(params):
-    p = params
-    if isinstance(p, str):
-        try: p = json.loads(p)
-        except: pass
-    if not isinstance(p, dict): return {"filtered_search_results": []}
-    
-    search_results = p.get('search_results', [])
-    relevant_results = []
-    if isinstance(search_results, list):
-        for result in search_results:
-            if isinstance(result, list):
-                relevant_results.extend([str(r) for r in result if r])
-            elif result:
-                relevant_results.append(str(result))
-    return {"filtered_search_results": relevant_results[:10]}
+    try:
+        p = params
+        if isinstance(p, str): p = json.loads(p)
+        if not isinstance(p, dict): return {"filtered_search_results": []}
+        
+        search_results = p.get('search_results', [])
+        relevant = []
+        if isinstance(search_results, list):
+            for r in search_results:
+                if isinstance(r, list): relevant.extend([str(i) for i in r if i])
+                elif r: relevant.append(str(r))
+        return {"filtered_search_results": relevant[:10]}
+    except:
+        return {"filtered_search_results": []}
 
 def format_evidence_outputs(params):
-    p = params
-    if isinstance(p, str):
-        try: p = json.loads(p)
-        except: pass
-    if not isinstance(p, dict): p = {}
-    
-    return {
-        "news_evidence": {
-            'evidence_items': p.get('evidence_items', []),
-            'news_reliability': p.get('news_reliability', 0.0)
-        },
-        "news_deltas": {
-            'deltas': p.get('team_level_deltas', {}),
-            'news_reliability': p.get('news_reliability', 0.0)
+    try:
+        p = params
+        if isinstance(p, str): p = json.loads(p)
+        if not isinstance(p, dict): p = {}
+        return {
+            "news_evidence": {
+                "items": p.get('evidence_items', []),
+                "reliability": p.get('news_reliability', 0.0)
+            },
+            "news_deltas": {
+                "deltas": p.get('team_level_deltas', {}),
+                "reliability": p.get('news_reliability', 0.0)
+            }
         }
-    }
+    except:
+        return {"news_evidence": {}, "news_deltas": {}}
