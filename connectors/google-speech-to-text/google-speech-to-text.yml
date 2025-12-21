@@ -6,11 +6,3 @@ connector:
   commands:
     - name: Transcribe
       value: invoke_transcribe
-      params:
-        audio_path: "string"
-        language_code: "string"
-        encoding: "string"
-        sample_rate_hertz: "integer"
-      headers:
-        api_key: "string"
-

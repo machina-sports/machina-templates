@@ -1,6 +1,5 @@
 prompts:
 
-  # chat-completions-prompt
   - type: "prompt"
     title: "Voice Assistant Response Prompt"
     name: "chat-completions-prompt"
@@ -14,5 +13,22 @@ prompts:
       User Question: {question}
       
       Knowledge Documents:
-      {documents}
-    # Direct string response is used for simplicity.
+      {parsed_documents}
+    schema:
+      title: "ChatResponse"
+      description: "Structure for the assistant's response."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              message:
+                type: "object"
+                properties:
+                  content:
+                    type: "string"
+        object:
+          type: "string"
+          description: "The object type."

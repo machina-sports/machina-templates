@@ -15,7 +15,6 @@ setup:
   version: 1.0.2
 
 datasets:
-  
   - type: "connector"
     path: "google-storage.yml"
 

@@ -7,7 +7,7 @@ workflow:
       enabled: true
     google-speech-to-text:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
-    google-storage:
+    google-storage-v2:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
     google-genai:
@@ -31,7 +31,6 @@ workflow:
     # 1. Save Base64 audio to temporary file (if provided)
     - type: "connector"
       name: "save-audio-to-tmp"
-      if: "$.get('audio_base64')"
       connector:
         name: "temp-downloader"
         command: "invoke_save_to_tmp"
@@ -43,13 +42,10 @@ workflow:
     # 2. Upload audio to GCS (Server-side upload avoids CORS)
     - type: "connector"
       name: "upload-to-gcs"
-      if: "$.get('temp_audio_path')"
       connector:
-        name: "google-storage"
+        name: "google-storage-v2"
         command: "invoke_upload"
       inputs:
-        api_key: "context.get('google-storage', {}).get('api_key')"
-        bucket_name: "context.get('google-storage', {}).get('bucket_name')"
         file_path: "$.get('temp_audio_path')"
       outputs:
         gcs_uri: "$.get('data.gcs_uri') or $.get('gcs_uri')"
@@ -62,7 +58,6 @@ workflow:
         name: "google-speech-to-text"
         command: "invoke_transcribe"
       inputs:
-        api_key: "context.get('google-speech-to-text', {}).get('api_key')"
         audio_path: "$.get('gcs_uri') or $.get('audio_path')"
         language_code: "$.get('language_code')"
         alternative_language_codes: "$.get('alternative_language_codes')"
@@ -75,7 +70,6 @@ workflow:
     - type: "document"
       name: "load-similar-documents"
       description: "Load relevant documentation from Machina Assistant"
-      if: "$.get('transcript')"
       config:
         action: "search"
         threshold-docs: 5
@@ -105,16 +99,13 @@ workflow:
     - type: "prompt"
       name: "chat-completions-prompt"
       description: "Generate response based on transcript and knowledge docs."
-      if: "$.get('transcript')"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
-        model: "gemini-1.5-pro"
+        model: "gemini-3-flash-preview"
         provider: "vertex_ai"
-        credential: "context.get('google-genai.credential')"
-        project_id: "context.get('google-genai.project_id')"
       inputs:
         parsed_documents: "$.get('parsed_documents', [])"
         question: "$.get('transcript')"
       outputs:
-        message: "$"
+        message: "$.get('choices')[0].get('message').get('content')"

@@ -1,210 +1,150 @@
+from google.cloud import storage
+
+import json
+import mimetypes
+import tempfile
+import urllib.request
+import urllib.error
+import urllib.parse
+import os
+
+# BUCKET = "machina-templates-bucket-default"
 
 def invoke_upload(request_data):
-    from google.cloud import storage
-    import json
-    import mimetypes
-    import tempfile
-    import urllib.request
-    import urllib.error
-    import urllib.parse
-    import os
-    import base64
-    import re
 
-    # Handle different Machina request structures (params vs inputs)
-    params = request_data.get("params") or request_data.get("inputs") or {}
-    headers = request_data.get("headers") or {}
+    params = request_data.get("params")
 
-    # api_key and bucket_name can be in headers or params
-    api_key = headers.get("api_key") or params.get("api_key")
-    bucket_name = headers.get("bucket_name") or params.get("bucket_name")
+    headers = request_data.get("headers")
 
-    # Accept both image_path (legacy) and file_path (generic)
-    file_input = params.get("file_path") or params.get("image_path")
-    
-    if not file_input:
-        return {"status": "error", "message": "file_path or image_path is required."}
+    api_key = headers.get("api_key")
 
-    # Ensure file_input is a string if it's not bytes
-    if not isinstance(file_input, bytes):
-        file_input = str(file_input)
+    bucket_name = headers.get("bucket_name")
 
-    # Check the type of input
-    is_url = isinstance(file_input, str) and file_input.startswith(('http://', 'https://', 'gs://'))
-    is_base64 = False
-    is_raw_bytes = isinstance(file_input, bytes)
-    base64_data = None
-    mime_type = None
+    image_path = params.get("image_path")
+    if not image_path:
+        return {"status": "error", "message": "image_path is required."}
 
-    # Detect Base64 (Data URI or raw)
-    if isinstance(file_input, str) and file_input.startswith('data:'):
-        is_base64 = True
-        try:
-            # Format: data:audio/mp3;base64,AAAA...
-            header, base64_data = file_input.split(',', 1)
-            mime_match = re.search(r'data:(.*?);', header)
-            if mime_match:
-                mime_type = mime_match.group(1)
-        except Exception:
-            return {"status": "error", "message": "Invalid Data URI format."}
-    elif not is_url and isinstance(file_input, str) and len(file_input) > 100: # Simple heuristic for raw base64
-        # Check if it's a valid base64 string
-        try:
-            # Try to decode a small piece to verify
-            base64.b64decode(file_input[:100], validate=True)
-            is_base64 = True
-            base64_data = file_input
-        except Exception:
-            is_base64 = False
+    # Check if image_path is a URL
+    is_url = image_path.startswith(('http://', 'https://'))
 
-    # Get filename
+    # Get filename from image_path or use default
     filename = params.get("filename")
     if not filename:
         if is_url:
-            parsed_url = urllib.parse.urlparse(file_input)
+            # For URLs, extract exact filename from URL path or fragment
+            parsed_url = urllib.parse.urlparse(image_path)
+
+            # First try to get filename from path
             filename = os.path.basename(parsed_url.path)
-            if not filename or len(filename) < 3:
-                query_params = urllib.parse.parse_qs(parsed_url.query)
-                if 'id' in query_params:
-                    filename = f"drive_{query_params['id'][0]}.bin"
-                else:
-                    filename = "upload_" + os.urandom(4).hex()
-        elif is_base64:
-            ext = ".bin"
-            if mime_type:
-                guessed_ext = mimetypes.guess_extension(mime_type)
-                if guessed_ext:
-                    ext = guessed_ext
-            filename = "voice_upload_" + os.urandom(4).hex() + ext
-        elif is_raw_bytes:
-            filename = params.get("filename") or "upload_" + os.urandom(4).hex() + ".bin"
+
+            # Check if the filename from path has an extension or is reasonable
+            # If not, check the fragment (for Wikipedia URLs and similar)
+            if (not filename or
+                (len(filename) < 3) or
+                ('.' not in filename and not filename.replace('_', '').replace('-', '').isalnum())):
+
+                if parsed_url.fragment:
+                    # Fragment might be in format "/media/Ficheiro:filename.ext"
+                    fragment_path = parsed_url.fragment
+                    if fragment_path.startswith('/media/'):
+                        fragment_filename = os.path.basename(fragment_path)
+                    else:
+                        fragment_filename = os.path.basename(fragment_path)
+
+                    # Use fragment filename if it's more likely to be the actual file
+                    if (fragment_filename and
+                        ('.' in fragment_filename or len(fragment_filename) > len(filename))):
+                        filename = fragment_filename
+
+            # Final fallback if still no filename
+            if not filename:
+                filename = "downloaded_file"
         else:
-            filename = os.path.basename(file_input) or "upload_" + os.urandom(4).hex()
+            # For local files, use exact basename (preserve as-is)
+            filename = os.path.basename(image_path)
 
     remote = f"static/{filename}"
 
     if not api_key:
         return {"status": "error", "message": "API key is required."}
 
+    # Handle temporary file for both URLs and local files
     temp_file_path = None
-    temp_sa_path = None
+
     try:
-        # Handle service account
-        service_account_info = None
-        if isinstance(api_key, dict):
-            service_account_info = api_key
-        else:
-            try:
-                service_account_info = json.loads(api_key)
-            except Exception:
-                if os.path.exists(str(api_key)):
-                    with open(api_key, 'r') as f:
-                        service_account_info = json.load(f)
-                else:
-                    return {"status": "error", "message": "Invalid service account key."}
+        service_account_info = json.loads(api_key)
+    except json.JSONDecodeError:
+        return {"status": "error", "message": "Invalid service account JSON in api_key"}
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_sa:
-            json.dump(service_account_info, temp_sa)
-            temp_sa_path = temp_sa.name
+    try:
+        # Create temporary service account file
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_file:
+            json.dump(service_account_info, temp_file)
+            temp_file_path = temp_file.name
 
-        client = storage.Client.from_service_account_json(temp_sa_path)
+        client = storage.Client.from_service_account_json(temp_file_path)
+
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(remote)
 
-        if is_base64:
-            # Upload Base64 data
-            try:
-                decoded_data = base64.b64decode(base64_data)
-                content_type = mime_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
-                blob.upload_from_string(decoded_data, content_type=content_type)
-            except Exception as e:
-                return {"status": "error", "message": f"Error decoding/uploading base64: {str(e)}"}
-        
-        elif is_raw_bytes:
-            # Upload raw bytes
-            try:
-                content_type = params.get("content_type") or mimetypes.guess_type(filename)[0] or "application/octet-stream"
-                blob.upload_from_string(file_input, content_type=content_type)
-            except Exception as e:
-                return {"status": "error", "message": f"Error uploading raw bytes: {str(e)}"}
-
-        elif is_url:
-            # Download and upload from URL
+        # Download file if it's a URL or use local file
+        if is_url:
+            # Download from URL to temporary file
             try:
                 with tempfile.NamedTemporaryFile(delete=False) as download_temp:
                     download_temp_path = download_temp.name
 
-                # Check if it's a GCS URL to use the authenticated client
-                is_gcs_url = False
-                source_bucket_name = None
-                source_blob_name = None
+                # Download the file
+                req = urllib.request.Request(image_path, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    with open(download_temp_path, 'wb') as f:
+                        f.write(response.read())
 
-                if file_input.startswith("gs://"):
-                    is_gcs_url = True
-                    parts = file_input[5:].split("/", 1)
-                    source_bucket_name = parts[0]
-                    source_blob_name = parts[1] if len(parts) > 1 else ""
-                elif "storage.googleapis.com" in file_input:
-                    is_gcs_url = True
-                    # Format: https://storage.googleapis.com/bucket-name/object-path
-                    parsed_url = urllib.parse.urlparse(file_input)
-                    path_parts = parsed_url.path.lstrip("/").split("/", 1)
-                    if len(path_parts) >= 2:
-                        source_bucket_name = path_parts[0]
-                        source_blob_name = path_parts[1]
-
-                if is_gcs_url and source_bucket_name and source_blob_name:
-                    # Use authenticated client for GCS URLs
-                    source_bucket = client.bucket(source_bucket_name)
-                    source_blob = source_bucket.blob(source_blob_name)
-                    source_blob.download_to_filename(download_temp_path)
-                else:
-                    # Regular URL download
-                    req = urllib.request.Request(file_input, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req) as response:
-                        with open(download_temp_path, 'wb') as f:
-                            f.write(response.read())
-
+                # Detect content type from downloaded file
                 content_type, _ = mimetypes.guess_type(download_temp_path)
-                content_type = content_type or "application/octet-stream"
+                if not content_type:
+                    content_type = "image/png"
 
+                # Upload the downloaded file
                 with open(download_temp_path, "rb") as f:
                     blob.upload_from_file(f, content_type=content_type)
 
-                if os.path.exists(download_temp_path):
-                    os.unlink(download_temp_path)
+                # Clean up downloaded temp file
+                os.unlink(download_temp_path)
+
+            except urllib.error.URLError as e:
+                return {"status": "error", "message": f"Failed to download file from URL: {e}"}
             except Exception as e:
-                return {"status": "error", "message": f"Error downloading from URL: {str(e)}"}
+                return {"status": "error", "message": f"Error downloading file: {e}"}
         else:
             # Handle local file
-            if not os.path.exists(file_input):
-                return {"status": "error", "message": f"Local file not found: {file_input}"}
+            if not os.path.exists(image_path):
+                return {"status": "error", "message": f"Local file not found: {image_path}"}
 
-            content_type, _ = mimetypes.guess_type(file_input)
-            content_type = content_type or "application/octet-stream"
+            # Detect content type based on file extension
+            content_type, _ = mimetypes.guess_type(image_path)
+            if not content_type:
+                content_type = "image/png"
 
-            with open(file_input, "rb") as f:
+            with open(image_path, "rb") as f:
                 blob.upload_from_file(f, content_type=content_type)
 
-        if os.path.exists(temp_sa_path):
-            os.unlink(temp_sa_path)
-
-        # blob.reload() # Optional, sometimes fails if permissions are tight
-        public_url = f"https://storage.googleapis.com/{bucket_name}/{remote}"
-        gcs_uri = f"gs://{bucket_name}/{remote}"
-
-        return {
-            "status": True,
-            "data": {
-                "message": "File uploaded successfully.",
-                "url": public_url,
-                "path": remote,
-                "gcs_uri": gcs_uri,
-                "filename": filename
-            }
-        }
+        blob.reload()
 
     except Exception as e:
-        if temp_sa_path and os.path.exists(temp_sa_path):
-            os.unlink(temp_sa_path)
-        return {"status": "error", "message": f"Exception: {str(e)}"}
+        return {"status": "error", "message": f"Exception when uploading file: {e}"}
+    finally:
+        # Clean up service account temp file
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.unlink(temp_file_path)
+
+    public_url = f"https://storage.googleapis.com/{bucket_name}/{remote}"
+
+    return {
+        "status": True,
+        "data": {
+            "message": "File uploaded.",
+            "url": public_url,
+            "path": remote
+        }
+    }
