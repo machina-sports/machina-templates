@@ -12,9 +12,10 @@ setup:
     - google
   status: available
   value: connectors/google-storage
-  version: 1.0.2
+  version: 1.0.0
 
 datasets:
+  
   - type: "connector"
     path: "google-storage.yml"
 
