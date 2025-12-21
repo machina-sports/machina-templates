@@ -14,6 +14,8 @@ prompt:
 
     Assign a RELIABILITY score (0.0 to 1.0) to the news source based on its type (Official Team Site > Tier 1 Sports News > General News).
   schema:
+    title: news_evidence_extractor_output
+    description: Structured evidence extracted from soccer news for match analysis
     type: object
     required: ["evidence_items", "team_level_deltas", "news_reliability", "missing_info_flags"]
     properties:

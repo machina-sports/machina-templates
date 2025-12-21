@@ -15,6 +15,8 @@ prompt:
     - Identify the "Tactical Winner" of the matchup.
     - Summarize how venue and weather factors adjust the expected total goals.
   schema:
+    title: forecast_matchup_analyst_output
+    description: Tactical matchup analysis and style multipliers for soccer forecast
     type: object
     required: ["tactical_adjustments", "tactical_winner", "venue_impact", "matchup_rationale"]
     properties:

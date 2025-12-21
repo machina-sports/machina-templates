@@ -18,6 +18,8 @@ prompt:
     - Calculate baseline win/draw/loss probabilities using only the numbers.
     - Identify the primary "Statistical Driver" for each team.
   schema:
+    title: forecast_stats_analyst_output
+    description: Statistical baseline forecast for soccer match prediction
     type: object
     required: ["home_xg_baseline", "away_xg_baseline", "home_win_prob", "draw_prob", "away_win_prob", "statistical_flags", "rationale"]
     properties:

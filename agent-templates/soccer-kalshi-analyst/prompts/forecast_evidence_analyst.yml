@@ -17,6 +17,8 @@ prompt:
     - Provide adjusted Home/Away Expected Goals.
     - Explain the "Net Impact" of the news on the match outcome.
   schema:
+    title: forecast_evidence_analyst_output
+    description: News evidence impact adjustments for soccer match forecast
     type: object
     required: ["adjusted_home_xg", "adjusted_away_xg", "impact_summary", "evidence_flags"]
     properties:

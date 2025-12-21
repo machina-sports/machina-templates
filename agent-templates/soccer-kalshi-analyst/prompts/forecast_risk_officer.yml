@@ -21,6 +21,8 @@ prompt:
     - List of specific "Uncertainty Drivers".
     - Boolean "abstain" flag with justification.
   schema:
+    title: forecast_risk_officer_output
+    description: Risk assessment and confidence scoring for soccer match forecast
     type: object
     required: ["confidence", "abstain", "uncertainty_drivers", "risk_flags", "rationale"]
     properties:

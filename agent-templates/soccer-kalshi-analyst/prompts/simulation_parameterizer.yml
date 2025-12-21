@@ -15,6 +15,8 @@ prompt:
     - Specific Home and Away Lambda values.
     - A "Simulation Note" on why these parameters were chosen.
   schema:
+    title: simulation_parameterizer_output
+    description: Poisson Monte Carlo simulation parameters for soccer match
     type: object
     required: ["home_expected_goals", "away_expected_goals", "variance_multiplier", "parameter_rationale"]
     properties:

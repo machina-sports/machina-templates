@@ -19,6 +19,8 @@ prompt:
     - Clear recommendation: "Enter", "Monitor", or "Pass".
     - Identify the "Best Value Market" across all outcomes (W/D/L, O/U).
   schema:
+    title: kalshi_edge_analyst_output
+    description: Kalshi prediction market edge analysis and trading recommendations
     type: object
     required: ["analysis", "summary", "should_trade", "selected_market", "markets_ranked"]
     properties:

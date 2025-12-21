@@ -1,30 +1,30 @@
 from datetime import datetime, timedelta
 import json
 
-def aggregate_features(params):
+def aggregate_features(request_data):
     """
     Bulletproof feature aggregator.
+    Returns in the standard pyscript pattern: {status, data, message}
     """
     try:
-        # Handle string input
-        if isinstance(params, str):
-            try: params = json.loads(params)
+        # The pyscript infrastructure passes inputs as request_data.get('params', {})
+        if isinstance(request_data, str):
+            try: request_data = json.loads(request_data)
             except: pass
         
-        # Ensure params is a dict
-        if not isinstance(params, dict):
-            params = {}
-            
-        # Check if inputs are nested in 'params' key
-        p = params.get('params', params)
-        if not isinstance(p, dict): p = {}
+        if not isinstance(request_data, dict):
+            request_data = {}
+        
+        # Get params from request_data (standard pyscript pattern)
+        params = request_data.get('params', request_data)
+        if not isinstance(params, dict): params = {}
 
         # 1. Identity & Metadata
-        event_doc = p.get('event_doc', {})
+        event_doc = params.get('event_doc', {})
         if not isinstance(event_doc, dict): event_doc = {}
         
         # Try to find fixture_id
-        fixture_id = p.get('fixture_id')
+        fixture_id = params.get('fixture_id')
         if not fixture_id:
             fixture_id = event_doc.get('fixture_id') or \
                          str(event_doc.get('@id', '')).split(':')[-1]
@@ -40,8 +40,8 @@ def aggregate_features(params):
             if c.get('sport:qualifier') == 'away': away_team_info = c
 
         # 3. Statistics
-        home_stats_raw = p.get('home_historical_stats', p.get('home_stats', {}))
-        away_stats_raw = p.get('away_historical_stats', p.get('away_stats', {}))
+        home_stats_raw = params.get('home_historical_stats', params.get('home_stats', {}))
+        away_stats_raw = params.get('away_historical_stats', params.get('away_stats', {}))
 
         def safe_extract_stats(stats_obj):
             if not isinstance(stats_obj, dict): return {}
@@ -54,9 +54,9 @@ def aggregate_features(params):
         a_stats = safe_extract_stats(away_stats_raw)
 
         # 4. News Deltas
-        news_deltas_raw = p.get('news_deltas', {})
+        news_deltas_raw = params.get('news_deltas', {})
         if not isinstance(news_deltas_raw, dict): news_deltas_raw = {}
-        news_deltas = news_deltas_raw.get('deltas', {})
+        news_deltas = news_deltas_raw.get('deltas', news_deltas_raw)
         if not isinstance(news_deltas, dict): news_deltas = {}
 
         # 5. Build Payload
@@ -90,40 +90,64 @@ def aggregate_features(params):
             "news": news_deltas
         }
 
-        return {"feature_payload": feature_payload}
+        # Return in standard pyscript format
+        return {
+            "status": True,
+            "data": {
+                "feature_payload": feature_payload
+            },
+            "message": "Features aggregated successfully"
+        }
     except Exception as e:
-        return {"error": f"Aggregation Exception: {str(e)}", "feature_payload": {}}
+        return {
+            "status": False,
+            "data": {
+                "feature_payload": {},
+                "error": str(e)
+            },
+            "message": f"Aggregation Exception: {str(e)}"
+        }
 
-def filter_search_results(params):
+def filter_search_results(request_data):
     try:
-        p = params
-        if isinstance(p, str): p = json.loads(p)
-        if not isinstance(p, dict): return {"filtered_search_results": []}
+        if isinstance(request_data, str): request_data = json.loads(request_data)
+        if not isinstance(request_data, dict): 
+            return {"status": True, "data": {"filtered_search_results": []}}
         
-        search_results = p.get('search_results', [])
+        params = request_data.get('params', request_data)
+        search_results = params.get('search_results', [])
         relevant = []
         if isinstance(search_results, list):
             for r in search_results:
                 if isinstance(r, list): relevant.extend([str(i) for i in r if i])
                 elif r: relevant.append(str(r))
-        return {"filtered_search_results": relevant[:10]}
-    except:
-        return {"filtered_search_results": []}
-
-def format_evidence_outputs(params):
-    try:
-        p = params
-        if isinstance(p, str): p = json.loads(p)
-        if not isinstance(p, dict): p = {}
         return {
-            "news_evidence": {
-                "items": p.get('evidence_items', []),
-                "reliability": p.get('news_reliability', 0.0)
-            },
-            "news_deltas": {
-                "deltas": p.get('team_level_deltas', {}),
-                "reliability": p.get('news_reliability', 0.0)
-            }
+            "status": True, 
+            "data": {"filtered_search_results": relevant[:10]},
+            "message": "Search results filtered"
         }
     except:
-        return {"news_evidence": {}, "news_deltas": {}}
+        return {"status": True, "data": {"filtered_search_results": []}}
+
+def format_evidence_outputs(request_data):
+    try:
+        if isinstance(request_data, str): request_data = json.loads(request_data)
+        if not isinstance(request_data, dict): request_data = {}
+        
+        params = request_data.get('params', request_data)
+        return {
+            "status": True,
+            "data": {
+            "news_evidence": {
+                    "items": params.get('evidence_items', []),
+                    "reliability": params.get('news_reliability', 0.0)
+            },
+            "news_deltas": {
+                    "deltas": params.get('team_level_deltas', {}),
+                    "reliability": params.get('news_reliability', 0.0)
+            }
+            },
+            "message": "Evidence formatted"
+        }
+    except:
+        return {"status": True, "data": {"news_evidence": {}, "news_deltas": {}}}

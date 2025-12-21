@@ -15,6 +15,8 @@ prompt:
     - Fair probabilities for Over/Under 2.5.
     - A structured "Rationale Compact" array for downstream systems.
   schema:
+    title: final_pricing_output
+    description: Final match outcome probabilities and pricing for soccer forecast
     type: object
     required: ["home_win_probability", "draw_probability", "away_win_probability", "over_2_5_probability", "under_2_5_probability", "confidence", "rationale_compact"]
     properties:

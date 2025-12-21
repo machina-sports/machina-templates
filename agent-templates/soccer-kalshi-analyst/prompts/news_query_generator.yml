@@ -21,6 +21,8 @@ prompt:
 
     GENERATE 6-8 specific queries, mixing English (global context) and Native Language (local depth).
   schema:
+    title: news_query_generator_output
+    description: Output schema for generating soccer news search queries
     type: object
     required: ["news_queries"]
     properties:

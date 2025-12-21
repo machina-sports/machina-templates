@@ -3,6 +3,8 @@ workflow:
   title: Soccer Match Forecast
   description: Full execution pipeline using statistical modeling and Kalshi market edge analysis.
   context-variables:
+    debugger:
+      enabled: true
     api-football:
       x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
     google-genai:
@@ -38,9 +40,8 @@ workflow:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
-        params:
-          event_doc: "$.get('event_doc')"
-          fixture_id: "$.get('fixture_id')"
+        event_doc: "$.get('event_doc')"
+        fixture_id: "$.get('fixture_id')"
       outputs:
         h_id: "$.get('feature_payload', {}).get('home', {}).get('id')"
         a_id: "$.get('feature_payload', {}).get('away', {}).get('id')"
@@ -72,9 +73,9 @@ workflow:
       outputs:
         a_stats: "$"
 
-    # 4. Gather News
-    - type: connector
-      name: gen-queries
+    # 4. Gather News - Task name MUST match prompt name
+    - type: prompt
+      name: news_query_generator
       connector:
         name: google-genai
         command: invoke_prompt
@@ -82,7 +83,6 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: news_query_generator
         league: "$.get('league')"
         matchup: "$.get('h_name') + ' vs ' + $.get('a_name')"
         game_date: "$.get('event_doc', {}).get('schema:startDate')"
@@ -107,8 +107,8 @@ workflow:
       outputs:
         results: "$"
 
-    - type: connector
-      name: extract-news
+    - type: prompt
+      name: news_evidence_extractor
       connector:
         name: google-genai
         command: invoke_prompt
@@ -116,7 +116,6 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: news_evidence_extractor
         matchup: "$.get('h_name') + ' vs ' + $.get('a_name')"
         search_results: "$.get('results')"
       outputs:
@@ -129,17 +128,16 @@ workflow:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
-        params:
-          event_doc: "$.get('event_doc')"
-          home_stats: "$.get('h_stats')"
-          away_stats: "$.get('a_stats')"
-          news_deltas: "$.get('evidence')"
+        event_doc: "$.get('event_doc')"
+        home_stats: "$.get('h_stats')"
+        away_stats: "$.get('a_stats')"
+        news_deltas: "$.get('evidence')"
       outputs:
         feature_payload: "$.get('feature_payload')"
 
-    # 6. Forecast
-    - type: connector
-      name: stats-analyst
+    # 6. Forecast - Task names MUST match prompt names
+    - type: prompt
+      name: forecast_stats_analyst
       connector:
         name: google-genai
         command: invoke_prompt
@@ -147,13 +145,12 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: forecast_stats_analyst
         feature_payload: "$.get('feature_payload')"
       outputs:
         stats_out: "$"
 
-    - type: connector
-      name: evidence-analyst
+    - type: prompt
+      name: forecast_evidence_analyst
       connector:
         name: google-genai
         command: invoke_prompt
@@ -161,14 +158,13 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: forecast_evidence_analyst
         feature_payload: "$.get('feature_payload')"
         news_evidence: "$.get('feature_payload', {}).get('news')"
       outputs:
         evidence_out: "$"
 
-    - type: connector
-      name: matchup-analyst
+    - type: prompt
+      name: forecast_matchup_analyst
       connector:
         name: google-genai
         command: invoke_prompt
@@ -176,13 +172,12 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: forecast_matchup_analyst
         feature_payload: "$.get('feature_payload')"
       outputs:
         matchup_out: "$"
 
-    - type: connector
-      name: risk-officer
+    - type: prompt
+      name: forecast_risk_officer
       connector:
         name: google-genai
         command: invoke_prompt
@@ -190,14 +185,13 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: forecast_risk_officer
         components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out')}"
         feature_payload: "$.get('feature_payload')"
       outputs:
         risk_out: "$"
 
-    - type: connector
-      name: sim-param
+    - type: prompt
+      name: simulation_parameterizer
       connector:
         name: google-genai
         command: invoke_prompt
@@ -205,7 +199,6 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: simulation_parameterizer
         feature_payload: "$.get('feature_payload')"
         components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out')}"
         risk: "$.get('risk_out')"
@@ -218,14 +211,13 @@ workflow:
         name: soccer-monte-carlo
         command: run_monte_carlo_simulation
       inputs:
-        params:
-          simulation_parameters: "$.get('sim_params')"
-          num_simulations: 10000
+        simulation_parameters: "$.get('sim_params')"
+        num_simulations: 10000
       outputs:
         sim_results: "$.get('simulation_results')"
 
-    - type: connector
-      name: final-pricing
+    - type: prompt
+      name: final_pricing
       connector:
         name: google-genai
         command: invoke_prompt
@@ -233,7 +225,6 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: final_pricing
         feature_payload: "$.get('feature_payload')"
         components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out'), 'risk': $.get('risk_out')}"
         sim_results: "$.get('sim_results')"
@@ -288,8 +279,8 @@ workflow:
         m_summary: "$.get('markets_summary')"
         m_count: "$.get('markets_count')"
 
-    - type: connector
-      name: edge-analyst
+    - type: prompt
+      name: kalshi_edge_analyst
       condition: "$.get('m_count', 0) > 0"
       connector:
         name: google-genai
@@ -298,7 +289,6 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: kalshi_edge_analyst
         prediction_data: "$.get('final_prediction')"
         markets_summary: "$.get('m_summary')"
       outputs:

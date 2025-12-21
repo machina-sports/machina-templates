@@ -2,27 +2,33 @@ import numpy as np
 import pandas as pd
 from scipy.stats import poisson
 
-def run_monte_carlo_simulation(params):
+def run_monte_carlo_simulation(request_data):
     """
     Run Monte Carlo simulation for soccer using Poisson Distribution.
+    Returns in the standard pyscript pattern: {status, data, message}
     """
     try:
-        if isinstance(params, str):
+        if isinstance(request_data, str):
             import json
-            try: params = json.loads(params)
+            try: request_data = json.loads(request_data)
             except: pass
         
-        if not isinstance(params, dict):
-            params = {}
-            
-        p = params.get('params', params)
-        if not isinstance(p, dict): p = {}
+        if not isinstance(request_data, dict):
+            request_data = {}
         
-        sim_params = p.get('simulation_parameters', {})
-        num_simulations = p.get('num_simulations', 10000)
+        # Get params from request_data (standard pyscript pattern)
+        params = request_data.get('params', request_data)
+        if not isinstance(params, dict): params = {}
+        
+    sim_params = params.get('simulation_parameters', {})
+    num_simulations = params.get('num_simulations', 10000)
 
         if not isinstance(sim_params, dict) or not sim_params:
-            return {"error": "No simulation parameters provided", "simulation_results": {}}
+            return {
+                "status": False,
+                "data": {"simulation_results": {}, "error": "No simulation parameters provided"},
+                "message": "No simulation parameters provided"
+            }
 
         # Handle potential string/None values
         home_exp_goals = sim_params.get('home_expected_goals')
@@ -35,29 +41,37 @@ def run_monte_carlo_simulation(params):
 
         num_simulations = int(num_simulations)
 
-        # Simple Poisson simulation
-        home_scores = np.random.poisson(home_exp_goals, num_simulations)
-        away_scores = np.random.poisson(away_exp_goals, num_simulations)
+    # Simple Poisson simulation
+    home_scores = np.random.poisson(home_exp_goals, num_simulations)
+    away_scores = np.random.poisson(away_exp_goals, num_simulations)
 
-        results = []
-        for h, a in zip(home_scores, away_scores):
-            results.append({
-                'home_goals': int(h),
-                'away_goals': int(a),
-                'result': 'home' if h > a else ('away' if a > h else 'draw'),
-                'total_goals': int(h + a)
-            })
+    results = []
+    for h, a in zip(home_scores, away_scores):
+        results.append({
+            'home_goals': int(h),
+            'away_goals': int(a),
+            'result': 'home' if h > a else ('away' if a > h else 'draw'),
+            'total_goals': int(h + a)
+        })
 
-        df = pd.DataFrame(results)
-        
-        return {
-            "simulation_results": {
-                "home_win_probability": float(len(df[df['result'] == 'home']) / num_simulations),
-                "draw_probability": float(len(df[df['result'] == 'draw']) / num_simulations),
-                "away_win_probability": float(len(df[df['result'] == 'away']) / num_simulations),
-                "over_2_5_prob": float(len(df[df['total_goals'] > 2.5]) / num_simulations),
-                "under_2_5_prob": float(len(df[df['total_goals'] < 2.5]) / num_simulations)
-            }
+    df = pd.DataFrame(results)
+    
+    return {
+            "status": True,
+            "data": {
+        "simulation_results": {
+            "home_win_probability": float(len(df[df['result'] == 'home']) / num_simulations),
+            "draw_probability": float(len(df[df['result'] == 'draw']) / num_simulations),
+            "away_win_probability": float(len(df[df['result'] == 'away']) / num_simulations),
+            "over_2_5_prob": float(len(df[df['total_goals'] > 2.5]) / num_simulations),
+            "under_2_5_prob": float(len(df[df['total_goals'] < 2.5]) / num_simulations)
+        }
+            },
+            "message": f"Monte Carlo simulation completed with {num_simulations} iterations"
         }
     except Exception as e:
-        return {"error": f"Monte Carlo Exception: {str(e)}", "simulation_results": {}}
+        return {
+            "status": False,
+            "data": {"simulation_results": {}, "error": str(e)},
+            "message": f"Monte Carlo Exception: {str(e)}"
+        }

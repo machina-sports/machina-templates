@@ -3,6 +3,8 @@ workflow:
   title: Soccer Kalshi Integration
   description: Connects soccer forecasts with real-time Kalshi markets.
   context-variables:
+    debugger:
+      enabled: true
     google-genai:
       credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
       project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
@@ -54,8 +56,9 @@ workflow:
         markets_summary: "$.get('markets_summary')"
         markets_count: "$.get('markets_count')"
 
-    - type: connector
-      name: edge-analyst
+    # Task name MUST match prompt name for type: prompt
+    - type: prompt
+      name: kalshi_edge_analyst
       condition: "$.get('markets_count', 0) > 0"
       connector:
         name: google-genai
@@ -64,7 +67,6 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt_name: kalshi_edge_analyst
         prediction_data: "$.get('prediction_val')"
         markets_summary: "$.get('markets_summary')"
       outputs:
@@ -84,4 +86,3 @@ workflow:
             'analysis': $.get('edge_analysis'),
             'timestamp': datetime.utcnow()
           }
-
