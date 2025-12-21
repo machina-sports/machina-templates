@@ -162,7 +162,8 @@ workflow:
         provider: vertex_ai
       inputs:
         feature_payload: "$.get('feature_payload')"
-        news_evidence: "$.get('feature_payload', {}).get('news')"
+        news_evidence: "$.get('evidence', {})"
+        stats_baseline: "$.get('stats_out', {})"
       outputs:
         evidence_out: "$"
 
@@ -243,7 +244,25 @@ workflow:
         soccer-prediction: |
           {
             'fixture_id': str($.get('fixture_id')),
+            'matchup': $.get('h_name', '') + ' vs ' + $.get('a_name', ''),
+            'league': $.get('league'),
+            'season': $.get('season'),
+            'match_date': $.get('event_doc', {}).get('schema:startDate'),
             'prediction': $.get('final_prediction'),
+            'analysis_components': {
+              'statistical_baseline': $.get('stats_out'),
+              'evidence_adjustment': $.get('evidence_out'),
+              'tactical_matchup': $.get('matchup_out'),
+              'risk_assessment': $.get('risk_out'),
+              'simulation_params': $.get('sim_params'),
+              'simulation_results_summary': {
+                'simulations_run': $.get('sim_results', {}).get('simulations_run', 10000),
+                'method': $.get('sim_results', {}).get('method', 'unknown')
+              }
+            },
+            'news_evidence': $.get('evidence', {}),
+            'confidence': $.get('risk_out', {}).get('confidence', 0.5),
+            'abstain_recommended': $.get('risk_out', {}).get('abstain', False),
             'timestamp': datetime.utcnow().isoformat()
           }
       outputs:
@@ -274,7 +293,7 @@ workflow:
         markets: "$.get('markets', [])"
 
     - type: mapping
-      name: k-summary
+      name: kalshi-markets-summary
       condition: "len($.get('markets', [])) > 0"
       inputs:
         markets: "$.get('markets')"

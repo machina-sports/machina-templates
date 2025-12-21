@@ -1,7 +1,23 @@
 agent:
   name: soccer-kalshi-analyst
   title: Soccer Kalshi Analyst Agent
-  description: Monitors upcoming soccer fixtures, generates high-fidelity AI forecasts using Poisson Monte Carlo simulations, and identifies tradable edges on Kalshi prediction markets.
+  description: |
+    An advanced soccer prediction agent that generates high-fidelity match forecasts 
+    using a multi-stage analytical pipeline:
+    
+    1. **Statistical Baseline**: Derives expected goals (xG) from historical team performance
+    2. **News Intelligence**: Gathers real-time news (injuries, lineups, manager quotes) 
+       and quantifies their impact on match outcomes
+    3. **Tactical Analysis**: Evaluates style matchups, venue factors, and H2H patterns
+    4. **Risk Assessment**: Identifies variance factors and assigns confidence scores
+    5. **Monte Carlo Simulation**: Runs 10,000 Poisson simulations for probability distributions
+    6. **Kalshi Edge Detection**: Compares AI fair values with live market prices to identify 
+       tradeable edges on prediction markets
+    
+    The agent produces:
+    - Calibrated win/draw/loss probabilities
+    - Over/Under 2.5 goals pricing
+    - Confidence-weighted trading recommendations for Kalshi markets
   context:
     config-frequency: 10
     status: "inactive"
@@ -11,7 +27,7 @@ agent:
   
     # 1. Consumer: Find upcoming fixtures needing analysis
     - name: soccer-kalshi-analysis-consumer
-      description: Identify upcoming soccer fixtures for AI forecasting
+      description: Identify upcoming soccer fixtures eligible for AI forecasting
       inputs:
         fixture_id: $.get('fixture_id')
       outputs:
@@ -20,7 +36,15 @@ agent:
 
     # 2. Executor: Run the full forecasting and market integration pipeline
     - name: soccer-forecast-match
-      description: Execute statistical modeling, news gathering, and Kalshi market analysis
+      description: |
+        Execute the complete forecast pipeline:
+        - Load event data and team statistics
+        - Generate and execute news search queries
+        - Extract structured evidence from news
+        - Run statistical, evidence, matchup, and risk analyses
+        - Parameterize and run Monte Carlo simulation
+        - Generate final calibrated probabilities
+        - Identify Kalshi market edges (if markets available)
       condition: $.get('analysis_fixture_exists') is True
       inputs:
         fixture_id: $.get('analysis_fixture_id')
@@ -30,7 +54,7 @@ agent:
 
     # 3. Update: Finalize version control and status
     - name: soccer-kalshi-analysis-update
-      description: Finalize analysis status and update document versioning
+      description: Finalize analysis status, update document versioning, and mark fixture as analyzed
       condition: $.get('analysis_fixture_exists') is True
       inputs:
         fixture_id: $.get('analysis_fixture_id')

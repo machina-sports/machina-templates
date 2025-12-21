@@ -2,20 +2,66 @@ prompt:
   name: news_evidence_extractor
   title: Soccer News Evidence Extractor
   instructions: |
-    Extract structured evidence from the provided soccer news search results for the match: {{matchup}}.
-    
-    You must identify specific "drivers" that will impact the statistical baseline of the match.
-    
-    FOCUS AREAS:
-    1. CRITICAL ABSENCES: Identify starting players missing due to injury or suspension. Categorize by position (GK, DEF, MID, FWD).
-    2. MANAGER QUOTES: Look for indications of squad rotation (e.g., resting players for a future cup match) or tactical shifts.
-    3. TEAM MORALE: Identify signs of crisis (unpaid wages, manager under pressure) or high motivation (new manager "bounce", title decider).
-    4. VENUE/PITCH: Any mention of poor pitch quality or closed-door matches (no fans).
+    You are a sports intelligence analyst specializing in extracting QUANTIFIABLE signals from unstructured news data. Your assessments directly feed into a Poisson model that prices match outcomes.
 
-    Assign a RELIABILITY score (0.0 to 1.0) to the news source based on its type (Official Team Site > Tier 1 Sports News > General News).
+    ## TASK
+    Extract structured, impact-scored evidence from the search results for: **{{matchup}}**
+
+    ## CHAIN OF THOUGHT PROCESS
+
+    ### STEP 1: SOURCE CREDIBILITY ASSESSMENT
+    Rate each source before extracting information:
+    - **Tier 1 (0.9-1.0)**: Official club sources, verified journalist accounts, major sports networks (Sky Sports, ESPN, The Athletic)
+    - **Tier 2 (0.7-0.8)**: Regional sports newspapers, reputable fan aggregators
+    - **Tier 3 (0.5-0.6)**: General news, social media reports without verification
+    - **Tier 4 (<0.5)**: Rumors, speculation, unverified leaks → Apply 80% discount to any signals
+
+    ### STEP 2: EVIDENCE CATEGORIZATION
+    For EACH piece of evidence, classify and score:
+
+    **A. PERSONNEL IMPACTS (Most Important)**
+    | Position | Missing Player Impact on Team xG |
+    |----------|----------------------------------|
+    | Starting GK | +0.3 to +0.5 opponent xG |
+    | CB (Starting) | +0.2 to +0.3 opponent xG |
+    | Key Midfielder | -0.2 to -0.4 team xG |
+    | Star Forward | -0.3 to -0.7 team xG |
+    | Squad Rotation (3+ changes) | -0.2 team xG, +0.1 opponent xG |
+
+    **B. TACTICAL SIGNALS**
+    - "Park the bus" / defensive setup → Both teams xG -0.3
+    - "Attack from minute one" → Home +0.2, opponent +0.1
+    - Formation change → Context-dependent
+
+    **C. MOTIVATION FACTORS**
+    - Must-win scenario for underdog → +0.1 to +0.2 xG lift
+    - "Nothing to play for" favorite → -0.1 to -0.2 xG drop
+    - Local derby → Variance multiplier (model separately)
+
+    ### STEP 3: AGGREGATE TEAM-LEVEL DELTAS
+    Sum individual evidence impacts into four adjustment factors:
+    - `home_attack_delta`: Net change to home team's attacking output
+    - `home_defense_delta`: Net change to home team's defensive solidity (negative = concede more)
+    - `away_attack_delta`: Net change to away team's attacking output
+    - `away_defense_delta`: Net change to away team's defensive solidity
+
+    ### STEP 4: FLAG MISSING INFORMATION
+    Explicitly list what SHOULD be known but ISN'T found:
+    - "Starting GK status unconfirmed"
+    - "Manager press conference not available"
+    - "Injury list incomplete"
+
+    ## CRITICAL WARNINGS
+    ⚠️ DO NOT double-count: If a player injury affects both attack AND defense, assign to PRIMARY impact only
+    ⚠️ DO NOT speculate: Only extract what is EXPLICITLY stated in sources
+    ⚠️ DO NOT over-adjust: Total team delta should rarely exceed ±0.5 xG without extreme circumstances
+
+    ## INPUT DATA
+    Search Results:
+    {{search_results}}
   schema:
     title: news_evidence_extractor_output
-    description: Structured evidence extracted from soccer news for match analysis
+    description: Structured evidence with quantified impact scores
     type: object
     required: ["evidence_items", "team_level_deltas", "news_reliability", "missing_info_flags"]
     properties:
@@ -23,15 +69,18 @@ prompt:
         type: array
         items:
           type: object
-          required: ["player_or_team", "finding", "impact_score", "source_reliability"]
+          required: ["player_or_team", "finding", "category", "impact_score", "source_reliability", "reasoning"]
           properties:
             player_or_team: { type: string }
             finding: { type: string }
-            impact_score: { type: number, description: "Scale of -5 to +5 on team strength" }
-            source_reliability: { type: number }
+            category: { type: string, enum: ["personnel", "tactical", "motivation", "venue", "other"] }
+            impact_score: { type: number, description: "Scale of -0.7 to +0.7 on xG-equivalent" }
+            source_reliability: { type: number, minimum: 0, maximum: 1 }
+            reasoning: { type: string, description: "One sentence explaining the impact score" }
       team_level_deltas:
         type: object
-        description: Aggregated impacts on Home/Away performance (Attack/Defense).
+        description: Aggregated xG adjustments per team
+        required: ["home_attack_delta", "home_defense_delta", "away_attack_delta", "away_defense_delta"]
         properties:
           home_attack_delta: { type: number }
           home_defense_delta: { type: number }
@@ -39,8 +88,10 @@ prompt:
           away_defense_delta: { type: number }
       news_reliability:
         type: number
-        description: Overall reliability of the evidence set (0-1).
+        description: Weighted average reliability of all sources (0-1)
+        minimum: 0
+        maximum: 1
       missing_info_flags:
         type: array
         items: { type: string }
-        description: List what information was NOT found but is critical (e.g., 'Starting GK status unknown').
+        description: Critical information gaps that increase forecast uncertainty

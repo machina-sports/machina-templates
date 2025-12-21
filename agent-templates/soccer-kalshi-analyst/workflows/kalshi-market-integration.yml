@@ -18,27 +18,32 @@ workflow:
       name: load-prediction
       config:
         action: search
+        search-limit: 1
       filters:
         document_id: "$.get('prediction_document_id')"
+      inputs:
+        name: "'soccer-prediction'"
       outputs:
         prediction_val: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
-        fixture_id: "$.get('prediction_val', {}).get('fixture_id')"
+        fixture_id: "$.get('documents')[0].get('value', {}).get('fixture_id') if len($.get('documents', [])) > 0 else None"
 
     - type: document
       name: load-kalshi-event
+      condition: "$.get('fixture_id') is not None"
       config:
         action: search
+        search-limit: 1
       filters:
         value.eventCode: "'urn:apifootball:sport_event:' + str($.get('fixture_id'))"
       inputs:
         name: "'kalshi-events'"
       outputs:
         event_exists: "len($.get('documents', [])) > 0"
-        event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if $.get('documents') else None"
+        event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if len($.get('documents', [])) > 0 else None"
 
     - type: connector
       name: load-markets
-      condition: "$.get('event_exists') is True"
+      condition: "$.get('event_ticker') is not None"
       connector:
         name: kalshi
         command: get-markets
@@ -76,13 +81,17 @@ workflow:
       name: store-analysis
       condition: "$.get('edge_analysis') is not None"
       config:
-        action: "update"
+        action: update
         force-update: true
       documents:
         soccer-kalshi-analysis: |
           {
             'prediction_id': $.get('prediction_document_id'),
             'fixture_id': $.get('fixture_id'),
-            'analysis': $.get('edge_analysis'),
-            'timestamp': datetime.utcnow()
+            'analysis': $.get('edge_analysis', {}).get('analysis'),
+            'summary': $.get('edge_analysis', {}).get('summary'),
+            'selected': $.get('edge_analysis', {}).get('selected_market'),
+            'markets_ranked': $.get('edge_analysis', {}).get('markets_ranked'),
+            'should_trade': $.get('edge_analysis', {}).get('should_trade'),
+            'timestamp': datetime.utcnow().isoformat()
           }

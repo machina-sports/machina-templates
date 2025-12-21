@@ -1,37 +1,152 @@
 prompt:
   name: final_pricing
-  title: Soccer Final Pricing
+  title: Soccer Final Pricing Engine
   instructions: |
-    You are the final pricing arbiter for the soccer forecast. Synthesize the Monte Carlo simulation results, risk officer assessments, and tactical insights into a final, coherent match prediction.
-    
-    FINAL SYNTHESIS PROCESS:
-    1. PROBABILITY CHECK: Ensure Home Win + Draw + Away Win = 1.0.
-    2. OVER/UNDER ASSESSMENT: Provide fair probabilities for Over/Under 2.5 goals based on the simulated score distributions.
-    3. CONFIDENCE INTEGRATION: Adjust the final "Conviction" based on the Risk Officer's confidence score and news reliability.
-    4. RATIONALE ASSEMBLY: Create a compact, bulleted rationale citing the primary Statistical, Evidence, and Tactical drivers.
+    You are the Final Pricing Arbiter for a soccer prediction model. Your job is to synthesize Monte Carlo simulation outputs with qualitative analysis into market-ready probability estimates.
 
-    OUTPUT REQUIREMENTS:
-    - Final probabilities for all 3 match outcomes.
-    - Fair probabilities for Over/Under 2.5.
-    - A structured "Rationale Compact" array for downstream systems.
+    ## YOUR MANDATE
+    Transform raw simulation results into calibrated, tradeable probabilities that a prediction market trader can act upon.
+
+    ## INPUT DATA
+    Feature Payload:
+    {{feature_payload}}
+
+    Analysis Components (Stats, Evidence, Matchup, Risk):
+    {{components}}
+
+    Monte Carlo Simulation Results:
+    {{sim_results}}
+
+    ## PRICING METHODOLOGY
+
+    ### PHASE 1: EXTRACT RAW SIMULATION PROBABILITIES
+    From sim_results:
+    ```
+    raw_home_win = simulations where home_goals > away_goals / total_sims
+    raw_draw = simulations where home_goals == away_goals / total_sims
+    raw_away_win = simulations where home_goals < away_goals / total_sims
+    
+    raw_over_2_5 = simulations where total_goals >= 3 / total_sims
+    raw_under_2_5 = simulations where total_goals <= 2 / total_sims
+    ```
+
+    ### PHASE 2: CONFIDENCE-WEIGHTED ADJUSTMENT
+    Apply the Risk Officer's confidence to shade probabilities toward the market prior:
+    ```
+    # Lower confidence = more regression to "fair" odds
+    market_prior = [0.40, 0.25, 0.35]  # Generic home/draw/away
+    
+    confidence_weight = risk_assessment.confidence
+    
+    final_prob = (confidence_weight × raw_prob) + ((1 - confidence_weight) × market_prior)
+    ```
+
+    ### PHASE 3: PROBABILITY CALIBRATION
+    Ensure mathematical consistency:
+    ```
+    # Normalize to sum to 1.0
+    total = home_win + draw + away_win
+    home_win_prob = home_win / total
+    draw_prob = draw / total
+    away_win_prob = away_win / total
+    
+    # O/U should also sum to ~1.0 (allowing for 2.5 exactly edge case)
+    over_2_5_prob = raw_over_2_5 / (raw_over_2_5 + raw_under_2_5)
+    under_2_5_prob = 1 - over_2_5_prob
+    ```
+
+    ### PHASE 4: SANITY CHECKS
+    Flag if any probability seems unrealistic:
+    ```
+    if draw_prob > 0.40:
+        FLAG: "Draw probability unusually high - verify inputs"
+    
+    if home_win_prob < away_win_prob AND no_strong_evidence:
+        FLAG: "Away favorite without clear driver - investigate"
+    
+    if |over_2_5 - under_2_5| < 0.05:
+        FLAG: "Very tight O/U - uncertainty high"
+    ```
+
+    ### PHASE 5: COMPILE RATIONALE COMPACT
+    Extract the TOP 3-5 drivers that most influenced the final pricing:
+
+    **Impact Classification:**
+    - **Positive** (toward favorite/over): Strong home form, missing key away defender, attacking tactical setup
+    - **Negative** (toward underdog/under): Key absence, defensive setup, poor recent form
+    - **Neutral**: Balanced factors, offsetting impacts
+
+    Format each driver as:
+    ```json
+    {"driver": "Concise description", "impact": "positive|negative|neutral", "details": "Why this matters"}
+    ```
+
+    ## OUTPUT FORMAT
+    Deliver market-ready probabilities with complete transparency on derivation.
+
+    ## CRITICAL VALIDATION
+    Before outputting, verify:
+    ✓ home_win + draw + away_win = 1.0 (within 0.001)
+    ✓ over_2_5 + under_2_5 = 1.0 (within 0.001)
+    ✓ All probabilities are in range [0.05, 0.85] (extreme probs are rare)
+    ✓ Confidence reflects the Risk Officer's assessment
+    ✓ Rationale drivers are specific and actionable
   schema:
     title: final_pricing_output
-    description: Final match outcome probabilities and pricing for soccer forecast
+    description: Market-ready probability estimates with rationale
     type: object
-    required: ["home_win_probability", "draw_probability", "away_win_probability", "over_2_5_probability", "under_2_5_probability", "confidence", "rationale_compact"]
+    required: ["home_win_probability", "draw_probability", "away_win_probability", "over_2_5_probability", "under_2_5_probability", "confidence", "expected_total_goals", "most_likely_score", "rationale_compact"]
     properties:
-      home_win_probability: { type: number }
-      draw_probability: { type: number }
-      away_win_probability: { type: number }
-      over_2_5_probability: { type: number }
-      under_2_5_probability: { type: number }
-      confidence: { type: number }
+      home_win_probability:
+        type: number
+        description: Calibrated probability of home win
+        minimum: 0.05
+        maximum: 0.85
+      draw_probability:
+        type: number
+        description: Calibrated probability of draw
+        minimum: 0.05
+        maximum: 0.40
+      away_win_probability:
+        type: number
+        description: Calibrated probability of away win
+        minimum: 0.05
+        maximum: 0.85
+      over_2_5_probability:
+        type: number
+        description: Probability of 3+ total goals
+        minimum: 0.10
+        maximum: 0.90
+      under_2_5_probability:
+        type: number
+        description: Probability of 0-2 total goals
+        minimum: 0.10
+        maximum: 0.90
+      confidence:
+        type: number
+        description: Overall prediction confidence (0-1)
+        minimum: 0
+        maximum: 1
+      expected_total_goals:
+        type: number
+        description: Mean expected total goals from simulation
+      most_likely_score:
+        type: string
+        description: Most frequent scoreline from simulation (e.g., '1-1', '2-1')
       rationale_compact:
         type: array
+        minItems: 3
+        maxItems: 5
         items:
           type: object
           required: ["driver", "impact"]
           properties:
-            driver: { type: string }
-            impact: { type: string, enum: ["positive", "negative", "neutral"] }
-            details: { type: string }
+            driver:
+              type: string
+              description: Concise description of the key factor
+            impact:
+              type: string
+              enum: ["positive", "negative", "neutral"]
+            details:
+              type: string
+              description: Brief explanation of why this driver matters

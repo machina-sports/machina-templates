@@ -1,16 +1,26 @@
 setup:
   title: Soccer Kalshi Analyst
-  description: Expert AI-powered soccer forecasting agent that pick up matches, executes Poisson Monte Carlo simulations, and identifies tradable edges on Kalshi.
+  description: |
+    Advanced AI-powered soccer forecasting agent that generates high-fidelity match predictions 
+    and identifies tradable edges on Kalshi prediction markets. Uses a sophisticated multi-stage 
+    analytical pipeline with Chain-of-Thought reasoning, quantified news evidence extraction, 
+    tactical matchup analysis, and Monte Carlo simulation for calibrated probability distributions.
   category:
     - sports
     - analytics
     - soccer
+    - prediction-markets
   estimatedTime: 5 minutes
   features:
-    - Autonomous "Consumer" to scan database for upcoming fixtures
-    - Deep analytical pipeline (Statistical Baseline + News Evidence + Tactical Clash)
+    - Autonomous fixture discovery and scheduling
+    - Statistical baseline xG modeling from historical team performance
+    - Real-time news intelligence with multilingual query generation
+    - Quantified evidence extraction (injury impacts, tactical signals, motivation factors)
+    - Tactical matchup analysis (style clashes, venue factors, H2H patterns)
+    - Risk assessment with confidence calibration and abstention logic
     - High-fidelity Poisson Monte Carlo simulation (10,000 iterations)
-    - Automated Kalshi order book matching and edge detection
+    - Kalshi market edge detection with tier-based trading recommendations
+    - Rich prediction documents with full analytical audit trail
   integrations:
     - api-football
     - google-genai
@@ -18,7 +28,7 @@ setup:
     - kalshi
   status: available
   value: agent-templates/soccer-kalshi-analyst
-  version: 1.1.0
+  version: 2.0.0
 
 datasets:
 
@@ -60,6 +70,10 @@ datasets:
 
   - type: prompt
     path: prompts/kalshi_edge_analyst.yml
+
+  # Mappings
+  - type: mapping
+    path: mappings/kalshi-markets-summary.yml
 
   # Workflows
   - type: workflow
