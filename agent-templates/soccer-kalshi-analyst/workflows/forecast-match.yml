@@ -105,7 +105,10 @@ workflow:
         search_query: "$.get('query')"
         recency_days: 3
       outputs:
-        results: "$"
+        search_results: |
+          [
+            $.get('answer', '')
+          ]
 
     - type: prompt
       name: news_evidence_extractor
@@ -117,7 +120,7 @@ workflow:
         provider: vertex_ai
       inputs:
         matchup: "$.get('h_name') + ' vs ' + $.get('a_name')"
-        search_results: "$.get('results')"
+        search_results: "$.get('search_results', [])"
       outputs:
         evidence: "$"
 
