@@ -21,13 +21,13 @@ workflow:
       config:
         action: search
       filters:
-        metadata.fixture_id: "$.get('fixture_id')"
+        metadata.fixture_id: "str($.get('fixture_id'))"
       inputs:
         name: "'sport:Event'"
       outputs:
-        event_doc: "$.get('documents')[0].get('value')"
-        league: "$.get('documents')[0].get('metadata', {}).get('league')"
-        season: "$.get('documents')[0].get('metadata', {}).get('season')"
+        event_doc: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
+        league: "$.get('documents')[0].get('metadata', {}).get('league') if len($.get('documents', [])) > 0 else None"
+        season: "$.get('documents')[0].get('metadata', {}).get('season') if len($.get('documents', [])) > 0 else None"
 
     # 2. Extract IDs for stats
     - type: connector
@@ -255,7 +255,7 @@ workflow:
       config:
         action: search
       filters:
-        value.eventCode: "'urn:apifootball:sport_event:' + $.get('fixture_id')"
+        value.eventCode: "'urn:apifootball:sport_event:' + str($.get('fixture_id'))"
       inputs:
         name: "'kalshi-events'"
       outputs:
