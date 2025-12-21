@@ -1,0 +1,148 @@
+workflow:
+  name: soccer-sync-kalshi-events
+  title: Soccer - Sync Kalshi Events
+  description: |
+    Sync Kalshi soccer events for all enabled leagues by their series tickers.
+    This fetches game-level markets from Kalshi for Premier League, Serie A, Bundesliga, etc.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    league_key: $.get('league_key')  # Optional: sync specific league only
+    series_ticker: $.get('series_ticker')  # Optional: sync specific series
+    sync_all: $.get('sync_all', True)  # If true, sync all enabled leagues
+  outputs:
+    workflow-status: "'executed'"
+    series_synced: $.get('series_synced', [])
+    total_events: $.get('total_events_synced', 0)
+  tasks:
+
+    # 0. Load league configuration
+    - type: mapping
+      name: soccer-league-config
+      inputs:
+        league_key: $.get('league_key')
+      outputs:
+        all_leagues: $.get('all_leagues', {})
+        enabled_leagues: $.get('enabled_leagues', [])
+        league_config: $.get('league_config', {})
+        kalshi_series_ids: $.get('kalshi_series_ids', [])
+
+    # 1. Determine which series to sync
+    - type: mapping
+      name: determine-series
+      config:
+        inline: true
+      inputs:
+        series_ticker: $.get('series_ticker')
+        league_key: $.get('league_key')
+        sync_all: $.get('sync_all', True)
+        enabled_leagues: $.get('enabled_leagues', [])
+        league_config: $.get('league_config', {})
+        kalshi_series_ids: $.get('kalshi_series_ids', [])
+      outputs:
+        series_to_sync: |
+          (
+            # If specific series ticker is provided
+            [{'series': $.get('series_ticker'), 'league_key': 'custom'}]
+            if $.get('series_ticker')
+            # If league_key is provided, use that league's series
+            else [
+              {'series': s, 'league_key': $.get('league_key')}
+              for s in $.get('league_config', {}).get('kalshi_series', [])
+            ]
+            if $.get('league_key') and $.get('league_config')
+            # Default: sync all series from all enabled leagues
+            else [
+              {'series': series, 'league_key': league.get('key')}
+              for league in $.get('enabled_leagues', [])
+              for series in league.get('kalshi_series', [])
+            ]
+          )
+
+    # 2. Fetch events from Kalshi for each series
+    - type: connector
+      name: fetch-kalshi-events
+      foreach:
+        name: series_item
+        expr: $
+        value: $.get('series_to_sync', [])
+        concurrent: true
+      connector:
+        name: kalshi
+        command: get-events
+      inputs:
+        series_ticker: $.get('series_item', {}).get('series')
+      outputs:
+        events_by_series: |
+          [
+            {
+              'series': $.get('series_item', {}).get('series'),
+              'league_key': $.get('series_item', {}).get('league_key'),
+              'events': $.get('events', [])
+            }
+          ]
+
+    # 3. Map and prepare events for bulk save
+    - type: mapping
+      name: kalshi-event-mapping
+      condition: $.get('events_by_series') is not None
+      foreach:
+        name: series_events
+        expr: $
+        value: $.get('events_by_series', [])
+        concurrent: true
+      inputs:
+        events: $.get('series_events', {}).get('events', [])
+      outputs:
+        mapped_events_by_series: |
+          [
+            {
+              'series': $.get('series_events', {}).get('series'),
+              'league_key': $.get('series_events', {}).get('league_key'),
+              'mapped_events': $.get('mapped-events', [])
+            }
+          ]
+
+    # 4. Flatten all events and prepare for save
+    - type: mapping
+      name: flatten-kalshi-events
+      condition: $.get('mapped_events_by_series') is not None
+      config:
+        inline: true
+      inputs:
+        mapped_events_by_series: $.get('mapped_events_by_series', [])
+      outputs:
+        all_kalshi_events: |
+          [
+            event
+            for series_data in $.get('mapped_events_by_series', [])
+            for event in series_data.get('mapped_events', [])
+          ]
+        series_synced: |
+          [
+            {'series': sd.get('series'), 'league_key': sd.get('league_key'), 'count': len(sd.get('mapped_events', []))}
+            for sd in $.get('mapped_events_by_series', [])
+          ]
+        total_events_synced: |
+          sum(len(sd.get('mapped_events', [])) for sd in $.get('mapped_events_by_series', []))
+
+    # 5. Bulk save Kalshi events
+    - type: document
+      name: bulk-save-kalshi-events
+      condition: $.get('all_kalshi_events') is not None and len($.get('all_kalshi_events', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'kalshi-events'"
+      documents:
+        items: $.get('all_kalshi_events', [])
+

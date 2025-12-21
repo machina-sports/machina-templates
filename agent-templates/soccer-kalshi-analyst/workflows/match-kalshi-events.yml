@@ -1,0 +1,170 @@
+workflow:
+  name: soccer-match-kalshi-events
+  title: Soccer - Match Kalshi Events to Fixtures
+  description: |
+    Match Kalshi market events to sport:Event fixtures using fuzzy matching.
+    Works across all enabled leagues (Premier League, Serie A, Bundesliga, etc.).
+    Uses team name similarity and date proximity to find matches.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    league_key: $.get('league_key')  # Optional: match specific league only
+    market_id: $.get('market_id')  # Optional: match specific market
+    limit: $.get('limit', 50)  # Batch size for matching
+  outputs:
+    workflow-status: $.get('workflow-status', 'skipped')
+    markets_matched: $.get('markets_matched', [])
+    match_count: $.get('match_count', 0)
+  tasks:
+
+    # 0. Load league configuration
+    - type: mapping
+      name: soccer-league-config
+      inputs:
+        league_key: $.get('league_key')
+      outputs:
+        all_leagues: $.get('all_leagues', {})
+        enabled_leagues: $.get('enabled_leagues', [])
+        league_config: $.get('league_config', {})
+        league_by_kalshi_series: $.get('league_by_kalshi_series', {})
+
+    # 1. Build Kalshi series filter based on league selection
+    - type: mapping
+      name: build-series-filter
+      config:
+        inline: true
+      inputs:
+        league_key: $.get('league_key')
+        league_config: $.get('league_config', {})
+        enabled_leagues: $.get('enabled_leagues', [])
+      outputs:
+        kalshi_series_filter: |
+          (
+            # If league_key provided, filter by that league's series
+            $.get('league_config', {}).get('kalshi_series', [])
+            if $.get('league_key') and $.get('league_config')
+            # Otherwise, include all enabled leagues' series
+            else [
+              series
+              for league in $.get('enabled_leagues', [])
+              for series in league.get('kalshi_series', [])
+            ]
+          )
+
+    # 2a. Load specific market if market_id provided
+    - type: document
+      name: load-market-by-id
+      condition: $.get('market_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('market_id')
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        markets: "[$.get('documents', [{}])[0]]" if $.get('documents') and len($.get('documents', [])) > 0 else []
+        markets_count: len($.get('documents', []))
+        workflow-status: "'executed' if len($.get('documents', [])) > 0 else 'skipped'"
+
+    # 2b. Load unmatched markets in batch (no eventCode yet)
+    - type: document
+      name: load-unmatched-markets
+      condition: $.get('market_id') is None
+      config:
+        action: search
+        search-limit: $.get('limit', 50)
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        metadata.seriesId: "{'$in': $.get('kalshi_series_filter', [])}"
+        value.eventCode: "{'$exists': False}"
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        markets: $.get('documents', [])
+        markets_count: len($.get('documents', []))
+        workflow-status: "'executed' if len($.get('documents', [])) > 0 else 'skipped'"
+
+    # 3. Load candidate sport:Event fixtures for matching
+    - type: document
+      name: load-candidate-events
+      condition: $.get('markets') is not None and len($.get('markets', [])) > 0
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        # Filter by enabled leagues
+        value.sport:competition.@id: |
+          {
+            '$in': [
+              'urn:apifootball:league:' + league.get('api_football_league_id')
+              for league in $.get('enabled_leagues', [])
+            ]
+          }
+        # Only upcoming/not started matches
+        value.sport:status: "{'$nin': ['Played', 'closed', 'ended', 'FT', 'finished']}"
+        # Date window: matches within next 30 days
+        value.schema:startDate: |
+          {
+            '$gte': (datetime.utcnow() - timedelta(days=7)).isoformat(),
+            '$lte': (datetime.utcnow() + timedelta(days=30)).isoformat()
+          }
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        candidate_events: $.get('documents', [])
+        events_count: len($.get('documents', []))
+
+    # 4. Run fuzzy matching
+    - type: connector
+      name: match-markets-to-events
+      condition: >
+        $.get('candidate_events') is not None 
+        and len($.get('candidate_events', [])) > 0 
+        and $.get('markets') is not None 
+        and len($.get('markets', [])) > 0
+      connector:
+        name: assistant-tools-market-event-matcher
+        command: match_markets_to_events
+      inputs:
+        markets: $.get('markets', [])
+        events: $.get('candidate_events', [])
+        name_threshold: 0.4
+        date_tolerance_hours: 24
+      outputs:
+        matches: $.get('matches', [])
+        match_count: $.get('match_count', 0)
+
+    # 5. Update matched markets with eventCode
+    - type: document
+      name: update-matched-markets
+      condition: $.get('matches') is not None and len($.get('matches', [])) > 0
+      foreach:
+        name: match_item
+        expr: $
+        value: $.get('matches', [])
+        concurrent: true
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('match_item', {}).get('market', {}).get('_id')
+      documents:
+        kalshi-events: |
+          {
+            **($.get('match_item', {}).get('market', {}).get('value', {}) or {}),
+            'eventCode': $.get('match_item', {}).get('event_code', ''),
+            'match_confidence': $.get('match_item', {}).get('confidence', 0.0),
+            'matched_at': datetime.utcnow().isoformat()
+          }
+      outputs:
+        markets_matched: $.get('documents', [])
+

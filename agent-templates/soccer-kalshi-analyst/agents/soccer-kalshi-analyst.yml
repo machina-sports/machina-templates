@@ -2,29 +2,36 @@ agent:
   name: soccer-kalshi-analyst
   title: Soccer Kalshi Analyst Agent
   description: |
-    An advanced soccer prediction agent that generates high-fidelity match forecasts 
-    using a multi-stage analytical pipeline
+    An advanced multi-league soccer prediction agent that generates high-fidelity match forecasts 
+    using a multi-stage analytical pipeline. Supports Premier League, Serie A, Bundesliga, and more.
+    Integrates with Kalshi prediction markets for edge detection.
   context:
     config-frequency: 10
     status: "inactive"
   context-agent:
     fixture_id: "$.get('fixture_id')"
+    league_key: "$.get('league_key')"  # Optional: restrict to specific league
   workflows:
   
-    # 1. Consumer: Find upcoming fixtures needing analysis
+    # 1. Consumer: Find upcoming fixtures needing analysis across all leagues
     - name: soccer-kalshi-analysis-consumer
-      description: Identify upcoming soccer fixtures eligible for AI forecasting
+      description: |
+        Identify upcoming soccer fixtures eligible for AI forecasting.
+        Searches across all enabled leagues (EPL, Serie A, Bundesliga).
       inputs:
         fixture_id: $.get('fixture_id')
+        league_key: $.get('league_key')
       outputs:
         analysis_fixture_id: $.get('fixture_id')
+        analysis_league_id: $.get('league_id')
+        analysis_league_key: $.get('league_key')
         analysis_fixture_exists: $.get('workflow-status', 'skipped') == 'executed'
 
     # 2. Executor: Run the full forecasting and market integration pipeline
     - name: soccer-forecast-match
       description: |
         Execute the complete forecast pipeline:
-        - Load event data and team statistics
+        - Load event data and team statistics (league-aware)
         - Generate and execute news search queries
         - Extract structured evidence from news
         - Run statistical, evidence, matchup, and risk analyses

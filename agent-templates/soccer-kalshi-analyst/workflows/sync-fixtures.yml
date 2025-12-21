@@ -1,7 +1,9 @@
 workflow:
   name: soccer-sync-fixtures
   title: Soccer - Sync Fixtures
-  description: Sync fixtures from API-Football and store as sport:Event documents with version control.
+  description: |
+    Sync fixtures from API-Football for all enabled soccer leagues and store as sport:Event documents.
+    Supports Premier League, Serie A, Bundesliga, and is extensible to more leagues.
   context-variables:
     debugger:
       enabled: true
@@ -10,44 +12,115 @@ workflow:
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
-    league: "$.get('league')"
-    season: "$.get('season')"
+    league: $.get('league')  # Optional: specific API-Football league ID
+    league_key: $.get('league_key')  # Optional: league key (e.g., 'epl', 'serie_a')
+    season: $.get('season')  # Optional: override season
+    sync_all: $.get('sync_all', False)  # If true, sync all enabled leagues
   outputs:
     workflow-status: "'executed'"
+    leagues_synced: $.get('leagues_synced', [])
+    total_fixtures: $.get('total_fixtures_synced', 0)
   tasks:
+
+    # 0. Load league configuration
+    - type: mapping
+      name: soccer-league-config
+      inputs:
+        league_key: $.get('league_key')
+      outputs:
+        all_leagues: $.get('all_leagues', {})
+        enabled_leagues: $.get('enabled_leagues', [])
+        league_config: $.get('league_config', {})
+
+    # 1. Determine which leagues to sync
+    - type: mapping
+      name: determine-leagues
+      config:
+        inline: true
+      inputs:
+        league: $.get('league')
+        league_key: $.get('league_key')
+        season: $.get('season')
+        sync_all: $.get('sync_all', False)
+        enabled_leagues: $.get('enabled_leagues', [])
+        league_config: $.get('league_config', {})
+      outputs:
+        leagues_to_sync: |
+          (
+            # If sync_all is true, use all enabled leagues
+            [
+              {'league': l.get('api_football_league_id'), 'season': $.get('season') or l.get('season'), 'key': l.get('key')}
+              for l in $.get('enabled_leagues', [])
+            ]
+            if $.get('sync_all', False)
+            # If league_key is provided, use that specific league
+            else [{'league': $.get('league_config', {}).get('api_football_league_id'), 'season': $.get('season') or $.get('league_config', {}).get('season'), 'key': $.get('league_key')}]
+            if $.get('league_key') and $.get('league_config')
+            # If league ID is provided directly, use that
+            else [{'league': $.get('league'), 'season': $.get('season', '2025'), 'key': 'custom'}]
+            if $.get('league')
+            # Default: sync all enabled leagues
+            else [
+              {'league': l.get('api_football_league_id'), 'season': $.get('season') or l.get('season'), 'key': l.get('key')}
+              for l in $.get('enabled_leagues', [])
+            ]
+          )
+
+    # 2. Fetch and save fixtures for each league
     - type: connector
       name: get-fixtures
+      foreach:
+        name: league_item
+        expr: $
+        value: $.get('leagues_to_sync', [])
+        concurrent: true
       connector:
         name: api-football
         command: get-fixtures
       inputs:
-        league: "$.get('league')"
-        season: "$.get('season')"
+        league: $.get('league_item', {}).get('league')
+        season: $.get('league_item', {}).get('season')
       outputs:
-        fixtures: "$.get('response')"
+        fixtures_by_league: |
+          [
+            {
+              'league': $.get('league_item', {}).get('league'),
+              'key': $.get('league_item', {}).get('key'),
+              'fixtures': $.get('response', [])
+            }
+          ]
 
+    # 3. Map fixtures to IPTC schema
     - type: mapping
       name: iptc-api-football-event-mapping
-      condition: $.get('fixtures') is not None
+      condition: $.get('fixtures_by_league') is not None
+      foreach:
+        name: league_fixtures
+        expr: $
+        value: $.get('fixtures_by_league', [])
+        concurrent: true
       inputs:
-        fixtures: "$.get('fixtures')"
+        fixtures: $.get('league_fixtures', {}).get('fixtures', [])
       outputs:
-        events: "$.get('sport_schema_events')"
+        mapped_events_by_league: |
+          [
+            {
+              'league': $.get('league_fixtures', {}).get('league'),
+              'key': $.get('league_fixtures', {}).get('key'),
+              'events': $.get('sport_schema_events', [])
+            }
+          ]
 
-    - type: document
-      name: bulk-save-fixtures
+    # 4. Flatten all events
+    - type: mapping
+      name: flatten-events
+      condition: $.get('mapped_events_by_league') is not None
       config:
-        action: bulk-update
-        embed-selector: "$.get('title')"
-        embed-vector: true
-        force-update: true
-      connector:
-        name: machina-ai
-        command: invoke_embedding
-        model: text-embedding-3-small
-      document_name: "sport:Event"
-      documents:
-        items: |
+        inline: true
+      inputs:
+        mapped_events_by_league: $.get('mapped_events_by_league', [])
+      outputs:
+        all_events: |
           [
             {
               **f,
@@ -64,7 +137,32 @@ workflow:
                 'sync_date': datetime.utcnow().isoformat()
               }
             }
-            for f in $.get('events', [])
+            for league_data in $.get('mapped_events_by_league', [])
+            for f in league_data.get('events', [])
           ]
+        leagues_synced: |
+          [
+            {'league': ld.get('league'), 'key': ld.get('key'), 'count': len(ld.get('events', []))}
+            for ld in $.get('mapped_events_by_league', [])
+          ]
+        total_fixtures_synced: |
+          sum(len(ld.get('events', [])) for ld in $.get('mapped_events_by_league', []))
+
+    # 5. Bulk save all fixtures
+    - type: document
+      name: bulk-save-fixtures
+      condition: $.get('all_events') is not None and len($.get('all_events', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'sport:Event'"
+      documents:
+        items: $.get('all_events', [])
       metadata:
         document_type: "'fixture'"
