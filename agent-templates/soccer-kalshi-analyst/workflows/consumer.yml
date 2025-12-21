@@ -1,32 +1,16 @@
 workflow:
   name: soccer-kalshi-analysis-consumer
   title: Soccer - Kalshi Analysis Consumer
-  description: |
-    Find upcoming soccer fixtures from all enabled leagues that haven't been processed yet.
-    Supports Premier League, Serie A, Bundesliga, and extensible to more leagues.
+  description: Find upcoming soccer fixtures from the database that haven't been processed yet.
   context-variables:
     debugger:
       enabled: true
   inputs:
     fixture_id: $.get('fixture_id')
-    league_key: $.get('league_key')  # Optional: restrict to specific league
   outputs:
     fixture_id: $.get('target_fixture_id')
-    league_id: $.get('target_league_id')
-    league_key: $.get('target_league_key')
     workflow-status: $.get('fixture_found') is not True and 'skipped' or 'executed'
   tasks:
-
-    # 0. Load league configuration
-    - type: mapping
-      name: soccer-league-config
-      inputs:
-        league_key: $.get('league_key')
-      outputs:
-        all_leagues: $.get('all_leagues', {})
-        enabled_leagues: $.get('enabled_leagues', [])
-        league_by_api_id: $.get('league_by_api_id', {})
-
     # 1. Load specific fixture if ID provided
     - type: document
       name: load-fixture-by-id
@@ -41,11 +25,10 @@ workflow:
       outputs:
         fixture_found: len($.get('documents', [])) > 0
         target_fixture_id: $.get('documents')[0].get('metadata', {}).get('fixture_id') if $.get('documents') else None
-        target_league_id: "str($.get('documents')[0].get('value', {}).get('sport:competition', {}).get('@id', '')).split(':')[-1] if $.get('documents') else None"
         event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
         event_doc_id: $.get('documents')[0].get('_id') if $.get('documents') else None
 
-    # 2. Find next upcoming fixture across ALL enabled leagues
+    # 2. Find next upcoming fixture in a 60-hour window (consistent with market agent)
     - type: document
       name: load-next-fixture
       condition: $.get('fixture_found') is not True
@@ -62,37 +45,15 @@ workflow:
           }
         value.version_control.processing: "{'$ne': True}"
         value.version_control.forecasted: "{'$ne': True}"
-        # Filter by enabled leagues only
-        value.sport:competition.@id: |
-          {
-            '$in': [
-              'urn:apifootball:league:' + league.get('api_football_league_id')
-              for league in $.get('enabled_leagues', [])
-            ]
-          }
       inputs:
         name: "'sport:Event'"
       outputs:
         fixture_found: len($.get('documents', [])) > 0
         target_fixture_id: $.get('documents')[0].get('metadata', {}).get('fixture_id') if $.get('documents') else None
-        target_league_id: "str($.get('documents')[0].get('value', {}).get('sport:competition', {}).get('@id', '')).split(':')[-1] if $.get('documents') else None"
         event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
         event_doc_id: $.get('documents')[0].get('_id') if $.get('documents') else None
 
-    # 3. Resolve league key from league ID
-    - type: mapping
-      name: resolve-league-key
-      condition: $.get('fixture_found') is True and $.get('target_league_id') is not None
-      config:
-        inline: true
-      inputs:
-        league_by_api_id: $.get('league_by_api_id', {})
-        target_league_id: $.get('target_league_id')
-      outputs:
-        target_league_key: "$.get('league_by_api_id', {}).get($.get('target_league_id'), {}).get('key', 'unknown')"
-        target_league_config: "$.get('league_by_api_id', {}).get($.get('target_league_id'), {})"
-
-    # 4. Mark as processing (lock)
+    # 3. Mark as processing (lock)
     - type: document
       name: mark-processing
       condition: $.get('fixture_found') is True

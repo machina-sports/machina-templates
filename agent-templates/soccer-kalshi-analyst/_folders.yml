@@ -1,7 +1,7 @@
 workflow:
   name: soccer-kalshi-analyst-folders
   title: Soccer Kalshi Analyst - Folders
-  description: UI Folder structure for Soccer Kalshi Analyst findings across all leagues.
+  description: UI Folder structure for Soccer Kalshi Analyst findings.
   context-variables:
     debugger:
       enabled: false
@@ -10,7 +10,7 @@ workflow:
   tasks:
     - type: document
       name: install-documents
-      description: Install folders for Match Predictions, Kalshi Edge Analysis, and League Events.
+      description: Install folders for Match Predictions and Kalshi Edge Analysis.
       config:
         action: update
         embed-vector: false
@@ -26,7 +26,7 @@ workflow:
                 {
                   "name": "soccer-prediction",
                   "title": "Fair Price Models",
-                  "description": "AI-calculated fair probabilities based on stats and news across all leagues.",
+                  "description": "AI-calculated fair probabilities based on stats and news.",
                   "category": "Soccer AI Forecasts",
                   "metadata": {
                     "name": ["soccer-prediction"]
@@ -37,7 +37,7 @@ workflow:
                 {
                   "name": "soccer-kalshi-analysis",
                   "title": "Kalshi Edge Alerts",
-                  "description": "Real-time trading opportunities on Kalshi for EPL, Serie A, Bundesliga, La Liga, Liga Portugal.",
+                  "description": "Real-time trading opportunities on Kalshi.",
                   "category": "Soccer AI Forecasts",
                   "metadata": {
                     "name": ["soccer-kalshi-analysis"]
@@ -55,7 +55,7 @@ workflow:
                 {
                   "name": "sport-events-all",
                   "title": "All Fixtures",
-                  "description": "All soccer fixtures across leagues (EPL, Serie A, Bundesliga, La Liga, Liga Portugal).",
+                  "description": "All soccer fixtures across leagues.",
                   "category": "Soccer Events",
                   "metadata": {
                     "name": ["sport:Event"]
@@ -65,7 +65,7 @@ workflow:
                 },
                 {
                   "name": "sport-events-epl",
-                  "title": "Premier League Fixtures",
+                  "title": "Premier League",
                   "description": "English Premier League fixtures.",
                   "category": "Soccer Events",
                   "metadata": {
@@ -77,7 +77,7 @@ workflow:
                 },
                 {
                   "name": "sport-events-serie-a",
-                  "title": "Serie A Fixtures",
+                  "title": "Serie A",
                   "description": "Italian Serie A fixtures.",
                   "category": "Soccer Events",
                   "metadata": {
@@ -89,7 +89,7 @@ workflow:
                 },
                 {
                   "name": "sport-events-bundesliga",
-                  "title": "Bundesliga Fixtures",
+                  "title": "Bundesliga",
                   "description": "German Bundesliga fixtures.",
                   "category": "Soccer Events",
                   "metadata": {
@@ -101,7 +101,7 @@ workflow:
                 },
                 {
                   "name": "sport-events-la-liga",
-                  "title": "La Liga Fixtures",
+                  "title": "La Liga",
                   "description": "Spanish La Liga fixtures.",
                   "category": "Soccer Events",
                   "metadata": {
@@ -113,7 +113,7 @@ workflow:
                 },
                 {
                   "name": "sport-events-liga-portugal",
-                  "title": "Liga Portugal Fixtures",
+                  "title": "Liga Portugal",
                   "description": "Portuguese Liga Portugal fixtures.",
                   "category": "Soccer Events",
                   "metadata": {
@@ -137,79 +137,6 @@ workflow:
                   "category": "Kalshi Soccer Markets",
                   "metadata": {
                     "name": ["kalshi-events"]
-                  },
-                  "filters": {
-                    "metadata.seriesId": {"$regex": "EPL|SERIEA|BUNDESLIGA|LALIGA|LIGAPORTUGAL|PRIMEIRALIGA"}
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "kalshi-events-epl",
-                  "title": "EPL Markets",
-                  "description": "Premier League Kalshi markets.",
-                  "category": "Kalshi Soccer Markets",
-                  "metadata": {
-                    "name": ["kalshi-events"]
-                  },
-                  "filters": {
-                    "metadata.seriesId": {"$regex": "^KXEPL"}
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "kalshi-events-serie-a",
-                  "title": "Serie A Markets",
-                  "description": "Serie A Kalshi markets.",
-                  "category": "Kalshi Soccer Markets",
-                  "metadata": {
-                    "name": ["kalshi-events"]
-                  },
-                  "filters": {
-                    "metadata.seriesId": {"$regex": "^KXSERIEA"}
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "kalshi-events-bundesliga",
-                  "title": "Bundesliga Markets",
-                  "description": "Bundesliga Kalshi markets.",
-                  "category": "Kalshi Soccer Markets",
-                  "metadata": {
-                    "name": ["kalshi-events"]
-                  },
-                  "filters": {
-                    "metadata.seriesId": {"$regex": "^KXBUNDESLIGA"}
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "kalshi-events-la-liga",
-                  "title": "La Liga Markets",
-                  "description": "La Liga Kalshi markets.",
-                  "category": "Kalshi Soccer Markets",
-                  "metadata": {
-                    "name": ["kalshi-events"]
-                  },
-                  "filters": {
-                    "metadata.seriesId": {"$regex": "^KXLALIGA"}
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
-                {
-                  "name": "kalshi-events-liga-portugal",
-                  "title": "Liga Portugal Markets",
-                  "description": "Liga Portugal Kalshi markets.",
-                  "category": "Kalshi Soccer Markets",
-                  "metadata": {
-                    "name": ["kalshi-events"]
-                  },
-                  "filters": {
-                    "metadata.seriesId": {"$regex": "^KXLIGAPORTUGAL|^KXPRIMEIRALIGA"}
                   },
                   "sorters": ['_id', -1],
                   "view": "list"

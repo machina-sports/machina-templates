@@ -1,141 +1,155 @@
 workflow:
-  name: soccer-sync-kalshi-events
-  title: Soccer - Sync Kalshi Events
-  description: |
-    Sync Kalshi soccer events for all enabled leagues by their series tickers.
-    This fetches game-level markets from Kalshi for Premier League, Serie A, Bundesliga, etc.
+  name: soccer-kalshi-sync
+  title: Soccer - Sync Kalshi Soccer Events
+  description: Syncs Kalshi soccer events from all leagues and matches them with sport:Event fixtures using fuzzy matching.
   context-variables:
     debugger:
       enabled: true
     machina-ai:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
-    league_key: $.get('league_key')  # Optional: sync specific league only
-    series_ticker: $.get('series_ticker')  # Optional: sync specific series
-    sync_all: $.get('sync_all', True)  # If true, sync all enabled leagues
+    force_update: $.get('force_update', False)
   outputs:
+    events_synced: $.get('total_events_synced', 0)
+    events_matched: $.get('match_count', 0)
     workflow-status: "'executed'"
-    series_synced: $.get('series_synced', [])
-    total_events: $.get('total_events_synced', 0)
   tasks:
 
-    # 0. Load league configuration
-    - type: mapping
-      name: soccer-league-config
-      inputs:
-        league_key: $.get('league_key')
-      outputs:
-        all_leagues: $.get('all_leagues', {})
-        enabled_leagues: $.get('enabled_leagues', [])
-        league_config: $.get('league_config', {})
-        kalshi_series_ids: $.get('kalshi_series_ids', [])
-
-    # 1. Determine which series to sync
-    - type: mapping
-      name: determine-series
-      config:
-        inline: true
-      inputs:
-        series_ticker: $.get('series_ticker')
-        league_key: $.get('league_key')
-        sync_all: $.get('sync_all', True)
-        enabled_leagues: $.get('enabled_leagues', [])
-        league_config: $.get('league_config', {})
-        kalshi_series_ids: $.get('kalshi_series_ids', [])
-      outputs:
-        series_to_sync: |
-          (
-            # If specific series ticker is provided
-            [{'series': $.get('series_ticker'), 'league_key': 'custom'}]
-            if $.get('series_ticker')
-            # If league_key is provided, use that league's series
-            else [
-              {'series': s, 'league_key': $.get('league_key')}
-              for s in $.get('league_config', {}).get('kalshi_series', [])
-            ]
-            if $.get('league_key') and $.get('league_config')
-            # Default: sync all series from all enabled leagues
-            else [
-              {'series': series, 'league_key': league.get('key')}
-              for league in $.get('enabled_leagues', [])
-              for series in league.get('kalshi_series', [])
-            ]
-          )
-
-    # 2. Fetch events from Kalshi for each series
+    # EPL BTTS
     - type: connector
-      name: fetch-kalshi-events
-      foreach:
-        name: series_item
-        expr: $
-        value: $.get('series_to_sync', [])
-        concurrent: true
+      name: load-epl-btts
       connector:
         name: kalshi
         command: get-events
       inputs:
-        series_ticker: $.get('series_item', {}).get('series')
+        series_ticker: "'KXEPLBTTS'"
       outputs:
-        events_by_series: |
-          [
-            {
-              'series': $.get('series_item', {}).get('series'),
-              'league_key': $.get('series_item', {}).get('league_key'),
-              'events': $.get('events', [])
-            }
-          ]
+        epl_btts_events: $.get('events', [])
 
-    # 3. Map and prepare events for bulk save
-    - type: mapping
-      name: kalshi-event-mapping
-      condition: $.get('events_by_series') is not None
-      foreach:
-        name: series_events
-        expr: $
-        value: $.get('events_by_series', [])
-        concurrent: true
+    # Serie A BTTS
+    - type: connector
+      name: load-seriea-btts
+      connector:
+        name: kalshi
+        command: get-events
       inputs:
-        events: $.get('series_events', {}).get('events', [])
+        series_ticker: "'KXSERIEABTTS'"
       outputs:
-        mapped_events_by_series: |
-          [
-            {
-              'series': $.get('series_events', {}).get('series'),
-              'league_key': $.get('series_events', {}).get('league_key'),
-              'mapped_events': $.get('mapped-events', [])
-            }
-          ]
+        seriea_btts_events: $.get('events', [])
 
-    # 4. Flatten all events and prepare for save
-    - type: mapping
-      name: flatten-kalshi-events
-      condition: $.get('mapped_events_by_series') is not None
-      config:
-        inline: true
+    # Bundesliga BTTS
+    - type: connector
+      name: load-bundesliga-btts
+      connector:
+        name: kalshi
+        command: get-events
       inputs:
-        mapped_events_by_series: $.get('mapped_events_by_series', [])
+        series_ticker: "'KXBUNDESLIGABTTS'"
       outputs:
-        all_kalshi_events: |
-          [
-            event
-            for series_data in $.get('mapped_events_by_series', [])
-            for event in series_data.get('mapped_events', [])
-          ]
-        series_synced: |
-          [
-            {'series': sd.get('series'), 'league_key': sd.get('league_key'), 'count': len(sd.get('mapped_events', []))}
-            for sd in $.get('mapped_events_by_series', [])
-          ]
+        bundesliga_btts_events: $.get('events', [])
+
+    # La Liga BTTS
+    - type: connector
+      name: load-laliga-btts
+      connector:
+        name: kalshi
+        command: get-events
+      inputs:
+        series_ticker: "'KXLALIGABTTS'"
+      outputs:
+        laliga_btts_events: $.get('events', [])
+
+    # Liga Portugal BTTS
+    - type: connector
+      name: load-ligaportugal-btts
+      connector:
+        name: kalshi
+        command: get-events
+      inputs:
+        series_ticker: "'KXLIGAPORTUGALBTTS'"
+      outputs:
+        ligaportugal_btts_events: $.get('events', [])
+
+    # Combine and map all events
+    - type: mapping
+      name: kalshi-soccer-event-mapping
+      inputs:
+        events: |
+          list($.get('epl_btts_events', [])) + 
+          list($.get('seriea_btts_events', [])) + 
+          list($.get('bundesliga_btts_events', [])) + 
+          list($.get('laliga_btts_events', [])) + 
+          list($.get('ligaportugal_btts_events', []))
+      outputs:
+        mapped_events: $.get('mapped-events', [])
         total_events_synced: |
-          sum(len(sd.get('mapped_events', [])) for sd in $.get('mapped_events_by_series', []))
+          len(list($.get('epl_btts_events', []))) + 
+          len(list($.get('seriea_btts_events', []))) + 
+          len(list($.get('bundesliga_btts_events', []))) + 
+          len(list($.get('laliga_btts_events', []))) + 
+          len(list($.get('ligaportugal_btts_events', [])))
 
-    # 5. Bulk save Kalshi events
+    # Load sport:Event fixtures for matching
     - type: document
-      name: bulk-save-kalshi-events
-      condition: $.get('all_kalshi_events') is not None and len($.get('all_kalshi_events', [])) > 0
+      name: load-fixtures
+      condition: len($.get('mapped_events', [])) > 0
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        value.sport:status: "{'$in': ['NS', 'not_started']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(days=14)).isoformat()}"
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        sport_events: $.get('documents', [])
+        sport_events_count: len($.get('documents', []))
+
+    # Fuzzy match Kalshi events to fixtures
+    - type: connector
+      name: fuzzy-match-events
+      condition: $.get('sport_events_count', 0) > 0 and len($.get('mapped_events', [])) > 0
+      connector:
+        name: soccer-market-event-matcher
+        command: match_markets_to_events
+      inputs:
+        markets: $.get('mapped_events', [])
+        events: $.get('sport_events', [])
+        name_threshold: 0.4
+        date_tolerance_hours: 24
+      outputs:
+        matches: $.get('matches', [])
+        match_count: $.get('match_count', 0)
+
+    # Build enriched events from matches
+    - type: context
+      name: enrich-matched-events
+      condition: len($.get('matches', [])) > 0
+      outputs:
+        enriched_events: |
+          [
+            {
+              **match.get('market', {}),
+              'eventCode': match.get('event_code'),
+              'match_confidence': match.get('confidence', 0.0),
+              'matched_fixture': match.get('event', {}).get('value', {}).get('title', ''),
+              'metadata': {
+                **match.get('market', {}).get('metadata', {}),
+                'eventCode': match.get('event_code'),
+                'fixture_id': match.get('event', {}).get('metadata', {}).get('fixture_id')
+              }
+            }
+            for match in $.get('matches', [])
+          ]
+
+    # Save enriched Kalshi events
+    - type: document
+      name: save-enriched-kalshi-events
+      condition: len($.get('enriched_events', [])) > 0
       config:
         action: bulk-update
-        embed-selector: $.get('title')
+        embed-selector: $.get('originalTitle')
         embed-vector: true
         force-update: true
       connector:
@@ -144,5 +158,18 @@ workflow:
         model: text-embedding-3-small
       document_name: "'kalshi-events'"
       documents:
-        items: $.get('all_kalshi_events', [])
-
+        items: |
+          [
+            {
+              **event,
+              'title': event.get('id', '') + ' - ' + event.get('originalTitle', ''),
+              'metadata': {
+                'id': event.get('id'),
+                'seriesId': event.get('seriesId'),
+                'eventCode': event.get('eventCode'),
+                'fixture_id': event.get('metadata', {}).get('fixture_id'),
+                'match_confidence': event.get('match_confidence', 0.0)
+              }
+            }
+            for event in $.get('enriched_events', [])
+          ]

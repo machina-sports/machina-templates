@@ -3,7 +3,7 @@ setup:
   description: |
     AI-powered multi-league soccer forecasting agent that generates match predictions 
     using Monte Carlo simulation and identifies tradable edges on Kalshi markets.
-    Supports Premier League, Serie A, Bundesliga, La Liga, Liga Portugal, and more.
+    Supports Premier League, Serie A, Bundesliga, La Liga, Liga Portugal.
   category:
     - sports
     - analytics
@@ -21,7 +21,6 @@ setup:
     - High-fidelity Poisson Monte Carlo simulation (10,000 iterations)
     - Kalshi market edge detection with tier-based trading recommendations
     - Rich prediction documents with full analytical audit trail
-    - Automatic Kalshi event matching via fuzzy team name matching
   integrations:
     - api-football
     - google-genai
@@ -43,6 +42,9 @@ datasets:
 
   - type: connector
     path: scripts/monte_carlo.yml
+
+  - type: connector
+    path: scripts/market-event-matcher.yml
 
   # Prompts
   - type: prompt
@@ -76,10 +78,7 @@ datasets:
   - type: mappings
     path: mappings/kalshi-markets-summary.yml
 
-  - type: mappings
-    path: mappings/league-config.yml
-
-  # Workflows - Core
+  # Workflows
   - type: workflow
     path: _folders.yml
 
@@ -92,14 +91,6 @@ datasets:
   - type: workflow
     path: workflows/sync-standings.yml
 
-  # Workflows - Kalshi Integration
-  - type: workflow
-    path: workflows/sync-kalshi-events.yml
-
-  - type: workflow
-    path: workflows/match-kalshi-events.yml
-
-  # Workflows - Analysis Pipeline
   - type: workflow
     path: workflows/consumer.yml
 
@@ -112,6 +103,5 @@ datasets:
   - type: workflow
     path: workflows/kalshi-market-integration.yml
 
-  # Workflows - Orchestration
   - type: workflow
-    path: workflows/sync-all.yml
+    path: workflows/sync-kalshi-events.yml
