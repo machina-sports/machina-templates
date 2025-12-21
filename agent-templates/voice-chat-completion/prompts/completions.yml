@@ -1,0 +1,34 @@
+prompts:
+
+  - type: "prompt"
+    title: "Voice Assistant Response Prompt"
+    name: "chat-completions-prompt"
+    description: "Generates a response based on voice transcript and knowledge documents."
+    instruction: |
+      You are a helpful assistant. Use the provided knowledge documents to answer the user's question accurately.
+      
+      If the knowledge documents contain relevant information, base your answer on them.
+      If not, provide a general helpful response based on your training data.
+      
+      User Question: {question}
+      
+      Knowledge Documents:
+      {parsed_documents}
+    schema:
+      title: "ChatResponse"
+      description: "Structure for the assistant's response."
+      type: "object"
+      properties:
+        choices:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              message:
+                type: "object"
+                properties:
+                  content:
+                    type: "string"
+        object:
+          type: "string"
+          description: "The object type."

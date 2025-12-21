@@ -1,0 +1,19 @@
+setup:
+  title: Google Storage V2
+  description: Conector avançado para Google Storage (suporta Base64 e Downloads autenticados).
+  category:
+    - special-templates
+  estimatedTime: 1 minute
+  features:
+    - Upload via Base64
+    - Download autenticado de gs://
+    - Compatibilidade com GCS V4
+  integrations:
+    - google
+  status: available
+  value: connectors/google-storage-v2
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "google-storage.yml"

@@ -1,0 +1,9 @@
+connector:
+  name: "google-storage-v2"
+  description: "Advanced Google Storage connector with Base64 and authenticated GCS download support"
+  filename: "google-storage.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Upload"
+      value: "invoke_upload"
+

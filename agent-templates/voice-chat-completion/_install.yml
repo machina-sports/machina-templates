@@ -1,0 +1,23 @@
+setup:
+  title: "Voice Chat Completions"
+  description: AI-powered voice chat completion using Google Speech-to-Text.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agent to generate chat completions from voice input.
+    - Server-side audio processing.
+  integrations:
+    - machina-ai
+    - google-speech-to-text
+    - google-storage-v2
+  status: available
+  value: agent-templates/voice-chat-completion
+  version: 1.0.0
+
+datasets:
+  - type: "prompts"
+    path: "prompts/completions.yml"
+
+  - type: "workflow"
+    path: "workflows/voice-chat.yml"
