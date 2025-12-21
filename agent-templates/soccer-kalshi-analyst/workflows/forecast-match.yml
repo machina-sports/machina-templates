@@ -20,8 +20,9 @@ workflow:
       name: load-event
       config:
         action: search
+        search-limit: 1
       filters:
-        metadata.fixture_id: "str($.get('fixture_id'))"
+        metadata.fixture_id: str($.get('fixture_id'))
       inputs:
         name: "'sport:Event'"
       outputs:
@@ -254,6 +255,7 @@ workflow:
       name: load-kalshi
       config:
         action: search
+        search-limit: 1
       filters:
         value.eventCode: "'urn:apifootball:sport_event:' + str($.get('fixture_id'))"
       inputs:
