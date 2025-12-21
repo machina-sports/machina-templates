@@ -1,10 +1,6 @@
 setup:
   title: Soccer Kalshi Analyst
-  description: |
-    Advanced AI-powered soccer forecasting agent that generates high-fidelity match predictions 
-    and identifies tradable edges on Kalshi prediction markets. Uses a sophisticated multi-stage 
-    analytical pipeline with Chain-of-Thought reasoning, quantified news evidence extraction, 
-    tactical matchup analysis, and Monte Carlo simulation for calibrated probability distributions.
+  description: AI-powered soccer forecasting agent that generates match predictions using Monte Carlo simulation and identifies tradable edges on Kalshi markets.
   category:
     - sports
     - analytics
@@ -72,7 +68,7 @@ datasets:
     path: prompts/kalshi_edge_analyst.yml
 
   # Mappings
-  - type: mapping
+  - type: mappings
     path: mappings/kalshi-markets-summary.yml
 
   # Workflows
