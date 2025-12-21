@@ -12,7 +12,7 @@ workflow:
   inputs:
     fixture_id: "$.get('fixture_id')"
   outputs:
-    workflow-status: "'executed'"
+    workflow-status: "$.get('workflow_executed_status', 'executed')"
     prediction_document_id: "$.get('prediction_document_id')"
   tasks:
     # 1. Load match details
@@ -28,7 +28,8 @@ workflow:
       outputs:
         event_doc: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
         league: "str($.get('documents')[0].get('metadata', {}).get('league', '39')).split(':')[-1] if len($.get('documents', [])) > 0 else '39'"
-        season: "$.get('documents')[0].get('metadata', {}).get('season', '2025') if len($.get('documents', [])) > 0 else '2025'"
+        season: "str($.get('documents')[0].get('metadata', {}).get('season', '2025')) if len($.get('documents', [])) > 0 else '2025'"
+        workflow_executed_status: "'executed'"
 
     # 2. Extract IDs for stats
     - type: connector
@@ -37,8 +38,9 @@ workflow:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
-        event_doc: "$.get('event_doc')"
-        fixture_id: "$.get('fixture_id')"
+        params:
+          event_doc: "$.get('event_doc')"
+          fixture_id: "$.get('fixture_id')"
       outputs:
         h_id: "$.get('feature_payload', {}).get('home', {}).get('id')"
         a_id: "$.get('feature_payload', {}).get('away', {}).get('id')"
@@ -127,10 +129,11 @@ workflow:
         name: soccer-aggregate-features
         command: aggregate_features
       inputs:
-        event_doc: "$.get('event_doc')"
-        home_stats: "$.get('h_stats')"
-        away_stats: "$.get('a_stats')"
-        news_deltas: "$.get('evidence')"
+        params:
+          event_doc: "$.get('event_doc')"
+          home_stats: "$.get('h_stats')"
+          away_stats: "$.get('a_stats')"
+          news_deltas: "$.get('evidence')"
       outputs:
         feature_payload: "$.get('feature_payload')"
 
@@ -215,8 +218,9 @@ workflow:
         name: soccer-monte-carlo
         command: run_monte_carlo_simulation
       inputs:
-        simulation_parameters: "$.get('sim_params')"
-        num_simulations: 10000
+        params:
+          simulation_parameters: "$.get('sim_params')"
+          num_simulations: 10000
       outputs:
         sim_results: "$.get('simulation_results')"
 
@@ -244,9 +248,9 @@ workflow:
       documents:
         soccer-prediction: |
           {
-            'fixture_id': $.get('fixture_id'),
+            'fixture_id': str($.get('fixture_id')),
             'prediction': $.get('final_prediction'),
-            'timestamp': datetime.utcnow()
+            'timestamp': datetime.utcnow().isoformat()
           }
       outputs:
         prediction_document_id: "$.get('document_id')"
@@ -309,12 +313,12 @@ workflow:
       documents:
         soccer-kalshi-analysis: |
           {
-            'fixture_id': $.get('fixture_id'),
+            'fixture_id': str($.get('fixture_id')),
             'prediction_id': $.get('prediction_document_id'),
             'analysis': $.get('edge_analysis', {}).get('analysis'),
             'summary': $.get('edge_analysis', {}).get('summary'),
             'selected': $.get('edge_analysis', {}).get('selected_market'),
             'markets_ranked': $.get('edge_analysis', {}).get('markets_ranked'),
             'should_trade': $.get('edge_analysis', {}).get('should_trade'),
-            'timestamp': datetime.utcnow()
+            'timestamp': datetime.utcnow().isoformat()
           }

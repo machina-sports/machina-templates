@@ -9,13 +9,20 @@ def run_monte_carlo_simulation(params):
     try:
         if isinstance(params, str):
             import json
-            params = json.loads(params)
+            try: params = json.loads(params)
+            except: pass
         
-        sim_params = params.get('simulation_parameters', {})
-        num_simulations = params.get('num_simulations', 10000)
+        if not isinstance(params, dict):
+            params = {}
+            
+        p = params.get('params', params)
+        if not isinstance(p, dict): p = {}
+        
+        sim_params = p.get('simulation_parameters', {})
+        num_simulations = p.get('num_simulations', 10000)
 
         if not isinstance(sim_params, dict) or not sim_params:
-            return {"error": "No simulation parameters provided"}
+            return {"error": "No simulation parameters provided", "simulation_results": {}}
 
         # Handle potential string/None values
         home_exp_goals = sim_params.get('home_expected_goals')
@@ -53,4 +60,4 @@ def run_monte_carlo_simulation(params):
             }
         }
     except Exception as e:
-        return {"error": f"Monte Carlo Exception: {str(e)}"}
+        return {"error": f"Monte Carlo Exception: {str(e)}", "simulation_results": {}}

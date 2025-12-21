@@ -3,28 +3,30 @@ import json
 
 def aggregate_features(params):
     """
-    Super-robust feature aggregator. Standard library only.
-    Handles extraction, statistics merging, and state preparation.
+    Bulletproof feature aggregator.
     """
     try:
-        p = params
-        if isinstance(p, str):
-            try: p = json.loads(p)
+        # Handle string input
+        if isinstance(params, str):
+            try: params = json.loads(params)
             except: pass
+        
+        # Ensure params is a dict
+        if not isinstance(params, dict):
+            params = {}
+            
+        # Check if inputs are nested in 'params' key
+        p = params.get('params', params)
         if not isinstance(p, dict): p = {}
 
         # 1. Identity & Metadata
         event_doc = p.get('event_doc', {})
         if not isinstance(event_doc, dict): event_doc = {}
         
-        # Try to find fixture_id in various places
+        # Try to find fixture_id
         fixture_id = p.get('fixture_id')
         if not fixture_id:
-            # Check event_doc metadata (if it's the full doc) or value (if it's just value)
-            metadata = event_doc.get('metadata')
-            if not isinstance(metadata, dict): metadata = {}
-            fixture_id = metadata.get('fixture_id') or \
-                         event_doc.get('fixture_id') or \
+            fixture_id = event_doc.get('fixture_id') or \
                          str(event_doc.get('@id', '')).split(':')[-1]
         
         # 2. Competitors
@@ -43,7 +45,6 @@ def aggregate_features(params):
 
         def safe_extract_stats(stats_obj):
             if not isinstance(stats_obj, dict): return {}
-            # API-Football returns stats in 'response' or directly
             res = stats_obj.get('response', stats_obj)
             if isinstance(res, list) and len(res) > 0: res = res[0]
             if not isinstance(res, dict): return {}
@@ -91,7 +92,7 @@ def aggregate_features(params):
 
         return {"feature_payload": feature_payload}
     except Exception as e:
-        return {"error": f"Aggregation Exception: {str(e)}"}
+        return {"error": f"Aggregation Exception: {str(e)}", "feature_payload": {}}
 
 def filter_search_results(params):
     try:
