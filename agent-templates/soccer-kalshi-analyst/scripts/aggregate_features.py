@@ -17,13 +17,23 @@ def aggregate_features(params):
         event_doc = p.get('event_doc', {})
         if not isinstance(event_doc, dict): event_doc = {}
         
-        fixture_id = p.get('fixture_id') or event_doc.get('metadata', {}).get('fixture_id')
+        # Try to find fixture_id in various places
+        fixture_id = p.get('fixture_id')
+        if not fixture_id:
+            # Check event_doc metadata (if it's the full doc) or value (if it's just value)
+            metadata = event_doc.get('metadata')
+            if not isinstance(metadata, dict): metadata = {}
+            fixture_id = metadata.get('fixture_id') or \
+                         event_doc.get('fixture_id') or \
+                         str(event_doc.get('@id', '')).split(':')[-1]
         
         # 2. Competitors
         competitors = event_doc.get('sport:competitors', [])
+        if not isinstance(competitors, list): competitors = []
         home_team_info = {}
         away_team_info = {}
         for c in competitors:
+            if not isinstance(c, dict): continue
             if c.get('sport:qualifier') == 'home': home_team_info = c
             if c.get('sport:qualifier') == 'away': away_team_info = c
 
@@ -43,24 +53,36 @@ def aggregate_features(params):
         a_stats = safe_extract_stats(away_stats_raw)
 
         # 4. News Deltas
-        news_deltas = p.get('news_deltas', {}).get('deltas', {})
+        news_deltas_raw = p.get('news_deltas', {})
+        if not isinstance(news_deltas_raw, dict): news_deltas_raw = {}
+        news_deltas = news_deltas_raw.get('deltas', {})
+        if not isinstance(news_deltas, dict): news_deltas = {}
 
         # 5. Build Payload
+        comp_info = event_doc.get('sport:competition', {})
+        if not isinstance(comp_info, dict): comp_info = {}
+        
+        season_info = comp_info.get('sport:season', {})
+        if not isinstance(season_info, dict): season_info = {}
+
+        venue_info = event_doc.get('sport:venue', {})
+        if not isinstance(venue_info, dict): venue_info = {}
+
         feature_payload = {
             "meta": {
-                "fixture_id": fixture_id,
-                "league": event_doc.get('sport:competition', {}).get('@id', '39'),
-                "season": event_doc.get('sport:competition', {}).get('sport:season', {}).get('sport:year', '2025'),
-                "venue": event_doc.get('sport:venue', {}).get('name', 'Unknown'),
+                "fixture_id": str(fixture_id) if fixture_id else "unknown",
+                "league": str(comp_info.get('@id', '39')).split(':')[-1],
+                "season": str(season_info.get('sport:year', '2025')),
+                "venue": venue_info.get('name', 'Unknown'),
                 "status": event_doc.get('sport:status', 'NS')
             },
             "home": {
-                "id": home_team_info.get('@id', '').split(':')[-1],
+                "id": str(home_team_info.get('@id', '')).split(':')[-1],
                 "name": home_team_info.get('name', 'Home Team'),
                 "stats": h_stats
             },
             "away": {
-                "id": away_team_info.get('@id', '').split(':')[-1],
+                "id": str(away_team_info.get('@id', '')).split(':')[-1],
                 "name": away_team_info.get('name', 'Away Team'),
                 "stats": a_stats
             },

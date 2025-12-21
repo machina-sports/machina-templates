@@ -27,8 +27,8 @@ workflow:
         name: "'sport:Event'"
       outputs:
         event_doc: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
-        league: "$.get('documents')[0].get('metadata', {}).get('league') if len($.get('documents', [])) > 0 else None"
-        season: "$.get('documents')[0].get('metadata', {}).get('season') if len($.get('documents', [])) > 0 else None"
+        league: "str($.get('documents')[0].get('metadata', {}).get('league', '39')).split(':')[-1] if len($.get('documents', [])) > 0 else '39'"
+        season: "$.get('documents')[0].get('metadata', {}).get('season', '2025') if len($.get('documents', [])) > 0 else '2025'"
 
     # 2. Extract IDs for stats
     - type: connector
@@ -38,6 +38,7 @@ workflow:
         command: aggregate_features
       inputs:
         event_doc: "$.get('event_doc')"
+        fixture_id: "$.get('fixture_id')"
       outputs:
         h_id: "$.get('feature_payload', {}).get('home', {}).get('id')"
         a_id: "$.get('feature_payload', {}).get('away', {}).get('id')"
