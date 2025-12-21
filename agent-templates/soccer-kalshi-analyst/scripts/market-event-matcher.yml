@@ -1,6 +1,6 @@
 connector:
   name: soccer-market-event-matcher
-  description: Match Kalshi market events to sport:Event documents using fuzzy matching, accent normalization, and date comparison
+  description: Match Kalshi game-market documents to sport:Event documents using fuzzy matching, accent normalization, and date comparison
   filename: market-event-matcher.py
   filetype: pyscript
   commands:

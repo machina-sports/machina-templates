@@ -1,7 +1,7 @@
 workflow:
   name: soccer-kalshi-sync
   title: Soccer - Sync Kalshi Soccer Events
-  description: Syncs Kalshi soccer events from all leagues and matches them with sport:Event fixtures using fuzzy matching.
+  description: Syncs Kalshi soccer GAME events from all leagues and matches them with sport:Event fixtures using fuzzy matching.
   context-variables:
     debugger:
       enabled: true
@@ -15,79 +15,79 @@ workflow:
     workflow-status: "'executed'"
   tasks:
 
-    # EPL BTTS
+    # EPL GAME
     - type: connector
-      name: load-epl-btts
+      name: load-epl-game
       connector:
         name: kalshi
         command: get-events
       inputs:
-        series_ticker: "'KXEPLBTTS'"
+        series_ticker: "'KXEPLGAME'"
       outputs:
-        epl_btts_events: $.get('events', [])
+        epl_game_events: $.get('events', [])
 
-    # Serie A BTTS
+    # Serie A GAME
     - type: connector
-      name: load-seriea-btts
+      name: load-seriea-game
       connector:
         name: kalshi
         command: get-events
       inputs:
-        series_ticker: "'KXSERIEABTTS'"
+        series_ticker: "'KXSERIEAGAME'"
       outputs:
-        seriea_btts_events: $.get('events', [])
+        seriea_game_events: $.get('events', [])
 
-    # Bundesliga BTTS
+    # Bundesliga GAME
     - type: connector
-      name: load-bundesliga-btts
+      name: load-bundesliga-game
       connector:
         name: kalshi
         command: get-events
       inputs:
-        series_ticker: "'KXBUNDESLIGABTTS'"
+        series_ticker: "'KXBUNDESLIGAGAME'"
       outputs:
-        bundesliga_btts_events: $.get('events', [])
+        bundesliga_game_events: $.get('events', [])
 
-    # La Liga BTTS
+    # La Liga GAME
     - type: connector
-      name: load-laliga-btts
+      name: load-laliga-game
       connector:
         name: kalshi
         command: get-events
       inputs:
-        series_ticker: "'KXLALIGABTTS'"
+        series_ticker: "'KXLALIGAGAME'"
       outputs:
-        laliga_btts_events: $.get('events', [])
+        laliga_game_events: $.get('events', [])
 
-    # Liga Portugal BTTS
+    # Liga Portugal GAME
     - type: connector
-      name: load-ligaportugal-btts
+      name: load-ligaportugal-game
       connector:
         name: kalshi
         command: get-events
       inputs:
-        series_ticker: "'KXLIGAPORTUGALBTTS'"
+        series_ticker: "'KXLIGAPORTUGALGAME'"
       outputs:
-        ligaportugal_btts_events: $.get('events', [])
+        ligaportugal_game_events: $.get('events', [])
 
     # Combine and map all events
     - type: mapping
       name: kalshi-soccer-event-mapping
       inputs:
         events: |
-          list($.get('epl_btts_events', [])) + 
-          list($.get('seriea_btts_events', [])) + 
-          list($.get('bundesliga_btts_events', [])) + 
-          list($.get('laliga_btts_events', [])) + 
-          list($.get('ligaportugal_btts_events', []))
+          list($.get('epl_game_events', [])) + 
+          list($.get('seriea_game_events', [])) + 
+          list($.get('bundesliga_game_events', [])) + 
+          list($.get('laliga_game_events', [])) + 
+          list($.get('ligaportugal_game_events', []))
       outputs:
         mapped_events: $.get('mapped-events', [])
         total_events_synced: |
-          len(list($.get('epl_btts_events', []))) + 
-          len(list($.get('seriea_btts_events', []))) + 
-          len(list($.get('bundesliga_btts_events', []))) + 
-          len(list($.get('laliga_btts_events', []))) + 
-          len(list($.get('ligaportugal_btts_events', [])))
+          len(list($.get('epl_game_events', []))) + 
+          len(list($.get('seriea_game_events', []))) + 
+          len(list($.get('bundesliga_game_events', []))) + 
+          len(list($.get('laliga_game_events', []))) + 
+          len(list($.get('ligaportugal_game_events', [])))
 
     # Load sport:Event fixtures for matching
     - type: document
