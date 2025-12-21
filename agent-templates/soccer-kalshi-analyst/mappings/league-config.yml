@@ -1,138 +1,45 @@
-mapping:
-  name: soccer-league-config
-  title: Soccer League Configuration
-  description: |
-    Centralized configuration mapping for all supported soccer leagues.
-    Maps API-Football league IDs to Kalshi series tickers and competition metadata.
-  input-labels:
-    - league_key  # Key to look up (e.g., 'epl', 'serie_a', 'bundesliga')
-  output-labels:
-    - league_config
-    - all_leagues
-    - kalshi_series_ids
-  operations:
+mappings:
 
-    # Define all supported leagues
-    - type: globals
-      labels:
-        - all_leagues
-      value: |
+  # soccer-league-config
+  - type: mapping
+    name: soccer-league-config
+    title: Soccer League Configuration
+    description: "Centralized configuration for all supported soccer leagues with API-Football IDs and Kalshi series tickers."
+    inputs:
+      league_key: $.get('league_key')
+    outputs:
+      all_leagues: |
         {
-          'epl': {
-            'name': 'Premier League',
-            'api_football_league_id': '39',
-            'season': '2025',
-            'country': 'England',
-            'kalshi_series': ['KXEPLGAME', 'KXEPLBTTS', 'KXEPLTOTALS', 'KXEPLWINNER'],
-            'kalshi_game_series': 'KXEPLGAME',
-            'enabled': True,
-            'priority': 1
-          },
-          'serie_a': {
-            'name': 'Serie A',
-            'api_football_league_id': '135',
-            'season': '2025',
-            'country': 'Italy',
-            'kalshi_series': ['KXSERIEAGAME', 'KXSERIEABTTS', 'KXSERIEATOTALS'],
-            'kalshi_game_series': 'KXSERIEAGAME',
-            'enabled': True,
-            'priority': 2
-          },
-          'bundesliga': {
-            'name': 'Bundesliga',
-            'api_football_league_id': '78',
-            'season': '2025',
-            'country': 'Germany',
-            'kalshi_series': ['KXBUNDESLIGAGAME', 'KXBUNDESLIGABTTS'],
-            'kalshi_game_series': 'KXBUNDESLIGAGAME',
-            'enabled': True,
-            'priority': 3
-          },
-          'la_liga': {
-            'name': 'La Liga',
-            'api_football_league_id': '140',
-            'season': '2025',
-            'country': 'Spain',
-            'kalshi_series': ['KXLALIGAGAME', 'KXLALIGABTTS'],
-            'kalshi_game_series': 'KXLALIGAGAME',
-            'enabled': True,
-            'priority': 4
-          },
-          'liga_portugal': {
-            'name': 'Liga Portugal',
-            'api_football_league_id': '94',
-            'season': '2025',
-            'country': 'Portugal',
-            'kalshi_series': ['KXLIGAPORTUGALGAME', 'KXPRIMEIRALIGAGAME'],
-            'kalshi_game_series': 'KXLIGAPORTUGALGAME',
-            'enabled': True,
-            'priority': 5
-          },
-          'ligue_1': {
-            'name': 'Ligue 1',
-            'api_football_league_id': '61',
-            'season': '2025',
-            'country': 'France',
-            'kalshi_series': ['KXLIGUE1GAME'],
-            'kalshi_game_series': 'KXLIGUE1GAME',
-            'enabled': False,
-            'priority': 6
-          }
+          'epl': {'name': 'Premier League', 'api_football_league_id': '39', 'season': '2025', 'country': 'England', 'kalshi_series': ['KXEPLGAME', 'KXEPLBTTS'], 'enabled': True, 'priority': 1},
+          'serie_a': {'name': 'Serie A', 'api_football_league_id': '135', 'season': '2025', 'country': 'Italy', 'kalshi_series': ['KXSERIEAGAME', 'KXSERIEABTTS'], 'enabled': True, 'priority': 2},
+          'bundesliga': {'name': 'Bundesliga', 'api_football_league_id': '78', 'season': '2025', 'country': 'Germany', 'kalshi_series': ['KXBUNDESLIGAGAME', 'KXBUNDESLIGABTTS'], 'enabled': True, 'priority': 3},
+          'la_liga': {'name': 'La Liga', 'api_football_league_id': '140', 'season': '2025', 'country': 'Spain', 'kalshi_series': ['KXLALIGAGAME', 'KXLALIGABTTS'], 'enabled': True, 'priority': 4},
+          'liga_portugal': {'name': 'Liga Portugal', 'api_football_league_id': '94', 'season': '2025', 'country': 'Portugal', 'kalshi_series': ['KXLIGAPORTUGALGAME', 'KXPRIMEIRALIGAGAME'], 'enabled': True, 'priority': 5},
+          'ligue_1': {'name': 'Ligue 1', 'api_football_league_id': '61', 'season': '2025', 'country': 'France', 'kalshi_series': ['KXLIGUE1GAME'], 'enabled': False, 'priority': 6}
         }
-
-    # Extract all Kalshi series IDs for enabled leagues
-    - type: globals
-      labels:
-        - kalshi_series_ids
-      value: |
+      enabled_leagues: |
         [
-          series
-          for league_key, league_data in $.get('all_leagues', {}).items()
-          if league_data.get('enabled', False)
-          for series in league_data.get('kalshi_series', [])
+          {'key': 'epl', 'name': 'Premier League', 'api_football_league_id': '39', 'season': '2025', 'kalshi_series': ['KXEPLGAME', 'KXEPLBTTS'], 'priority': 1},
+          {'key': 'serie_a', 'name': 'Serie A', 'api_football_league_id': '135', 'season': '2025', 'kalshi_series': ['KXSERIEAGAME', 'KXSERIEABTTS'], 'priority': 2},
+          {'key': 'bundesliga', 'name': 'Bundesliga', 'api_football_league_id': '78', 'season': '2025', 'kalshi_series': ['KXBUNDESLIGAGAME', 'KXBUNDESLIGABTTS'], 'priority': 3},
+          {'key': 'la_liga', 'name': 'La Liga', 'api_football_league_id': '140', 'season': '2025', 'kalshi_series': ['KXLALIGAGAME', 'KXLALIGABTTS'], 'priority': 4},
+          {'key': 'liga_portugal', 'name': 'Liga Portugal', 'api_football_league_id': '94', 'season': '2025', 'kalshi_series': ['KXLIGAPORTUGALGAME', 'KXPRIMEIRALIGAGAME'], 'priority': 5}
         ]
-
-    # Get config for a specific league
-    - type: globals
-      labels:
-        - league_config
-      value: |
-        $.get('all_leagues', {}).get($.get('league_key'), {})
-
-    # Build reverse lookup: API-Football league ID -> league config
-    - type: globals
-      labels:
-        - league_by_api_id
-      value: |
+      kalshi_series_ids: |
+        ['KXEPLGAME', 'KXEPLBTTS', 'KXSERIEAGAME', 'KXSERIEABTTS', 'KXBUNDESLIGAGAME', 'KXBUNDESLIGABTTS', 'KXLALIGAGAME', 'KXLALIGABTTS', 'KXLIGAPORTUGALGAME', 'KXPRIMEIRALIGAGAME']
+      league_config: |
         {
-          league_data.get('api_football_league_id'): {**league_data, 'key': league_key}
-          for league_key, league_data in $.get('all_leagues', {}).items()
-          if league_data.get('enabled', False)
-        }
-
-    # Build reverse lookup: Kalshi series -> league config
-    - type: globals
-      labels:
-        - league_by_kalshi_series
-      value: |
+          'epl': {'name': 'Premier League', 'api_football_league_id': '39', 'season': '2025', 'kalshi_series': ['KXEPLGAME', 'KXEPLBTTS']},
+          'serie_a': {'name': 'Serie A', 'api_football_league_id': '135', 'season': '2025', 'kalshi_series': ['KXSERIEAGAME', 'KXSERIEABTTS']},
+          'bundesliga': {'name': 'Bundesliga', 'api_football_league_id': '78', 'season': '2025', 'kalshi_series': ['KXBUNDESLIGAGAME', 'KXBUNDESLIGABTTS']},
+          'la_liga': {'name': 'La Liga', 'api_football_league_id': '140', 'season': '2025', 'kalshi_series': ['KXLALIGAGAME', 'KXLALIGABTTS']},
+          'liga_portugal': {'name': 'Liga Portugal', 'api_football_league_id': '94', 'season': '2025', 'kalshi_series': ['KXLIGAPORTUGALGAME', 'KXPRIMEIRALIGAGAME']}
+        }.get($.get('league_key'), {})
+      league_by_api_id: |
         {
-          series: {**league_data, 'key': league_key}
-          for league_key, league_data in $.get('all_leagues', {}).items()
-          if league_data.get('enabled', False)
-          for series in league_data.get('kalshi_series', [])
+          '39': {'key': 'epl', 'name': 'Premier League', 'season': '2025'},
+          '135': {'key': 'serie_a', 'name': 'Serie A', 'season': '2025'},
+          '78': {'key': 'bundesliga', 'name': 'Bundesliga', 'season': '2025'},
+          '140': {'key': 'la_liga', 'name': 'La Liga', 'season': '2025'},
+          '94': {'key': 'liga_portugal', 'name': 'Liga Portugal', 'season': '2025'}
         }
-
-    # Get enabled leagues as list
-    - type: globals
-      labels:
-        - enabled_leagues
-      value: |
-        sorted(
-          [
-            {**league_data, 'key': league_key}
-            for league_key, league_data in $.get('all_leagues', {}).items()
-            if league_data.get('enabled', False)
-          ],
-          key=lambda x: x.get('priority', 999)
-        )
-
