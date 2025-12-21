@@ -48,8 +48,8 @@ workflow:
         name: "google-storage"
         command: "invoke_upload"
       inputs:
-        api_key: "context.get('google-storage.api_key')"
-        bucket_name: "context.get('google-storage.bucket_name')"
+        api_key: "context.get('google-storage', {}).get('api_key')"
+        bucket_name: "context.get('google-storage', {}).get('bucket_name')"
         file_path: "$.get('temp_audio_path')"
       outputs:
         gcs_uri: "$.get('data.gcs_uri') or $.get('gcs_uri')"
@@ -62,7 +62,7 @@ workflow:
         name: "google-speech-to-text"
         command: "invoke_transcribe"
       inputs:
-        api_key: "context.get('google-speech-to-text.api_key')"
+        api_key: "context.get('google-speech-to-text', {}).get('api_key')"
         audio_path: "$.get('gcs_uri') or $.get('audio_path')"
         language_code: "$.get('language_code')"
         alternative_language_codes: "$.get('alternative_language_codes')"

@@ -21,6 +21,3 @@ datasets:
 
   - type: "workflow"
     path: "test-upload.yml"
-
-  - type: "workflow"
-    path: "get-upload-url.yml"
