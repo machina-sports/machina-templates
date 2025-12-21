@@ -17,24 +17,25 @@ workflow:
     workflow-status: "'executed'"
     prediction_document_id: "$.get('prediction_document_id')"
   tasks:
-    # 1. Load match details from DB (Standardizing IDs)
+    # 1. Load match details from DB
     - type: document
       name: load-event-from-db
       config:
         action: search
       filters:
-        metadata.fixture_id: str($.get('fixture_id'))
+        metadata.fixture_id: "$.get('fixture_id')"
       inputs:
         name: "'sport:Event'"
       outputs:
         event_exists: "len($.get('documents', [])) > 0"
-        event_doc: "$.get('documents')[0].get('value') if $.get('documents') else None"
-        league: "$.get('documents')[0].get('metadata', {}).get('league')"
-        season: "$.get('documents')[0].get('metadata', {}).get('season')"
+        event_doc: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
+        league: "$.get('documents')[0].get('metadata', {}).get('league') if len($.get('documents', [])) > 0 else '39'"
+        season: "$.get('documents')[0].get('metadata', {}).get('season') if len($.get('documents', [])) > 0 else '2025'"
 
     # 2. Extract basic team info
     - type: connector
       name: extract-teams
+      condition: "$.get('event_exists') is True"
       connector:
         name: soccer-aggregate-features
         command: aggregate_features
@@ -50,31 +51,34 @@ workflow:
     # 3. Fetch deep team stats
     - type: connector
       name: fetch-home-stats
+      condition: "$.get('event_exists') is True"
       connector:
         name: api-football
         command: get-teams/statistics
       inputs:
         team: "$.get('home_team_id')"
-        league: "$.get('league', '39')"
-        season: "$.get('season', '2025')"
+        league: "$.get('league')"
+        season: "$.get('season')"
       outputs:
         home_stats: "$.get('response')"
 
     - type: connector
       name: fetch-away-stats
+      condition: "$.get('event_exists') is True"
       connector:
         name: api-football
         command: get-teams/statistics
       inputs:
         team: "$.get('away_team_id')"
-        league: "$.get('league', '39')"
-        season: "$.get('season', '2025')"
+        league: "$.get('league')"
+        season: "$.get('season')"
       outputs:
         away_stats: "$.get('response')"
 
     # 4. Gather Evidence (News Search)
     - type: connector
       name: generate-news-queries
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -91,6 +95,7 @@ workflow:
 
     - type: connector
       name: search-news
+      condition: "$.get('event_exists') is True and len($.get('news_queries', [])) > 0"
       connector:
         name: google-genai
         command: invoke_search
@@ -108,6 +113,7 @@ workflow:
 
     - type: connector
       name: extract-news-evidence
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -126,6 +132,7 @@ workflow:
     # 5. Build Comprehensive Feature Payload
     - type: connector
       name: final-aggregation
+      condition: "$.get('event_exists') is True"
       connector:
         name: soccer-aggregate-features
         command: aggregate_features
@@ -138,6 +145,7 @@ workflow:
 
     - type: connector
       name: format-evidence-outputs
+      condition: "$.get('event_exists') is True"
       connector:
         name: soccer-aggregate-features
         command: format_evidence_outputs
@@ -152,6 +160,7 @@ workflow:
     # 6. AI Multi-Agent Forecasting
     - type: connector
       name: stats-analyst
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -166,6 +175,7 @@ workflow:
 
     - type: connector
       name: evidence-analyst
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -181,6 +191,7 @@ workflow:
 
     - type: connector
       name: matchup-analyst
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -195,6 +206,7 @@ workflow:
 
     - type: connector
       name: risk-officer
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -211,6 +223,7 @@ workflow:
     # 7. Simulations & Pricing
     - type: connector
       name: sim-parameterizer
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -227,6 +240,7 @@ workflow:
 
     - type: connector
       name: monte-carlo
+      condition: "$.get('event_exists') is True"
       connector:
         name: soccer-monte-carlo
         command: run_monte_carlo_simulation
@@ -238,6 +252,7 @@ workflow:
 
     - type: connector
       name: final-pricing
+      condition: "$.get('event_exists') is True"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -254,6 +269,7 @@ workflow:
 
     - type: document
       name: store-prediction
+      condition: "$.get('event_exists') is True"
       config:
         action: update
         force-update: true
@@ -267,9 +283,10 @@ workflow:
       outputs:
         prediction_document_id: "$.get('document_id')"
 
-    # 8. Kalshi Market Edge Detection (Parity with Market Agent)
+    # 8. Kalshi Market Edge Detection
     - type: document
       name: load-kalshi-event
+      condition: "$.get('event_exists') is True"
       config:
         action: search
       filters:
@@ -277,11 +294,11 @@ workflow:
       inputs:
         name: "'kalshi-events'"
       outputs:
-        kalshi_event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if $.get('documents') else None"
+        kalshi_event_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if len($.get('documents', [])) > 0 else None"
 
     - type: connector
       name: load-markets
-      condition: "$.get('kalshi_event_ticker') is not None"
+      condition: "$.get('event_exists') is True and $.get('kalshi_event_ticker') is not None"
       connector:
         name: kalshi
         command: get-markets
@@ -292,7 +309,7 @@ workflow:
 
     - type: mapping
       name: kalshi-markets-summary
-      condition: "len($.get('markets', [])) > 0"
+      condition: "$.get('event_exists') is True and len($.get('markets', [])) > 0"
       inputs:
         markets: "$.get('markets')"
       outputs:
@@ -301,7 +318,7 @@ workflow:
 
     - type: connector
       name: edge-analyst
-      condition: "$.get('markets_count', 0) > 0"
+      condition: "$.get('event_exists') is True and $.get('markets_count', 0) > 0"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -315,10 +332,10 @@ workflow:
       outputs:
         edge_analysis: "$"
 
-    # 9. Final Record (Parity Document Structure)
+    # 9. Final Record
     - type: document
       name: store-edge-analysis
-      condition: "$.get('edge_analysis') is not None"
+      condition: "$.get('event_exists') is True and $.get('edge_analysis') is not None"
       config:
         action: update
         force-update: true
@@ -328,10 +345,10 @@ workflow:
             'fixture_id': $.get('fixture_id'),
             'prediction_id': $.get('prediction_document_id'),
             'title': f"Soccer Edge Analysis: {$.get('home_team_name')} vs {$.get('away_team_name')}",
-            'analysis': $.get('edge_analysis').get('analysis'),
-            'summary': $.get('edge_analysis').get('summary'),
-            'selected': $.get('edge_analysis').get('selected_market'),
-            'markets_ranked': $.get('edge_analysis').get('markets_ranked'),
-            'should_trade': $.get('edge_analysis').get('should_trade'),
+            'analysis': $.get('edge_analysis', {}).get('analysis'),
+            'summary': $.get('edge_analysis', {}).get('summary'),
+            'selected': $.get('edge_analysis', {}).get('selected_market'),
+            'markets_ranked': $.get('edge_analysis', {}).get('markets_ranked'),
+            'should_trade': $.get('edge_analysis', {}).get('should_trade'),
             'timestamp': datetime.utcnow()
           }
