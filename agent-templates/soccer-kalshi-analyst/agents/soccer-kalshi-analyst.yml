@@ -3,21 +3,7 @@ agent:
   title: Soccer Kalshi Analyst Agent
   description: |
     An advanced soccer prediction agent that generates high-fidelity match forecasts 
-    using a multi-stage analytical pipeline:
-    
-    1. **Statistical Baseline**: Derives expected goals (xG) from historical team performance
-    2. **News Intelligence**: Gathers real-time news (injuries, lineups, manager quotes) 
-       and quantifies their impact on match outcomes
-    3. **Tactical Analysis**: Evaluates style matchups, venue factors, and H2H patterns
-    4. **Risk Assessment**: Identifies variance factors and assigns confidence scores
-    5. **Monte Carlo Simulation**: Runs 10,000 Poisson simulations for probability distributions
-    6. **Kalshi Edge Detection**: Compares AI fair values with live market prices to identify 
-       tradeable edges on prediction markets
-    
-    The agent produces:
-    - Calibrated win/draw/loss probabilities
-    - Over/Under 2.5 goals pricing
-    - Confidence-weighted trading recommendations for Kalshi markets
+    using a multi-stage analytical pipeline
   context:
     config-frequency: 10
     status: "inactive"
