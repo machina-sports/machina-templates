@@ -39,6 +39,9 @@ datasets:
   - type: agent
     path: agents/soccer-kalshi-setup.yml
 
+  - type: agent
+    path: agents/soccer-kalshi-sync.yml
+
   # Scripts
   - type: connector
     path: scripts/aggregate_features.yml
