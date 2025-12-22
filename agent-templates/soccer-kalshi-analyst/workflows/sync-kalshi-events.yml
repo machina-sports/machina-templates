@@ -117,7 +117,7 @@ workflow:
       name: enrich-matched-events
       condition: len($.get('matches', [])) > 0
       outputs:
-        enriched_events: "[{**match.get('market', {}), 'eventCode': match.get('event_code'), 'match_confidence': match.get('confidence', 0.0), 'matched_fixture': match.get('event', {}).get('value', {}).get('title', ''), 'metadata': {**match.get('market', {}).get('metadata', {}), 'eventCode': match.get('event_code'), 'fixture_id': match.get('event', {}).get('metadata', {}).get('fixture_id')}} for match in $.get('matches', [])]"
+        enriched_events: "[{**match.get('market', {}), 'eventCode': match.get('event_code'), 'match_confidence': match.get('confidence', 0.0), 'matched_fixture': (match.get('event', {}).get('value') or {}).get('title', ''), 'metadata': {**(match.get('market', {}).get('metadata') or {}), 'eventCode': match.get('event_code'), 'fixture_id': (match.get('event', {}).get('metadata') or {}).get('fixture_id')}} for match in $.get('matches', [])]"
 
     # Save enriched Kalshi events
     - type: document
