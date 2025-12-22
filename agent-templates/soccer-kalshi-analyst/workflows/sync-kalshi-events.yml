@@ -74,20 +74,10 @@ workflow:
     - type: mapping
       name: kalshi-soccer-event-mapping
       inputs:
-        events: |
-          list($.get('epl_game_events', [])) + 
-          list($.get('seriea_game_events', [])) + 
-          list($.get('bundesliga_game_events', [])) + 
-          list($.get('laliga_game_events', [])) + 
-          list($.get('ligaportugal_game_events', []))
+        events: "list($.get('epl_game_events', [])) + list($.get('seriea_game_events', [])) + list($.get('bundesliga_game_events', [])) + list($.get('laliga_game_events', [])) + list($.get('ligaportugal_game_events', []))"
       outputs:
         mapped_events: $.get('mapped-events', [])
-        total_events_synced: |
-          len(list($.get('epl_game_events', []))) + 
-          len(list($.get('seriea_game_events', []))) + 
-          len(list($.get('bundesliga_game_events', []))) + 
-          len(list($.get('laliga_game_events', []))) + 
-          len(list($.get('ligaportugal_game_events', [])))
+        total_events_synced: "len($.get('epl_game_events', [])) + len($.get('seriea_game_events', [])) + len($.get('bundesliga_game_events', [])) + len($.get('laliga_game_events', [])) + len($.get('ligaportugal_game_events', []))"
 
     # Load sport:Event fixtures for matching
     - type: document
