@@ -47,6 +47,9 @@ datasets:
     path: scripts/aggregate_features.yml
 
   - type: connector
+    path: scripts/enrich-matched-events.yml
+
+  - type: connector
     path: scripts/monte_carlo.yml
 
   - type: connector
