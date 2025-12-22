@@ -1,7 +1,7 @@
 workflow:
-  name: soccer-kalshi-analyst-folders
-  title: Soccer Kalshi Analyst - Folders
-  description: UI Folder structure for Soccer Kalshi Analyst findings.
+  name: soccer-kalshi-setup-folders
+  title: Soccer Kalshi Setup - Folders
+  description: UI Folder structure for Soccer Kalshi Setup.
   context-variables:
     debugger:
       enabled: false
@@ -52,6 +52,17 @@ workflow:
               "isActive": True,
               "icon": "folder",
               "items": [
+                {
+                  "name": "api-football-leagues-config",
+                  "title": "API-Football Leagues Config",
+                  "description": "API-Football soccer leagues configuration.",
+                  "category": "Soccer Events",
+                  "metadata": {
+                    "name": ["api-football-leagues-config"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
                 {
                   "name": "sport-events-all",
                   "title": "All Fixtures",
@@ -137,6 +148,17 @@ workflow:
                   "category": "Kalshi Soccer Markets",
                   "metadata": {
                     "name": ["kalshi-events"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "kalshi-leagues-config",
+                  "title": "Leagues Configuration",
+                  "description": "Kalshi soccer leagues sync configuration.",
+                  "category": "Kalshi Soccer Markets",
+                  "metadata": {
+                    "name": ["kalshi-leagues-config"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"

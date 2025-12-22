@@ -32,9 +32,12 @@ setup:
 
 datasets:
 
-  # Agent
+  # Agents
   - type: agent
     path: agents/soccer-kalshi-analyst.yml
+
+  - type: agent
+    path: agents/soccer-kalshi-setup.yml
 
   # Scripts
   - type: connector
@@ -75,21 +78,19 @@ datasets:
     path: prompts/kalshi_edge_analyst.yml
 
   # Mappings
+
   - type: mappings
     path: mappings/kalshi-markets-summary.yml
 
+  # Configuration
+
+  - type: workflow
+    path: configs/setup-folders.yml
+
+  - type: workflow
+    path: configs/setup-leagues.yml
+
   # Workflows
-  - type: workflow
-    path: _folders.yml
-
-  - type: workflow
-    path: workflows/sync-fixtures.yml
-
-  - type: workflow
-    path: workflows/sync-teams.yml
-
-  - type: workflow
-    path: workflows/sync-standings.yml
 
   - type: workflow
     path: workflows/consumer.yml
