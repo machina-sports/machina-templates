@@ -1,0 +1,22 @@
+workflow:
+  name: api-football-load-leagues-config
+  title: API Football - Load Leagues Config
+  description: Load API-Football leagues configuration
+  outputs:
+    leagues_config: "$.get('leagues_config', [])"
+    enabled_leagues: "$.get('enabled_leagues', [])"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: document
+      name: load-config
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'api-football-leagues-config'"
+      outputs:
+        leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []"
+        enabled_leagues: "[league for league in ($.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []) if league.get('enabled', True)]"
+

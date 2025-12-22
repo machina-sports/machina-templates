@@ -24,11 +24,17 @@ setup:
 
 datasets:
 
+  - type: "agent"
+    path: "agents/populate.yml"
+
   - type: "workflow"
     path: "_folders.yml"
 
   - type: "connector" 
     path: "api-football.yml"
+
+  - type: "workflow"
+    path: "load-leagues-config.yml"
 
   - type: "workflow"
     path: "get-fixtures.yml"

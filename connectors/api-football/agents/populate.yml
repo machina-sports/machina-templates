@@ -1,0 +1,28 @@
+agent:
+  name: api-football-populate
+  title: API Football - Populate
+  description: |
+    Populate agent that syncs fixtures for all configured leagues from API-Football.
+  context:
+    status: "inactive"
+  workflows:
+  
+    # Load leagues configuration
+    - name: api-football-load-leagues-config
+      description: Load API-Football leagues configuration
+      outputs:
+        leagues_config: $.get('leagues_config', [])
+        enabled_leagues: $.get('enabled_leagues', [])
+
+    # Sync Fixtures for all configured leagues
+    - name: api-football-sync-fixtures
+      description: Sync fixtures for all enabled API-Football leagues
+      foreach:
+        name: league
+        expr: $
+        value: $.get('enabled_leagues', [])
+      inputs:
+        league: $.get('league').get('league_id')
+        season: $.get('league').get('season')
+      outputs:
+        fixtures_sync_status: $.get('workflow-status', 'skipped')
