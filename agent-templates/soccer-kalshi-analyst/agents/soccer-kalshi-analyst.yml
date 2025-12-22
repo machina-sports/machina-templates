@@ -1,6 +1,6 @@
 agent:
   name: soccer-kalshi-analyst
-  title: Soccer Kalshi Analyst Agent
+  title: Soccer Kalshi Analyst
   description: |
     An advanced soccer prediction agent that generates high-fidelity match forecasts 
     using a multi-stage analytical pipeline

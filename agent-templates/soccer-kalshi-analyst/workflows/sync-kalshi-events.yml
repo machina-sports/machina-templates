@@ -1,5 +1,5 @@
 workflow:
-  name: soccer-kalshi-sync
+  name: soccer-kalshi-sync-events-by-series
   title: Soccer - Sync Kalshi Soccer Events
   description: Syncs Kalshi soccer GAME events from all leagues and matches them with sport:Event fixtures using fuzzy matching.
   context-variables:
@@ -15,74 +15,38 @@ workflow:
     workflow-status: "'executed'"
   tasks:
 
-    # EPL GAME
+    # Load leagues configuration
+    - type: document
+      name: load-kalshi-leagues-config
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'kalshi-leagues-config'"
+      outputs:
+        leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []"
+
+    # Load events dynamically for all enabled leagues
     - type: connector
-      name: load-epl-game
+      name: load-league-events
+      condition: "len($.get('leagues_config', [])) > 0"
       connector:
         name: kalshi
         command: get-events
+      foreach:
+        name: league
+        expr: $
+        value: $.get('leagues_config', [])
       inputs:
-        series_ticker: "'KXEPLGAME'"
+        series_ticker: "$.get('league').get('series_ticker')"
       outputs:
-        epl_game_events: $.get('events', [])
-
-    # Serie A GAME
-    - type: connector
-      name: load-seriea-game
-      connector:
-        name: kalshi
-        command: get-events
-      inputs:
-        series_ticker: "'KXSERIEAGAME'"
-      outputs:
-        seriea_game_events: $.get('events', [])
-
-    # Bundesliga GAME
-    - type: connector
-      name: load-bundesliga-game
-      connector:
-        name: kalshi
-        command: get-events
-      inputs:
-        series_ticker: "'KXBUNDESLIGAGAME'"
-      outputs:
-        bundesliga_game_events: $.get('events', [])
-
-    # La Liga GAME
-    - type: connector
-      name: load-laliga-game
-      connector:
-        name: kalshi
-        command: get-events
-      inputs:
-        series_ticker: "'KXLALIGAGAME'"
-      outputs:
-        laliga_game_events: $.get('events', [])
-
-    # Liga Portugal GAME
-    - type: connector
-      name: load-ligaportugal-game
-      connector:
-        name: kalshi
-        command: get-events
-      inputs:
-        series_ticker: "'KXLIGAPORTUGALGAME'"
-      outputs:
-        ligaportugal_game_events: $.get('events', [])
-
-    # Combine and map all events
-    - type: mapping
-      name: kalshi-soccer-event-mapping
-      inputs:
-        events: "list($.get('epl_game_events', [])) + list($.get('seriea_game_events', [])) + list($.get('bundesliga_game_events', [])) + list($.get('laliga_game_events', [])) + list($.get('ligaportugal_game_events', []))"
-      outputs:
-        mapped_events: $.get('mapped-events', [])
-        total_events_synced: "len($.get('epl_game_events', [])) + len($.get('seriea_game_events', [])) + len($.get('bundesliga_game_events', [])) + len($.get('laliga_game_events', [])) + len($.get('ligaportugal_game_events', []))"
+        all_events: $.get('events', [])
 
     # Load sport:Event fixtures for matching
     - type: document
       name: load-fixtures
-      condition: len($.get('mapped_events', [])) > 0
+      condition: len($.get('all_events', [])) > 0
       config:
         action: search
         search-limit: 500
@@ -99,12 +63,12 @@ workflow:
     # Fuzzy match Kalshi events to fixtures
     - type: connector
       name: fuzzy-match-events
-      condition: $.get('sport_events_count', 0) > 0 and len($.get('mapped_events', [])) > 0
+      condition: $.get('sport_events_count', 0) > 0 and len($.get('all_events', [])) > 0
       connector:
         name: soccer-market-event-matcher
         command: match_markets_to_events
       inputs:
-        markets: $.get('mapped_events', [])
+        markets: $.get('all_events', [])
         events: $.get('sport_events', [])
         name_threshold: 0.4
         date_tolerance_hours: 24
