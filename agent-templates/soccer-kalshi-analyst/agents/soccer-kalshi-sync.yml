@@ -1,0 +1,16 @@
+agent:
+  name: soccer-kalshi-sync
+  title: Soccer Kalshi Sync
+  description: |
+    Setup agent that initializes and configures the Kalshi soccer leagues configuration.
+    Run this agent to create or update the kalshi-leagues-config document.
+  context:
+    status: "inactive"
+  workflows:
+  
+    # Soccer Sync Kalshi Events
+    - name: soccer-kalshi-sync-events-by-series
+      description: Sync Kalshi events by series ticker
+      outputs:
+        kalshi_sync_status: $.get('workflow-status', 'skipped')
+

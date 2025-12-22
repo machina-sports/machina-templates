@@ -19,10 +19,3 @@ agent:
       description: Initialize Kalshi soccer leagues configuration
       outputs:
         leagues_setup_status: $.get('workflow-status', 'skipped')
-
-    # Soccer Sync Kalshi Events
-    - name: soccer-kalshi-sync-events-by-series
-      description: Sync Kalshi events by series ticker
-      outputs:
-        kalshi_sync_status: $.get('workflow-status', 'skipped')
-
