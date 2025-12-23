@@ -17,7 +17,7 @@ mappings:
             "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{f.get('home', {}).get('name', 'TBD')} vs {f.get('away', {}).get('name', 'TBD')}",
             "schema:startDate": f.get('scheduled') or f.get('start_time'),
-            "schema:sportName": "american-football",
+            "schema:sportName": "nfl",
             "sport:status": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
             "sport:matchStatus": (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),
             "sport:competition": {
