@@ -8,14 +8,14 @@ agent:
     config-frequency: 10
     status: "inactive"
   context-agent:
-    fixture_id: "$.get('fixture_id')"
+    eventCode: "$.get('eventCode')"
   workflows:
   
     # 1. Consumer: Find upcoming fixtures needing analysis
     - name: soccer-kalshi-analysis-consumer
       description: Identify upcoming soccer fixtures eligible for AI forecasting
       inputs:
-        fixture_id: $.get('fixture_id')
+        eventCode: $.get('eventCode')
       outputs:
         analysis_fixture_id: $.get('fixture_id')
         analysis_fixture_exists: $.get('workflow-status', 'skipped') == 'executed'
@@ -33,7 +33,7 @@ agent:
         - Identify Kalshi market edges (if markets available)
       condition: $.get('analysis_fixture_exists') is True
       inputs:
-        fixture_id: $.get('analysis_fixture_id')
+        eventCode: $.get('analysis_fixture_id')
       outputs:
         forecast_document_id: $.get('prediction_document_id')
         forecast_executor_status: $.get('workflow-status', 'skipped') == 'executed'
@@ -43,7 +43,7 @@ agent:
       description: Finalize analysis status, update document versioning, and mark fixture as analyzed
       condition: $.get('analysis_fixture_exists') is True
       inputs:
-        fixture_id: $.get('analysis_fixture_id')
+        eventCode: $.get('analysis_fixture_id')
         is_finished: $.get('forecast_executor_status') == 'executed'
       outputs:
         analysis_update_status: $.get('workflow-status', 'skipped') == 'executed'
