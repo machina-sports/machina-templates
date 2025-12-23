@@ -8,7 +8,7 @@ workflow:
   inputs:
     eventCode: $.get('eventCode')
   outputs:
-    fixture_id: $.get('target_fixture_id')
+    eventCode: $.get('target_fixture_id')
     workflow-status: $.get('fixture_found') is not True and 'skipped' or 'executed'
   tasks:
     # 1. Load specific fixture if ID provided
