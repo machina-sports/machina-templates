@@ -330,7 +330,7 @@ workflow:
         confidence: "$.get('final_prediction', {}).get('confidence', 0.5)"
         bankroll: 1000
       outputs:
-        kelly_analysis: "$.get('data', {})"
+        kelly_analysis: "$.get('kelly_result', {})"
 
     # 11. Edge Analysis with Kelly calculations
     - type: prompt

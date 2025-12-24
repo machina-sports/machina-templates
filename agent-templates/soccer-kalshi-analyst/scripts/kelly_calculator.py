@@ -304,9 +304,11 @@ def batch_kelly_analysis(request_data):
             raw_markets = []
         
         if not raw_markets:
+            error_result = {"error": "No markets provided", "params_received": list(params.keys())}
             return {
                 "status": False,
-                "data": {"error": "No markets provided", "params_received": list(params.keys())},
+                "data": error_result,
+                "kelly_result": error_result,  # Also at root for pyscript extraction
                 "message": "No markets to analyze"
             }
         
@@ -358,32 +360,38 @@ def batch_kelly_analysis(request_data):
         total_positive_ev = sum(r['ev_cents'] for r in results if r['ev_cents'] > 0)
         avg_edge = sum(r['edge_percent'] for r in results) / len(results) if results else 0
         
+        # Build response with data at ROOT level (required for pyscript connector)
+        kelly_result = {
+            "markets_analyzed": len(results),
+            "tradeable_count": len(tradeable),
+            "best_trade": best_trade,
+            "all_markets_ranked": results,
+            "summary": {
+                "total_positive_ev_cents": round(total_positive_ev, 2),
+                "average_edge_percent": round(avg_edge, 2),
+                "confidence_used": confidence,
+                "bankroll_assumed": bankroll
+            },
+            "inputs_received": {
+                "home_team": home_team,
+                "away_team": away_team,
+                "markets_count": len(raw_markets),
+                "prediction_keys": list(prediction.keys()) if prediction else []
+            }
+        }
+        
         return {
             "status": True,
-            "data": {
-                "markets_analyzed": len(results),
-                "tradeable_count": len(tradeable),
-                "best_trade": best_trade,
-                "all_markets_ranked": results,
-                "summary": {
-                    "total_positive_ev_cents": round(total_positive_ev, 2),
-                    "average_edge_percent": round(avg_edge, 2),
-                    "confidence_used": confidence,
-                    "bankroll_assumed": bankroll
-                },
-                "inputs_received": {
-                    "home_team": home_team,
-                    "away_team": away_team,
-                    "markets_count": len(raw_markets),
-                    "prediction_keys": list(prediction.keys()) if prediction else []
-                }
-            },
+            "data": kelly_result,  # Keep for backwards compatibility
+            "kelly_result": kelly_result,  # Also at root for pyscript extraction
             "message": f"Analyzed {len(results)} markets, {len(tradeable)} tradeable"
         }
     
     except Exception as e:
+        error_result = {"error": str(e)}
         return {
             "status": False,
-            "data": {"error": str(e)},
+            "data": error_result,
+            "kelly_result": error_result,  # Also at root for pyscript extraction
             "message": f"Batch analysis error: {str(e)}"
         }
