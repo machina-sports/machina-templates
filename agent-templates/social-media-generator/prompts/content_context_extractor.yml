@@ -73,24 +73,3 @@ prompt:
     2. **Key Stats**: Most impressive or meme-worthy statistical comparisons
     3. **Viral Moments**: Recent plays, goals, or storylines that could go viral
     4. **Content Angles**: Creative angles for memes, stats graphics, or quiz questions about this match
-    
-    Return structured JSON:
-    {
-      "trending_topics": ["topic1", "topic2", "topic3"],
-      "key_stats": {
-        "stat_name": "value with context",
-        "highlight": "Most impressive stat"
-      },
-      "viral_moments": [
-        {
-          "moment": "Description",
-          "why_viral": "Why this is shareable",
-          "sentiment": "positive/negative/funny"
-        }
-      ],
-      "content_angles": [
-        "Angle 1: Why it works",
-        "Angle 2: Why it works"
-      ]
-    }
-
