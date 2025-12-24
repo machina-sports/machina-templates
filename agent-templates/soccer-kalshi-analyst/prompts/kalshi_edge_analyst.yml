@@ -14,76 +14,49 @@ prompt:
     Kalshi Markets Summary:
     {{markets_summary}}
 
+    Pre-Calculated Kelly Analysis (from Python - USE THESE VALUES):
+    {{kelly_calculations}}
+
     ## EDGE DETECTION FRAMEWORK
 
-    ### PHASE 1: CALCULATE IMPLIED PROBABILITIES
-    For each Kalshi market contract:
-    ```
-    mid_price = (yes_bid + yes_ask) / 2  # If no bid, use (0 + ask) / 2
-    kalshi_implied_prob = mid_price / 100
+    ### PHASE 1: USE PRE-CALCULATED KELLY DATA
+    **IMPORTANT:** Kelly Criterion and Expected Value have been pre-calculated by Python for mathematical accuracy.
     
-    # Calculate spread cost
-    spread = yes_ask - yes_bid
-    spread_cost_percent = spread / mid_price × 100
-    ```
-
-    ### PHASE 2: COMPUTE RAW EDGE
-    Compare AI fair value vs Kalshi implied:
-    ```
-    raw_edge = AI_fair_probability - kalshi_implied_probability
+    The `kelly_calculations` object contains:
+    - `all_markets_ranked`: List of markets with pre-computed edge, EV, and Kelly values
+    - `best_trade`: The algorithmically-identified best opportunity
+    - `tradeable_count`: Number of markets with positive edge
     
-    # Edge direction:
-    if raw_edge > 0: BUY YES (market underpricing outcome)
-    if raw_edge < 0: BUY NO (market overpricing outcome)
-    ```
+    For each market in `all_markets_ranked`:
+    - `ticker`: Market identifier
+    - `edge_percent`: Raw edge (AI prob - implied prob)
+    - `ev_cents`: Expected value in cents per dollar wagered
+    - `kelly_percent`: Recommended stake as % of bankroll (already fractional Kelly)
+    - `should_trade`: Boolean - whether edge meets minimum threshold
+    - `full_analysis`: Detailed breakdown including spread-adjusted metrics
 
-    ### PHASE 3: ADJUST FOR MARKET QUALITY
-    Not all edges are tradeable. Apply filters:
-
-    **Liquidity Score (0-1):**
-    ```
-    if spread <= 3: liquidity_score = 1.0 (tight)
-    if spread 4-7: liquidity_score = 0.7 (acceptable)
-    if spread 8-12: liquidity_score = 0.4 (wide)
-    if spread > 12: liquidity_score = 0.1 (illiquid - avoid)
-    ```
-
-    **Effective Edge:**
-    ```
-    effective_edge = raw_edge - (spread / 200)  # Subtract half-spread cost
-    ```
-
-    ### PHASE 4: EXPECTED VALUE & KELLY CALCULATION
-    For tradeable markets, calculate precise risk metrics:
-
-    **Expected Value (EV):**
-    ```
-    # EV per dollar wagered
-    if side == 'yes':
-        net_odds = (100 - market_price) / market_price
-        EV = (our_prob × net_odds) - (1 - our_prob)
-    else:  # no
-        net_odds = market_price / (100 - market_price)
-        EV = ((1 - our_prob) × net_odds) - our_prob
+    ### PHASE 2: VALIDATE & INTERPRET
+    Your job is to INTERPRET the pre-calculated values, NOT recalculate them:
     
-    EV_cents = EV × 100  # Express as cents per dollar
-    ```
+    1. **Use the provided edge_percent** - don't recalculate
+    2. **Use the provided ev_cents** - don't recalculate  
+    3. **Use the provided kelly_percent** - don't recalculate
+    
+    Add qualitative judgment:
+    - Assess liquidity from spread in markets_summary
+    - Consider news context that math can't capture
+    - Flag if `should_trade=false` but edge looks close
 
-    **Kelly Criterion:**
+    ### PHASE 3: LIQUIDITY ASSESSMENT
+    Rate each market's liquidity from markets_summary:
+
+    **Liquidity Score (0-5):**
     ```
-    # Optimal bet fraction for long-term growth
-    if side == 'yes':
-        b = (100 - market_price) / market_price  # net odds
-        p = our_prob
-    else:
-        b = market_price / (100 - market_price)
-        p = 1 - our_prob
-    
-    kelly_full = (b × p - (1 - p)) / b
-    
-    # Apply fractional Kelly (25% = quarter Kelly)
-    kelly_fraction = max(0, kelly_full × 0.25 × confidence)
-    recommended_stake_percent = min(kelly_fraction × 100, 10.0)  # Cap at 10%
+    if spread <= 2: liquidity_score = 5.0 (excellent)
+    if spread 3-4: liquidity_score = 4.0 (good)
+    if spread 5-7: liquidity_score = 3.0 (acceptable)
+    if spread 8-12: liquidity_score = 2.0 (wide)
+    if spread > 12: liquidity_score = 1.0 (avoid)
     ```
 
     ### PHASE 5: STALENESS PENALTY
@@ -104,7 +77,7 @@ prompt:
     
     Flag stale information in risk_warnings.
 
-    ### PHASE 6: TIER CLASSIFICATION
+    ### PHASE 6: TIER CLASSIFICATION (based on pre-calculated values)
     Classify each market opportunity:
 
     | Tier | Effective Edge | EV (cents/$) | Liquidity | Action | Position Size |

@@ -315,7 +315,44 @@ workflow:
       outputs:
         prediction_document_id: "$.get('document_id')"
 
-    # 10. Edge Analysis (markets already loaded earlier)
+    # 10. Calculate Kelly Criterion (Python math - more accurate than LLM)
+    - type: connector
+      name: calculate-kelly
+      condition: "$.get('m_count', 0) > 0"
+      connector:
+        name: soccer-kelly-calculator
+        command: batch_kelly_analysis
+      inputs:
+        markets: |
+          [
+            {
+              'ticker': m.get('ticker', ''),
+              'market_type': m.get('title', ''),
+              'yes_subtitle': m.get('yes_sub_title', ''),
+              'our_prob': (
+                $.get('final_prediction', {}).get('home_win_probability', 0.33) 
+                if $.get('h_name', '').lower() in m.get('yes_sub_title', '').lower() 
+                else (
+                  $.get('final_prediction', {}).get('away_win_probability', 0.33) 
+                  if $.get('a_name', '').lower() in m.get('yes_sub_title', '').lower() 
+                  else (
+                    $.get('final_prediction', {}).get('draw_probability', 0.33) 
+                    if 'draw' in m.get('yes_sub_title', '').lower() or 'tie' in m.get('yes_sub_title', '').lower() 
+                    else 0.33
+                  )
+                )
+              ),
+              'market_price': m.get('yes_ask', 50),
+              'side': 'yes'
+            }
+            for m in $.get('markets', [])
+          ]
+        confidence: "$.get('final_prediction', {}).get('confidence', 0.5)"
+        bankroll: 1000
+      outputs:
+        kelly_analysis: "$.get('data', {})"
+
+    # 11. Edge Analysis with Kelly calculations
     - type: prompt
       name: kalshi_edge_analyst
       condition: "$.get('m_count', 0) > 0"
@@ -328,6 +365,7 @@ workflow:
       inputs:
         prediction_data: "$.get('final_prediction')"
         markets_summary: "$.get('m_summary')"
+        kelly_calculations: "$.get('kelly_analysis', {})"
       outputs:
         edge_analysis: "$"
 
@@ -352,6 +390,8 @@ workflow:
             'should_trade': $.get('edge_analysis', {}).get('should_trade'),
             'confidence': $.get('edge_analysis', {}).get('overall_confidence'),
             'risk_warnings': $.get('edge_analysis', {}).get('risk_warnings', []),
+            'kelly_python': $.get('kelly_analysis', {}),
+            'calculation_method': 'python_kelly_calculator',
             'timestamp': datetime.utcnow().isoformat()
           }
       metadata:

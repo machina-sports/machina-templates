@@ -233,6 +233,8 @@ def batch_kelly_analysis(request_data):
             our_prob = market.get('our_prob')
             market_price = market.get('market_price')
             side = market.get('side', 'yes')
+            market_type = market.get('market_type', '')
+            yes_subtitle = market.get('yes_subtitle', '')
             
             if our_prob is None or market_price is None:
                 continue
@@ -252,7 +254,11 @@ def batch_kelly_analysis(request_data):
                 data = analysis.get('data', {})
                 results.append({
                     'ticker': ticker,
+                    'market_type': market_type,
+                    'yes_subtitle': yes_subtitle,
                     'side': side,
+                    'our_prob': our_prob,
+                    'market_price': market_price,
                     'edge_percent': data.get('position_analysis', {}).get('edge_percent', 0),
                     'ev_cents': data.get('position_analysis', {}).get('expected_value_cents', 0),
                     'kelly_percent': data.get('stake_recommendation', {}).get('recommended_stake_percent', 0),
