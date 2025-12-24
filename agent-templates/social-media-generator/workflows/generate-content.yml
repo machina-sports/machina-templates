@@ -174,7 +174,8 @@ workflow:
     - type: document
       name: store-suggestions
       config:
-        action: bulk-save
+        action: bulk-update
+        force-update: true
       document_name: "social-media-suggestion"
       documents:
         items: |
