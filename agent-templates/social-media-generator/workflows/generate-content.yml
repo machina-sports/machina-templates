@@ -150,7 +150,11 @@ workflow:
       outputs:
         content_suggestions: |
           [
-            $
+            {
+              'content_type': $.get('content_type'),
+              'caption': $.get('caption'),
+              'hashtags': $.get('hashtags', [])
+            }
           ]
 
     # 8. Store content suggestions (without images)
