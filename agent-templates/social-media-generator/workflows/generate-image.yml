@@ -49,7 +49,7 @@ workflow:
       connector:
         name: google-genai
         command: invoke_prompt
-        model: gemini-3-pro-preview
+        model: gemini-3-flash-preview
         location: global
         provider: vertex_ai
       inputs:
