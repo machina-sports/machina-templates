@@ -53,17 +53,68 @@ prompt:
     effective_edge = raw_edge - (spread / 200)  # Subtract half-spread cost
     ```
 
-    ### PHASE 4: TIER CLASSIFICATION
+    ### PHASE 4: EXPECTED VALUE & KELLY CALCULATION
+    For tradeable markets, calculate precise risk metrics:
+
+    **Expected Value (EV):**
+    ```
+    # EV per dollar wagered
+    if side == 'yes':
+        net_odds = (100 - market_price) / market_price
+        EV = (our_prob × net_odds) - (1 - our_prob)
+    else:  # no
+        net_odds = market_price / (100 - market_price)
+        EV = ((1 - our_prob) × net_odds) - our_prob
+    
+    EV_cents = EV × 100  # Express as cents per dollar
+    ```
+
+    **Kelly Criterion:**
+    ```
+    # Optimal bet fraction for long-term growth
+    if side == 'yes':
+        b = (100 - market_price) / market_price  # net odds
+        p = our_prob
+    else:
+        b = market_price / (100 - market_price)
+        p = 1 - our_prob
+    
+    kelly_full = (b × p - (1 - p)) / b
+    
+    # Apply fractional Kelly (25% = quarter Kelly)
+    kelly_fraction = max(0, kelly_full × 0.25 × confidence)
+    recommended_stake_percent = min(kelly_fraction × 100, 10.0)  # Cap at 10%
+    ```
+
+    ### PHASE 5: STALENESS PENALTY
+    News evidence decays rapidly. Apply confidence penalty for stale information:
+    
+    ```
+    news_age_hours = hours_since_newest_evidence
+    
+    if news_age_hours > 12:
+        staleness_penalty = 0.20  # 20% confidence reduction
+    elif news_age_hours > 6:
+        staleness_penalty = 0.10  # 10% confidence reduction
+    else:
+        staleness_penalty = 0.00  # Fresh info
+    
+    adjusted_confidence = confidence × (1 - staleness_penalty)
+    ```
+    
+    Flag stale information in risk_warnings.
+
+    ### PHASE 6: TIER CLASSIFICATION
     Classify each market opportunity:
 
-    | Tier | Effective Edge | Liquidity | Action | Position Size |
-    |------|---------------|-----------|--------|---------------|
-    | **A** | ≥8% | High (>0.7) | ENTER | Full conviction |
-    | **B** | 5-8% | Medium-High | ENTER | Half size |
-    | **C** | 3-5% | Acceptable | MONITOR | Small or wait |
-    | **PASS** | <3% OR Illiquid | Any | PASS | None |
+    | Tier | Effective Edge | EV (cents/$) | Liquidity | Action | Position Size |
+    |------|---------------|--------------|-----------|--------|---------------|
+    | **A** | ≥8% | ≥8¢ | High (>0.7) | ENTER | Full conviction |
+    | **B** | 5-8% | 5-8¢ | Medium-High | ENTER | Half size |
+    | **C** | 3-5% | 3-5¢ | Acceptable | MONITOR | Small or wait |
+    | **PASS** | <3% OR Illiquid | <3¢ | Any | PASS | None |
 
-    ### PHASE 5: SPECIAL MARKET ANALYSIS
+    ### PHASE 7: SPECIAL MARKET ANALYSIS
 
     **BTTS (Both Teams to Score):**
     - AI probability derived from: `P(home scores) × P(away scores)`
@@ -133,12 +184,15 @@ prompt:
           raw_edge: { type: number, description: "Raw edge in percentage points" }
           effective_edge: { type: number, description: "Spread-adjusted edge in percentage points" }
           spread: { type: number, description: "Bid-ask spread" }
+          expected_value: { type: number, description: "Expected value in cents per dollar wagered" }
+          kelly_fraction: { type: number, description: "Fractional Kelly bet size (0-1)" }
+          recommended_stake_percent: { type: number, description: "Recommended stake as % of bankroll (max 10%)" }
           tier: { type: string, enum: ["A", "B", "C", "PASS"] }
           action: { type: string, enum: ["enter", "monitor", "pass"] }
           reasoning: { type: string, description: "Why this is the best opportunity" }
       markets_ranked:
         type: array
-        description: All markets ranked by effective edge
+        description: All markets ranked by expected value (highest EV first)
         items:
           type: object
           properties:
@@ -146,9 +200,17 @@ prompt:
             market_type: { type: string, description: "e.g., 'Winner', 'BTTS', 'Over 2.5'" }
             side: { type: string }
             effective_edge: { type: number }
+            expected_value_cents: { type: number, description: "EV in cents per dollar" }
+            kelly_percent: { type: number, description: "Recommended stake %" }
             liquidity_score: { type: number }
             tier: { type: string }
             notes: { type: string }
+      staleness_applied:
+        type: boolean
+        description: Whether a staleness penalty was applied to confidence
+      staleness_penalty:
+        type: number
+        description: The staleness penalty applied (0.0, 0.10, or 0.20)
       risk_warnings:
         type: array
         items: { type: string }

@@ -1,0 +1,122 @@
+workflow:
+  name: soccer-post-match-auditor
+  title: Soccer Post-Match Prediction Auditor
+  description: Compares predictions to actual match results for validation and Brier score tracking.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture_id: "$.get('fixture_id')"
+    prediction_document_id: "$.get('prediction_document_id')"
+  outputs:
+    workflow-status: "$.get('workflow_status', 'executed')"
+    audit_document_id: "$.get('audit_document_id')"
+  tasks:
+    # 1. Load the prediction document
+    - type: document
+      name: load-prediction
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        document_id: $.get('prediction_document_id')
+      inputs:
+        name: "'soccer-prediction'"
+      outputs:
+        prediction: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
+        fixture_id: "$.get('documents')[0].get('value', {}).get('fixture_id') if len($.get('documents', [])) > 0 else $.get('fixture_id')"
+
+    # 2. Load the edge analysis if exists
+    - type: document
+      name: load-edge-analysis
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        value.eventCode: $.get('fixture_id')
+      inputs:
+        name: "'soccer-kalshi-analysis'"
+      outputs:
+        edge_analysis: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
+
+    # 3. Fetch actual match result from API-Football
+    - type: connector
+      name: fetch-actual-result
+      condition: "$.get('fixture_id') is not None"
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        id: "$.get('fixture_id')"
+      outputs:
+        fixture_response: "$"
+        actual_result: |
+          {
+            'home_goals': $.get('response', [{}])[0].get('goals', {}).get('home', 0) if $.get('response') else 0,
+            'away_goals': $.get('response', [{}])[0].get('goals', {}).get('away', 0) if $.get('response') else 0,
+            'match_status': $.get('response', [{}])[0].get('fixture', {}).get('status', {}).get('short', 'NS') if $.get('response') else 'NS'
+          }
+
+    # 4. Calculate audit metrics
+    - type: connector
+      name: calculate-audit
+      condition: "$.get('actual_result', {}).get('match_status') in ['FT', 'AET', 'PEN']"
+      connector:
+        name: soccer-audit-calculator
+        command: calculate_audit_metrics
+      inputs:
+        prediction: "$.get('prediction')"
+        actual_result: "$.get('actual_result')"
+        edge_analysis: "$.get('edge_analysis')"
+      outputs:
+        audit_result: "$.get('audit_result')"
+
+    # 5. Store audit result
+    - type: document
+      name: store-audit
+      condition: "$.get('audit_result') is not None"
+      config:
+        action: save
+      documents:
+        soccer-prediction-audit: |
+          {
+            **$.get('audit_result', {}),
+            'prediction_document_id': $.get('prediction_document_id'),
+            'edge_analysis_summary': {
+              'should_trade': $.get('edge_analysis', {}).get('should_trade', False),
+              'selected_tier': $.get('edge_analysis', {}).get('selected', {}).get('tier', 'PASS'),
+              'selected_ticker': $.get('edge_analysis', {}).get('selected', {}).get('ticker', '')
+            }
+          }
+      metadata:
+        prediction_id: "$.get('prediction_document_id')"
+        fixture_id: "$.get('fixture_id')"
+        matchup: "$.get('prediction', {}).get('matchup', '')"
+        match_date: "$.get('prediction', {}).get('match_date')"
+        prediction_correct: "$.get('audit_result', {}).get('calibration', {}).get('prediction_correct', False)"
+        brier_1x2: "$.get('audit_result', {}).get('brier_scores', {}).get('combined_1x2', 0)"
+        document_type: "'audit'"
+      outputs:
+        audit_document_id: "$.get('document_id')"
+        workflow_status: "'audited'"
+
+    # 6. Update prediction document with audit reference
+    - type: document
+      name: update-prediction-audited
+      condition: "$.get('audit_document_id') is not None"
+      config:
+        action: update
+        force-update: true
+      filters:
+        document_id: $.get('prediction_document_id')
+      documents:
+        soccer-prediction: |
+          {
+            **$.get('prediction', {}),
+            'audited': True,
+            'audit_document_id': $.get('audit_document_id'),
+            'actual_result': $.get('actual_result')
+          }
+

@@ -194,6 +194,40 @@ workflow:
       outputs:
         risk_out: "$"
 
+    # 7. Load Kalshi Markets EARLY (for market-anchored calibration)
+    - type: document
+      name: load-kalshi
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        value.eventCode: $.get('eventCode')
+      inputs:
+        name: "'kalshi-events'"
+      outputs:
+        k_ticker: "$.get('documents')[0].get('value', {}).get('event_ticker') if len($.get('documents', [])) > 0 else None"
+
+    - type: connector
+      name: load-markets
+      condition: "$.get('k_ticker') is not None"
+      connector:
+        name: kalshi
+        command: get-markets
+      inputs:
+        event_ticker: "$.get('k_ticker')"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    - type: mapping
+      name: kalshi-markets-summary
+      condition: "len($.get('markets', [])) > 0"
+      inputs:
+        markets: "$.get('markets')"
+      outputs:
+        m_summary: "$.get('markets_summary')"
+        m_count: "$.get('markets_count')"
+
+    # 8. Simulation with market context
     - type: prompt
       name: simulation_parameterizer
       connector:
@@ -232,6 +266,7 @@ workflow:
         feature_payload: "$.get('feature_payload')"
         components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out'), 'risk': $.get('risk_out')}"
         sim_results: "$.get('sim_results')"
+        market_prior: "$.get('m_summary', {})"
       outputs:
         final_prediction: "$"
 
@@ -280,39 +315,7 @@ workflow:
       outputs:
         prediction_document_id: "$.get('document_id')"
 
-    # 7. Kalshi Integration
-    - type: document
-      name: load-kalshi
-      config:
-        action: search
-        search-limit: 1
-      filters:
-        value.eventCode: $.get('eventCode')
-      inputs:
-        name: "'kalshi-events'"
-      outputs:
-        k_ticker: "$.get('documents')[0].get('value', {}).get('event_ticker') if len($.get('documents', [])) > 0 else None"
-
-    - type: connector
-      name: load-markets
-      condition: "$.get('k_ticker') is not None"
-      connector:
-        name: kalshi
-        command: get-markets
-      inputs:
-        event_ticker: "$.get('k_ticker')"
-      outputs:
-        markets: "$.get('markets', [])"
-
-    - type: mapping
-      name: kalshi-markets-summary
-      condition: "len($.get('markets', [])) > 0"
-      inputs:
-        markets: "$.get('markets')"
-      outputs:
-        m_summary: "$.get('markets_summary')"
-        m_count: "$.get('markets_count')"
-
+    # 10. Edge Analysis (markets already loaded earlier)
     - type: prompt
       name: kalshi_edge_analyst
       condition: "$.get('m_count', 0) > 0"

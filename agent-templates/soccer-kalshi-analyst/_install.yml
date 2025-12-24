@@ -18,8 +18,12 @@ setup:
     - Quantified evidence extraction (injury impacts, tactical signals, motivation factors)
     - Tactical matchup analysis (style clashes, venue factors, H2H patterns)
     - Risk assessment with confidence calibration and abstention logic
-    - High-fidelity Poisson Monte Carlo simulation (10,000 iterations)
+    - Dixon-Coles enhanced Poisson Monte Carlo simulation (10,000 iterations)
+    - Market-anchored calibration using Kalshi prices as Bayesian prior
+    - Kelly Criterion stake sizing with EV-based position analysis
     - Kalshi market edge detection with tier-based trading recommendations
+    - Post-match auditing with Brier score and calibration tracking
+    - Backtesting reports with ROI by tier and calibration curves
     - Rich prediction documents with full analytical audit trail
   integrations:
     - api-football
@@ -28,7 +32,7 @@ setup:
     - kalshi
   status: available
   value: agent-templates/soccer-kalshi-analyst
-  version: 3.0.0
+  version: 4.0.0
 
 datasets:
 
@@ -54,6 +58,12 @@ datasets:
 
   - type: connector
     path: scripts/market-event-matcher.yml
+
+  - type: connector
+    path: scripts/audit_calculator.yml
+
+  - type: connector
+    path: scripts/kelly_calculator.yml
 
   # Prompts
   - type: prompt
@@ -112,3 +122,10 @@ datasets:
 
   - type: workflow
     path: workflows/sync-kalshi-events.yml
+
+  # Validation & Backtesting Workflows
+  - type: workflow
+    path: workflows/post-match-auditor.yml
+
+  - type: workflow
+    path: workflows/backtesting-report.yml
