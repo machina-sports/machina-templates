@@ -278,7 +278,7 @@ workflow:
         abstain: "$.get('risk_out', {}).get('abstain', False)"
         document_type: "'prediction'"
       outputs:
-        prediction_document_id: "$.get('document_id')"
+        prediction_document_id: "$.get('documents')[0].get('_id')"
 
     # 7. Kalshi Integration
     - type: document
