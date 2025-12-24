@@ -1,0 +1,73 @@
+prompt:
+  name: generate_image_prompt
+  title: Generate AI Image Prompt for Social Media
+  description: Creates a detailed image generation prompt based on content type and context
+  inputs:
+    - name: content_type
+      type: string
+      description: Type of content (meme, stats, quiz)
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Newcastle")
+    - name: caption
+      type: string
+      description: The social media caption
+    - name: aspect_ratio
+      type: string
+      description: Image aspect ratio (1:1, 16:9, 9:16)
+    - name: custom_prompt
+      type: string
+      description: Optional custom user prompt
+  outputs:
+    - name: image_prompt
+      type: string
+      description: Generated image prompt
+  schema:
+    title: "ImagePrompt"
+    description: "Generates a detailed image prompt for AI image generation"
+    type: "object"
+    properties:
+      image_prompt:
+        type: "string"
+        description: "Detailed prompt for image generation"
+    required: ["image_prompt"]
+  instructions: |
+    You are an expert at creating prompts for AI image generation for social media content.
+    
+    ## CONTENT DETAILS
+    - Content Type: {{ content_type }}
+    - Matchup: {{ matchup }}
+    - Caption: {{ caption }}
+    - Aspect Ratio: {{ aspect_ratio }}
+    
+    {% if custom_prompt %}
+    ## CUSTOM USER REQUEST
+    {{ custom_prompt }}
+    {% endif %}
+    
+    ## YOUR TASK
+    Create a detailed, specific prompt for generating a {{ aspect_ratio }} social media image for {{ matchup }}.
+    
+    ### Content Type Guidelines:
+    - **MEME**: Bold, humorous, shareable. Popular meme formats with visual storytelling. Focus on relatable sports humor.
+    - **STATS**: Clean, professional infographic style. Emphasize data visualization, comparison graphics, bold numbers.
+    - **QUIZ**: Engaging, inviting, interactive feel. Encourage participation with visual intrigue.
+    
+    ### Style Requirements:
+    - High-quality sports photography aesthetic
+    - Cinematic lighting and composition
+    - Professional color grading
+    - Sharp, engaging visuals optimized for social media
+    - Team colors incorporated tastefully
+    
+    ### CRITICAL REQUIREMENTS (MUST INCLUDE):
+    - ABSOLUTELY NO text, words, letters, numbers, or typography in the image
+    - NO player names or individual athlete depictions
+    - NO team logos or emblems
+    - NO jerseys with visible text or numbers
+    - The image should convey the concept through visual storytelling only
+    
+    The caption "{{ caption }}" will be added separately as text overlay.
+    
+    Generate a concise, actionable prompt (2-3 sentences) that describes the exact visual scene to create.
+

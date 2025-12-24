@@ -42,27 +42,40 @@ workflow:
         content_data: "$.get('documents')[0].get('value', {}).get('content') if len($.get('documents', [])) > 0 else {}"
         content_context: "$.get('documents')[0].get('value', {}).get('context') if len($.get('documents', [])) > 0 else {}"
 
-    # 2. Create image using Gemini (inline prompt like personalized-podcast)
+    # 2. Generate detailed image prompt using LLM
+    - type: prompt
+      name: generate_image_prompt
+      condition: "$.get('suggestion_exists') is True"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-flash-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        content_type: "$.get('content_type')"
+        matchup: "$.get('matchup')"
+        caption: "$.get('content_data', {}).get('caption', '')"
+        aspect_ratio: "$.get('aspect_ratio')"
+        custom_prompt: "$.get('custom_prompt', '')"
+      outputs:
+        detailed_image_prompt: "$.get('image_prompt', '')"
+
+    # 3. Create image using Gemini with generated prompt
     - type: connector
       name: create-content-image
-      condition: "$.get('suggestion_exists') is True"
+      condition: "$.get('detailed_image_prompt') is not None and $.get('detailed_image_prompt') != ''"
       connector:
         name: google-genai
         command: invoke_image
       inputs:
-        model_name: "'gemini-3-pro-image-preview'"
+        model_name: gemini-3-pro-image-preview
         aspect_ratio: "$.get('aspect_ratio')"
-        content_type: "$.get('content_type')"
-        matchup: "$.get('matchup')"
-        home_team_name: "$.get('home_team_name')"
-        caption: "$.get('content_data', {}).get('caption', '')"
-        custom_prompt: "$.get('custom_prompt', '')"
-        prompt: |
-          "=== SOCIAL MEDIA IMAGE GENERATION ===\n\nCONTENT TYPE: {{content_type}}\nMATCHUP: {{matchup}}\nCAPTION: {{caption}}\nASPECT RATIO: {{aspect_ratio}}\n\nGenerate a high-quality {{aspect_ratio}} social media image for {{matchup}}.\n\nContent Type Guidelines:\n- MEME: Bold, humorous, shareable. Popular meme formats with visual storytelling.\n- STATS: Clean, professional infographic style with data visualization.\n- QUIZ: Engaging, inviting, interactive feel that encourages participation.\n\nStyle Requirements:\n- High-quality sports photography aesthetic\n- Cinematic lighting and composition\n- Professional color grading\n- Sharp, engaging visuals optimized for social media\n- Team colors should be incorporated tastefully\n\nCRITICAL REQUIREMENTS:\n- ABSOLUTELY NO text, words, letters, numbers, or typography in the image\n- NO player names or individual athlete depictions\n- NO team logos or emblems\n- NO jerseys with visible text or numbers\n- The image should convey the concept through visual storytelling only\n\nThe caption will be added separately as text overlay by the social media platform.\nCreate a visually stunning image that supports the caption: {{caption}}"
+        prompt: "$.get('detailed_image_prompt')"
       outputs:
         generated_image_path: "$.get('image_path')"
 
-    # 3. Upload image to Google Storage
+    # 4. Upload image to Google Storage
     - type: connector
       name: upload-image-to-storage
       condition: "$.get('generated_image_path') is not None"
@@ -75,7 +88,7 @@ workflow:
       outputs:
         uploaded_image_url: "$.get('url')"
 
-    # 4. Update suggestion document with image
+    # 5. Update suggestion document with image
     - type: document
       name: update-suggestion
       condition: "$.get('uploaded_image_url') is not None"
