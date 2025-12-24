@@ -323,30 +323,10 @@ workflow:
         name: soccer-kelly-calculator
         command: batch_kelly_analysis
       inputs:
-        markets: |
-          [
-            {
-              'ticker': m.get('ticker', ''),
-              'market_type': m.get('title', ''),
-              'yes_subtitle': m.get('yes_sub_title', ''),
-              'our_prob': (
-                $.get('final_prediction', {}).get('home_win_probability', 0.33) 
-                if $.get('h_name', '').lower() in m.get('yes_sub_title', '').lower() 
-                else (
-                  $.get('final_prediction', {}).get('away_win_probability', 0.33) 
-                  if $.get('a_name', '').lower() in m.get('yes_sub_title', '').lower() 
-                  else (
-                    $.get('final_prediction', {}).get('draw_probability', 0.33) 
-                    if 'draw' in m.get('yes_sub_title', '').lower() or 'tie' in m.get('yes_sub_title', '').lower() 
-                    else 0.33
-                  )
-                )
-              ),
-              'market_price': m.get('yes_ask', 50),
-              'side': 'yes'
-            }
-            for m in $.get('markets', [])
-          ]
+        raw_markets: "$.get('markets', [])"
+        prediction: "$.get('final_prediction', {})"
+        home_team: "$.get('h_name', '')"
+        away_team: "$.get('a_name', '')"
         confidence: "$.get('final_prediction', {}).get('confidence', 0.5)"
         bankroll: 1000
       outputs:

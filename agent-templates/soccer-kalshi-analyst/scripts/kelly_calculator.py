@@ -164,8 +164,16 @@ def batch_kelly_analysis(request_data):
     Calculate Kelly analysis for multiple markets/outcomes.
     Returns in the standard pyscript pattern: {status, data, message}
     
+    Accepts raw market data from Kalshi API and prediction data, then:
+    1. Matches markets to probabilities based on team names
+    2. Calculates Kelly criterion for each market
+    3. Returns ranked results
+    
     Parameters:
-        markets: List of market objects with our_prob, market_price, side, ticker
+        raw_markets: List of market objects from Kalshi API
+        prediction: Dict with home_win_probability, away_win_probability, draw_probability
+        home_team: Home team name
+        away_team: Away team name
         confidence: Overall model confidence
         bankroll: Total bankroll
         
@@ -198,11 +206,11 @@ def batch_kelly_analysis(request_data):
             if side == 'yes':
                 p = our_prob
                 market_implied = implied_prob
-                net_odds = (100 - market_price) / market_price
+                net_odds = (100 - market_price) / market_price if market_price > 0 else 0
             else:  # no
                 p = 1 - our_prob
                 market_implied = 1 - implied_prob
-                net_odds = market_price / (100 - market_price)
+                net_odds = market_price / (100 - market_price) if market_price < 100 else 0
             
             # Calculate edge
             edge = p - market_implied
@@ -210,7 +218,7 @@ def batch_kelly_analysis(request_data):
             
             # Calculate Expected Value
             q = 1 - p
-            ev = (p * net_odds) - q
+            ev = (p * net_odds) - q if net_odds > 0 else -q
             ev_cents = ev * 100
             
             # Calculate Kelly fraction: f* = (bp - q) / b
@@ -246,6 +254,28 @@ def batch_kelly_analysis(request_data):
                 'net_odds': round(net_odds, 4)
             }
         
+        # Helper to match market subtitle to probability
+        def get_prob_for_market(yes_subtitle, home_team, away_team, prediction):
+            """Match market subtitle to the correct probability from prediction."""
+            subtitle_lower = yes_subtitle.lower() if yes_subtitle else ''
+            home_lower = home_team.lower() if home_team else ''
+            away_lower = away_team.lower() if away_team else ''
+            
+            # Check for home team match
+            if home_lower and home_lower in subtitle_lower:
+                return prediction.get('home_win_probability', 0.33), 'home_win'
+            
+            # Check for away team match
+            if away_lower and away_lower in subtitle_lower:
+                return prediction.get('away_win_probability', 0.33), 'away_win'
+            
+            # Check for draw/tie
+            if 'draw' in subtitle_lower or 'tie' in subtitle_lower:
+                return prediction.get('draw_probability', 0.33), 'draw'
+            
+            # Default fallback
+            return 0.33, 'unknown'
+        
         # Parse request_data
         if isinstance(request_data, str):
             try:
@@ -261,40 +291,51 @@ def batch_kelly_analysis(request_data):
         if not isinstance(params, dict):
             params = {}
         
-        markets = params.get('markets', [])
+        # Extract inputs - support both old format (markets) and new format (raw_markets)
+        raw_markets = params.get('raw_markets', params.get('markets', []))
+        prediction = params.get('prediction', {})
+        home_team = params.get('home_team', '')
+        away_team = params.get('away_team', '')
         confidence = params.get('confidence', 0.5)
         bankroll = params.get('bankroll', 1000)
         
-        if not markets:
+        # Ensure raw_markets is a list
+        if not isinstance(raw_markets, list):
+            raw_markets = []
+        
+        if not raw_markets:
             return {
                 "status": False,
-                "data": {"error": "No markets provided"},
+                "data": {"error": "No markets provided", "params_received": list(params.keys())},
                 "message": "No markets to analyze"
             }
         
         results = []
         
-        for market in markets:
-            ticker = market.get('ticker', 'unknown')
-            our_prob = market.get('our_prob')
-            market_price = market.get('market_price')
-            side = market.get('side', 'yes')
-            market_type = market.get('market_type', '')
-            yes_subtitle = market.get('yes_subtitle', '')
-            
-            if our_prob is None or market_price is None:
+        for market in raw_markets:
+            if not isinstance(market, dict):
                 continue
+                
+            # Extract market data from Kalshi API format
+            ticker = market.get('ticker', 'unknown')
+            market_title = market.get('title', '')
+            yes_subtitle = market.get('yes_sub_title', '')
+            market_price = market.get('yes_ask', 50)  # Use ask price
+            
+            # Match market to probability
+            our_prob, outcome_type = get_prob_for_market(yes_subtitle, home_team, away_team, prediction)
             
             # Calculate Kelly using helper function
-            analysis = calc_kelly_single(our_prob, market_price, confidence, bankroll, side)
+            analysis = calc_kelly_single(our_prob, market_price, confidence, bankroll, 'yes')
             
             if analysis:
                 results.append({
                     'ticker': ticker,
-                    'market_type': market_type,
+                    'market_title': market_title,
                     'yes_subtitle': yes_subtitle,
-                    'side': side,
-                    'our_prob': analysis['our_prob'],
+                    'outcome_type': outcome_type,
+                    'side': 'yes',
+                    'our_prob': round(our_prob, 4),
                     'market_price': market_price,
                     'market_implied': analysis['market_implied'],
                     'edge_percent': analysis['edge_percent'],
@@ -329,6 +370,12 @@ def batch_kelly_analysis(request_data):
                     "average_edge_percent": round(avg_edge, 2),
                     "confidence_used": confidence,
                     "bankroll_assumed": bankroll
+                },
+                "inputs_received": {
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "markets_count": len(raw_markets),
+                    "prediction_keys": list(prediction.keys()) if prediction else []
                 }
             },
             "message": f"Analyzed {len(results)} markets, {len(tradeable)} tradeable"
