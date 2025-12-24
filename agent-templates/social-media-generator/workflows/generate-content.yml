@@ -174,42 +174,45 @@ workflow:
     - type: document
       name: store-suggestions
       config:
-        action: save
-      foreach:
-        name: suggestion_item
-        expr: $
-        value: $.get('content_suggestions', [])
+        action: bulk-save
+      document_name: "social-media-suggestion"
       documents:
-        social-media-suggestion: |
-          {
-            'title': $.get('home_team_name', '') + ' vs ' + $.get('away_team_name', '') + ' - ' + str($.get('suggestion_item', {}).get('content_type', '')).upper(),
-            'event_id': str($.get('event_id')),
-            'matchup': $.get('home_team_name', '') + ' vs ' + $.get('away_team_name', ''),
-            'home_team_id': str($.get('home_team_id')),
-            'away_team_id': str($.get('away_team_id')),
-            'home_team_name': $.get('home_team_name', ''),
-            'away_team_name': $.get('away_team_name', ''),
-            'content_type': $.get('suggestion_item', {}).get('content_type', ''),
-            'league_id': $.get('league_id'),
-            'season': $.get('season'),
-            'event_date': $.get('event_date'),
-            'content': $.get('suggestion_item', {}),
-            'context': $.get('content_context'),
-            'has_image': False,
-            'image_url': '',
-            'status': 'pending',
-            'timestamp': datetime.utcnow().isoformat()
-          }
-      metadata:
-        event_id: "$.get('event_id')"
-        home_team: "$.get('home_team_name', '')"
-        away_team: "$.get('away_team_name', '')"
-        content_type: "$.get('suggestion_item', {}).get('content_type', '')"
-        league_id: "$.get('league_id')"
-        season: "$.get('season')"
-        status: "'pending'"
-        document_type: "'social-media-suggestion'"
+        items: |
+          [
+            {
+              'value': {
+                'title': $.get('home_team_name', '') + ' vs ' + $.get('away_team_name', '') + ' - ' + str(item.get('content_type', '')).upper(),
+                'event_id': str($.get('event_id')),
+                'matchup': $.get('home_team_name', '') + ' vs ' + $.get('away_team_name', ''),
+                'home_team_id': str($.get('home_team_id')),
+                'away_team_id': str($.get('away_team_id')),
+                'home_team_name': $.get('home_team_name', ''),
+                'away_team_name': $.get('away_team_name', ''),
+                'content_type': item.get('content_type', ''),
+                'league_id': $.get('league_id'),
+                'season': $.get('season'),
+                'event_date': $.get('event_date'),
+                'content': item,
+                'context': $.get('content_context'),
+                'has_image': False,
+                'image_url': '',
+                'status': 'pending',
+                'timestamp': datetime.utcnow().isoformat()
+              },
+              'metadata': {
+                'event_id': str($.get('event_id')),
+                'home_team': $.get('home_team_name', ''),
+                'away_team': $.get('away_team_name', ''),
+                'content_type': item.get('content_type', ''),
+                'league_id': $.get('league_id'),
+                'season': $.get('season'),
+                'status': 'pending',
+                'document_type': 'social-media-suggestion'
+              }
+            }
+            for item in $.get('content_suggestions', [])
+          ]
       outputs:
-        suggestion_ids: "$.get('document_id')"
+        suggestion_ids: "$.get('document_ids', [])"
         workflow_executed_status: "'executed'"
 
