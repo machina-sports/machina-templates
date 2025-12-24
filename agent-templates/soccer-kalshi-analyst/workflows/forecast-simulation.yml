@@ -1,7 +1,7 @@
 workflow:
-  name: soccer-forecast-match-prediction
-  title: Soccer Match Prediction Forecasting
-  description: Phase 3 - Run multi-stage analyst pipeline, Monte Carlo simulation, and generate calibrated match prediction
+  name: soccer-forecast-simulation
+  title: Soccer Match Simulation & Pricing
+  description: Phase 3B - Run Monte Carlo simulation and generate final prediction
   context-variables:
     debugger:
       enabled: true
@@ -11,87 +11,37 @@ workflow:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
     eventCode: "$.get('eventCode')"
-    feature_document_id: "$.get('feature_document_id')"
+    analyst_document_id: "$.get('analyst_document_id')"
   outputs:
     workflow-status: "$.get('workflow_executed_status', 'executed')"
     prediction_document_id: "$.get('prediction_document_id')"
   tasks:
-    # 1. Load feature payload from previous phase
+    # 1. Load analyst report from previous phase
     - type: document
-      name: load-match-features
+      name: load-analyst-report
       config:
         action: search
         search-limit: 1
       filters:
-        document_id: $.get('feature_document_id')
+        document_id: $.get('analyst_document_id')
       inputs:
-        name: "'soccer-match-features'"
+        name: "'soccer-analyst-report'"
       outputs:
-        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
-        evidence: "$.get('documents')[0].get('value', {}).get('evidence', {}) if len($.get('documents', [])) > 0 else {}"
         h_name: "$.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''"
         a_name: "$.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''"
         league: "$.get('documents')[0].get('value', {}).get('league', '39') if len($.get('documents', [])) > 0 else '39'"
         season: "$.get('documents')[0].get('value', {}).get('season', '2025') if len($.get('documents', [])) > 0 else '2025'"
         match_date: "$.get('documents')[0].get('value', {}).get('match_date', '') if len($.get('documents', [])) > 0 else ''"
+        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
+        evidence: "$.get('documents')[0].get('value', {}).get('evidence', {}) if len($.get('documents', [])) > 0 else {}"
+        stats_out: "$.get('documents')[0].get('value', {}).get('analyst_outputs', {}).get('stats', {}) if len($.get('documents', [])) > 0 else {}"
+        evidence_out: "$.get('documents')[0].get('value', {}).get('analyst_outputs', {}).get('evidence', {}) if len($.get('documents', [])) > 0 else {}"
+        matchup_out: "$.get('documents')[0].get('value', {}).get('analyst_outputs', {}).get('matchup', {}) if len($.get('documents', [])) > 0 else {}"
+        risk_out: "$.get('documents')[0].get('value', {}).get('analyst_outputs', {}).get('risk', {}) if len($.get('documents', [])) > 0 else {}"
+        feature_document_id: "$.get('documents')[0].get('value', {}).get('feature_document_id', '') if len($.get('documents', [])) > 0 else ''"
         workflow_executed_status: "'executed'"
 
-    # 2. Forecast - Task names MUST match prompt names
-    - type: prompt
-      name: forecast_stats_analyst
-      connector:
-        name: google-genai
-        command: invoke_prompt
-        model: "gemini-3-pro-preview"
-        location: global
-        provider: vertex_ai
-      inputs:
-        feature_payload: "$.get('feature_payload')"
-      outputs:
-        stats_out: "$"
-
-    - type: prompt
-      name: forecast_evidence_analyst
-      connector:
-        name: google-genai
-        command: invoke_prompt
-        model: "gemini-3-pro-preview"
-        location: global
-        provider: vertex_ai
-      inputs:
-        feature_payload: "$.get('feature_payload')"
-        news_evidence: "$.get('evidence', {})"
-        stats_baseline: "$.get('stats_out', {})"
-      outputs:
-        evidence_out: "$"
-
-    - type: prompt
-      name: forecast_matchup_analyst
-      connector:
-        name: google-genai
-        command: invoke_prompt
-        model: "gemini-3-pro-preview"
-        location: global
-        provider: vertex_ai
-      inputs:
-        feature_payload: "$.get('feature_payload')"
-      outputs:
-        matchup_out: "$"
-
-    - type: prompt
-      name: forecast_risk_officer
-      connector:
-        name: google-genai
-        command: invoke_prompt
-        model: "gemini-3-pro-preview"
-        location: global
-        provider: vertex_ai
-      inputs:
-        components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out')}"
-        feature_payload: "$.get('feature_payload')"
-      outputs:
-        risk_out: "$"
-
+    # 2. Simulation Parameterizer - Convert analysis to simulation parameters
     - type: prompt
       name: simulation_parameterizer
       connector:
@@ -107,6 +57,7 @@ workflow:
       outputs:
         sim_params: "$"
 
+    # 3. Monte Carlo Simulation - Run 10k iterations
     - type: connector
       name: monte-carlo
       connector:
@@ -118,6 +69,7 @@ workflow:
       outputs:
         sim_results: "$.get('simulation_results')"
 
+    # 4. Final Pricing - Generate calibrated prediction
     - type: prompt
       name: final_pricing
       connector:
@@ -133,7 +85,7 @@ workflow:
       outputs:
         final_prediction: "$"
 
-    # 3. Store final prediction
+    # 5. Store final prediction
     - type: document
       name: store-prediction
       config:
@@ -164,6 +116,7 @@ workflow:
             'news_evidence': $.get('evidence', {}),
             'confidence': $.get('risk_out', {}).get('confidence', 0.5),
             'abstain_recommended': $.get('risk_out', {}).get('abstain', False),
+            'analyst_document_id': $.get('analyst_document_id'),
             'feature_document_id': $.get('feature_document_id'),
             'timestamp': datetime.utcnow().isoformat()
           }

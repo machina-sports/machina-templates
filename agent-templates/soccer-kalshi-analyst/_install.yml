@@ -108,7 +108,19 @@ datasets:
     path: workflows/aggregate-match-features.yml
 
   - type: workflow
-    path: workflows/forecast-match-prediction.yml
+    path: workflows/forecast-stats.yml
+
+  - type: workflow
+    path: workflows/forecast-evidence.yml
+
+  - type: workflow
+    path: workflows/forecast-matchup.yml
+
+  - type: workflow
+    path: workflows/forecast-risk.yml
+
+  - type: workflow
+    path: workflows/forecast-simulation.yml
 
   - type: workflow
     path: workflows/analyze-kalshi-markets.yml

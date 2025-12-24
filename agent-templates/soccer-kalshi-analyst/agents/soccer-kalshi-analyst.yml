@@ -41,18 +41,62 @@ agent:
         feature_document_id: $.get('feature_document_id')
         features_ready: $.get('workflow-status', 'skipped') == 'executed'
 
-    # 4. Phase 3: Forecasting
-    - name: soccer-forecast-match-prediction
-      description: Run multi-stage analyst pipeline, Monte Carlo simulation, and generate calibrated match prediction
+    # 4. Phase 3A: Statistical Analyst
+    - name: soccer-forecast-stats
+      description: Calculate baseline xG from historical team performance
       condition: $.get('features_ready') is True
       inputs:
         eventCode: $.get('analysis_fixture_id')
         feature_document_id: $.get('feature_document_id')
       outputs:
+        stats_document_id: $.get('stats_document_id')
+        stats_complete: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 5. Phase 3B: Evidence Analyst
+    - name: soccer-forecast-evidence
+      description: Apply news-adjusted xG incorporating injury/tactical evidence
+      condition: $.get('stats_complete') is True
+      inputs:
+        eventCode: $.get('analysis_fixture_id')
+        stats_document_id: $.get('stats_document_id')
+      outputs:
+        evidence_document_id: $.get('evidence_document_id')
+        evidence_complete: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 6. Phase 3C: Matchup Analyst
+    - name: soccer-forecast-matchup
+      description: Tactical matchup analysis and xG multiplier adjustments
+      condition: $.get('evidence_complete') is True
+      inputs:
+        eventCode: $.get('analysis_fixture_id')
+        evidence_document_id: $.get('evidence_document_id')
+      outputs:
+        matchup_document_id: $.get('matchup_document_id')
+        matchup_complete: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 7. Phase 3D: Risk Officer
+    - name: soccer-forecast-risk
+      description: Risk assessment, confidence calibration, and abstention logic
+      condition: $.get('matchup_complete') is True
+      inputs:
+        eventCode: $.get('analysis_fixture_id')
+        matchup_document_id: $.get('matchup_document_id')
+      outputs:
+        analyst_document_id: $.get('analyst_document_id')
+        analysts_complete: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 8. Phase 3E: Simulation & Pricing
+    - name: soccer-forecast-simulation
+      description: Run Monte Carlo simulation and generate final prediction
+      condition: $.get('analysts_complete') is True
+      inputs:
+        eventCode: $.get('analysis_fixture_id')
+        analyst_document_id: $.get('analyst_document_id')
+      outputs:
         prediction_document_id: $.get('prediction_document_id')
         forecast_complete: $.get('workflow-status', 'skipped') == 'executed'
 
-    # 5. Phase 4: Kalshi Integration (optional)
+    # 9. Phase 4: Kalshi Integration (optional)
     - name: soccer-analyze-kalshi-markets
       description: Identify trading edges by comparing AI predictions against Kalshi market prices
       condition: $.get('forecast_complete') is True
@@ -63,7 +107,7 @@ agent:
         kalshi_analysis_id: $.get('kalshi_analysis_id')
         kalshi_complete: $.get('workflow-status', 'skipped') == 'executed'
 
-    # 6. Update: Finalize version control and status
+    # 10. Update: Finalize version control and status
     - name: soccer-kalshi-analysis-update
       description: Finalize analysis status, update document versioning, and mark fixture as analyzed
       condition: $.get('analysis_fixture_exists') is True
