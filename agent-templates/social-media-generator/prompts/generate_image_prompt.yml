@@ -3,24 +3,22 @@ prompt:
   title: Generate Image Prompt for Social Media Content
   description: Generates detailed AI image generation prompts for social media content based on team and content type
   instructions: |
-    You are a creative visual content specialist for sports social media. Generate a detailed, descriptive prompt for AI image generation that will create a compelling visual suitable for {{ content_type }} content.
+    You are a creative visual content specialist for sports social media. Generate a detailed, descriptive prompt for AI image generation that will create a compelling visual suitable for {{content_type}} content.
     
-    Content Type: {{ content_type }}
-    Team/Matchup: {{ matchup if matchup else team_name }}
-    Aspect Ratio: {{ aspect_ratio }}
+    Content Type: {{content_type}}
+    Team/Matchup: {{matchup}}
+    Aspect Ratio: {{aspect_ratio}}
     
     Content Data:
-    {{ content_data }}
+    {{content_data}}
     
     Content Context:
-    {{ content_context }}
+    {{content_context}}
     
-    {% if custom_prompt %}
-    USER CUSTOM PROMPT:
-    {{ custom_prompt }}
+    User Custom Prompt (if provided):
+    {{custom_prompt}}
     
-    IMPORTANT: Incorporate the user's custom prompt requirements into the final image generation prompt while maintaining all other constraints and style requirements.
-    {% endif %}
+    If the user provided a custom prompt above, incorporate those requirements into the final image generation prompt while maintaining all other constraints and style requirements.
     
     CRITICAL CONSTRAINTS:
     - The final image MUST be completely free of any text, words, letters, numbers, typography, or written elements
@@ -31,35 +29,35 @@ prompt:
     
     IMAGE STYLE REQUIREMENTS BASED ON CONTENT TYPE:
     
-    IF content_type == 'meme':
-      - Bold, eye-catching composition
-      - Vibrant team colors prominently featured
-      - Playful, energetic atmosphere
-      - High contrast and dramatic lighting
-      - Abstract shapes and color blocks representing the meme concept
-      - Modern, social-media-friendly aesthetic
-      - 1:1 square aspect ratio suitable for Instagram/Twitter
+    **For 'meme' content:**
+    - Bold, eye-catching composition
+    - Vibrant team colors prominently featured
+    - Playful, energetic atmosphere
+    - High contrast and dramatic lighting
+    - Abstract shapes and color blocks representing the meme concept
+    - Modern, social-media-friendly aesthetic
+    - 1:1 square aspect ratio suitable for Instagram/Twitter
     
-    IF content_type == 'stats':
-      - Clean, professional composition
-      - Team colors in a sophisticated, data-viz inspired palette
-      - Geometric shapes suggesting graphs/charts (without actual text or numbers)
-      - Minimalist, editorial style
-      - Strong visual hierarchy through color and form
-      - Modern sports graphics aesthetic
-      - 1:1 square aspect ratio
+    **For 'stats' content:**
+    - Clean, professional composition
+    - Team colors in a sophisticated, data-viz inspired palette
+    - Geometric shapes suggesting graphs/charts (without actual text or numbers)
+    - Minimalist, editorial style
+    - Strong visual hierarchy through color and form
+    - Modern sports graphics aesthetic
+    - 1:1 square aspect ratio
     
-    IF content_type == 'quiz':
-      - Engaging, thought-provoking composition
-      - Team colors balanced with neutral tones
-      - Question mark or puzzle-like abstract shapes
-      - Inviting, friendly atmosphere
-      - Mix of playful and intelligent visual elements
-      - Interactive, quiz-show inspired aesthetic
-      - 1:1 square aspect ratio
+    **For 'quiz' content:**
+    - Engaging, thought-provoking composition
+    - Team colors balanced with neutral tones
+    - Question mark or puzzle-like abstract shapes
+    - Inviting, friendly atmosphere
+    - Mix of playful and intelligent visual elements
+    - Interactive, quiz-show inspired aesthetic
+    - 1:1 square aspect ratio
     
     UNIVERSAL DESIGN ELEMENTS:
-    - Research and incorporate {{ team_name }}'s primary and secondary colors
+    - Research and incorporate {{team_name}}'s primary and secondary colors
     - Create depth through layering and lighting
     - Use motion blur or dynamic elements to suggest energy
     - Maintain a realistic photographic base with creative enhancements
@@ -67,17 +65,17 @@ prompt:
     - High-quality, professional finish suitable for social media
     
     COLOR PALETTE:
-    - Primary: {{ team_name }}'s main team color
-    - Secondary: {{ team_name }}'s secondary color
+    - Primary: {{team_name}}'s main team color
+    - Secondary: {{team_name}}'s secondary color
     - Accent: Complementary colors for visual interest
     - Background: Subtle gradients or atmospheric effects
     
     COMPOSITION:
-    - Aspect Ratio: {{ aspect_ratio }} (adjust composition accordingly)
+    - Aspect Ratio: {{aspect_ratio}} (adjust composition accordingly)
       * 1:1 square: Instagram/Twitter posts
       * 16:9 landscape: Facebook/Twitter banners, YouTube thumbnails
       * 9:16 portrait: Instagram/TikTok stories
-    - Balanced visual weight appropriate for {{ aspect_ratio }} format
+    - Balanced visual weight appropriate for {{aspect_ratio}} format
     - Strategic use of negative space
     - Dynamic but not chaotic
     - Optimized for social media platforms
@@ -87,11 +85,11 @@ prompt:
     1. NO text, words, letters, numbers, or typography mentioned
     2. NO player names or individual athletes referenced
     3. NO logos or emblems included
-    4. {{ team_name }}'s colors are explicitly stated and incorporated
-    5. The prompt creates a clear visual aligned with {{ content_type }}
+    4. The team's colors are explicitly stated and incorporated
+    5. The prompt creates a clear visual aligned with {{content_type}}
     6. The style matches social media best practices
     
-    Return a single, comprehensive image generation prompt that creates an engaging, shareable social media image for {{ team_name }} {{ content_type }} content.
+    Return a single, comprehensive image generation prompt that creates an engaging, shareable social media image for {{content_type}} content about {{matchup}}.
     
   schema:
     title: GenerateImagePrompt
