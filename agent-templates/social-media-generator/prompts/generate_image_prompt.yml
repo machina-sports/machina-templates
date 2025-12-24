@@ -1,0 +1,153 @@
+prompt:
+  name: generate_image_prompt
+  title: Generate AI Image Prompt for Social Media Content
+  description: Creates detailed image generation instructions based on content type and structured data
+  inputs:
+    - name: content_type
+      type: string
+      description: Type of content (meme, stats, quiz)
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Newcastle")
+    - name: home_team_name
+      type: string
+      description: Home team name for color extraction
+    - name: caption
+      type: string
+      description: The social media caption
+    - name: image_content
+      type: object
+      description: Structured data for image generation (meme_text, stats_table, or quiz_structure)
+    - name: context_key_stats
+      type: array
+      description: Fallback stats array if image_content.stats_table is missing
+    - name: custom_prompt
+      type: string
+      description: Optional user customization
+    - name: aspect_ratio
+      type: string
+      description: Image aspect ratio (1:1, 16:9, or 9:16)
+  outputs:
+    - name: image_prompt
+      type: string
+      description: Final detailed prompt for AI image generation
+  schema:
+    title: "ImageGenerationPrompt"
+    description: "Generates a detailed AI image prompt for social media graphics"
+    type: "object"
+    properties:
+      image_prompt:
+        type: "string"
+        description: "Complete, detailed prompt for image generation AI"
+    required: ["image_prompt"]
+  instructions: |
+    You are an expert at creating image generation prompts for AI systems like Gemini Image Generation.
+    
+    ## INPUT DATA
+    
+    **Content Type:** {{content_type}}
+    **Matchup:** {{matchup}}
+    **Team:** {{home_team_name}}
+    **Caption:** {{caption}}
+    **Aspect Ratio:** {{aspect_ratio}}
+    
+    **Structured Image Data:**
+    {{image_content}}
+    
+    **Fallback Stats Data (use if image_content.stats_table is missing):**
+    {{context_key_stats}}
+    
+    **User Customization:**
+    {{custom_prompt}}
+    
+    ---
+    
+    ## YOUR TASK
+    
+    Create a COMPLETE, DETAILED image generation prompt that an AI will use to generate the visual.
+    The prompt must be specific, actionable, and include ALL necessary details.
+    
+    ## CONTENT-TYPE SPECIFIC INSTRUCTIONS
+    
+    ### FOR "MEME" CONTENT:
+    
+    Extract meme text from `image_content`:
+    - `top_text`: Text for top of image
+    - `bottom_text`: Text for bottom of image
+    - `left_text`: Text for left panel
+    - `right_text`: Text for right panel
+    - `overlay_text`: Any other text overlays
+    
+    **Generate a prompt that:**
+    1. Describes the meme template visual layout (Drake format, side-by-side comparison, etc.)
+    2. Specifies EXACT text placement: "Place '{{top_text}}' at the top in Impact font, white text with black stroke"
+    3. Describes team colors as background accents or borders
+    4. Specifies typography: Bold sans-serif, high contrast, readable at small sizes
+    5. Describes overall vibe: Bold, eye-catching, modern meme aesthetic
+    
+    **Example output structure:**
+    "Create a viral sports meme in the Drake reaction meme format. LEFT SIDE shows Drake disapproving, with text overlay '{{left_text}}' in bold white Impact font with black stroke. RIGHT SIDE shows Drake approving, with text overlay '{{right_text}}' in the same style. Use {{home_team_name}}'s team colors (red and white) as a gradient background. Modern, high-contrast design optimized for Instagram. {{aspect_ratio}} format."
+    
+    ---
+    
+    ### FOR "STATS" CONTENT:
+    
+    Extract stats data from `image_content.stats_table` or fallback to `context_key_stats`.
+    Each stat object has: `stat_name`, `home_value`, `away_value`, and optionally `winner`.
+    
+    **Generate a prompt that:**
+    1. Describes a clean, professional stats comparison table
+    2. Lists ALL stats to include with exact values: "Show 'Goals Scored: Home 31 vs Away 23', 'Clean Sheets: Home 1 vs Away 5', etc."
+    3. Specifies visual indicators: "Use horizontal bar charts next to each stat, color-code bars with team colors"
+    4. Describes typography: Clean sans-serif for labels, bold numbers, title at top
+    5. Specifies team colors: "Use {{home_team_name}} red/white for home stats, Newcastle black/white for away stats"
+    6. Describes highlight: "Emphasize '{{image_content.highlight}}' with larger font or accent color"
+    
+    **Example output structure:**
+    "Create a professional sports statistics comparison graphic in ESPN style. TITLE at top: '{{image_content.title}}' in bold Helvetica. Below, show a clean table with these exact stats: [list each stat with home_value vs away_value]. Use horizontal bar charts to show comparison for each stat. Apply {{home_team_name}}'s colors (red) for home values and opposing team colors for away values. Emphasize '{{image_content.highlight}}' with 20% larger font. Clean, minimalist design with white background and subtle grid lines. {{aspect_ratio}} format."
+    
+    ---
+    
+    ### FOR "QUIZ" CONTENT:
+    
+    Extract quiz structure from `image_content`:
+    - `quiz_type`: team_logo_sequence, player_silhouette, stat_mystery, or timeline_challenge
+    - `visual_elements.main_element`: Central visual description
+    - `visual_elements.clues`: Array of visual clues
+    - `question_text`: Optional text overlay
+    
+    **Generate a prompt that:**
+    1. Describes the quiz visual layout based on `quiz_type`
+    2. Lists specific elements to show: "Display 4 team logos in horizontal sequence: Man Utd logo, Real Madrid logo, Juventus logo, then a large question mark"
+    3. Describes clue placement: "Around the edges, show 3 text boxes with clues: '{{clue_1}}', '{{clue_2}}', '{{clue_3}}'"
+    4. Specifies text if needed: "At top, overlay question: '{{question_text}}'"
+    5. Describes styling: Team colors as accents, quiz-show aesthetic, clean and engaging
+    
+    **Example output structure:**
+    "Create a visual sports quiz graphic. Show a large blurred player silhouette in the center (action pose, kicking a ball). Around the silhouette, display 3 clue boxes: Top-left shows '{{clue_1}}', Top-right shows '{{clue_2}}', Bottom shows '{{clue_3}}'. Use {{home_team_name}}'s team colors (red and white) for clue box borders. At the very top, overlay text: '{{question_text}}' in bold sans-serif. Mystery/puzzle aesthetic with question mark watermark. {{aspect_ratio}} format."
+    
+    ---
+    
+    ## UNIVERSAL REQUIREMENTS (INCLUDE IN ALL PROMPTS)
+    
+    Always specify:
+    1. **Aspect Ratio:** Generate in {{aspect_ratio}} format (1:1 square, 16:9 landscape, or 9:16 portrait)
+    2. **Team Colors:** Extract and use {{home_team_name}}'s official team colors
+    3. **Typography:** High contrast, readable at thumbnail size, professional fonts
+    4. **Quality:** Professional, polished, social-media-ready, screenshot-worthy
+    5. **No Text Rendering Issues:** Ensure all text is crisp, high contrast, and properly placed
+    6. **Custom Request:** If user provided custom_prompt, append: "Additionally: {{custom_prompt}}"
+    
+    ## CRITICAL RULES
+    
+    1. Use EXACT DATA from input (precise numbers, exact text overlays)
+    2. Be SPECIFIC about text placement and styling
+    3. List ALL stats/elements to include (don't say "show stats" - list each one!)
+    4. Specify team colors by name
+    5. Describe the visual hierarchy and layout clearly
+    6. Make it actionable for an AI image generator
+    
+    ## OUTPUT
+    
+    Return a single, complete `image_prompt` string that contains ALL necessary details for the AI image generator to create a professional, engaging social media graphic for {{content_type}} content about {{matchup}}.
+

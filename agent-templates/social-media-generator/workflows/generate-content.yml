@@ -166,7 +166,8 @@ workflow:
             {
               'content_type': $.get('content_type'),
               'caption': $.get('caption'),
-              'hashtags': $.get('hashtags', [])
+              'hashtags': $.get('hashtags', []),
+              'image_content': $.get('image_content', {})
             }
           ]
 
