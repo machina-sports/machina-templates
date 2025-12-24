@@ -1,7 +1,3 @@
-import json
-from datetime import datetime
-
-
 def calculate_audit_metrics(request_data):
     """
     Calculate prediction audit metrics including Brier score and calibration data.
@@ -18,6 +14,10 @@ def calculate_audit_metrics(request_data):
         roi_data: Data for ROI calculation if bet was placed
     """
     try:
+        # Import inside function to ensure availability in pyscript execution
+        import json
+        from datetime import datetime
+        
         # Parse request_data
         if isinstance(request_data, str):
             try:
@@ -217,6 +217,52 @@ def aggregate_audit_metrics(request_data):
         summary_statistics: Overall performance metrics
     """
     try:
+        # Import inside function to ensure availability in pyscript execution
+        import json
+        from datetime import datetime
+        
+        # Helper function defined inside to ensure scope availability
+        def get_recommendation(brier, calib_error, roi_summary, sample_size):
+            """Generate a recommendation based on metrics."""
+            if sample_size < 50:
+                return "Insufficient sample size. Need at least 50 predictions for reliable analysis."
+            
+            issues = []
+            positives = []
+            
+            # Check Brier score (target < 0.23, random is 0.25)
+            if brier is not None:
+                if brier >= 0.25:
+                    issues.append("Brier score >= 0.25 (worse than random)")
+                elif brier >= 0.23:
+                    issues.append("Brier score above target (0.23)")
+                else:
+                    positives.append(f"Brier score {brier:.4f} is below target")
+            
+            # Check calibration (target < 5%)
+            if calib_error is not None:
+                if calib_error > 0.10:
+                    issues.append("High calibration error (>10%)")
+                elif calib_error > 0.05:
+                    issues.append("Calibration error above target (5%)")
+                else:
+                    positives.append(f"Calibration error {calib_error:.4f} is acceptable")
+            
+            # Check Tier A ROI (target > 5%)
+            tier_a = roi_summary.get("A", {})
+            if tier_a.get("count", 0) >= 10:
+                if tier_a.get("avg_roi_percent", 0) > 5:
+                    positives.append(f"Tier A ROI is {tier_a['avg_roi_percent']:.1f}%")
+                elif tier_a.get("avg_roi_percent", 0) < 0:
+                    issues.append(f"Tier A ROI is negative ({tier_a['avg_roi_percent']:.1f}%)")
+            
+            if not issues and positives:
+                return "Model performing well. " + " ".join(positives)
+            elif issues:
+                return "Issues found: " + "; ".join(issues)
+            else:
+                return "Insufficient data for recommendation."
+        
         # Parse request_data
         if isinstance(request_data, str):
             try:
@@ -366,7 +412,7 @@ def aggregate_audit_metrics(request_data):
             "roi_by_tier": roi_summary,
             
             "sample_size_sufficient": total_predictions >= 50,
-            "recommendation": _get_recommendation(avg_brier_1x2, avg_calibration_error, roi_summary, total_predictions)
+            "recommendation": get_recommendation(avg_brier_1x2, avg_calibration_error, roi_summary, total_predictions)
         }
         
         return {
@@ -383,46 +429,3 @@ def aggregate_audit_metrics(request_data):
             "data": {"error": str(e)},
             "message": f"Aggregation error: {str(e)}"
         }
-
-
-def _get_recommendation(brier, calib_error, roi_summary, sample_size):
-    """Generate a recommendation based on metrics."""
-    if sample_size < 50:
-        return "Insufficient sample size. Need at least 50 predictions for reliable analysis."
-    
-    issues = []
-    positives = []
-    
-    # Check Brier score (target < 0.23, random is 0.25)
-    if brier is not None:
-        if brier >= 0.25:
-            issues.append("Brier score >= 0.25 (worse than random)")
-        elif brier >= 0.23:
-            issues.append("Brier score above target (0.23)")
-        else:
-            positives.append(f"Brier score {brier:.4f} is below target")
-    
-    # Check calibration (target < 5%)
-    if calib_error is not None:
-        if calib_error > 0.10:
-            issues.append("High calibration error (>10%)")
-        elif calib_error > 0.05:
-            issues.append("Calibration error above target (5%)")
-        else:
-            positives.append(f"Calibration error {calib_error:.4f} is acceptable")
-    
-    # Check Tier A ROI (target > 5%)
-    tier_a = roi_summary.get("A", {})
-    if tier_a.get("count", 0) >= 10:
-        if tier_a.get("avg_roi_percent", 0) > 5:
-            positives.append(f"Tier A ROI is {tier_a['avg_roi_percent']:.1f}%")
-        elif tier_a.get("avg_roi_percent", 0) < 0:
-            issues.append(f"Tier A ROI is negative ({tier_a['avg_roi_percent']:.1f}%)")
-    
-    if not issues and positives:
-        return "Model performing well. " + " ".join(positives)
-    elif issues:
-        return "Issues found: " + "; ".join(issues)
-    else:
-        return "Insufficient data for recommendation."
-

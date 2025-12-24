@@ -1,6 +1,3 @@
-import json
-
-
 def calculate_kelly_position(request_data):
     """
     Calculate Kelly Criterion stake sizing and Expected Value for prediction market trading.
@@ -13,21 +10,18 @@ def calculate_kelly_position(request_data):
         p = probability of winning
         q = probability of losing (1 - p)
     
-    Input:
+    Parameters:
         our_prob: Our model's probability for the outcome (0-1)
         market_price: Kalshi market price in cents (1-99)
         confidence: Model confidence (0-1)
         bankroll: Optional bankroll size for stake calculation
-        fractional_kelly: Kelly fraction to use (default 0.25 for quarter Kelly)
-    
-    Output:
-        expected_value: EV in cents per dollar wagered
-        kelly_fraction: Optimal bet fraction (before applying fractional Kelly)
-        adjusted_kelly: Kelly fraction after confidence adjustment
-        recommended_stake_percent: Final recommended stake as % of bankroll
-        edge: Our probability minus implied probability
+        side: 'yes' or 'no' position
     """
     try:
+        # Import inside function to ensure availability in pyscript execution
+        import json
+        import math
+        
         # Parse request_data
         if isinstance(request_data, str):
             try:
@@ -38,119 +32,97 @@ def calculate_kelly_position(request_data):
         if not isinstance(request_data, dict):
             request_data = {}
         
+        # Get params from request_data (standard pyscript pattern)
         params = request_data.get('params', request_data)
         if not isinstance(params, dict):
             params = {}
         
-        # Extract inputs
+        # Extract inputs with validation
         our_prob = params.get('our_prob')
         market_price = params.get('market_price')
-        confidence = params.get('confidence', 0.5)
-        bankroll = params.get('bankroll', 1000)  # Default $1000
-        fractional_kelly = params.get('fractional_kelly', 0.25)  # Quarter Kelly default
-        side = params.get('side', 'yes')  # 'yes' or 'no'
         
         if our_prob is None or market_price is None:
             return {
                 "status": False,
-                "data": {"error": "Missing our_prob or market_price"},
-                "message": "Missing required inputs"
+                "data": {"error": "Missing required parameters: our_prob and market_price"},
+                "message": "Missing required parameters"
             }
         
+        # Convert and validate
         our_prob = float(our_prob)
         market_price = float(market_price)
-        confidence = float(confidence)
-        bankroll = float(bankroll)
-        fractional_kelly = float(fractional_kelly)
+        confidence = float(params.get('confidence', 0.5))
+        bankroll = float(params.get('bankroll', 1000))
+        fractional_kelly = float(params.get('fractional_kelly', 0.25))
+        side = params.get('side', 'yes')
+        max_stake_percent = float(params.get('max_stake_percent', 10.0))
+        min_edge_threshold = float(params.get('min_edge_threshold', 0.03))
+        min_ev_threshold = float(params.get('min_ev_threshold', 3.0))
         
-        # Validate inputs
-        if not (0 < our_prob < 1):
-            return {
-                "status": False,
-                "data": {"error": f"our_prob must be between 0 and 1, got {our_prob}"},
-                "message": "Invalid probability"
-            }
+        # Clamp values to valid ranges
+        our_prob = max(0.01, min(0.99, our_prob))
+        market_price = max(1, min(99, market_price))
+        confidence = max(0.1, min(1.0, confidence))
+        fractional_kelly = max(0.1, min(1.0, fractional_kelly))
         
-        if not (1 <= market_price <= 99):
-            return {
-                "status": False,
-                "data": {"error": f"market_price must be between 1 and 99 cents, got {market_price}"},
-                "message": "Invalid market price"
-            }
+        # Calculate implied probability from market price
+        implied_prob = market_price / 100.0
         
-        # Convert market price to implied probability
-        # On Kalshi: YES price of 60 means $0.60 to win $1.00 if YES
-        # Implied probability = price / 100
+        # Determine effective probability based on side
         if side == 'yes':
-            implied_prob = market_price / 100
-            # Decimal odds for YES: payout / cost = 100 / market_price
-            # Net odds (b) = (100 / market_price) - 1 = (100 - market_price) / market_price
-            b = (100 - market_price) / market_price
-            p = our_prob  # Our probability of YES winning
-        else:
-            implied_prob = (100 - market_price) / 100
-            # For NO: cost = 100 - market_price, payout = 100
-            # Net odds (b) = market_price / (100 - market_price)
-            b = market_price / (100 - market_price)
-            p = 1 - our_prob  # Our probability of NO winning (YES losing)
+            p = our_prob  # Our probability for YES
+            market_implied = implied_prob
+            # Net odds for YES: if market is 40 cents, you pay 40 to win 60 = 1.5x return
+            net_odds = (100 - market_price) / market_price
+        else:  # no
+            p = 1 - our_prob  # Our probability for NO (complement)
+            market_implied = 1 - implied_prob
+            # Net odds for NO: if market is 40 cents YES, NO costs 60 to win 40 = 0.67x return
+            net_odds = market_price / (100 - market_price)
         
-        q = 1 - p  # Probability of losing
-        
-        # Calculate edge
-        edge = p - implied_prob
+        # Calculate edge (our probability minus implied)
+        edge = p - market_implied
         edge_percent = edge * 100
         
-        # Calculate Expected Value
-        # EV = (p × net_win) - (q × stake) = p × b - q
-        # Per $1 wagered
-        ev = (p * b) - q
-        ev_cents = ev * 100  # EV in cents per dollar
+        # Calculate Expected Value per dollar wagered
+        # EV = (probability of winning × net profit) - (probability of losing × stake)
+        q = 1 - p
+        ev = (p * net_odds) - q
+        ev_cents = ev * 100  # Convert to cents per dollar
         
-        # Calculate Kelly fraction
-        # f* = (bp - q) / b = (b × p - q) / b
-        if b > 0:
-            kelly_full = (b * p - q) / b
+        # Calculate Kelly Criterion: f* = (bp - q) / b
+        # where b = net_odds, p = win probability, q = lose probability
+        if net_odds > 0:
+            kelly_full = (net_odds * p - q) / net_odds
         else:
             kelly_full = 0
         
-        # Cap Kelly at 0 (no bet) if negative
-        kelly_full = max(0, kelly_full)
-        
-        # Apply confidence adjustment
-        # Lower confidence = reduce Kelly fraction
+        # Apply confidence adjustment and fractional Kelly
         confidence_adjusted_kelly = kelly_full * confidence
-        
-        # Apply fractional Kelly (quarter Kelly by default)
-        final_kelly = confidence_adjusted_kelly * fractional_kelly
-        
-        # Cap at maximum 10% of bankroll
-        max_stake_percent = 10.0
-        final_kelly = min(final_kelly, max_stake_percent / 100)
+        final_kelly = max(0, confidence_adjusted_kelly * fractional_kelly)
         
         # Calculate recommended stake
-        recommended_stake = final_kelly * bankroll
-        recommended_stake_percent = final_kelly * 100
+        recommended_stake_percent = min(final_kelly * 100, max_stake_percent)
+        recommended_stake = bankroll * (recommended_stake_percent / 100)
         
-        # Determine if trade is recommended
-        min_edge_threshold = 0.03  # 3% minimum edge
-        min_ev_threshold = 3.0  # 3 cents EV per dollar
-        
+        # Determine if this is a tradeable opportunity
         should_trade = (
             edge > min_edge_threshold and 
             ev_cents > min_ev_threshold and 
-            final_kelly > 0.001  # At least 0.1% stake
+            final_kelly > 0
         )
         
         # Build result
         result = {
             "position_analysis": {
+                "side": side,
                 "our_probability": round(p, 4),
-                "implied_probability": round(implied_prob, 4),
+                "implied_probability": round(market_implied, 4),
                 "edge": round(edge, 4),
                 "edge_percent": round(edge_percent, 2),
                 "expected_value_cents": round(ev_cents, 2),
                 "market_price": market_price,
-                "side": side
+                "net_odds": round(net_odds, 4)
             },
             "kelly_analysis": {
                 "full_kelly_fraction": round(kelly_full, 4),
@@ -190,9 +162,9 @@ def calculate_kelly_position(request_data):
 def batch_kelly_analysis(request_data):
     """
     Calculate Kelly analysis for multiple markets/outcomes.
-    Useful for comparing edge across different markets for the same event.
+    Returns in the standard pyscript pattern: {status, data, message}
     
-    Input:
+    Parameters:
         markets: List of market objects with our_prob, market_price, side, ticker
         confidence: Overall model confidence
         bankroll: Total bankroll
@@ -201,6 +173,79 @@ def batch_kelly_analysis(request_data):
         Ranked list of markets by expected value
     """
     try:
+        # Import inside function to ensure availability in pyscript execution
+        import json
+        import math
+        
+        # Helper function for Kelly calculation (defined inside to ensure scope)
+        def calc_kelly_single(our_prob, market_price, confidence, bankroll, side='yes'):
+            """Calculate Kelly for a single market."""
+            # Validate and convert inputs
+            our_prob = float(our_prob)
+            market_price = float(market_price)
+            confidence = float(confidence) if confidence else 0.5
+            bankroll = float(bankroll) if bankroll else 1000
+            
+            # Clamp values
+            our_prob = max(0.01, min(0.99, our_prob))
+            market_price = max(1, min(99, market_price))
+            confidence = max(0.1, min(1.0, confidence))
+            
+            # Calculate implied probability from market
+            implied_prob = market_price / 100.0
+            
+            # Determine effective probability based on side
+            if side == 'yes':
+                p = our_prob
+                market_implied = implied_prob
+                net_odds = (100 - market_price) / market_price
+            else:  # no
+                p = 1 - our_prob
+                market_implied = 1 - implied_prob
+                net_odds = market_price / (100 - market_price)
+            
+            # Calculate edge
+            edge = p - market_implied
+            edge_percent = edge * 100
+            
+            # Calculate Expected Value
+            q = 1 - p
+            ev = (p * net_odds) - q
+            ev_cents = ev * 100
+            
+            # Calculate Kelly fraction: f* = (bp - q) / b
+            if net_odds > 0:
+                kelly_full = (net_odds * p - q) / net_odds
+            else:
+                kelly_full = 0
+            
+            # Apply fractional Kelly (25%) and confidence adjustment
+            fractional_kelly = 0.25
+            confidence_adjusted_kelly = kelly_full * confidence
+            final_kelly = max(0, confidence_adjusted_kelly * fractional_kelly)
+            
+            # Calculate stake
+            max_stake_percent = 10.0  # Cap at 10%
+            recommended_stake_percent = min(final_kelly * 100, max_stake_percent)
+            recommended_stake = bankroll * (recommended_stake_percent / 100)
+            
+            # Determine if tradeable
+            min_edge = 0.03  # 3% minimum edge
+            min_ev = 3.0  # 3 cents minimum EV
+            should_trade = edge > min_edge and ev_cents > min_ev and final_kelly > 0
+            
+            return {
+                'our_prob': round(p, 4),
+                'market_implied': round(market_implied, 4),
+                'edge_percent': round(edge_percent, 2),
+                'ev_cents': round(ev_cents, 2),
+                'kelly_full': round(kelly_full, 4),
+                'kelly_percent': round(recommended_stake_percent, 2),
+                'stake_dollars': round(recommended_stake, 2),
+                'should_trade': should_trade,
+                'net_odds': round(net_odds, 4)
+            }
+        
         # Parse request_data
         if isinstance(request_data, str):
             try:
@@ -211,6 +256,7 @@ def batch_kelly_analysis(request_data):
         if not isinstance(request_data, dict):
             request_data = {}
         
+        # Get params from request_data (standard pyscript pattern)
         params = request_data.get('params', request_data)
         if not isinstance(params, dict):
             params = {}
@@ -239,31 +285,25 @@ def batch_kelly_analysis(request_data):
             if our_prob is None or market_price is None:
                 continue
             
-            # Call single Kelly analysis
-            analysis = calculate_kelly_position({
-                'params': {
-                    'our_prob': our_prob,
-                    'market_price': market_price,
-                    'confidence': confidence,
-                    'bankroll': bankroll,
-                    'side': side
-                }
-            })
+            # Calculate Kelly using helper function
+            analysis = calc_kelly_single(our_prob, market_price, confidence, bankroll, side)
             
-            if analysis.get('status'):
-                data = analysis.get('data', {})
+            if analysis:
                 results.append({
                     'ticker': ticker,
                     'market_type': market_type,
                     'yes_subtitle': yes_subtitle,
                     'side': side,
-                    'our_prob': our_prob,
+                    'our_prob': analysis['our_prob'],
                     'market_price': market_price,
-                    'edge_percent': data.get('position_analysis', {}).get('edge_percent', 0),
-                    'ev_cents': data.get('position_analysis', {}).get('expected_value_cents', 0),
-                    'kelly_percent': data.get('stake_recommendation', {}).get('recommended_stake_percent', 0),
-                    'should_trade': data.get('trading_decision', {}).get('should_trade', False),
-                    'full_analysis': data
+                    'market_implied': analysis['market_implied'],
+                    'edge_percent': analysis['edge_percent'],
+                    'ev_cents': analysis['ev_cents'],
+                    'kelly_full': analysis['kelly_full'],
+                    'kelly_percent': analysis['kelly_percent'],
+                    'stake_dollars': analysis['stake_dollars'],
+                    'should_trade': analysis['should_trade'],
+                    'net_odds': analysis['net_odds']
                 })
         
         # Sort by expected value (highest first)
@@ -273,13 +313,23 @@ def batch_kelly_analysis(request_data):
         tradeable = [r for r in results if r.get('should_trade')]
         best_trade = tradeable[0] if tradeable else None
         
+        # Build summary statistics
+        total_positive_ev = sum(r['ev_cents'] for r in results if r['ev_cents'] > 0)
+        avg_edge = sum(r['edge_percent'] for r in results) / len(results) if results else 0
+        
         return {
             "status": True,
             "data": {
                 "markets_analyzed": len(results),
                 "tradeable_count": len(tradeable),
                 "best_trade": best_trade,
-                "all_markets_ranked": results
+                "all_markets_ranked": results,
+                "summary": {
+                    "total_positive_ev_cents": round(total_positive_ev, 2),
+                    "average_edge_percent": round(avg_edge, 2),
+                    "confidence_used": confidence,
+                    "bankroll_assumed": bankroll
+                }
             },
             "message": f"Analyzed {len(results)} markets, {len(tradeable)} tradeable"
         }
@@ -290,4 +340,3 @@ def batch_kelly_analysis(request_data):
             "data": {"error": str(e)},
             "message": f"Batch analysis error: {str(e)}"
         }
-
