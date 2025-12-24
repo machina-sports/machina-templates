@@ -42,18 +42,18 @@ datasets:
   - type: agent
     path: agents/soccer-kalshi-sync.yml
 
-  # Scripts
-  - type: connector
-    path: scripts/aggregate_features.yml
+  # Configuration
 
-  - type: connector
-    path: scripts/enrich-matched-events.yml
+  - type: workflow
+    path: configs/setup-folders.yml
 
-  - type: connector
-    path: scripts/monte_carlo.yml
+  - type: workflow
+    path: configs/setup-leagues.yml
 
-  - type: connector
-    path: scripts/market-event-matcher.yml
+  # Mappings
+
+  - type: mappings
+    path: mappings/kalshi-markets-summary.yml
 
   # Prompts
   - type: prompt
@@ -83,18 +83,18 @@ datasets:
   - type: prompt
     path: prompts/kalshi_edge_analyst.yml
 
-  # Mappings
+  # Scripts
+  - type: connector
+    path: scripts/aggregate_features.yml
 
-  - type: mappings
-    path: mappings/kalshi-markets-summary.yml
+  - type: connector
+    path: scripts/enrich-matched-events.yml
 
-  # Configuration
+  - type: connector
+    path: scripts/monte_carlo.yml
 
-  - type: workflow
-    path: configs/setup-folders.yml
-
-  - type: workflow
-    path: configs/setup-leagues.yml
+  - type: connector
+    path: scripts/market-event-matcher.yml
 
   # Workflows
 
@@ -105,10 +105,7 @@ datasets:
     path: workflows/forecast-match.yml
 
   - type: workflow
-    path: workflows/update.yml
-
-  - type: workflow
-    path: workflows/kalshi-market-integration.yml
-
-  - type: workflow
     path: workflows/sync-kalshi-events.yml
+
+  - type: workflow
+    path: workflows/update.yml
