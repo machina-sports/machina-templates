@@ -98,11 +98,11 @@ workflow:
         model: "gemini-3-pro-preview"
       foreach:
         concurrent: true
-        name: query
+        name: query_item
         expr: $
         value: $.get('news_queries')
       inputs:
-        search_query: "$.get('query')"
+        search_query: "$.get('query_item', {}).get('query', '') if isinstance($.get('query_item'), dict) else str($.get('query_item', ''))"
         recency_days: 3
       outputs:
         search_results: |
