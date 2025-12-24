@@ -213,6 +213,10 @@ workflow:
             for item in $.get('content_suggestions', [])
           ]
       outputs:
-        suggestion_ids: "$.get('document_ids', [])"
+        suggestion_ids: |
+          [
+            str(item.get('_id', ''))
+            for item in $.get('documents', [])
+          ]
         workflow_executed_status: "'executed'"
 
