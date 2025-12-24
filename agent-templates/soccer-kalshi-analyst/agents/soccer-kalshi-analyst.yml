@@ -17,7 +17,7 @@ agent:
       inputs:
         eventCode: $.get('eventCode')
       outputs:
-        analysis_fixture_id: $.get('fixture_id')
+        analysis_fixture_id: $.get('eventCode')
         analysis_fixture_exists: $.get('workflow-status', 'skipped') == 'executed'
 
     # 2. Executor: Run the full forecasting and market integration pipeline

@@ -291,7 +291,7 @@ workflow:
       inputs:
         name: "'kalshi-events'"
       outputs:
-        k_ticker: "$.get('documents')[0].get('metadata', {}).get('id') if len($.get('documents', [])) > 0 else None"
+        k_ticker: "$.get('documents')[0].get('value', {}).get('event_ticker') if len($.get('documents', [])) > 0 else None"
 
     - type: connector
       name: load-markets
