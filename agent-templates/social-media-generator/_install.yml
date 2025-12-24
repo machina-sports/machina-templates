@@ -46,9 +46,6 @@ datasets:
   - type: prompt
     path: prompts/generate_content_suggestion.yml
 
-  - type: prompt
-    path: prompts/generate_image_prompt.yml
-
   # Workflows
   - type: workflow
     path: workflows/generate-content.yml
