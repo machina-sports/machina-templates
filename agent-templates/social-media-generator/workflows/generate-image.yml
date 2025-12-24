@@ -69,7 +69,7 @@ workflow:
         name: google-genai
         command: invoke_image
       inputs:
-        model_name: gemini-3-pro-image-preview
+        model_name: "gemini-3-pro-image-preview"
         aspect_ratio: "$.get('aspect_ratio')"
         prompt: "$.get('detailed_image_prompt')"
       outputs:
