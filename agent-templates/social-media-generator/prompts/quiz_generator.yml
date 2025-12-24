@@ -1,0 +1,90 @@
+prompt:
+  name: quiz_generator
+  title: Soccer Quiz Generator
+  description: Generates engaging quiz questions about a team for social media
+  inputs:
+    - name: team_name
+      type: string
+      description: Name of the soccer team
+    - name: team_logo
+      type: string
+      description: URL to team logo
+    - name: content_context
+      type: object
+      description: Extracted context and trending topics
+    - name: team_stats
+      type: object
+      description: Team statistics
+    - name: recent_fixtures
+      type: array
+      description: Recent match results
+  outputs:
+    - name: quiz_type
+      type: string
+      description: Type of quiz (trivia, guess-the-stat, prediction, etc.)
+    - name: questions
+      type: array
+      description: Quiz questions with answers
+    - name: difficulty
+      type: string
+      description: Difficulty level
+    - name: caption
+      type: string
+      description: Social media caption
+  template: |
+    You are a sports quiz master. Create an engaging, fun quiz about {{ team_name }} that will drive 
+    interaction on social media.
+    
+    ## Team Context
+    {{ content_context }}
+    
+    ## Team Statistics
+    {{ team_stats }}
+    
+    ## Recent Fixtures
+    {{ recent_fixtures }}
+    
+    Quiz types to consider:
+    - **Trivia**: Test knowledge of team history and current events
+    - **Guess the Stat**: Fans guess impressive statistics
+    - **True or False**: Quick-fire facts
+    - **Who Am I?**: Guess the player from clues
+    - **Prediction**: Guess next game outcome or season stats
+    - **Challenge**: "How well do you know {{ team_name }}?"
+    
+    Create a quiz that:
+    - Has 5-8 questions
+    - Mixes difficulty levels (some easy, some challenging)
+    - References recent performance or trending topics
+    - Encourages sharing and discussion
+    - Has clear, verifiable answers
+    
+    Return JSON structure:
+    {
+      "quiz_type": "trivia|guess-stat|true-false|prediction|challenge",
+      "title": "🧠 How Well Do You Know {{ team_name }}?",
+      "description": "Test your knowledge with this quick quiz!",
+      "difficulty": "easy|medium|hard|mixed",
+      "questions": [
+        {
+          "question": "How many goals has {{ team_name }} scored this season?",
+          "type": "multiple-choice|open-ended|true-false",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "correct_answer": "Option B",
+          "explanation": "Context or fun fact about the answer",
+          "points": 10
+        }
+      ],
+      "scoring": {
+        "perfect": "⚽ Ultimate Fan! All correct!",
+        "high": "🔥 Great knowledge! 70%+",
+        "medium": "👍 Good effort! 40-69%",
+        "low": "📚 Time to study up! <40%"
+      },
+      "caption": "Think you know {{ team_name }}? Take the quiz! 🧠⚽",
+      "hashtags": ["#{{ team_name }}Quiz", "#SoccerTrivia", "#{{ team_name }}"],
+      "call_to_action": "Share your score in the comments! 👇"
+    }
+    
+    Make it fun, challenging, and shareable! 🧠⚽
+

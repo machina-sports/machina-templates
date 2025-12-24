@@ -1,0 +1,116 @@
+workflow:
+  name: social-media-generate-image
+  title: Generate Image for Social Media Suggestion
+  description: Generates AI image for a selected content suggestion with custom user input
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    suggestion_id: "$.get('suggestion_id')"
+    custom_prompt: "$.get('custom_prompt', '')"
+    aspect_ratio: "$.get('aspect_ratio', '1:1')"
+  outputs:
+    workflow-status: "$.get('workflow_executed_status', 'executed')"
+    image_url: "$.get('uploaded_image_url')"
+    suggestion_id: "$.get('suggestion_id')"
+  tasks:
+    # 1. Load suggestion document
+    - type: document
+      name: load-suggestion
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        _id: "$.get('suggestion_id')"
+      inputs:
+        name: "'social-media-suggestion'"
+      outputs:
+        suggestion_exists: "len($.get('documents', [])) > 0"
+        suggestion_data: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
+        content_type: "$.get('documents')[0].get('value', {}).get('content_type') if len($.get('documents', [])) > 0 else 'meme'"
+        matchup: "$.get('documents')[0].get('value', {}).get('matchup') if len($.get('documents', [])) > 0 else ''"
+        home_team_name: "$.get('documents')[0].get('value', {}).get('home_team_name') if len($.get('documents', [])) > 0 else ''"
+        content_data: "$.get('documents')[0].get('value', {}).get('content') if len($.get('documents', [])) > 0 else {}"
+        content_context: "$.get('documents')[0].get('value', {}).get('context') if len($.get('documents', [])) > 0 else {}"
+
+    # 2. Generate image prompt
+    - type: prompt
+      name: generate_image_prompt
+      condition: "$.get('suggestion_exists') is True"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        team_name: "$.get('home_team_name')"
+        matchup: "$.get('matchup')"
+        content_type: "$.get('content_type')"
+        content_data: "$.get('content_data')"
+        content_context: "$.get('content_context')"
+        custom_prompt: "$.get('custom_prompt', '')"
+        aspect_ratio: "$.get('aspect_ratio')"
+      outputs:
+        image_prompt: "$.get('image_prompt')"
+
+    # 3. Create image using Gemini
+    - type: connector
+      name: create-content-image
+      condition: "$.get('image_prompt') is not None"
+      connector:
+        name: google-genai
+        command: invoke_image
+      inputs:
+        aspect_ratio: "$.get('aspect_ratio')"
+        model_name: "'gemini-3-pro-image-preview'"
+        prompt: "$.get('image_prompt')"
+      outputs:
+        generated_image_path: "$.get('image_path')"
+
+    # 4. Upload image to Google Storage
+    - type: connector
+      name: upload-image-to-storage
+      condition: "$.get('generated_image_path') is not None"
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        api_key: "$.get('api_key')"
+        image_path: "$.get('generated_image_path')"
+      outputs:
+        uploaded_image_url: "$.get('url')"
+
+    # 5. Update suggestion document with image
+    - type: document
+      name: update-suggestion
+      condition: "$.get('uploaded_image_url') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        _id: "$.get('suggestion_id')"
+      documents:
+        social-media-suggestion: |
+          {
+            **$.get('suggestion_data', {}),
+            'has_image': True,
+            'image_url': $.get('uploaded_image_url'),
+            'custom_prompt': $.get('custom_prompt', ''),
+            'aspect_ratio': $.get('aspect_ratio'),
+            'status': 'completed',
+            'image_generated_at': datetime.utcnow().isoformat()
+          }
+      outputs:
+        workflow_executed_status: "'executed'"
+

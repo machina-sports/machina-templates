@@ -1,0 +1,106 @@
+install:
+  name: social-media-generator
+  title: Social Media Content Generator
+  description: Generate engaging memes, stats graphics, and quizzes for soccer teams
+  version: "1.0.0"
+  
+  # Agent configuration
+  agents:
+    - file: agents/social-media-generator.yml
+      name: social-media-generator
+  
+  # Workflows
+  workflows:
+    - file: workflows/generate-content.yml
+      name: social-media-generate-content
+    - file: workflows/generate-image.yml
+      name: social-media-generate-image
+  
+  # Prompts
+  prompts:
+    - file: prompts/news_query_generator.yml
+      name: news_query_generator
+    - file: prompts/content_context_extractor.yml
+      name: content_context_extractor
+    - file: prompts/generate_content_suggestion.yml
+      name: generate_suggestions
+    - file: prompts/generate_image_prompt.yml
+      name: generate_image_prompt
+  
+  # Required connectors (must be configured separately)
+  dependencies:
+    connectors:
+      - name: api-football
+        description: API Football connector for team stats and fixtures
+        required: true
+      - name: google-genai
+        description: Google Generative AI for content generation and search
+        required: true
+      - name: google-storage
+        description: Google Cloud Storage for image hosting
+        required: true
+      - name: machina-ai
+        description: Machina AI for embeddings and document operations
+        required: true
+      - name: temp-downloader
+        description: Temporary file downloader for image processing
+        required: false
+    
+    secrets:
+      - name: API_FOOTBALL_API_KEY
+        description: API key for API Football service
+        required: true
+      - name: VERTEX_AI_CREDENTIAL
+        description: Google Cloud credentials for Vertex AI
+        required: true
+      - name: VERTEX_AI_PROJECT_ID
+        description: Google Cloud project ID
+        required: true
+      - name: GOOGLE_GENERATIVE_AI_API_KEY
+        description: Google Generative AI API key
+        required: true
+      - name: GOOGLE_STORAGE_API_KEY
+        description: Google Cloud Storage API key
+        required: true
+      - name: GOOGLE_STORAGE_BUCKET_NAME
+        description: Google Cloud Storage bucket name
+        required: true
+      - name: SDK_OPENAI_API_KEY
+        description: OpenAI API key for Machina AI operations
+        required: true
+  
+  # Document schemas
+  documents:
+    - name: social-media-suggestion
+      description: Content suggestions for social media (memes, stats, quizzes) before image generation
+      schema:
+        title: string
+        event_id: string
+        matchup: string
+        home_team_id: string
+        away_team_id: string
+        home_team_name: string
+        away_team_name: string
+        content_type: string
+        league_id: string
+        season: string
+        event_date: string
+        content: object
+        context: object
+        has_image: boolean
+        image_url: string
+        custom_prompt: string
+        aspect_ratio: string
+        status: string
+        timestamp: string
+        image_generated_at: string
+      metadata:
+        - event_id
+        - home_team
+        - away_team
+        - content_type
+        - league_id
+        - season
+        - status
+        - document_type
+

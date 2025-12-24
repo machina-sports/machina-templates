@@ -1,0 +1,96 @@
+prompt:
+  name: content_context_extractor
+  title: Content Context Extractor
+  description: Extracts trending topics, highlights, and engaging angles from team data and news
+  inputs:
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Liverpool")
+    - name: home_team_stats
+      type: object
+      description: Home team statistics from API Football
+    - name: away_team_stats
+      type: object
+      description: Away team statistics from API Football
+    - name: fixture_data
+      type: object
+      description: Fixture/event data
+    - name: search_results
+      type: array
+      description: News search results
+  outputs:
+    - name: trending_topics
+      type: array
+      description: Trending topics about the team
+    - name: key_stats
+      type: object
+      description: Most interesting statistics
+    - name: viral_moments
+      type: array
+      description: Viral or shareable moments
+    - name: content_angles
+      type: array
+      description: Suggested angles for content creation
+  schema:
+    title: "ContentContextExtractor"
+    description: "Extracts trending topics and content angles from matchup data"
+    type: "object"
+    properties:
+      trending_topics:
+        type: "array"
+        description: "Trending topics about the matchup"
+      key_stats:
+        type: "object"
+        description: "Most interesting statistics"
+      viral_moments:
+        type: "array"
+        description: "Viral or shareable moments"
+      content_angles:
+        type: "array"
+        description: "Suggested angles for content creation"
+    required: ["trending_topics", "key_stats", "viral_moments", "content_angles"]
+  template: |
+    You are a social media content analyst. Analyze the following data about this upcoming match: {{ matchup }} 
+    and extract the most engaging, shareable, and trending information.
+    
+    ## Matchup
+    {{ matchup }}
+    
+    ## Fixture Data
+    {{ fixture_data }}
+    
+    ## Home Team Statistics
+    {{ home_team_stats }}
+    
+    ## Away Team Statistics
+    {{ away_team_stats }}
+    
+    ## News & Search Results
+    {{ search_results }}
+    
+    Extract and structure:
+    1. **Trending Topics**: What's currently hot about this matchup? (3-5 topics)
+    2. **Key Stats**: Most impressive or meme-worthy statistical comparisons
+    3. **Viral Moments**: Recent plays, goals, or storylines that could go viral
+    4. **Content Angles**: Creative angles for memes, stats graphics, or quiz questions about this match
+    
+    Return structured JSON:
+    {
+      "trending_topics": ["topic1", "topic2", "topic3"],
+      "key_stats": {
+        "stat_name": "value with context",
+        "highlight": "Most impressive stat"
+      },
+      "viral_moments": [
+        {
+          "moment": "Description",
+          "why_viral": "Why this is shareable",
+          "sentiment": "positive/negative/funny"
+        }
+      ],
+      "content_angles": [
+        "Angle 1: Why it works",
+        "Angle 2: Why it works"
+      ]
+    }
+

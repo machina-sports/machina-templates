@@ -1,0 +1,46 @@
+workflow:
+  name: social-media-content-consumer
+  title: Social Media Content Consumer
+  description: Validates team selection and content type for social media generation
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    team_id: "$.get('team_id')"
+    content_type: "$.get('content_type')"
+    league_id: "$.get('league_id', '39')"
+    season: "$.get('season', '2025')"
+  outputs:
+    workflow-status: "$.get('workflow_executed_status', 'executed')"
+    team_id: "$.get('team_id')"
+    content_type: "$.get('content_type')"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    team_name: "$.get('team_name')"
+  tasks:
+    # 1. Validate content type
+    - type: python
+      name: validate-content-type
+      inputs:
+        content_type: "$.get('content_type')"
+      outputs:
+        valid_type: "$.get('content_type') in ['meme', 'stats', 'quiz']"
+        validated_type: "$.get('content_type') if $.get('content_type') in ['meme', 'stats', 'quiz'] else 'meme'"
+        workflow_executed_status: "'executed'"
+
+    # 2. Fetch team information
+    - type: connector
+      name: fetch-team-info
+      connector:
+        name: api-football
+        command: get-teams
+      inputs:
+        id: "$.get('team_id')"
+      outputs:
+        team_data: "$.get('response', [{}])[0] if len($.get('response', [])) > 0 else {}"
+        team_name: "$.get('response', [{}])[0].get('team', {}).get('name', 'Unknown Team') if len($.get('response', [])) > 0 else 'Unknown Team'"
+        team_logo: "$.get('response', [{}])[0].get('team', {}).get('logo', '') if len($.get('response', [])) > 0 else ''"
+        team_country: "$.get('response', [{}])[0].get('team', {}).get('country', '') if len($.get('response', [])) > 0 else ''"
+

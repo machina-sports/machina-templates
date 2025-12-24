@@ -1,0 +1,66 @@
+prompt:
+  name: meme_generator
+  title: Soccer Meme Generator
+  description: Generates meme concepts and captions based on team performance and news
+  inputs:
+    - name: team_name
+      type: string
+      description: Name of the soccer team
+    - name: team_logo
+      type: string
+      description: URL to team logo
+    - name: content_context
+      type: object
+      description: Extracted trending topics and viral moments
+    - name: team_stats
+      type: object
+      description: Team statistics
+  outputs:
+    - name: meme_concept
+      type: string
+      description: Meme concept/template to use
+    - name: top_text
+      type: string
+      description: Top text for the meme
+    - name: bottom_text
+      type: string
+      description: Bottom text for the meme
+    - name: caption
+      type: string
+      description: Social media caption
+    - name: hashtags
+      type: array
+      description: Relevant hashtags
+  template: |
+    You are a viral sports meme creator. Create a hilarious and shareable meme concept for {{ team_name }} 
+    based on their recent performance and trending topics.
+    
+    ## Team Context
+    {{ content_context }}
+    
+    ## Team Stats
+    {{ team_stats }}
+    
+    Create a meme that:
+    - Is funny and relatable to soccer fans
+    - References current form, recent results, or trending topics
+    - Uses popular meme formats (Drake, Distracted Boyfriend, This Is Fine, etc.)
+    - Is appropriate and not offensive
+    - Will drive engagement on social media
+    
+    Return JSON with meme details:
+    {
+      "meme_concept": "Name of meme template (e.g., 'Drake Hotline Bling')",
+      "top_text": "Text for top panel/section",
+      "bottom_text": "Text for bottom panel/section",
+      "alternative_format": {
+        "image_description": "If not using standard template, describe the visual",
+        "text_overlay": "Main text overlay"
+      },
+      "caption": "Engaging social media caption (80-120 chars)",
+      "hashtags": ["#SoccerMemes", "#{{ team_name }}", "#Football"],
+      "context_used": "Brief explanation of the joke/reference"
+    }
+    
+    Make it funny, timely, and shareable! 🔥⚽
+

@@ -1,0 +1,201 @@
+workflow:
+  name: social-media-generate-content
+  title: Generate Social Media Content
+  description: Full pipeline for generating memes, stats graphics, or quizzes based on team data
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_id: "$.get('event_id')"
+    content_types: "$.get('content_types', ['meme', 'stats', 'quiz'])"
+  outputs:
+    workflow-status: "$.get('workflow_executed_status', 'executed')"
+    suggestions: "$.get('suggestion_ids', [])"
+  tasks:
+    # 1. Load event/fixture data
+    - type: connector
+      name: fetch-fixture
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        id: "$.get('event_id')"
+      outputs:
+        fixture_data: "$.get('response', [{}])[0] if len($.get('response', [])) > 0 else {}"
+        home_team_id: "$.get('response', [{}])[0].get('teams', {}).get('home', {}).get('id') if len($.get('response', [])) > 0 else None"
+        away_team_id: "$.get('response', [{}])[0].get('teams', {}).get('away', {}).get('id') if len($.get('response', [])) > 0 else None"
+        home_team_name: "$.get('response', [{}])[0].get('teams', {}).get('home', {}).get('name') if len($.get('response', [])) > 0 else ''"
+        away_team_name: "$.get('response', [{}])[0].get('teams', {}).get('away', {}).get('name') if len($.get('response', [])) > 0 else ''"
+        league_id: "$.get('response', [{}])[0].get('league', {}).get('id') if len($.get('response', [])) > 0 else '39'"
+        season: "$.get('response', [{}])[0].get('league', {}).get('season') if len($.get('response', [])) > 0 else '2025'"
+        event_date: "$.get('response', [{}])[0].get('fixture', {}).get('date') if len($.get('response', [])) > 0 else ''"
+
+    # 2. Fetch home team statistics
+    - type: connector
+      name: fetch-home-stats
+      condition: "$.get('home_team_id') is not None"
+      connector:
+        name: api-football
+        command: get-teams/statistics
+      inputs:
+        team: "$.get('home_team_id')"
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        home_team_stats: "$.get('response', {})"
+
+    # 3. Fetch away team statistics
+    - type: connector
+      name: fetch-away-stats
+      condition: "$.get('away_team_id') is not None"
+      connector:
+        name: api-football
+        command: get-teams/statistics
+      inputs:
+        team: "$.get('away_team_id')"
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        away_team_stats: "$.get('response', {})"
+
+    # 4. Generate news search query for the matchup
+    - type: prompt
+      name: news_query_generator
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
+        event_date: "$.get('event_date')"
+      outputs:
+        news_queries: "$.get('news_queries', [])"
+
+    # 5. Search for recent news
+    - type: connector
+      name: search-news
+      condition: "len($.get('news_queries', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3-pro-preview
+      foreach:
+        concurrent: true
+        name: query
+        expr: $
+        value: $.get('news_queries')
+      inputs:
+        search_query: "$.get('query')"
+        recency_days: 7
+      outputs:
+        search_results: |
+          [
+            $.get('answer', '')
+          ]
+
+    # 6. Extract trending topics and highlights for the matchup
+    - type: prompt
+      name: content_context_extractor
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      inputs:
+        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
+        home_team_stats: "$.get('home_team_stats')"
+        away_team_stats: "$.get('away_team_stats')"
+        fixture_data: "$.get('fixture_data')"
+        search_results: "$.get('search_results', [])"
+      outputs:
+        content_context: "$"
+
+    # 7. Generate suggestions for all content types
+    - type: prompt
+      name: generate_suggestions
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-pro-preview
+        location: global
+        provider: vertex_ai
+      foreach:
+        concurrent: true
+        name: content_type
+        expr: $
+        value: $.get('content_types')
+      inputs:
+        matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
+        home_team_name: "$.get('home_team_name')"
+        away_team_name: "$.get('away_team_name')"
+        content_type: "$.get('content_type')"
+        content_context: "$.get('content_context')"
+        home_team_stats: "$.get('home_team_stats')"
+        away_team_stats: "$.get('away_team_stats')"
+        fixture_data: "$.get('fixture_data')"
+      outputs:
+        content_suggestions: |
+          [
+            $
+          ]
+
+    # 8. Store content suggestions (without images)
+    - type: document
+      name: store-suggestions
+      config:
+        action: save
+      foreach:
+        name: suggestion_item
+        expr: $
+        value: $.get('content_suggestions', [])
+      documents:
+        social-media-suggestion: |
+          {
+            'title': $.get('home_team_name', '') + ' vs ' + $.get('away_team_name', '') + ' - ' + str($.get('suggestion_item', {}).get('content_type', '')).upper(),
+            'event_id': str($.get('event_id')),
+            'matchup': $.get('home_team_name', '') + ' vs ' + $.get('away_team_name', ''),
+            'home_team_id': str($.get('home_team_id')),
+            'away_team_id': str($.get('away_team_id')),
+            'home_team_name': $.get('home_team_name', ''),
+            'away_team_name': $.get('away_team_name', ''),
+            'content_type': $.get('suggestion_item', {}).get('content_type', ''),
+            'league_id': $.get('league_id'),
+            'season': $.get('season'),
+            'event_date': $.get('event_date'),
+            'content': $.get('suggestion_item', {}),
+            'context': $.get('content_context'),
+            'has_image': False,
+            'image_url': '',
+            'status': 'pending',
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        event_id: "$.get('event_id')"
+        home_team: "$.get('home_team_name', '')"
+        away_team: "$.get('away_team_name', '')"
+        content_type: "$.get('suggestion_item', {}).get('content_type', '')"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"
+        status: "'pending'"
+        document_type: "'social-media-suggestion'"
+      outputs:
+        suggestion_ids: |
+          [
+            $.get('document_id')
+          ]
+        workflow_executed_status: "'executed'"
+

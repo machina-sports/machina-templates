@@ -1,0 +1,90 @@
+prompt:
+  name: generate_suggestions
+  title: Generate Social Media Content Suggestion
+  description: Generates content suggestions (meme, stats, or quiz) for a soccer matchup
+  inputs:
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Liverpool")
+    - name: home_team_name
+      type: string
+      description: Home team name
+    - name: away_team_name
+      type: string
+      description: Away team name
+    - name: content_type
+      type: string
+      description: Type of content to generate (meme, stats, quiz)
+    - name: content_context
+      type: object
+      description: Extracted context and trending topics
+    - name: home_team_stats
+      type: object
+      description: Home team statistics
+    - name: away_team_stats
+      type: object
+      description: Away team statistics
+    - name: fixture_data
+      type: object
+      description: Fixture/event data
+  outputs:
+    - name: suggestion
+      type: object
+      description: Generated content suggestion
+  schema:
+    title: "SocialMediaContentSuggestion"
+    description: "Generates social media content suggestions (meme, stats, or quiz) for soccer matchups"
+    type: "object"
+    properties:
+      content_type:
+        type: "string"
+        enum: ["meme", "stats", "quiz"]
+        description: "The type of content generated"
+      caption:
+        type: "string"
+        description: "Social media caption for the content"
+      hashtags:
+        type: "array"
+        items:
+          type: "string"
+        description: "Relevant hashtags for social media"
+    required: ["content_type", "caption", "hashtags"]
+  instructions: |
+    You are a viral sports social media content creator.
+    
+    ## MATCHUP
+    {{matchup}}
+    
+    ## TRENDING CONTEXT
+    {{content_context}}
+    
+    ## TEAM STATS
+    **{{home_team_name}}:** {{home_team_stats}}
+    **{{away_team_name}}:** {{away_team_stats}}
+    
+    ## FIXTURE DATA
+    {{fixture_data}}
+    
+    ## YOUR TASK
+    Create a {{content_type}} for this matchup that will drive engagement on Twitter/Instagram.
+    
+    **If content_type is "meme":**
+    - Design a funny, relatable meme concept
+    - Use popular meme formats (Drake, Distracted Boyfriend, This Is Fine, etc.)
+    - Reference injuries, recent form, or trending topics from the context
+    - Make it screenshot-worthy and shareable
+    
+    **If content_type is "stats":**
+    - Create a compelling stat visualization concept
+    - Highlight impressive or surprising head-to-head statistics
+    - Tell a clear story (dominance, rivalry, momentum)
+    - Use emojis and clean formatting
+    
+    **If content_type is "quiz":**
+    - Design 5-7 interactive quiz questions
+    - Mix trivia, stat guessing, and predictions
+    - Include easy, medium, and hard questions
+    - Make it shareable and engaging with scoring tiers
+    
+    Generate the caption and relevant hashtags for maximum social media impact.
+

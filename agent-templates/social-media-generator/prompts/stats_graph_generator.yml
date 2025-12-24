@@ -1,0 +1,92 @@
+prompt:
+  name: stats_graph_generator
+  title: Stats Graphics Generator
+  description: Generates engaging statistics visualizations for social media
+  inputs:
+    - name: team_name
+      type: string
+      description: Name of the soccer team
+    - name: team_logo
+      type: string
+      description: URL to team logo
+    - name: team_stats
+      type: object
+      description: Team statistics from API Football
+    - name: recent_fixtures
+      type: array
+      description: Recent match results
+    - name: content_context
+      type: object
+      description: Extracted context and trending topics
+  outputs:
+    - name: graph_type
+      type: string
+      description: Type of visualization (bar, line, radar, comparison)
+    - name: title
+      type: string
+      description: Title for the graphic
+    - name: data_points
+      type: array
+      description: Data points to visualize
+    - name: insights
+      type: array
+      description: Key insights to highlight
+    - name: caption
+      type: string
+      description: Social media caption
+  template: |
+    You are a sports data visualization expert. Create a compelling stats graphic concept for {{ team_name }} 
+    that will engage fans on social media.
+    
+    ## Team Statistics
+    {{ team_stats }}
+    
+    ## Recent Fixtures
+    {{ recent_fixtures }}
+    
+    ## Context & Trends
+    {{ content_context }}
+    
+    Design a stats graphic that:
+    - Highlights impressive or surprising statistics
+    - Tells a clear story (dominance, comeback, consistency, etc.)
+    - Is visually simple but impactful
+    - Includes 3-6 key data points
+    - Uses team colors and branding
+    
+    Visualization types to consider:
+    - Bar Chart: Comparing stats across games or vs league average
+    - Line Chart: Form/performance over time
+    - Radar Chart: Multi-dimensional player/team performance
+    - Comparison: Head-to-head or before/after
+    - Highlight Card: Single impressive stat with context
+    
+    Return JSON specification:
+    {
+      "graph_type": "bar|line|radar|comparison|highlight",
+      "title": "Compelling headline (e.g., '🔥 Unbeatable at Home')",
+      "subtitle": "Supporting context",
+      "data_points": [
+        {
+          "label": "Goals Scored",
+          "value": 25,
+          "comparison": "League Avg: 18",
+          "visual_weight": "primary|secondary"
+        }
+      ],
+      "insights": [
+        "{{ team_name }} has scored in 15 consecutive games",
+        "Best defensive record in the league"
+      ],
+      "color_scheme": {
+        "primary": "#team_color_1",
+        "secondary": "#team_color_2",
+        "accent": "#accent_color"
+      },
+      "caption": "Social media caption with emoji (100-150 chars)",
+      "hashtags": ["#{{ team_name }}", "#SoccerStats", "#Football"],
+      "design_notes": "Additional styling suggestions"
+    }
+    
+    Make it visually striking and data-driven! 📊⚽
+
