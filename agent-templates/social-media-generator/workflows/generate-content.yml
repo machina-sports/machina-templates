@@ -69,7 +69,20 @@ workflow:
       outputs:
         away_team_stats: "$.get('response', {})"
 
-    # 4. Generate news search query for the matchup
+    # 4. Filter stats to extract only social media-relevant data
+    - type: connector
+      name: filter-stats
+      connector:
+        name: social-media-stats-filter
+        command: filter_team_stats
+      inputs:
+        home_stats: "$.get('home_team_stats')"
+        away_stats: "$.get('away_team_stats')"
+      outputs:
+        home_stats_clean: "$.get('home_stats_filtered', {})"
+        away_stats_clean: "$.get('away_stats_filtered', {})"
+
+    # 5. Generate news search query for the matchup
     - type: prompt
       name: news_query_generator
       connector:
@@ -117,8 +130,8 @@ workflow:
         provider: vertex_ai
       inputs:
         matchup: "$.get('home_team_name') + ' vs ' + $.get('away_team_name')"
-        home_team_stats: "$.get('home_team_stats')"
-        away_team_stats: "$.get('away_team_stats')"
+        home_team_stats: "$.get('home_stats_clean')"
+        away_team_stats: "$.get('away_stats_clean')"
         fixture_data: "$.get('fixture_data')"
         search_results: "$.get('search_results', [])"
       outputs:
@@ -144,8 +157,8 @@ workflow:
         away_team_name: "$.get('away_team_name')"
         content_type: "$.get('content_type')"
         content_context: "$.get('content_context')"
-        home_team_stats: "$.get('home_team_stats')"
-        away_team_stats: "$.get('away_team_stats')"
+        home_team_stats: "$.get('home_stats_clean')"
+        away_team_stats: "$.get('away_stats_clean')"
         fixture_data: "$.get('fixture_data')"
       outputs:
         content_suggestions: |
@@ -197,9 +210,6 @@ workflow:
         status: "'pending'"
         document_type: "'social-media-suggestion'"
       outputs:
-        suggestion_ids: |
-          [
-            $.get('document_id')
-          ]
+        suggestion_ids: "$.get('document_id')"
         workflow_executed_status: "'executed'"
 

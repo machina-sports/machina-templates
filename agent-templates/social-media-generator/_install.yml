@@ -56,3 +56,7 @@ datasets:
   - type: workflow
     path: workflows/generate-image.yml
 
+  # Connectors
+  - type: connector
+    path: scripts/filter_stats.yml
+
