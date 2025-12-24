@@ -42,42 +42,28 @@ workflow:
         content_data: "$.get('documents')[0].get('value', {}).get('content') if len($.get('documents', [])) > 0 else {}"
         content_context: "$.get('documents')[0].get('value', {}).get('context') if len($.get('documents', [])) > 0 else {}"
 
-    # 2. Generate image prompt
-    - type: prompt
-      name: generate_image_prompt
-      condition: "$.get('suggestion_exists') is True"
-      connector:
-        name: google-genai
-        command: invoke_prompt
-        model: gemini-3-flash-preview
-        location: global
-        provider: vertex_ai
-      inputs:
-        team_name: "$.get('home_team_name')"
-        matchup: "$.get('matchup')"
-        content_type: "$.get('content_type')"
-        content_data: "$.get('content_data')"
-        content_context: "$.get('content_context')"
-        custom_prompt: "$.get('custom_prompt', '')"
-        aspect_ratio: "$.get('aspect_ratio')"
-      outputs:
-        image_prompt: "$.get('image_prompt')"
-
-    # 3. Create image using Gemini
+    # 2. Create image using Gemini
     - type: connector
       name: create-content-image
-      condition: "$.get('image_prompt') is not None"
+      condition: "$.get('suggestion_exists') is True"
       connector:
         name: google-genai
         command: invoke_image
       inputs:
         aspect_ratio: "$.get('aspect_ratio')"
+        content_context: "$.get('content_context')"
+        content_data: "$.get('content_data')"
+        content_type: "$.get('content_type')"
+        custom_prompt: "$.get('custom_prompt', '')"
+        matchup: "$.get('matchup')"
         model_name: "'gemini-3-pro-image-preview'"
-        prompt: "$.get('image_prompt')"
+        team_name: "$.get('home_team_name')"
+        prompt: |
+          "=== SOCIAL MEDIA IMAGE GENERATION ===\n\nCONTEXT:\n- Matchup: {{matchup}}\n- Content Type: {{content_type}}\n- Team: {{team_name}}\n- Aspect Ratio: {{aspect_ratio}}\n\nCONTENT DATA (CRITICAL - USE THIS EXACT DATA):\n{{content_data}}\n\nCONTENT CONTEXT:\n{{content_context}}\n\nCUSTOM USER PROMPT:\n{{custom_prompt}}\n\nIf a custom user prompt is provided above, incorporate those requirements into the final image while maintaining all other constraints and style requirements.\n\n=== CONTENT TYPE SPECIFIC INSTRUCTIONS ===\n\n### FOR MEME CONTENT:\n\nThe image must include:\n- Popular meme template layout (Drake, Distracted Boyfriend, Disaster Girl, etc.)\n- TEXT OVERLAYS with the exact meme text from content_data\n- Team colors integrated into design\n- Clean, modern typography that is readable at small sizes\n- High contrast so text pops\n\nStyle:\n- Bold, eye-catching composition\n- Vibrant team colors prominently featured\n- Modern meme aesthetic (Instagram/Twitter viral posts)\n- Professional but playful design\n- High contrast backgrounds behind text for readability\n- Subtle sports-related imagery or abstract shapes\n\nText Placement:\n- Extract the meme text from content_data (top_text, bottom_text, left_text, right_text, overlay_text)\n- Place text according to meme format chosen\n- Use bold, sans-serif fonts (Impact, Helvetica Bold, etc.)\n- White text with black stroke/outline for maximum visibility\n- Text should be 20-30% of image height for impact\n\n### FOR STATS CONTENT:\n\nThe image must include:\n- ACTUAL STATISTICS TABLE with real numbers from content_data.stats_table\n- Team names as headers\n- Comparison bars or visual indicators showing who is winning each stat\n- Clean, professional data visualization\n- Team colors used to distinguish home vs away\n- Title and subtitle from content_data\n\nStyle:\n- Clean, modern sports graphics aesthetic (ESPN, OptaJoe style)\n- Professional data visualization\n- Team colors in a sophisticated palette\n- Clear visual hierarchy (title, stats, comparison)\n- Minimalist, editorial style with breathing room\n- Grid-based layout for stats table\n\nLayout Requirements:\n- Title at top (large, bold): content_data.title\n- Subtitle below title: content_data.subtitle\n- Stats table in center showing all stats from content_data.stats_table\n- Each stat row shows: stat name, home value, vs, away value\n- Visual indicator (bar chart, color coding) showing winner\n- Highlight the most important stat from content_data.highlight\n- Bottom: Small text with source/timeframe\n\nTypography:\n- Title: Bold, large (18-24% of image height)\n- Stats: Clean sans-serif, medium weight\n- Numbers: Bold, slightly larger than labels\n- High contrast for readability\n\n### FOR QUIZ CONTENT:\n\nThe image must include:\n- VISUAL QUIZ ELEMENTS from content_data.visual_elements\n- Question text if provided (minimal, at top)\n- Team logos, player silhouettes, or stats as clues\n- Mystery element (blurred name, question mark, etc.)\n- Visual design that makes the puzzle clear\n\nStyle:\n- Engaging, puzzle-like composition\n- Team colors balanced with clean backgrounds\n- Quiz-show aesthetic (interactive visual design)\n- Clean typography for question text\n\nLayout by Quiz Type:\n- team_logo_sequence: Show team logos in sequence with arrows between them, final position has question mark\n- player_silhouette: Large player silhouette (blacked out figure in action pose), clues around edges\n- stat_mystery: Show career stats table with player name blurred/redacted\n- timeline_challenge: Timeline showing years and transfers, one player is mystery\n\n=== UNIVERSAL DESIGN REQUIREMENTS ===\n\nColor Strategy:\n- Extract and use the EXACT team colors for {{team_name}}\n- For memes: Bold, high contrast team colors\n- For stats: Sophisticated use of team colors (gradients, accents)\n- For quiz: Team colors as subtle accents, clean backgrounds\n\nTypography Rules:\n- Use professional, readable fonts\n- Ensure text is readable at Instagram thumbnail size\n- High contrast between text and background\n- Text stroke/outline for text over images\n- Hierarchy: Title largest, Content medium, Source/details smallest\n\nAspect Ratio:\n- Generate image in {{aspect_ratio}} format\n- 1:1 square: Center composition, balanced\n- 16:9 landscape: Horizontal layout, stats side-by-side\n- 9:16 portrait: Vertical layout, stacked information\n\nQuality Standards:\n- Professional, polished design\n- No blur, no low-res elements\n- Balanced composition with breathing room\n- Optimized for social media sharing\n- Screenshot-worthy quality\n\n=== CRITICAL RENDERING INSTRUCTIONS ===\n\n1. For MEME content:\n   - Identify the meme format from content_data\n   - Place all text overlays exactly as specified\n   - Use team colors in background or accents\n   - Ensure text is highly visible with proper contrast\n\n2. For STATS content:\n   - Create a clean table with all stats from content_data.stats_table\n   - Show exact numbers for each stat\n   - Use visual bars or indicators to show comparison\n   - Apply team colors to distinguish home vs away\n   - Include title, subtitle, and highlight from content_data\n\n3. For QUIZ content:\n   - Render the visual puzzle based on quiz_type from content_data\n   - Include all clues from content_data.visual_elements\n   - Make the question clear and engaging\n   - Use clean, puzzle-like design\n\nIMPORTANT:\n- Use the EXACT data from content_data - do not make up text, numbers, or content\n- For stats, use the precise numerical values provided\n- For memes, use the exact text overlays specified\n- For quiz, follow the visual_elements structure exactly\n- Ensure all text is readable and high contrast\n- Create professional, social-media-ready graphics\n\nFINAL OUTPUT:\nGenerate a complete, engagement-ready social media graphic for {{content_type}} content about {{matchup}}. The image should be professional, visually striking, and optimized for {{aspect_ratio}} format."
       outputs:
         generated_image_path: "$.get('image_path')"
 
-    # 4. Upload image to Google Storage
+    # 3. Upload image to Google Storage
     - type: connector
       name: upload-image-to-storage
       condition: "$.get('generated_image_path') is not None"
@@ -90,7 +76,7 @@ workflow:
       outputs:
         uploaded_image_url: "$.get('url')"
 
-    # 5. Update suggestion document with image
+    # 4. Update suggestion document with image
     - type: document
       name: update-suggestion
       condition: "$.get('uploaded_image_url') is not None"
