@@ -58,40 +58,7 @@ workflow:
         caption: "$.get('content_data', {}).get('caption', '')"
         custom_prompt: "$.get('custom_prompt', '')"
         prompt: |
-          "=== SOCIAL MEDIA IMAGE GENERATION ===
-          
-          CONTENT TYPE: {{content_type}}
-          MATCHUP: {{matchup}}
-          CAPTION: {{caption}}
-          ASPECT RATIO: {{aspect_ratio}}
-          
-          {% if custom_prompt %}
-          CUSTOM USER REQUEST: {{custom_prompt}}
-          {% endif %}
-          
-          Generate a high-quality {{aspect_ratio}} social media image for {{matchup}}.
-          
-          Content Type Guidelines:
-          - MEME: Bold, humorous, shareable. Popular meme formats with visual storytelling.
-          - STATS: Clean, professional infographic style with data visualization.
-          - QUIZ: Engaging, inviting, interactive feel that encourages participation.
-          
-          Style Requirements:
-          - High-quality sports photography aesthetic
-          - Cinematic lighting and composition
-          - Professional color grading
-          - Sharp, engaging visuals optimized for social media
-          - Team colors should be incorporated tastefully
-          
-          CRITICAL REQUIREMENTS:
-          - ABSOLUTELY NO text, words, letters, numbers, or typography in the image
-          - NO player names or individual athlete depictions
-          - NO team logos or emblems
-          - NO jerseys with visible text or numbers
-          - The image should convey the concept through visual storytelling only
-          
-          The caption will be added separately as text overlay by the social media platform.
-          Create a visually stunning image that supports the caption: {{caption}}"
+          "=== SOCIAL MEDIA IMAGE GENERATION ===\n\nCONTENT TYPE: {{content_type}}\nMATCHUP: {{matchup}}\nCAPTION: {{caption}}\nASPECT RATIO: {{aspect_ratio}}\n\nGenerate a high-quality {{aspect_ratio}} social media image for {{matchup}}.\n\nContent Type Guidelines:\n- MEME: Bold, humorous, shareable. Popular meme formats with visual storytelling.\n- STATS: Clean, professional infographic style with data visualization.\n- QUIZ: Engaging, inviting, interactive feel that encourages participation.\n\nStyle Requirements:\n- High-quality sports photography aesthetic\n- Cinematic lighting and composition\n- Professional color grading\n- Sharp, engaging visuals optimized for social media\n- Team colors should be incorporated tastefully\n\nCRITICAL REQUIREMENTS:\n- ABSOLUTELY NO text, words, letters, numbers, or typography in the image\n- NO player names or individual athlete depictions\n- NO team logos or emblems\n- NO jerseys with visible text or numbers\n- The image should convey the concept through visual storytelling only\n\nThe caption will be added separately as text overlay by the social media platform.\nCreate a visually stunning image that supports the caption: {{caption}}"
       outputs:
         generated_image_path: "$.get('image_path')"
 
