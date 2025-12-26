@@ -1,0 +1,115 @@
+workflow:
+  name: soccer-forecast-risk
+  title: Soccer Risk Officer
+  description: Phase 3D - Risk assessment, confidence calibration, and abstention logic
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    eventCode: "$.get('eventCode')"
+    matchup_document_id: "$.get('matchup_document_id')"
+  outputs:
+    workflow-status: "$.get('workflow_executed_status', 'executed')"
+    analyst_document_id: "$.get('analyst_document_id')"
+  tasks:
+    # 1. Load matchup analysis
+    - type: document
+      name: load-matchup-analysis
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        document_id: $.get('matchup_document_id')
+      inputs:
+        name: "'soccer-matchup-analysis'"
+      outputs:
+        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
+        stats_out: "$.get('documents')[0].get('value', {}).get('stats_analysis', {}) if len($.get('documents', [])) > 0 else {}"
+        evidence_out: "$.get('documents')[0].get('value', {}).get('evidence_analysis', {}) if len($.get('documents', [])) > 0 else {}"
+        matchup_out: "$.get('documents')[0].get('value', {}).get('matchup_analysis', {}) if len($.get('documents', [])) > 0 else {}"
+        h_name: "$.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''"
+        a_name: "$.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''"
+        league: "$.get('documents')[0].get('value', {}).get('league', '39') if len($.get('documents', [])) > 0 else '39'"
+        season: "$.get('documents')[0].get('value', {}).get('season', '2025') if len($.get('documents', [])) > 0 else '2025'"
+        match_date: "$.get('documents')[0].get('value', {}).get('match_date', '') if len($.get('documents', [])) > 0 else ''"
+        evidence_document_id: "$.get('documents')[0].get('value', {}).get('evidence_document_id', '') if len($.get('documents', [])) > 0 else ''"
+        stats_document_id: "$.get('documents')[0].get('value', {}).get('stats_document_id', '') if len($.get('documents', [])) > 0 else ''"
+        feature_document_id: "$.get('documents')[0].get('value', {}).get('feature_document_id', '') if len($.get('documents', [])) > 0 else ''"
+        workflow_executed_status: "'executed'"
+
+    # 2. Get news evidence
+    - type: document
+      name: load-news-evidence
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        document_id: $.get('feature_document_id')
+      inputs:
+        name: "'soccer-match-features'"
+      outputs:
+        evidence: "$.get('documents')[0].get('value', {}).get('evidence', {}) if len($.get('documents', [])) > 0 else {}"
+
+    # 3. Risk Officer
+    - type: prompt
+      name: forecast_risk_officer
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out')}"
+        feature_payload: "$.get('feature_payload')"
+      outputs:
+        risk_out: "$"
+
+    # 4. Store complete analyst report
+    - type: document
+      name: store-analyst-report
+      config:
+        action: save
+      documents:
+        soccer-analyst-report: |
+          {
+            'title': $.get('h_name', '') + ' vs ' + $.get('a_name', '') + ' - Analyst Report',
+            'fixture_id': str($.get('eventCode')),
+            'matchup': $.get('h_name', '') + ' vs ' + $.get('a_name', ''),
+            'home_team': $.get('h_name', ''),
+            'away_team': $.get('a_name', ''),
+            'league': $.get('league'),
+            'season': $.get('season'),
+            'match_date': $.get('match_date'),
+            'feature_payload': $.get('feature_payload'),
+            'evidence': $.get('evidence'),
+            'analyst_outputs': {
+              'stats': $.get('stats_out'),
+              'evidence': $.get('evidence_out'),
+              'matchup': $.get('matchup_out'),
+              'risk': $.get('risk_out')
+            },
+            'matchup_document_id': $.get('matchup_document_id'),
+            'evidence_document_id': $.get('evidence_document_id'),
+            'stats_document_id': $.get('stats_document_id'),
+            'feature_document_id': $.get('feature_document_id'),
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        eventCode: "$.get('eventCode')"
+        home_team: "$.get('h_name', '')"
+        away_team: "$.get('a_name', '')"
+        league: "$.get('league')"
+        season: "$.get('season')"
+        match_date: "$.get('match_date')"
+        confidence: "$.get('risk_out', {}).get('confidence', 0.5)"
+        abstain: "$.get('risk_out', {}).get('abstain', False)"
+        document_type: "'analyst-report'"
+        phase: "'analysis'"
+      outputs:
+        analyst_document_id: "$.get('documents')[0].get('_id')"
+

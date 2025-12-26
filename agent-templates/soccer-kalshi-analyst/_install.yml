@@ -46,24 +46,24 @@ datasets:
   - type: agent
     path: agents/soccer-kalshi-sync.yml
 
-  # Scripts
-  - type: connector
-    path: scripts/aggregate_features.yml
+  # Configuration
 
-  - type: connector
-    path: scripts/enrich-matched-events.yml
+  - type: workflow
+    path: configs/setup-folders.yml
 
-  - type: connector
-    path: scripts/monte_carlo.yml
+  - type: workflow
+    path: configs/setup-leagues.yml
 
-  - type: connector
-    path: scripts/market-event-matcher.yml
+  # Mappings
 
   - type: connector
     path: scripts/audit_calculator.yml
 
   - type: connector
     path: scripts/kelly_calculator.yml
+
+  - type: mappings
+    path: mappings/kalshi-markets-summary.yml
 
   # Prompts
   - type: prompt
@@ -93,18 +93,18 @@ datasets:
   - type: prompt
     path: prompts/kalshi_edge_analyst.yml
 
-  # Mappings
+  # Scripts
+  - type: connector
+    path: scripts/aggregate_features.yml
 
-  - type: mappings
-    path: mappings/kalshi-markets-summary.yml
+  - type: connector
+    path: scripts/enrich-matched-events.yml
 
-  # Configuration
+  - type: connector
+    path: scripts/monte_carlo.yml
 
-  - type: workflow
-    path: configs/setup-folders.yml
-
-  - type: workflow
-    path: configs/setup-leagues.yml
+  - type: connector
+    path: scripts/market-event-matcher.yml
 
   # Workflows
 
@@ -112,17 +112,34 @@ datasets:
     path: workflows/consumer.yml
 
   - type: workflow
-    path: workflows/forecast-match.yml
+    path: workflows/collect-match-data.yml
 
   - type: workflow
-    path: workflows/update.yml
+    path: workflows/aggregate-match-features.yml
 
   - type: workflow
-    path: workflows/kalshi-market-integration.yml
+    path: workflows/forecast-stats.yml
+
+  - type: workflow
+    path: workflows/forecast-evidence.yml
+
+  - type: workflow
+    path: workflows/forecast-matchup.yml
+
+  - type: workflow
+    path: workflows/forecast-risk.yml
+
+  - type: workflow
+    path: workflows/forecast-simulation.yml
+
+  - type: workflow
+    path: workflows/analyze-kalshi-markets.yml
 
   - type: workflow
     path: workflows/sync-kalshi-events.yml
 
+  - type: workflow
+    path: workflows/update.yml
   # Validation & Backtesting Workflows
   - type: workflow
     path: workflows/post-match-auditor.yml
