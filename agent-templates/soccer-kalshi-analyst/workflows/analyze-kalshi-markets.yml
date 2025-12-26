@@ -66,6 +66,24 @@ workflow:
         m_summary: "$.get('markets_summary')"
         m_count: "$.get('markets_count')"
 
+    # 3. Calculate Kelly Criterion (Python math - more accurate than LLM)
+    - type: connector
+      name: calculate-kelly
+      condition: "$.get('m_count', 0) > 0"
+      connector:
+        name: soccer-kelly-calculator
+        command: batch_kelly_analysis
+      inputs:
+        raw_markets: "$.get('markets', [])"
+        prediction: "$.get('final_prediction', {})"
+        home_team: "$.get('h_name', '')"
+        away_team: "$.get('a_name', '')"
+        confidence: "$.get('final_prediction', {}).get('confidence', 0.5)"
+        bankroll: 1000
+      outputs:
+        kelly_analysis: "$"
+
+    # 4. Edge Analysis with Kelly calculations
     - type: prompt
       name: kalshi_edge_analyst
       condition: "$.get('m_count', 0) > 0"
@@ -78,10 +96,11 @@ workflow:
       inputs:
         prediction_data: "$.get('final_prediction')"
         markets_summary: "$.get('m_summary')"
+        kelly_calculations: "$.get('kelly_analysis', {})"
       outputs:
         edge_analysis: "$"
 
-    # 3. Store edge analysis
+    # 5. Store edge analysis
     - type: document
       name: store-edge
       condition: "$.get('edge_analysis') is not None"
@@ -103,6 +122,8 @@ workflow:
             'should_trade': $.get('edge_analysis', {}).get('should_trade'),
             'confidence': $.get('edge_analysis', {}).get('overall_confidence'),
             'risk_warnings': $.get('edge_analysis', {}).get('risk_warnings', []),
+            'kelly_python': $.get('kelly_analysis', {}),
+            'calculation_method': 'python_kelly_calculator',
             'timestamp': datetime.utcnow().isoformat()
           }
       metadata:

@@ -96,6 +96,12 @@ datasets:
   - type: connector
     path: scripts/market-event-matcher.yml
 
+  - type: connector
+    path: scripts/kelly_calculator.yml
+
+  - type: connector
+    path: scripts/audit_calculator.yml
+
   # Workflows
 
   - type: workflow
