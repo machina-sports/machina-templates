@@ -1,7 +1,7 @@
 workflow:
   name: "sportradar-nfl-sync-teams"
   title: "Sportradar NFL Sync Teams"
-  description: "Workflow to sync NFL teams."
+  description: "Workflow to synchronize NFL teams from SportRadar API to Machina."
   context-variables:
     debugger:
       enabled: true
@@ -10,49 +10,84 @@ workflow:
     machina-ai:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   outputs:
-    events: "$.get('events')"
-    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+    teams: "$.get('iptc_teams')"
+    workflow-status: "$.get('teams_parsed') is not None and 'executed' or 'skipped'"
   tasks:
 
-    # task-load-teams
-    - type: "connector"
-      name: "task-load-teams"
-      description: "Get a season teams from SportRadar"
+    # load-teams
+    - type: connector
+      name: load-teams
+      description: Get NFL teams from SportRadar
       connector:
-        name: "sportradar-nfl"
-        command: "get-league/{data_type}"
+        name: sportradar-nfl
+        command: get-league/{data_type}
         command_attribute:
           data_type: "'teams.json'"
       inputs:
-        api_key: "$.get('api_key')"
+        api_key: $.get('api_key')
       outputs:
-        teams: "$"
+        teams_raw: $
+
+    # IPTC mapping
+    - type: mapping
+      name: iptc-sportradar-nfl-team-mapping
+      description: Convert NFL teams to IPTC Sport Schema format
+      condition: $.get('teams_raw') is not None
+      inputs:
+        teams_raw: $.get('teams_raw')
+      outputs:
+        iptc_teams: $.get('sport_schema_teams')
         teams_parsed: |
           [
             {
-              **team,
+              **t,
               'metadata': {
-                'team_id': team.get('id', ''),
+                'team_code': str(t.get('@id', ''))
               },
-              'title': f"{team.get('name', '')}",
-              'selected': False,
-              'version-control': {
-                'status': 'pending'
-              }
+              'version_control': {
+                'updated': datetime.utcnow()
+              },
+              'title': t.get('name', ''),
+              'selected': False
             }
-            for team in $.get('teams', [])
+            for t in $.get('sport_schema_teams', [])
           ]
 
+    # update-teams
+    - type: document
+      name: update-teams
+      description: Update the teams document with aggregated metadata.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      documents:
+        teams: |
+          {
+            'data': $.get('iptc_teams'),
+            'title': 'NFL Teams',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+
     # bulk-save-teams
-    - type: "document"
-      name: "bulk-save-teams"
+    - type: document
+      name: bulk-save-teams
       condition: "$.get('teams_parsed') is not None"
-      description: "Bulk save the teams."
+      description: "Bulk save the individual teams."
       config:
         action: "bulk-update"
         embed-vector: false
         force-update: true
-      document_name: "'nfl-team'"
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'sport:Team'"
       documents:
         items: "$.get('teams_parsed')"
       inputs:
