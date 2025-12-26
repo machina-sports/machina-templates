@@ -14,39 +14,9 @@ prompt:
     Kalshi Markets Summary:
     {{markets_summary}}
 
-    Pre-Calculated Kelly Analysis (from Python - USE THESE VALUES):
-    {{kelly_calculations}}
-
     ## EDGE DETECTION FRAMEWORK
 
-    ### PHASE 1: USE PRE-CALCULATED KELLY DATA
-    **IMPORTANT:** Kelly Criterion and Expected Value have been pre-calculated by Python for mathematical accuracy.
-    
-    The `kelly_calculations` object contains:
-    - `all_markets_ranked`: List of markets with pre-computed edge, EV, and Kelly values
-    - `best_trade`: The algorithmically-identified best opportunity
-    - `tradeable_count`: Number of markets with positive edge
-    
-    For each market in `all_markets_ranked`:
-    - `ticker`: Market identifier
-    - `edge_percent`: Raw edge (AI prob - implied prob)
-    - `ev_cents`: Expected value in cents per dollar wagered
-    - `kelly_percent`: Recommended stake as % of bankroll (already fractional Kelly)
-    - `should_trade`: Boolean - whether edge meets minimum threshold
-
-    ### PHASE 2: VALIDATE & INTERPRET
-    Your job is to INTERPRET the pre-calculated values, NOT recalculate them:
-    
-    1. **Use the provided edge_percent** - don't recalculate
-    2. **Use the provided ev_cents** - don't recalculate  
-    3. **Use the provided kelly_percent** - don't recalculate
-    
-    Add qualitative judgment:
-    - Assess liquidity from spread in markets_summary
-    - Consider news context that math can't capture
-    - Flag if `should_trade=false` but edge looks close
-
-    ### PHASE 3: CALCULATE IMPLIED PROBABILITIES (for context only)
+    ### PHASE 1: CALCULATE IMPLIED PROBABILITIES
     For each Kalshi market contract:
     ```
     mid_price = (yes_bid + yes_ask) / 2  # If no bid, use (0 + ask) / 2
@@ -57,29 +27,43 @@ prompt:
     spread_cost_percent = spread / mid_price × 100
     ```
 
-    ### PHASE 4: LIQUIDITY ASSESSMENT
+    ### PHASE 2: COMPUTE RAW EDGE
+    Compare AI fair value vs Kalshi implied:
+    ```
+    raw_edge = AI_fair_probability - kalshi_implied_probability
+    
+    # Edge direction:
+    if raw_edge > 0: BUY YES (market underpricing outcome)
+    if raw_edge < 0: BUY NO (market overpricing outcome)
+    ```
+
+    ### PHASE 3: ADJUST FOR MARKET QUALITY
     Not all edges are tradeable. Apply filters:
 
-    **Liquidity Score (0-5):**
+    **Liquidity Score (0-1):**
     ```
-    if spread <= 2: liquidity_score = 5.0 (excellent)
-    if spread 3-4: liquidity_score = 4.0 (good)
-    if spread 5-7: liquidity_score = 3.0 (acceptable)
-    if spread 8-12: liquidity_score = 2.0 (wide)
-    if spread > 12: liquidity_score = 1.0 (avoid)
+    if spread <= 3: liquidity_score = 1.0 (tight)
+    if spread 4-7: liquidity_score = 0.7 (acceptable)
+    if spread 8-12: liquidity_score = 0.4 (wide)
+    if spread > 12: liquidity_score = 0.1 (illiquid - avoid)
     ```
 
-    ### PHASE 5: TIER CLASSIFICATION (based on pre-calculated values)
+    **Effective Edge:**
+    ```
+    effective_edge = raw_edge - (spread / 200)  # Subtract half-spread cost
+    ```
+
+    ### PHASE 4: TIER CLASSIFICATION
     Classify each market opportunity:
 
-    | Tier | Effective Edge | EV (cents/$) | Liquidity | Action | Position Size |
-    |------|---------------|--------------|-----------|--------|---------------|
-    | **A** | ≥8% | ≥8¢ | High (>0.7) | ENTER | Full conviction |
-    | **B** | 5-8% | 5-8¢ | Medium-High | ENTER | Half size |
-    | **C** | 3-5% | 3-5¢ | Acceptable | MONITOR | Small or wait |
-    | **PASS** | <3% OR Illiquid | <3¢ | Any | PASS | None |
+    | Tier | Effective Edge | Liquidity | Action | Position Size |
+    |------|---------------|-----------|--------|---------------|
+    | **A** | ≥8% | High (>0.7) | ENTER | Full conviction |
+    | **B** | 5-8% | Medium-High | ENTER | Half size |
+    | **C** | 3-5% | Acceptable | MONITOR | Small or wait |
+    | **PASS** | <3% OR Illiquid | Any | PASS | None |
 
-    ### PHASE 6: SPECIAL MARKET ANALYSIS
+    ### PHASE 5: SPECIAL MARKET ANALYSIS
 
     **BTTS (Both Teams to Score):**
     - AI probability derived from: `P(home scores) × P(away scores)`
