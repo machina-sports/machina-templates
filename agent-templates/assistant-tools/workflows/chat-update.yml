@@ -61,7 +61,7 @@ workflow:
             'status': '$.(output_status)',
             'status-message': $.get('status_message'),
             'thread_context': $.get('thread_context'),
-            'title': $.get('thread_title'),
+            'title': $.get('thread_title') if $.get('thread_title') != '' else $.get('document_value', {}).get('title', ''),
           }
       filters:
         document_id: $.get('document_id')
