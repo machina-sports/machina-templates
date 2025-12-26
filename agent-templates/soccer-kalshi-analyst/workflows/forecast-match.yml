@@ -98,11 +98,11 @@ workflow:
         model: "gemini-3-pro-preview"
       foreach:
         concurrent: true
-        name: query_item
+        name: query
         expr: $
         value: $.get('news_queries')
       inputs:
-        search_query: "$.get('query_item', {}).get('query', '') if isinstance($.get('query_item'), dict) else str($.get('query_item', ''))"
+        search_query: "$.get('query')"
         recency_days: 3
       outputs:
         search_results: |
@@ -194,40 +194,6 @@ workflow:
       outputs:
         risk_out: "$"
 
-    # 7. Load Kalshi Markets EARLY (for market-anchored calibration)
-    - type: document
-      name: load-kalshi
-      config:
-        action: search
-        search-limit: 1
-      filters:
-        value.eventCode: $.get('eventCode')
-      inputs:
-        name: "'kalshi-events'"
-      outputs:
-        k_ticker: "$.get('documents')[0].get('value', {}).get('event_ticker') if len($.get('documents', [])) > 0 else None"
-
-    - type: connector
-      name: load-markets
-      condition: "$.get('k_ticker') is not None"
-      connector:
-        name: kalshi
-        command: get-markets
-      inputs:
-        event_ticker: "$.get('k_ticker')"
-      outputs:
-        markets: "$.get('markets', [])"
-
-    - type: mapping
-      name: kalshi-markets-summary
-      condition: "len($.get('markets', [])) > 0"
-      inputs:
-        markets: "$.get('markets')"
-      outputs:
-        m_summary: "$.get('markets_summary')"
-        m_count: "$.get('markets_count')"
-
-    # 8. Simulation with market context
     - type: prompt
       name: simulation_parameterizer
       connector:
@@ -266,7 +232,6 @@ workflow:
         feature_payload: "$.get('feature_payload')"
         components: "{'stats': $.get('stats_out'), 'evidence': $.get('evidence_out'), 'matchup': $.get('matchup_out'), 'risk': $.get('risk_out')}"
         sim_results: "$.get('sim_results')"
-        market_prior: "$.get('m_summary', {})"
       outputs:
         final_prediction: "$"
 
@@ -315,24 +280,39 @@ workflow:
       outputs:
         prediction_document_id: "$.get('document_id')"
 
-    # 10. Calculate Kelly Criterion (Python math - more accurate than LLM)
-    - type: connector
-      name: calculate-kelly
-      condition: "$.get('m_count', 0) > 0"
-      connector:
-        name: soccer-kelly-calculator
-        command: batch_kelly_analysis
+    # 7. Kalshi Integration
+    - type: document
+      name: load-kalshi
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        value.eventCode: $.get('eventCode')
       inputs:
-        raw_markets: "$.get('markets', [])"
-        prediction: "$.get('final_prediction', {})"
-        home_team: "$.get('h_name', '')"
-        away_team: "$.get('a_name', '')"
-        confidence: "$.get('final_prediction', {}).get('confidence', 0.5)"
-        bankroll: 1000
+        name: "'kalshi-events'"
       outputs:
-        kelly_analysis: "$.get('kelly_result', {})"
+        k_ticker: "$.get('documents')[0].get('value', {}).get('event_ticker') if len($.get('documents', [])) > 0 else None"
 
-    # 11. Edge Analysis with Kelly calculations
+    - type: connector
+      name: load-markets
+      condition: "$.get('k_ticker') is not None"
+      connector:
+        name: kalshi
+        command: get-markets
+      inputs:
+        event_ticker: "$.get('k_ticker')"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    - type: mapping
+      name: kalshi-markets-summary
+      condition: "len($.get('markets', [])) > 0"
+      inputs:
+        markets: "$.get('markets')"
+      outputs:
+        m_summary: "$.get('markets_summary')"
+        m_count: "$.get('markets_count')"
+
     - type: prompt
       name: kalshi_edge_analyst
       condition: "$.get('m_count', 0) > 0"
@@ -345,7 +325,6 @@ workflow:
       inputs:
         prediction_data: "$.get('final_prediction')"
         markets_summary: "$.get('m_summary')"
-        kelly_calculations: "$.get('kelly_analysis', {})"
       outputs:
         edge_analysis: "$"
 
@@ -370,8 +349,6 @@ workflow:
             'should_trade': $.get('edge_analysis', {}).get('should_trade'),
             'confidence': $.get('edge_analysis', {}).get('overall_confidence'),
             'risk_warnings': $.get('edge_analysis', {}).get('risk_warnings', []),
-            'kelly_python': $.get('kelly_analysis', {}),
-            'calculation_method': 'python_kelly_calculator',
             'timestamp': datetime.utcnow().isoformat()
           }
       metadata:

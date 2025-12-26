@@ -1,21 +1,12 @@
+from datetime import datetime, timedelta
+import json
+
 def aggregate_features(request_data):
     """
     Bulletproof feature aggregator.
     Returns in the standard pyscript pattern: {status, data, message}
     """
     try:
-        # Import inside function to ensure availability in pyscript execution
-        import json
-        from datetime import datetime, timedelta
-        
-        # Helper function defined inside to ensure scope availability
-        def safe_extract_stats(stats_obj):
-            if not isinstance(stats_obj, dict): return {}
-            res = stats_obj.get('response', stats_obj)
-            if isinstance(res, list) and len(res) > 0: res = res[0]
-            if not isinstance(res, dict): return {}
-            return res
-        
         # The pyscript infrastructure passes inputs as request_data.get('params', {})
         if isinstance(request_data, str):
             try: request_data = json.loads(request_data)
@@ -51,6 +42,13 @@ def aggregate_features(request_data):
         # 3. Statistics
         home_stats_raw = params.get('home_historical_stats', params.get('home_stats', {}))
         away_stats_raw = params.get('away_historical_stats', params.get('away_stats', {}))
+
+        def safe_extract_stats(stats_obj):
+            if not isinstance(stats_obj, dict): return {}
+            res = stats_obj.get('response', stats_obj)
+            if isinstance(res, list) and len(res) > 0: res = res[0]
+            if not isinstance(res, dict): return {}
+            return res
 
         h_stats = safe_extract_stats(home_stats_raw)
         a_stats = safe_extract_stats(away_stats_raw)
@@ -110,22 +108,11 @@ def aggregate_features(request_data):
             "message": f"Aggregation Exception: {str(e)}"
         }
 
-
 def filter_search_results(request_data):
-    """
-    Filter and deduplicate search results.
-    Returns in the standard pyscript pattern: {status, data, message}
-    """
     try:
-        # Import inside function to ensure availability in pyscript execution
-        import json
-        
-        if isinstance(request_data, str): 
-            try: request_data = json.loads(request_data)
-            except: pass
-        
+        if isinstance(request_data, str): request_data = json.loads(request_data)
         if not isinstance(request_data, dict): 
-            return {"status": True, "data": {"filtered_search_results": []}, "message": "No data provided"}
+            return {"status": True, "data": {"filtered_search_results": []}}
         
         params = request_data.get('params', request_data)
         search_results = params.get('search_results', [])
@@ -139,48 +126,28 @@ def filter_search_results(request_data):
             "data": {"filtered_search_results": relevant[:10]},
             "message": "Search results filtered"
         }
-    except Exception as e:
-        return {
-            "status": False, 
-            "data": {"filtered_search_results": [], "error": str(e)},
-            "message": f"Filter error: {str(e)}"
-        }
-
+    except:
+        return {"status": True, "data": {"filtered_search_results": []}}
 
 def format_evidence_outputs(request_data):
-    """
-    Format evidence outputs from news analysis.
-    Returns in the standard pyscript pattern: {status, data, message}
-    """
     try:
-        # Import inside function to ensure availability in pyscript execution
-        import json
-        
-        if isinstance(request_data, str): 
-            try: request_data = json.loads(request_data)
-            except: pass
-        
-        if not isinstance(request_data, dict): 
-            request_data = {}
+        if isinstance(request_data, str): request_data = json.loads(request_data)
+        if not isinstance(request_data, dict): request_data = {}
         
         params = request_data.get('params', request_data)
         return {
             "status": True,
             "data": {
-                "news_evidence": {
+            "news_evidence": {
                     "items": params.get('evidence_items', []),
                     "reliability": params.get('news_reliability', 0.0)
-                },
-                "news_deltas": {
+            },
+            "news_deltas": {
                     "deltas": params.get('team_level_deltas', {}),
                     "reliability": params.get('news_reliability', 0.0)
-                }
+            }
             },
             "message": "Evidence formatted"
         }
-    except Exception as e:
-        return {
-            "status": False, 
-            "data": {"news_evidence": {}, "news_deltas": {}, "error": str(e)},
-            "message": f"Format error: {str(e)}"
-        }
+    except:
+        return {"status": True, "data": {"news_evidence": {}, "news_deltas": {}}}
