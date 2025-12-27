@@ -21,6 +21,8 @@ setup:
     - Dixon-Coles enhanced Poisson Monte Carlo simulation (10,000 iterations)
     - Market-anchored calibration using Kalshi prices as Bayesian prior
     - Kelly Criterion stake sizing with EV-based position analysis
+    - Multi-market correlation analysis to avoid double exposure
+    - Risk-adjusted return optimization for correlated positions
     - Kalshi market edge detection with tier-based trading recommendations
     - Post-match auditing with Brier score and calibration tracking
     - Backtesting reports with ROI by tier and calibration curves
@@ -61,6 +63,9 @@ datasets:
 
   - type: connector
     path: scripts/kelly_calculator.yml
+
+  - type: connector
+    path: scripts/correlation_analyzer.yml
 
   - type: mappings
     path: mappings/kalshi-markets-summary.yml
