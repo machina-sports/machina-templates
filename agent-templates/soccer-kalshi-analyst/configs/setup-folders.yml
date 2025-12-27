@@ -110,6 +110,17 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                },
+                {
+                  "name": "soccer-prediction-audit",
+                  "title": "9. Prediction Audit",
+                  "description": "Post-match audits with Brier score and calibration tracking.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-prediction-audit"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 }
               ]
             },
