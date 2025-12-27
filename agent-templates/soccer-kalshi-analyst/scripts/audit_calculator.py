@@ -90,6 +90,11 @@ def calculate_audit_metrics(request_data):
         
         prediction_correct = predicted_outcome == actual_outcome
         
+        # Check if exact score was predicted correctly
+        most_likely_score = pred_probs.get('most_likely_score', '')
+        actual_score = f"{home_goals}-{away_goals}"
+        exact_score_correct = most_likely_score == actual_score
+        
         # Calibration bin (for grouping predictions by confidence level)
         # Bins: 0-10%, 10-20%, ..., 90-100%
         calibration_bin = min(int(predicted_prob * 10), 9)  # 0-9
@@ -172,7 +177,10 @@ def calculate_audit_metrics(request_data):
                 "actual_outcome": actual_outcome,
                 "prediction_correct": prediction_correct,
                 "calibration_bin": calibration_bin,
-                "calibration_bin_label": calibration_bin_label
+                "calibration_bin_label": calibration_bin_label,
+                "most_likely_score": most_likely_score,
+                "actual_score": actual_score,
+                "exact_score_correct": exact_score_correct
             },
             
             # Confidence

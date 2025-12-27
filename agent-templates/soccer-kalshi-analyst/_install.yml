@@ -46,6 +46,9 @@ datasets:
   - type: agent
     path: agents/soccer-kalshi-sync.yml
 
+  - type: agent
+    path: agents/soccer-audit-scheduler.yml
+
   # Configuration
 
   - type: workflow
@@ -142,7 +145,10 @@ datasets:
     path: workflows/update.yml
   # Validation & Backtesting Workflows
   - type: workflow
-    path: workflows/post-match-auditor.yml
+    path: workflows/audit-consumer.yml
+
+  - type: workflow
+    path: workflows/audit-post-match.yml
 
   - type: workflow
     path: workflows/backtesting-report.yml

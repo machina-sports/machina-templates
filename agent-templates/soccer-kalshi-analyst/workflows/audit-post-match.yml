@@ -5,8 +5,6 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    api-football:
-      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
   inputs:
     fixture_id: "$.get('fixture_id')"
     prediction_document_id: "$.get('prediction_document_id')"
@@ -14,7 +12,29 @@ workflow:
     workflow-status: "$.get('workflow_status', 'executed')"
     audit_document_id: "$.get('audit_document_id')"
   tasks:
-    # 1. Load the prediction document
+    # 1. Load the event to get actual match result
+    - type: document
+      name: load-event
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        metadata.event_code: str($.get('fixture_id'))
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        event_doc_id: $.get('documents')[0].get('_id') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+        event_score: $.get('documents')[0].get('value', {}).get('sport:score', {}) if $.get('documents') else {}
+        event_status: $.get('documents')[0].get('value', {}).get('sport:status', '') if $.get('documents') else ''
+        actual_result: |
+          {
+            'home_goals': $.get('documents')[0].get('value', {}).get('sport:score', {}).get('sport:homeScore', 0) if $.get('documents') else 0,
+            'away_goals': $.get('documents')[0].get('value', {}).get('sport:score', {}).get('sport:awayScore', 0) if $.get('documents') else 0,
+            'match_status': $.get('documents')[0].get('value', {}).get('sport:status', 'NS') if $.get('documents') else 'NS'
+          }
+
+    # 2. Load the prediction document
     - type: document
       name: load-prediction
       config:
@@ -28,7 +48,7 @@ workflow:
         prediction: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
         fixture_id: "$.get('documents')[0].get('value', {}).get('fixture_id') if len($.get('documents', [])) > 0 else $.get('fixture_id')"
 
-    # 2. Load the edge analysis if exists
+    # 3. Load the edge analysis if exists
     - type: document
       name: load-edge-analysis
       config:
@@ -41,28 +61,10 @@ workflow:
       outputs:
         edge_analysis: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}"
 
-    # 3. Fetch actual match result from API-Football
-    - type: connector
-      name: fetch-actual-result
-      condition: "$.get('fixture_id') is not None"
-      connector:
-        name: api-football
-        command: get-fixtures
-      inputs:
-        id: "$.get('fixture_id')"
-      outputs:
-        fixture_response: "$"
-        actual_result: |
-          {
-            'home_goals': $.get('response', [{}])[0].get('goals', {}).get('home', 0) if $.get('response') else 0,
-            'away_goals': $.get('response', [{}])[0].get('goals', {}).get('away', 0) if $.get('response') else 0,
-            'match_status': $.get('response', [{}])[0].get('fixture', {}).get('status', {}).get('short', 'NS') if $.get('response') else 'NS'
-          }
-
     # 4. Calculate audit metrics
     - type: connector
       name: calculate-audit
-      condition: "$.get('actual_result', {}).get('match_status') in ['FT', 'AET', 'PEN']"
+      condition: "$.get('actual_result', {}).get('match_status') in ['FT', 'AET', 'PEN', 'PLAYED', 'CLOSED', 'FINISHED']"
       connector:
         name: soccer-audit-calculator
         command: calculate_audit_metrics
@@ -91,32 +93,30 @@ workflow:
             }
           }
       metadata:
-        prediction_id: "$.get('prediction_document_id')"
         fixture_id: "$.get('fixture_id')"
-        matchup: "$.get('prediction', {}).get('matchup', '')"
-        match_date: "$.get('prediction', {}).get('match_date')"
-        prediction_correct: "$.get('audit_result', {}).get('calibration', {}).get('prediction_correct', False)"
-        brier_1x2: "$.get('audit_result', {}).get('brier_scores', {}).get('combined_1x2', 0)"
         document_type: "'audit'"
       outputs:
-        audit_document_id: "$.get('document_id')"
-        workflow_status: "'audited'"
+        audit_document_id: "$.get('documents')[0].get('_id') if $.get('documents') else None"
 
-    # 6. Update prediction document with audit reference
+    # 6. Mark event as audited in version_control
     - type: document
-      name: update-prediction-audited
+      name: mark-event-audited
       condition: "$.get('audit_document_id') is not None"
       config:
         action: update
         force-update: true
       filters:
-        document_id: $.get('prediction_document_id')
+        document_id: $.get('event_doc_id')
       documents:
-        soccer-prediction: |
+        sport:Event: |
           {
-            **$.get('prediction', {}),
-            'audited': True,
-            'audit_document_id': $.get('audit_document_id'),
-            'actual_result': $.get('actual_result')
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'audited': True,
+              'audit_in_progress': False,
+              'audit_completed_at': datetime.utcnow().isoformat(),
+              'audit_document_id': $.get('audit_document_id')
+            }
           }
 
