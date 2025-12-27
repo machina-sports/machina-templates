@@ -2,14 +2,17 @@ workflow:
   name: soccer-kalshi-setup-leagues
   title: Soccer Kalshi Setup - Leagues
   description: Setup leagues configuration for Soccer Kalshi Setup.
+  inputs:
+    environment: "$.get('environment', 'dev')"
   outputs:
     workflow-status: "'executed'"
   tasks:
 
-    # Kalshi leagues configuration
+    # Kalshi leagues configuration (dev)
     - type: document
-      name: soccer-kalshi-setup-leagues
+      name: soccer-kalshi-setup-leagues-dev
       description: "Persist Kalshi soccer leagues configuration for dynamic event synchronization (dev)"
+      condition: "$.get('environment') == 'dev'"
       config:
         action: update
         embed-vector: false
@@ -19,6 +22,30 @@ workflow:
           {
             "title": "Kalshi Soccer Leagues Config (Dev)",
             "environment": "dev",
+            "leagues": [
+              {
+                "series_ticker": "KXEPLGAME",
+                "league_name": "EPL",
+                "title": "English Premier League",
+                "enabled": True
+              }
+            ]
+          }
+
+    # Kalshi leagues configuration (prd)
+    - type: document
+      name: soccer-kalshi-setup-leagues-prd
+      description: "Persist Kalshi soccer leagues configuration for dynamic event synchronization (dev)"
+      condition: "$.get('environment') == 'prd'"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        kalshi-leagues-config: |
+          {
+            "title": "Kalshi Soccer Leagues Config (Prd)",
+            "environment": "prd",
             "leagues": [
               {
                 "series_ticker": "KXEPLGAME",
@@ -53,10 +80,11 @@ workflow:
             ]
           }
 
-    # API-Football leagues configuration
+    # API-Football leagues configuration (dev)
     - type: document
-      name: soccer-kalshi-setup-api-football-leagues
+      name: soccer-kalshi-setup-api-football-leagues-dev
       description: "Persist API-Football soccer leagues configuration for dynamic fixture synchronization"
+      condition: "$.get('environment') == 'dev'"
       config:
         action: update
         embed-vector: false
@@ -64,7 +92,31 @@ workflow:
       documents:
         api-football-leagues-config: |
           {
-            "title": "API-Football Soccer Leagues Config",
+            "title": "API-Football Soccer Leagues Config (Dev)",
+            "leagues": [
+              {
+                "league_id": "39",
+                "league_name": "EPL",
+                "title": "English Premier League",
+                "season": "2025",
+                "enabled": True
+              }
+            ]
+          }
+
+    # API-Football leagues configuration (prd)
+    - type: document
+      name: soccer-kalshi-setup-api-football-leagues-prd
+      description: "Persist API-Football soccer leagues configuration for dynamic fixture synchronization"
+      condition: "$.get('environment') == 'prd'"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        api-football-leagues-config: |
+          {
+            "title": "API-Football Soccer Leagues Config (Prd)",
             "leagues": [
               {
                 "league_id": "39",
