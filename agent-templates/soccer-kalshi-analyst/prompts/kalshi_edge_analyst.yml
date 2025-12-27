@@ -17,6 +17,9 @@ prompt:
     Pre-Calculated Kelly Analysis (from Python - USE THESE VALUES):
     {{kelly_calculations}}
 
+    Pre-Calculated Correlation Analysis (from Python - USE THESE VALUES):
+    {{correlation_analysis}}
+
     ## EDGE DETECTION FRAMEWORK
 
     ### PHASE 1: USE PRE-CALCULATED KELLY DATA
@@ -58,6 +61,71 @@ prompt:
     if spread 8-12: liquidity_score = 2.0 (wide)
     if spread > 12: liquidity_score = 1.0 (avoid)
     ```
+
+    ### PHASE 4: MULTI-MARKET CORRELATION ANALYSIS (CRITICAL)
+    
+    **IMPORTANT:** Correlation analysis has been pre-calculated by Python. Use the provided values.
+    
+    Pre-Calculated Correlation Analysis:
+    {{correlation_analysis}}
+    
+    **Data Access:** The correlation data is in `correlation_analysis.data` or `correlation_analysis.correlation_analysis`.
+    Key fields to use:
+    - `correlated_pairs_detected`: Boolean - whether any correlated markets exist
+    - `correlated_pairs`: Array of correlated market pairs with analysis
+    - `recommended_trade`: The pre-selected best market
+    - `trade_recommendation`: Human-readable recommendation string
+    - `double_exposure_warning`: Boolean - whether to warn about betting multiple markets
+    
+    **Your Role:** INTERPRET and EXPLAIN the pre-calculated results, do NOT recalculate.
+    
+    #### Understanding Market Correlations
+    
+    Some markets are mathematically linked — betting on both means double exposure to the same outcome:
+    
+    - **Full Correlation (~95%):** "Team A Win YES" and "Team B Win NO" are nearly identical bets. If Udinese wins, Lazio loses. Betting both doubles your risk.
+    
+    - **Partial Correlation (~55%):** "Team Win YES" and "Draw NO" overlap — both win if the team wins, but Draw NO also wins if the other team wins.
+    
+    - **Low/No Correlation:** "Over 2.5 Goals" and "Team A Win" can both be held since they measure different things.
+    
+    #### How to Use the Pre-Calculated Data
+    
+    1. Check `correlated_pairs_detected` — if true, correlation analysis is needed
+    2. Review each pair in `correlated_pairs`:
+       - `recommended_ticker` tells you which market to prefer
+       - `recommendation_reason` explains why (higher_coverage, higher_edge, or higher_risk_adjusted)
+       - `recommendation_explanation` gives the human-readable rationale
+    3. Use `recommended_trade` as the selected market
+    4. If `double_exposure_warning` is true, explicitly warn the user
+    
+    #### Worked Example: Udinese vs Lazio
+    
+    Two Tier A opportunities were identified:
+    
+    | Market | Win Probability | Edge | Risk-Adjusted Return |
+    |--------|-----------------|------|---------------------|
+    | Udinese YES | 55% | +24% | 0.48 |
+    | Lazio NO | 85% | +22% | 0.62 ✓ |
+    
+    **Analysis:**
+    - These markets are ~95% correlated (Udinese winning = Lazio losing)
+    - Edge difference is only 2 percentage points
+    - Coverage difference is 30 percentage points (Lazio NO covers Draw too)
+    - Lazio NO has 29% better risk-adjusted return (0.62 vs 0.48)
+    
+    **Recommendation:** Lazio NO
+    - "Sacrificing 2% edge for 30% more coverage is the correct trade-off"
+    - "DO NOT bet Udinese YES as well — this would be double exposure"
+    
+    #### What to Include in Your Analysis
+    
+    When correlated markets are detected:
+    1. State which markets are correlated and the correlation level
+    2. Explain the trade-off in plain English (edge vs coverage)
+    3. Cite the pre-calculated risk-adjusted returns
+    4. Give a clear single recommendation
+    5. Include the warning: "Do NOT bet both correlated markets"
 
     ### PHASE 5: STALENESS PENALTY
     News evidence decays rapidly. Apply confidence penalty for stale information:
@@ -112,24 +180,35 @@ prompt:
     ```
 
     ### Best Value Market
-    Identify the SINGLE best opportunity across all markets. If multiple Tier A/B exist, rank by effective edge.
+    Identify the SINGLE best opportunity across all markets.
+    
+    **Selection Priority:**
+    1. If correlated markets exist (e.g., Team A YES vs Team B NO), use PHASE 4 correlation analysis
+    2. Among non-correlated Tier A markets, rank by risk-adjusted return
+    3. If no Tier A, consider Tier B with best liquidity
+    
+    **Always explain the trade-off** if sacrificing edge for coverage:
+    - "Lazio NO preferred over Udinese YES: 2% less edge but 30% more win scenarios, 29% better risk-adjusted return"
 
     ### Risk Warnings
     Flag if:
     - AI confidence is low (<0.5) → Reduce conviction
     - Abstain flag was set → Consider skipping all trades
     - Large spread (>10) → Size down significantly
+    - **Correlated positions detected** → Take only ONE position, not both
 
     ## META-COGNITIVE CHECKS
     Before recommending ENTER:
     1. "Is this edge real, or am I seeing noise in a thin market?"
     2. "Would I bet my own money on this?"
     3. "What information might the market have that I don't?"
+    4. "Am I recommending correlated positions? If so, which ONE is optimal?"
+    5. "Is sacrificing X% edge worth Y% more coverage?" (calculate risk-adjusted return)
   schema:
     title: kalshi_edge_analyst_output
     description: Prediction market edge analysis with trading recommendations
     type: object
-    required: ["analysis", "summary", "should_trade", "selected_market", "markets_ranked", "risk_warnings"]
+    required: ["analysis", "summary", "should_trade", "selected_market", "markets_ranked", "correlation_analysis", "risk_warnings"]
     properties:
       analysis:
         type: string
@@ -184,6 +263,44 @@ prompt:
       staleness_penalty:
         type: number
         description: The staleness penalty applied (0.0, 0.10, or 0.20)
+      correlation_analysis:
+        type: object
+        description: Analysis of correlated market positions
+        properties:
+          correlated_pairs_detected:
+            type: boolean
+            description: Whether correlated Tier A/B markets were found
+          correlated_markets:
+            type: array
+            description: List of correlated market pairs
+            items:
+              type: object
+              properties:
+                market_a:
+                  type: object
+                  properties:
+                    ticker: { type: string }
+                    side: { type: string }
+                    edge: { type: number }
+                    win_probability: { type: number }
+                    risk_adjusted_return: { type: number }
+                market_b:
+                  type: object
+                  properties:
+                    ticker: { type: string }
+                    side: { type: string }
+                    edge: { type: number }
+                    win_probability: { type: number }
+                    risk_adjusted_return: { type: number }
+                correlation_level: { type: string, enum: ["full", "partial", "low"] }
+                recommended_market: { type: string, description: "Ticker of the preferred market" }
+                recommendation_reason: { type: string, enum: ["higher_risk_adjusted", "higher_edge", "higher_coverage", "better_liquidity"] }
+          trade_recommendation:
+            type: string
+            description: Clear guidance on which single position to take
+          double_exposure_warning:
+            type: boolean
+            description: True if user should NOT bet multiple correlated markets
       risk_warnings:
         type: array
         items: { type: string }

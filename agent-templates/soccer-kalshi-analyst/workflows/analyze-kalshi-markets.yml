@@ -83,7 +83,22 @@ workflow:
       outputs:
         kelly_analysis: "$"
 
-    # 4. Edge Analysis with Kelly calculations
+    # 3b. Analyze Market Correlations (Python math - avoid double exposure)
+    - type: connector
+      name: analyze-correlations
+      condition: "$.get('kelly_analysis') is not None"
+      connector:
+        name: soccer-correlation-analyzer
+        command: analyze_market_correlations
+      inputs:
+        kelly_results: "$.get('kelly_analysis', {})"
+        prediction: "$.get('final_prediction', {})"
+        home_team: "$.get('h_name', '')"
+        away_team: "$.get('a_name', '')"
+      outputs:
+        correlation_analysis: "$"
+
+    # 4. Edge Analysis with Kelly and Correlation calculations
     - type: prompt
       name: kalshi_edge_analyst
       condition: "$.get('m_count', 0) > 0"
@@ -97,6 +112,7 @@ workflow:
         prediction_data: "$.get('final_prediction')"
         markets_summary: "$.get('m_summary')"
         kelly_calculations: "$.get('kelly_analysis', {})"
+        correlation_analysis: "$.get('correlation_analysis', {})"
       outputs:
         edge_analysis: "$"
 
