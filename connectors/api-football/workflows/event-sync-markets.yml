@@ -1,0 +1,87 @@
+workflow:
+
+  # api-football-event-sync-markets
+  name: api-football-event-sync-markets
+  title: API Football - Event Sync Markets
+  description: Workflow to sync event markets/odds from API Football by event code.
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_document_id: $.get('event_document_id')
+  outputs:
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-id
+    - type: document
+      name: load-event-by-id
+      description: Search event (api-football) by document id.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
+
+    # iptc-api-football-id-conversion-mapping
+    - type: mapping
+      name: iptc-api-football-id-conversion-mapping
+      description: Convert IPTC URN IDs to original API Football IDs
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_schema_events: |
+          [
+            $.get('event_value')
+          ]
+      outputs:
+        original_fixture_id: $.get('original_ids', [''])[0]
+
+    # Note: API Football odds endpoint requires a premium subscription
+    # If available, uncomment and use the following task:
+    # fetch-fixture-odds
+    # - type: connector
+    #   name: fetch-fixture-odds
+    #   description: Get fixture odds/markets from API Football
+    #   condition: $.get('event_exists') is True and $.get('original_fixture_id') is not None
+    #   connector:
+    #     name: api-football
+    #     command: get-odds
+    #   inputs:
+    #     fixture: $.get('original_fixture_id')
+    #   outputs:
+    #     odds_data: $.get('response', [])
+    #     odds_exists: len($.get('response', [])) > 0
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document with market data placeholder.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'market_data': $.get('odds_data', None),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'hasMarketData': $.get('odds_exists', False)
+            }
+          }
+
