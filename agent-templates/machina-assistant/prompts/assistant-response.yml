@@ -63,6 +63,13 @@ prompts:
          - reference: Quick facts and specifications
          - troubleshooting: Diagnose and solve problems
       
+      8. **YAML Formatting** (if reasoning.is_yaml_formatting is true)
+         - Extract the YAML from the user message
+         - Prettify it with consistent 2-space indentation
+         - Fix any obvious structural or alignment issues
+         - Present the result in a clean YAML code block
+         - Add a brief message confirming the formatting was applied
+      
       EXAMPLE RESPONSES:
       
       For "How do connectors work?":
@@ -102,6 +109,19 @@ prompts:
       
       ### Scaling Options
       [Vertical and horizontal scaling]
+      ```
+
+      For "Format this: connector: name: test description: test":
+      ```
+      ## Formatted YAML
+      
+      Here is your YAML prettified and aligned:
+      
+      ```yaml
+      connector:
+        name: test
+        description: test
+      ```
       ```
       
       IMPORTANT:
