@@ -9,6 +9,9 @@ workflow:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
     force_update: $.get('force_update', False)
+    # Kalshi API /events enforces max=200 per request. For >200, use the paginated workflow
+    # `soccer-kalshi-sync-events-single-series` (invoked by the `soccer-kalshi-sync` agent).
+    kalshi_events_limit: $.get('kalshi_events_limit', 200)
   outputs:
     events_synced: $.get('total_events_synced', 0)
     events_matched: $.get('match_count', 0)
@@ -27,6 +30,25 @@ workflow:
       outputs:
         leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []"
 
+    # Load coverage configuration (used to scope competitions/leagues consistently across the stack)
+    - type: document
+      name: load-coverage-soccer-preview-config
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-soccer-preview-config'"
+      outputs:
+        coverage_config_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        coverage_events_live: $.get('documents', [])[0].get('value', {}).get('coverage-events-live', []) if len($.get('documents', [])) > 0 else []
+        coverage_events_prelive: $.get('documents', [])[0].get('value', {}).get('coverage-events-prelive', []) if len($.get('documents', [])) > 0 else []
+        coverage_competitions: |
+          (
+            $.get('documents', [])[0].get('value', {}).get('coverage-events-live', [])
+            + $.get('documents', [])[0].get('value', {}).get('coverage-events-prelive', [])
+          ) if len($.get('documents', [])) > 0 else []
+
     # Load events dynamically for all enabled leagues
     - type: connector
       name: load-league-events
@@ -40,6 +62,7 @@ workflow:
         value: $.get('leagues_config', [])
       inputs:
         series_ticker: "$.get('league').get('series_ticker')"
+        limit: (200 if int($.get('kalshi_events_limit', 200)) > 200 else int($.get('kalshi_events_limit', 200)))
       outputs:
         all_events: $.get('events', [])
 
@@ -49,11 +72,21 @@ workflow:
       condition: len($.get('all_events', [])) > 0
       config:
         action: search
-        search-limit: 500
+        # Wide enough to cover full seasons across multiple leagues when including past fixtures
+        search-limit: 2500
         search-vector: false
       filters:
-        value.sport:status: "{'$in': ['NS', 'not_started']}"
-        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(days=14)).isoformat()}"
+        # Include past + upcoming fixtures (so fuzzy matching can bind closed/finished Kalshi events too)
+        value.sport:status: "{'$in': ['NS', 'not_started', 'LIVE', '1H', 'HT', '2H', 'ET', 'P', 'FT', 'AET', 'PEN']}"
+        # Restrict to competitions from coverage-soccer-preview-config when present; otherwise fall back to the template defaults
+        value.sport:competition.@id: |
+          (
+            $.get('coverage_config_exists')
+            and len($.get('coverage_competitions', [])) > 0
+            and {'$in': $.get('coverage_competitions')}
+          ) or {'$in': ['urn:apifootball:league:39', 'urn:apifootball:league:78', 'urn:apifootball:league:140', 'urn:apifootball:league:135', 'urn:apifootball:league:94']}
+        # Expand date window to cover a full season worth of fixtures (+ some buffer)
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(days=365)).isoformat(), '$lt': (datetime.utcnow() + timedelta(days=30)).isoformat()}"
       inputs:
         name: "'sport:Event'"
       outputs:

@@ -73,6 +73,9 @@ datasets:
   - type: mappings
     path: mappings/kalshi-markets-summary.yml
 
+  - type: mappings
+    path: mappings/combine-events.yml
+
   # Prompts
   - type: prompt
     path: prompts/news_query_generator.yml
@@ -142,6 +145,12 @@ datasets:
 
   - type: workflow
     path: workflows/analyze-kalshi-markets.yml
+
+  - type: workflow
+    path: workflows/load-kalshi-leagues-config.yml
+
+  - type: workflow
+    path: workflows/sync-kalshi-events-single-series.yml
 
   - type: workflow
     path: workflows/sync-kalshi-events.yml

@@ -1,0 +1,15 @@
+mappings:
+
+  - type: mapping
+    name: combine-events
+    title: Kalshi | Combine Events Pages
+    description: Concatenate two pages of Kalshi /events results and compute a total count.
+    inputs:
+      events_page_1: $.get('events_page_1', [])
+      events_page_2: $.get('events_page_2', [])
+    outputs:
+      all_events: |
+        ($.get('events_page_1', []) or []) + ($.get('events_page_2', []) or [])
+      total_events_synced: |
+        len((($.get('events_page_1', []) or []) + ($.get('events_page_2', []) or [])))
+

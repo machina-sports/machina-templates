@@ -11,6 +11,9 @@ workflow:
     category: $.get('category', '')
     tags: $.get('tags')
     series_ticker: $.get('series_ticker')
+    # Kalshi /events default is 200; allow callers to request a larger page (e.g. 400)
+    # (Upstream API may clamp this; connector spec controls validation.)
+    limit: $.get('limit', 400)
   outputs:
     workflow-status: $.get('workflow-status', 'skipped')
   tasks:
@@ -26,6 +29,7 @@ workflow:
         category: $.get('category')
         tags: $.get('tags')
         series_ticker: $.get('series_ticker')
+        limit: $.get('limit', 400)
       outputs:
         events: $.get('events', [])
         workflow-status: "'executed'"

@@ -24,6 +24,7 @@ workflow:
             "environment": "dev",
             "leagues": [
               {
+                "league_id": "39",
                 "series_ticker": "KXEPLGAME",
                 "league_name": "EPL",
                 "title": "English Premier League",
@@ -48,30 +49,35 @@ workflow:
             "environment": "prd",
             "leagues": [
               {
+                "league_id": "39",
                 "series_ticker": "KXEPLGAME",
                 "league_name": "EPL",
                 "title": "English Premier League",
                 "enabled": True
               },
               {
+                "league_id": "135",
                 "series_ticker": "KXSERIEAGAME",
                 "league_name": "Serie A",
                 "title": "Italian Serie A",
                 "enabled": True
               },
               {
+                "league_id": "78",
                 "series_ticker": "KXBUNDESLIGAGAME",
                 "league_name": "Bundesliga",
                 "title": "German Bundesliga",
                 "enabled": True
               },
               {
+                "league_id": "140",
                 "series_ticker": "KXLALIGAGAME",
                 "league_name": "La Liga",
                 "title": "Spanish La Liga",
                 "enabled": True
               },
               {
+                "league_id": "94",
                 "series_ticker": "KXLIGAPORTUGALGAME",
                 "league_name": "Liga Portugal",
                 "title": "Portuguese Liga",
