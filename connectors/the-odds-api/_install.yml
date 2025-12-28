@@ -1,0 +1,44 @@
+setup:
+  title: The Odds API
+  description: Connect to The Odds API to access live and pre-match betting odds from multiple bookmakers across various sports including Soccer, NFL, NBA, MLB, NHL, Tennis, Golf, MMA, and more.
+  category:
+    - data-acquisition
+    - sports-betting
+    - odds-comparison
+    - live-data
+  estimatedTime: 1 minute
+  features:
+    - Live & Pre-match Odds
+    - Multiple Bookmakers
+    - Historical Odds Data
+    - Score Tracking
+    - Event Listings
+    - Multi-region Support (US, UK, EU, AU)
+    - Multiple Markets (H2H, Spreads, Totals, Props)
+    - Outright/Futures Markets
+  integrations:
+    - the-odds-api
+  requirements:
+    - TheOddsApi-Key
+  status: available
+  value: connectors/the-odds-api
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: the-odds-api.yml
+
+  - type: mappings
+    path: mappings/odds.yml
+
+  - type: workflow
+    path: _folders.yml
+
+  - type: workflow
+    path: workflows/sync-sports.yml
+
+  - type: workflow
+    path: workflows/sync-odds.yml
+
+  - type: workflow
+    path: workflows/sync-scores.yml

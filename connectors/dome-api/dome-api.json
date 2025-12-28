@@ -1,0 +1,1514 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Dome API",
+    "description": "Dome API provides comprehensive access to prediction market data across multiple platforms including Polymarket and Kalshi. Get real-time market prices, historical candlestick data, wallet analytics, order tracking, and cross-platform market matching.",
+    "version": "1"
+  },
+  "servers": [
+    {
+      "url": "https://api.domeapi.io/v1"
+    }
+  ],
+  "paths": {
+    "/polymarket/markets": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Markets",
+        "description": "Find markets on Polymarket using various filters including the ability to search",
+        "operationId": "GetPolymarketMarkets",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search query to filter markets",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by active markets only",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "closed",
+            "in": "query",
+            "description": "Filter by closed markets",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolymarketMarketsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/trades": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Trade History",
+        "description": "Get trade history for Polymarket markets",
+        "operationId": "GetPolymarketTrades",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "The token ID of the market",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Pagination cursor for trades before this timestamp",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "Pagination cursor for trades after this timestamp",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TradesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/orderbook": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Orderbook History",
+        "description": "Get orderbook history for Polymarket markets",
+        "operationId": "GetPolymarketOrderbook",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "The token ID of the market",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderbookResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/activity": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Activity",
+        "description": "Get activity data for Polymarket",
+        "operationId": "GetPolymarketActivity",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "The token ID of the market",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/market-price": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Market Price",
+        "description": "Get current price for a Polymarket market",
+        "operationId": "GetPolymarketMarketPrice",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "The token ID of the market",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketPriceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/candlesticks": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Candlesticks",
+        "description": "Get candlestick/OHLC data for Polymarket markets",
+        "operationId": "GetPolymarketCandlesticks",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "The token ID of the market",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Candlestick interval (e.g., 1m, 5m, 15m, 1h, 4h, 1d)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "1h"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time for candlestick data (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "description": "End time for candlestick data (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of candlesticks to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandlesticksResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/wallet": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Wallet",
+        "description": "Get wallet information and positions for a Polymarket address",
+        "operationId": "GetPolymarketWallet",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "description": "The wallet address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/polymarket/wallet-pnl": {
+      "get": {
+        "tags": ["polymarket"],
+        "summary": "Get Polymarket Wallet Profit-and-Loss",
+        "description": "Get profit-and-loss data for a Polymarket wallet",
+        "operationId": "GetPolymarketWalletPnl",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "description": "The wallet address",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletPnlResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/kalshi/markets": {
+      "get": {
+        "tags": ["kalshi"],
+        "summary": "Get Kalshi Markets",
+        "description": "Find markets on Kalshi using various filters including market ticker, event ticker, status, and volume",
+        "operationId": "GetKalshiMarkets",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search query to filter markets",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Filter by event ticker",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "market_ticker",
+            "in": "query",
+            "description": "Filter by market ticker",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by market status (open, closed, settled)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["open", "closed", "settled"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip for pagination",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KalshiMarketsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/kalshi/trades": {
+      "get": {
+        "tags": ["kalshi"],
+        "summary": "Get Kalshi Trade History",
+        "description": "Get trade history for Kalshi markets",
+        "operationId": "GetKalshiTrades",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "market_ticker",
+            "in": "query",
+            "description": "The market ticker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Pagination cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KalshiTradesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/kalshi/orderbook": {
+      "get": {
+        "tags": ["kalshi"],
+        "summary": "Get Kalshi Orderbook History",
+        "description": "Get orderbook history for Kalshi markets",
+        "operationId": "GetKalshiOrderbook",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "market_ticker",
+            "in": "query",
+            "description": "The market ticker",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KalshiOrderbookResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/sports": {
+      "get": {
+        "tags": ["matching-markets"],
+        "summary": "Get Sports",
+        "description": "Get list of sports with matching markets across platforms",
+        "operationId": "GetSports",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SportsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/{date}": {
+      "get": {
+        "tags": ["matching-markets"],
+        "summary": "Get Sport by Date",
+        "description": "Get sports events and matching markets for a specific sport and date",
+        "operationId": "GetSportByDate",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key (e.g., nfl, nba, mlb)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "description": "The date in YYYY-MM-DD format",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SportByDateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/prices/binance": {
+      "get": {
+        "tags": ["crypto-prices"],
+        "summary": "Get Binance Prices",
+        "description": "Get cryptocurrency prices from Binance",
+        "operationId": "GetBinancePrices",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "description": "Trading symbol (e.g., BTCUSDT, ETHUSDT)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BinancePricesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    },
+    "/prices/chainlink": {
+      "get": {
+        "tags": ["crypto-prices"],
+        "summary": "Get Chainlink Prices",
+        "description": "Get cryptocurrency prices from Chainlink oracles",
+        "operationId": "GetChainlinkPrices",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "description": "Your Dome API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "description": "Asset symbol (e.g., BTC, ETH)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainlinkPricesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PolymarketMarketsResponse": {
+        "type": "object",
+        "properties": {
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolymarketMarket"
+            }
+          }
+        }
+      },
+      "PolymarketMarket": {
+        "type": "object",
+        "properties": {
+          "market_slug": {
+            "type": "string",
+            "description": "Market slug identifier"
+          },
+          "condition_id": {
+            "type": "string",
+            "description": "Condition ID for the market"
+          },
+          "title": {
+            "type": "string",
+            "description": "Market title"
+          },
+          "start_time": {
+            "type": "integer",
+            "description": "Unix timestamp for market start"
+          },
+          "end_time": {
+            "type": "integer",
+            "description": "Unix timestamp for market end"
+          },
+          "completed_time": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Unix timestamp when market completed"
+          },
+          "close_time": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Unix timestamp when market closed"
+          },
+          "game_start_time": {
+            "type": "string",
+            "nullable": true,
+            "description": "Game start time"
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolymarketToken"
+            }
+          }
+        }
+      },
+      "PolymarketToken": {
+        "type": "object",
+        "properties": {
+          "token_id": {
+            "type": "string",
+            "description": "Token ID"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "Outcome name (e.g., Yes, No)"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Current price"
+          },
+          "winner": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether this outcome won"
+          }
+        }
+      },
+      "KalshiMarketsResponse": {
+        "type": "object",
+        "properties": {
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KalshiMarket"
+            }
+          }
+        }
+      },
+      "KalshiMarket": {
+        "type": "object",
+        "properties": {
+          "event_ticker": {
+            "type": "string",
+            "description": "Event ticker"
+          },
+          "market_ticker": {
+            "type": "string",
+            "description": "Market ticker"
+          },
+          "title": {
+            "type": "string",
+            "description": "Market title"
+          },
+          "start_time": {
+            "type": "integer",
+            "description": "Unix timestamp for market start"
+          },
+          "end_time": {
+            "type": "integer",
+            "description": "Unix timestamp for market end"
+          },
+          "close_time": {
+            "type": "integer",
+            "description": "Unix timestamp when market closes"
+          },
+          "status": {
+            "type": "string",
+            "description": "Market status"
+          },
+          "last_price": {
+            "type": "integer",
+            "description": "Last traded price"
+          },
+          "volume": {
+            "type": "integer",
+            "description": "Total volume"
+          },
+          "open_interest": {
+            "type": "integer",
+            "description": "Open interest"
+          },
+          "yes_bid": {
+            "type": "integer",
+            "description": "Best yes bid"
+          },
+          "yes_ask": {
+            "type": "integer",
+            "description": "Best yes ask"
+          },
+          "no_bid": {
+            "type": "integer",
+            "description": "Best no bid"
+          },
+          "no_ask": {
+            "type": "integer",
+            "description": "Best no ask"
+          }
+        }
+      },
+      "TradesResponse": {
+        "type": "object",
+        "properties": {
+          "trades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Trade"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Trade": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Trade ID"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Trade price"
+          },
+          "size": {
+            "type": "number",
+            "format": "double",
+            "description": "Trade size"
+          },
+          "side": {
+            "type": "string",
+            "description": "Trade side (buy/sell)"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Unix timestamp"
+          }
+        }
+      },
+      "KalshiTradesResponse": {
+        "type": "object",
+        "properties": {
+          "trades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KalshiTrade"
+            }
+          },
+          "cursor": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "KalshiTrade": {
+        "type": "object",
+        "properties": {
+          "trade_id": {
+            "type": "string",
+            "description": "Trade ID"
+          },
+          "ticker": {
+            "type": "string",
+            "description": "Market ticker"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of contracts"
+          },
+          "yes_price": {
+            "type": "integer",
+            "description": "Yes price in cents"
+          },
+          "no_price": {
+            "type": "integer",
+            "description": "No price in cents"
+          },
+          "taker_side": {
+            "type": "string",
+            "description": "Taker side"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "Trade timestamp"
+          }
+        }
+      },
+      "OrderbookResponse": {
+        "type": "object",
+        "properties": {
+          "bids": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderbookLevel"
+            }
+          },
+          "asks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderbookLevel"
+            }
+          },
+          "timestamp": {
+            "type": "integer"
+          }
+        }
+      },
+      "KalshiOrderbookResponse": {
+        "type": "object",
+        "properties": {
+          "yes": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "description": "Yes orderbook levels [price, quantity]"
+          },
+          "no": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "description": "No orderbook levels [price, quantity]"
+          },
+          "ticker": {
+            "type": "string"
+          }
+        }
+      },
+      "OrderbookLevel": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "size": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "ActivityResponse": {
+        "type": "object",
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Activity"
+            }
+          }
+        }
+      },
+      "Activity": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Activity type"
+          },
+          "timestamp": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "MarketPriceResponse": {
+        "type": "object",
+        "properties": {
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Current market price"
+          },
+          "timestamp": {
+            "type": "integer",
+            "description": "Price timestamp"
+          }
+        }
+      },
+      "CandlesticksResponse": {
+        "type": "object",
+        "properties": {
+          "candlesticks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Candlestick"
+            }
+          }
+        }
+      },
+      "Candlestick": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "number",
+            "format": "double"
+          },
+          "high": {
+            "type": "number",
+            "format": "double"
+          },
+          "low": {
+            "type": "number",
+            "format": "double"
+          },
+          "close": {
+            "type": "number",
+            "format": "double"
+          },
+          "volume": {
+            "type": "number",
+            "format": "double"
+          },
+          "timestamp": {
+            "type": "integer"
+          }
+        }
+      },
+      "WalletResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            }
+          },
+          "balance": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "Position": {
+        "type": "object",
+        "properties": {
+          "token_id": {
+            "type": "string"
+          },
+          "market_slug": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number",
+            "format": "double"
+          },
+          "avg_price": {
+            "type": "number",
+            "format": "double"
+          },
+          "current_price": {
+            "type": "number",
+            "format": "double"
+          },
+          "pnl": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "WalletPnlResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "total_pnl": {
+            "type": "number",
+            "format": "double"
+          },
+          "realized_pnl": {
+            "type": "number",
+            "format": "double"
+          },
+          "unrealized_pnl": {
+            "type": "number",
+            "format": "double"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PnlEntry"
+            }
+          }
+        }
+      },
+      "PnlEntry": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "integer"
+          },
+          "pnl": {
+            "type": "number",
+            "format": "double"
+          },
+          "cumulative_pnl": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "SportsResponse": {
+        "type": "object",
+        "properties": {
+          "sports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sport"
+            }
+          }
+        }
+      },
+      "Sport": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Sport key identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Sport name"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether sport is active"
+          }
+        }
+      },
+      "SportByDateResponse": {
+        "type": "object",
+        "properties": {
+          "sport": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SportEvent"
+            }
+          }
+        }
+      },
+      "SportEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "home_team": {
+            "type": "string"
+          },
+          "away_team": {
+            "type": "string"
+          },
+          "commence_time": {
+            "type": "string"
+          },
+          "matching_markets": {
+            "type": "object",
+            "properties": {
+              "polymarket": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "kalshi": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "BinancePricesResponse": {
+        "type": "object",
+        "properties": {
+          "prices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CryptoPrice"
+            }
+          }
+        }
+      },
+      "ChainlinkPricesResponse": {
+        "type": "object",
+        "properties": {
+          "prices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CryptoPrice"
+            }
+          }
+        }
+      },
+      "CryptoPrice": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "format": "double"
+          },
+          "timestamp": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "name": "x-api-key",
+        "in": "header",
+        "description": "API key passed in the x-api-key header"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ]
+}
+

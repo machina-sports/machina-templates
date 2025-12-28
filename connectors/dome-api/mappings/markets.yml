@@ -1,0 +1,251 @@
+mappings:
+
+  - type: mapping
+    name: dome-polymarket-market-mapping
+    title: Dome API - Polymarket Market Mapping
+    description: "Mapping data from Dome API Polymarket markets response"
+    outputs:
+      mapped-markets: |
+        [
+          {
+            'id': market.get('condition_id', ''),
+            'slug': market.get('market_slug', ''),
+            'title': market.get('title', ''),
+            'platform': 'polymarket',
+            'startTime': market.get('start_time', 0),
+            'endTime': market.get('end_time', 0),
+            'completedTime': market.get('completed_time'),
+            'closeTime': market.get('close_time'),
+            'gameStartTime': market.get('game_start_time'),
+            'tokens': [
+              {
+                'tokenId': token.get('token_id', ''),
+                'outcome': token.get('outcome', ''),
+                'price': token.get('price', 0),
+                'winner': token.get('winner')
+              }
+              for token in market.get('tokens', [])
+            ],
+            'metadata': {
+              'platform': 'polymarket',
+              'id': market.get('condition_id', ''),
+              'slug': market.get('market_slug', '')
+            }
+          }
+          for market in $.get('markets', [])
+        ]
+
+  - type: mapping
+    name: dome-kalshi-market-mapping
+    title: Dome API - Kalshi Market Mapping
+    description: "Mapping data from Dome API Kalshi markets response"
+    outputs:
+      mapped-markets: |
+        [
+          {
+            'id': market.get('market_ticker', ''),
+            'eventId': market.get('event_ticker', ''),
+            'title': market.get('title', ''),
+            'platform': 'kalshi',
+            'startTime': market.get('start_time', 0),
+            'endTime': market.get('end_time', 0),
+            'closeTime': market.get('close_time', 0),
+            'status': market.get('status', ''),
+            'lastPrice': market.get('last_price', 0),
+            'volume': market.get('volume', 0),
+            'openInterest': market.get('open_interest', 0),
+            'yesBid': market.get('yes_bid', 0),
+            'yesAsk': market.get('yes_ask', 0),
+            'noBid': market.get('no_bid', 0),
+            'noAsk': market.get('no_ask', 0),
+            'metadata': {
+              'platform': 'kalshi',
+              'id': market.get('market_ticker', ''),
+              'eventId': market.get('event_ticker', '')
+            }
+          }
+          for market in $.get('markets', [])
+        ]
+
+  - type: mapping
+    name: dome-polymarket-trades-mapping
+    title: Dome API - Polymarket Trades Mapping
+    description: "Mapping data from Dome API Polymarket trades response"
+    outputs:
+      mapped-trades: |
+        [
+          {
+            'id': trade.get('id', ''),
+            'platform': 'polymarket',
+            'price': trade.get('price', 0),
+            'size': trade.get('size', 0),
+            'side': trade.get('side', ''),
+            'timestamp': trade.get('timestamp', 0),
+            'metadata': {
+              'platform': 'polymarket',
+              'id': trade.get('id', '')
+            }
+          }
+          for trade in $.get('trades', [])
+        ]
+
+  - type: mapping
+    name: dome-kalshi-trades-mapping
+    title: Dome API - Kalshi Trades Mapping
+    description: "Mapping data from Dome API Kalshi trades response"
+    outputs:
+      mapped-trades: |
+        [
+          {
+            'id': trade.get('trade_id', ''),
+            'marketId': trade.get('ticker', ''),
+            'platform': 'kalshi',
+            'count': trade.get('count', 0),
+            'yesPrice': trade.get('yes_price', 0),
+            'noPrice': trade.get('no_price', 0),
+            'takerSide': trade.get('taker_side', ''),
+            'createdTime': trade.get('created_time', ''),
+            'metadata': {
+              'platform': 'kalshi',
+              'id': trade.get('trade_id', '')
+            }
+          }
+          for trade in $.get('trades', [])
+        ]
+
+  - type: mapping
+    name: dome-polymarket-orderbook-mapping
+    title: Dome API - Polymarket Orderbook Mapping
+    description: "Mapping data from Dome API Polymarket orderbook response"
+    outputs:
+      mapped-orderbook: |
+        {
+          'platform': 'polymarket',
+          'bids': [
+            {
+              'price': level.get('price', 0),
+              'size': level.get('size', 0)
+            }
+            for level in $.get('bids', [])
+          ],
+          'asks': [
+            {
+              'price': level.get('price', 0),
+              'size': level.get('size', 0)
+            }
+            for level in $.get('asks', [])
+          ],
+          'timestamp': $.get('timestamp', 0)
+        }
+
+  - type: mapping
+    name: dome-kalshi-orderbook-mapping
+    title: Dome API - Kalshi Orderbook Mapping
+    description: "Mapping data from Dome API Kalshi orderbook response"
+    outputs:
+      mapped-orderbook: |
+        {
+          'platform': 'kalshi',
+          'marketId': $.get('ticker', ''),
+          'yesLevels': [
+            {
+              'price': level[0] if isinstance(level, list) and len(level) > 0 else 0,
+              'quantity': level[1] if isinstance(level, list) and len(level) > 1 else 0
+            }
+            for level in $.get('yes', [])
+          ],
+          'noLevels': [
+            {
+              'price': level[0] if isinstance(level, list) and len(level) > 0 else 0,
+              'quantity': level[1] if isinstance(level, list) and len(level) > 1 else 0
+            }
+            for level in $.get('no', [])
+          ]
+        }
+
+  - type: mapping
+    name: dome-sports-mapping
+    title: Dome API - Sports Matching Mapping
+    description: "Mapping data from Dome API sports matching response"
+    outputs:
+      mapped-sports: |
+        [
+          {
+            'key': sport.get('key', ''),
+            'name': sport.get('name', ''),
+            'active': sport.get('active', False),
+            'metadata': {
+              'key': sport.get('key', '')
+            }
+          }
+          for sport in $.get('sports', [])
+        ]
+
+  - type: mapping
+    name: dome-sport-events-mapping
+    title: Dome API - Sport Events Mapping
+    description: "Mapping data from Dome API sport by date response"
+    outputs:
+      mapped-events: |
+        [
+          {
+            'id': event.get('id', ''),
+            'sport': $.get('sport', ''),
+            'date': $.get('date', ''),
+            'homeTeam': event.get('home_team', ''),
+            'awayTeam': event.get('away_team', ''),
+            'title': f"{event.get('away_team', '')} @ {event.get('home_team', '')}",
+            'commenceTime': event.get('commence_time', ''),
+            'matchingMarkets': {
+              'polymarket': event.get('matching_markets', {}).get('polymarket', []),
+              'kalshi': event.get('matching_markets', {}).get('kalshi', [])
+            },
+            'metadata': {
+              'id': event.get('id', ''),
+              'sport': $.get('sport', '')
+            }
+          }
+          for event in $.get('events', [])
+        ]
+
+  - type: mapping
+    name: dome-candlesticks-mapping
+    title: Dome API - Candlesticks Mapping
+    description: "Mapping data from Dome API candlesticks response"
+    outputs:
+      mapped-candlesticks: |
+        [
+          {
+            'timestamp': candle.get('timestamp', 0),
+            'open': candle.get('open', 0),
+            'high': candle.get('high', 0),
+            'low': candle.get('low', 0),
+            'close': candle.get('close', 0),
+            'volume': candle.get('volume', 0)
+          }
+          for candle in $.get('candlesticks', [])
+        ]
+
+  - type: mapping
+    name: dome-wallet-mapping
+    title: Dome API - Wallet Mapping
+    description: "Mapping data from Dome API wallet response"
+    outputs:
+      mapped-wallet: |
+        {
+          'address': $.get('address', ''),
+          'balance': $.get('balance', 0),
+          'positions': [
+            {
+              'tokenId': pos.get('token_id', ''),
+              'marketSlug': pos.get('market_slug', ''),
+              'outcome': pos.get('outcome', ''),
+              'size': pos.get('size', 0),
+              'avgPrice': pos.get('avg_price', 0),
+              'currentPrice': pos.get('current_price', 0),
+              'pnl': pos.get('pnl', 0)
+            }
+            for pos in $.get('positions', [])
+          ]
+        }
+

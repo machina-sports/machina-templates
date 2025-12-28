@@ -1,0 +1,68 @@
+workflow:
+  name: dome-sync-polymarket-markets
+  title: Dome API - Sync Polymarket Markets
+  description: Workflow to synchronize Polymarket market data from Dome API to Machina.
+  context-variables:
+    debugger:
+      enabled: false
+    dome-api:
+      apiKey: $TEMP_CONTEXT_VARIABLE_DOME_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    search: $.get('search', '')
+    limit: $.get('limit', 50)
+    offset: $.get('offset', 0)
+    active: $.get('active')
+  outputs:
+    markets: $.get('markets')
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-markets
+    - type: connector
+      name: load-markets
+      description: Get Polymarket markets from Dome API
+      connector:
+        name: dome-api
+        command: get-polymarket-markets
+      inputs:
+        search: $.get('search')
+        limit: $.get('limit')
+        offset: $.get('offset')
+        active: $.get('active')
+      outputs:
+        markets: $.get('markets', [])
+        workflow-status: "'executed'"
+
+    # 2 dome-polymarket-market-mapping
+    - type: mapping
+      name: dome-polymarket-market-mapping
+      title: Dome API - Polymarket Market Mapping
+      description: Mapping data from Dome API Polymarket markets response
+      condition: $.get('markets') is not None and len($.get('markets', [])) > 0
+      inputs:
+        markets: $.get('markets', [])
+      outputs:
+        bulk-markets: $.get('mapped-markets', [])
+
+    # 3 bulk-save-markets
+    - type: document
+      name: bulk-save-markets
+      description: Bulk save the Polymarket market data.
+      condition: $.get('bulk-markets') is not None and len($.get('bulk-markets', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: $.get('force-update')
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'dome-polymarket-markets'"
+      documents:
+        items: $.get('bulk-markets', [])
+      inputs:
+        bulk-markets: $.get('bulk-markets', [])
+

@@ -1,0 +1,109 @@
+workflow:
+  name: "the-odds-api-sync-odds"
+  title: "The Odds API - Sync Odds"
+  description: "Workflow to synchronize betting odds from The Odds API to Machina."
+  context-variables:
+    debugger:
+      enabled: false
+    the-odds-api:
+      apiKey: "$TEMP_CONTEXT_VARIABLE_THE_ODDS_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    sport: "$.get('sport', 'upcoming')"
+    regions: "$.get('regions', 'us')"
+    markets: "$.get('markets', 'h2h')"
+    oddsFormat: "$.get('oddsFormat', 'decimal')"
+    eventIds: "$.get('eventIds')"
+    bookmakers: "$.get('bookmakers')"
+  outputs:
+    odds: "$.get('odds')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 load-odds
+    - type: "connector"
+      name: "load-odds"
+      description: "Get odds from The Odds API"
+      connector:
+        name: "the-odds-api"
+        command: "get-sports/{sport}/odds"
+        command_attribute:
+          sport: "$.get('sport')"
+      inputs:
+        regions: "$.get('regions', 'us')"
+        markets: "$.get('markets', 'h2h')"
+        oddsFormat: "$.get('oddsFormat', 'decimal')"
+        eventIds: "$.get('eventIds')"
+        bookmakers: "$.get('bookmakers')"
+      outputs:
+        odds: "$"
+        bulk-odds: |
+          [
+            {
+              'event_id': event.get('id', ''),
+              'sport_key': event.get('sport_key', ''),
+              'sport_title': event.get('sport_title', ''),
+              'title': f"{event.get('home_team', '')} vs {event.get('away_team', '')}",
+              'home_team': event.get('home_team', ''),
+              'away_team': event.get('away_team', ''),
+              'commence_time': event.get('commence_time', ''),
+              'bookmakers_count': len(event.get('bookmakers', [])),
+              'markets_summary': {
+                market.get('key', ''): {
+                  'outcomes': [
+                    {
+                      'name': outcome.get('name', ''),
+                      'price': outcome.get('price', ''),
+                      'point': outcome.get('point')
+                    }
+                    for outcome in market.get('outcomes', [])
+                  ]
+                }
+                for bm in event.get('bookmakers', [])[:1]
+                for market in bm.get('markets', [])
+              },
+              'best_odds': {
+                outcome_name: max([
+                  outcome.get('price', 0)
+                  for bm in event.get('bookmakers', [])
+                  for market in bm.get('markets', [])
+                  if market.get('key') == 'h2h'
+                  for outcome in market.get('outcomes', [])
+                  if outcome.get('name') == outcome_name
+                ], default=0)
+                for outcome_name in [event.get('home_team'), event.get('away_team'), 'Draw']
+              },
+              'metadata': {
+                'event_id': event.get('id', ''),
+                'sport_key': event.get('sport_key', ''),
+                'source': 'the-odds-api'
+              }
+            }
+            for event in $
+          ]
+        workflow-status: "'executed'"
+
+    # 2 bulk-save-odds
+    - type: "document"
+      name: "bulk-save-odds"
+      description: "Bulk save the odds data."
+      condition: "$.get('bulk-odds') is not None and len($.get('bulk-odds', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-vector: true
+        embed-selector: "$.get('title')"
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'the-odds-api-odds'"
+      documents:
+        items: "$.get('parsedItems')"
+      inputs:
+        parsedItems: |
+          [
+            *$.get('bulk-odds', [])
+          ]
+

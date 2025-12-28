@@ -1,0 +1,5 @@
+connector:
+  name: "the-odds-api"
+  description: "The Odds API - Live and pre-match betting odds from multiple bookmakers across various sports"
+  filename: "the-odds-api.json"
+  filetype: "restapi" 

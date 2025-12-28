@@ -1,0 +1,48 @@
+setup:
+  title: Dome API
+  description: Connect to Dome API for comprehensive prediction market data across Polymarket and Kalshi. Access real-time market prices, historical candlestick data, wallet analytics, order tracking, trade history, and cross-platform market matching for sports events.
+  category:
+    - data-acquisition
+    - prediction-markets
+    - polymarket
+    - kalshi
+    - trading
+    - sports-betting
+  estimatedTime: 1 minute
+  features:
+    - Polymarket Markets & Prices
+    - Kalshi Markets & Trading
+    - Trade History & Orderbook
+    - Wallet Analytics & P&L
+    - Candlestick/OHLC Data
+    - Cross-Platform Sports Matching
+    - Crypto Price Feeds (Binance, Chainlink)
+    - Real-time Market Data
+  integrations:
+    - dome-api
+    - polymarket
+    - kalshi
+  requirements:
+    - Dome-API-Key
+  status: available
+  value: connectors/dome-api
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: dome-api.yml
+
+  - type: mappings
+    path: mappings/markets.yml
+
+  - type: workflow
+    path: _folders.yml
+
+  - type: workflow
+    path: workflows/sync-polymarket-markets.yml
+
+  - type: workflow
+    path: workflows/sync-kalshi-markets.yml
+
+  - type: workflow
+    path: workflows/sync-sports-matching.yml

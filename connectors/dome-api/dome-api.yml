@@ -1,0 +1,5 @@
+connector:
+  name: "dome-api"
+  description: "Dome API - Comprehensive prediction market data from Polymarket and Kalshi"
+  filename: "dome-api.json"
+  filetype: "restapi"

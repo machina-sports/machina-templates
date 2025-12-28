@@ -1,0 +1,86 @@
+workflow:
+  name: dome-folders
+  title: Dome API - Folders
+  description: Dome API - Folders Structure
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Setup folder structure
+    - type: document
+      name: install-documents
+      description: Install documents and folder structure.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        doc-structure: |
+          [
+            {
+              "title": "Dome API Markets",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "dome-polymarket-markets",
+                  "title": "Polymarket Markets",
+                  "description": "Polymarket prediction market data via Dome API",
+                  "category": "Dome API",
+                  "metadata": {
+                    "name": ["dome-polymarket-markets"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "dome-kalshi-markets",
+                  "title": "Kalshi Markets",
+                  "description": "Kalshi prediction market data via Dome API",
+                  "category": "Dome API",
+                  "metadata": {
+                    "name": ["dome-kalshi-markets"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "dome-sports-events",
+                  "title": "Sports Events",
+                  "description": "Cross-platform sports events with matching markets",
+                  "category": "Dome API",
+                  "metadata": {
+                    "name": ["dome-sports-events"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "dome-polymarket-trades",
+                  "title": "Polymarket Trades",
+                  "description": "Polymarket trade history via Dome API",
+                  "category": "Dome API",
+                  "metadata": {
+                    "name": ["dome-polymarket-trades"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "dome-kalshi-trades",
+                  "title": "Kalshi Trades",
+                  "description": "Kalshi trade history via Dome API",
+                  "category": "Dome API",
+                  "metadata": {
+                    "name": ["dome-kalshi-trades"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
+

@@ -1,0 +1,69 @@
+workflow:
+  name: "the-odds-api-sync-sports"
+  title: "The Odds API - Sync Sports"
+  description: "Workflow to synchronize available sports from The Odds API to Machina."
+  context-variables:
+    debugger:
+      enabled: false
+    the-odds-api:
+      apiKey: "$TEMP_CONTEXT_VARIABLE_THE_ODDS_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    all: "$.get('all', 'false')"
+  outputs:
+    sports: "$.get('sports')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 load-sports
+    - type: "connector"
+      name: "load-sports"
+      description: "Get available sports from The Odds API"
+      connector:
+        name: "the-odds-api"
+        command: "get-sports"
+      inputs:
+        all: "$.get('all', 'false')"
+      outputs:
+        sports: "$"
+        bulk-sports: |
+          [
+            {
+              'key': sport.get('key', ''),
+              'group': sport.get('group', ''),
+              'title': sport.get('title', ''),
+              'description': sport.get('description', ''),
+              'active': sport.get('active', False),
+              'has_outrights': sport.get('has_outrights', False),
+              'metadata': {
+                'sport_key': sport.get('key', ''),
+                'source': 'the-odds-api'
+              }
+            }
+            for sport in $
+          ]
+        workflow-status: "'executed'"
+
+    # 2 bulk-save-sports
+    - type: "document"
+      name: "bulk-save-sports"
+      description: "Bulk save the sports data."
+      condition: "$.get('bulk-sports') is not None and len($.get('bulk-sports', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-vector: true
+        force-update: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'the-odds-api-sports'"
+      documents:
+        items: "$.get('parsedItems')"
+      inputs:
+        parsedItems: |
+          [
+            *$.get('bulk-sports', [])
+          ]
+

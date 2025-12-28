@@ -1,0 +1,1449 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "The Odds API",
+    "description": "The Odds API provides live and pre-match odds from various bookmakers across multiple sports. Get real-time betting odds, scores, and historical data.",
+    "version": "4"
+  },
+  "servers": [
+    {
+      "url": "https://api.the-odds-api.com/v4"
+    }
+  ],
+  "paths": {
+    "/sports": {
+      "get": {
+        "tags": ["sports"],
+        "summary": "Get a list of available sports",
+        "description": "Returns a list of in-season sports that have betting markets available. Use this endpoint to discover which sport keys to use with other endpoints.",
+        "operationId": "GetSports",
+        "parameters": [
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "all",
+            "in": "query",
+            "description": "If true, returns all sports including out-of-season sports",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Sport"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/odds": {
+      "get": {
+        "tags": ["odds"],
+        "summary": "Get odds for a sport",
+        "description": "Returns a list of upcoming and live games with recent odds for a given sport, region, and market. Use the /sports endpoint to get valid sport keys.",
+        "operationId": "GetOdds",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint. Use 'upcoming' to get the next 8 events across all sports.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "regions",
+            "in": "query",
+            "description": "Comma-separated list of regions to get bookmaker odds from. Valid regions: us, us2, uk, au, eu",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "markets",
+            "in": "query",
+            "description": "Comma-separated list of markets. Valid markets: h2h (head to head / moneyline), spreads, totals, outrights, h2h_lay, spreads_lay, totals_lay",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "h2h"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "oddsFormat",
+            "in": "query",
+            "description": "Format for odds values. Options: decimal or american",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["decimal", "american"],
+              "default": "decimal"
+            }
+          },
+          {
+            "name": "eventIds",
+            "in": "query",
+            "description": "Comma-separated list of event IDs to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "description": "Comma-separated list of bookmaker keys to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commenceTimeFrom",
+            "in": "query",
+            "description": "Filter events starting from this time (ISO 8601 format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "commenceTimeTo",
+            "in": "query",
+            "description": "Filter events starting before this time (ISO 8601 format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "includeLinks",
+            "in": "query",
+            "description": "If true, include bookmaker links to events, markets, and betslips if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeSids",
+            "in": "query",
+            "description": "If true, include source ids (bookmaker ids) for events, markets and outcomes if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeBetLimits",
+            "in": "query",
+            "description": "If true, include the bet limit of each betting option, mainly available for betting exchanges",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeRotationNumbers",
+            "in": "query",
+            "description": "If true, include home and away rotation numbers if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Event"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/scores": {
+      "get": {
+        "tags": ["scores"],
+        "summary": "Get scores for a sport",
+        "description": "Returns a list of live and recently completed events with scores. Only available for certain sports.",
+        "operationId": "GetScores",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "daysFrom",
+            "in": "query",
+            "description": "Number of days in the past to return completed events (1-3). If not specified, only live events are returned.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "eventIds",
+            "in": "query",
+            "description": "Comma-separated list of event IDs to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScoreEvent"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/events": {
+      "get": {
+        "tags": ["events"],
+        "summary": "Get events for a sport",
+        "description": "Returns a list of upcoming and live events for a given sport without odds data. This is a lightweight endpoint for listing events.",
+        "operationId": "GetEvents",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "eventIds",
+            "in": "query",
+            "description": "Comma-separated list of event IDs to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commenceTimeFrom",
+            "in": "query",
+            "description": "Filter events starting from this time (ISO 8601 format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "commenceTimeTo",
+            "in": "query",
+            "description": "Filter events starting before this time (ISO 8601 format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "includeRotationNumbers",
+            "in": "query",
+            "description": "If true, include home and away rotation numbers if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventBasic"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/events/{eventId}/odds": {
+      "get": {
+        "tags": ["odds"],
+        "summary": "Get odds for a specific event",
+        "description": "Returns odds for a specific event. This endpoint allows more detailed market selection per event.",
+        "operationId": "GetEventOdds",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "description": "The event ID obtained from the /odds or /events endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "regions",
+            "in": "query",
+            "description": "Comma-separated list of regions. Valid regions: us, us2, uk, au, eu",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "markets",
+            "in": "query",
+            "description": "Comma-separated list of markets. Valid markets: h2h, spreads, totals, outrights, player_props, alternate_spreads, alternate_totals, btts, draw_no_bet, double_chance",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "h2h"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "oddsFormat",
+            "in": "query",
+            "description": "Format for odds values. Options: decimal or american",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["decimal", "american"],
+              "default": "decimal"
+            }
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "description": "Comma-separated list of bookmaker keys to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeLinks",
+            "in": "query",
+            "description": "If true, include bookmaker links to events, markets, and betslips if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeSids",
+            "in": "query",
+            "description": "If true, include source ids (bookmaker ids) for events, markets and outcomes if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeBetLimits",
+            "in": "query",
+            "description": "If true, include the bet limit of each betting option, mainly available for betting exchanges",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeRotationNumbers",
+            "in": "query",
+            "description": "If true, include home and away rotation numbers if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "includeMultipliers",
+            "in": "query",
+            "description": "If true, include multipliers in each bet selection outcome (applicable to US DFS sites)",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/events/{eventId}/markets": {
+      "get": {
+        "tags": ["markets"],
+        "summary": "Get available markets for a specific event",
+        "description": "Returns available market keys for each bookmaker for a single event. This endpoint only returns recently seen market keys.",
+        "operationId": "GetEventMarkets",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "description": "The event ID obtained from the /events endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "regions",
+            "in": "query",
+            "description": "Comma-separated list of regions. Valid regions: us, us2, uk, au, eu",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "description": "Comma-separated list of bookmaker keys to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventMarkets"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/historical/sports/{sport}/odds": {
+      "get": {
+        "tags": ["historical"],
+        "summary": "Get historical odds snapshots",
+        "description": "Returns historical odds snapshots for events at a specified point in time. Historical data is available from June 2020.",
+        "operationId": "GetHistoricalOdds",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "regions",
+            "in": "query",
+            "description": "Comma-separated list of regions. Valid regions: us, us2, uk, au, eu",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "markets",
+            "in": "query",
+            "description": "Comma-separated list of markets. Valid markets: h2h, spreads, totals",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "h2h"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "The historical snapshot date in ISO 8601 format (e.g., 2023-09-20T12:00:00Z)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "oddsFormat",
+            "in": "query",
+            "description": "Format for odds values. Options: decimal or american",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["decimal", "american"],
+              "default": "decimal"
+            }
+          },
+          {
+            "name": "eventIds",
+            "in": "query",
+            "description": "Comma-separated list of event IDs to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "description": "Comma-separated list of bookmaker keys to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalOddsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/historical/sports/{sport}/events": {
+      "get": {
+        "tags": ["historical"],
+        "summary": "Get historical events list",
+        "description": "Returns a list of historical events as they appeared in the API at the given timestamp. Use this to find historical event IDs for the historical event odds endpoint.",
+        "operationId": "GetHistoricalEvents",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "The historical snapshot date in ISO 8601 format (e.g., 2023-09-20T12:00:00Z)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "eventIds",
+            "in": "query",
+            "description": "Comma-separated list of event IDs to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commenceTimeFrom",
+            "in": "query",
+            "description": "Filter events starting from this time (ISO 8601 format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "commenceTimeTo",
+            "in": "query",
+            "description": "Filter events starting before this time (ISO 8601 format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "includeRotationNumbers",
+            "in": "query",
+            "description": "If true, include home and away rotation numbers if available",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalEventsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/historical/sports/{sport}/events/{eventId}/odds": {
+      "get": {
+        "tags": ["historical"],
+        "summary": "Get historical odds for a specific event",
+        "description": "Returns historical odds snapshots for a specific event at a specified point in time.",
+        "operationId": "GetHistoricalEventOdds",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "description": "The event ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "regions",
+            "in": "query",
+            "description": "Comma-separated list of regions. Valid regions: us, us2, uk, au, eu",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "us"
+            }
+          },
+          {
+            "name": "markets",
+            "in": "query",
+            "description": "Comma-separated list of markets. Valid markets: h2h, spreads, totals",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "h2h"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "The historical snapshot date in ISO 8601 format (e.g., 2023-09-20T12:00:00Z)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "dateFormat",
+            "in": "query",
+            "description": "Format for date/time values. Options: iso (ISO 8601) or unix (Unix timestamp)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["iso", "unix"],
+              "default": "iso"
+            }
+          },
+          {
+            "name": "oddsFormat",
+            "in": "query",
+            "description": "Format for odds values. Options: decimal or american",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["decimal", "american"],
+              "default": "decimal"
+            }
+          },
+          {
+            "name": "bookmakers",
+            "in": "query",
+            "description": "Comma-separated list of bookmaker keys to filter by",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeMultipliers",
+            "in": "query",
+            "description": "If true, include multipliers in each bet selection outcome (applicable to US DFS sites)",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalEventOddsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "404": {
+            "description": "Event not found"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    },
+    "/sports/{sport}/participants": {
+      "get": {
+        "tags": ["participants"],
+        "summary": "Get participants for a sport",
+        "description": "Returns a list of participants (teams, players) for a given sport. Currently available for limited sports.",
+        "operationId": "GetParticipants",
+        "parameters": [
+          {
+            "name": "sport",
+            "in": "path",
+            "description": "The sport key obtained from the /sports endpoint",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apiKey",
+            "in": "query",
+            "description": "Your API key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Participant"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid API key"
+          },
+          "422": {
+            "description": "Unprocessable Entity - Invalid parameters"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Sport": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique identifier for the sport"
+          },
+          "group": {
+            "type": "string",
+            "description": "Sport group/category"
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable sport name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Sport description"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Whether the sport is currently in season"
+          },
+          "has_outrights": {
+            "type": "boolean",
+            "description": "Whether the sport has outright/futures markets"
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the event"
+          },
+          "sport_key": {
+            "type": "string",
+            "description": "Sport key"
+          },
+          "sport_title": {
+            "type": "string",
+            "description": "Human-readable sport name"
+          },
+          "commence_time": {
+            "type": "string",
+            "description": "Event start time (ISO 8601 or Unix timestamp)"
+          },
+          "home_team": {
+            "type": "string",
+            "description": "Home team name"
+          },
+          "away_team": {
+            "type": "string",
+            "description": "Away team name"
+          },
+          "bookmakers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Bookmaker"
+            }
+          }
+        }
+      },
+      "EventBasic": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the event"
+          },
+          "sport_key": {
+            "type": "string",
+            "description": "Sport key"
+          },
+          "sport_title": {
+            "type": "string",
+            "description": "Human-readable sport name"
+          },
+          "commence_time": {
+            "type": "string",
+            "description": "Event start time (ISO 8601 or Unix timestamp)"
+          },
+          "home_team": {
+            "type": "string",
+            "description": "Home team name"
+          },
+          "away_team": {
+            "type": "string",
+            "description": "Away team name"
+          }
+        }
+      },
+      "ScoreEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the event"
+          },
+          "sport_key": {
+            "type": "string",
+            "description": "Sport key"
+          },
+          "sport_title": {
+            "type": "string",
+            "description": "Human-readable sport name"
+          },
+          "commence_time": {
+            "type": "string",
+            "description": "Event start time"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Whether the event has completed"
+          },
+          "home_team": {
+            "type": "string",
+            "description": "Home team name"
+          },
+          "away_team": {
+            "type": "string",
+            "description": "Away team name"
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Score"
+            },
+            "nullable": true
+          },
+          "last_update": {
+            "type": "string",
+            "description": "Last update timestamp",
+            "nullable": true
+          }
+        }
+      },
+      "Score": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Team name"
+          },
+          "score": {
+            "type": "string",
+            "description": "Team score"
+          }
+        }
+      },
+      "Bookmaker": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique identifier for the bookmaker"
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable bookmaker name"
+          },
+          "last_update": {
+            "type": "string",
+            "description": "Last update timestamp for this bookmaker's odds"
+          },
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Market"
+            }
+          }
+        }
+      },
+      "Market": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Market type (h2h, spreads, totals, etc.)"
+          },
+          "last_update": {
+            "type": "string",
+            "description": "Last update timestamp for this market"
+          },
+          "outcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Outcome"
+            }
+          }
+        }
+      },
+      "Outcome": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Outcome name (team name, Over, Under, Draw)"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Odds price (decimal or american format)"
+          },
+          "point": {
+            "type": "number",
+            "format": "double",
+            "description": "Point spread or total value (for spreads/totals markets)",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Additional description for player props",
+            "nullable": true
+          }
+        }
+      },
+      "HistoricalOddsResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "description": "The timestamp of the snapshot"
+          },
+          "previous_timestamp": {
+            "type": "string",
+            "description": "The previous available snapshot timestamp",
+            "nullable": true
+          },
+          "next_timestamp": {
+            "type": "string",
+            "description": "The next available snapshot timestamp",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          }
+        }
+      },
+      "Participant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the participant"
+          },
+          "full_name": {
+            "type": "string",
+            "description": "Full name of the participant (team or player)"
+          }
+        }
+      },
+      "EventMarkets": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the event"
+          },
+          "sport_key": {
+            "type": "string",
+            "description": "Sport key"
+          },
+          "sport_title": {
+            "type": "string",
+            "description": "Human-readable sport name"
+          },
+          "commence_time": {
+            "type": "string",
+            "description": "Event start time"
+          },
+          "home_team": {
+            "type": "string",
+            "description": "Home team name"
+          },
+          "away_team": {
+            "type": "string",
+            "description": "Away team name"
+          },
+          "bookmakers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookmakerMarkets"
+            }
+          }
+        }
+      },
+      "BookmakerMarkets": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique identifier for the bookmaker"
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable bookmaker name"
+          },
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MarketKey"
+            }
+          }
+        }
+      },
+      "MarketKey": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Market key identifier"
+          },
+          "last_update": {
+            "type": "string",
+            "description": "Last update timestamp for this market"
+          }
+        }
+      },
+      "HistoricalEventsResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "description": "The timestamp of the snapshot"
+          },
+          "previous_timestamp": {
+            "type": "string",
+            "description": "The previous available snapshot timestamp",
+            "nullable": true
+          },
+          "next_timestamp": {
+            "type": "string",
+            "description": "The next available snapshot timestamp",
+            "nullable": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventBasic"
+            }
+          }
+        }
+      },
+      "HistoricalEventOddsResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "description": "The timestamp of the snapshot"
+          },
+          "previous_timestamp": {
+            "type": "string",
+            "description": "The previous available snapshot timestamp",
+            "nullable": true
+          },
+          "next_timestamp": {
+            "type": "string",
+            "description": "The next available snapshot timestamp",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Event",
+            "description": "Single event with odds data"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "name": "apiKey",
+        "in": "query",
+        "description": "API key passed as a query parameter"
+      }
+    }
+  },
+  "security": [
+    {
+      "apiKey": []
+    }
+  ]
+}
+

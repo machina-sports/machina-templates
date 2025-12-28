@@ -1,0 +1,69 @@
+workflow:
+  name: dome-sync-sports-matching
+  title: Dome API - Sync Sports Matching Markets
+  description: Workflow to synchronize sports events with matching markets across Polymarket and Kalshi from Dome API.
+  context-variables:
+    debugger:
+      enabled: false
+    dome-api:
+      apiKey: $TEMP_CONTEXT_VARIABLE_DOME_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    sport: $.get('sport', 'nfl')
+    date: $.get('date', '')
+  outputs:
+    events: $.get('events')
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-sport-events
+    - type: connector
+      name: load-sport-events
+      description: Get sports events with matching markets from Dome API
+      condition: $.get('sport') is not None and $.get('date') is not None
+      connector:
+        name: dome-api
+        command: get-sport-by-date
+      inputs:
+        sport: $.get('sport')
+        date: $.get('date')
+      outputs:
+        sport: $.get('sport', '')
+        date: $.get('date', '')
+        events: $.get('events', [])
+        workflow-status: "'executed'"
+
+    # 2 dome-sport-events-mapping
+    - type: mapping
+      name: dome-sport-events-mapping
+      title: Dome API - Sport Events Mapping
+      description: Mapping data from Dome API sport by date response
+      condition: $.get('events') is not None and len($.get('events', [])) > 0
+      inputs:
+        sport: $.get('sport', '')
+        date: $.get('date', '')
+        events: $.get('events', [])
+      outputs:
+        bulk-events: $.get('mapped-events', [])
+
+    # 3 bulk-save-events
+    - type: document
+      name: bulk-save-events
+      description: Bulk save the sports events with matching markets.
+      condition: $.get('bulk-events') is not None and len($.get('bulk-events', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: $.get('force-update')
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'dome-sports-events'"
+      documents:
+        items: $.get('bulk-events', [])
+      inputs:
+        bulk-events: $.get('bulk-events', [])
+

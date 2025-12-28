@@ -1,0 +1,173 @@
+mappings:
+
+  - type: mapping
+    name: odds-api-event-mapping
+    title: Event Mapping
+    description: "Mapping data from The Odds API events"
+    outputs:
+      mapped-events: |
+        [
+          {
+            'id': event.get('id', ''),
+            'sport_key': event.get('sport_key', ''),
+            'sport_title': event.get('sport_title', ''),
+            'title': f"{event.get('home_team', '')} vs {event.get('away_team', '')}",
+            'home_team': event.get('home_team', ''),
+            'away_team': event.get('away_team', ''),
+            'commence_time': event.get('commence_time', ''),
+            'metadata': {
+              'sport_key': event.get('sport_key', ''),
+              'event_id': event.get('id', '')
+            }
+          }
+          for event in $.get('events', [])
+        ]
+
+  - type: mapping
+    name: odds-api-odds-mapping
+    title: Odds Mapping
+    description: "Mapping data from The Odds API odds response"
+    outputs:
+      mapped-odds: |
+        [
+          {
+            'event_id': event.get('id', ''),
+            'sport_key': event.get('sport_key', ''),
+            'sport_title': event.get('sport_title', ''),
+            'title': f"{event.get('home_team', '')} vs {event.get('away_team', '')}",
+            'home_team': event.get('home_team', ''),
+            'away_team': event.get('away_team', ''),
+            'commence_time': event.get('commence_time', ''),
+            'bookmakers': [
+              {
+                'key': bm.get('key', ''),
+                'title': bm.get('title', ''),
+                'last_update': bm.get('last_update', ''),
+                'markets': [
+                  {
+                    'key': market.get('key', ''),
+                    'last_update': market.get('last_update', ''),
+                    'outcomes': [
+                      {
+                        'name': outcome.get('name', ''),
+                        'price': outcome.get('price', ''),
+                        'point': outcome.get('point')
+                      }
+                      for outcome in market.get('outcomes', [])
+                    ]
+                  }
+                  for market in bm.get('markets', [])
+                ]
+              }
+              for bm in event.get('bookmakers', [])
+            ]
+          }
+          for event in $.get('odds', [])
+        ]
+      flat-outcomes: |
+        [
+          {
+            'event_id': event.get('id', ''),
+            'sport_key': event.get('sport_key', ''),
+            'title': f"{event.get('home_team', '')} vs {event.get('away_team', '')}",
+            'commence_time': event.get('commence_time', ''),
+            'bookmaker': bm.get('key', ''),
+            'bookmaker_title': bm.get('title', ''),
+            'market': market.get('key', ''),
+            'outcome_name': outcome.get('name', ''),
+            'price': outcome.get('price', ''),
+            'point': outcome.get('point'),
+            'last_update': market.get('last_update', '')
+          }
+          for event in $.get('odds', [])
+          for bm in event.get('bookmakers', [])
+          for market in bm.get('markets', [])
+          for outcome in market.get('outcomes', [])
+        ]
+      best-odds: |
+        {
+          event.get('id', ''): {
+            'event_id': event.get('id', ''),
+            'title': f"{event.get('home_team', '')} vs {event.get('away_team', '')}",
+            'home_team': event.get('home_team', ''),
+            'away_team': event.get('away_team', ''),
+            'h2h': {
+              outcome_name: max([
+                {
+                  'price': outcome.get('price', 0),
+                  'bookmaker': bm.get('key', ''),
+                  'bookmaker_title': bm.get('title', '')
+                }
+                for bm in event.get('bookmakers', [])
+                for market in bm.get('markets', [])
+                if market.get('key') == 'h2h'
+                for outcome in market.get('outcomes', [])
+                if outcome.get('name') == outcome_name
+              ], key=lambda x: x.get('price', 0), default={})
+              for outcome_name in [event.get('home_team'), event.get('away_team'), 'Draw']
+            }
+          }
+          for event in $.get('odds', [])
+        }
+
+  - type: mapping
+    name: odds-api-scores-mapping
+    title: Scores Mapping
+    description: "Mapping data from The Odds API scores response"
+    outputs:
+      mapped-scores: |
+        [
+          {
+            'event_id': event.get('id', ''),
+            'sport_key': event.get('sport_key', ''),
+            'sport_title': event.get('sport_title', ''),
+            'title': f"{event.get('home_team', '')} vs {event.get('away_team', '')}",
+            'home_team': event.get('home_team', ''),
+            'away_team': event.get('away_team', ''),
+            'commence_time': event.get('commence_time', ''),
+            'completed': event.get('completed', False),
+            'last_update': event.get('last_update', ''),
+            'scores': {
+              score.get('name', ''): score.get('score', '')
+              for score in event.get('scores', []) or []
+            }
+          }
+          for event in $.get('scores', [])
+        ]
+
+  - type: mapping
+    name: odds-api-sports-mapping
+    title: Sports Mapping
+    description: "Mapping data from The Odds API sports response"
+    outputs:
+      mapped-sports: |
+        [
+          {
+            'key': sport.get('key', ''),
+            'group': sport.get('group', ''),
+            'title': sport.get('title', ''),
+            'description': sport.get('description', ''),
+            'active': sport.get('active', False),
+            'has_outrights': sport.get('has_outrights', False)
+          }
+          for sport in $.get('sports', [])
+        ]
+      active-sports: |
+        [
+          sport.get('key', '')
+          for sport in $.get('sports', [])
+          if sport.get('active', False)
+        ]
+      sports-by-group: |
+        {
+          group: [
+            sport.get('key', '')
+            for sport in $.get('sports', [])
+            if sport.get('group', '') == group
+          ]
+          for group in list(set([
+            sport.get('group', '')
+            for sport in $.get('sports', [])
+          ]))
+        }
+
