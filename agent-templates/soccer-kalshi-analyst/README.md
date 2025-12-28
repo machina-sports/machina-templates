@@ -109,6 +109,10 @@ This section documents the **reliable patterns** we used to interact with Machin
 - **Finding `sport:Event` fixtures** (Premier League / EPL)
 - **Executing agents** in batch and capturing `agents/execution/<id>` without repeating common errors
 
+### Simulation (MCP)
+
+See `simulation/README.md` for ready-to-copy MCP queries (ex: EPL 2025 events in chronological order where `forecasted != true`, using `page_size: 3` so you can keep increasing `page` to process more).
+
 ### 1) Start by inspecting the data shape
 
 When a filter returns 0 results, it’s often because the field lives under `value` (not `metadata`) or uses namespaced keys like `schema:startDate`.
