@@ -14,6 +14,8 @@ from PIL import Image
 
 import base64
 
+import datetime
+
 import json
 
 import os
@@ -371,6 +373,73 @@ def invoke_search(request_data):
     model_name = params.get("model_name")
 
     search_query = params.get("search_query")
+    # Date filtering (inclusive).
+    # We support:
+    # - start_date/end_date as YYYY-MM-DD
+    # - startDate/endDate as ISO8601 datetime strings (e.g. 2025-08-15T19:00:00+00:00)
+    # - Back-compat: if schema provides `startDate` and `end_date` is not provided,
+    #   we treat `startDate` as the anchor/end of the search window.
+    start_date = params.get("start_date")  # YYYY-MM-DD
+    end_date = params.get("end_date")  # YYYY-MM-DD
+    start_date_iso = params.get("startDate")  # ISO8601 datetime
+    end_date_iso = params.get("endDate")  # ISO8601 datetime
+    days_back = params.get("days_back", 3)  # used when start_date is missing but end is present
+
+    def _parse_date_or_datetime(value, field_name):
+        """
+        Accepts either:
+        - YYYY-MM-DD
+        - ISO8601 datetime (e.g. 2025-08-15T19:00:00+00:00)
+        Returns a datetime.date or None.
+        """
+        if value is None or value == "":
+            return None
+        if not isinstance(value, str):
+            raise ValueError(f"{field_name} must be a string (YYYY-MM-DD or ISO8601 datetime)")
+        v = value.strip()
+        try:
+            # Be permissive: if the value begins with YYYY-MM-DD, extract that date portion.
+            # This covers many ISO variants (fractions, Z suffix, timezone offsets, etc.).
+            if len(v) >= 10 and v[4] == "-" and v[7] == "-":
+                return datetime.date.fromisoformat(v[:10])
+            if "T" in v:
+                return datetime.datetime.fromisoformat(v).date()
+            return datetime.date.fromisoformat(v)
+        except Exception:
+            raise ValueError(
+                f"{field_name} must be YYYY-MM-DD or ISO8601 datetime (got: {value})"
+            )
+
+    def _parse_days_back(value, field_name="days_back"):
+        if value is None or value == "":
+            return 3
+        if isinstance(value, bool):
+            raise ValueError(f"{field_name} must be an integer (got: {value})")
+        try:
+            n = int(value)
+        except Exception:
+            raise ValueError(f"{field_name} must be an integer (got: {value})")
+        if n < 0:
+            raise ValueError(f"{field_name} must be >= 0 (got: {n})")
+        return n
+
+    def _apply_date_filter_to_query(query, start_dt, end_dt):
+        """
+        Adds Google date operators to the query string:
+        - start_dt (inclusive) -> after:YYYY-MM-DD
+        - end_dt (inclusive) -> before:(end_dt + 1 day) because before: is typically exclusive
+        """
+        q = (query or "").strip()
+        tokens = []
+        if start_dt:
+            tokens.append(f"after:{start_dt.isoformat()}")
+        if end_dt:
+            before_dt = end_dt + datetime.timedelta(days=1)
+            tokens.append(f"before:{before_dt.isoformat()}")
+        if not tokens:
+            return q
+        # Keep original query first for relevance, then apply date constraints
+        return f"{q} {' '.join(tokens)}".strip()
 
     credentials = None
     if credential:
@@ -391,6 +460,38 @@ def invoke_search(request_data):
         return {"status": False, "message": "search_query is required."}
 
     try:
+        try:
+            days_back_n = _parse_days_back(days_back, "days_back")
+
+            # Direct params take precedence
+            start_dt = _parse_date_or_datetime(start_date, "start_date")
+            end_dt = _parse_date_or_datetime(end_date, "end_date")
+
+            # ISO variants (explicit endDate wins; startDate can be used as start OR as anchor)
+            if end_dt is None and end_date_iso:
+                end_dt = _parse_date_or_datetime(end_date_iso, "endDate")
+
+            # Back-compat anchor behavior: if end not set, treat startDate as anchor/end of window
+            anchor_end_dt = None
+            if start_date_iso:
+                anchor_end_dt = _parse_date_or_datetime(start_date_iso, "startDate")
+                if end_dt is None:
+                    end_dt = anchor_end_dt
+
+            # If we have an end date but no start date, derive start_dt = end_dt - days_back
+            if end_dt is not None and start_dt is None:
+                start_dt = end_dt - datetime.timedelta(days=days_back_n)
+        except ValueError as e:
+            return {"status": False, "message": str(e)}
+
+        if start_dt and end_dt and start_dt > end_dt:
+            return {
+                "status": False,
+                "message": "start_date must be earlier than or equal to end_date",
+            }
+
+        final_query = _apply_date_filter_to_query(search_query, start_dt, end_dt)
+
         llm = ChatVertexAI(
             model=model_name,
             credentials=credentials,
@@ -400,7 +501,7 @@ def invoke_search(request_data):
 
         llm = llm.bind_tools([{"google_search": {}}])
 
-        response = llm.invoke(search_query)
+        response = llm.invoke(final_query)
 
         # Extract grounding metadata
         grounding_metadata = response.response_metadata.get("grounding_metadata", {})
@@ -421,7 +522,15 @@ def invoke_search(request_data):
         return {
             "status": True,
             "data": {
-                "query": search_query,
+                "query": search_query,          # original user query
+                "final_query": final_query,     # query actually used (includes after:/before:)
+                "start_date": start_date,       # echo input (YYYY-MM-DD)
+                "end_date": end_date,           # echo input (YYYY-MM-DD)
+                "startDate": start_date_iso,    # echo input (ISO8601)
+                "endDate": end_date_iso,        # echo input (ISO8601)
+                "days_back": days_back,         # echo input
+                "derived_start_date": start_dt.isoformat() if start_dt else None,
+                "derived_end_date": end_dt.isoformat() if end_dt else None,
                 "answer": response.content,
                 "search_results": search_results,  # Easy access to links and titles
                 "search_queries": web_queries,     # Queries that were executed
