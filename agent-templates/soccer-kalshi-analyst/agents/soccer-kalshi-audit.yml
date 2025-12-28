@@ -1,6 +1,6 @@
 agent:
-  name: soccer-audit-scheduler
-  title: Soccer Audit Scheduler
+  name: soccer-kalshi-audit
+  title: Soccer Kalshi Audit
   description: |
     Automated scheduler that monitors recently finished soccer matches (last 24 hours) 
     and triggers post-match audit workflow to compare predictions against actual results.

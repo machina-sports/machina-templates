@@ -11,6 +11,14 @@ prompt:
     **Competition:** {{league}}
     **Date:** {{game_date}}
 
+    ## TEMPORAL SCOPE (CRITICAL)
+    Every query MUST be **strictly PRE-MATCH** (information available before kickoff).
+    Avoid ambiguous wording that commonly returns post-match pages.
+
+    ### Do not include
+    Do NOT include terms like: result/score/highlights/recap/report/reaction/post-match/FT
+    Do NOT use past-tense framing like "who won" / "what happened".
+
     ## LANGUAGE REQUIREMENTS (CRITICAL)
     ALL queries MUST be in the LOCAL LANGUAGE of the clubs/competition.
 
@@ -42,6 +50,7 @@ prompt:
     - Minimum 80% in local language (use authentic terminology)
     - Each query specific enough to return <50 results
     - Avoid generic terms like "match preview"
+    - Keep queries short and specific (injuries, lineups, tactics, suspensions, etc.)
   schema:
     title: news_query_generator_output
     description: Search queries for soccer match intelligence in local language
@@ -54,8 +63,8 @@ prompt:
       news_queries:
         type: array
         description: Search queries in the local language of the clubs
-        minItems: 6
-        maxItems: 8
+        minItems: 3
+        maxItems: 5
         items:
           type: object
           required: ["query", "language", "target_info"]

@@ -58,6 +58,7 @@ workflow:
         team: "$.get('h_id')"
         league: "$.get('league')"
         season: "$.get('season')"
+        date: "(datetime.fromisoformat(str($.get('event_doc', {}).get('schema:startDate', ''))[:10]).date() - timedelta(days=1)).isoformat()"
       outputs:
         h_stats: "$"
 
@@ -70,6 +71,7 @@ workflow:
         team: "$.get('a_id')"
         league: "$.get('league')"
         season: "$.get('season')"
+        date: "(datetime.fromisoformat(str($.get('event_doc', {}).get('schema:startDate', ''))[:10]).date() - timedelta(days=1)).isoformat()"
       outputs:
         a_stats: "$"
 
@@ -102,8 +104,12 @@ workflow:
         expr: $
         value: $.get('news_queries')
       inputs:
-        search_query: "$.get('query_obj').get('query')"
-        recency_days: 3
+        search_query: |
+          (
+            $.get('query_obj').get('query')
+            + ' after:' + (datetime.fromisoformat(str($.get('event_doc', {}).get('schema:startDate', ''))[:10]).date() - timedelta(days=3)).isoformat()
+            + ' before:' + (datetime.fromisoformat(str($.get('event_doc', {}).get('schema:startDate', ''))[:10]).date()).isoformat()
+          )
       outputs:
         search_results: |
           [
@@ -120,6 +126,7 @@ workflow:
         provider: vertex_ai
       inputs:
         matchup: "$.get('h_name') + ' vs ' + $.get('a_name')"
+        game_date: "$.get('event_doc', {}).get('schema:startDate')"
         search_results: "$.get('search_results', [])"
       outputs:
         evidence: "$"

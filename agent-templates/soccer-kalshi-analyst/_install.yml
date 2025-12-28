@@ -49,7 +49,7 @@ datasets:
     path: agents/soccer-kalshi-sync.yml
 
   - type: agent
-    path: agents/soccer-audit-scheduler.yml
+    path: agents/soccer-kalshi-audit.yml
 
   # Configuration
 
