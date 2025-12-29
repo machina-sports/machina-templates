@@ -70,11 +70,17 @@ datasets:
   - type: connector
     path: scripts/correlation_analyzer.yml
 
+  - type: connector
+    path: scripts/kalshi_price_resolver.yml
+
   - type: mappings
     path: mappings/kalshi-markets-summary.yml
 
   - type: mappings
     path: mappings/combine-events.yml
+
+  - type: mappings
+    path: mappings/analyze-kalshi-markets.yml
 
   # Prompts
   - type: prompt

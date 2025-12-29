@@ -1493,19 +1493,55 @@
                 ],
                 "parameters": [
                     {
-                        "$ref": "#/components/parameters/MarketLimitQuery"
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of results per page. Defaults to 100. Maximum value is 1000.",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64",
+                            "minimum": 1,
+                            "maximum": 1000,
+                            "default": 100,
+                            "x-oapi-codegen-extra-tags": {
+                                "validate": "omitempty,gte=1,lte=1000"
+                            }
+                        }
                     },
                     {
-                        "$ref": "#/components/parameters/CursorQuery"
+                        "name": "cursor",
+                        "in": "query",
+                        "description": "Pagination cursor. Use the cursor value returned from the previous response to get the next page of results. Leave empty for the first page.",
+                        "schema": {
+                            "type": "string",
+                            "x-go-type-skip-optional-pointer": true
+                        }
                     },
                     {
-                        "$ref": "#/components/parameters/TickerQuery"
+                        "name": "ticker",
+                        "in": "query",
+                        "description": "Filter by market ticker",
+                        "schema": {
+                            "type": "string",
+                            "x-go-type-skip-optional-pointer": true
+                        }
                     },
                     {
-                        "$ref": "#/components/parameters/MinTsQuery"
+                        "name": "min_ts",
+                        "in": "query",
+                        "description": "Filter items after this Unix timestamp",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
                     },
                     {
-                        "$ref": "#/components/parameters/MaxTsQuery"
+                        "name": "max_ts",
+                        "in": "query",
+                        "description": "Filter items before this Unix timestamp",
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
                     }
                 ],
                 "responses": {

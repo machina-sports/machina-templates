@@ -1,0 +1,10 @@
+connector:
+  name: "soccer-kalshi-price-resolver"
+  description: "Resolve one price per market using either historical trades (past matches) or live market snapshot prices, and prepare markets for Kelly."
+  filename: "kalshi_price_resolver.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Resolve Kalshi Market Prices"
+      value: "resolve_market_prices"
+
+

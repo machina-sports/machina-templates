@@ -33,6 +33,20 @@ workflow:
         match_date: "$.get('documents')[0].get('value', {}).get('match_date', '') if len($.get('documents', [])) > 0 else ''"
         workflow_executed_status: "'executed'"
 
+    # 1b. Gate by kickoff time (mapping)
+    - type: mapping
+      name: kickoff-filter
+      condition: "$.get('match_date') is not None and $.get('match_date') != ''"
+      inputs:
+        match_date: "$.get('match_date')"
+      outputs:
+        kickoff_dt: "$.get('kickoff_dt')"
+        kickoff_ts: "$.get('kickoff_ts')"
+        min_ts: "$.get('min_ts')"
+        max_ts: "$.get('max_ts')"
+        is_past_match: "$.get('is_past_match')"
+        workflow_executed_status: "$.get('workflow_executed_status')"
+
     # 2. Kalshi Integration
     - type: document
       name: load-kalshi
@@ -56,15 +70,56 @@ workflow:
         event_ticker: "$.get('k_ticker')"
       outputs:
         markets: "$.get('markets', [])"
+        market-tickers: |
+          [
+            market.get('ticker', '')
+            for market in $.get('markets', [])
+          ]
 
-    - type: mapping
-      name: kalshi-markets-summary
-      condition: "len($.get('markets', [])) > 0"
+    # 2b. Load trades around kickoff and keep exactly 1 trade per market (price)
+    - type: connector
+      name: load-market-trade-price
+      condition: "$.get('is_past_match', False) is True and $.get('k_ticker') is not None and len($.get('market-tickers', [])) > 0 and $.get('min_ts') is not None and $.get('max_ts') is not None"
+      connector:
+        name: kalshi
+        command: get-markets/trades
+      foreach:
+        name: market_ticker
+        expr: $
+        value: $.get('market-tickers', [])
       inputs:
-        markets: "$.get('markets')"
+        # IMPORTANT: kalshi /markets/trades uses query param name "ticker"
+        ticker: "$.get('market_ticker')"
+        min_ts: "$.get('min_ts')"
+        max_ts: "$.get('max_ts')"
+        limit: 1
       outputs:
-        m_summary: "$.get('markets_summary')"
-        m_count: "$.get('markets_count')"
+        # Aggregated across foreach into a list of per-market items
+        market_trade_prices: |
+          [
+            {
+              'ticker': $.get('market_ticker'),
+              **($.get('trades', [])[0] if len($.get('trades', [])) > 0 else {})
+            }
+          ]
+
+    # 2c. Resolve 1 price per market and prepare Kelly inputs (pyscript connector)
+    - type: connector
+      name: resolve-market-prices
+      condition: "len($.get('markets', [])) > 0"
+      connector:
+        name: soccer-kalshi-price-resolver
+        command: resolve_market_prices
+      inputs:
+        markets: "$.get('markets', [])"
+        market_trade_prices: "$.get('market_trade_prices', [])"
+        is_past_match: "$.get('is_past_match', False)"
+      outputs:
+        market_prices: "$.get('market_prices', [])"
+        prices_source: "$.get('prices_source', 'unknown')"
+        markets_for_kelly: "$.get('markets_for_kelly', [])"
+        m_summary: "$.get('markets_summary', [])"
+        m_count: "$.get('markets_count', 0)"
 
     # 3. Calculate Kelly Criterion (Python math - more accurate than LLM)
     - type: connector
@@ -74,7 +129,7 @@ workflow:
         name: soccer-kelly-calculator
         command: batch_kelly_analysis
       inputs:
-        raw_markets: "$.get('markets', [])"
+        raw_markets: "$.get('markets_for_kelly', $.get('markets', []))"
         prediction: "$.get('final_prediction', {})"
         home_team: "$.get('h_name', '')"
         away_team: "$.get('a_name', '')"
@@ -131,6 +186,9 @@ workflow:
             'home_team': $.get('h_name', ''),
             'away_team': $.get('a_name', ''),
             'prediction_id': $.get('prediction_document_id'),
+            'is_past_match': $.get('is_past_match', False),
+            'prices_source': $.get('prices_source', 'unknown'),
+            'market_prices': $.get('market_prices', []),
             'analysis': $.get('edge_analysis', {}).get('analysis'),
             'summary': $.get('edge_analysis', {}).get('summary'),
             'selected': $.get('edge_analysis', {}).get('selected_market'),
