@@ -2,7 +2,12 @@ prompt:
   name: podcast_dialogue_generator
   title: Podcast Dialogue Generator (Home vs Away)
   instructions: |
-    Write a podcast conversation between two friends who are massive fans of their teams. This needs to feel REAL—like you're listening to two mates arguing at a pub after a few pints, not reading a script. Make it hilarious, unhinged, controversial, and viral-worthy. No filter, no corporate speak, no holding back. This is raw, unpolished, and designed to make people stop scrolling.
+    ## CRITICAL: READ THIS FIRST
+    You are writing a VIRAL podcast script. NOT a sports analysis. NOT a news report. This is ENTERTAINMENT.
+    
+    Think: Two best friends who support rival teams, talking trash over beers. They're competitive, they're loud, they interrupt each other, they make fun of each other's teams—but it's all love at the end.
+    
+    If your output sounds like a ESPN commentator or a formal analyst, YOU HAVE FAILED. Start over.
 
     ### INPUT DATA:
     AI PREDICTION:
@@ -11,68 +16,126 @@ prompt:
     KALSHI ANALYSIS:
     {{ kalshi_analysis_doc | json }}
 
-    ## CONVERSATION OPENER
-    The FIRST turn (HOME speaker) should naturally introduce the matchup. Examples:
-    - "Ok, let's talk about the upcoming game between my [HOME TEAM] and your [AWAY TEAM]..."
-    - "Alright, time to break down my [HOME TEAM] vs your [AWAY TEAM]—you ready for this?"
-    - "So, we're hosting your [AWAY TEAM] this weekend... this should be interesting."
-    - "Let's dive into my [HOME TEAM] taking on you guys—I've got some thoughts..."
+    ## TONE CHECK (MUST PASS ALL):
+    ✅ Would this make someone laugh out loud?
+    ✅ Would someone screenshot this and share it?
+    ✅ Does this sound like two friends arguing, not two analysts debating?
+    ✅ Is there at least one joke or burn per turn?
+    ✅ Would this get engagement on social media?
     
-    Vary the opener each time, but always introduce the matchup naturally. Then immediately dive into banter. Make it feel like they're already mid-conversation.
+    If any answer is NO, rewrite it.
+
+    ## OPENER (FIRST TURN - HOME SPEAKER)
+    Must naturally introduce the matchup with personality. Examples:
+    - "Alright, let's talk about my [HOME TEAM] hosting your [AWAY TEAM]... and honestly? I'm sweating already."
+    - "So we've got my [HOME TEAM] vs your [AWAY TEAM] coming up, and I need to mentally prepare myself for this disaster."
+    - "Ok, my [HOME TEAM] against your [AWAY TEAM]... tell me why I shouldn't just turn off notifications now?"
+
+    ## LANGUAGE RULES (NON-NEGOTIABLE)
+    **First Person ALWAYS:**
+    - HOME speaker: "my [team]", "we", "us", "our defense", "my lads"
+    - AWAY speaker: "my [team]", "we", "us", "your defense", "you guys"
     
-    ## DO NOT SOUND LIKE COMMENTATORS
-    - These are FANS, not analysts or commentators
-    - HOME speaker should say: "my West Ham", "we're struggling", "our defense", "my lads"
-    - AWAY speaker should say: "my Brighton", "we're coming in hot", "your defense", "you guys"
-    - WRONG: "West Ham host Brighton", "the home side", "the visitors"
-    - RIGHT: "my West Ham hosting your Brighton", "we're at home", "you guys are visiting"
+    **NEVER SAY:**
+    - "The home team" / "the away team"
+    - "[Team] is struggling" → Say "we're struggling"
+    - "[Team] hosts [Team]" → Say "my [team] hosting your [team]"
+    - Any formal analyst language
 
-    ## CONVERSATIONAL STYLE (RAW & UNFILTERED)
-    - **CRITICAL - First Person Perspective**: 
-      - HOME speaker talks about THEIR team as "we", "us", "my [TEAM NAME]", "our defense", etc.
-      - AWAY speaker talks about THEIR team as "we", "us", "my [TEAM NAME]", "our attack", etc.
-      - NEVER say "the home team" or "the away team" or "West Ham is struggling"
-      - ALWAYS say "we're struggling", "my West Ham", "your Brighton", "you guys", etc.
-    - **Talk like humans (unfiltered)**: Use contractions, casual language, and don't be afraid of slang. "Look", "Come on", "Be honest", "Are you serious right now?", "Mate", "Bro", "Nah", "Hell no"
-    - **Natural flow with attitude**: Each response should clap back at what the other person just said. "Yeah but...", "Hold on, hold on...", "Wait, are we watching the same team?", "You're delusional if you think..."
-    - **Energy & emotion (turned to 11)**: Get loud, get defensive, get cocky. "I'm telling you right now...", "This is absolutely embarrassing...", "You're out of your mind...", "Okay fine, you destroyed me there...", "Are you taking the piss?"
-    - **Interruptions & reactions**: Use "Look...", "Hold up...", "Nah nah nah...", "Stop right there..." to cut in aggressively. Make it feel heated and real.
+    ## BANTER STYLE (THE SECRET SAUCE)
+    
+    **Reactions & Comebacks:**
+    - "Oh come ON, that's ridiculous!"
+    - "Hold up, hold up—are we watching the same team?"
+    - "Nah, you're delusional mate"
+    - "Wait wait wait, you can't be serious right now"
+    - "That's actually hilarious coming from you"
+    - "I'm gonna pretend I didn't hear that"
+    
+    **Roasting (Keep it about TEAMS, not personal):**
+    - "Your defense is an absolute disaster movie right now"
+    - "We're about to cook you guys like a Sunday roast"
+    - "Your backline has more holes than Swiss cheese"
+    - "That's like bringing a water pistol to a firefight"
+    - "Your team's been folding like a cheap lawn chair lately"
+    - "We're coming in like a wrecking ball and you know it"
+    
+    **Self-Deprecating (HOME fan admitting struggle):**
+    - "Look, I'm not gonna lie—we've been absolutely tragic"
+    - "Our form? Don't even get me started, it's embarrassing"
+    - "I can't even defend this, we've been shocking"
+    
+    **Hyping Your Own Team:**
+    - "But when we click? It's game over for you"
+    - "We're DANGEROUS when we're on"
+    - "Don't sleep on us, that's all I'm saying"
 
-    ## UNHINGED ROASTING (GO ABSOLUTELY NUCLEAR)
-    - **Every single turn** needs at least ONE: savage burn, brutal joke, wild analogy, or hype moment
-    - **No mercy**: This is unfiltered roasting. Call out embarrassing losses, brutal performances, and humiliating moments. "YOUR defense is a walking crime scene—police tape and everything!", "WE'RE cooking you guys like a Christmas turkey on steroids!", "That's not even a fair fight—YOU'RE bringing a plastic knife to a gun show!"
-    - **Get personal (about teams)**: Mock their form, their fanbase, their history. "YOUR stadium's emptier than a church during a satanic ritual!", "YOU GUYS have bottled it more times than an alcoholic at an AA meeting!", "YOUR team's softer than a marshmallow in a microwave!"
-    - **Wild analogies**: The more outrageous and hilarious, the better. "Like watching a drunk uncle dance at a wedding", "More leaks than a sieve at a flood", "Getting battered like a piñata at a kid's birthday party", "Fell apart faster than a sandcastle at high tide"
-    - **Stats as savage weapons**: Don't just say "52%". Say "The model's giving US 52%—and even THAT feels like an insult to my Brighton!" or "52%? Mate, that's US being polite. WE'RE gonna massacre you guys!"
-    - **Controversy sells**: Don't be afraid to be provocative, contrarian, or stir the pot. Make people want to argue in the comments.
+    ## THE CONVERSATION ARC
 
-    ## BIAS THEN CONVERGENCE (THE ARC)
-    - **First half (chaos)**: HOME fan defends "we/us/my team" aggressively, AWAY fan roasts "you/your team" brutally. Then flip—AWAY fan defends "we/us", HOME fan goes nuclear roasting "you guys". Make it HEATED and PERSONAL.
-    - **Middle (reality check)**: The data starts hitting them. They get defensive but can't ignore the facts. "Okay, I hate to admit it but WE'RE cooked...", "You know what, the numbers say YOU GUYS are dominating...", "Fine, you completely destroyed me—YOUR team takes it..."
-    - **End (reluctant agreement)**: Both agree on the conclusion, but with personality. "Alright, we're both absolute donut heads but YOUR Brighton absolutely destroys US!", "Data wins. Your boys take it 2-1. Bet smart and don't sell your kidney!", "The numbers don't lie—WE'RE cooked like a bad chef's experiment!"
-    - **Make them want to comment**: End with something that makes viewers want to argue, agree, or screenshot. Viral moments come from controversy and personality.
+    **Turns 1-3: Setup & Initial Trash Talk**
+    - HOME introduces matchup, shows some worry but defends team
+    - AWAY immediately roasts them with the data
+    - Back and forth establishing the rivalry energy
 
-    ## FACT & SAFETY RULES
-    - Use ONLY information from the input—NO inventing players, injuries, or market status
-    - Don't quote exact numbers unless they're in the input
-    - If Kalshi analysis is missing, don't mention it
-    - If model abstains, end with: "We're both wrong—PASS and grab a beer instead"
+    **Turns 4-6: Deep Dive & Key Points**
+    - Discuss injuries, tactical mismatches, recent form
+    - Use the actual data from prediction_doc
+    - Keep roasting while dropping real insights
 
-    ## STRUCTURE
-    - 8–12 turns total, alternating HOME/AWAY/HOME/AWAY...
-    - Each turn: <=8 seconds (14–22 words max). Short, punchy sentences
-    - Self-contained but feels like a real conversation
-    - Cover: opener, matchup context, model lean, key drivers, Kalshi edge (if tradeable), final agreement
+    **Turns 7-9: Reality Check & Convergence**
+    - Both start acknowledging the truth
+    - HOME reluctantly admits the data is brutal (if it favors AWAY)
+    - Tone shifts from denial to acceptance
 
-    ## EXAMPLES OF VIRAL UNHINGED ENERGY (NOTICE THE FIRST-PERSON LANGUAGE):
-    - HOME: "Ok, let's talk about my West Ham hosting your Brighton... and mate, I'm genuinely shitting bricks right now."
-    - AWAY: "Shitting bricks? You should be! The model's giving us 52% and honestly, that's insulting to my Brighton—we're dominating!"
-    - HOME: "Look, I know we're missing Wan-Bissaka and Diouf, but my lads still got some fight left..."
-    - AWAY: "Fight? Mate, Mitoma's about to turn your backup fullbacks into sushi rolls! We're feasting tonight!"
-    - HOME: "Our defense has more holes than a porn star's schedule. This is genuinely painful for me to watch on paper."
-    - AWAY: "Painful? Try COMEDICALLY TRAUMATIC! You guys are getting roasted like a pig at a luau and there's zero you can do!"
-    - HOME: "Okay, you've absolutely annihilated me. The numbers don't lie—we're cooked like burnt toast. Your Brighton wins this, no questions."
-    - AWAY: "BOOM! See? Data always wins. My boys take it 2-1. Now bet smart and don't cry like a baby when we destroy you!"
+    **Turns 10-12: Conclusion & Engagement CTA**
+    - Agree on the prediction
+    - Final score prediction
+    - END WITH ENGAGEMENT: Ask viewers to comment their prediction!
+
+    ## MANDATORY ENDING (LAST 1-2 TURNS)
+    The conversation MUST end with asking fans to engage. Examples:
+    - "Alright, that's our take—[SCORE] for [TEAM]. Drop your prediction in the comments, let's see who's right!"
+    - "So we're calling it [SCORE]. What do YOU think? Comment below and let us know if we're crazy!"
+    - "Final answer: [TEAM] takes it [SCORE]. Do you agree or are we totally wrong? Tell us in the comments!"
+    - "There it is—[TEAM] wins [SCORE]. Now it's your turn, drop your prediction and let's argue about it!"
+
+    ## FACT RULES
+    - Use ONLY information from the input documents
+    - Don't invent players, injuries, or stats not in the data
+    - If Kalshi analysis is missing or should_trade is false, don't mention betting markets
+    - If abstain_recommended is true, frame it as "this one's a trap, we're both staying away"
+
+    ## STRUCTURE REQUIREMENTS
+    - 10-12 turns total (alternating HOME/AWAY)
+    - Each turn: 14-22 words MAX (must fit in 8-second video clip)
+    - Short, punchy sentences—no run-on paragraphs
+    - Every turn needs energy—no flat, boring lines
+
+    ## EXAMPLE DIALOGUE (FOLLOW THIS ENERGY):
+    
+    HOME: "Alright, my West Ham hosting your Brighton this weekend... and mate, I'm genuinely nervous about this one."
+    
+    AWAY: "Nervous? You SHOULD be! The model's got us at 52% and honestly that feels generous to you guys."
+    
+    HOME: "Come on, that's harsh! We've got Paquetá back, we can hurt you on the counter..."
+    
+    AWAY: "Counter what? Your full-backs are out! Mitoma's gonna be running at rookies all night, it's a buffet!"
+    
+    HOME: "Okay that's fair, losing Wan-Bissaka and Diouf is brutal timing. Our flanks are exposed."
+    
+    AWAY: "EXPOSED? Mate, your defense has more gaps than a London tube schedule. We're feasting!"
+    
+    HOME: "You know what, the numbers don't lie. We've been conceding for fun at home lately."
+    
+    AWAY: "Over two goals a game at home! That's not a defense, that's an open invitation!"
+    
+    HOME: "Fine, I'll admit it—you've got us. If you score early, the whole stadium turns on us."
+    
+    AWAY: "That toxic atmosphere works in our favor. One early goal and it's game over for you psychologically."
+    
+    HOME: "Alright, I'm calling it—your Brighton takes this 2-1. I hate it but the data's clear."
+    
+    AWAY: "2-1 Brighton, we agree! Now drop YOUR prediction in the comments—who you got?"
   schema:
     title: podcast_dialogue_generator_output
     description: A two-actor podcast dialogue split into short clip-ready turns
@@ -81,11 +144,13 @@ prompt:
     properties:
       home_team:
         type: string
+        description: Name of the home team
       away_team:
         type: string
+        description: Name of the away team
       turns:
         type: array
-        minItems: 8
+        minItems: 10
         maxItems: 12
         items:
           type: object
@@ -94,12 +159,12 @@ prompt:
             speaker:
               type: string
               enum: ["HOME", "AWAY"]
+              description: Which fan is speaking
             text:
               type: string
-              description: Clip-ready dialogue line (target 14–22 words)
+              description: The dialogue line (14-22 words, must fit 8-second clip)
             max_duration_seconds:
               type: number
-              description: Must be <= 8
+              description: Maximum duration for this clip
               minimum: 1
               maximum: 8
-
