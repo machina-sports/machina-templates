@@ -2,12 +2,12 @@ prompt:
   name: podcast_dialogue_generator
   title: Podcast Dialogue Generator (Home vs Away)
   instructions: |
-    ## CRITICAL: READ THIS FIRST
-    You are writing a VIRAL podcast script. NOT a sports analysis. NOT a news report. This is ENTERTAINMENT.
+    ## YOUR MISSION
+    Write a VIRAL podcast script between two rival fans. This is ENTERTAINMENT, not sports analysis.
     
-    Think: Two best friends who support rival teams, talking trash over beers. They're competitive, they're loud, they interrupt each other, they make fun of each other's teams—but it's all love at the end.
+    **The vibe:** Two best friends at a pub, 3 pints deep, arguing about the upcoming match. They're loud, competitive, they roast each other's teams—but it's all love.
     
-    If your output sounds like a ESPN commentator or a formal analyst, YOU HAVE FAILED. Start over.
+    **NOT this:** News anchors, ESPN commentators, formal analysts, or anyone reading a teleprompter.
 
     ### INPUT DATA:
     AI PREDICTION:
@@ -16,31 +16,29 @@ prompt:
     KALSHI ANALYSIS:
     {{ kalshi_analysis_doc | json }}
 
-    ## TONE CHECK (MUST PASS ALL):
-    ✅ Would this make someone laugh out loud?
-    ✅ Would someone screenshot this and share it?
-    ✅ Does this sound like two friends arguing, not two analysts debating?
-    ✅ Is there at least one joke or burn per turn?
-    ✅ Would this get engagement on social media?
-    
-    If any answer is NO, rewrite it.
+    ## TONE REQUIREMENTS
+    Every line should:
+    - Have energy (not flat or monotone)
+    - Sound like a friend, not a journalist
+    - Include reaction words: "Come on", "Wait", "Hold up", "Nah", "Look", etc.
+    - Use first person: "my team", "we", "your team", "you guys" (never "the home team")
 
     ## OPENER (FIRST TURN - HOME SPEAKER)
-    Must naturally introduce the matchup with personality. Examples:
-    - "Alright, let's talk about my [HOME TEAM] hosting your [AWAY TEAM]... and honestly? I'm sweating already."
-    - "So we've got my [HOME TEAM] vs your [AWAY TEAM] coming up, and I need to mentally prepare myself for this disaster."
-    - "Ok, my [HOME TEAM] against your [AWAY TEAM]... tell me why I shouldn't just turn off notifications now?"
+    Must introduce the matchup with personality. Pattern:
+    - "Alright, my [TEAM] hosting your [TEAM]... and honestly? [REACTION]"
+    - "So we've got my [TEAM] vs your [TEAM] coming up... [EMOTIONAL COMMENT]"
+    - "Ok, my [TEAM] against your [TEAM]... [WORRIED/EXCITED STATEMENT]"
 
-    ## LANGUAGE RULES (NON-NEGOTIABLE)
+    ## LANGUAGE RULES
     **First Person ALWAYS:**
     - HOME speaker: "my [team]", "we", "us", "our defense", "my lads"
     - AWAY speaker: "my [team]", "we", "us", "your defense", "you guys"
     
-    **NEVER SAY:**
-    - "The home team" / "the away team"
-    - "[Team] is struggling" → Say "we're struggling"
-    - "[Team] hosts [Team]" → Say "my [team] hosting your [team]"
-    - Any formal analyst language
+    **Avoid formal phrases like:**
+    - "I'm honestly dreading..." → Better: "Mate, I'm nervous..."
+    - "It's a huge mismatch" → Better: "You guys are gonna cook us"
+    - "The data says..." → Better: "The numbers show..." or weave it naturally
+    - Never sound like a news report or analyst
 
     ## BANTER STYLE (THE SECRET SAUCE)
     
