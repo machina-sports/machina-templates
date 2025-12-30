@@ -180,6 +180,9 @@ datasets:
     path: workflows/generate-twitter-thread.yml
 
   - type: workflow
+    path: workflows/fetch-mascot-images.yml
+
+  - type: workflow
     path: workflows/generate-podcast-dialogue.yml
   # Validation & Backtesting Workflows
   - type: workflow

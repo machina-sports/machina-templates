@@ -1,0 +1,351 @@
+workflow:
+  name: soccer-fetch-mascot-images
+  title: Soccer Fetch Mascot Images & Generate Podcast Frames
+  description: Fetch mascot images for home and away teams, then generate podcast studio frames for video production
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    google-storage:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
+      bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
+    oxylabs:
+      username: $TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME
+      password: $TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD
+  inputs:
+    eventCode: "$.get('eventCode')"
+    geo_location: $.get('geo_location', 'United States')
+    limit: $.get('limit', 1)
+    parser: ($.get('parser', 'true') == 'true') and True or False
+    source: $.get('source', 'google_search')
+    udm: int($.get('udm', 2))
+  outputs:
+    workflow-status: "$.get('workflow_executed_status', 'executed')"
+    mascot_document_id: "$.get('mascot_document_id')"
+    home_mascot_url: "$.get('home_mascot_url')"
+    away_mascot_url: "$.get('away_mascot_url')"
+    home_podcast_frame_url: "$.get('home_podcast_frame_url')"
+    away_podcast_frame_url: "$.get('away_podcast_frame_url')"
+  tasks:
+
+    # 1. Load latest AI prediction to get team names
+    - type: document
+      name: load-prediction
+      config:
+        action: search
+        search-limit: 1
+        sorters: [["_id", -1]]
+      filters:
+        metadata.eventCode: $.get('eventCode')
+      inputs:
+        name: "'soccer-prediction'"
+      outputs:
+        prediction_exists: len($.get('documents', [])) > 0
+        home_team: "$.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''"
+        away_team: "$.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''"
+        workflow_executed_status: "'executed'"
+
+    # 2. Search for HOME team mascot image
+    - type: connector
+      name: search-home-mascot
+      description: Search Google Images for home team mascot
+      condition: "$.get('prediction_exists') and $.get('home_team') != ''"
+      connector:
+        name: oxylabs
+        command: post-queries
+      continue_on_error: true
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": $.get('udm')
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": $.get('limit')
+                  }
+                ]
+              }
+            ],
+            "geo_location": $.get('geo_location'),
+            "parse": $.get('parser'),
+            "query": $.get('home_team') + " football club mascot official",
+            "source": $.get('source')
+          }
+      outputs:
+        home_image_results: "$.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:1] if $.get('results', []) and $.get('results', [])[0].get('content') else []"
+
+    # 3. Search for AWAY team mascot image
+    - type: connector
+      name: search-away-mascot
+      description: Search Google Images for away team mascot
+      condition: "$.get('prediction_exists') and $.get('away_team') != ''"
+      connector:
+        name: oxylabs
+        command: post-queries
+      continue_on_error: true
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": $.get('udm')
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": $.get('limit')
+                  }
+                ]
+              }
+            ],
+            "geo_location": $.get('geo_location'),
+            "parse": $.get('parser'),
+            "query": $.get('away_team') + " football club mascot official",
+            "source": $.get('source')
+          }
+      outputs:
+        away_image_results: "$.get('results', [])[0].get('content').get('results', {}).get('organic', [])[:1] if $.get('results', []) and $.get('results', [])[0].get('content') else []"
+
+    # 4. Download HOME mascot image to tmp
+    - type: connector
+      name: download-home-mascot
+      description: Save the home mascot image to tmp
+      condition: "len($.get('home_image_results', [])) > 0"
+      connector:
+        name: temp-downloader
+        command: invoke_save_to_tmp
+      inputs:
+        image_base64: "$.get('home_image_results', [])[0].get('image', '') if len($.get('home_image_results', [])) > 0 else ''"
+      outputs:
+        home_mascot_tmp_path: "$.get('image_path')"
+
+    # 5. Download AWAY mascot image to tmp
+    - type: connector
+      name: download-away-mascot
+      description: Save the away mascot image to tmp
+      condition: "len($.get('away_image_results', [])) > 0"
+      connector:
+        name: temp-downloader
+        command: invoke_save_to_tmp
+      inputs:
+        image_base64: "$.get('away_image_results', [])[0].get('image', '') if len($.get('away_image_results', [])) > 0 else ''"
+      outputs:
+        away_mascot_tmp_path: "$.get('image_path')"
+
+    # 6. Upload HOME mascot reference to Google Storage
+    - type: connector
+      name: upload-home-mascot
+      description: Upload home mascot reference image to Google Storage
+      condition: "$.get('home_mascot_tmp_path') is not None"
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        image_path: "$.get('home_mascot_tmp_path')"
+      outputs:
+        home_mascot_url: "$.get('url')"
+
+    # 7. Upload AWAY mascot reference to Google Storage
+    - type: connector
+      name: upload-away-mascot
+      description: Upload away mascot reference image to Google Storage
+      condition: "$.get('away_mascot_tmp_path') is not None"
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        image_path: "$.get('away_mascot_tmp_path')"
+      outputs:
+        away_mascot_url: "$.get('url')"
+
+    # 8. Generate HOME mascot podcast frame (looking RIGHT, positioned LEFT)
+    - type: connector
+      name: generate-home-podcast-frame
+      description: Generate AI image of HOME mascot in podcast studio, looking right
+      condition: "$.get('home_mascot_tmp_path') is not None"
+      connector:
+        name: google-genai
+        command: invoke_image
+      inputs:
+        aspect_ratio: "'9:16'"
+        home_team: "$.get('home_team')"
+        image_paths: "[$.get('home_mascot_tmp_path')]"
+        model_name: "'gemini-3-pro-image-preview'"
+        prompt: |
+          "=== PODCAST MASCOT IMAGE GENERATION ===
+
+          REFERENCE IMAGE: Use the provided reference image of the {{home_team}} football club mascot as the character to recreate.
+
+          TASK: Generate a PHOTOREALISTIC image of this mascot character sitting in a professional podcast recording studio. The image must look like a real photograph, NOT a cartoon, NOT 3D animation, NOT CGI.
+
+          CRITICAL STYLE REQUIREMENT:
+          - PHOTOREALISTIC only - like a real photo taken with a professional camera
+          - Real fur/skin textures with natural imperfections
+          - Real fabric textures on clothing
+          - Natural lighting and shadows as in real photography
+          - ABSOLUTELY NO cartoon style, NO 3D render style, NO animated look, NO CGI aesthetic
+
+          CHARACTER REQUIREMENTS:
+          - Recreate the EXACT mascot character from the reference image (same animal/creature type, colors, features)
+          - Render the mascot as if it were a REAL creature photographed in a studio
+          - The mascot should be wearing casual, stylish clothing (like a Hawaiian shirt, hoodie, or t-shirt with a gold chain/necklace)
+          - Wearing black over-ear studio headphones (Sony or Audio-Technica style)
+          - Expressive facial expression - mouth slightly open as if speaking/reacting
+          - Character positioned on the LEFT side of the frame
+          - Body and head TILTED SLIGHTLY TO THE RIGHT (about 15-20 degrees) - looking toward someone across the table
+          - NOT a full side profile - we should see most of the face, just angled to the right
+          - Upper body shot (head, shoulders, chest visible)
+
+          STUDIO ENVIRONMENT (EXACT SPECIFICATIONS):
+          - Background: Dark charcoal gray acoustic foam panels in pyramid/wedge pattern
+          - Wall color: Dark gray/charcoal (#2D2D2D)
+          - Lighting: Warm key light from front-left, cool blue/purple RGB accent strip on back wall
+          - Silver/chrome podcast microphone on boom arm, positioned bottom-right of frame
+          - Slight bokeh/depth blur on background
+          - No windows, no plants, no decorations - just acoustic panels and lighting
+
+          CAMERA & COMPOSITION:
+          - Portrait orientation (9:16 aspect ratio)
+          - Character on LEFT side of frame, looking RIGHT
+          - Medium close-up shot (head and upper chest)
+          - Eye-level camera angle
+          - Shallow depth of field (f/2.8 look)
+          - Space on the right side of frame
+
+          PROHIBITED:
+          - NO cartoon or illustrated style
+          - NO 3D animated/Pixar/CGI look
+          - NO text, logos, or watermarks
+          - NO other characters in frame
+          - NO looking at camera (must look to the RIGHT)"
+      outputs:
+        home_podcast_frame_path: "$.get('image_path')"
+
+    # 9. Generate AWAY mascot podcast frame (looking LEFT, positioned RIGHT)
+    - type: connector
+      name: generate-away-podcast-frame
+      description: Generate AI image of AWAY mascot in podcast studio, looking left
+      condition: "$.get('away_mascot_tmp_path') is not None"
+      connector:
+        name: google-genai
+        command: invoke_image
+      inputs:
+        aspect_ratio: "'9:16'"
+        away_team: "$.get('away_team')"
+        image_paths: "[$.get('away_mascot_tmp_path')]"
+        model_name: "'gemini-3-pro-image-preview'"
+        prompt: |
+          "=== PODCAST MASCOT IMAGE GENERATION ===
+
+          REFERENCE IMAGE: Use the provided reference image of the {{away_team}} football club mascot as the character to recreate.
+
+          TASK: Generate a PHOTOREALISTIC image of this mascot character sitting in a professional podcast recording studio. The image must look like a real photograph, NOT a cartoon, NOT 3D animation, NOT CGI.
+
+          CRITICAL STYLE REQUIREMENT:
+          - PHOTOREALISTIC only - like a real photo taken with a professional camera
+          - Real fur/skin textures with natural imperfections
+          - Real fabric textures on clothing
+          - Natural lighting and shadows as in real photography
+          - ABSOLUTELY NO cartoon style, NO 3D render style, NO animated look, NO CGI aesthetic
+
+          CHARACTER REQUIREMENTS:
+          - Recreate the EXACT mascot character from the reference image (same animal/creature type, colors, features)
+          - Render the mascot as if it were a REAL creature photographed in a studio
+          - The mascot should be wearing casual, stylish clothing (like a tank top with a scarf, hoodie, or streetwear)
+          - Wearing black over-ear studio headphones (Sony or Audio-Technica style)
+          - Expressive facial expression - engaged in conversation, perhaps skeptical or reactive
+          - Character positioned on the RIGHT side of the frame
+          - Body and head TILTED SLIGHTLY TO THE LEFT (about 15-20 degrees) - looking toward someone across the table
+          - NOT a full side profile - we should see most of the face, just angled to the left
+          - Upper body shot (head, shoulders, chest visible)
+
+          STUDIO ENVIRONMENT (EXACT SPECIFICATIONS):
+          - Background: Dark charcoal gray acoustic foam panels in pyramid/wedge pattern
+          - Wall color: Dark gray/charcoal (#2D2D2D)
+          - Lighting: Warm key light from front-right, cool blue/purple RGB accent strip on back wall
+          - Silver/chrome podcast microphone on boom arm, positioned bottom-left of frame
+          - Slight bokeh/depth blur on background
+          - No windows, no plants, no decorations - just acoustic panels and lighting
+
+          CAMERA & COMPOSITION:
+          - Portrait orientation (9:16 aspect ratio)
+          - Character on RIGHT side of frame, looking LEFT
+          - Medium close-up shot (head and upper chest)
+          - Eye-level camera angle
+          - Shallow depth of field (f/2.8 look)
+          - Space on the left side of frame
+
+          PROHIBITED:
+          - NO cartoon or illustrated style
+          - NO 3D animated/Pixar/CGI look
+          - NO text, logos, or watermarks
+          - NO other characters in frame
+          - NO looking at camera (must look to the LEFT)"
+      outputs:
+        away_podcast_frame_path: "$.get('image_path')"
+
+    # 10. Upload HOME podcast frame to Google Storage
+    - type: connector
+      name: upload-home-podcast-frame
+      description: Upload generated HOME podcast frame to Google Storage
+      condition: "$.get('home_podcast_frame_path') is not None"
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        image_path: "$.get('home_podcast_frame_path')"
+      outputs:
+        home_podcast_frame_url: "$.get('url')"
+
+    # 11. Upload AWAY podcast frame to Google Storage
+    - type: connector
+      name: upload-away-podcast-frame
+      description: Upload generated AWAY podcast frame to Google Storage
+      condition: "$.get('away_podcast_frame_path') is not None"
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        image_path: "$.get('away_podcast_frame_path')"
+      outputs:
+        away_podcast_frame_url: "$.get('url')"
+
+    # 12. Store all mascot and podcast frame URLs in a document
+    - type: document
+      name: store-mascot-images
+      condition: "$.get('home_mascot_url') is not None or $.get('away_mascot_url') is not None"
+      config:
+        action: save
+      documents:
+        soccer-mascot-images: |
+          {
+            'title': $.get('home_team', '') + ' vs ' + $.get('away_team', '') + ' - Mascot & Podcast Frames',
+            'eventCode': $.get('eventCode'),
+            'matchup': $.get('home_team', '') + ' vs ' + $.get('away_team', ''),
+            'home_team': $.get('home_team', ''),
+            'away_team': $.get('away_team', ''),
+            'home_mascot_url': $.get('home_mascot_url'),
+            'away_mascot_url': $.get('away_mascot_url'),
+            'home_podcast_frame_url': $.get('home_podcast_frame_url'),
+            'away_podcast_frame_url': $.get('away_podcast_frame_url'),
+            'home_mascot_query': $.get('home_team') + ' football club mascot official',
+            'away_mascot_query': $.get('away_team') + ' football club mascot official',
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        eventCode: "$.get('eventCode')"
+        document_type: "'mascot-images'"
+      outputs:
+        mascot_document_id: "$.get('documents')[0].get('_id')"

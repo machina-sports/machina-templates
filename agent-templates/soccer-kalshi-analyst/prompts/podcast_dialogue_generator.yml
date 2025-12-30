@@ -16,16 +16,23 @@ prompt:
     - CRACKED: High energy, no filter, pure entertainment
     - BASED: Real opinions, no corporate speak, authentic fan energy
 
+    ### REGIONAL AUTHENTICITY
+    Each speaker's slang, expressions, and cultural references should reflect their team's city/region/country. A Barcelona fan sounds different from a Manchester fan, who sounds different from a Boca Juniors fan. Use local expressions, cultural references, and speaking patterns that feel authentic to where the team is from. Don't overdo it—sprinkle regional flavor naturally.
+
     ### DIALOGUE STRUCTURE (CRITICAL - READ CAREFULLY)
     
     **GREETINGS_INTRO_HOME (REQUIRED):**
-    This is the opening line from the HOME speaker talking DIRECTLY to the AWAY fan. Personal, direct, unhinged—like you're starting a conversation at a pub.
+    This is the opening line from the HOME speaker talking DIRECTLY to the AWAY fan. You're at a pub, addressing YOUR MATE who supports the other team.
     
-    NEVER START WITH THESE (WILL BE REJECTED):
+    NEVER USE (WILL BE REJECTED):
     - "Welcome to..." 
-    - "It's [manager] versus [manager]..."
-    - "We're hosting..." without "my [team]"
-    - Any third-person narrator style
+    - "my [team] fans" (you're not addressing fans, you're talking to ONE person)
+    - "We're facing..." or "We're hosting..." without mentioning "your [team]"
+    - Any narrator/commentator style
+    
+    MUST INCLUDE BOTH TEAMS:
+    - "my [HOME TEAM]" AND "your [AWAY TEAM]" in the same sentence
+    - You're talking TO the away fan, not about them
     
     MUST START WITH ONE OF THESE PATTERNS:
     - "Alright, my [team] hosting your [team]..."
@@ -43,17 +50,25 @@ prompt:
     - 8-10 turns total (alternating HOME/AWAY)
     - Each line MUST:
       - Use "my [team]", "we", "your [team]", "you guys" (NEVER "the home team")
-      - Have a reaction word: "Come on", "Nah", "Hold up", "Wait", "Look", "Mate"
-      - Include energy—exclamations, emphasis, emotion
       - Be 14-22 words max (fits in 8-second video clip)
+    
+    EVERY LINE MUST START WITH A REACTION WORD (MANDATORY):
+    - "Nah...", "Nah nah nah...", "Come on...", "Come ON..."
+    - "Hold up...", "Wait wait wait...", "Look...", "Mate..."
+    - "Bruv...", "Oi...", "Listen...", "Honestly..."
+    
+    WILL BE REJECTED IF:
+    - Line starts with "We are...", "It's a...", "I'm actually..."
+    - Line sounds like analysis instead of banter
+    - Line has no energy or exclamations
 
-    **BANTER EXAMPLES:**
-    - "Come ON, that's absolutely criminal!"
-    - "Nah nah nah, you can't be serious right now"
-    - "Hold up—your defense has more holes than Swiss cheese!"
-    - "We're about to cook you guys like a Sunday roast"
-    - "Look, I'm not gonna lie, we've been tragic lately"
-    - "Your team's folding like a cheap lawn chair and you know it"
+    **BANTER EXAMPLES (COPY THIS ENERGY):**
+    - "Nah nah nah, you can't be serious right now—your defense is COOKED!"
+    - "Hold up, hold up—we're missing our entire spine and you're STILL scared of us?"
+    - "Come ON mate, your attack without Wood is like a car without an engine!"
+    - "Look, I'm not gonna lie, we've been absolutely tragic... but you lot are WORSE!"
+    - "Bruv, your backline has more holes than Swiss cheese, don't even start!"
+    - "Wait wait wait—you think Grealish is gonna save you? That's JOKES!"
 
     **CLOSING_CTA (REQUIRED):**
     Final line that directly asks fans to comment. Keep it casual, direct, and viral.
@@ -77,24 +92,29 @@ prompt:
 
     ### EXAMPLE OUTPUT STRUCTURE:
     
-    The greetings_intro_home should introduce the matchup creatively, for example: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a FEAST for us!"
+    The greetings_intro_home MUST mention both teams: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a FEAST for us!"
     
-    The turns array should contain alternating HOME/AWAY dialogue like:
-    - AWAY: "Hold up, hold up—don't get too cocky. We score goals away, that's just facts!"
-    - HOME: "You also CONCEDE three goals a game on the road! That's not a defense, that's a charity!"
-    - AWAY: "Okay that's fair, our backline has been absolutely tragic. But Semenyo's gonna cook your left-back!"
-    - HOME: "Nah, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
+    The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD:
+    - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts!"
+    - HOME: "Nah mate, you also CONCEDE three goals a game on the road! That's not a defense, that's a charity!"
+    - AWAY: "Look, fair enough, our backline has been absolutely tragic. But Semenyo's gonna COOK your left-back!"
+    - HOME: "Come ON, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
+    - AWAY: "Bruv, you're dreaming! We've scored in every away game this month!"
+    - HOME: "Wait wait wait—scored yes, but you've also shipped goals like it's Black Friday!"
     - Continue alternating for 8-10 total turns
     
     The closing_cta should be: "Fine, I'll take the L on this one. 3-1 Chelsea. Now drop YOUR prediction in the comments—who you got?"
     
     ### VALIDATION CHECKLIST (VERIFY BEFORE OUTPUT):
-    - greetings_intro_home starts with "Alright, my...", "So we've got my...", "Ok, my...", or "Mate, my..."
-    - greetings_intro_home does NOT contain "Welcome to" or "It's [X] versus [Y]"
+    - greetings_intro_home includes BOTH "my [team]" AND "your [team]"
+    - greetings_intro_home does NOT say "my [team] fans" (talking to one person, not fans)
+    - greetings_intro_home does NOT contain "Welcome to"
     - closing_cta uses "Drop YOUR prediction...", "What do YOU think...", or "Now it's your turn..."
     - closing_cta does NOT contain "Let us know" or "Will [X] or will [Y]"
     - turns array has 8-10 turns
     - Alternating HOME/AWAY speakers in turns
+    - EVERY turn starts with a reaction word: "Nah", "Come on", "Hold up", "Wait", "Look", "Mate", "Bruv", "Oi", "Listen", "Honestly"
+    - NO turn starts with "We are...", "It's a...", "I'm actually..."
     - All lines use "my [team]", "we", "your [team]" (never "the home team")
     - All lines are 14-22 words
   schema:
@@ -110,7 +130,7 @@ prompt:
         description: "Name of the away team"
       greetings_intro_home:
         type: string
-        description: "Opening from HOME speaker. MUST start with 'Alright, my [team]...' or 'So we've got my [team]...' or 'Ok, my [team]...' - NEVER 'Welcome to' (14-22 words)"
+        description: "Opening from HOME speaker. MUST include 'my [home team]' AND 'your [away team]'. NEVER 'Welcome to' or 'my [team] fans'. (14-22 words)"
       turns:
         type: array
         minItems: 8
@@ -125,7 +145,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "Unhinged dialogue line (14-22 words)"
+              description: "MUST start with reaction word (Nah/Come on/Hold up/Wait/Look/Mate/Bruv). Unhinged banter, 14-22 words"
       closing_cta:
         type: string
         description: "Final line with CTA. MUST use 'Drop YOUR prediction...' or 'What do YOU think...' - NEVER 'Let us know' or 'Will X or will Y' (14-22 words)"
