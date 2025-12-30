@@ -14,13 +14,25 @@ prompt:
     ## CONVERSATION OPENER
     The FIRST turn (HOME speaker) should naturally introduce the matchup. Examples:
     - "Ok, let's talk about the upcoming game between my [HOME TEAM] and your [AWAY TEAM]..."
-    - "Alright, time to break down [HOME TEAM] vs [AWAY TEAM]—you ready for this?"
-    - "So, [HOME TEAM] hosting [AWAY TEAM] this weekend... this should be interesting."
-    - "Let's dive into [HOME TEAM] vs [AWAY TEAM]—I've got some thoughts..."
+    - "Alright, time to break down my [HOME TEAM] vs your [AWAY TEAM]—you ready for this?"
+    - "So, we're hosting your [AWAY TEAM] this weekend... this should be interesting."
+    - "Let's dive into my [HOME TEAM] taking on you guys—I've got some thoughts..."
     
     Vary the opener each time, but always introduce the matchup naturally. Then immediately dive into banter. Make it feel like they're already mid-conversation.
+    
+    ## DO NOT SOUND LIKE COMMENTATORS
+    - These are FANS, not analysts or commentators
+    - HOME speaker should say: "my West Ham", "we're struggling", "our defense", "my lads"
+    - AWAY speaker should say: "my Brighton", "we're coming in hot", "your defense", "you guys"
+    - WRONG: "West Ham host Brighton", "the home side", "the visitors"
+    - RIGHT: "my West Ham hosting your Brighton", "we're at home", "you guys are visiting"
 
     ## CONVERSATIONAL STYLE (RAW & UNFILTERED)
+    - **CRITICAL - First Person Perspective**: 
+      - HOME speaker talks about THEIR team as "we", "us", "my [TEAM NAME]", "our defense", etc.
+      - AWAY speaker talks about THEIR team as "we", "us", "my [TEAM NAME]", "our attack", etc.
+      - NEVER say "the home team" or "the away team" or "West Ham is struggling"
+      - ALWAYS say "we're struggling", "my West Ham", "your Brighton", "you guys", etc.
     - **Talk like humans (unfiltered)**: Use contractions, casual language, and don't be afraid of slang. "Look", "Come on", "Be honest", "Are you serious right now?", "Mate", "Bro", "Nah", "Hell no"
     - **Natural flow with attitude**: Each response should clap back at what the other person just said. "Yeah but...", "Hold on, hold on...", "Wait, are we watching the same team?", "You're delusional if you think..."
     - **Energy & emotion (turned to 11)**: Get loud, get defensive, get cocky. "I'm telling you right now...", "This is absolutely embarrassing...", "You're out of your mind...", "Okay fine, you destroyed me there...", "Are you taking the piss?"
@@ -28,16 +40,16 @@ prompt:
 
     ## UNHINGED ROASTING (GO ABSOLUTELY NUCLEAR)
     - **Every single turn** needs at least ONE: savage burn, brutal joke, wild analogy, or hype moment
-    - **No mercy**: This is unfiltered roasting. Call out embarrassing losses, brutal performances, and humiliating moments. "Your defense is a walking crime scene—police tape and everything!", "They're getting cooked like a Christmas turkey on steroids!", "That's not even a fair fight—it's like bringing a plastic knife to a gun show!"
-    - **Get personal (about teams)**: Mock their form, their fanbase, their history. "Your stadium's emptier than a church during a satanic ritual!", "They've bottled it more times than a alcoholic at an AA meeting!", "Your team's softer than a marshmallow in a microwave!"
+    - **No mercy**: This is unfiltered roasting. Call out embarrassing losses, brutal performances, and humiliating moments. "YOUR defense is a walking crime scene—police tape and everything!", "WE'RE cooking you guys like a Christmas turkey on steroids!", "That's not even a fair fight—YOU'RE bringing a plastic knife to a gun show!"
+    - **Get personal (about teams)**: Mock their form, their fanbase, their history. "YOUR stadium's emptier than a church during a satanic ritual!", "YOU GUYS have bottled it more times than an alcoholic at an AA meeting!", "YOUR team's softer than a marshmallow in a microwave!"
     - **Wild analogies**: The more outrageous and hilarious, the better. "Like watching a drunk uncle dance at a wedding", "More leaks than a sieve at a flood", "Getting battered like a piñata at a kid's birthday party", "Fell apart faster than a sandcastle at high tide"
-    - **Stats as savage weapons**: Don't just say "52%". Say "The model's giving you 52%—and even THAT feels like we're insulting Brighton!" or "52%? Mate, that's us being polite. It's a complete massacre waiting to happen!"
+    - **Stats as savage weapons**: Don't just say "52%". Say "The model's giving US 52%—and even THAT feels like an insult to my Brighton!" or "52%? Mate, that's US being polite. WE'RE gonna massacre you guys!"
     - **Controversy sells**: Don't be afraid to be provocative, contrarian, or stir the pot. Make people want to argue in the comments.
 
     ## BIAS THEN CONVERGENCE (THE ARC)
-    - **First half (chaos)**: HOME fan defends their team aggressively, AWAY fan roasts them brutally. Then flip—AWAY fan defends, HOME fan goes nuclear with the roasts. Make it HEATED.
-    - **Middle (reality check)**: The data starts hitting them. They get defensive but can't ignore the facts. "Okay, I hate to admit it but...", "You know what, the numbers are absolutely brutal...", "Fine, you completely destroyed me there..."
-    - **End (reluctant agreement)**: Both agree on the conclusion, but with personality. "Alright, we're both absolute donut heads but Brighton absolutely destroys it!", "Data wins. Brighton 2-1. Bet smart and don't sell your kidney when it happens!", "The numbers don't lie—we're cooked like a bad chef's experiment!"
+    - **First half (chaos)**: HOME fan defends "we/us/my team" aggressively, AWAY fan roasts "you/your team" brutally. Then flip—AWAY fan defends "we/us", HOME fan goes nuclear roasting "you guys". Make it HEATED and PERSONAL.
+    - **Middle (reality check)**: The data starts hitting them. They get defensive but can't ignore the facts. "Okay, I hate to admit it but WE'RE cooked...", "You know what, the numbers say YOU GUYS are dominating...", "Fine, you completely destroyed me—YOUR team takes it..."
+    - **End (reluctant agreement)**: Both agree on the conclusion, but with personality. "Alright, we're both absolute donut heads but YOUR Brighton absolutely destroys US!", "Data wins. Your boys take it 2-1. Bet smart and don't sell your kidney!", "The numbers don't lie—WE'RE cooked like a bad chef's experiment!"
     - **Make them want to comment**: End with something that makes viewers want to argue, agree, or screenshot. Viral moments come from controversy and personality.
 
     ## FACT & SAFETY RULES
@@ -52,15 +64,15 @@ prompt:
     - Self-contained but feels like a real conversation
     - Cover: opener, matchup context, model lean, key drivers, Kalshi edge (if tradeable), final agreement
 
-    ## EXAMPLES OF VIRAL UNHINGED ENERGY:
-    - "Ok, let's talk about West Ham vs Brighton... and mate, I'm genuinely shitting bricks for my team right now."
-    - "Shitting bricks? You should be calling in sick! The model's giving us 52% and honestly, that's insulting to Brighton—we're talking 90% domination!"
-    - "Look, I know we're missing Wan-Bissaka and Diouf, but we've still got some fire left in the tank..."
-    - "Fire? Mate, Mitoma's about to turn your backup fullbacks into sushi rolls! It's an all-you-can-eat buffet of embarrassment!"
-    - "Our defense has more holes than a porn star's schedule. This is genuinely painful to watch on paper."
-    - "Painful? Try COMEDICALLY TRAUMATIC! Your team's getting roasted like a pig at a luau and there's zero you can do about it!"
-    - "Okay, you've absolutely annihilated me. The numbers don't lie—we're cooked like burnt toast. Brighton wins this, no questions asked."
-    - "BOOM! See? Data always wins. Brighton 2-1. Now bet smart and don't cry like a baby when it happens!"
+    ## EXAMPLES OF VIRAL UNHINGED ENERGY (NOTICE THE FIRST-PERSON LANGUAGE):
+    - HOME: "Ok, let's talk about my West Ham hosting your Brighton... and mate, I'm genuinely shitting bricks right now."
+    - AWAY: "Shitting bricks? You should be! The model's giving us 52% and honestly, that's insulting to my Brighton—we're dominating!"
+    - HOME: "Look, I know we're missing Wan-Bissaka and Diouf, but my lads still got some fight left..."
+    - AWAY: "Fight? Mate, Mitoma's about to turn your backup fullbacks into sushi rolls! We're feasting tonight!"
+    - HOME: "Our defense has more holes than a porn star's schedule. This is genuinely painful for me to watch on paper."
+    - AWAY: "Painful? Try COMEDICALLY TRAUMATIC! You guys are getting roasted like a pig at a luau and there's zero you can do!"
+    - HOME: "Okay, you've absolutely annihilated me. The numbers don't lie—we're cooked like burnt toast. Your Brighton wins this, no questions."
+    - AWAY: "BOOM! See? Data always wins. My boys take it 2-1. Now bet smart and don't cry like a baby when we destroy you!"
   schema:
     title: podcast_dialogue_generator_output
     description: A two-actor podcast dialogue split into short clip-ready turns
