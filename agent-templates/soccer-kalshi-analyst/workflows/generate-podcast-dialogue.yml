@@ -1,7 +1,7 @@
 workflow:
   name: soccer-generate-podcast-dialogue
-  title: Soccer Podcast Dialogue Generator (Home vs Away)
-  description: Generate a clip-ready two-actor podcast dialogue from AI forecasts and optional Kalshi edge analysis
+  title: Soccer Podcast Dialogue Generator (Two-Step Unhinged Mode)
+  description: Generate viral, unhinged podcast dialogue using a two-step process - extract talking points then write cracked banter
   context-variables:
     debugger:
       enabled: true
@@ -46,9 +46,9 @@ workflow:
       outputs:
         kalshi_doc: "$.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else None"
 
-    # 3. Generate podcast dialogue
+    # 3. STEP 1: Extract talking points from prediction data
     - type: prompt
-      name: podcast_dialogue_generator
+      name: podcast_talking_points
       condition: "$.get('prediction_doc') is not None"
       connector:
         name: google-genai
@@ -60,9 +60,24 @@ workflow:
         prediction_doc: "$.get('prediction_doc')"
         kalshi_analysis_doc: "$.get('kalshi_doc')"
       outputs:
+        talking_points: "$"
+
+    # 4. STEP 2: Generate UNHINGED dialogue from talking points
+    - type: prompt
+      name: podcast_dialogue_generator
+      condition: "$.get('talking_points') is not None"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: "gemini-3-pro-preview"
+        location: global
+        provider: vertex_ai
+      inputs:
+        talking_points: "$.get('talking_points')"
+      outputs:
         podcast_script: "$"
 
-    # 4. Store podcast script
+    # 5. Store podcast script
     - type: document
       name: store-podcast-script
       condition: "$.get('podcast_script') is not None"
@@ -76,6 +91,7 @@ workflow:
             'matchup': $.get('h_name', '') + ' vs ' + $.get('a_name', ''),
             'home_team': $.get('h_name', ''),
             'away_team': $.get('a_name', ''),
+            'talking_points': $.get('talking_points'),
             'script': $.get('podcast_script'),
             'timestamp': datetime.utcnow().isoformat()
           }
@@ -84,4 +100,3 @@ workflow:
         document_type: "'podcast-dialogue'"
       outputs:
         podcast_script_document_id: "$.get('documents')[0].get('_id')"
-

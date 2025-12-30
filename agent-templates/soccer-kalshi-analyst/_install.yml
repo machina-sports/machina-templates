@@ -119,6 +119,9 @@ datasets:
   - type: prompt
     path: prompts/podcast_dialogue_generator.yml
 
+  - type: prompt
+    path: prompts/podcast_talking_points.yml
+
   # Scripts
   - type: connector
     path: scripts/aggregate_features.yml
