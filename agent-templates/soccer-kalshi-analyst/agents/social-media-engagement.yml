@@ -1,0 +1,21 @@
+agent:
+  name: social-media-engagement
+  title: Social Media Engagement Agent
+  description: |
+    An agent that generates engaging social media content from soccer match predictions
+    and Kalshi market analysis, including Twitter threads.
+  context:
+    config-frequency: 10
+    status: "inactive"
+  context-agent:
+    eventCode: "$.get('eventCode')"
+  workflows:
+
+    # 1. Generate the Twitter thread
+    - name: soccer-generate-twitter-thread
+      description: Generate an engaging Twitter thread for the specified match
+      inputs:
+        eventCode: $.get('eventCode')
+      outputs:
+        thread_document_id: $.get('thread_document_id')
+        thread_ready: $.get('workflow-status', 'skipped') == 'executed'

@@ -51,6 +51,9 @@ datasets:
   - type: agent
     path: agents/soccer-kalshi-audit.yml
 
+  - type: agent
+    path: agents/social-media-engagement.yml
+
   # Configuration
 
   - type: workflow
@@ -110,6 +113,9 @@ datasets:
   - type: prompt
     path: prompts/kalshi_edge_analyst.yml
 
+  - type: prompt
+    path: prompts/twitter_thread_generator.yml
+
   # Scripts
   - type: connector
     path: scripts/aggregate_features.yml
@@ -163,6 +169,9 @@ datasets:
 
   - type: workflow
     path: workflows/update.yml
+
+  - type: workflow
+    path: workflows/generate-twitter-thread.yml
   # Validation & Backtesting Workflows
   - type: workflow
     path: workflows/audit-consumer.yml
