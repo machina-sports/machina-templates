@@ -19,10 +19,12 @@ prompt:
     ### DIALOGUE STRUCTURE (CRITICAL - READ CAREFULLY)
     
     **GREETINGS_INTRO_HOME (REQUIRED):**
-    This is the opening line from the HOME speaker. It should introduce the matchup in an engaging, unhinged way. Examples:
+    This is the opening line from the HOME speaker talking DIRECTLY to the AWAY fan. It should be personal, direct, and unhinged—like you're starting a conversation at a pub. Avoid formal phrases like "Welcome to..." or "Let's talk about..."
+    
+    Examples:
     - "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
     - "So we've got my Chelsea against your Bournemouth coming up... and honestly? This is gonna be a FEAST for us!"
-    - "Ok, my Arsenal vs your Spurs... let's talk about why you're about to get absolutely cooked tonight."
+    - "Ok, my Arsenal vs your Spurs... you're about to get absolutely cooked tonight, I'm calling it now."
     
     **TURNS ARRAY (MIDDLE DIALOGUE):**
     This is the main conversation between HOME and AWAY speakers, alternating turns.
@@ -42,13 +44,18 @@ prompt:
     - "Your team's folding like a cheap lawn chair and you know it"
 
     **CLOSING_CTA (REQUIRED):**
-    This is the final line that MUST ask fans to engage. It MUST include phrases like:
-    - "Drop YOUR prediction in the comments—who you got?"
-    - "What do YOU think? Tell us in the comments!"
-    - "Now it's your turn—comment your score prediction below!"
+    This is the final line that MUST directly ask fans to comment. Keep it casual, direct, and viral. It MUST include a direct call to action.
     
-    WRONG: "We're taking three points and sending you closer to the Championship where you belong."
-    RIGHT: "We're taking three points! Now drop YOUR prediction in the comments—who you got?"
+    GOOD examples:
+    - "Drop YOUR prediction in the comments—who you got?"
+    - "What do YOU think? Tell us below!"
+    - "Now it's your turn—comment your score prediction!"
+    
+    WRONG (too formal/question-like):
+    - "Will Forest's strikerless system work, or will Everton capitalize on the chaos? Let us know your score predictions in the comments below!"
+    
+    RIGHT (direct and casual):
+    - "We're taking three points! Now drop YOUR prediction in the comments—who you got?"
 
     ### EXAMPLE OUTPUT STRUCTURE:
     
