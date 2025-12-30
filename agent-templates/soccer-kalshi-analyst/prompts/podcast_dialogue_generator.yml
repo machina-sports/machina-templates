@@ -2,7 +2,7 @@ prompt:
   name: podcast_dialogue_generator
   title: Podcast Dialogue Generator (Home vs Away)
   instructions: |
-    You are writing a podcast-style conversation about a soccer match using ONLY the input data.
+    Write a podcast-style conversation that's SO entertaining, people will screenshot and share it. Make it hilariously biased at first, then hilariously convergent. Roast teams like they're your exes, but keep it fun. Think maximum chaos, viral banter, and soccer roast sessions that could break TikTok.
 
     ### INPUT DATA:
     AI PREDICTION:
@@ -11,34 +11,35 @@ prompt:
     KALSHI ANALYSIS:
     {{ kalshi_analysis_doc | json }}
 
-    ## GOAL
-    Generate a conversation between TWO podcasters in a podcast setting:
-    - Speaker A is a HOME TEAM fan/analyst (biased toward home team at first).
-    - Speaker B is an AWAY TEAM fan/analyst (biased toward away team at first).
-    They debate the matchup and analysis, but by the end they converge and agree on the data-driven conclusion.
+    ## GOAL: EPIC PODCAST ROAST
+    Two podcasters duking it out like it's WWE:
+    - HOME FAN: Starts obsessed with their team, roasting the away side mercilessly.
+    - AWAY FAN: Fires back with savage burns, defending their squad like it's the Battle of Thermopylae.
+    They trash-talk the matchup and analysis, but by the end, they both surrender to the data and agree on the conclusion. Make it feel like a viral debate—short, punchy, and unforgettable.
 
-    ## FACT & SAFETY RULES (CRITICAL)
-    - Use ONLY information present in the input objects.
-    - Do NOT invent players, injuries, quotes, lineups, or market status.
-    - Do NOT claim exact numbers (probabilities, xG, totals) unless present in the input.
-    - If Kalshi analysis is missing, keep it out of the dialogue.
-    - If the input indicates abstain/low confidence, the “agreement” at the end should be to PASS / reduce conviction.
+    ## UNHINGED STYLE (GO VIRAL OR GO HOME)
+    - **BANTER ON STEROIDS**: Every line needs at least one burn, joke, or hype moment. "Come on, that's like bringing a knife to a gunfight!" or "They're conceding goals like it's Christmas!"
+    - **PERSONALITY**: Casual, loud, over-the-top. Use "bro", "mate", "look", "be honest", "this is embarrassing". Make it conversational like two mates arguing over pints.
+    - **ROASTING**: Light-hearted jabs at teams/performances. "West Ham's defense? It's like Swiss cheese with holes!" "Brighton's attack is cooking tonight!"
+    - **VIRAL HOOKS**: Analogies that pop—compare to movies, food, animals, anything wild. Avoid dry stats unless you twist them into comedy.
+    - **NO BORING**: If it's not funny or controversial, rewrite it. Make viewers hit share.
 
-    ## STRUCTURE RULES
-    - Output 8–12 dialogue turns total (max 12 clips total).
-    - Alternate speakers each turn: HOME, AWAY, HOME, AWAY, ...
-    - Each turn must be suitable for a standalone video clip of <= 8 seconds.
-      - Target 14–22 words per turn.
-      - Keep sentences short; avoid long lists.
-    - Keep the conversation “podcast-y”: quick banter, then sharp analysis.
-    - Each turn should be self-contained (no “as I said earlier”) because clips are stitched later.
+    ## FACT & SAFETY RULES (DON'T BREAK THE LAW, BRO)
+    - Use ONLY what's in the input—NO inventing players, injuries, or market BS.
+    - No exact numbers (probabilities, xG) unless they're right there.
+    - If Kalshi data is MIA, skip it.
+    - If the model's abstaining, the ending roast is "We're both wrong—PASS and grab a beer instead."
 
-    ## CONTENT CHECKLIST (cover most if available)
-    - Match context + stakes (generic if missing)
-    - Model lean (or abstain) and why
-    - 1–2 key drivers (tactical/evidence/risk) grounded in input
-    - If Kalshi edge exists and is tradeable: mention the edge in plain English (no tickers unless present)
-    - Closing agreement: what the play is (or why it’s a pass) + quick responsible-gambling note (no hashtags)
+    ## STRUCTURE (KEEP IT CLIP-READY)
+    - 8–12 turns total (8–12 clips), alternating HOME/AWAY/HOME/AWAY...
+    - Each turn: <=8 seconds (14–22 words). Short sentences, no run-ons.
+    - Self-contained lines (clips stitch later), but feels like a heated argument.
+    - Cover: matchup stakes, model lean/why, 1–2 key drivers, Kalshi edge if tradeable, final agreement + quick gamble responsibly note.
+
+    ## MAKE IT EPIC: Examples of Unhinged Vibes
+    - "West Ham's defense? Mate, it's leaking like a sieve on steroids!"
+    - "Brighton's coming in hot—like a pizza delivery in a hurricane!"
+    - End with: "Alright, data wins. We're both idiots, but Brighton takes it. Gamble smart, don't bet your house!"
   schema:
     title: podcast_dialogue_generator_output
     description: A two-actor podcast dialogue split into short clip-ready turns
