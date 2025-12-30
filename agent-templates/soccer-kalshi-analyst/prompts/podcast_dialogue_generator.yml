@@ -16,21 +16,22 @@ prompt:
     - CRACKED: High energy, no filter, pure entertainment
     - BASED: Real opinions, no corporate speak, authentic fan energy
 
-    ### DIALOGUE RULES (CRITICAL - READ CAREFULLY)
+    ### DIALOGUE STRUCTURE (CRITICAL - READ CAREFULLY)
     
-    **TURN 1 - HOME SPEAKER (NON-NEGOTIABLE):**
-    The FIRST turn MUST be HOME speaker and MUST start with EXACTLY: "Alright, my [HOME TEAM NAME] hosting your [AWAY TEAM NAME]..."
+    **GREETINGS_INTRO_HOME (REQUIRED):**
+    This is the opening line from the HOME speaker. It should introduce the matchup in an engaging, unhinged way. Examples:
+    - "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
+    - "So we've got my Chelsea against your Bournemouth coming up... and honestly? This is gonna be a FEAST for us!"
+    - "Ok, my Arsenal vs your Spurs... let's talk about why you're about to get absolutely cooked tonight."
     
-    WRONG: "I'm actually sweating bullets here! No Wood, no Awoniyi?"
-    RIGHT: "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
-    
-    **TURNS 2-9: Alternating banter (AWAY, HOME, AWAY, HOME...)**
-    
-    **EVERY LINE MUST:**
-    - Use "my [team]", "we", "your [team]", "you guys" (NEVER "the home team")
-    - Have a reaction word: "Come on", "Nah", "Hold up", "Wait", "Look", "Mate"
-    - Include energy—exclamations, emphasis, emotion
-    - Be 14-22 words max (fits in 8-second video clip)
+    **TURNS ARRAY (MIDDLE DIALOGUE):**
+    This is the main conversation between HOME and AWAY speakers, alternating turns.
+    - 8-10 turns total (alternating HOME/AWAY)
+    - Each line MUST:
+      - Use "my [team]", "we", "your [team]", "you guys" (NEVER "the home team")
+      - Have a reaction word: "Come on", "Nah", "Hold up", "Wait", "Look", "Mate"
+      - Include energy—exclamations, emphasis, emotion
+      - Be 14-22 words max (fits in 8-second video clip)
 
     **BANTER EXAMPLES:**
     - "Come ON, that's absolutely criminal!"
@@ -40,8 +41,8 @@ prompt:
     - "Look, I'm not gonna lie, we've been tragic lately"
     - "Your team's folding like a cheap lawn chair and you know it"
 
-    **FINAL TURN (MANDATORY - engagement CTA):**
-    The VERY LAST turn MUST end with asking fans to comment. It MUST include phrases like:
+    **CLOSING_CTA (REQUIRED):**
+    This is the final line that MUST ask fans to engage. It MUST include phrases like:
     - "Drop YOUR prediction in the comments—who you got?"
     - "What do YOU think? Tell us in the comments!"
     - "Now it's your turn—comment your score prediction below!"
@@ -49,54 +50,45 @@ prompt:
     WRONG: "We're taking three points and sending you closer to the Championship where you belong."
     RIGHT: "We're taking three points! Now drop YOUR prediction in the comments—who you got?"
 
-    ### STRUCTURE (STRICT ORDER)
-    - Turn 1: HOME introduces matchup ("Alright, my [TEAM] hosting your [TEAM]...")
-    - Turns 2-9: Alternating AWAY/HOME banter about the talking points
-    - Turn 10-12: Verdict + MUST end with engagement CTA
-    - Total: 10-12 turns, each 14-22 words, high energy
-
-    ### EXAMPLE (FOLLOW THIS ENERGY EXACTLY):
+    ### EXAMPLE OUTPUT STRUCTURE:
     
-    HOME: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a FEAST for us!"
+    The greetings_intro_home should introduce the matchup creatively, for example: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a FEAST for us!"
     
-    AWAY: "Hold up, hold up—don't get too cocky. We score goals away, that's just facts!"
+    The turns array should contain alternating HOME/AWAY dialogue like:
+    - AWAY: "Hold up, hold up—don't get too cocky. We score goals away, that's just facts!"
+    - HOME: "You also CONCEDE three goals a game on the road! That's not a defense, that's a charity!"
+    - AWAY: "Okay that's fair, our backline has been absolutely tragic. But Semenyo's gonna cook your left-back!"
+    - HOME: "Nah, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
+    - Continue alternating for 8-10 total turns
     
-    HOME: "You also CONCEDE three goals a game on the road! That's not a defense, that's a charity!"
-    
-    AWAY: "Okay that's fair, our backline has been absolutely tragic. But Semenyo's gonna cook your left-back!"
-    
-    HOME: "Nah, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
-    
-    AWAY: "Come on, you guys can't even kill games! Seventy percent of the ball and still dropping points!"
-    
-    HOME: "Look, we've been wasteful, I'll admit that. But against your defense? We're hitting three minimum."
-    
-    AWAY: "The numbers don't lie—we're cooked. But at least we'll make it entertaining chaos!"
-    
-    HOME: "Chaos works for me! Chelsea 3-1, calling it now. The data's clear, we're taking this!"
-    
-    AWAY: "Fine, I'll take the L on this one. 3-1 Chelsea. Now drop YOUR prediction in the comments—who you got?"
+    The closing_cta should be: "Fine, I'll take the L on this one. 3-1 Chelsea. Now drop YOUR prediction in the comments—who you got?"
     
     ### VALIDATION CHECKLIST (VERIFY BEFORE OUTPUT):
-    - Turn 1 is HOME speaker and starts with "Alright, my [TEAM] hosting your [TEAM]..."
-    - Last turn includes an engagement CTA asking fans to comment
-    - Total turns: 10-12
-    - Alternating HOME/AWAY speakers
+    - greetings_intro_home is from HOME speaker and introduces the matchup engagingly
+    - closing_cta includes an engagement CTA asking fans to comment
+    - turns array has 8-10 turns
+    - Alternating HOME/AWAY speakers in turns
     - All lines use "my [team]", "we", "your [team]" (never "the home team")
     - All lines are 14-22 words
   schema:
     title: podcast_dialogue_generator_output
     type: object
-    required: ["home_team", "away_team", "turns"]
+    required: ["home_team", "away_team", "greetings_intro_home", "turns", "closing_cta"]
     properties:
       home_team:
         type: string
+        description: "Name of the home team"
       away_team:
         type: string
+        description: "Name of the away team"
+      greetings_intro_home:
+        type: string
+        description: "Opening dialogue from HOME speaker introducing the matchup in an engaging way (14-22 words)"
       turns:
         type: array
-        minItems: 10
-        maxItems: 12
+        minItems: 8
+        maxItems: 10
+        description: "Middle dialogue turns alternating between HOME and AWAY speakers"
         items:
           type: object
           required: ["speaker", "text"]
@@ -107,3 +99,6 @@ prompt:
             text:
               type: string
               description: "Unhinged dialogue line (14-22 words)"
+      closing_cta:
+        type: string
+        description: "Final closing line with engagement CTA asking fans to comment (14-22 words)"
