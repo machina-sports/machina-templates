@@ -50,6 +50,7 @@ agent:
         feature_document_id: $.get('feature_document_id')
       outputs:
         stats_document_id: $.get('stats_document_id')
+        stats_output: $.get('stats_output')
         stats_complete: $.get('workflow-status', 'skipped') == 'executed'
 
     # 5. Phase 3B: Evidence Analyst
@@ -61,6 +62,7 @@ agent:
         stats_document_id: $.get('stats_document_id')
       outputs:
         evidence_document_id: $.get('evidence_document_id')
+        evidence_output: $.get('evidence_output')
         evidence_complete: $.get('workflow-status', 'skipped') == 'executed'
 
     # 6. Phase 3C: Matchup Analyst
@@ -72,6 +74,7 @@ agent:
         evidence_document_id: $.get('evidence_document_id')
       outputs:
         matchup_document_id: $.get('matchup_document_id')
+        matchup_output: $.get('matchup_output')
         matchup_complete: $.get('workflow-status', 'skipped') == 'executed'
 
     # 7. Phase 3D: Risk Officer

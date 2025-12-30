@@ -16,7 +16,7 @@ workflow:
     workflow-status: "$.get('workflow_executed_status', 'executed')"
     evidence_document_id: "$.get('evidence_document_id')"
   tasks:
-    # 1. Load stats analysis
+    # 1. Load stats analysis (optimized: stats_out only, feature_payload from features doc)
     - type: document
       name: load-stats-analysis
       config:
@@ -27,7 +27,6 @@ workflow:
       inputs:
         name: "'soccer-stats-analysis'"
       outputs:
-        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
         stats_out: "$.get('documents')[0].get('value', {}).get('stats_analysis', {}) if len($.get('documents', [])) > 0 else {}"
         h_name: "$.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''"
         a_name: "$.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''"
@@ -37,9 +36,9 @@ workflow:
         feature_document_id: "$.get('documents')[0].get('value', {}).get('feature_document_id', '') if len($.get('documents', [])) > 0 else ''"
         workflow_executed_status: "'executed'"
 
-    # 2. Get news evidence from features
+    # 2. Load feature payload and news evidence (single load for both)
     - type: document
-      name: load-news-evidence
+      name: load-features-and-evidence
       config:
         action: search
         search-limit: 1
@@ -48,9 +47,11 @@ workflow:
       inputs:
         name: "'soccer-match-features'"
       outputs:
+        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
         evidence: "$.get('documents')[0].get('value', {}).get('evidence', {}) if len($.get('documents', [])) > 0 else {}"
+        feature_context: "{'league': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('meta', {}).get('league', '39') if len($.get('documents', [])) > 0 else '39', 'venue': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('meta', {}).get('venue', 'Unknown') if len($.get('documents', [])) > 0 else 'Unknown', 'home_name': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('home', {}).get('name', $.get('h_name', '')) if len($.get('documents', [])) > 0 else $.get('h_name', ''), 'away_name': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('away', {}).get('name', $.get('a_name', '')) if len($.get('documents', [])) > 0 else $.get('a_name', '')}"
 
-    # 3. Evidence Analyst
+    # 3. Evidence Analyst (optimized: uses lightweight feature_context instead of full feature_payload)
     - type: prompt
       name: forecast_evidence_analyst
       connector:
@@ -60,13 +61,13 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        feature_payload: "$.get('feature_payload')"
+        feature_payload: "$.get('feature_context', {})"
         news_evidence: "$.get('evidence', {})"
         stats_baseline: "$.get('stats_out', {})"
       outputs:
         evidence_out: "$"
 
-    # 4. Store evidence analysis
+    # 4. Store evidence analysis (optimized: only new output + references)
     - type: document
       name: store-evidence-analysis
       config:
@@ -82,10 +83,7 @@ workflow:
             'league': $.get('league'),
             'season': $.get('season'),
             'match_date': $.get('match_date'),
-            'feature_payload': $.get('feature_payload'),
-            'stats_analysis': $.get('stats_out'),
             'evidence_analysis': $.get('evidence_out'),
-            'news_evidence': $.get('evidence'),
             'stats_document_id': $.get('stats_document_id'),
             'feature_document_id': $.get('feature_document_id'),
             'timestamp': datetime.utcnow().isoformat()
@@ -101,4 +99,5 @@ workflow:
         phase: "'forecasting-evidence'"
       outputs:
         evidence_document_id: "$.get('documents')[0].get('_id')"
+        evidence_output: "$.get('evidence_out')"
 

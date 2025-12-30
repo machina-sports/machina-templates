@@ -16,7 +16,7 @@ workflow:
     workflow-status: "$.get('workflow_executed_status', 'executed')"
     matchup_document_id: "$.get('matchup_document_id')"
   tasks:
-    # 1. Load evidence analysis
+    # 1. Load evidence analysis (optimized: get evidence_out + refs, load feature_payload separately)
     - type: document
       name: load-evidence-analysis
       config:
@@ -27,8 +27,6 @@ workflow:
       inputs:
         name: "'soccer-evidence-analysis'"
       outputs:
-        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
-        stats_out: "$.get('documents')[0].get('value', {}).get('stats_analysis', {}) if len($.get('documents', [])) > 0 else {}"
         evidence_out: "$.get('documents')[0].get('value', {}).get('evidence_analysis', {}) if len($.get('documents', [])) > 0 else {}"
         h_name: "$.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''"
         a_name: "$.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''"
@@ -39,7 +37,21 @@ workflow:
         feature_document_id: "$.get('documents')[0].get('value', {}).get('feature_document_id', '') if len($.get('documents', [])) > 0 else ''"
         workflow_executed_status: "'executed'"
 
-    # 2. Matchup Analyst
+    # 1b. Load feature payload from source document
+    - type: document
+      name: load-feature-payload
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        document_id: $.get('feature_document_id')
+      inputs:
+        name: "'soccer-match-features'"
+      outputs:
+        feature_payload: "$.get('documents')[0].get('value', {}).get('feature_payload', {}) if len($.get('documents', [])) > 0 else {}"
+        feature_context: "{'league': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('meta', {}).get('league', '39') if len($.get('documents', [])) > 0 else '39', 'venue': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('meta', {}).get('venue', 'Unknown') if len($.get('documents', [])) > 0 else 'Unknown', 'home_name': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('home', {}).get('name', $.get('h_name', '')) if len($.get('documents', [])) > 0 else $.get('h_name', ''), 'away_name': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('away', {}).get('name', $.get('a_name', '')) if len($.get('documents', [])) > 0 else $.get('a_name', ''), 'home_form': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('home', {}).get('stats', {}).get('form', '') if len($.get('documents', [])) > 0 else '', 'away_form': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('away', {}).get('stats', {}).get('form', '') if len($.get('documents', [])) > 0 else '', 'home_goals_avg': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('home', {}).get('stats', {}).get('goals', {}).get('for', {}).get('average', {}).get('home', 0) if len($.get('documents', [])) > 0 else 0, 'away_goals_avg': $.get('documents')[0].get('value', {}).get('feature_payload', {}).get('away', {}).get('stats', {}).get('goals', {}).get('for', {}).get('average', {}).get('away', 0) if len($.get('documents', [])) > 0 else 0}"
+
+    # 2. Matchup Analyst (optimized: uses lightweight feature_context with style indicators instead of full feature_payload)
     - type: prompt
       name: forecast_matchup_analyst
       connector:
@@ -49,11 +61,11 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        feature_payload: "$.get('feature_payload')"
+        feature_payload: "$.get('feature_context', {})"
       outputs:
         matchup_out: "$"
 
-    # 3. Store matchup analysis
+    # 3. Store matchup analysis (optimized: only new output + references)
     - type: document
       name: store-matchup-analysis
       config:
@@ -69,9 +81,6 @@ workflow:
             'league': $.get('league'),
             'season': $.get('season'),
             'match_date': $.get('match_date'),
-            'feature_payload': $.get('feature_payload'),
-            'stats_analysis': $.get('stats_out'),
-            'evidence_analysis': $.get('evidence_out'),
             'matchup_analysis': $.get('matchup_out'),
             'evidence_document_id': $.get('evidence_document_id'),
             'stats_document_id': $.get('stats_document_id'),
@@ -89,4 +98,5 @@ workflow:
         phase: "'forecasting-matchup'"
       outputs:
         matchup_document_id: "$.get('documents')[0].get('_id')"
+        matchup_output: "$.get('matchup_out')"
 
