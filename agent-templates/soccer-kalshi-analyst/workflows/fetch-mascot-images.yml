@@ -130,6 +130,10 @@ workflow:
         image_base64: "$.get('home_image_results', [])[0].get('image', '') if len($.get('home_image_results', [])) > 0 else ''"
       outputs:
         home_mascot_tmp_path: "$.get('image_path')"
+        reference_images: |
+          [
+            $.get('image_path')
+          ]
 
     # 5. Download AWAY mascot image to tmp
     - type: connector
@@ -143,6 +147,10 @@ workflow:
         image_base64: "$.get('away_image_results', [])[0].get('image', '') if len($.get('away_image_results', [])) > 0 else ''"
       outputs:
         away_mascot_tmp_path: "$.get('image_path')"
+        away_reference_images: |
+          [
+            $.get('image_path')
+          ]
 
     # 6. Upload HOME mascot reference to Google Storage
     - type: connector
@@ -181,55 +189,10 @@ workflow:
       inputs:
         aspect_ratio: "'9:16'"
         home_team: "$.get('home_team')"
-        image_paths: "[$.get('home_mascot_tmp_path')]"
+        image_paths: "$.get('reference_images', [])"
         model_name: "'gemini-3-pro-image-preview'"
         prompt: |
-          "=== PODCAST MASCOT IMAGE GENERATION ===
-
-          REFERENCE IMAGE: Use the provided reference image of the {{home_team}} football club mascot as the character to recreate.
-
-          TASK: Generate a PHOTOREALISTIC image of this mascot character sitting in a professional podcast recording studio. The image must look like a real photograph, NOT a cartoon, NOT 3D animation, NOT CGI.
-
-          CRITICAL STYLE REQUIREMENT:
-          - PHOTOREALISTIC only - like a real photo taken with a professional camera
-          - Real fur/skin textures with natural imperfections
-          - Real fabric textures on clothing
-          - Natural lighting and shadows as in real photography
-          - ABSOLUTELY NO cartoon style, NO 3D render style, NO animated look, NO CGI aesthetic
-
-          CHARACTER REQUIREMENTS:
-          - Recreate the EXACT mascot character from the reference image (same animal/creature type, colors, features)
-          - Render the mascot as if it were a REAL creature photographed in a studio
-          - The mascot should be wearing casual, stylish clothing (like a Hawaiian shirt, hoodie, or t-shirt with a gold chain/necklace)
-          - Wearing black over-ear studio headphones (Sony or Audio-Technica style)
-          - Expressive facial expression - mouth slightly open as if speaking/reacting
-          - Character positioned on the LEFT side of the frame
-          - Body and head TILTED SLIGHTLY TO THE RIGHT (about 15-20 degrees) - looking toward someone across the table
-          - NOT a full side profile - we should see most of the face, just angled to the right
-          - Upper body shot (head, shoulders, chest visible)
-
-          STUDIO ENVIRONMENT (EXACT SPECIFICATIONS):
-          - Background: Dark charcoal gray acoustic foam panels in pyramid/wedge pattern
-          - Wall color: Dark gray/charcoal (#2D2D2D)
-          - Lighting: Warm key light from front-left, cool blue/purple RGB accent strip on back wall
-          - Silver/chrome podcast microphone on boom arm, positioned bottom-right of frame
-          - Slight bokeh/depth blur on background
-          - No windows, no plants, no decorations - just acoustic panels and lighting
-
-          CAMERA & COMPOSITION:
-          - Portrait orientation (9:16 aspect ratio)
-          - Character on LEFT side of frame, looking RIGHT
-          - Medium close-up shot (head and upper chest)
-          - Eye-level camera angle
-          - Shallow depth of field (f/2.8 look)
-          - Space on the right side of frame
-
-          PROHIBITED:
-          - NO cartoon or illustrated style
-          - NO 3D animated/Pixar/CGI look
-          - NO text, logos, or watermarks
-          - NO other characters in frame
-          - NO looking at camera (must look to the RIGHT)"
+          "Generate a PHOTOREALISTIC image of a {{home_team}} football club mascot in a podcast studio.\n\nSTYLE: Must look like a real photograph - real fur/skin textures, real fabric, natural lighting. NO cartoon, NO 3D animation, NO CGI.\n\nCHARACTER: Same mascot animal/creature from reference image. Wearing casual clothing (Hawaiian shirt or hoodie with gold chain). Black over-ear headphones. Expressive face, mouth open as if speaking. Positioned LEFT side of frame, tilted 15-20 degrees to the RIGHT, looking toward someone across table. Upper body shot.\n\nSTUDIO: Dark charcoal acoustic foam panels (#2D2D2D). Warm key light front-left, blue/purple RGB accent on back wall. Silver podcast mic bottom-right. Slight background bokeh.\n\nCOMPOSITION: 9:16 portrait. Character LEFT, looking RIGHT. Medium close-up. Eye-level. Shallow depth of field.\n\nPROHIBITED: No cartoon/CGI style, no text/logos/watermarks, no other characters, must look RIGHT not at camera."
       outputs:
         home_podcast_frame_path: "$.get('image_path')"
 
@@ -244,55 +207,10 @@ workflow:
       inputs:
         aspect_ratio: "'9:16'"
         away_team: "$.get('away_team')"
-        image_paths: "[$.get('away_mascot_tmp_path')]"
+        image_paths: "$.get('away_reference_images', [])"
         model_name: "'gemini-3-pro-image-preview'"
         prompt: |
-          "=== PODCAST MASCOT IMAGE GENERATION ===
-
-          REFERENCE IMAGE: Use the provided reference image of the {{away_team}} football club mascot as the character to recreate.
-
-          TASK: Generate a PHOTOREALISTIC image of this mascot character sitting in a professional podcast recording studio. The image must look like a real photograph, NOT a cartoon, NOT 3D animation, NOT CGI.
-
-          CRITICAL STYLE REQUIREMENT:
-          - PHOTOREALISTIC only - like a real photo taken with a professional camera
-          - Real fur/skin textures with natural imperfections
-          - Real fabric textures on clothing
-          - Natural lighting and shadows as in real photography
-          - ABSOLUTELY NO cartoon style, NO 3D render style, NO animated look, NO CGI aesthetic
-
-          CHARACTER REQUIREMENTS:
-          - Recreate the EXACT mascot character from the reference image (same animal/creature type, colors, features)
-          - Render the mascot as if it were a REAL creature photographed in a studio
-          - The mascot should be wearing casual, stylish clothing (like a tank top with a scarf, hoodie, or streetwear)
-          - Wearing black over-ear studio headphones (Sony or Audio-Technica style)
-          - Expressive facial expression - engaged in conversation, perhaps skeptical or reactive
-          - Character positioned on the RIGHT side of the frame
-          - Body and head TILTED SLIGHTLY TO THE LEFT (about 15-20 degrees) - looking toward someone across the table
-          - NOT a full side profile - we should see most of the face, just angled to the left
-          - Upper body shot (head, shoulders, chest visible)
-
-          STUDIO ENVIRONMENT (EXACT SPECIFICATIONS):
-          - Background: Dark charcoal gray acoustic foam panels in pyramid/wedge pattern
-          - Wall color: Dark gray/charcoal (#2D2D2D)
-          - Lighting: Warm key light from front-right, cool blue/purple RGB accent strip on back wall
-          - Silver/chrome podcast microphone on boom arm, positioned bottom-left of frame
-          - Slight bokeh/depth blur on background
-          - No windows, no plants, no decorations - just acoustic panels and lighting
-
-          CAMERA & COMPOSITION:
-          - Portrait orientation (9:16 aspect ratio)
-          - Character on RIGHT side of frame, looking LEFT
-          - Medium close-up shot (head and upper chest)
-          - Eye-level camera angle
-          - Shallow depth of field (f/2.8 look)
-          - Space on the left side of frame
-
-          PROHIBITED:
-          - NO cartoon or illustrated style
-          - NO 3D animated/Pixar/CGI look
-          - NO text, logos, or watermarks
-          - NO other characters in frame
-          - NO looking at camera (must look to the LEFT)"
+          "Generate a PHOTOREALISTIC image of a {{away_team}} football club mascot in a podcast studio.\n\nSTYLE: Must look like a real photograph - real fur/skin textures, real fabric, natural lighting. NO cartoon, NO 3D animation, NO CGI.\n\nCHARACTER: Same mascot animal/creature from reference image. Wearing casual clothing (tank top with scarf or streetwear). Black over-ear headphones. Expressive face, skeptical or reactive. Positioned RIGHT side of frame, tilted 15-20 degrees to the LEFT, looking toward someone across table. Upper body shot.\n\nSTUDIO: Dark charcoal acoustic foam panels (#2D2D2D). Warm key light front-right, blue/purple RGB accent on back wall. Silver podcast mic bottom-left. Slight background bokeh.\n\nCOMPOSITION: 9:16 portrait. Character RIGHT, looking LEFT. Medium close-up. Eye-level. Shallow depth of field.\n\nPROHIBITED: No cartoon/CGI style, no text/logos/watermarks, no other characters, must look LEFT not at camera."
       outputs:
         away_podcast_frame_path: "$.get('image_path')"
 
