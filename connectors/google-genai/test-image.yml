@@ -13,6 +13,7 @@ workflow:
   inputs:
     model_name: "$.get('model_name', 'gemini-2.5-flash-image-preview')"
     prompt: "$.get('prompt')"
+    aspect_ratio: "$.get('aspect_ratio')"  # e.g., "16:9", "1:1", "9:16"
     image_path: "$.get('image_path')"  # For backward compatibility
     image_paths: "$.get('image_paths', [])"  # Array of image paths
     image_path_1: "$.get('image_path_1')"  # Individual image fields
@@ -34,6 +35,7 @@ workflow:
       inputs:
         model_name: "$.get('model_name')"
         prompt: "$.get('prompt')"
+        aspect_ratio: "$.get('aspect_ratio')"  # e.g., "16:9", "1:1", "9:16"
         image_path: "$.get('image_path')"  # For backward compatibility
         image_paths: "$.get('image_paths')"  # Array of image paths
         image_path_1: "$.get('image_path_1')"  # Individual image fields

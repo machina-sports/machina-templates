@@ -1,0 +1,239 @@
+workflow:
+  name: soccer-generate-podcast-videos
+  title: Soccer Generate Podcast Videos from Transcript
+  description: Generate AI videos for each segment of the podcast transcript using mascot images, consolidate into a single video
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    google-storage:
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
+      bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
+  inputs:
+    eventCode: $.get('eventCode')
+    model_name: $.get('model_name', 'veo-3.1-fast-generate-preview')
+    aspect_ratio: $.get('aspect_ratio', '9:16')
+    duration_seconds: $.get('duration_seconds', 8)
+    poll_interval: $.get('poll_interval', 15)
+  outputs:
+    workflow-status: $.get('workflow_executed_status', 'executed')
+    podcast_videos_document_id: $.get('podcast_videos_document_id')
+    final_video_url: $.get('final_video_url')
+  tasks:
+
+    # 1. Load podcast transcript document
+    - type: document
+      name: load-podcast-transcript
+      config:
+        action: search
+        search-limit: 1
+        sorters: [["_id", -1]]
+      filters:
+        metadata.eventCode: $.get('eventCode')
+      inputs:
+        name: "'soccer-podcast-script'"
+      outputs:
+        transcript_exists: len($.get('documents', [])) > 0
+        podcast_doc: $.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else None
+        script: $.get('documents')[0].get('value', {}).get('script', {}) if len($.get('documents', [])) > 0 else {}
+        greetings_intro_home: $.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', '') if len($.get('documents', [])) > 0 else ''
+        closing_cta: $.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', '') if len($.get('documents', [])) > 0 else ''
+        turns: $.get('documents')[0].get('value', {}).get('script', {}).get('turns', []) if len($.get('documents', [])) > 0 else []
+        home_team: $.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''
+        away_team: $.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''
+        workflow_executed_status: "'executed'"
+        all_video_paths: "[]"
+
+    # 2. Load mascot images document
+    - type: document
+      name: load-mascot-images
+      condition: $.get('transcript_exists')
+      config:
+        action: search
+        search-limit: 1
+        sorters: [["_id", -1]]
+      filters:
+        metadata.eventCode: $.get('eventCode')
+      inputs:
+        name: "'soccer-mascot-images'"
+      outputs:
+        mascots_exist: len($.get('documents', [])) > 0
+        home_podcast_frame_url: $.get('documents')[0].get('value', {}).get('home_podcast_frame_url', '') if len($.get('documents', [])) > 0 else ''
+        away_podcast_frame_url: $.get('documents')[0].get('value', {}).get('away_podcast_frame_url', '') if len($.get('documents', [])) > 0 else ''
+
+    # 3. Generate INTRO video (HOME speaker - greetings_intro_home)
+    - type: connector
+      name: generate-intro-video
+      description: Generate video for the intro segment using HOME mascot
+      condition: $.get('transcript_exists') and $.get('mascots_exist') and $.get('greetings_intro_home') != ''
+      connector:
+        name: google-genai
+        command: invoke_video
+      inputs:
+        model_name: $.get('model_name')
+        aspect_ratio: $.get('aspect_ratio')
+        duration_seconds: $.get('duration_seconds')
+        poll_interval: $.get('poll_interval')
+        image_path: $.get('home_podcast_frame_url')
+        home_team: $.get('home_team')
+        greetings_intro_home: $.get('greetings_intro_home')
+        prompt: |
+          "Animated podcast scene. A {{home_team}} mascot character is speaking passionately in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot is delivering this dialogue with emotion: {{greetings_intro_home}}\n\nThe character should be animated, expressive, gesturing while speaking. Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame, looking RIGHT toward conversation partner. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere."
+      outputs:
+        intro_video_path: $.get('video_path')
+        all_video_paths: $.get('all_video_paths', []) + [$.get('video_path')] if $.get('video_path') else $.get('all_video_paths', [])
+
+    # 4. Generate TURN videos (loop through each turn)
+    - type: loop
+      name: generate-turn-videos
+      condition: $.get('transcript_exists') and $.get('mascots_exist') and len($.get('turns', [])) > 0
+      items: $.get('turns', [])
+      item_name: turn
+      index_name: turn_index
+      outputs:
+        all_video_paths: $.get('all_video_paths', [])
+        turn_video_data: $.get('turn_video_data', [])
+      tasks:
+        # 4a. Determine which mascot image to use based on speaker
+        - type: mapping
+          name: select-mascot-for-turn
+          inputs:
+            speaker: $.get('turn', {}).get('speaker', 'HOME')
+            turn_text: $.get('turn', {}).get('text', '')
+            turn_index: $.get('turn_index')
+          outputs:
+            current_speaker: $.get('speaker')
+            current_text: $.get('turn_text')
+            current_index: $.get('turn_index')
+            mascot_image_url: $.get('home_podcast_frame_url') if $.get('speaker') == 'HOME' else $.get('away_podcast_frame_url')
+            speaker_team: $.get('home_team') if $.get('speaker') == 'HOME' else $.get('away_team')
+            speaker_position: "'LEFT side of frame, looking RIGHT'" if $.get('speaker') == 'HOME' else "'RIGHT side of frame, looking LEFT'"
+
+        # 4b. Generate video for this turn
+        - type: connector
+          name: generate-turn-video
+          description: Generate video for current turn
+          condition: $.get('current_text') != ''
+          connector:
+            name: google-genai
+            command: invoke_video
+          inputs:
+            model_name: $.get('model_name')
+            aspect_ratio: $.get('aspect_ratio')
+            duration_seconds: $.get('duration_seconds')
+            poll_interval: $.get('poll_interval')
+            image_path: $.get('mascot_image_url')
+            speaker_team: $.get('speaker_team')
+            current_text: $.get('current_text')
+            speaker_position: $.get('speaker_position')
+            prompt: |
+              "Animated podcast scene. A {{speaker_team}} mascot character is speaking in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot is delivering this dialogue with emotion: {{current_text}}\n\nThe character should be animated and expressive, gesturing while speaking passionately. Mouth movements synced to speaking. Camera focuses on this mascot positioned on the {{speaker_position}}. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere. The mascot shows emotion matching the dialogue - confident, worried, excited, or skeptical as appropriate."
+          outputs:
+            turn_video_path: $.get('video_path')
+            all_video_paths: $.get('all_video_paths', []) + [$.get('video_path')] if $.get('video_path') else $.get('all_video_paths', [])
+            turn_video_data: |
+              $.get('turn_video_data', []) + [{
+                'index': $.get('current_index'),
+                'speaker': $.get('current_speaker'),
+                'team': $.get('speaker_team'),
+                'text': $.get('current_text'),
+                'video_path': $.get('video_path')
+              }]
+
+    # 5. Generate CLOSING video (HOME speaker - closing_cta)
+    - type: connector
+      name: generate-closing-video
+      description: Generate video for the closing CTA segment using HOME mascot
+      condition: $.get('transcript_exists') and $.get('mascots_exist') and $.get('closing_cta') != ''
+      connector:
+        name: google-genai
+        command: invoke_video
+      inputs:
+        model_name: $.get('model_name')
+        aspect_ratio: $.get('aspect_ratio')
+        duration_seconds: $.get('duration_seconds')
+        poll_interval: $.get('poll_interval')
+        image_path: $.get('home_podcast_frame_url')
+        home_team: $.get('home_team')
+        closing_cta: $.get('closing_cta')
+        prompt: |
+          "Animated podcast scene finale. A {{home_team}} mascot character is delivering an exciting call-to-action in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot says with high energy: {{closing_cta}}\n\nThe character should be animated, energetic, and engaging - leaning forward, making direct eye contact with camera, gesturing enthusiastically. This is the big finish! Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere. High energy closing moment."
+      outputs:
+        closing_video_path: $.get('video_path')
+        all_video_paths: $.get('all_video_paths', []) + [$.get('video_path')] if $.get('video_path') else $.get('all_video_paths', [])
+
+    # 6. Consolidate all videos into a single MP4
+    - type: connector
+      name: consolidate-videos
+      description: Merge all generated video segments into one final video
+      condition: len($.get('all_video_paths', [])) > 0
+      connector:
+        name: soccer-video-consolidator
+        command: consolidate_videos
+      inputs:
+        video_paths: $.get('all_video_paths', [])
+        output_filename: $.get('home_team', 'home').replace(' ', '_') + '_vs_' + $.get('away_team', 'away').replace(' ', '_') + '_podcast.mp4'
+      outputs:
+        consolidated_video_path: $.get('video_path')
+        consolidated_filename: $.get('filename')
+        consolidation_status: $.get('status')
+
+    # 7. Upload FINAL consolidated video to Google Storage
+    - type: connector
+      name: upload-final-video
+      description: Upload the consolidated podcast video to Google Storage
+      condition: $.get('consolidated_video_path') is not None
+      connector:
+        name: google-storage
+        command: invoke_upload
+      inputs:
+        video_path: $.get('consolidated_video_path')
+      outputs:
+        final_video_url: $.get('url')
+
+    # 8. Store video metadata in a document
+    - type: document
+      name: store-podcast-videos
+      condition: $.get('final_video_url') is not None
+      config:
+        action: save
+      documents:
+        soccer-podcast-videos: |
+          {
+            'title': $.get('home_team', '') + ' vs ' + $.get('away_team', '') + ' - Podcast Video',
+            'eventCode': $.get('eventCode'),
+            'matchup': $.get('home_team', '') + ' vs ' + $.get('away_team', ''),
+            'home_team': $.get('home_team', ''),
+            'away_team': $.get('away_team', ''),
+            'model_name': $.get('model_name'),
+            'aspect_ratio': $.get('aspect_ratio'),
+            'duration_seconds': $.get('duration_seconds'),
+            'final_video_url': $.get('final_video_url'),
+            'consolidated_filename': $.get('consolidated_filename'),
+            'segments': {
+              'intro': {
+                'speaker': 'HOME',
+                'team': $.get('home_team', ''),
+                'text': $.get('greetings_intro_home', ''),
+                'video_path': $.get('intro_video_path')
+              },
+              'turns': $.get('turn_video_data', []),
+              'closing': {
+                'speaker': 'HOME',
+                'team': $.get('home_team', ''),
+                'text': $.get('closing_cta', ''),
+                'video_path': $.get('closing_video_path')
+              }
+            },
+            'total_segments': 2 + len($.get('turn_video_data', [])),
+            'segment_video_paths': $.get('all_video_paths', []),
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        eventCode: $.get('eventCode')
+        document_type: "'podcast-videos'"
+      outputs:
+        podcast_videos_document_id: $.get('documents')[0].get('_id')

@@ -551,7 +551,20 @@ def invoke_video(request_data):
     
     Parameters:
     - provider: "ai_studio" (default) or "vertex_ai"
-    - model_name: Model name (e.g., "veo-3.1-fast-generate-001")
+    - model_name: Model name. Available models:
+        - "veo-3.1-generate-preview" (Veo 3.1 Preview - 720p/1080p, 8s/6s/4s)
+        - "veo-3.1-fast-generate-preview" (Veo 3.1 Fast Preview - optimized for speed)
+        - "veo-3.0-generate-001" (Veo 3 - 720p/1080p 16:9 only, 8s)
+        - "veo-3.0-fast-generate-001" (Veo 3 Fast)
+        - "veo-2.0-generate-001" (Veo 2 - 720p, 5-8s, up to 2 videos)
+    - prompt: Required - Text prompt describing the video to generate
+    - aspect_ratio: Optional - e.g., "16:9", "9:16" (default: "16:9")
+    - negative_prompt: Optional - What to avoid in the video
+    - duration_seconds: Optional - Video duration (4, 6, or 8 seconds depending on model)
+    - number_of_videos: Optional - Number of videos to generate (1 for Veo 3.x, up to 2 for Veo 2)
+    - image_path: Optional - Input image for image-to-video generation
+    - poll_interval: Optional - Seconds between status checks (default: 10)
+    - output_path: Optional - Custom output path for the video
     
     AI Studio Parameters:
     - api_key: Required - Get from https://aistudio.google.com/apikey
@@ -560,6 +573,9 @@ def invoke_video(request_data):
     - project_id: Required - Your GCP Project ID
     - location: Optional (default: "us-central1")
     - credential: Optional - Service account JSON (string or dict)
+    
+    Note: Request latency varies from 11 seconds to 6 minutes during peak hours.
+    Generated videos are stored on server for 2 days before removal.
     """
     
     params = request_data.get("params")
@@ -570,9 +586,18 @@ def invoke_video(request_data):
     
     # Get parameters
     prompt = params.get("prompt")
-    model_name = params.get("model_name", "veo-3.1-fast-generate-001")
+    model_name = params.get("model_name", "veo-3.1-fast-generate-preview")
     poll_interval = params.get("poll_interval", 10)  # seconds
     output_path = params.get("output_path")  # Optional custom output path
+    
+    # Video configuration options (aligned with invoke_image)
+    aspect_ratio = params.get("aspect_ratio", "16:9")  # e.g., "16:9", "9:16"
+    negative_prompt = params.get("negative_prompt")  # What to avoid
+    duration_seconds = params.get("duration_seconds", 8)  # 5 or 8 seconds
+    number_of_videos = params.get("number_of_videos", 1)  # Number of videos to generate
+    
+    # Input image support for image-to-video (aligned with invoke_image)
+    image_path = params.get("image_path")
     
     if not prompt:
         return {"status": False, "message": "Prompt is required for video generation."}
@@ -618,12 +643,90 @@ def invoke_video(request_data):
         
         print(f"🎬 Starting video generation with model: {model_name}")
         print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
+        if aspect_ratio:
+            print(f"📐 Aspect ratio: {aspect_ratio}")
+        if negative_prompt:
+            print(f"🚫 Negative prompt: {negative_prompt[:50]}..." if len(negative_prompt) > 50 else f"🚫 Negative prompt: {negative_prompt}")
+        print(f"⏱️ Duration: {duration_seconds} seconds")
+        print(f"🎞️ Number of videos: {number_of_videos}")
         
-        # Start video generation
-        operation = client.models.generate_videos(
-            model=model_name,
-            prompt=prompt,
+        # Prepare input image if provided (image-to-video)
+        input_image = None
+        if image_path:
+            print(f"🖼️ Processing input image: {image_path}")
+            
+            image_data = None
+            if image_path.startswith(("http://", "https://")):
+                # Download image from URL
+                print(f"🌐 Downloading image from URL: {image_path}")
+                try:
+                    response = requests.get(image_path)
+                    response.raise_for_status()
+                    image_data = response.content
+                    print(f"📊 Downloaded image size: {len(image_data)} bytes")
+                except Exception as e:
+                    print(f"❌ Error downloading image: {e}")
+                    return {"status": False, "message": f"Failed to download input image: {e}"}
+            elif os.path.exists(image_path):
+                # Read local file
+                print(f"📁 Reading local image: {image_path}")
+                try:
+                    with open(image_path, "rb") as image_file:
+                        image_data = image_file.read()
+                    print(f"📊 Image size: {len(image_data)} bytes")
+                except Exception as e:
+                    print(f"❌ Error reading image: {e}")
+                    return {"status": False, "message": f"Failed to read input image: {e}"}
+            else:
+                print(f"❌ Image not found: {image_path}")
+                return {"status": False, "message": f"Input image not found: {image_path}"}
+            
+            if image_data:
+                # Detect MIME type based on file extension
+                mime_type = "image/jpeg"  # default
+                if image_path.lower().endswith(".png"):
+                    mime_type = "image/png"
+                elif image_path.lower().endswith(".gif"):
+                    mime_type = "image/gif"
+                elif image_path.lower().endswith(".webp"):
+                    mime_type = "image/webp"
+                
+                input_image = types.Image(
+                    image_bytes=image_data,
+                    mime_type=mime_type,
+                )
+                print(f"✅ Input image prepared ({mime_type})")
+        
+        # Build generation config
+        config = types.GenerateVideosConfig(
+            aspect_ratio=aspect_ratio,
+            number_of_videos=number_of_videos,
         )
+        
+        # Add optional config parameters
+        if negative_prompt:
+            config.negative_prompt = negative_prompt
+        
+        # Note: duration_seconds might not be supported by all models/configs
+        # Adding it conditionally to avoid errors
+        try:
+            config.duration_seconds = duration_seconds
+        except AttributeError:
+            print(f"⚠️ duration_seconds not supported for this model, using default")
+        
+        # Start video generation with config
+        generation_params = {
+            "model": model_name,
+            "prompt": prompt,
+            "config": config,
+        }
+        
+        # Add input image if provided (image-to-video)
+        if input_image:
+            generation_params["image"] = input_image
+            print("🖼️ Using input image for image-to-video generation")
+        
+        operation = client.models.generate_videos(**generation_params)
         
         print(f"⏳ Video generation operation started. Polling every {poll_interval} seconds...")
         
@@ -648,45 +751,82 @@ def invoke_video(request_data):
                 "message": "Video generation completed but no videos were generated.",
             }
         
-        # Get the first generated video
-        generated_video = operation.response.generated_videos[0]
+        # Get the generated videos
+        generated_videos = operation.response.generated_videos
+        print(f"🎬 Generated {len(generated_videos)} video(s)")
         
-        if not hasattr(generated_video, "video"):
+        # Process all generated videos
+        video_results = []
+        for idx, generated_video in enumerate(generated_videos):
+            if not hasattr(generated_video, "video"):
+                print(f"⚠️ Video {idx + 1} does not contain video file reference, skipping")
+                continue
+            
+            # Determine output path for this video
+            if output_path and len(generated_videos) == 1:
+                video_output_path = output_path
+            elif output_path:
+                # Multiple videos: append index to filename
+                base, ext = os.path.splitext(output_path)
+                video_output_path = f"{base}_{idx + 1}{ext}"
+            else:
+                # Create a temporary file
+                temp_file = tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".mp4"
+                )
+                video_output_path = temp_file.name
+                temp_file.close()
+            
+            # Download and save the generated video
+            print(f"💾 Downloading video {idx + 1} to: {video_output_path}")
+            client.files.download(file=generated_video.video)
+            generated_video.video.save(video_output_path)
+            
+            video_filename = os.path.basename(video_output_path)
+            print(f"✅ Video {idx + 1} saved: {video_filename}")
+            
+            video_results.append({
+                "video_path": video_output_path,
+                "filename": video_filename,
+            })
+        
+        if not video_results:
             return {
                 "status": False,
-                "message": "Generated video object does not contain video file reference.",
+                "message": "Video generation completed but no videos could be saved.",
             }
         
-        # Determine output path
-        if not output_path:
-            # Create a temporary file
-            temp_file = tempfile.NamedTemporaryFile(
-                delete=False, suffix=".mp4"
-            )
-            output_path = temp_file.name
-            temp_file.close()
-        
-        # Download and save the generated video
-        print(f"💾 Downloading video to: {output_path}")
-        client.files.download(file=generated_video.video)
-        generated_video.video.save(output_path)
-        
-        # Extract filename from output_path
-        filename = os.path.basename(output_path)
-        
-        print(f"✅ Video saved successfully: {filename}")
-        
-        return {
-            "status": True,
-            "data": {
-                "video_path": output_path,
-                "filename": filename,
-                "video_format": "MP4",
-                "prompt": prompt,
-                "model": model_name,
-            },
-            "message": "Video generated successfully.",
-        }
+        # Return single video format for backward compatibility, or multiple if requested
+        if len(video_results) == 1:
+            return {
+                "status": True,
+                "data": {
+                    "video_path": video_results[0]["video_path"],
+                    "filename": video_results[0]["filename"],
+                    "video_format": "MP4",
+                    "prompt": prompt,
+                    "model": model_name,
+                    "aspect_ratio": aspect_ratio,
+                    "duration_seconds": duration_seconds,
+                    "input_image_path": image_path if image_path else None,
+                },
+                "message": "Video generated successfully.",
+            }
+        else:
+            return {
+                "status": True,
+                "data": {
+                    "videos": video_results,
+                    "video_count": len(video_results),
+                    "video_format": "MP4",
+                    "prompt": prompt,
+                    "model": model_name,
+                    "aspect_ratio": aspect_ratio,
+                    "duration_seconds": duration_seconds,
+                    "input_image_path": image_path if image_path else None,
+                },
+                "message": f"{len(video_results)} videos generated successfully.",
+            }
         
     except Exception as e:
         return {"status": False, "message": f"Exception when generating video: {e}"}
