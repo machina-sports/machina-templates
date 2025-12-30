@@ -19,15 +19,81 @@ workflow:
         doc-structure: |
           [
             {
-              "title": "Soccer AI Forecasts",
+              "title": "Soccer Analysis",
               "isActive": True,
               "icon": "folder",
               "items": [
                 {
+                  "name": "soccer-match-data",
+                  "title": "1. Match Data",
+                  "description": "Raw event data, team stats, and news intelligence.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-match-data"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "soccer-match-features",
+                  "title": "2. Match Features",
+                  "description": "Aggregated feature payload with stats and evidence.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-match-features"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "soccer-stats-analysis",
+                  "title": "3. Stats Analysis",
+                  "description": "Baseline xG from historical performance.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-stats-analysis"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "soccer-evidence-analysis",
+                  "title": "4. Evidence Analysis",
+                  "description": "News-adjusted xG with injury/tactical evidence.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-evidence-analysis"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "soccer-matchup-analysis",
+                  "title": "5. Matchup Analysis",
+                  "description": "Tactical matchup and xG multipliers.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-matchup-analysis"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "soccer-analyst-report",
+                  "title": "6. Analyst Report",
+                  "description": "Complete analyst report (stats, evidence, matchup, risk).",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-analyst-report"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "soccer-prediction",
-                  "title": "Fair Price Models",
-                  "description": "AI-calculated fair probabilities based on stats and news.",
-                  "category": "Soccer AI Forecasts",
+                  "title": "7. Prediction",
+                  "description": "Final AI forecast with Monte Carlo simulation.",
+                  "category": "Soccer Analysis",
                   "metadata": {
                     "name": ["soccer-prediction"]
                   },
@@ -36,11 +102,22 @@ workflow:
                 },
                 {
                   "name": "soccer-kalshi-analysis",
-                  "title": "Kalshi Edge Alerts",
-                  "description": "Real-time trading opportunities on Kalshi.",
-                  "category": "Soccer AI Forecasts",
+                  "title": "8. Kalshi Analysis",
+                  "description": "Trading edges vs Kalshi market prices.",
+                  "category": "Soccer Analysis",
                   "metadata": {
                     "name": ["soccer-kalshi-analysis"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "soccer-prediction-audit",
+                  "title": "9. Prediction Audit",
+                  "description": "Post-match audits with Brier score and calibration tracking.",
+                  "category": "Soccer Analysis",
+                  "metadata": {
+                    "name": ["soccer-prediction-audit"]
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
@@ -52,17 +129,6 @@ workflow:
               "isActive": True,
               "icon": "folder",
               "items": [
-                {
-                  "name": "api-football-leagues-config",
-                  "title": "API-Football Leagues Config",
-                  "description": "API-Football soccer leagues configuration.",
-                  "category": "Soccer Events",
-                  "metadata": {
-                    "name": ["api-football-leagues-config"]
-                  },
-                  "sorters": ['_id', -1],
-                  "view": "list"
-                },
                 {
                   "name": "sport-events-all",
                   "title": "All Fixtures",
@@ -151,12 +217,30 @@ workflow:
                   },
                   "sorters": ['_id', -1],
                   "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "Setup Configuration",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "api-football-leagues-config",
+                  "title": "API-Football Leagues",
+                  "description": "API-Football soccer leagues configuration.",
+                  "category": "Setup Configuration",
+                  "metadata": {
+                    "name": ["api-football-leagues-config"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
                 },
                 {
                   "name": "kalshi-leagues-config",
-                  "title": "Leagues Configuration",
+                  "title": "Kalshi Leagues",
                   "description": "Kalshi soccer leagues sync configuration.",
-                  "category": "Kalshi Soccer Markets",
+                  "category": "Setup Configuration",
                   "metadata": {
                     "name": ["kalshi-leagues-config"]
                   },

@@ -3,7 +3,7 @@ workflow:
   title: Soccer - Kalshi Analysis Update
   description: Updates the version control status of a soccer fixture after analysis attempt.
   inputs:
-    fixture_id: $.get('fixture_id')
+    eventCode: $.get('eventCode')
     is_finished: $.get('is_finished', False)
   outputs:
     workflow-status: "'executed'"
@@ -15,7 +15,7 @@ workflow:
         action: search
         search-limit: 1
       filters:
-        metadata.fixture_id: str($.get('fixture_id'))
+        metadata.event_code: $.get('eventCode')
       inputs:
         name: "'sport:Event'"
       outputs:

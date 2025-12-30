@@ -230,3 +230,27 @@ workflow:
         category: "'development'"
         topic: "'workflows'"
 
+    # Frontend Boilerplate documentation
+    - type: document
+      name: save-frontend-docs
+      description: Save Frontend Boilerplate and Coding Standards
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'Machina Frontend Boilerplate & Coding Standards',
+            'category': 'frontend',
+            'content': 'The Machina Frontend Boilerplate is built on Next.js 16 (App Router), Redux Toolkit, and Tailwind CSS 4. Architecture: 1) Providers (Brain) - Domain logic with actions.ts (thunks), reducer.ts (slice), service.ts (API), and provider.tsx (hooks). 2) HTTP Layer - Services extend ClientBaseService; never use fetch/axios directly in components. 3) Component Layer - Presentational UI in components/, primitives in components/ui/. 4) BFF Pattern - All API calls must go through app/api/* proxy routes for security. Coding Standards: Strict TypeScript (no any), components focus on UI, logic stays in Providers. useAppSelector and useAppDispatch for Redux. White Label: Branding via config/brands/ and useBrand() hook. Features: Step-by-step feature addition: Create provider, define types, implement service, create slice, register reducer, build UI, wrap with provider. Security: Never use NEXT_PUBLIC_ for sensitive keys like MACHINA_API_KEY.',
+            'tags': ['frontend', 'nextjs', 'redux', 'architecture', 'coding-standards', 'security', 'bff']
+          }
+      metadata:
+        category: "'frontend'"
+        topic: "'architecture'"
+

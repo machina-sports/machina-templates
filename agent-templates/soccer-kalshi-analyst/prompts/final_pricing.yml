@@ -17,6 +17,9 @@ prompt:
     Monte Carlo Simulation Results:
     {{sim_results}}
 
+    Market Prior (Kalshi Markets):
+    {{market_prior}}
+
     ## PRICING METHODOLOGY
 
     ### PHASE 1: EXTRACT RAW SIMULATION PROBABILITIES
@@ -30,16 +33,37 @@ prompt:
     raw_under_2_5 = simulations where total_goals <= 2 / total_sims
     ```
 
-    ### PHASE 2: CONFIDENCE-WEIGHTED ADJUSTMENT
-    Apply the Risk Officer's confidence to shade probabilities toward the market prior:
+    ### PHASE 2: MARKET-ANCHORED CALIBRATION
+    Use actual Kalshi market prices as priors (if available), otherwise use generic priors.
+    This makes our model "market baseline + fast information overlay":
+    
     ```
-    # Lower confidence = more regression to "fair" odds
-    market_prior = [0.40, 0.25, 0.35]  # Generic home/draw/away
+    # Extract market prices from Kalshi (if available)
+    if market_prior and market_prior.markets_count > 0:
+        # Use mid-point of bid/ask from Kalshi markets
+        # Look for RESULT markets for 1X2
+        kalshi_home_mid = market_prior['home_win_mid'] / 100  # Convert cents to probability
+        kalshi_draw_mid = market_prior['draw_mid'] / 100
+        kalshi_away_mid = market_prior['away_win_mid'] / 100
+        
+        market_baseline = [kalshi_home_mid, kalshi_draw_mid, kalshi_away_mid]
+        using_market_prior = True
+    else:
+        # Fallback to generic prior
+        market_baseline = [0.40, 0.25, 0.35]  # Generic home/draw/away
+        using_market_prior = False
     
     confidence_weight = risk_assessment.confidence
     
-    final_prob = (confidence_weight × raw_prob) + ((1 - confidence_weight) × market_prior)
+    # Formula: (confidence × our_model) + ((1 - confidence) × market)
+    # High confidence = trust our model more
+    # Low confidence = regress toward market prices
+    final_prob = (confidence_weight × raw_prob) + ((1 - confidence_weight) × market_baseline)
     ```
+    
+    **Rationale**: Markets aggregate collective wisdom. When our confidence is low,
+    we should trust the market more. When we have strong evidence (high confidence),
+    our model should dominate.
 
     ### PHASE 3: PROBABILITY CALIBRATION
     Ensure mathematical consistency:
@@ -133,6 +157,17 @@ prompt:
       most_likely_score:
         type: string
         description: Most frequent scoreline from simulation (e.g., '1-1', '2-1')
+      market_prior_used:
+        type: boolean
+        description: Whether actual market prices were used for calibration
+      market_baseline:
+        type: object
+        description: The market prior values used for calibration
+        properties:
+          home: { type: number }
+          draw: { type: number }
+          away: { type: number }
+          source: { type: string, description: "'kalshi' or 'generic'" }
       rationale_compact:
         type: array
         minItems: 3

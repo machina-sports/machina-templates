@@ -1,0 +1,101 @@
+workflow:
+  name: soccer-audit-consumer
+  title: Soccer - Audit Consumer
+  description: Find finished soccer matches with predictions that haven't been audited yet.
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    fixture_id: $.get('fixture_id')
+  outputs:
+    fixture_id: $.get('target_fixture_id')
+    prediction_document_id: $.get('target_prediction_id')
+    workflow-status: $.get('audit_ready') is True and 'executed' or 'skipped'
+  tasks:
+    # 1. Load specific event if fixture_id provided (manual execution - force reprocessing)
+    - type: document
+      name: load-event-by-id
+      condition: $.get('fixture_id') is not None
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        metadata.event_code: str($.get('fixture_id'))
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        event_found: len($.get('documents', [])) > 0
+        target_fixture_id: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+        event_doc_id: $.get('documents')[0].get('_id') if $.get('documents') else None
+        event_status: $.get('documents')[0].get('value', {}).get('sport:status', '') if $.get('documents') else ''
+        is_finished: |
+          str($.get('documents')[0].get('value', {}).get('sport:status', '')).upper() in ['FT', 'AET', 'PEN', 'PLAYED', 'CLOSED', 'FINISHED'] if len($.get('documents', [])) > 0 else False
+        already_audited: "False"
+        manual_execution: "True"
+
+    # 2. Find next finished event from last 24 hours that hasn't been audited
+    - type: document
+      name: load-next-finished-event
+      condition: $.get('event_found') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-sorters: ["value.schema:startDate", -1]
+      filters:
+        value.schema:startDate: |
+          {
+            '$gte': (datetime.utcnow() - timedelta(hours=24)).isoformat(),
+            '$lte': datetime.utcnow().isoformat()
+          }
+        value.sport:status: "{'$in': ['FT', 'AET', 'PEN', 'PLAYED', 'CLOSED', 'FINISHED']}"
+        value.version_control.audited: "{'$ne': True}"
+        value.version_control.forecasted: True
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        event_found: len($.get('documents', [])) > 0
+        target_fixture_id: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+        event_doc_id: $.get('documents')[0].get('_id') if $.get('documents') else None
+        event_status: $.get('documents')[0].get('value', {}).get('sport:status', '') if $.get('documents') else ''
+        is_finished: len($.get('documents', [])) > 0
+        already_audited: "False"
+        manual_execution: "False"
+
+    # 3. Load corresponding prediction for this event
+    - type: document
+      name: load-prediction
+      condition: $.get('event_found') is True and $.get('is_finished') is True and $.get('already_audited') is not True
+      config:
+        action: search
+        search-limit: 1
+      filters:
+        value.fixture_id: str($.get('target_fixture_id'))
+      inputs:
+        name: "'soccer-prediction'"
+      outputs:
+        prediction_found: len($.get('documents', [])) > 0
+        target_prediction_id: $.get('documents')[0].get('_id') if $.get('documents') else None
+        prediction_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+        audit_ready: len($.get('documents', [])) > 0
+
+    # 4. Mark event as "auditing" in version_control to prevent duplicate processing
+    - type: document
+      name: mark-event-auditing
+      condition: $.get('audit_ready') is True and $.get('manual_execution') is not True
+      config:
+        action: update
+        force-update: true
+      filters:
+        document_id: $.get('event_doc_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'audit_in_progress': True,
+              'audit_started_at': datetime.utcnow().isoformat()
+            }
+          }

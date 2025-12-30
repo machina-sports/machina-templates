@@ -1,0 +1,35 @@
+agent:
+  name: soccer-kalshi-audit
+  title: Soccer Kalshi Audit
+  description: |
+    Automated scheduler that monitors recently finished soccer matches (last 24 hours) 
+    and triggers post-match audit workflow to compare predictions against actual results.
+    Runs every 30 minutes to process one unaudited match at a time.
+  context:
+    config-frequency: 30
+    status: "inactive"
+  context-agent:
+    fixture_id: "$.get('fixture_id')"
+  workflows:
+  
+    # 1. Consumer: Find next unaudited finished match
+    - name: soccer-audit-consumer
+      description: Identify finished matches with predictions that need auditing
+      inputs:
+        fixture_id: $.get('fixture_id')
+      outputs:
+        target_fixture_id: $.get('fixture_id')
+        target_prediction_id: $.get('prediction_document_id')
+        prediction_found: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 2. Auditor: Run post-match audit for the found match
+    - name: soccer-post-match-auditor
+      description: Compare prediction to actual result and calculate audit metrics
+      condition: $.get('prediction_found') is True
+      inputs:
+        fixture_id: $.get('target_fixture_id')
+        prediction_document_id: $.get('target_prediction_id')
+      outputs:
+        audit_document_id: $.get('audit_document_id')
+        audit_completed: $.get('workflow-status', 'skipped') == 'executed'
+

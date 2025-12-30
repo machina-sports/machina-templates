@@ -8,9 +8,23 @@ agent:
     status: "inactive"
   workflows:
   
-    # Soccer Sync Kalshi Events
-    - name: soccer-kalshi-sync-events-by-series
-      description: Sync Kalshi events by series ticker
+    # 1) Load leagues config
+    - name: soccer-kalshi-load-leagues-config
+      description: Load kalshi-leagues-config and return enabled leagues
+      outputs:
+        enabled_leagues: $.get('enabled_leagues', [])
+
+    # 2) Sync events per enabled league (paginated: up to 400 via 2 pages)
+    - name: soccer-kalshi-sync-events-single-series
+      description: Sync Kalshi events for a single series ticker and fuzzy-match to fixtures
+      foreach:
+        name: league
+        expr: $
+        value: $.get('enabled_leagues', [])
+      inputs:
+        league_id: $.get('league').get('league_id')
+        series_ticker: $.get('league').get('series_ticker')
+        desired_limit: 400
       outputs:
         kalshi_sync_status: $.get('workflow-status', 'skipped')
 

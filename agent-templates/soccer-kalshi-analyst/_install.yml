@@ -18,8 +18,14 @@ setup:
     - Quantified evidence extraction (injury impacts, tactical signals, motivation factors)
     - Tactical matchup analysis (style clashes, venue factors, H2H patterns)
     - Risk assessment with confidence calibration and abstention logic
-    - High-fidelity Poisson Monte Carlo simulation (10,000 iterations)
+    - Dixon-Coles enhanced Poisson Monte Carlo simulation (10,000 iterations)
+    - Market-anchored calibration using Kalshi prices as Bayesian prior
+    - Kelly Criterion stake sizing with EV-based position analysis
+    - Multi-market correlation analysis to avoid double exposure
+    - Risk-adjusted return optimization for correlated positions
     - Kalshi market edge detection with tier-based trading recommendations
+    - Post-match auditing with Brier score and calibration tracking
+    - Backtesting reports with ROI by tier and calibration curves
     - Rich prediction documents with full analytical audit trail
   integrations:
     - api-football
@@ -28,7 +34,7 @@ setup:
     - kalshi
   status: available
   value: agent-templates/soccer-kalshi-analyst
-  version: 3.0.0
+  version: 4.0.0
 
 datasets:
 
@@ -42,18 +48,39 @@ datasets:
   - type: agent
     path: agents/soccer-kalshi-sync.yml
 
-  # Scripts
-  - type: connector
-    path: scripts/aggregate_features.yml
+  - type: agent
+    path: agents/soccer-kalshi-audit.yml
+
+  # Configuration
+
+  - type: workflow
+    path: configs/setup-folders.yml
+
+  - type: workflow
+    path: configs/setup-leagues.yml
+
+  # Mappings
 
   - type: connector
-    path: scripts/enrich-matched-events.yml
+    path: scripts/audit_calculator.yml
 
   - type: connector
-    path: scripts/monte_carlo.yml
+    path: scripts/kelly_calculator.yml
 
   - type: connector
-    path: scripts/market-event-matcher.yml
+    path: scripts/correlation_analyzer.yml
+
+  - type: connector
+    path: scripts/kalshi_price_resolver.yml
+
+  - type: mappings
+    path: mappings/kalshi-markets-summary.yml
+
+  - type: mappings
+    path: mappings/combine-events.yml
+
+  - type: mappings
+    path: mappings/analyze-kalshi-markets.yml
 
   # Prompts
   - type: prompt
@@ -83,18 +110,18 @@ datasets:
   - type: prompt
     path: prompts/kalshi_edge_analyst.yml
 
-  # Mappings
+  # Scripts
+  - type: connector
+    path: scripts/aggregate_features.yml
 
-  - type: mappings
-    path: mappings/kalshi-markets-summary.yml
+  - type: connector
+    path: scripts/enrich-matched-events.yml
 
-  # Configuration
+  - type: connector
+    path: scripts/monte_carlo.yml
 
-  - type: workflow
-    path: configs/setup-folders.yml
-
-  - type: workflow
-    path: configs/setup-leagues.yml
+  - type: connector
+    path: scripts/market-event-matcher.yml
 
   # Workflows
 
@@ -102,13 +129,46 @@ datasets:
     path: workflows/consumer.yml
 
   - type: workflow
-    path: workflows/forecast-match.yml
+    path: workflows/collect-match-data.yml
 
   - type: workflow
-    path: workflows/update.yml
+    path: workflows/aggregate-match-features.yml
 
   - type: workflow
-    path: workflows/kalshi-market-integration.yml
+    path: workflows/forecast-stats.yml
+
+  - type: workflow
+    path: workflows/forecast-evidence.yml
+
+  - type: workflow
+    path: workflows/forecast-matchup.yml
+
+  - type: workflow
+    path: workflows/forecast-risk.yml
+
+  - type: workflow
+    path: workflows/forecast-simulation.yml
+
+  - type: workflow
+    path: workflows/analyze-kalshi-markets.yml
+
+  - type: workflow
+    path: workflows/load-kalshi-leagues-config.yml
+
+  - type: workflow
+    path: workflows/sync-kalshi-events-single-series.yml
 
   - type: workflow
     path: workflows/sync-kalshi-events.yml
+
+  - type: workflow
+    path: workflows/update.yml
+  # Validation & Backtesting Workflows
+  - type: workflow
+    path: workflows/audit-consumer.yml
+
+  - type: workflow
+    path: workflows/audit-post-match.yml
+
+  - type: workflow
+    path: workflows/backtesting-report.yml

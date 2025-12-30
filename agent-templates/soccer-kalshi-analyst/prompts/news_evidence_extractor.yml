@@ -7,6 +7,17 @@ prompt:
     ## TASK
     Extract structured, impact-scored evidence from the search results for: **{{matchup}}**
 
+    ## PRE-MATCH ONLY (CRITICAL)
+    Use ONLY information that would be known **before kickoff**.
+    If the text includes any post-match statements, IGNORE those parts completely and do not turn them into evidence.
+    Examples of post-match (discard):
+    - final score / "match ended" / "FT" / "full time"
+    - goals / scorers / "Actual Outcome"
+    - "confirmed on matchday" phrasing that implies outcome is known
+    - match report / recap / highlights / player ratings / post-match reactions
+
+    If timing is unclear, discard and add a note to `missing_info_flags`.
+
     ## CHAIN OF THOUGHT PROCESS
 
     ### STEP 1: SOURCE CREDIBILITY ASSESSMENT
@@ -57,6 +68,9 @@ prompt:
     ⚠️ DO NOT over-adjust: Total team delta should rarely exceed ±0.5 xG without extreme circumstances
 
     ## INPUT DATA
+    Game Date (kickoff):
+    {{game_date}}
+
     Search Results:
     {{search_results}}
   schema:

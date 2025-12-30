@@ -1,0 +1,122 @@
+mappings:
+
+  - type: mapping
+    name: kickoff-filter
+    title: Soccer | Kickoff Filter
+    description: Build Unix timestamps (min_ts/max_ts) around match kickoff to filter Kalshi trades by game start time.
+    inputs:
+      match_date: $.get('match_date', '')
+    outputs:
+      kickoff_dt: |
+        (
+          datetime.fromisoformat(
+            ($.get('match_date', '') or '').replace('Z', '+00:00')
+          )
+          if ($.get('match_date') is not None and $.get('match_date') != '')
+          else None
+        )
+      kickoff_ts: |
+        (
+          int(datetime.fromisoformat(($.get('match_date', '') or '').replace('Z', '+00:00')).timestamp())
+          if ($.get('match_date') is not None and $.get('match_date') != '')
+          else None
+        )
+      # Window around kickoff to query trades:
+      # - default lookback: 24h before kickoff
+      # - default lookahead: 0h after kickoff (only pre-kickoff prices)
+      min_ts: |
+        (
+          int((datetime.fromisoformat(($.get('match_date', '') or '').replace('Z', '+00:00')) - timedelta(hours=24)).timestamp())
+          if ($.get('match_date') is not None and $.get('match_date') != '')
+          else None
+        )
+      max_ts: |
+        (
+          int(datetime.fromisoformat(($.get('match_date', '') or '').replace('Z', '+00:00')).timestamp())
+          if ($.get('match_date') is not None and $.get('match_date') != '')
+          else None
+        )
+      is_past_match: |
+        (
+          datetime.fromisoformat(($.get('match_date', '') or '').replace('Z', '+00:00')).date() < datetime.utcnow().date()
+          if ($.get('match_date') is not None and $.get('match_date') != '')
+          else False
+        )
+      workflow_executed_status: "'executed'"
+
+  - type: mapping
+    name: market-prices
+    title: Kalshi | One Price Per Market
+    description: Compute exactly one representative price (cents) per market from the most recent trade in the filtered window.
+    inputs:
+      market_trade_prices: $.get('market_trade_prices', [])
+    outputs:
+      market_prices: |
+        [
+          {
+            'ticker': item.get('ticker'),
+            'price_cents': (item.get('yes_price') if item.get('yes_price') is not None else None),
+            'price_dollars': item.get('yes_price_dollars'),
+            'price_source': 'last_trade_in_window',
+            'trade_time': item.get('created_time'),
+            'trade_id': item.get('trade_id'),
+            'taker_side': item.get('taker_side'),
+            'count': item.get('count')
+          }
+          for item in ($.get('market_trade_prices', []) or [])
+          if item is not None
+        ]
+
+  - type: mapping
+    name: live-market-prices
+    title: Kalshi | Live Market Prices
+    description: Compute one representative price (cents) per market directly from live market snapshot (uses yes_ask).
+    inputs:
+      markets: $.get('markets', [])
+    outputs:
+      market_prices: |
+        [
+          {
+            'ticker': m.get('ticker'),
+            'price_cents': m.get('yes_ask'),
+            'price_dollars': m.get('yes_ask_dollars'),
+            'price_source': 'live_yes_ask',
+            'yes_bid': m.get('yes_bid'),
+            'yes_ask': m.get('yes_ask'),
+            'last_price': m.get('last_price')
+          }
+          for m in ($.get('markets', []) or [])
+          if m is not None
+        ]
+
+  - type: mapping
+    name: merge-market-prices-into-markets
+    title: Kalshi | Merge Prices Into Markets
+    description: Override market yes_ask with computed market_prices (when provided) to drive downstream pricing (e.g., Kelly).
+    inputs:
+      markets: $.get('markets', [])
+      market_prices: $.get('market_prices', [])
+      prices_source: $.get('prices_source', 'unknown')
+    outputs:
+      markets_for_kelly: |
+        (
+          (lambda markets, prices:
+            [
+              dict(
+                m,
+                **(
+                  {'yes_ask': prices.get(m.get('ticker'), {}).get('price_cents')}
+                  if (m.get('ticker') in prices and prices.get(m.get('ticker'), {}).get('price_cents') is not None)
+                  else {}
+                )
+              )
+              for m in (markets or [])
+            ]
+          )(
+            $.get('markets', []) or [],
+            {p.get('ticker'): p for p in ($.get('market_prices', []) or []) if p and p.get('ticker')}
+          )
+        )
+      prices_source_used: "$.get('prices_source', 'unknown')"
+
+

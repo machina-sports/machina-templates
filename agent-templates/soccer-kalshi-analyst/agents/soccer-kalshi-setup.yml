@@ -6,6 +6,8 @@ agent:
     Run this agent to create or update the kalshi-leagues-config document.
   context:
     status: "inactive"
+  context-agent:
+    environment: "$.get('environment', 'dev')"
   workflows:
   
     # Setup Folders
@@ -17,5 +19,7 @@ agent:
     # Setup Leagues
     - name: soccer-kalshi-setup-leagues
       description: Initialize Kalshi soccer leagues configuration
+      inputs:
+        environment: $.get('environment')
       outputs:
         leagues_setup_status: $.get('workflow-status', 'skipped')
