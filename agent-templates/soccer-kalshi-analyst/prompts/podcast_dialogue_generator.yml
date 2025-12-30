@@ -18,8 +18,11 @@ prompt:
 
     ### DIALOGUE RULES
     
-    **FIRST LINE (HOME speaker):**
-    Start with: "Alright, my [TEAM] vs your [TEAM]..." then immediately drop a hot take.
+    **TURN 1 - HOME SPEAKER (MANDATORY FORMAT):**
+    The conversation MUST start with HOME saying: "Alright, my [TEAM] hosting your [TEAM]..." then a hot take.
+    Example: "Alright, my Forest hosting your Everton... mate, we're in survival mode and I'm terrified!"
+    
+    **TURNS 2-10: Alternating banter (AWAY, HOME, AWAY, HOME...)**
     
     **EVERY LINE MUST:**
     - Use "my [team]", "we", "your [team]", "you guys" (NEVER "the home team")
@@ -35,13 +38,17 @@ prompt:
     - "Look, I'm not gonna lie, we've been tragic lately"
     - "Your team's folding like a cheap lawn chair and you know it"
 
-    **LAST LINE (either speaker):**
-    End with asking fans to comment: "Drop your prediction in the comments!" or "What do YOU think? Tell us below!"
+    **FINAL TURN (MANDATORY - engagement CTA):**
+    The LAST line MUST ask fans to engage. Examples:
+    - "Drop YOUR prediction in the comments—who you got?"
+    - "What do YOU think? Tell us in the comments!"
+    - "Now it's your turn—comment your score prediction below!"
 
-    ### STRUCTURE
-    - 10-12 turns total, alternating HOME/AWAY
-    - Cover: matchup intro → key points → banter/roasts → verdict → engagement CTA
-    - Each turn: 14-22 words, punchy, high energy
+    ### STRUCTURE (STRICT ORDER)
+    - Turn 1: HOME introduces matchup ("Alright, my [TEAM] hosting your [TEAM]...")
+    - Turns 2-9: Alternating AWAY/HOME banter about the talking points
+    - Turn 10-12: Verdict + MUST end with engagement CTA
+    - Total: 10-12 turns, each 14-22 words, high energy
 
     ### EXAMPLE (FOLLOW THIS ENERGY EXACTLY):
     
