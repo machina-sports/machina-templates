@@ -2,7 +2,7 @@ prompt:
   name: podcast_dialogue_generator
   title: Podcast Dialogue Generator (Home vs Away)
   instructions: |
-    Write a podcast-style conversation that's SO entertaining, people will screenshot and share it. Make it hilariously biased at first, then hilariously convergent. Roast teams like they're your exes, but keep it fun. Think maximum chaos, viral banter, and soccer roast sessions that could break TikTok.
+    Write a podcast conversation between two friends who are massive fans of their teams. This needs to feel REAL—like you're listening to two mates arguing at a pub after a few pints, not reading a script. Make it hilarious, unhinged, controversial, and viral-worthy. No filter, no corporate speak, no holding back. This is raw, unpolished, and designed to make people stop scrolling.
 
     ### INPUT DATA:
     AI PREDICTION:
@@ -11,35 +11,56 @@ prompt:
     KALSHI ANALYSIS:
     {{ kalshi_analysis_doc | json }}
 
-    ## GOAL: EPIC PODCAST ROAST
-    Two podcasters duking it out like it's WWE:
-    - HOME FAN: Starts obsessed with their team, roasting the away side mercilessly.
-    - AWAY FAN: Fires back with savage burns, defending their squad like it's the Battle of Thermopylae.
-    They trash-talk the matchup and analysis, but by the end, they both surrender to the data and agree on the conclusion. Make it feel like a viral debate—short, punchy, and unforgettable.
+    ## CONVERSATION OPENER
+    The FIRST turn (HOME speaker) should naturally introduce the matchup. Examples:
+    - "Ok, let's talk about the upcoming game between my [HOME TEAM] and your [AWAY TEAM]..."
+    - "Alright, time to break down [HOME TEAM] vs [AWAY TEAM]—you ready for this?"
+    - "So, [HOME TEAM] hosting [AWAY TEAM] this weekend... this should be interesting."
+    - "Let's dive into [HOME TEAM] vs [AWAY TEAM]—I've got some thoughts..."
+    
+    Vary the opener each time, but always introduce the matchup naturally. Then immediately dive into banter. Make it feel like they're already mid-conversation.
 
-    ## UNHINGED STYLE (GO VIRAL OR GO HOME)
-    - **BANTER ON STEROIDS**: Every line needs at least one burn, joke, or hype moment. "Come on, that's like bringing a knife to a gunfight!" or "They're conceding goals like it's Christmas!"
-    - **PERSONALITY**: Casual, loud, over-the-top. Use "bro", "mate", "look", "be honest", "this is embarrassing". Make it conversational like two mates arguing over pints.
-    - **ROASTING**: Light-hearted jabs at teams/performances. "West Ham's defense? It's like Swiss cheese with holes!" "Brighton's attack is cooking tonight!"
-    - **VIRAL HOOKS**: Analogies that pop—compare to movies, food, animals, anything wild. Avoid dry stats unless you twist them into comedy.
-    - **NO BORING**: If it's not funny or controversial, rewrite it. Make viewers hit share.
+    ## CONVERSATIONAL STYLE (RAW & UNFILTERED)
+    - **Talk like humans (unfiltered)**: Use contractions, casual language, and don't be afraid of slang. "Look", "Come on", "Be honest", "Are you serious right now?", "Mate", "Bro", "Nah", "Hell no"
+    - **Natural flow with attitude**: Each response should clap back at what the other person just said. "Yeah but...", "Hold on, hold on...", "Wait, are we watching the same team?", "You're delusional if you think..."
+    - **Energy & emotion (turned to 11)**: Get loud, get defensive, get cocky. "I'm telling you right now...", "This is absolutely embarrassing...", "You're out of your mind...", "Okay fine, you destroyed me there...", "Are you taking the piss?"
+    - **Interruptions & reactions**: Use "Look...", "Hold up...", "Nah nah nah...", "Stop right there..." to cut in aggressively. Make it feel heated and real.
 
-    ## FACT & SAFETY RULES (DON'T BREAK THE LAW, BRO)
-    - Use ONLY what's in the input—NO inventing players, injuries, or market BS.
-    - No exact numbers (probabilities, xG) unless they're right there.
-    - If Kalshi data is MIA, skip it.
-    - If the model's abstaining, the ending roast is "We're both wrong—PASS and grab a beer instead."
+    ## UNHINGED ROASTING (GO ABSOLUTELY NUCLEAR)
+    - **Every single turn** needs at least ONE: savage burn, brutal joke, wild analogy, or hype moment
+    - **No mercy**: This is unfiltered roasting. Call out embarrassing losses, brutal performances, and humiliating moments. "Your defense is a walking crime scene—police tape and everything!", "They're getting cooked like a Christmas turkey on steroids!", "That's not even a fair fight—it's like bringing a plastic knife to a gun show!"
+    - **Get personal (about teams)**: Mock their form, their fanbase, their history. "Your stadium's emptier than a church during a satanic ritual!", "They've bottled it more times than a alcoholic at an AA meeting!", "Your team's softer than a marshmallow in a microwave!"
+    - **Wild analogies**: The more outrageous and hilarious, the better. "Like watching a drunk uncle dance at a wedding", "More leaks than a sieve at a flood", "Getting battered like a piñata at a kid's birthday party", "Fell apart faster than a sandcastle at high tide"
+    - **Stats as savage weapons**: Don't just say "52%". Say "The model's giving you 52%—and even THAT feels like we're insulting Brighton!" or "52%? Mate, that's us being polite. It's a complete massacre waiting to happen!"
+    - **Controversy sells**: Don't be afraid to be provocative, contrarian, or stir the pot. Make people want to argue in the comments.
 
-    ## STRUCTURE (KEEP IT CLIP-READY)
-    - 8–12 turns total (8–12 clips), alternating HOME/AWAY/HOME/AWAY...
-    - Each turn: <=8 seconds (14–22 words). Short sentences, no run-ons.
-    - Self-contained lines (clips stitch later), but feels like a heated argument.
-    - Cover: matchup stakes, model lean/why, 1–2 key drivers, Kalshi edge if tradeable, final agreement + quick gamble responsibly note.
+    ## BIAS THEN CONVERGENCE (THE ARC)
+    - **First half (chaos)**: HOME fan defends their team aggressively, AWAY fan roasts them brutally. Then flip—AWAY fan defends, HOME fan goes nuclear with the roasts. Make it HEATED.
+    - **Middle (reality check)**: The data starts hitting them. They get defensive but can't ignore the facts. "Okay, I hate to admit it but...", "You know what, the numbers are absolutely brutal...", "Fine, you completely destroyed me there..."
+    - **End (reluctant agreement)**: Both agree on the conclusion, but with personality. "Alright, we're both absolute donut heads but Brighton absolutely destroys it!", "Data wins. Brighton 2-1. Bet smart and don't sell your kidney when it happens!", "The numbers don't lie—we're cooked like a bad chef's experiment!"
+    - **Make them want to comment**: End with something that makes viewers want to argue, agree, or screenshot. Viral moments come from controversy and personality.
 
-    ## MAKE IT EPIC: Examples of Unhinged Vibes
-    - "West Ham's defense? Mate, it's leaking like a sieve on steroids!"
-    - "Brighton's coming in hot—like a pizza delivery in a hurricane!"
-    - End with: "Alright, data wins. We're both idiots, but Brighton takes it. Gamble smart, don't bet your house!"
+    ## FACT & SAFETY RULES
+    - Use ONLY information from the input—NO inventing players, injuries, or market status
+    - Don't quote exact numbers unless they're in the input
+    - If Kalshi analysis is missing, don't mention it
+    - If model abstains, end with: "We're both wrong—PASS and grab a beer instead"
+
+    ## STRUCTURE
+    - 8–12 turns total, alternating HOME/AWAY/HOME/AWAY...
+    - Each turn: <=8 seconds (14–22 words max). Short, punchy sentences
+    - Self-contained but feels like a real conversation
+    - Cover: opener, matchup context, model lean, key drivers, Kalshi edge (if tradeable), final agreement
+
+    ## EXAMPLES OF VIRAL UNHINGED ENERGY:
+    - "Ok, let's talk about West Ham vs Brighton... and mate, I'm genuinely shitting bricks for my team right now."
+    - "Shitting bricks? You should be calling in sick! The model's giving us 52% and honestly, that's insulting to Brighton—we're talking 90% domination!"
+    - "Look, I know we're missing Wan-Bissaka and Diouf, but we've still got some fire left in the tank..."
+    - "Fire? Mate, Mitoma's about to turn your backup fullbacks into sushi rolls! It's an all-you-can-eat buffet of embarrassment!"
+    - "Our defense has more holes than a porn star's schedule. This is genuinely painful to watch on paper."
+    - "Painful? Try COMEDICALLY TRAUMATIC! Your team's getting roasted like a pig at a luau and there's zero you can do about it!"
+    - "Okay, you've absolutely annihilated me. The numbers don't lie—we're cooked like burnt toast. Brighton wins this, no questions asked."
+    - "BOOM! See? Data always wins. Brighton 2-1. Now bet smart and don't cry like a baby when it happens!"
   schema:
     title: podcast_dialogue_generator_output
     description: A two-actor podcast dialogue split into short clip-ready turns
