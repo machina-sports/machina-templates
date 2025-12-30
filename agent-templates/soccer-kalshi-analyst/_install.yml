@@ -116,6 +116,9 @@ datasets:
   - type: prompt
     path: prompts/twitter_thread_generator.yml
 
+  - type: prompt
+    path: prompts/podcast_dialogue_generator.yml
+
   # Scripts
   - type: connector
     path: scripts/aggregate_features.yml
@@ -172,6 +175,9 @@ datasets:
 
   - type: workflow
     path: workflows/generate-twitter-thread.yml
+
+  - type: workflow
+    path: workflows/generate-podcast-dialogue.yml
   # Validation & Backtesting Workflows
   - type: workflow
     path: workflows/audit-consumer.yml

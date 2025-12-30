@@ -1,0 +1,71 @@
+prompt:
+  name: podcast_dialogue_generator
+  title: Podcast Dialogue Generator (Home vs Away)
+  instructions: |
+    You are writing a podcast-style conversation about a soccer match using ONLY the input data.
+
+    ### INPUT DATA:
+    AI PREDICTION:
+    {{ prediction_doc | json }}
+
+    KALSHI ANALYSIS:
+    {{ kalshi_analysis_doc | json }}
+
+    ## GOAL
+    Generate a conversation between TWO podcasters in a podcast setting:
+    - Speaker A is a HOME TEAM fan/analyst (biased toward home team at first).
+    - Speaker B is an AWAY TEAM fan/analyst (biased toward away team at first).
+    They debate the matchup and analysis, but by the end they converge and agree on the data-driven conclusion.
+
+    ## FACT & SAFETY RULES (CRITICAL)
+    - Use ONLY information present in the input objects.
+    - Do NOT invent players, injuries, quotes, lineups, or market status.
+    - Do NOT claim exact numbers (probabilities, xG, totals) unless present in the input.
+    - If Kalshi analysis is missing, keep it out of the dialogue.
+    - If the input indicates abstain/low confidence, the “agreement” at the end should be to PASS / reduce conviction.
+
+    ## STRUCTURE RULES
+    - Output 8–12 dialogue turns total (max 12 clips total).
+    - Alternate speakers each turn: HOME, AWAY, HOME, AWAY, ...
+    - Each turn must be suitable for a standalone video clip of <= 8 seconds.
+      - Target 14–22 words per turn.
+      - Keep sentences short; avoid long lists.
+    - Keep the conversation “podcast-y”: quick banter, then sharp analysis.
+    - Each turn should be self-contained (no “as I said earlier”) because clips are stitched later.
+
+    ## CONTENT CHECKLIST (cover most if available)
+    - Match context + stakes (generic if missing)
+    - Model lean (or abstain) and why
+    - 1–2 key drivers (tactical/evidence/risk) grounded in input
+    - If Kalshi edge exists and is tradeable: mention the edge in plain English (no tickers unless present)
+    - Closing agreement: what the play is (or why it’s a pass) + quick responsible-gambling note (no hashtags)
+  schema:
+    title: podcast_dialogue_generator_output
+    description: A two-actor podcast dialogue split into short clip-ready turns
+    type: object
+    required: ["home_team", "away_team", "turns"]
+    properties:
+      home_team:
+        type: string
+      away_team:
+        type: string
+      turns:
+        type: array
+        minItems: 8
+        maxItems: 12
+        items:
+          type: object
+          required: ["speaker", "text", "max_duration_seconds"]
+          properties:
+            speaker:
+              type: string
+              enum: ["HOME", "AWAY"]
+            text:
+              type: string
+              description: Clip-ready dialogue line (target 14–22 words)
+            max_duration_seconds:
+              type: number
+              description: Must be <= 8
+              minimum: 1
+              maximum: 8
+

@@ -16,32 +16,39 @@ prompt:
 
     **Tone**: Conversational, expert, slightly contrarian (if there's an edge), and high-energy. Use emojis where appropriate but don't overdo it.
 
+    ## FACT & SAFETY RULES (CRITICAL)
+    - Use ONLY information that is present in the input objects.
+    - Do NOT invent injuries, suspensions, lineups, transfers, “confirmed out” statuses, or quotes.
+    - Do NOT name specific players unless they are explicitly mentioned in the input (e.g., inside evidence items / flags / rationale).
+    - Do NOT claim market status (e.g., “finalized/closed”) unless the input explicitly says so.
+    - If a key detail is missing, say it's unknown/unclear and keep the statement generic.
+    - If the input contains conflicting or low-reliability info, reflect uncertainty (e.g., “reports suggest…”, “status unclear…”).
+
     **Thread Structure**:
     1. **Tweet 1: The Hook & Tip**
        - Catchy opening about the matchup (e.g., "The numbers for United vs Wolves are in... and they look SHARP. 📉").
-       - Give the primary tip or prediction clearly.
-       - Include the most likely score if applicable.
+       - Give the primary tip or prediction clearly (if abstain is recommended, lead with that).
+       - Include the most likely score ONLY if present in the input.
        - End with a "Thread below for the full breakdown 👇"
 
     2. **Tweet 2: The Tactical Edge**
        - Explain *why* the AI likes this pick.
-       - Mention specific tactical multipliers or game profiles (e.g., "One-Sided Dominant", "Cagey Stalemate").
+       - Mention specific tactical/game-profile labels ONLY if present in the input.
        - Highlight a key mismatch.
 
     3. **Tweet 3: The News/Personnel Impact**
-       - Use the 'evidence' or 'news_evidence' from the docs.
-       - Talk about key injuries, AFCON absences, or tactical shifts that the market might be missing.
+       - Use the evidence/news sections from the input.
+       - Talk about key personnel/tactical factors the market might be missing, but do not over-claim certainty.
        - Make it feel like "insider" info.
 
     4. **Tweet 4: The Kalshi Edge (ONLY if kalshi_analysis_doc is provided and has a trade)**
-       - Compare the AI price vs the Kalshi market price.
-       - Highlight the "Raw Edge" or "Effective Edge".
+       - Compare the AI fair price vs the Kalshi market price ONLY if both are present in the input.
+       - Highlight the raw/effective edge ONLY if present in the input.
        - Example: "Kalshi is pricing this at 34¢, but our model says it's a 59% lock. That's a massive +25% edge. 💰"
 
     5. **Tweet 5: The Final Word & Closing**
        - Final confidence check.
-       - Disclaimer: "Always gamble responsibly. Data-driven insights, not financial advice."
-       - Relevant hashtags (e.g., #EPL #SportsBetting #AI).
+       - Include a short responsible-gambling / not-financial-advice disclaimer.
 
     **Constraints**:
     - Each tweet must be under 280 characters.

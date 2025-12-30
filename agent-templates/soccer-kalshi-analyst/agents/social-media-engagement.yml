@@ -19,3 +19,12 @@ agent:
       outputs:
         thread_document_id: $.get('thread_document_id')
         thread_ready: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 2. Generate a podcast-style two-actor dialogue script (clip-ready)
+    - name: soccer-generate-podcast-dialogue
+      description: Generate a HOME vs AWAY podcast dialogue script for the specified match
+      inputs:
+        eventCode: $.get('eventCode')
+      outputs:
+        podcast_script_document_id: $.get('podcast_script_document_id')
+        podcast_script_ready: $.get('workflow-status', 'skipped') == 'executed'
