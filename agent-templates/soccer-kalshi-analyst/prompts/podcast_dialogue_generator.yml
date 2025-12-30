@@ -16,13 +16,15 @@ prompt:
     - CRACKED: High energy, no filter, pure entertainment
     - BASED: Real opinions, no corporate speak, authentic fan energy
 
-    ### DIALOGUE RULES
+    ### DIALOGUE RULES (CRITICAL - READ CAREFULLY)
     
-    **TURN 1 - HOME SPEAKER (MANDATORY FORMAT):**
-    The conversation MUST start with HOME saying: "Alright, my [TEAM] hosting your [TEAM]..." then a hot take.
-    Example: "Alright, my Forest hosting your Everton... mate, we're in survival mode and I'm terrified!"
+    **TURN 1 - HOME SPEAKER (NON-NEGOTIABLE):**
+    The FIRST turn MUST be HOME speaker and MUST start with EXACTLY: "Alright, my [HOME TEAM NAME] hosting your [AWAY TEAM NAME]..."
     
-    **TURNS 2-10: Alternating banter (AWAY, HOME, AWAY, HOME...)**
+    WRONG: "I'm actually sweating bullets here! No Wood, no Awoniyi?"
+    RIGHT: "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
+    
+    **TURNS 2-9: Alternating banter (AWAY, HOME, AWAY, HOME...)**
     
     **EVERY LINE MUST:**
     - Use "my [team]", "we", "your [team]", "you guys" (NEVER "the home team")
@@ -39,10 +41,13 @@ prompt:
     - "Your team's folding like a cheap lawn chair and you know it"
 
     **FINAL TURN (MANDATORY - engagement CTA):**
-    The LAST line MUST ask fans to engage. Examples:
+    The VERY LAST turn MUST end with asking fans to comment. It MUST include phrases like:
     - "Drop YOUR prediction in the comments—who you got?"
     - "What do YOU think? Tell us in the comments!"
     - "Now it's your turn—comment your score prediction below!"
+    
+    WRONG: "We're taking three points and sending you closer to the Championship where you belong."
+    RIGHT: "We're taking three points! Now drop YOUR prediction in the comments—who you got?"
 
     ### STRUCTURE (STRICT ORDER)
     - Turn 1: HOME introduces matchup ("Alright, my [TEAM] hosting your [TEAM]...")
@@ -71,6 +76,14 @@ prompt:
     HOME: "Chaos works for me! Chelsea 3-1, calling it now. The data's clear, we're taking this!"
     
     AWAY: "Fine, I'll take the L on this one. 3-1 Chelsea. Now drop YOUR prediction in the comments—who you got?"
+    
+    ### VALIDATION CHECKLIST (VERIFY BEFORE OUTPUT):
+    - Turn 1 is HOME speaker and starts with "Alright, my [TEAM] hosting your [TEAM]..."
+    - Last turn includes an engagement CTA asking fans to comment
+    - Total turns: 10-12
+    - Alternating HOME/AWAY speakers
+    - All lines use "my [team]", "we", "your [team]" (never "the home team")
+    - All lines are 14-22 words
   schema:
     title: podcast_dialogue_generator_output
     type: object
@@ -86,7 +99,7 @@ prompt:
         maxItems: 12
         items:
           type: object
-          required: ["speaker", "text", "max_duration_seconds"]
+          required: ["speaker", "text"]
           properties:
             speaker:
               type: string
@@ -94,7 +107,3 @@ prompt:
             text:
               type: string
               description: "Unhinged dialogue line (14-22 words)"
-            max_duration_seconds:
-              type: number
-              minimum: 1
-              maximum: 8

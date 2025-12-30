@@ -63,9 +63,9 @@ prompt:
     - "Injury list incomplete"
 
     ## CRITICAL WARNINGS
-    ⚠️ DO NOT double-count: If a player injury affects both attack AND defense, assign to PRIMARY impact only
-    ⚠️ DO NOT speculate: Only extract what is EXPLICITLY stated in sources
-    ⚠️ DO NOT over-adjust: Total team delta should rarely exceed ±0.5 xG without extreme circumstances
+    DO NOT double-count: If a player injury affects both attack AND defense, assign to PRIMARY impact only
+    DO NOT speculate: Only extract what is EXPLICITLY stated in sources
+    DO NOT over-adjust: Total team delta should rarely exceed ±0.5 xG without extreme circumstances
 
     ## INPUT DATA
     Game Date (kickoff):

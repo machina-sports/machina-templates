@@ -71,9 +71,9 @@ prompt:
     ```
 
     ## COMMON PITFALLS TO AVOID
-    ⚠️ **Double-counting**: If "Star striker injured" affects attack AND team morale, count ONLY the larger impact
-    ⚠️ **Recency bias**: A single bad loss ≠ systemic decline
-    ⚠️ **Over-adjustment**: News rarely shifts expected outcomes by more than 0.5 xG total
+    **Double-counting**: If "Star striker injured" affects attack AND team morale, count ONLY the larger impact
+    **Recency bias**: A single bad loss ≠ systemic decline
+    **Over-adjustment**: News rarely shifts expected outcomes by more than 0.5 xG total
 
     ## OUTPUT REQUIREMENTS
     Show your work clearly:
