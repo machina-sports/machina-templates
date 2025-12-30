@@ -19,7 +19,19 @@ prompt:
     ### DIALOGUE STRUCTURE (CRITICAL - READ CAREFULLY)
     
     **GREETINGS_INTRO_HOME (REQUIRED):**
-    This is the opening line from the HOME speaker talking DIRECTLY to the AWAY fan. It should be personal, direct, and unhinged—like you're starting a conversation at a pub. Avoid formal phrases like "Welcome to..." or "Let's talk about..."
+    This is the opening line from the HOME speaker talking DIRECTLY to the AWAY fan. Personal, direct, unhinged—like you're starting a conversation at a pub.
+    
+    NEVER START WITH THESE (WILL BE REJECTED):
+    - "Welcome to..." 
+    - "It's [manager] versus [manager]..."
+    - "We're hosting..." without "my [team]"
+    - Any third-person narrator style
+    
+    MUST START WITH ONE OF THESE PATTERNS:
+    - "Alright, my [team] hosting your [team]..."
+    - "So we've got my [team] against your [team]..."
+    - "Ok, my [team] vs your [team]..."
+    - "Mate, my [team] taking on your [team]..."
     
     Examples:
     - "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
@@ -44,18 +56,24 @@ prompt:
     - "Your team's folding like a cheap lawn chair and you know it"
 
     **CLOSING_CTA (REQUIRED):**
-    This is the final line that MUST directly ask fans to comment. Keep it casual, direct, and viral. It MUST include a direct call to action.
+    Final line that directly asks fans to comment. Keep it casual, direct, and viral.
     
-    GOOD examples:
-    - "Drop YOUR prediction in the comments—who you got?"
-    - "What do YOU think? Tell us below!"
-    - "Now it's your turn—comment your score prediction!"
+    NEVER USE THESE PHRASES (WILL BE REJECTED):
+    - "Let us know..."
+    - "Will [X] work or will [Y] prevail?"
+    - "Will [team] survive or will [team] capitalize?"
+    - Any formal question format
     
-    WRONG (too formal/question-like):
-    - "Will Forest's strikerless system work, or will Everton capitalize on the chaos? Let us know your score predictions in the comments below!"
+    MUST USE ONE OF THESE PATTERNS:
+    - "Drop YOUR prediction in the comments..."
+    - "What do YOU think? Tell us..."
+    - "Now it's your turn—comment..."
+    - "[Score prediction]. Now drop YOUR prediction..."
     
-    RIGHT (direct and casual):
+    Examples:
     - "We're taking three points! Now drop YOUR prediction in the comments—who you got?"
+    - "Fine, I'll take the L. 1-1 draw. Now comment YOUR score prediction below!"
+    - "That's my take—2-0 to us. What do YOU think? Tell us in the comments!"
 
     ### EXAMPLE OUTPUT STRUCTURE:
     
@@ -71,8 +89,10 @@ prompt:
     The closing_cta should be: "Fine, I'll take the L on this one. 3-1 Chelsea. Now drop YOUR prediction in the comments—who you got?"
     
     ### VALIDATION CHECKLIST (VERIFY BEFORE OUTPUT):
-    - greetings_intro_home is from HOME speaker and introduces the matchup engagingly
-    - closing_cta includes an engagement CTA asking fans to comment
+    - greetings_intro_home starts with "Alright, my...", "So we've got my...", "Ok, my...", or "Mate, my..."
+    - greetings_intro_home does NOT contain "Welcome to" or "It's [X] versus [Y]"
+    - closing_cta uses "Drop YOUR prediction...", "What do YOU think...", or "Now it's your turn..."
+    - closing_cta does NOT contain "Let us know" or "Will [X] or will [Y]"
     - turns array has 8-10 turns
     - Alternating HOME/AWAY speakers in turns
     - All lines use "my [team]", "we", "your [team]" (never "the home team")
@@ -90,7 +110,7 @@ prompt:
         description: "Name of the away team"
       greetings_intro_home:
         type: string
-        description: "Opening dialogue from HOME speaker introducing the matchup in an engaging way (14-22 words)"
+        description: "Opening from HOME speaker. MUST start with 'Alright, my [team]...' or 'So we've got my [team]...' or 'Ok, my [team]...' - NEVER 'Welcome to' (14-22 words)"
       turns:
         type: array
         minItems: 8
@@ -108,4 +128,4 @@ prompt:
               description: "Unhinged dialogue line (14-22 words)"
       closing_cta:
         type: string
-        description: "Final closing line with engagement CTA asking fans to comment (14-22 words)"
+        description: "Final line with CTA. MUST use 'Drop YOUR prediction...' or 'What do YOU think...' - NEVER 'Let us know' or 'Will X or will Y' (14-22 words)"
