@@ -135,6 +135,9 @@ datasets:
   - type: connector
     path: scripts/market-event-matcher.yml
 
+  - type: connector
+    path: scripts/video_consolidator.yml
+
   # Workflows
 
   - type: workflow
@@ -184,6 +187,10 @@ datasets:
 
   - type: workflow
     path: workflows/generate-podcast-dialogue.yml
+
+  - type: workflow
+    path: workflows/generate-podcast-videos.yml
+
   # Validation & Backtesting Workflows
   - type: workflow
     path: workflows/audit-consumer.yml
