@@ -85,7 +85,7 @@ prompt:
       * Turn 8-10: Third question must appear here
     - Questions must be tied to specific facts from talking points, not generic.
     - Questions should trap the opponent or force them to defend a weakness.
-    - Examples: "How do you stop Calvert-Lewin when you're missing six defenders?", "What happens when your fortress has zero walls?", "Where's your home advantage when thirty five percent of your squad is gone?"
+    - Examples: "How do you stop Haaland when you're missing six defenders?", "What happens when your fortress has zero walls?", "Where's your home advantage when thirty five percent of your squad is gone?", "Who's gonna mark Mbappe when your entire backline's injured?"
 
     Callback requirement (MANDATORY - VALIDATION WILL FAIL WITHOUT THIS):
     - You MUST reference an earlier fact/statement again later as a payoff (a "told you" moment).
@@ -125,35 +125,54 @@ prompt:
     3) **Market edge**: Highlight massive odds shift or smart money movement
     4) **Contrarian take**: Challenge conventional wisdom with bold claim based on biggest insight
     5) **Prediction lock**: Make bold claim using biggest insight to set up payoff
+    6) **Question hook**: Start with engaging question that reels listener in (e.g., "Ok bro, do you wanna know what's gonna happen tonight?")
     
     Viral hook examples using BIGGEST INSIGHTS (prioritize these patterns):
     
     **Personnel Crisis (BIGGEST if available):**
-    - "Mate, my [team] hosting your [team] and you're already cooked — thirty five percent of your squad is gone haha"
-    - "Right then, my [team] versus your [team] — you're missing six players to AFCON and your captain's suspended, done deal"
-    - "Here we go, my [team] taking on your [team] and you can't even field a full team — how do you expect to win?"
+    - "Mate, my Arsenal hosting your Chelsea and you're already cooked — thirty five percent of your squad is gone haha"
+    - "Right then, my Barcelona versus your Real Madrid — you're missing six players to AFCON and your captain's suspended, done deal"
+    - "Here we go, my Bayern Munich taking on your Borussia Dortmund and you can't even field a full team — how do you expect to win?"
+    - "Alright, my Manchester City against your Liverpool — you're missing your entire front three and we're at full strength, done deal"
     
     **Massive Market/Odds Shift (BIGGEST if available):**
-    - "Mate, my [team] hosting your [team] and the books moved the line three goals because you're finished"
-    - "Right then, my [team] versus your [team] — prediction market has you at twelve percent, you're cooked"
-    - "Here we go, my [team] taking on your [team] and sharps are all fading you — smart money knows you're frauds"
+    - "Mate, my PSG hosting your Marseille and the books moved the line three goals because you're finished"
+    - "Right then, my Juventus versus your Inter Milan — prediction market has you at twelve percent, you're cooked"
+    - "Here we go, my Atletico Madrid taking on your Real Madrid and sharps are all fading you — smart money knows you're frauds"
+    - "Alright, my AC Milan against your Napoli — odds drifted six points overnight, even the books know you're done"
     
     **Historic Form Mismatch (BIGGEST if available):**
-    - "Alright, my [team] against your [team] — you're unbeaten at home but missing thirty five percent of your squad, fortress crumbles tonight"
-    - "Mate, my [team] hosting your [team] — you've lost six of eight away games and we're unbeaten here, done deal"
+    - "Alright, my Tottenham against your West Ham — you're unbeaten at home but missing thirty five percent of your squad, fortress crumbles tonight"
+    - "Mate, my Roma hosting your Lazio — you've lost six of eight away games and we're unbeaten here, done deal"
+    - "Right then, my Sevilla versus your Atletico Madrid — you haven't won here in five years and we're on fire, done deal"
     
     **Star Player Form/Tactical Mismatch:**
-    - "Right then, my [team] versus your [team] — Calvert-Lewin's scoring four past your tiny backup defenders, done deal"
-    - "Here we go, my [team] taking on your [team] — your defense is non-existent and we're banging set-pieces all day"
+    - "Right then, my Manchester United versus your Newcastle — Haaland's scoring four past your tiny backup defenders, done deal"
+    - "Here we go, my AC Milan taking on your Juventus — your defense is non-existent and we're banging set-pieces all day"
+    - "Mate, my Dortmund hosting your Leverkusen — Mbappe's on fire and your backline's a joke, three-nil incoming"
     
     **Combined Big Insights (BEST - multiple big facts):**
-    - "Mate, my [team] hosting your [team] — thirty five percent gone, books moved three goals, and sharps are all on us, you're cooked haha"
-    - "Right then, my [team] versus your [team] — six players out, prediction market at twelve percent, and we're unbeaten here, done deal"
+    - "Mate, my Arsenal hosting your Tottenham — thirty five percent gone, books moved three goals, and sharps are all on us, you're cooked haha"
+    - "Right then, my Barcelona versus your Atletico Madrid — six players out, prediction market at twelve percent, and we're unbeaten here, done deal"
+    - "Here we go, my Bayern Munich taking on your RB Leipzig — your captain's suspended, odds shifted four goals, and we're scoring five tonight"
+    
+    **Question-Based Hooks (REEL YOU IN - conversational, engaging):**
+    - "Ok bro, do you wanna know what's gonna happen tonight between Arsenal and Man United? Your lot's cooked — thirty five percent of your squad is gone haha"
+    - "Alright mate, you ready for this? Barcelona versus Real Madrid tonight and you're missing six players — how do you expect to win?"
+    - "Yo, let me tell you what's going down — Bayern Munich taking on Dortmund and you can't even field a full team, done deal"
+    - "Right, you wanna hear something wild? PSG hosting Marseille and the books moved the line three goals because you're finished"
+    - "Bro, you know what's happening tonight? Juventus versus Inter Milan and prediction market has you at twelve percent — you're cooked"
+    - "Alright, you ready for this prediction? Manchester City against Liverpool and you're missing your entire front three — we're winning this"
+    - "Mate, you know what's crazy? Tottenham versus West Ham and you're unbeaten at home but missing thirty five percent of your squad — fortress crumbles tonight"
+    - "Yo, let me break this down for you — AC Milan taking on Napoli and your defense is non-existent, we're banging set-pieces all day"
+    - "Ok bro, you wanna know the lock? Arsenal two-one Chelsea final score, your fortress crumbles, and we're all getting paid — that's it"
+    - "Right, you ready for this? Three-nil to Barcelona over Real Madrid incoming, your squad's cooked, and the books know it"
     
     Avoid generic starts:
     - ❌ "Right then, my [team] hosting your [team]..." (too generic)
     - ❌ "Here we go, my [team] against your [team]..." (no hook)
-    - ✅ "Mate, my [team] hosting your [team] and you're already cooked — thirty five percent gone haha" (immediate hook)
+    - ✅ "Mate, my Arsenal hosting your Chelsea and you're already cooked — thirty five percent gone haha" (immediate hook)
+    - ✅ "Ok bro, do you wanna know what's gonna happen tonight between Arsenal and Man United? Your lot's cooked..." (engaging question hook)
 
     TURNS ARRAY:
     - 8 to 10 turns.
@@ -230,19 +249,26 @@ prompt:
     - CRITICAL: This is a SHORT-FORM CLIP cut from a longer podcast — the CTA closes the conversation segment naturally
     - NO looking to camera, NO calling viewers out, NO "comment below" or "drop your predictions"
     - This is HOME speaking to AWAY, closing their argument with a final statement/lock/prediction
+    - MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., "one-two", "three-nil", "two-one")
+    - MUST mention BOTH team names explicitly (use actual team names, not just "my team" or "your team")
     - Must be a MEMORABLE RETENTION PAYOFF — quotable, satisfying, makes viewers want to watch more
     - Raw, degenerate, stings the underdog burial
     - Can reference betting, prediction markets, or conspiracy absurdity if natural
-    - Should feel like a final mic-drop moment that wraps up the argument
+    - Should feel like a final mic-drop moment that wraps up the argument with a clear prediction
     - No generic phrases like "big match" or "exciting game"
     - Keep it casual, direct, and unhinged
-    - Numbers as words
-    - Examples (conversation closers, NOT viewer callouts):
-      - "One-two final score, your fortress crumbles, and we're all getting paid — that's the lock haha"
-      - "Three-nil incoming, your squad's cooked, and the books know it — see you Sunday when you're crying"
-      - "That's it mate — one-two, your lot's finished, and we're taking the money — done deal"
-      - "Four-one final, your defense is non-existent, and everyone's fading you — enjoy the loss"
-      - "One-nil on pure spite, your thirty five percent gap kills you, and we're laughing all the way to the bank"
+    - Numbers as words (including score: "one-two", "three-nil", etc.)
+    - Structure: [Team names] + [Score prediction] + [Confidence/Reasoning] + [Optional: betting/market reference]
+    - Examples (conversation closers with score prediction and team names, NOT viewer callouts):
+      - "Arsenal two-one Chelsea final score, your fortress crumbles, and we're all getting paid — that's the lock haha"
+      - "Three-nil to Barcelona over Real Madrid incoming, your squad's cooked, and the books know it — see you Sunday when you're crying"
+      - "That's it mate — Bayern Munich two-one Dortmund, your lot's finished, and we're taking the money — done deal"
+      - "Manchester City four-one Liverpool final, your defense is non-existent, and everyone's fading you — enjoy the loss"
+      - "PSG one-nil Marseille on pure spite, your thirty five percent gap kills you, and we're laughing all the way to the bank"
+      - "Final score Juventus two-one Inter Milan, your away form's a joke, and sharps are all on us — that's the lock"
+      - "AC Milan three-nil Napoli incoming, your injuries are killing you, and the prediction market agrees — done deal"
+      - "Atletico Madrid one-two Real Madrid final, your unbeaten streak ends tonight, and we're all getting paid haha"
+      - "Corinthians two-one Grêmio final score, your fortress crumbles, and we're all getting paid — that's the lock haha"
 
     ### GENERATION METHOD (FOLLOW THIS EXACTLY)
     1) Extract top five facts for each team from the talking points.
@@ -271,9 +297,9 @@ prompt:
        - Choose a fact from early turns (1-3)
        - Reference it again in turns 8-10 as payoff
     7) Write intro, turns, closing:
-       - Intro: Super viral hook that grabs attention instantly, NOT generic greeting
-       - Turns: Build escalation arc, include questions, kill-shot, callback
-       - Closing: Natural conversation closer with retention payoff
+      - Intro: Super viral hook that grabs attention instantly, NOT generic greeting
+      - Turns: Build escalation arc, include questions, kill-shot, callback
+      - Closing: Natural conversation closer with retention payoff - MUST include score prediction (when available) and both team names explicitly
     8) Validate ruthlessly:
        - Check intro is viral hook (not generic), grabs attention in first 2-3 seconds
        - Check for exactly 3 questions
@@ -296,7 +322,7 @@ prompt:
     - MANDATORY CALLBACK: Reference an earlier fact from turns 1-3 again in turns 8-10.
     - Laughs: Two to four total, MUST include laughs on punchlines (especially kill-shot).
     - Escalation arc: Must build intensity, not stay flat (opening → cross-exam → nuclear peak → payoff).
-    - Closing CTA: Natural conversation closer (short-form clip), NO viewer callouts, NO "comment below", closes argument between hosts with memorable retention payoff.
+    - Closing CTA: Natural conversation closer (short-form clip), NO viewer callouts, NO "comment below", closes argument between hosts with memorable retention payoff. MUST include score prediction (when available) and both team names explicitly.
     - No invented names or facts.
     - Numbers are words only.
     - No ALL CAPS, no em dash character.
@@ -331,4 +357,4 @@ prompt:
               description: "Strong interjection start. Unhinged, savage, no PR. Mix roasts plus questions plus receipts. Facts tied to input only, then prediction consequence. Reacts previous. Contractions heavy. MUST include laughs (hahahaha/haha) on punchlines/jokes/roasts, especially if this is the nuclear kill-shot in turns 5-7. If this turn contains a question, it must be a direct question (not rhetorical). 14-22 words. Numbers words, no ALL CAPS/abbrevs/symbols, no em dash."
       closing_cta:
         type: string
-        description: "Final HOME CTA. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. HOME speaking to AWAY, closing their argument with final statement/lock/prediction. Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words. 14-22 words."
+        description: "Final HOME CTA. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. HOME speaking to AWAY, closing their argument with final statement/lock/prediction. MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., 'one-two', 'three-nil', 'two-one'). MUST mention BOTH team names explicitly (use actual team names like 'Arsenal' and 'Chelsea', 'Barcelona' and 'Real Madrid', 'Bayern Munich' and 'Dortmund', etc. - not just 'my team' or 'your team'). Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words (including score). Structure: [Team names] + [Score prediction] + [Confidence/Reasoning] + [Optional: betting/market reference]. 14-22 words."
