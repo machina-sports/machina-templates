@@ -230,16 +230,41 @@ prompt:
     - Keep it casual, direct, and unhinged
     - Numbers as words (including score: "one-two", "three-nil", etc.)
     - Structure: [Team names] + [Score prediction] + [Confidence/Reasoning] + [Optional: betting/market reference]
-    - Examples (conversation closers with score prediction and team names, NOT viewer callouts):
+    
+    ### CRITICAL: PERSPECTIVE MUST MATCH SPEAKER (READ THIS CAREFULLY)
+    - The closing_cta content MUST be written from the SPEAKER'S perspective using correct pronouns:
+      * If HOME is speaking: "my [home team]", "your [away team]", "we" = home team, "you lot" = away team
+      * If AWAY is speaking: "my [away team]", "your [home team]", "we" = away team, "you lot" = home team
+    
+    - PERSPECTIVE CHECK: Ask "Who is speaking?" before writing the closing_cta
+      * If the speaker IS the winning team → use confident tone with "we dominate", "we destroy", "our attack"
+      * If the speaker IS the losing team → use concession tone with "we're cooked", "our defense leaks", "your striker destroys us"
+    
+    - Common MISTAKE to avoid (using Chelsea vs Bournemouth as example):
+      * WRONG (AWAY/Bournemouth speaking but using HOME perspective): "Chelsea beat Bournemouth two-one because YOUR depleted defense cannot stop Palmer"
+        - Why wrong? "YOUR depleted defense" addresses Bournemouth about THEIR defense, but speaker IS Bournemouth
+      * CORRECT (AWAY/Bournemouth speaking from their own perspective): "Chelsea beat us two-one because OUR depleted defense cannot stop YOUR Palmer"
+        - Why correct? Speaker admits "OUR defense" (Bournemouth's) can't stop "YOUR Palmer" (Chelsea's)
+    
+    - When AWAY is closing speaker (even turn count) and AWAY is the underdog:
+      * AWAY should CONCEDE/RESIGN with their own perspective: "our defense leaks", "we're cooked", "your [home team] destroys us"
+      * Do NOT write confident winner language as if HOME was speaking
+    
+    Examples when HOME is closing speaker (confident winner tone):
       - "Arsenal two-one Chelsea final score, your fortress crumbles, and we're all getting paid — that's the lock haha"
       - "Three-nil to Barcelona over Real Madrid incoming, your squad's cooked, and the books know it — see you Sunday when you're crying"
       - "That's it mate — Bayern Munich two-one Dortmund, your lot's finished, and we're taking the money — done deal"
       - "Manchester City four-one Liverpool final, your defense is non-existent, and everyone's fading you — enjoy the loss"
       - "PSG one-nil Marseille on pure spite, your thirty five percent gap kills you, and we're laughing all the way to the bank"
-      - "Final score Juventus two-one Inter Milan, your away form's a joke, and sharps are all on us — that's the lock"
-      - "AC Milan three-nil Napoli incoming, your injuries are killing you, and the prediction market agrees — done deal"
-      - "Atletico Madrid one-two Real Madrid final, your unbeaten streak ends tonight, and we're all getting paid haha"
-      - "Corinthians two-one Grêmio final score, your fortress crumbles, and we're all getting paid — that's the lock haha"
+    
+    Examples when AWAY is closing speaker (concession/resignation tone - AWAY conceding to HOME):
+      - "Fair play mate, Chelsea two-one Bournemouth — our defense leaks and your Palmer feasts, we're absolutely finished haha"
+      - "Alright fine, Liverpool three-nil over us — our backline's cooked and your Salah's gonna rinse us, cheers for the burial"
+      - "Arsenal destroys Fulham two-one, our away form's a joke and your lot knows it — we're getting smoked haha"
+      - "Yeah we're done, Real Madrid four-one over us — our injuries kill us and your Vinicius runs riot, fair enough"
+      - "Juventus beats Inter two-one, our fortress crumbles against your counter — can't even argue, we're cooked mate"
+      - "Bayern Munich three-nil over us incoming, our defense is non-existent against your press — sharps got it right haha"
+      - "Manchester City destroys us four-one, our midfield can't cope and your Haaland eats — that's the lock against my lot"
 
     ### GENERATION METHOD (FOLLOW THIS EXACTLY)
     1) Extract top five facts for each team from the talking points.
@@ -276,10 +301,14 @@ prompt:
       - Intro: Super viral hook that grabs attention instantly, NOT generic greeting (HOME speaking)
       - Turns: Build escalation arc, include questions, kill-shot, callback (STARTS WITH AWAY, then alternates)
       - Closing: Natural conversation closer with retention payoff - MUST include score prediction (when available) and both team names explicitly (speaker determined by step 5)
+      - CRITICAL: Write closing_cta from the SPEAKER'S perspective:
+        * If closing_cta_speaker = HOME: confident winner tone, "your [away team]" = opponent, "we" = home team
+        * If closing_cta_speaker = AWAY: concession/resignation tone if underdog, "our [away team]" = speaker's team, "your [home team]" = opponent, "we're cooked" = conceding
     10) Validate ruthlessly:
        - Check intro is viral hook (not generic), grabs attention in first 2-3 seconds
        - Check turns[0] is AWAY, and alternation is perfect (AWAY → HOME → AWAY → HOME...)
        - Check closing_cta_speaker matches alternation logic (even turns=AWAY, odd turns=HOME)
+       - Check closing_cta PERSPECTIVE matches speaker (pronouns correct: "our" = speaker's team, "your" = opponent)
        - Check for exactly 3 questions
        - Check for exactly 1 kill-shot in turns 5-7 with laugh
        - Check for callback
@@ -305,6 +334,11 @@ prompt:
       * If 8 or 10 turns (even): closing_cta_speaker = "AWAY"
       * If 9 turns (odd): closing_cta_speaker = "HOME"
       * This ensures perfect alternation: greetings_intro_home (HOME) → turns[0] (AWAY) → alternating turns → closing_cta (next in sequence)
+    - CLOSING_CTA PERSPECTIVE: CRITICAL - Content pronouns MUST match the speaker:
+      * If HOME speaking: "my [home team]", "your [away team]", "we" = home team wins/dominates
+      * If AWAY speaking: "my [away team]", "your [home team]", "we" = away team, use concession tone if underdog ("our defense leaks", "we're cooked", "your lot destroys us")
+      * WRONG EXAMPLE: AWAY (Bournemouth) speaker saying "Chelsea beat Bournemouth two-one because YOUR depleted defense cannot stop Palmer" — this is WRONG because "your" makes it sound like the speaker is addressing Bournemouth, but the speaker IS Bournemouth
+      * CORRECT EXAMPLE: AWAY (Bournemouth) speaker saying "Chelsea beat us two-one because OUR depleted defense cannot stop YOUR Palmer" — pronouns match speaker's perspective
     - No invented names or facts.
     - Numbers are words only.
     - No ALL CAPS, no em dash character.
@@ -339,7 +373,7 @@ prompt:
               description: "Strong interjection start. Unhinged, savage, no PR. Mix roasts plus questions plus receipts. Facts tied to input only, then prediction consequence. Reacts previous. Contractions heavy. MUST include laughs (hahahaha/haha) on punchlines/jokes/roasts, especially if this is the nuclear kill-shot in turns 5-7. If this turn contains a question, it must be a direct question (not rhetorical). 14-22 words. Numbers words, no ALL CAPS/abbrevs/symbols, no em dash."
       closing_cta:
         type: string
-        description: "Final CTA that alternates based on turns. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. Speaker closing their argument with final statement/lock/prediction. MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., 'one-two', 'three-nil', 'two-one'). MUST mention BOTH team names explicitly (use actual team names like 'Arsenal' and 'Chelsea', 'Barcelona' and 'Real Madrid', 'Bayern Munich' and 'Dortmund', etc. - not just 'my team' or 'your team'). Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words (including score). Structure: [Team names] + [Score prediction] + [Confidence/Reasoning] + [Optional: betting/market reference]. 14-22 words."
+        description: "Final CTA that alternates based on turns. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. Speaker closing their argument with final statement/lock/prediction. MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., 'one-two', 'three-nil', 'two-one'). MUST mention BOTH team names explicitly (use actual team names like 'Arsenal' and 'Chelsea', 'Barcelona' and 'Real Madrid', 'Bayern Munich' and 'Dortmund', etc. - not just 'my team' or 'your team'). CRITICAL PERSPECTIVE: Content MUST match speaker - if AWAY is speaking, use 'our' for away team, 'your' for home team, 'we're cooked' for concession. If HOME is speaking, use 'our' for home team, 'your' for away team. When AWAY is speaker and underdog, write CONCESSION tone ('our defense leaks', 'we're finished', 'your lot destroys us'). Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words (including score). 14-22 words."
       closing_cta_speaker:
         type: string
         enum: ["HOME", "AWAY"]
