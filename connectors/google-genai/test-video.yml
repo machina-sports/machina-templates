@@ -11,7 +11,7 @@ workflow:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
   inputs:
-    model_name: "$.get('model_name', 'veo-3.1-generate-preview')"
+    model_name: "$.get('model_name', 'veo-3.1-fast-generate-preview')"
     prompt: "$.get('prompt')"
     poll_interval: "$.get('poll_interval', 10)"
     output_path: "$.get('output_path')"
