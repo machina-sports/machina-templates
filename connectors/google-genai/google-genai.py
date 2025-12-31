@@ -560,6 +560,8 @@ def invoke_video(request_data):
     - image_path: Optional - Input image URL or path for image-to-video generation
     - poll_interval: Optional - Seconds between status checks (default: 10)
     - output_path: Optional - Custom output path for the video
+    - max_retries: Optional - Maximum retry attempts for empty video responses (default: 3)
+    - retry_delay: Optional - Seconds to wait between retries (default: 5)
     - api_key: Required - Get from https://aistudio.google.com/apikey
     
     Note: Request latency varies from 11 seconds to 6 minutes during peak hours.
@@ -577,6 +579,8 @@ def invoke_video(request_data):
     model_name = params.get("model_name") or "veo-3.1-fast-generate-preview"
     poll_interval = params.get("poll_interval", 10)  # seconds
     output_path = params.get("output_path")  # Optional custom output path
+    max_retries = params.get("max_retries", 3)  # Maximum retry attempts
+    retry_delay = params.get("retry_delay", 5)  # Seconds between retries
     
     # Input image support for image-to-video
     image_path = params.get("image_path")
@@ -590,294 +594,355 @@ def invoke_video(request_data):
     if not prompt:
         return {"status": False, "message": "Prompt is required for video generation."}
     
-    try:
-        # Base URL for Generative Language API
-        base_url = "https://generativelanguage.googleapis.com/v1beta"
+    # Retry loop for handling empty video responses
+    video_results = None  # Initialize outside loop
+    raw_response_json = None  # Initialize outside loop
+    
+    for attempt in range(max_retries + 1):  # +1 because first attempt is not a retry
+        if attempt > 0:
+            print(f"🔄 Retry attempt {attempt}/{max_retries} after empty video response...")
+            print(f"⏳ Waiting {retry_delay} seconds before retry...")
+            time.sleep(retry_delay)
         
-        print(f"🎬 Starting video generation with model: {model_name}")
-        print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
+        try:
+            # Base URL for Generative Language API
+            base_url = "https://generativelanguage.googleapis.com/v1beta"
         
-        # Build the request body
-        request_body = {
-            "instances": [
-                {
-                    "prompt": prompt
-                }
-            ]
-        }
-        
-        # Prepare input image if provided (image-to-video)
-        if image_path:
-            print(f"🖼️ Processing input image: {image_path}")
+            print(f"🎬 Starting video generation with model: {model_name}")
+            print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
             
-            image_data = None
-            if image_path.startswith(("http://", "https://")):
-                # Download image from URL
-                print(f"🌐 Downloading image from URL: {image_path}")
-                try:
-                    response = requests.get(image_path)
-                    response.raise_for_status()
-                    image_data = response.content
-                    print(f"📊 Downloaded image size: {len(image_data)} bytes")
-                except Exception as e:
-                    print(f"❌ Error downloading image: {e}")
-                    return {"status": False, "message": f"Failed to download input image: {e}"}
-            elif os.path.exists(image_path):
-                # Read local file
-                print(f"📁 Reading local image: {image_path}")
-                try:
-                    with open(image_path, "rb") as image_file:
-                        image_data = image_file.read()
-                    print(f"📊 Image size: {len(image_data)} bytes")
-                except Exception as e:
-                    print(f"❌ Error reading image: {e}")
-                    return {"status": False, "message": f"Failed to read input image: {e}"}
-            else:
-                print(f"❌ Image not found: {image_path}")
-                return {"status": False, "message": f"Input image not found: {image_path}"}
-            
-            if image_data:
-                # Detect MIME type based on file extension
-                mime_type = "image/jpeg"  # default
-                if image_path.lower().endswith(".png"):
-                    mime_type = "image/png"
-                elif image_path.lower().endswith(".gif"):
-                    mime_type = "image/gif"
-                elif image_path.lower().endswith(".webp"):
-                    mime_type = "image/webp"
-                
-                # Encode image to base64
-                image_base64 = base64.b64encode(image_data).decode("utf-8")
-                
-                # Add image to request body
-                request_body["instances"][0]["image"] = {
-                    "bytesBase64Encoded": image_base64,
-                    "mimeType": mime_type
-                }
-                print(f"✅ Input image prepared for video generation ({mime_type})")
-                print("🖼️ Using input image for image-to-video generation")
-        else:
-            print("📝 Using text-only prompt for video generation")
-        
-        # Make the API call to start video generation
-        generate_url = f"{base_url}/models/{model_name}:predictLongRunning?key={api_key}"
-        
-        print(f"🌐 Calling API: {base_url}/models/{model_name}:predictLongRunning")
-        
-        response = requests.post(
-            generate_url,
-            headers={"Content-Type": "application/json"},
-            json=request_body
-        )
-        
-        if response.status_code != 200:
-            error_detail = response.text
-            print(f"❌ API error: {response.status_code} - {error_detail}")
-            return {
-                "status": False,
-                "message": f"Video generation API error: {response.status_code} - {error_detail}"
+            # Build the request body
+            request_body = {
+                "instances": [
+                    {
+                        "prompt": prompt
+                    }
+                ]
             }
-        
-        operation_data = response.json()
-        operation_name = operation_data.get("name")
-        
-        if not operation_name:
-            return {"status": False, "message": "No operation name returned from API."}
-        
-        print(f"⏳ Video generation operation started: {operation_name}")
-        print(f"⏳ Polling every {poll_interval} seconds...")
-        
-        # Poll the operation status until the video is ready
-        while True:
-            print("⏳ Waiting for video generation to complete...")
-            time.sleep(poll_interval)
             
-            # Check operation status
-            poll_url = f"{base_url}/{operation_name}?key={api_key}"
-            poll_response = requests.get(poll_url)
+            # Prepare input image if provided (image-to-video)
+            if image_path:
+                print(f"🖼️ Processing input image: {image_path}")
+                
+                image_data = None
+                if image_path.startswith(("http://", "https://")):
+                    # Download image from URL
+                    print(f"🌐 Downloading image from URL: {image_path}")
+                    try:
+                        response = requests.get(image_path)
+                        response.raise_for_status()
+                        image_data = response.content
+                        print(f"📊 Downloaded image size: {len(image_data)} bytes")
+                    except Exception as e:
+                        print(f"❌ Error downloading image: {e}")
+                        return {"status": False, "message": f"Failed to download input image: {e}"}
+                elif os.path.exists(image_path):
+                    # Read local file
+                    print(f"📁 Reading local image: {image_path}")
+                    try:
+                        with open(image_path, "rb") as image_file:
+                            image_data = image_file.read()
+                        print(f"📊 Image size: {len(image_data)} bytes")
+                    except Exception as e:
+                        print(f"❌ Error reading image: {e}")
+                        return {"status": False, "message": f"Failed to read input image: {e}"}
+                else:
+                    print(f"❌ Image not found: {image_path}")
+                    return {"status": False, "message": f"Input image not found: {image_path}"}
+                
+                if image_data:
+                    # Detect MIME type based on file extension
+                    mime_type = "image/jpeg"  # default
+                    if image_path.lower().endswith(".png"):
+                        mime_type = "image/png"
+                    elif image_path.lower().endswith(".gif"):
+                        mime_type = "image/gif"
+                    elif image_path.lower().endswith(".webp"):
+                        mime_type = "image/webp"
+                    
+                    # Encode image to base64
+                    image_base64 = base64.b64encode(image_data).decode("utf-8")
+                    
+                    # Add image to request body
+                    request_body["instances"][0]["image"] = {
+                        "bytesBase64Encoded": image_base64,
+                        "mimeType": mime_type
+                    }
+                    print(f"✅ Input image prepared for video generation ({mime_type})")
+                    print("🖼️ Using input image for image-to-video generation")
+            else:
+                print("📝 Using text-only prompt for video generation")
             
-            if poll_response.status_code != 200:
-                print(f"⚠️ Poll error: {poll_response.status_code}")
-                continue
+            # Make the API call to start video generation
+            generate_url = f"{base_url}/models/{model_name}:predictLongRunning?key={api_key}"
             
-            poll_data = poll_response.json()
+            print(f"🌐 Calling API: {base_url}/models/{model_name}:predictLongRunning")
             
-            # Check if operation is done
-            if poll_data.get("done", False):
-                print("✅ Video generation completed!")
-                break
+            response = requests.post(
+                generate_url,
+                headers={"Content-Type": "application/json"},
+                json=request_body
+            )
             
-            # Check for error during polling
+            if response.status_code != 200:
+                error_detail = response.text
+                print(f"❌ API error: {response.status_code} - {error_detail}")
+                return {
+                    "status": False,
+                    "message": f"Video generation API error: {response.status_code} - {error_detail}"
+                }
+            
+            operation_data = response.json()
+            operation_name = operation_data.get("name")
+            
+            if not operation_name:
+                return {"status": False, "message": "No operation name returned from API."}
+            
+            print(f"⏳ Video generation operation started: {operation_name}")
+            print(f"⏳ Polling every {poll_interval} seconds...")
+            
+            # Poll the operation status until the video is ready
+            while True:
+                print("⏳ Waiting for video generation to complete...")
+                time.sleep(poll_interval)
+                
+                # Check operation status
+                poll_url = f"{base_url}/{operation_name}?key={api_key}"
+                poll_response = requests.get(poll_url)
+                
+                if poll_response.status_code != 200:
+                    print(f"⚠️ Poll error: {poll_response.status_code}")
+                    continue
+                
+                poll_data = poll_response.json()
+                
+                # Check if operation is done
+                if poll_data.get("done", False):
+                    print("✅ Video generation completed!")
+                    break
+                
+                # Check for error during polling
+                if "error" in poll_data:
+                    error_msg = poll_data["error"].get("message", "Unknown error")
+                    raw_response = json.dumps(poll_data, indent=2, default=str)
+                    return {
+                        "status": False,
+                        "message": f"Video generation failed: {error_msg}",
+                        "raw_api_response": raw_response
+                    }
+            
+            # Capture full raw response for debugging
+            raw_response_json = json.dumps(poll_data, indent=2, default=str)
+            print(f"📋 Full API Response:\n{raw_response_json}")
+            
+            # Extract response from completed operation
             if "error" in poll_data:
                 error_msg = poll_data["error"].get("message", "Unknown error")
-                raw_response = json.dumps(poll_data, indent=2, default=str)
                 return {
                     "status": False,
                     "message": f"Video generation failed: {error_msg}",
-                    "raw_api_response": raw_response
+                    "raw_api_response": raw_response_json
                 }
-        
-        # Capture full raw response for debugging
-        raw_response_json = json.dumps(poll_data, indent=2, default=str)
-        print(f"📋 Full API Response:\n{raw_response_json}")
-        
-        # Extract response from completed operation
-        if "error" in poll_data:
-            error_msg = poll_data["error"].get("message", "Unknown error")
-            return {
-                "status": False,
-                "message": f"Video generation failed: {error_msg}",
-                "raw_api_response": raw_response_json
-            }
-        
-        # Check for errors in response as well
-        response_data = poll_data.get("response", {})
-        if isinstance(response_data, dict) and "error" in response_data:
-            error_msg = response_data["error"].get("message", "Unknown error")
-            return {
-                "status": False,
-                "message": f"Video generation failed in response: {error_msg}",
-                "raw_api_response": raw_response_json
-            }
-        
-        # Try multiple response structures
-        generated_samples = None
-        
-        # Structure 1: generateVideoResponse.generatedSamples
-        if not generated_samples:
-            generated_samples = response_data.get("generateVideoResponse", {}).get("generatedSamples", [])
-        
-        # Structure 2: predictions array
-        if not generated_samples:
-            predictions = response_data.get("predictions", [])
-            if predictions:
-                generated_samples = predictions
-        
-        # Structure 3: Direct response array
-        if not generated_samples and isinstance(response_data, list):
-            generated_samples = response_data
-        
-        # Structure 4: Check if response itself is the samples
-        if not generated_samples and "video" in response_data:
-            generated_samples = [response_data]
-        
-        if not generated_samples:
-            # Include FULL response in error for debugging
-            return {
-                "status": False,
-                "message": "Video generation completed but no videos were generated.",
-                "raw_api_response": raw_response_json
-            }
-        
-        print(f"🎬 Generated {len(generated_samples)} video(s)")
-        
-        # Process all generated videos
-        video_results = []
-        for idx, sample in enumerate(generated_samples):
-            # Get video data - could be in different formats
-            video_bytes = None
-            video_uri = None
             
-            # Check for video field with bytes or uri
-            video_data = sample.get("video", sample)
+            # Check for errors in response as well
+            response_data = poll_data.get("response", {})
+            if isinstance(response_data, dict) and "error" in response_data:
+                error_msg = response_data["error"].get("message", "Unknown error")
+                return {
+                    "status": False,
+                    "message": f"Video generation failed in response: {error_msg}",
+                    "raw_api_response": raw_response_json
+                }
             
-            if isinstance(video_data, dict):
-                if "bytesBase64Encoded" in video_data:
-                    video_bytes = base64.b64decode(video_data["bytesBase64Encoded"])
-                elif "uri" in video_data:
-                    video_uri = video_data["uri"]
+            # Try multiple response structures
+            generated_samples = None
             
-            # Alternative: check for videoUri directly in sample
-            if not video_bytes and not video_uri:
-                video_uri = sample.get("videoUri") or sample.get("video_uri")
+            # Structure 1: generateVideoResponse.generatedSamples
+            if not generated_samples:
+                generated_samples = response_data.get("generateVideoResponse", {}).get("generatedSamples", [])
             
-            if not video_bytes and video_uri:
-                # Download video from URI
-                print(f"🌐 Downloading video from: {video_uri}")
-                try:
-                    # If it's a Google storage URI, we may need to append API key
-                    download_url = video_uri
-                    if "generativelanguage.googleapis.com" in video_uri and "key=" not in video_uri:
-                        separator = "&" if "?" in video_uri else "?"
-                        download_url = f"{video_uri}{separator}key={api_key}"
-                    
-                    video_response = requests.get(download_url)
-                    video_response.raise_for_status()
-                    video_bytes = video_response.content
-                except Exception as e:
-                    print(f"❌ Error downloading video: {e}")
+            # Structure 2: predictions array
+            if not generated_samples:
+                predictions = response_data.get("predictions", [])
+                if predictions:
+                    generated_samples = predictions
+            
+            # Structure 3: Direct response array
+            if not generated_samples and isinstance(response_data, list):
+                generated_samples = response_data
+            
+            # Structure 4: Check if response itself is the samples
+            if not generated_samples and "video" in response_data:
+                generated_samples = [response_data]
+            
+            if not generated_samples:
+                # Include FULL response in error for debugging
+                error_msg = "Video generation completed but no videos were generated."
+                print(f"⚠️ {error_msg}")
+                print(f"📋 Response structure: {raw_response_json[:500]}...")
+                
+                # If we have retries left, continue to retry
+                if attempt < max_retries:
+                    print(f"🔄 Will retry ({attempt + 1}/{max_retries})...")
+                    continue  # Retry the entire generation process
+                
+                # No more retries left, return error
+                return {
+                    "status": False,
+                    "message": f"{error_msg} (after {attempt + 1} attempt(s))",
+                    "raw_api_response": raw_response_json
+                }
+            
+            print(f"🎬 Generated {len(generated_samples)} video(s)")
+            
+            # Process all generated videos
+            video_results = []
+            for idx, sample in enumerate(generated_samples):
+                # Get video data - could be in different formats
+                video_bytes = None
+                video_uri = None
+                
+                # Check for video field with bytes or uri
+                video_data = sample.get("video", sample)
+                
+                if isinstance(video_data, dict):
+                    if "bytesBase64Encoded" in video_data:
+                        video_bytes = base64.b64decode(video_data["bytesBase64Encoded"])
+                    elif "uri" in video_data:
+                        video_uri = video_data["uri"]
+                
+                # Alternative: check for videoUri directly in sample
+                if not video_bytes and not video_uri:
+                    video_uri = sample.get("videoUri") or sample.get("video_uri")
+                
+                if not video_bytes and video_uri:
+                    # Download video from URI
+                    print(f"🌐 Downloading video from: {video_uri}")
+                    try:
+                        # If it's a Google storage URI, we may need to append API key
+                        download_url = video_uri
+                        if "generativelanguage.googleapis.com" in video_uri and "key=" not in video_uri:
+                            separator = "&" if "?" in video_uri else "?"
+                            download_url = f"{video_uri}{separator}key={api_key}"
+                        
+                        video_response = requests.get(download_url)
+                        video_response.raise_for_status()
+                        video_bytes = video_response.content
+                    except Exception as e:
+                        print(f"❌ Error downloading video: {e}")
+                        continue
+                
+                if not video_bytes:
+                    print(f"⚠️ Video {idx + 1} has no downloadable content, skipping")
                     continue
+                
+                # Determine output path for this video
+                if output_path and len(generated_samples) == 1:
+                    video_output_path = output_path
+                elif output_path:
+                    # Multiple videos: append index to filename
+                    base, ext = os.path.splitext(output_path)
+                    video_output_path = f"{base}_{idx + 1}{ext}"
+                else:
+                    # Create a temporary file
+                    temp_file = tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".mp4"
+                    )
+                    video_output_path = temp_file.name
+                    temp_file.close()
+                
+                # Save the video
+                print(f"💾 Saving video {idx + 1} to: {video_output_path}")
+                with open(video_output_path, "wb") as f:
+                    f.write(video_bytes)
+                
+                video_filename = os.path.basename(video_output_path)
+                print(f"✅ Video {idx + 1} saved: {video_filename} ({len(video_bytes)} bytes)")
+                
+                video_results.append({
+                    "video_path": video_output_path,
+                    "filename": video_filename,
+                })
             
-            if not video_bytes:
-                print(f"⚠️ Video {idx + 1} has no downloadable content, skipping")
+            if not video_results:
+                error_msg = "Video generation completed but no videos could be saved."
+                print(f"⚠️ {error_msg}")
+                
+                # If we have retries left, continue to retry
+                if attempt < max_retries:
+                    print(f"🔄 Will retry ({attempt + 1}/{max_retries})...")
+                    continue  # Retry the entire generation process
+                
+                # No more retries left, return error
+                return {
+                    "status": False,
+                    "message": f"{error_msg} (after {attempt + 1} attempt(s))",
+                    "raw_api_response": raw_response_json
+                }
+            
+            # Success! Break out of retry loop
+            print(f"✅ Video generation successful on attempt {attempt + 1}")
+            break  # Exit retry loop on success
+        
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"❌ Exception on attempt {attempt + 1}: {error_trace}")
+            
+            # Only retry on "no videos generated" errors, not on other exceptions
+            # Check if this is a retryable error (empty response)
+            if attempt < max_retries and ("no videos" in str(e).lower() or "no videos were generated" in str(e).lower()):
+                print(f"🔄 Will retry after exception ({attempt + 1}/{max_retries})...")
                 continue
             
-            # Determine output path for this video
-            if output_path and len(generated_samples) == 1:
-                video_output_path = output_path
-            elif output_path:
-                # Multiple videos: append index to filename
-                base, ext = os.path.splitext(output_path)
-                video_output_path = f"{base}_{idx + 1}{ext}"
-            else:
-                # Create a temporary file
-                temp_file = tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".mp4"
-                )
-                video_output_path = temp_file.name
-                temp_file.close()
-            
-            # Save the video
-            print(f"💾 Saving video {idx + 1} to: {video_output_path}")
-            with open(video_output_path, "wb") as f:
-                f.write(video_bytes)
-            
-            video_filename = os.path.basename(video_output_path)
-            print(f"✅ Video {idx + 1} saved: {video_filename} ({len(video_bytes)} bytes)")
-            
-            video_results.append({
-                "video_path": video_output_path,
-                "filename": video_filename,
-            })
-        
-        if not video_results:
+            # Non-retryable error or out of retries
             return {
                 "status": False,
-                "message": "Video generation completed but no videos could be saved.",
-                "raw_api_response": raw_response_json
+                "message": f"Exception when generating video: {e}",
+                "raw_api_response": error_trace
             }
-        
-        # Return single video format for backward compatibility, or multiple if requested
-        if len(video_results) == 1:
-            return {
-                "status": True,
-                "data": {
-                    "video_path": video_results[0]["video_path"],
-                    "filename": video_results[0]["filename"],
-                    "video_format": "MP4",
-                    "prompt": prompt,
-                    "model": model_name,
-                    "input_image_path": image_path if image_path else None,
-                    "raw_api_response": raw_response_json,  # Include full API response
-                },
-                "message": "Video generated successfully.",
-            }
-        else:
-            return {
-                "status": True,
-                "data": {
-                    "videos": video_results,
-                    "video_count": len(video_results),
-                    "video_format": "MP4",
-                    "prompt": prompt,
-                    "model": model_name,
-                    "input_image_path": image_path if image_path else None,
-                    "raw_api_response": raw_response_json,  # Include full API response
-                },
-                "message": f"{len(video_results)} videos generated successfully.",
-            }
-        
-    except Exception as e:
-        import traceback
-        print(f"❌ Exception: {traceback.format_exc()}")
-        return {"status": False, "message": f"Exception when generating video: {e}"}
+    
+    # If we exited the loop without success (shouldn't happen, but safety check)
+    if not video_results:
+        return {
+            "status": False,
+            "message": f"Video generation failed after {max_retries + 1} attempt(s).",
+            "raw_api_response": raw_response_json if raw_response_json else "No response captured"
+        }
+    
+    # Return single video format for backward compatibility, or multiple if requested
+    if len(video_results) == 1:
+        return {
+            "status": True,
+            "data": {
+                "video_path": video_results[0]["video_path"],
+                "filename": video_results[0]["filename"],
+                "video_format": "MP4",
+                "prompt": prompt,
+                "model": model_name,
+                "input_image_path": image_path if image_path else None,
+                "raw_api_response": raw_response_json,  # Include full API response
+            },
+            "message": "Video generated successfully.",
+        }
+    else:
+        return {
+            "status": True,
+            "data": {
+                "videos": video_results,
+                "video_count": len(video_results),
+                "video_format": "MP4",
+                "prompt": prompt,
+                "model": model_name,
+                "input_image_path": image_path if image_path else None,
+                "raw_api_response": raw_response_json,  # Include full API response
+            },
+            "message": f"{len(video_results)} videos generated successfully.",
+        }
+    
+    # Final safety check (should not reach here if video_results was set)
+    return {
+        "status": False,
+        "message": f"Video generation failed after {max_retries + 1} attempt(s).",
+        "raw_api_response": "Unexpected end of retry loop"
+    }
