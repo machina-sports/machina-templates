@@ -545,15 +545,11 @@ def invoke_search(request_data):
 
 def invoke_video(request_data):
     """
-    Generate videos using Google's Veo model.
+    Generate videos using Google's Veo model via direct REST API.
     
-    Follows Google's official example pattern:
-    https://ai.google.dev/gemini-api/docs/video
-    
-    Supports both AI Studio (default) and Vertex AI providers.
+    Uses direct HTTP calls to the Generative Language API, bypassing SDK version issues.
     
     Parameters:
-    - provider: "ai_studio" (default) or "vertex_ai"
     - model_name: Model name. Available models:
         - "veo-3.1-generate-preview" (Veo 3.1 Preview - 720p/1080p, 8s/6s/4s)
         - "veo-3.1-fast-generate-preview" (Veo 3.1 Fast Preview - optimized for speed)
@@ -564,24 +560,15 @@ def invoke_video(request_data):
     - image_path: Optional - Input image URL or path for image-to-video generation
     - poll_interval: Optional - Seconds between status checks (default: 10)
     - output_path: Optional - Custom output path for the video
-    
-    AI Studio Parameters:
     - api_key: Required - Get from https://aistudio.google.com/apikey
-    
-    Vertex AI Parameters:
-    - project_id: Required - Your GCP Project ID
-    - location: Optional (default: "us-central1")
-    - credential: Optional - Service account JSON (string or dict)
     
     Note: Request latency varies from 11 seconds to 6 minutes during peak hours.
     Generated videos are stored on server for 2 days before removal.
     """
+    import base64
     
     params = request_data.get("params")
     headers = request_data.get("headers")
-    
-    # Get provider (default to ai_studio for backward compatibility)
-    provider = params.get("provider", "ai_studio").lower()
     
     # Get parameters
     prompt = params.get("prompt")
@@ -592,54 +579,32 @@ def invoke_video(request_data):
     # Input image support for image-to-video
     image_path = params.get("image_path")
     
+    # API key is required
+    api_key = headers.get("api_key")
+    
+    if not api_key:
+        return {"status": False, "message": "API key is required for video generation."}
+    
     if not prompt:
         return {"status": False, "message": "Prompt is required for video generation."}
     
     try:
-        # Initialize client based on provider
-        if provider == "vertex_ai":
-            project_id = headers.get("project_id")
-            location = params.get("location", "us-central1")
-            credential = headers.get("credential")
-            
-            if not project_id:
-                return {"status": False, "message": "project_id is required for Vertex AI."}
-            
-            # Handle credentials
-            credentials = None
-            if credential:
-                if isinstance(credential, str):
-                    try:
-                        credential = json.loads(credential)
-                    except json.JSONDecodeError:
-                        return {"status": False, "message": "credential must be valid JSON"}
-                
-                credentials = service_account.Credentials.from_service_account_info(credential)
-            
-            # Initialize Vertex AI client
-            client = genai.Client(
-                vertexai=True,
-                project=project_id,
-                location=location,
-                credentials=credentials,
-            )
-            print(f"🔐 Using Vertex AI authentication (project: {project_id}, location: {location})")
-        else:
-            # AI Studio (default)
-            api_key = headers.get("api_key")
-            
-            if not api_key:
-                return {"status": False, "message": "API key is required for AI Studio."}
-            
-            client = genai.Client(api_key=api_key)
-            print("🔐 Using AI Studio API key authentication")
+        # Base URL for Generative Language API
+        base_url = "https://generativelanguage.googleapis.com/v1beta"
         
         print(f"🎬 Starting video generation with model: {model_name}")
         print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
         
+        # Build the request body
+        request_body = {
+            "instances": [
+                {
+                    "prompt": prompt
+                }
+            ]
+        }
+        
         # Prepare input image if provided (image-to-video)
-        # Following Google's pattern: image=image.parts[0].as_image()
-        input_image = None
         if image_path:
             print(f"🖼️ Processing input image: {image_path}")
             
@@ -679,67 +644,138 @@ def invoke_video(request_data):
                 elif image_path.lower().endswith(".webp"):
                     mime_type = "image/webp"
                 
-                # Create Image object for video generation
-                # Use types.Image with image_bytes and mime_type (matching SDK pattern)
-                input_image = types.Image(
-                    image_bytes=image_data,
-                    mime_type=mime_type,
-                )
+                # Encode image to base64
+                image_base64 = base64.b64encode(image_data).decode("utf-8")
+                
+                # Add image to request body
+                request_body["instances"][0]["image"] = {
+                    "bytesBase64Encoded": image_base64,
+                    "mimeType": mime_type
+                }
                 print(f"✅ Input image prepared for video generation ({mime_type})")
-        
-        # Start video generation - simplified to match Google's example exactly
-        # Google example: client.models.generate_videos(model=..., prompt=..., image=...)
-        # Note: Do NOT pass config object - Google's example doesn't use it
-        if input_image:
-            print("🖼️ Using input image for image-to-video generation")
-            operation = client.models.generate_videos(
-                model=model_name,
-                prompt=prompt,
-                image=input_image,
-            )
+                print("🖼️ Using input image for image-to-video generation")
         else:
             print("📝 Using text-only prompt for video generation")
-            operation = client.models.generate_videos(
-                model=model_name,
-                prompt=prompt,
-            )
         
-        print(f"⏳ Video generation operation started. Polling every {poll_interval} seconds...")
+        # Make the API call to start video generation
+        generate_url = f"{base_url}/models/{model_name}:predictLongRunning?key={api_key}"
         
-        # Poll the operation status until the video is ready
-        while not operation.done:
-            print("⏳ Waiting for video generation to complete...")
-            time.sleep(poll_interval)
-            operation = client.operations.get(operation)
+        print(f"🌐 Calling API: {base_url}/models/{model_name}:predictLongRunning")
         
-        print("✅ Video generation completed!")
+        response = requests.post(
+            generate_url,
+            headers={"Content-Type": "application/json"},
+            json=request_body
+        )
         
-        # Check if operation was successful
-        if not hasattr(operation, "response") or not operation.response:
+        if response.status_code != 200:
+            error_detail = response.text
+            print(f"❌ API error: {response.status_code} - {error_detail}")
             return {
                 "status": False,
-                "message": "Video generation completed but no response received.",
+                "message": f"Video generation API error: {response.status_code} - {error_detail}"
             }
         
-        if not hasattr(operation.response, "generated_videos") or not operation.response.generated_videos:
+        operation_data = response.json()
+        operation_name = operation_data.get("name")
+        
+        if not operation_name:
+            return {"status": False, "message": "No operation name returned from API."}
+        
+        print(f"⏳ Video generation operation started: {operation_name}")
+        print(f"⏳ Polling every {poll_interval} seconds...")
+        
+        # Poll the operation status until the video is ready
+        while True:
+            print("⏳ Waiting for video generation to complete...")
+            time.sleep(poll_interval)
+            
+            # Check operation status
+            poll_url = f"{base_url}/{operation_name}?key={api_key}"
+            poll_response = requests.get(poll_url)
+            
+            if poll_response.status_code != 200:
+                print(f"⚠️ Poll error: {poll_response.status_code}")
+                continue
+            
+            poll_data = poll_response.json()
+            
+            # Check if operation is done
+            if poll_data.get("done", False):
+                print("✅ Video generation completed!")
+                break
+            
+            # Check for error
+            if "error" in poll_data:
+                error_msg = poll_data["error"].get("message", "Unknown error")
+                return {"status": False, "message": f"Video generation failed: {error_msg}"}
+        
+        # Extract response from completed operation
+        if "error" in poll_data:
+            error_msg = poll_data["error"].get("message", "Unknown error")
+            return {"status": False, "message": f"Video generation failed: {error_msg}"}
+        
+        response_data = poll_data.get("response", {})
+        generated_samples = response_data.get("generateVideoResponse", {}).get("generatedSamples", [])
+        
+        if not generated_samples:
+            # Try alternative response structure
+            predictions = response_data.get("predictions", [])
+            if predictions:
+                generated_samples = predictions
+        
+        if not generated_samples:
             return {
                 "status": False,
                 "message": "Video generation completed but no videos were generated.",
+                "debug_response": poll_data
             }
         
-        # Get the generated videos
-        generated_videos = operation.response.generated_videos
-        print(f"🎬 Generated {len(generated_videos)} video(s)")
+        print(f"🎬 Generated {len(generated_samples)} video(s)")
         
         # Process all generated videos
         video_results = []
-        for idx, generated_video in enumerate(generated_videos):
-            if not hasattr(generated_video, "video"):
-                print(f"⚠️ Video {idx + 1} does not contain video file reference, skipping")
+        for idx, sample in enumerate(generated_samples):
+            # Get video data - could be in different formats
+            video_bytes = None
+            video_uri = None
+            
+            # Check for video field with bytes or uri
+            video_data = sample.get("video", sample)
+            
+            if isinstance(video_data, dict):
+                if "bytesBase64Encoded" in video_data:
+                    video_bytes = base64.b64decode(video_data["bytesBase64Encoded"])
+                elif "uri" in video_data:
+                    video_uri = video_data["uri"]
+            
+            # Alternative: check for videoUri directly in sample
+            if not video_bytes and not video_uri:
+                video_uri = sample.get("videoUri") or sample.get("video_uri")
+            
+            if not video_bytes and video_uri:
+                # Download video from URI
+                print(f"🌐 Downloading video from: {video_uri}")
+                try:
+                    # If it's a Google storage URI, we may need to append API key
+                    download_url = video_uri
+                    if "generativelanguage.googleapis.com" in video_uri and "key=" not in video_uri:
+                        separator = "&" if "?" in video_uri else "?"
+                        download_url = f"{video_uri}{separator}key={api_key}"
+                    
+                    video_response = requests.get(download_url)
+                    video_response.raise_for_status()
+                    video_bytes = video_response.content
+                except Exception as e:
+                    print(f"❌ Error downloading video: {e}")
+                    continue
+            
+            if not video_bytes:
+                print(f"⚠️ Video {idx + 1} has no downloadable content, skipping")
                 continue
             
             # Determine output path for this video
-            if output_path and len(generated_videos) == 1:
+            if output_path and len(generated_samples) == 1:
                 video_output_path = output_path
             elif output_path:
                 # Multiple videos: append index to filename
@@ -753,13 +789,13 @@ def invoke_video(request_data):
                 video_output_path = temp_file.name
                 temp_file.close()
             
-            # Download and save the generated video
-            print(f"💾 Downloading video {idx + 1} to: {video_output_path}")
-            client.files.download(file=generated_video.video)
-            generated_video.video.save(video_output_path)
+            # Save the video
+            print(f"💾 Saving video {idx + 1} to: {video_output_path}")
+            with open(video_output_path, "wb") as f:
+                f.write(video_bytes)
             
             video_filename = os.path.basename(video_output_path)
-            print(f"✅ Video {idx + 1} saved: {video_filename}")
+            print(f"✅ Video {idx + 1} saved: {video_filename} ({len(video_bytes)} bytes)")
             
             video_results.append({
                 "video_path": video_output_path,
@@ -770,6 +806,7 @@ def invoke_video(request_data):
             return {
                 "status": False,
                 "message": "Video generation completed but no videos could be saved.",
+                "debug_response": poll_data
             }
         
         # Return single video format for backward compatibility, or multiple if requested
@@ -801,4 +838,6 @@ def invoke_video(request_data):
             }
         
     except Exception as e:
+        import traceback
+        print(f"❌ Exception: {traceback.format_exc()}")
         return {"status": False, "message": f"Exception when generating video: {e}"}
