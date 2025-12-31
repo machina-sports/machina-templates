@@ -63,7 +63,7 @@ workflow:
         home_search_answer: $.get('answer', '')
 
     # 3. Extract HOME team animal from search results using structured output
-    - type: prompt
+    - type: connector
       name: extract-home-animal
       description: Extract the animal name from search results using structured output
       condition: $.get('home_search_answer') != ''
@@ -71,10 +71,12 @@ workflow:
         name: google-genai
         command: invoke_prompt
         model: gemini-3-flash-preview
+        location: global
+        provider: vertex_ai
       inputs:
         search_answer: $.get('home_search_answer')
         home_team: $.get('home_team')
-        prompt: "Based on the following search results about {{home_team}}, extract the animal that represents this football club. Return a JSON object with a single field 'animal' containing the animal name (e.g., lion, eagle, wolf, bear, bull, tiger). Return ONLY valid JSON, no other text.\n\nSearch results: {{search_answer}}\n\nResponse format: {\"animal\": \"<animal_name>\"}"
+        prompt: "Based on the following search results about {{home_team}}, extract the animal that represents this football club. Return only the animal name (e.g., lion, eagle, wolf, bear, bull, tiger).\n\nSearch results: {{search_answer}}"
         output_schema:
           type: object
           properties:
@@ -84,14 +86,7 @@ workflow:
           required:
             - animal
       outputs:
-        home_animal_raw: $.get('content', '')
-        home_animal: |
-          import json
-          try:
-            result = json.loads($.get('content', '{}'))
-            result.get('animal', '') if isinstance(result, dict) else ''
-          except:
-            ''
+        home_animal: $.get('animal', '')
 
     # 4. Search for AWAY team animal representation
     - type: connector
@@ -111,7 +106,7 @@ workflow:
         away_search_answer: $.get('answer', '')
 
     # 5. Extract AWAY team animal from search results using structured output
-    - type: prompt
+    - type: connector
       name: extract-away-animal
       description: Extract the animal name from search results using structured output
       condition: $.get('away_search_answer') != ''
@@ -119,10 +114,12 @@ workflow:
         name: google-genai
         command: invoke_prompt
         model: gemini-3-flash-preview
+        location: global
+        provider: vertex_ai
       inputs:
         search_answer: $.get('away_search_answer')
         away_team: $.get('away_team')
-        prompt: "Based on the following search results about {{away_team}}, extract the animal that represents this football club. Return a JSON object with a single field 'animal' containing the animal name (e.g., lion, eagle, wolf, bear, bull, tiger). Return ONLY valid JSON, no other text.\n\nSearch results: {{search_answer}}\n\nResponse format: {\"animal\": \"<animal_name>\"}"
+        prompt: "Based on the following search results about {{away_team}}, extract the animal that represents this football club. Return only the animal name (e.g., lion, eagle, wolf, bear, bull, tiger).\n\nSearch results: {{search_answer}}"
         output_schema:
           type: object
           properties:
@@ -132,14 +129,7 @@ workflow:
           required:
             - animal
       outputs:
-        away_animal_raw: $.get('content', '')
-        away_animal: |
-          import json
-          try:
-            result = json.loads($.get('content', '{}'))
-            result.get('animal', '') if isinstance(result, dict) else ''
-          except:
-            ''
+        away_animal: $.get('animal', '')
 
     # 6. Generate HOME team character image (jacked animal representing the team)
     - type: connector
