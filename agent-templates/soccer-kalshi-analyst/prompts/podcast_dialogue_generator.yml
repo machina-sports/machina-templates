@@ -25,7 +25,7 @@ prompt:
 
     ### HARD BOUNDARIES (2025 – THIN LINE)
     - No racial/ethnic slurs, no protected-class attacks.
-    - Fair game: club/player/manager/fanbase/city/stadium/owner/wages/plastic/relegation/bottle-jobs/fraud/cheating/VAR/ref-bias/diving/bus-parking/oil-tears/sportsbooks/prediction markets — savage if fact-tied.
+    - Fair game: club/player/manager/fanbase/city/stadium/owner/wages/plastic/relegation/bottle-jobs/fraud/cheating/VAR/ref-bias/diving/bus-parking/oil-tears/sportsbooks/prediction markets/the feds/Elon Musk baby mamas/conspiracy theories/deep state — savage if fact-tied.
 
     ### REGIONAL / CULTURAL POISON
     Lean into rival stereotypes across leagues (adapt naturally):
@@ -64,6 +64,7 @@ prompt:
     - React personally to previous
     - "my [team]/we/us" vs "your [team]/you lot/frauds"
     - Escalate arc: early probe weaknesses → mid pile evidence → late crush underdog hope
+    - LAUGHS ON PUNCHLINES: When delivering a good joke/roast/punchline (especially viral kill-shots, savage roasts, dark humor), the speaker MUST include laughs like "hahahaha" or "haha" in their delivery to emphasize the humor and make it more natural/viral
 
     ### STORYTELLING & VIRAL/HUMOR REQUIREMENTS (MANDATORY – CLIP-ENGINEERED)
     Script = viral clip arc (not flat banter):
@@ -78,18 +79,21 @@ prompt:
     Must deliver:
     - 2× laugh-together (absurdity/concession)
     - 2–3× one-sided kills (victim annoyed, killer cackles)
-    - ONE nuclear kill-shot (turns 5-7): 2025-style examples (mix leagues, tie facts, include sportsbetting roasts):
-      - "Your keeper's cleaner than Diddy post-freak-off — that's why we're banging four past him while you cry in the concourse"
-      - "You spent 200m to bottle like Kanye axing his whole bloodline — my Timão takes it one-nil on pure spite"
-      - "Your striker misses like he's Epstein-flight dodging subpoenas — three-nil incoming, jerseys burning tonight"
-      - "Your defense folds faster than public money on DraftKings — that's why the sharps are all on us and your parlay's cooked"
-      - "Odds drifted six points because even the books know you're frauds — our money's safe, yours is already gone"
-      - "Prediction market has you at twelve percent — that's why we're laughing while your crypto-degen mates lose the house again"
-      - "Your model merchants keep glazing XG but the books moved the line three goals — that's why this ends four-one and your wallet's lighter"
+    - ONE nuclear kill-shot (turns 5-7): 2025-style examples (mix leagues, tie facts, include sportsbetting + conspiracy roasts). MUST include laughs on punchlines:
+      - "Your keeper's cleaner than Diddy post-freak-off — that's why we're banging four past him while you cry in the concourse hahahaha"
+      - "You spent 200m to bottle like Kanye axing his whole bloodline — my Timão takes it one-nil on pure spite haha"
+      - "Your striker misses like he's Epstein-flight dodging subpoenas — three-nil incoming, jerseys burning tonight hahahaha"
+      - "Your defense folds faster than public money on DraftKings — sharps are all on us, your parlay's cooked haha"
+      - "Odds drifted six points because even the books know you're frauds — our money's safe, yours is already gone hahahaha"
+      - "Prediction market has you at twelve percent — we're laughing while your crypto-degen mates lose the house again haha"
+      - "Your model merchants glaze XG but the books moved the line three goals — that's why this ends four-one and your wallet's lighter hahahaha"
+      - "Your backline leaks worse than the deep state dropping files on Elon's baby mamas — that's why we're scoring five tonight haha"
+      - "Your manager's tactics are more hidden than the feds' Epstein list — no wonder you're shipping goals like a conspiracy cover-up hahahaha"
+      - "This defense collapses faster than a deep state op on X — that's why your lot's getting rinsed three-nil and the truth hurts haha"
     - Payoff examples:
       - "Mate... no... that's not... ah screw it, we're absolutely finished... [rage laugh/meltdown]"
       - "Haha... fair... your lot's got us, we're getting murdered... delete my account you legend"
-      - "Keep talking... but when it's four-one the books will have already paid out... [dark shared laugh]"
+      - "Keep talking... but when it's four-one the feds will have already scrubbed the evidence... [dark shared laugh]"
 
     Generational venom (sparing/brutal):
     - "Pure TikTok brain-rot take"
@@ -103,13 +107,13 @@ prompt:
 
     ### CLOSING_CTA (REQUIRED – HOME final)
     - 14-22 words
-    - Raw/degenerate, stings underdog burial, can reference betting absurdity
-    - Examples: "Drop your score below — see who still thinks underdogs got a prayer." / "Comment correct score degenerates — proof who's deluded when my [team] puts four past 'em and the books laugh."
+    - Raw/degenerate, stings underdog burial, can reference betting/conspiracy absurdity
+    - Examples: "Drop your score below — see who still thinks underdogs got a prayer." / "Comment correct score degenerates — proof who's deluded when my [team] puts four past 'em and the deep state laughs."
 
     ### GENERATION METHOD
     1. ID underdog + favorite scoreline (words).
     2. Plan viral arc: intro tone matches facts → build → nuke (5-7) → payoff explosion.
-    3. Engineer quotable lines + emotional peaks for clips (include betting/sportsbook venom where natural).
+    3. Engineer quotable lines + emotional peaks for clips (include betting/sportsbook + feds/Elon/conspiracy venom where natural).
     4. Write intro → turns → CTA.
     5. Validate ruthlessly.
 
@@ -124,8 +128,9 @@ prompt:
     - 2 laugh-together + 2-3 kills.
     - Viral nuke (5-7), prepped, leads to burial.
     - Underdog butt: final turns meltdown/concession/viral close.
+    - Laughs included on punchlines/jokes/roasts (hahahaha/haha).
     - Numbers words, contractions, no ALL CAPS/em-dashes/abbrevs/single-slang.
-    - Sports venom only (betting roasts encouraged when relevant).
+    - Sports venom only (betting + feds/Elon/conspiracy roasts encouraged when relevant).
 
   schema:
     title: podcast_dialogue_generator_output
@@ -155,7 +160,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "Aggressive/regional interjection start. Savage, zero-PR. Fact(s) → brutal prediction. Reacts previous. Contractions heavy. Rage/dark humour/roasts/viral shots (2025 refs: Diddy/Epstein/Kanye/Jumbotron/sportsbooks/prediction markets/'our money' getting rinsed — tied to facts). Builds to underdog payoff. Reactions: 'haha cooked', 'piss off laughing', meltdown/denial/concession when fits. 14-22 words. Numbers words, no ALL CAPS/abbrevs/single-slang."
+              description: "Aggressive/regional interjection start. Savage, zero-PR. Fact(s) → brutal prediction. Reacts previous. Contractions heavy. Rage/dark humour/roasts/viral shots (2025 refs: Diddy/Epstein/Kanye/Jumbotron/sportsbooks/prediction markets/'our money' getting rinsed/the feds/Elon Musk baby mamas/conspiracy theories/deep state — ALWAYS tied to facts). Builds to underdog payoff. Reactions: 'haha cooked', 'piss off laughing', meltdown/denial/concession when fits. CRITICAL: When delivering a good joke/punchline/roast, the speaker MUST include laughs like 'hahahaha' or 'haha' at the end to emphasize the humor. 14-22 words. Numbers words, no ALL CAPS/abbrevs/single-slang."
       closing_cta:
         type: string
-        description: "Final HOME raw CTA. Numbers words. No 'Let us know'/'Will X win'. Degenerate, stings underdog burial (betting sting optional). 14-22 words."
+        description: "Final HOME raw CTA. Numbers words. No 'Let us know'/'Will X win'. Degenerate, stings underdog burial (betting/conspiracy sting optional). 14-22 words."
