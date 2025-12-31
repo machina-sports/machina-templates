@@ -60,10 +60,13 @@ prompt:
       4) Fact → consequence → follow-up question
       5) Fake concession → reversal → kill-shot
 
-    ### LAUGHTER CONTROL (KEEP IT REAL, NOT EVERY LINE)
-    - Total laughs across the whole script: two to four max.
-    - Laughs must vary and be natural: "haha", "I'm crying", "that's nasty", "no way", "shut up".
-    - Do not place laughter at the end every time.
+    ### LAUGHTER REQUIREMENTS (MANDATORY - CRITICAL FOR VIRAL CLIPS)
+    - MANDATORY: When delivering a punchline, joke, roast, or viral kill-shot, the speaker MUST include laughs.
+    - Laugh format: Use "hahahaha" for big punchlines/kill-shots, "haha" for smaller jokes.
+    - Total laughs: Two to four across the whole script.
+    - Laugh placement: Include laughs on punchlines (especially the nuclear kill-shot in turns 5-7), payoff moments, and when someone gets roasted hard.
+    - Laugh variety: Mix "hahahaha", "haha", "I'm crying", "that's nasty", "no way", "shut up" - but ALWAYS include "hahahaha" or "haha" on punchlines.
+    - Do not place laughter at the end of every line, only on actual punchlines/jokes.
 
     ### STORYTELLING ENGINE (THIS IS THE BIG UPGRADE)
     The script must have scenes and escalation.
@@ -73,15 +76,21 @@ prompt:
     - What the fear is (injuries, away form, tactical mismatch, fatigue)
     - What breaks first (set pieces, flanks, press, finishing)
 
-    Cross-exam requirement (MANDATORY):
-    - At least three turns must include a direct, specific question.
-    - At least one question in turns one to three.
-    - At least one question around turns five to seven.
-    - At least one question in the last three turns.
-    - Questions must be tied to the facts, not generic.
+    Cross-exam requirement (MANDATORY - VALIDATION WILL FAIL WITHOUT THIS):
+    - EXACTLY THREE turns must include a direct, specific question (not rhetorical, not statements).
+    - Question format examples: "How do you expect to...", "What happens when...", "Where's your...", "Who's gonna...", "Why would..."
+    - Question placement (MANDATORY):
+      * Turn 1-3: First question must appear here
+      * Turn 5-7: Second question must appear here (can be near the kill-shot)
+      * Turn 8-10: Third question must appear here
+    - Questions must be tied to specific facts from talking points, not generic.
+    - Questions should trap the opponent or force them to defend a weakness.
+    - Examples: "How do you stop Calvert-Lewin when you're missing six defenders?", "What happens when your fortress has zero walls?", "Where's your home advantage when thirty five percent of your squad is gone?"
 
-    Callback requirement (MANDATORY):
-    - Reference an earlier fact again later as a payoff (a "told you" moment).
+    Callback requirement (MANDATORY - VALIDATION WILL FAIL WITHOUT THIS):
+    - You MUST reference an earlier fact/statement again later as a payoff (a "told you" moment).
+    - Example: If turn 2 mentions "thirty five percent of your squad", turn 7 or 8 should reference it again: "Remember when you said the fortress matters? That thirty five percent gap says otherwise."
+    - The callback should feel like a closing argument that ties back to earlier evidence.
 
     ### DIALOGUE STRUCTURE (NON-NEGOTIABLE)
 
@@ -111,11 +120,34 @@ prompt:
     - Use "my [team]/we/us" and "your [team]/you lot"
     - Not every line must be a roast. Mix roasts with questions and receipts.
 
-    ### ESCALATION ARC (SO IT FEELS LIKE A FIGHT)
-    - Turns one to three: set the argument and the first pressure point, include a question
-    - Turns three to five: cross-exam and irritation, force defense with receipts
-    - Turns five to seven: ONE nuclear kill-shot line built on earlier facts, plus one sharp question nearby
-    - Turns eight to ten: payoff where someone concedes, cope-spins, rage-laughs, or doubles down with a final lock
+    ### ESCALATION ARC (MANDATORY - MUST BUILD LIKE A FIGHT, NOT FLAT BANTER)
+    The dialogue MUST escalate in intensity, not stay flat. Each section builds on the last.
+    
+    Turns 1-3 (Opening Volley - Set the Stakes):
+    - Establish the core argument and first pressure point
+    - Include FIRST MANDATORY QUESTION here
+    - Tone: Aggressive but controlled, setting up the fight
+    - Example: "Mate, how do you expect to win when thirty five percent of your squad is at AFCON or suspended?"
+    
+    Turns 4-5 (Cross-Examination - Force Defense):
+    - Escalate tension with receipts and facts
+    - Force opponent to defend weaknesses
+    - Build evidence pile-up
+    - Tone: Getting more intense, facts stacking up
+    
+    Turns 5-7 (Nuclear Peak - THE KILL-SHOT):
+    - EXACTLY ONE turn in this range MUST be the viral kill-shot (the most quotable, brutal line)
+    - This is the "clip line" - screenshot-worthy, brutal, fact-tied
+    - MUST include "hahahaha" or "haha" on this kill-shot
+    - Include SECOND MANDATORY QUESTION nearby (can be turn before or after kill-shot)
+    - Tone: Nuclear, brutal, peak intensity
+    - Example: "Your defense folds faster than public money on DraftKings — sharps are all on us, your parlay's cooked hahahaha"
+    
+    Turns 8-10 (Payoff Explosion - Underdog Burial):
+    - Include THIRD MANDATORY QUESTION here
+    - Include MANDATORY CALLBACK to earlier fact
+    - Underdog must concede, meltdown, rage-laugh, or get buried
+    - Tone: Resolution through concession or final lock
     - Payoff examples (underdog meltdown/concession/viral close):
       - "Mate... no... that's not... ah screw it, we're absolutely finished... [rage laugh/meltdown]"
       - "Haha... fair... your lot's got us, we're getting murdered... delete my account you legend"
@@ -124,12 +156,15 @@ prompt:
       - "No wait... your xG is... ah f*** it, we're rinsed... [pissed trail off]"
       - "Haha alright... you got me there, we're getting absolutely murdered... fair play you legend"
 
-    ### NUCLEAR KILL-SHOT (EXACTLY ONE)
-    - Only one line in turns five to seven is the "clip line".
+    ### NUCLEAR KILL-SHOT (MANDATORY - EXACTLY ONE IN TURNS 5-7)
+    - CRITICAL: Exactly ONE turn in turns 5-7 MUST be the nuclear kill-shot (the viral clip line).
+    - This is NOT optional - validation will fail without this.
     - Must reference a real weakness from the talking points.
-    - Short, brutal, screenshot-friendly.
+    - Short, brutal, screenshot-friendly, quotable.
+    - MUST include "hahahaha" or "haha" at the end of this kill-shot.
+    - Must feel like the peak moment - the most savage, memorable line.
     - Must not rely on edgy real-world crime or sexual references.
-    - Examples of viral kill-shot style (adapt to your facts, include laughs naturally):
+    - Examples of viral kill-shot style (adapt to your facts, MUST include laughs):
       - "Your keeper's cleaner than Diddy post-freak-off — that's why we're banging four past him while you cry in the concourse hahahaha"
       - "You spent two hundred million to bottle like Kanye axing his whole bloodline — my Timão takes it one-nil on pure spite haha"
       - "Your striker misses like he's Epstein-flight dodging subpoenas — three-nil incoming, jerseys burning tonight hahahaha"
@@ -141,29 +176,61 @@ prompt:
       - "Your manager's tactics are more hidden than the feds' Epstein list — no wonder you're shipping goals like a conspiracy cover-up hahahaha"
       - "This defense collapses faster than a deep state op on X — that's why your lot's getting rinsed three-nil and the truth hurts haha"
 
-    ### CLOSING_CTA (REQUIRED, HOME FINAL)
+    ### CLOSING_CTA (REQUIRED, HOME FINAL - MUST BE RAW/DEGENERATE)
     - 14 to 22 words
-    - Ask viewers to comment predictions
-    - No "Let us know"
-    - No "Will X win" style templates
-    - Keep it casual and direct
+    - Raw, degenerate, stings the underdog burial
+    - Can reference betting, prediction markets, or conspiracy absurdity if natural
+    - Ask viewers to comment predictions, but in a savage way
+    - No "Let us know" or "Will X win" style templates
+    - No generic phrases like "big match" or "exciting game"
+    - Keep it casual, direct, and unhinged
     - Numbers as words
+    - Examples:
+      - "Drop your score predictions below — see who still thinks underdogs got a prayer when my [team] puts four past 'em haha"
+      - "Comment your bets degenerates — proof who's deluded when this ends one-two and your wallet's lighter"
+      - "What's your score prediction? Mine's [score] and the books agree — drop yours below if you're still backing frauds"
+      - "Score predictions in the comments — let's see who's still fading us when we rinse 'em three-nil tonight"
 
-    ### GENERATION METHOD
+    ### GENERATION METHOD (FOLLOW THIS EXACTLY)
     1) Extract top five facts for each team from the talking points.
     2) Decide winner or draw and scoreline in words.
-    3) Pre-plan three questions: early, mid, late.
-    4) Pre-plan the nuclear kill-shot using the best weakness from the facts.
-    5) Write intro, turns, closing. Include a callback.
-    6) Run the checklist and rewrite any repetitive endings or laugh spam.
+    3) Pre-plan EXACTLY THREE questions:
+       - Question 1: Place in turn 1-3, trap opponent on a key weakness
+       - Question 2: Place in turn 5-7, near the kill-shot
+       - Question 3: Place in turn 8-10, final interrogation
+    4) Pre-plan the nuclear kill-shot:
+       - Choose ONE turn in 5-7 to be the kill-shot
+       - Use the best weakness from facts
+       - Write it as brutal, quotable, screenshot-worthy
+       - MUST end with "hahahaha" or "haha"
+    5) Pre-plan the callback:
+       - Choose a fact from early turns (1-3)
+       - Reference it again in turns 8-10 as payoff
+    6) Write intro, turns, closing:
+       - Intro: Must have "my [home]" + "your [away]"
+       - Turns: Build escalation arc, include questions, kill-shot, callback
+       - Closing: Raw CTA, not generic
+    7) Validate ruthlessly:
+       - Check for exactly 3 questions
+       - Check for exactly 1 kill-shot in turns 5-7 with laugh
+       - Check for callback
+       - Check for laughs on punchlines (especially kill-shot)
+       - Check escalation (not flat)
+       - Check CTA is raw, not generic
 
-    ### FINAL CHECKLIST
+    ### FINAL CHECKLIST (VALIDATION - FAILURE MEANS REWRITE)
     - Output top-level keys only, no wrapper.
     - 8 to 10 turns, AWAY first, perfect alternation.
-    - 14 to 22 words each.
-    - At least three real questions, placed early, mid, late.
-    - Exactly one nuclear kill-shot in turns five to seven.
-    - Laughs two to four total, varied, not repeated, not always at the end.
+    - 14 to 22 words each turn.
+    - EXACTLY THREE real questions (not rhetorical statements):
+      * One in turns 1-3
+      * One in turns 5-7
+      * One in turns 8-10
+    - EXACTLY ONE nuclear kill-shot in turns 5-7 with "hahahaha" or "haha" at the end.
+    - MANDATORY CALLBACK: Reference an earlier fact from turns 1-3 again in turns 8-10.
+    - Laughs: Two to four total, MUST include laughs on punchlines (especially kill-shot).
+    - Escalation arc: Must build intensity, not stay flat (opening → cross-exam → nuclear peak → payoff).
+    - Closing CTA: Raw/degenerate, not generic like "big match" or "exciting game".
     - No invented names or facts.
     - Numbers are words only.
     - No ALL CAPS, no em dash character.
@@ -195,7 +262,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "Strong interjection start. Unhinged, savage, no PR. Mix roasts plus questions plus receipts. Facts tied to input only, then prediction consequence. Reacts previous. Contractions heavy. 14-22 words. Numbers words, no ALL CAPS/abbrevs/symbols, no em dash."
+              description: "Strong interjection start. Unhinged, savage, no PR. Mix roasts plus questions plus receipts. Facts tied to input only, then prediction consequence. Reacts previous. Contractions heavy. MUST include laughs (hahahaha/haha) on punchlines/jokes/roasts, especially if this is the nuclear kill-shot in turns 5-7. If this turn contains a question, it must be a direct question (not rhetorical). 14-22 words. Numbers words, no ALL CAPS/abbrevs/symbols, no em dash."
       closing_cta:
         type: string
-        description: "Final HOME CTA. Numbers words. No 'Let us know'/'Will X win'. Casual, direct. 14-22 words."
+        description: "Final HOME CTA. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. Ask for score predictions in savage way. No generic phrases like 'big match' or 'exciting game'. No 'Let us know'/'Will X win'. Casual, direct, unhinged. Numbers words. 14-22 words."
