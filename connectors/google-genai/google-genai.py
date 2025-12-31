@@ -572,7 +572,8 @@ def invoke_video(request_data):
     
     # Get parameters
     prompt = params.get("prompt")
-    model_name = params.get("model_name", "veo-3.1-fast-generate-preview")
+    # Use 'or' instead of default to handle None values
+    model_name = params.get("model_name") or "veo-3.1-fast-generate-preview"
     poll_interval = params.get("poll_interval", 10)  # seconds
     output_path = params.get("output_path")  # Optional custom output path
     
