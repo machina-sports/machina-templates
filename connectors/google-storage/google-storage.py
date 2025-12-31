@@ -12,27 +12,32 @@ import os
 
 def invoke_upload(request_data):
 
-    params = request_data.get("params")
+    # Machina sometimes provides connector inputs under `params`, sometimes under `inputs`
+    params = request_data.get("params") or request_data.get("inputs") or {}
+    headers = request_data.get("headers") or {}
 
-    headers = request_data.get("headers")
+    api_key = headers.get("api_key") or params.get("api_key")
 
-    api_key = headers.get("api_key")
+    bucket_name = headers.get("bucket_name") or params.get("bucket_name")
 
-    bucket_name = headers.get("bucket_name")
+    # Backwards compatible: historically this connector used `image_path`, but workflows may
+    # upload videos or other assets via `video_path` or `file_path`.
+    file_path = params.get("file_path") or params.get("video_path") or params.get("image_path")
+    if not file_path:
+        return {"status": "error", "message": "file_path (or video_path / image_path) is required."}
 
-    image_path = params.get("image_path")
-    if not image_path:
-        return {"status": "error", "message": "image_path is required."}
+    # Normalize to string
+    file_path = str(file_path)
 
-    # Check if image_path is a URL
-    is_url = image_path.startswith(('http://', 'https://'))
+    # Check if file_path is a URL
+    is_url = file_path.startswith(('http://', 'https://'))
 
-    # Get filename from image_path or use default
+    # Get filename from file_path or use default
     filename = params.get("filename")
     if not filename:
         if is_url:
             # For URLs, extract exact filename from URL path or fragment
-            parsed_url = urllib.parse.urlparse(image_path)
+            parsed_url = urllib.parse.urlparse(file_path)
 
             # First try to get filename from path
             filename = os.path.basename(parsed_url.path)
@@ -61,7 +66,7 @@ def invoke_upload(request_data):
                 filename = "downloaded_file"
         else:
             # For local files, use exact basename (preserve as-is)
-            filename = os.path.basename(image_path)
+            filename = os.path.basename(file_path)
 
     remote = f"static/{filename}"
 
@@ -95,7 +100,7 @@ def invoke_upload(request_data):
                     download_temp_path = download_temp.name
 
                 # Download the file
-                req = urllib.request.Request(image_path, headers={'User-Agent': 'Mozilla/5.0'})
+                req = urllib.request.Request(file_path, headers={'User-Agent': 'Mozilla/5.0'})
                 with urllib.request.urlopen(req) as response:
                     with open(download_temp_path, 'wb') as f:
                         f.write(response.read())
@@ -103,7 +108,7 @@ def invoke_upload(request_data):
                 # Detect content type from downloaded file
                 content_type, _ = mimetypes.guess_type(download_temp_path)
                 if not content_type:
-                    content_type = "image/png"
+                    content_type = "application/octet-stream"
 
                 # Upload the downloaded file
                 with open(download_temp_path, "rb") as f:
@@ -118,15 +123,15 @@ def invoke_upload(request_data):
                 return {"status": "error", "message": f"Error downloading file: {e}"}
         else:
             # Handle local file
-            if not os.path.exists(image_path):
-                return {"status": "error", "message": f"Local file not found: {image_path}"}
+            if not os.path.exists(file_path):
+                return {"status": "error", "message": f"Local file not found: {file_path}"}
 
             # Detect content type based on file extension
-            content_type, _ = mimetypes.guess_type(image_path)
+            content_type, _ = mimetypes.guess_type(file_path)
             if not content_type:
-                content_type = "image/png"
+                content_type = "application/octet-stream"
 
-            with open(image_path, "rb") as f:
+            with open(file_path, "rb") as f:
                 blob.upload_from_file(f, content_type=content_type)
 
         blob.reload()
