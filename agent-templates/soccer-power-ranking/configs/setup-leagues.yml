@@ -1,0 +1,88 @@
+workflow:
+  name: soccer-power-ranking-setup-leagues
+  title: Soccer Power Ranking - Setup Leagues
+  description: Setup leagues configuration for power ranking system
+  inputs:
+    environment: "$.get('environment', 'dev')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Development leagues
+    - type: document
+      name: power-ranking-setup-leagues-dev
+      description: "Persist soccer leagues configuration for power ranking (dev)"
+      condition: "$.get('environment') == 'dev'"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        power-ranking-leagues-config: |
+          {
+            "title": "Power Ranking Leagues Config (Dev)",
+            "environment": "dev",
+            "leagues": [
+              {
+                "league_id": "39",
+                "league_name": "EPL",
+                "title": "English Premier League",
+                "season": "2025",
+                "enabled": True
+              },
+              {
+                "league_id": "71",
+                "league_name": "Brasileirão",
+                "title": "Brazilian Brasileirão",
+                "season": "2025",
+                "enabled": True
+              }
+            ]
+          }
+
+    # Production leagues
+    - type: document
+      name: power-ranking-setup-leagues-prd
+      description: "Persist soccer leagues configuration for power ranking (prd)"
+      condition: "$.get('environment') == 'prd'"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        power-ranking-leagues-config: |
+          {
+            "title": "Power Ranking Leagues Config (Prd)",
+            "environment": "prd",
+            "leagues": [
+              {
+                "league_id": "39",
+                "league_name": "EPL",
+                "title": "English Premier League",
+                "season": "2025",
+                "enabled": True
+              },
+              {
+                "league_id": "135",
+                "league_name": "Serie A",
+                "title": "Italian Serie A",
+                "season": "2025",
+                "enabled": True
+              },
+              {
+                "league_id": "78",
+                "league_name": "Bundesliga",
+                "title": "German Bundesliga",
+                "season": "2025",
+                "enabled": True
+              },
+              {
+                "league_id": "140",
+                "league_name": "La Liga",
+                "title": "Spanish La Liga",
+                "season": "2025",
+                "enabled": True
+              }
+            ]
+          }
+

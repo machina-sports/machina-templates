@@ -1,0 +1,40 @@
+setup:
+  title: Soccer Power Ranking
+  description: |
+    AI-powered soccer team power ranking system that analyzes team performance across leagues
+    using statistical modeling and generates dynamic power rankings.
+  category:
+    - sports
+    - analytics
+    - soccer
+  estimatedTime: 2 minutes
+  features:
+    - Multi-league team performance analysis
+    - Statistical power ranking computation
+    - Team strength indicators and trends
+    - Dynamic ranking updates based on recent form
+  integrations:
+    - api-football
+    - google-genai
+    - machina-ai
+  status: available
+  value: agent-templates/soccer-power-ranking
+  version: 1.0.0
+
+datasets:
+
+  # Agent
+  - type: agent
+    path: agents/soccer-power-ranking.yml
+
+  # Workflows
+  - type: workflow
+    path: workflows/calculate-power-rankings.yml
+
+  - type: workflow
+    path: workflows/update-team-stats.yml
+
+  # Configuration
+  - type: workflow
+    path: configs/setup-leagues.yml
+

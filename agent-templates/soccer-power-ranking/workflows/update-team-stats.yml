@@ -1,0 +1,22 @@
+workflow:
+  name: soccer-power-ranking-update-stats
+  title: Update Team Stats
+  description: Update team statistics for power ranking calculation
+  inputs:
+    league_id: "$.get('league_id', '39')"
+  outputs:
+    status: "'updated'"
+  tasks:
+    - type: document
+      name: store-team-stats
+      description: Store team statistics
+      config:
+        action: update
+        embed-vector: false
+      documents:
+        team-stats: |
+          {
+            "league_id": "{{ $.get('league_id') }}",
+            "updated": "{{ $.now() }}"
+          }
+

@@ -1,0 +1,26 @@
+workflow:
+  name: soccer-power-ranking-calculate-rankings
+  title: Calculate Power Rankings
+  description: Calculate team power rankings based on performance metrics
+  inputs:
+    league_id: "$.get('league_id', '39')"
+    season: "$.get('season', '2025')"
+  outputs:
+    rankings: "$.get('power-rankings')"
+  tasks:
+    - type: document
+      name: store-power-rankings
+      description: Store calculated power rankings
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        power-rankings: |
+          {
+            "league_id": "{{ $.get('league_id') }}",
+            "season": "{{ $.get('season') }}",
+            "updated": "{{ $.now() }}",
+            "rankings": []
+          }
+
