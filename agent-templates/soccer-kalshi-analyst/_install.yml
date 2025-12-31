@@ -30,8 +30,10 @@ setup:
   integrations:
     - api-football
     - google-genai
+    - google-storage
     - machina-ai
     - kalshi
+    - soccer-video-consolidator
   status: available
   value: agent-templates/soccer-kalshi-analyst
   version: 4.0.0
