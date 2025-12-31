@@ -71,11 +71,11 @@ workflow:
       inputs:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
-        image_path: $.get('home_podcast_frame_url')
+        # image_path: $.get('home_podcast_frame_url')  # TEMPORARILY DISABLED FOR TESTING
         home_team: $.get('home_team')
         greetings_intro_home: $.get('greetings_intro_home')
         prompt: |
-          "Animated podcast scene. A {{home_team}} mascot character is speaking passionately in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot is delivering this dialogue with emotion: {{greetings_intro_home}}\n\nThe character should be animated, expressive, gesturing while speaking. Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame, looking RIGHT toward conversation partner. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere."
+          "Animated podcast scene. An Arsenal mascot character is speaking passionately in a podcast studio with dark acoustic panels and neon lighting. The character should be animated, expressive, gesturing while speaking. Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere."
       outputs:
         intro_video_path: $.get('video_path')
 
