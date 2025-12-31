@@ -575,7 +575,9 @@ def invoke_video(request_data):
         - "veo-3.0-fast-generate-001" (Veo 3 Fast)
         - "veo-2.0-generate-001" (Veo 2 - 720p, 5-8s, up to 2 videos)
     - prompt: Required - Text prompt describing the video to generate.
-              Supports template variables: {{dialogue}}, {{speaker_team}}, {{previous_dialogue}}
+              Supports template variables: {{dialogue}}, {{speaker_team}}, {{previous_dialogue}}, 
+              {{home_voice_description}}, {{away_voice_description}}, {{speaker_voice_description}},
+              {{home_team}}, {{speaker_team_name}}
     - image_path: Optional - Input image URL or path for image-to-video generation
     - poll_interval: Optional - Seconds between status checks (default: 10)
     - output_path: Optional - Custom output path for the video
@@ -587,6 +589,11 @@ def invoke_video(request_data):
     - dialogue: Optional - Dialogue text to substitute for {{dialogue}} in prompt
     - speaker_team: Optional - Team name to substitute for {{speaker_team}} in prompt
     - previous_dialogue: Optional - Previous dialogue to substitute for {{previous_dialogue}} in prompt
+    - home_voice_description: Optional - Voice description for home team to substitute for {{home_voice_description}} in prompt
+    - away_voice_description: Optional - Voice description for away team to substitute for {{away_voice_description}} in prompt
+    - speaker_voice_description: Optional - Voice description for current speaker to substitute for {{speaker_voice_description}} in prompt
+    - home_team: Optional - Home team name to substitute for {{home_team}} in prompt
+    - speaker_team_name: Optional - Current speaker's team name to substitute for {{speaker_team_name}} in prompt
     - aspect_ratio: Optional - Video aspect ratio (e.g., "16:9", "9:16", "1:1"). Defaults to model default.
     - negative_prompt: Optional - Text describing what to avoid in the video (e.g., "cartoon, drawing, low quality")
     
@@ -619,6 +626,11 @@ def invoke_video(request_data):
     dialogue = params.get("dialogue", "")
     speaker_team = params.get("speaker_team", "")
     previous_dialogue = params.get("previous_dialogue", "")
+    home_voice_description = params.get("home_voice_description", "")
+    away_voice_description = params.get("away_voice_description", "")
+    speaker_voice_description = params.get("speaker_voice_description", "")
+    home_team = params.get("home_team", "")
+    speaker_team_name = params.get("speaker_team_name", "")
     
     # API key is required
     api_key = headers.get("api_key")
@@ -634,6 +646,11 @@ def invoke_video(request_data):
         prompt = prompt.replace("{{dialogue}}", str(dialogue))
         prompt = prompt.replace("{{speaker_team}}", str(speaker_team))
         prompt = prompt.replace("{{previous_dialogue}}", str(previous_dialogue))
+        prompt = prompt.replace("{{home_voice_description}}", str(home_voice_description))
+        prompt = prompt.replace("{{away_voice_description}}", str(away_voice_description))
+        prompt = prompt.replace("{{speaker_voice_description}}", str(speaker_voice_description))
+        prompt = prompt.replace("{{home_team}}", str(home_team))
+        prompt = prompt.replace("{{speaker_team_name}}", str(speaker_team_name))
         print(f"🔄 Template variables substituted in prompt")
     
     # Retry loop for handling empty video responses
