@@ -14,7 +14,6 @@ workflow:
       bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
   inputs:
     eventCode: $.get('eventCode')
-    model_name: $.get('model_name') or 'veo-3.1-generate-preview'
     poll_interval: $.get('poll_interval') or 15
   outputs:
     workflow-status: $.get('workflow_executed_status', 'executed')
@@ -70,7 +69,7 @@ workflow:
         name: google-genai
         command: invoke_video
       inputs:
-        model_name: $.get('model_name')
+        model_name: "'veo-3.1-fast-generate-001'"
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url')
         home_team: $.get('home_team')
@@ -94,7 +93,7 @@ workflow:
         expr: $
         value: $.get('turns', [])
       inputs:
-        model_name: $.get('model_name')
+        model_name: "'veo-3.1-fast-generate-001'"
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_podcast_frame_url')
         speaker_team: $.get('home_team') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_team')
@@ -116,7 +115,7 @@ workflow:
         name: google-genai
         command: invoke_video
       inputs:
-        model_name: $.get('model_name')
+        model_name: "'veo-3.1-fast-generate-001'"
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url')
         home_team: $.get('home_team')
@@ -170,7 +169,7 @@ workflow:
             'matchup': $.get('home_team', '') + ' vs ' + $.get('away_team', ''),
             'home_team': $.get('home_team', ''),
             'away_team': $.get('away_team', ''),
-            'model_name': $.get('model_name'),
+            'model_name': 'veo-3.1-fast-generate-001',
             'final_video_url': $.get('final_video_url'),
             'consolidated_filename': $.get('consolidated_filename'),
             'segments': {
