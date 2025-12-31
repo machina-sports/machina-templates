@@ -74,9 +74,11 @@ def consolidate_videos(request_data):
             # MoviePy 2.x removed `moviepy.editor`; prefer top-level imports.
             try:
                 from moviepy import VideoFileClip, concatenate_videoclips, CompositeAudioClip, CompositeVideoClip  # type: ignore
+                MOVIEPY_V2 = True
             except Exception:
                 # Backwards compatibility with MoviePy 1.x
                 from moviepy.editor import VideoFileClip, concatenate_videoclips, CompositeAudioClip, CompositeVideoClip  # type: ignore
+                MOVIEPY_V2 = False
         except ImportError as e:
             return {
                 "status": False,
@@ -87,8 +89,25 @@ def consolidate_videos(request_data):
                 "message": "Video consolidation requires moviepy. Please install it: pip install moviepy",
             }
         
-        print("📦 Using moviepy for video concatenation...")
+        print(f"📦 Using moviepy (v2 detected: {MOVIEPY_V2}) for video concatenation...")
         
+        # Compatibility helpers
+        def set_start(clip, t):
+            return clip.with_start(t) if hasattr(clip, 'with_start') else clip.set_start(t)
+
+        def set_audio(clip, audio):
+            return clip.with_audio(audio) if hasattr(clip, 'with_audio') else clip.set_audio(audio)
+
+        def set_duration(clip, t):
+            return clip.with_duration(t) if hasattr(clip, 'with_duration') else clip.set_duration(t)
+            
+        def without_audio(clip):
+            if hasattr(clip, 'without_audio'):
+                return clip.without_audio()
+            if hasattr(clip, 'with_audio'):
+                return clip.with_audio(None)
+            return clip.set_audio(None)
+
         clips = []
         try:
             # Load all clips first
@@ -129,24 +148,24 @@ def consolidate_videos(request_data):
                 
                 for i, clip in enumerate(clips):
                     clip_duration = clip.duration
-                    video_track = clip.without_audio()
+                    video_track = without_audio(clip)
                     audio_track = clip.audio if clip.audio else None
                     
                     # Video plays sequentially (no overlap)
-                    video_positioned = video_track.set_start(current_time)
+                    video_positioned = set_start(video_track, current_time)
                     video_clips.append(video_positioned)
                     
                     # Audio handling
                     if audio_track:
                         if i == 0:
                             # First clip: audio starts at 0
-                            audio_positioned = audio_track.set_start(0.0)
+                            audio_positioned = set_start(audio_track, 0.0)
                             audio_clips.append(audio_positioned)
                         else:
                             # Subsequent clips: audio starts early (during previous clip's overlap)
                             # Audio starts at (current_time - audio_overlap_seconds)
                             audio_start_time = current_time - audio_overlap_seconds
-                            audio_positioned = audio_track.set_start(audio_start_time)
+                            audio_positioned = set_start(audio_track, audio_start_time)
                             audio_clips.append(audio_positioned)
                     
                     # Move to next position
@@ -161,9 +180,9 @@ def consolidate_videos(request_data):
                 # Create composite audio (all audio tracks layered with overlaps)
                 if audio_clips:
                     composite_audio = CompositeAudioClip(audio_clips)
-                    final_clip = composite_video.set_audio(composite_audio).set_duration(total_duration)
+                    final_clip = set_duration(set_audio(composite_video, composite_audio), total_duration)
                 else:
-                    final_clip = composite_video.set_duration(total_duration)
+                    final_clip = set_duration(composite_video, total_duration)
             
             print(f"💾 Writing consolidated video to: {output_path}")
             # Use threads=1 for better compatibility, preset='medium' for balance
