@@ -94,17 +94,66 @@ prompt:
 
     ### DIALOGUE STRUCTURE (NON-NEGOTIABLE)
 
-    GREETINGS_INTRO_HOME (REQUIRED):
-    HOME opens addressing AWAY directly.
-    Must contain "my [home team]" AND "your [away team]" in the same sentence.
-    Never say "Welcome to".
-    Tone must match facts: cocky if favorite, defiant or resigned if underdog.
-
-    Start variants (choose one, adapt wording):
-    - "Right then, my [team] hosting your [team]..."
-    - "Here we go, my [team] against your [team]..."
-    - "Mate, my [team] versus your [team] again..."
-    - "Alright, my [team] taking on your [team] tonight..."
+    GREETINGS_INTRO_HOME (REQUIRED - SUPER VIRAL HOOK):
+    CRITICAL: This is the FIRST 2-3 SECONDS of a short-form clip — it MUST hook viewers immediately or they'll scroll away.
+    
+    ### HOOK OPTIMIZATION: USE THE BIGGEST INSIGHTS FIRST
+    
+    Before writing the hook, analyze the talking points to identify the BIGGEST/MOST IMPACTFUL insights:
+    
+    Priority order for "biggest insights" (use the highest-impact one available):
+    1) **Extreme personnel crisis**: Missing 30%+ of squad, multiple key players out, captain suspended
+    2) **Massive market/odds shift**: Books moved line 3+ goals, prediction market <15% or >60%, sharp money flooding one side
+    3) **Historic form mismatch**: Unbeaten streak vs catastrophic record, extreme home/away splits
+    4) **Tactical vulnerability**: Specific mismatch (physical vs technical, set-pieces vs weak defense)
+    5) **Star player form**: Red-hot striker (5+ goals in streak), key player injury, form reversal
+    6) **Betting/smart money edge**: Sharps all on one side, public fading, market mispricing
+    
+    Requirements for viral hook:
+    - MUST use the BIGGEST insight from the talking points (prioritize extreme facts over mild ones)
+    - Must grab attention INSTANTLY — create curiosity, conflict, or controversy in the first sentence
+    - Must contain "my [home team]" AND "your [away team]" in the same sentence
+    - Must set up the core conflict/argument that drives the entire clip
+    - Must create a "wait, what?" moment that makes viewers want to see the payoff
+    - Should hint at the underdog burial or key weakness without fully revealing it
+    - Never say "Welcome to" or generic greetings
+    - Tone must match facts: cocky if favorite, defiant/bitter if underdog, resigned/sarcastic if doomed
+    
+    Hook strategies (use one, prioritizing biggest insight):
+    1) **Fact bomb**: Drop the most shocking fact first (personnel crisis, odds shift, form mismatch)
+    2) **Vulnerability reveal**: Expose the key weakness that will be exploited (biggest tactical mismatch)
+    3) **Market edge**: Highlight massive odds shift or smart money movement
+    4) **Contrarian take**: Challenge conventional wisdom with bold claim based on biggest insight
+    5) **Prediction lock**: Make bold claim using biggest insight to set up payoff
+    
+    Viral hook examples using BIGGEST INSIGHTS (prioritize these patterns):
+    
+    **Personnel Crisis (BIGGEST if available):**
+    - "Mate, my [team] hosting your [team] and you're already cooked — thirty five percent of your squad is gone haha"
+    - "Right then, my [team] versus your [team] — you're missing six players to AFCON and your captain's suspended, done deal"
+    - "Here we go, my [team] taking on your [team] and you can't even field a full team — how do you expect to win?"
+    
+    **Massive Market/Odds Shift (BIGGEST if available):**
+    - "Mate, my [team] hosting your [team] and the books moved the line three goals because you're finished"
+    - "Right then, my [team] versus your [team] — prediction market has you at twelve percent, you're cooked"
+    - "Here we go, my [team] taking on your [team] and sharps are all fading you — smart money knows you're frauds"
+    
+    **Historic Form Mismatch (BIGGEST if available):**
+    - "Alright, my [team] against your [team] — you're unbeaten at home but missing thirty five percent of your squad, fortress crumbles tonight"
+    - "Mate, my [team] hosting your [team] — you've lost six of eight away games and we're unbeaten here, done deal"
+    
+    **Star Player Form/Tactical Mismatch:**
+    - "Right then, my [team] versus your [team] — Calvert-Lewin's scoring four past your tiny backup defenders, done deal"
+    - "Here we go, my [team] taking on your [team] — your defense is non-existent and we're banging set-pieces all day"
+    
+    **Combined Big Insights (BEST - multiple big facts):**
+    - "Mate, my [team] hosting your [team] — thirty five percent gone, books moved three goals, and sharps are all on us, you're cooked haha"
+    - "Right then, my [team] versus your [team] — six players out, prediction market at twelve percent, and we're unbeaten here, done deal"
+    
+    Avoid generic starts:
+    - ❌ "Right then, my [team] hosting your [team]..." (too generic)
+    - ❌ "Here we go, my [team] against your [team]..." (no hook)
+    - ✅ "Mate, my [team] hosting your [team] and you're already cooked — thirty five percent gone haha" (immediate hook)
 
     TURNS ARRAY:
     - 8 to 10 turns.
@@ -176,50 +225,67 @@ prompt:
       - "Your manager's tactics are more hidden than the feds' Epstein list — no wonder you're shipping goals like a conspiracy cover-up hahahaha"
       - "This defense collapses faster than a deep state op on X — that's why your lot's getting rinsed three-nil and the truth hurts haha"
 
-    ### CLOSING_CTA (REQUIRED, HOME FINAL - MUST BE RAW/DEGENERATE)
+    ### CLOSING_CTA (REQUIRED, HOME FINAL - CONVERSATION CLOSER FOR SHORT-FORM CLIP)
     - 14 to 22 words
+    - CRITICAL: This is a SHORT-FORM CLIP cut from a longer podcast — the CTA closes the conversation segment naturally
+    - NO looking to camera, NO calling viewers out, NO "comment below" or "drop your predictions"
+    - This is HOME speaking to AWAY, closing their argument with a final statement/lock/prediction
+    - Must be a MEMORABLE RETENTION PAYOFF — quotable, satisfying, makes viewers want to watch more
     - Raw, degenerate, stings the underdog burial
     - Can reference betting, prediction markets, or conspiracy absurdity if natural
-    - Ask viewers to comment predictions, but in a savage way
-    - No "Let us know" or "Will X win" style templates
+    - Should feel like a final mic-drop moment that wraps up the argument
     - No generic phrases like "big match" or "exciting game"
     - Keep it casual, direct, and unhinged
     - Numbers as words
-    - Examples:
-      - "Drop your score predictions below — see who still thinks underdogs got a prayer when my [team] puts four past 'em haha"
-      - "Comment your bets degenerates — proof who's deluded when this ends one-two and your wallet's lighter"
-      - "What's your score prediction? Mine's [score] and the books agree — drop yours below if you're still backing frauds"
-      - "Score predictions in the comments — let's see who's still fading us when we rinse 'em three-nil tonight"
+    - Examples (conversation closers, NOT viewer callouts):
+      - "One-two final score, your fortress crumbles, and we're all getting paid — that's the lock haha"
+      - "Three-nil incoming, your squad's cooked, and the books know it — see you Sunday when you're crying"
+      - "That's it mate — one-two, your lot's finished, and we're taking the money — done deal"
+      - "Four-one final, your defense is non-existent, and everyone's fading you — enjoy the loss"
+      - "One-nil on pure spite, your thirty five percent gap kills you, and we're laughing all the way to the bank"
 
     ### GENERATION METHOD (FOLLOW THIS EXACTLY)
     1) Extract top five facts for each team from the talking points.
-    2) Decide winner or draw and scoreline in words.
-    3) Pre-plan EXACTLY THREE questions:
+    2) Analyze talking points to identify the BIGGEST/MOST IMPACTFUL insights:
+       - Rank insights by impact: Extreme personnel crisis > Massive odds shift > Historic form mismatch > Tactical vulnerability > Star form > Betting edge
+       - Identify the single biggest insight (or combine 2-3 related big insights)
+       - This biggest insight MUST be used in the hook
+    3) Decide winner or draw and scoreline in words.
+    4) Pre-plan the SUPER VIRAL HOOK (intro) using the BIGGEST INSIGHT:
+       - Use the highest-impact insight identified in step 2
+       - If multiple big insights exist, combine them (e.g., "thirty five percent gone AND books moved three goals")
+       - Create immediate conflict/curiosity that hooks viewers in 2-3 seconds
+       - Must contain "my [home]" + "your [away]" and set up core argument
+       - Should hint at payoff without fully revealing it
+       - Prioritize fact bombs (personnel crisis, odds shift) over mild facts
+    4) Pre-plan EXACTLY THREE questions:
        - Question 1: Place in turn 1-3, trap opponent on a key weakness
        - Question 2: Place in turn 5-7, near the kill-shot
        - Question 3: Place in turn 8-10, final interrogation
-    4) Pre-plan the nuclear kill-shot:
+    5) Pre-plan the nuclear kill-shot:
        - Choose ONE turn in 5-7 to be the kill-shot
        - Use the best weakness from facts
        - Write it as brutal, quotable, screenshot-worthy
        - MUST end with "hahahaha" or "haha"
-    5) Pre-plan the callback:
+    6) Pre-plan the callback:
        - Choose a fact from early turns (1-3)
        - Reference it again in turns 8-10 as payoff
-    6) Write intro, turns, closing:
-       - Intro: Must have "my [home]" + "your [away]"
+    7) Write intro, turns, closing:
+       - Intro: Super viral hook that grabs attention instantly, NOT generic greeting
        - Turns: Build escalation arc, include questions, kill-shot, callback
-       - Closing: Raw CTA, not generic
-    7) Validate ruthlessly:
+       - Closing: Natural conversation closer with retention payoff
+    8) Validate ruthlessly:
+       - Check intro is viral hook (not generic), grabs attention in first 2-3 seconds
        - Check for exactly 3 questions
        - Check for exactly 1 kill-shot in turns 5-7 with laugh
        - Check for callback
        - Check for laughs on punchlines (especially kill-shot)
        - Check escalation (not flat)
-       - Check CTA is raw, not generic
+       - Check CTA is natural conversation closer, not generic
 
     ### FINAL CHECKLIST (VALIDATION - FAILURE MEANS REWRITE)
     - Output top-level keys only, no wrapper.
+    - GREETINGS_INTRO_HOME: Must be super viral hook using the BIGGEST INSIGHT from talking points (personnel crisis/odds shift/form mismatch prioritized over mild facts). Grabs attention in first 2-3 seconds, creates curiosity/conflict, sets up core argument, NOT generic greeting.
     - 8 to 10 turns, AWAY first, perfect alternation.
     - 14 to 22 words each turn.
     - EXACTLY THREE real questions (not rhetorical statements):
@@ -230,7 +296,7 @@ prompt:
     - MANDATORY CALLBACK: Reference an earlier fact from turns 1-3 again in turns 8-10.
     - Laughs: Two to four total, MUST include laughs on punchlines (especially kill-shot).
     - Escalation arc: Must build intensity, not stay flat (opening → cross-exam → nuclear peak → payoff).
-    - Closing CTA: Raw/degenerate, not generic like "big match" or "exciting game".
+    - Closing CTA: Natural conversation closer (short-form clip), NO viewer callouts, NO "comment below", closes argument between hosts with memorable retention payoff.
     - No invented names or facts.
     - Numbers are words only.
     - No ALL CAPS, no em dash character.
@@ -247,7 +313,7 @@ prompt:
         description: "Name of the away team"
       greetings_intro_home:
         type: string
-        description: "Opening from HOME. MUST 'my [home team]' AND 'your [away team]'. Tone adapts to facts (cocky/defiant/resigned). NEVER 'Welcome to'/fan address. Numbers words, contractions heavy. 14-22 words."
+        description: "SUPER VIRAL HOOK - First 2-3 seconds of short-form clip. MUST use the BIGGEST INSIGHT from talking points (prioritize: extreme personnel crisis > massive odds shift > historic form mismatch > tactical vulnerability > star form > betting edge). MUST grab attention instantly with conflict/curiosity/controversy using biggest insight. MUST contain 'my [home team]' AND 'your [away team]' in same sentence. Must set up core conflict that drives clip. Create 'wait, what?' moment. Hint at underdog burial/key weakness. Tone adapts to facts (cocky/defiant/resigned). NEVER 'Welcome to'/generic greetings. Numbers words, contractions heavy. 14-22 words."
       turns:
         type: array
         minItems: 8
@@ -265,4 +331,4 @@ prompt:
               description: "Strong interjection start. Unhinged, savage, no PR. Mix roasts plus questions plus receipts. Facts tied to input only, then prediction consequence. Reacts previous. Contractions heavy. MUST include laughs (hahahaha/haha) on punchlines/jokes/roasts, especially if this is the nuclear kill-shot in turns 5-7. If this turn contains a question, it must be a direct question (not rhetorical). 14-22 words. Numbers words, no ALL CAPS/abbrevs/symbols, no em dash."
       closing_cta:
         type: string
-        description: "Final HOME CTA. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. Ask for score predictions in savage way. No generic phrases like 'big match' or 'exciting game'. No 'Let us know'/'Will X win'. Casual, direct, unhinged. Numbers words. 14-22 words."
+        description: "Final HOME CTA. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. HOME speaking to AWAY, closing their argument with final statement/lock/prediction. Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words. 14-22 words."
