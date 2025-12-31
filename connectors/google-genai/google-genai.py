@@ -181,6 +181,8 @@ def invoke_image(request_data):
     # Get template variables for replacement
     home_team = params.get("home_team")
     away_team = params.get("away_team")
+    home_animal = params.get("home_animal")
+    away_animal = params.get("away_animal")
 
     # Substitute template variables in prompt
     if "{{" in prompt:
@@ -188,6 +190,10 @@ def invoke_image(request_data):
             prompt = prompt.replace("{{home_team}}", str(home_team))
         if away_team:
             prompt = prompt.replace("{{away_team}}", str(away_team))
+        if home_animal:
+            prompt = prompt.replace("{{home_animal}}", str(home_animal))
+        if away_animal:
+            prompt = prompt.replace("{{away_animal}}", str(away_animal))
 
     try:
         client = genai.Client(api_key=api_key)

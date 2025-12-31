@@ -45,11 +45,101 @@ workflow:
         away_team: $.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''
         workflow_executed_status: "'executed'"
 
-    # 2. Generate HOME team character image (jacked animal representing the team)
+    # 2. Search for HOME team animal representation
+    - type: connector
+      name: search-home-animal
+      description: Search for which animal represents the HOME team
+      condition: $.get('transcript_exists') and $.get('home_team') != ''
+      connector:
+        name: google-genai
+        command: invoke_search
+      inputs:
+        model_name: "'gemini-3-flash-preview'"
+        search_query: "Which animal represents " + str($.get('home_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
+      outputs:
+        home_search_answer: $.get('data', {}).get('answer', '') if $.get('data') else ''
+
+    # 3. Extract HOME team animal from search results using structured output
+    - type: prompt
+      name: extract-home-animal
+      description: Extract the animal name from search results using structured output
+      condition: $.get('home_search_answer') != ''
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-flash-preview
+      inputs:
+        search_answer: $.get('home_search_answer')
+        home_team: $.get('home_team')
+        prompt: "Based on the following search results about {{home_team}}, extract the animal that represents this football club. Return a JSON object with a single field 'animal' containing the animal name (e.g., lion, eagle, wolf, bear, bull, tiger). Return ONLY valid JSON, no other text.\n\nSearch results: {{search_answer}}\n\nResponse format: {\"animal\": \"<animal_name>\"}"
+        output_schema:
+          type: object
+          properties:
+            animal:
+              type: string
+              description: The animal that represents the team
+          required:
+            - animal
+      outputs:
+        home_animal_raw: $.get('content', '')
+        home_animal: |
+          import json
+          try:
+            result = json.loads($.get('content', '{}'))
+            result.get('animal', '') if isinstance(result, dict) else ''
+          except:
+            ''
+
+    # 4. Search for AWAY team animal representation
+    - type: connector
+      name: search-away-animal
+      description: Search for which animal represents the AWAY team
+      condition: $.get('transcript_exists') and $.get('away_team') != ''
+      connector:
+        name: google-genai
+        command: invoke_search
+      inputs:
+        model_name: "'gemini-3-flash-preview'"
+        search_query: "Which animal represents " + str($.get('away_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
+      outputs:
+        away_search_answer: $.get('data', {}).get('answer', '') if $.get('data') else ''
+
+    # 5. Extract AWAY team animal from search results using structured output
+    - type: prompt
+      name: extract-away-animal
+      description: Extract the animal name from search results using structured output
+      condition: $.get('away_search_answer') != ''
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-flash-preview
+      inputs:
+        search_answer: $.get('away_search_answer')
+        away_team: $.get('away_team')
+        prompt: "Based on the following search results about {{away_team}}, extract the animal that represents this football club. Return a JSON object with a single field 'animal' containing the animal name (e.g., lion, eagle, wolf, bear, bull, tiger). Return ONLY valid JSON, no other text.\n\nSearch results: {{search_answer}}\n\nResponse format: {\"animal\": \"<animal_name>\"}"
+        output_schema:
+          type: object
+          properties:
+            animal:
+              type: string
+              description: The animal that represents the team
+          required:
+            - animal
+      outputs:
+        away_animal_raw: $.get('content', '')
+        away_animal: |
+          import json
+          try:
+            result = json.loads($.get('content', '{}'))
+            result.get('animal', '') if isinstance(result, dict) else ''
+          except:
+            ''
+
+    # 6. Generate HOME team character image (jacked animal representing the team)
     - type: connector
       name: generate-home-character
       description: Generate AI image of HOME team character - a jacked, realistic animal in podcast studio
-      condition: $.get('transcript_exists') and $.get('home_team') != ''
+      condition: $.get('transcript_exists') and $.get('home_team') != '' and $.get('home_animal') != ''
       connector:
         name: google-genai
         command: invoke_image
@@ -57,16 +147,17 @@ workflow:
         aspect_ratio: "'9:16'"
         model_name: "'gemini-3-pro-image-preview'"
         home_team: $.get('home_team')
+        home_animal: $.get('home_animal')
         prompt: |
-          "Generate an ULTRA-PHOTOREALISTIC image of a JACKED, MUSCULAR animal character representing {{home_team}} football club in a podcast studio.\n\nCHARACTER DESIGN - CRITICAL:\n- Choose an animal that symbolically represents {{home_team}} (lion, eagle, wolf, bear, bull, tiger, etc. based on the team's identity/colors/region)\n- CRITICAL: This MUST be clearly recognizable as the SPECIFIC ANIMAL - unmistakable animal features are REQUIRED\n- The animal must be ANTHROPOMORPHIC: JACKED MUSCULAR build like a professional bodybuilder, but with DISTINCT ANIMAL CHARACTERISTICS\n- ANIMAL HEAD/FACE REQUIREMENTS: Must have a REALISTIC animal head with species-specific features:\n  * If lion: prominent mane, feline snout, whiskers, golden eyes, feline ears\n  * If eagle: hooked beak, sharp eyes, feathered head, talons visible\n  * If wolf: canine snout, pointed ears, fur-covered face, amber/yellow eyes\n  * If bear: rounded ears, broad snout, thick fur, small eyes\n  * If bull: horns, bovine snout, large nostrils, bovine ears\n  * If tiger: striped fur pattern, feline features, whiskers, amber eyes\n- The head MUST be clearly animal - NOT human-like, NOT masked, NOT costumed\n- ULTRA-PHOTOREALISTIC rendering: real fur/skin texture with individual hair follicles visible, detailed musculature with realistic muscle definition, veins visible on arms, natural skin imperfections, realistic lighting on fur/skin\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - NOT a cartoon, NOT a 3D render, NOT Pixar-style, NOT animated\n- Expressive animal face capable of speech and emotions - the animal's natural features express human-like emotions\n- Intelligent, sentient animal eyes with depth, personality, and realistic reflections - but clearly animal eyes (not human)\n- Natural animal features combined with human-like expressions - the animal genuinely understands and communicates like a human, but maintains its animal identity\n- Realistic proportions: DISTINCTLY ANIMAL head/face with human-like body structure (bipedal, human-like torso and arms)\n- Natural fur/skin texture that responds to light realistically - the animal's natural coat/covering must be visible and realistic\n- Animal ears, snout/muzzle, and other species-specific features must be prominent and clearly visible\n- The animal has BECOME a real being that can speak and express like humans - this is documentary-style realism, but it MUST still look like the actual animal species\n\nCHARACTER POSE:\n- Sitting at a simple podcast desk wearing a fitted team jersey that shows off muscular physique\n- Black over-ear headphones\n- Confident, charismatic expression - mouth slightly open as if speaking enthusiastically\n- Positioned LEFT side of frame, body oriented toward someone across the table\n- Looking strictly toward the right side of the frame (PROFILE or 3/4 VIEW) at the other host\n- NEVER looking at the camera/lens\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-left\n- Blue/purple RGB accent lighting on back wall\n- Only a silver podcast microphone visible on the clean desk\n- Minimalist podcast setup - just the desk and microphone\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on LEFT, looking RIGHT (Side profile or 3/4 view)\n- EYES AVERTED from camera\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nPROHIBITED: NO generic animals - must look like THE SPECIFIC MASCOT. NO mascot costumes or humans in suits. NO costume seams/zippers/fabric texture. NO text/logos/watermarks. NO EYE CONTACT with camera. Must look RIGHT. NO cartoon style, NO Pixar style, NO 3D rendered look, NO animated appearance, NO stylized rendering, NO exaggerated features, NO rubbery textures, NO plastic appearance. NO human-like faces - must have clear animal features. NO masks or human faces with animal ears - must be a real animal head. NO losing animal characteristics - the species must be unmistakably identifiable."
+          "Generate an ULTRA-PHOTOREALISTIC image of a JACKED, MUSCULAR {{home_animal}} character representing {{home_team}} football club in a podcast studio.\n\nCHARACTER DESIGN - CRITICAL:\n- The animal MUST be a {{home_animal}} - this is the specific animal that represents {{home_team}}\n- CRITICAL: This MUST be clearly recognizable as a SPECIFIC {{home_animal}} - unmistakable animal features are REQUIRED\n- The animal must be ANTHROPOMORPHIC: JACKED MUSCULAR build like a professional bodybuilder, but with DISTINCT ANIMAL CHARACTERISTICS\n- ANIMAL HEAD/FACE REQUIREMENTS: Must have a REALISTIC animal head with species-specific features:\n  * If lion: prominent mane, feline snout, whiskers, golden eyes, feline ears\n  * If eagle: hooked beak, sharp eyes, feathered head, talons visible\n  * If wolf: canine snout, pointed ears, fur-covered face, amber/yellow eyes\n  * If bear: rounded ears, broad snout, thick fur, small eyes\n  * If bull: horns, bovine snout, large nostrils, bovine ears\n  * If tiger: striped fur pattern, feline features, whiskers, amber eyes\n- The head MUST be clearly animal - NOT human-like, NOT masked, NOT costumed\n- ULTRA-PHOTOREALISTIC rendering: real fur/skin texture with individual hair follicles visible, detailed musculature with realistic muscle definition, veins visible on arms, natural skin imperfections, realistic lighting on fur/skin\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - NOT a cartoon, NOT a 3D render, NOT Pixar-style, NOT animated\n- Expressive animal face capable of speech and emotions - the animal's natural features express human-like emotions\n- Intelligent, sentient animal eyes with depth, personality, and realistic reflections - but clearly animal eyes (not human)\n- Natural animal features combined with human-like expressions - the animal genuinely understands and communicates like a human, but maintains its animal identity\n- Realistic proportions: DISTINCTLY ANIMAL head/face with human-like body structure (bipedal, human-like torso and arms)\n- Natural fur/skin texture that responds to light realistically - the animal's natural coat/covering must be visible and realistic\n- Animal ears, snout/muzzle, and other species-specific features must be prominent and clearly visible\n- The animal has BECOME a real being that can speak and express like humans - this is documentary-style realism, but it MUST still look like the actual animal species\n\nCHARACTER POSE:\n- Sitting at a simple podcast desk wearing a fitted team jersey that shows off muscular physique\n- Black over-ear headphones\n- Confident, charismatic expression - mouth slightly open as if speaking enthusiastically\n- Positioned LEFT side of frame, body oriented toward someone across the table\n- Looking strictly toward the right side of the frame (PROFILE or 3/4 VIEW) at the other host\n- NEVER looking at the camera/lens\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-left\n- Blue/purple RGB accent lighting on back wall\n- Only a silver podcast microphone visible on the clean desk\n- Minimalist podcast setup - just the desk and microphone\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on LEFT, looking RIGHT (Side profile or 3/4 view)\n- EYES AVERTED from camera\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nPROHIBITED: NO generic animals - must look like THE SPECIFIC MASCOT. NO mascot costumes or humans in suits. NO costume seams/zippers/fabric texture. NO text/logos/watermarks. NO EYE CONTACT with camera. Must look RIGHT. NO cartoon style, NO Pixar style, NO 3D rendered look, NO animated appearance, NO stylized rendering, NO exaggerated features, NO rubbery textures, NO plastic appearance. NO human-like faces - must have clear animal features. NO masks or human faces with animal ears - must be a real animal head. NO losing animal characteristics - the species must be unmistakably identifiable."
       outputs:
         home_character_path: $.get('image_path')
 
-    # 3. Generate AWAY team character image (jacked animal representing the team)
+    # 7. Generate AWAY team character image (jacked animal representing the team)
     - type: connector
       name: generate-away-character
       description: Generate AI image of AWAY team character - a jacked, realistic animal in podcast studio
-      condition: $.get('transcript_exists') and $.get('away_team') != ''
+      condition: $.get('transcript_exists') and $.get('away_team') != '' and $.get('away_animal') != ''
       connector:
         name: google-genai
         command: invoke_image
@@ -74,12 +165,13 @@ workflow:
         aspect_ratio: "'9:16'"
         model_name: "'gemini-3-pro-image-preview'"
         away_team: $.get('away_team')
+        away_animal: $.get('away_animal')
         prompt: |
-          "Generate an ULTRA-PHOTOREALISTIC image of a JACKED, MUSCULAR animal character representing {{away_team}} football club in a podcast studio.\n\nCHARACTER DESIGN - CRITICAL:\n- Choose an animal that symbolically represents {{away_team}} (lion, eagle, wolf, bear, bull, tiger, etc. based on the team's identity/colors/region)\n- MUST BE A DIFFERENT ANIMAL than typical choices - be creative and match the team's spirit\n- CRITICAL: This MUST be clearly recognizable as the SPECIFIC ANIMAL - unmistakable animal features are REQUIRED\n- The animal must be ANTHROPOMORPHIC: JACKED MUSCULAR build like a professional bodybuilder, but with DISTINCT ANIMAL CHARACTERISTICS\n- ANIMAL HEAD/FACE REQUIREMENTS: Must have a REALISTIC animal head with species-specific features:\n  * If lion: prominent mane, feline snout, whiskers, golden eyes, feline ears\n  * If eagle: hooked beak, sharp eyes, feathered head, talons visible\n  * If wolf: canine snout, pointed ears, fur-covered face, amber/yellow eyes\n  * If bear: rounded ears, broad snout, thick fur, small eyes\n  * If bull: horns, bovine snout, large nostrils, bovine ears\n  * If tiger: striped fur pattern, feline features, whiskers, amber eyes\n- The head MUST be clearly animal - NOT human-like, NOT masked, NOT costumed\n- ULTRA-PHOTOREALISTIC rendering: real fur/skin texture with individual hair follicles visible, detailed musculature with realistic muscle definition, veins visible on arms, natural skin imperfections, realistic lighting on fur/skin\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - NOT a cartoon, NOT a 3D render, NOT Pixar-style, NOT animated\n- Expressive animal face capable of speech and emotions - the animal's natural features express human-like emotions\n- Intelligent, sentient animal eyes with depth, personality, and realistic reflections - but clearly animal eyes (not human)\n- Natural animal features combined with human-like expressions - the animal genuinely understands and communicates like a human, but maintains its animal identity\n- Realistic proportions: DISTINCTLY ANIMAL head/face with human-like body structure (bipedal, human-like torso and arms)\n- Natural fur/skin texture that responds to light realistically - the animal's natural coat/covering must be visible and realistic\n- Animal ears, snout/muzzle, and other species-specific features must be prominent and clearly visible\n- The animal has BECOME a real being that can speak and express like humans - this is documentary-style realism, but it MUST still look like the actual animal species\n\nCHARACTER POSE:\n- Sitting at a simple podcast desk wearing team colors or fitted jersey that shows off muscular physique\n- Black over-ear headphones\n- Skeptical or competitive expression - slight smirk, one eyebrow raised\n- Positioned RIGHT side of frame, body oriented toward someone across the table\n- Looking strictly toward the left side of the frame (PROFILE or 3/4 VIEW) at the other host\n- NEVER looking at the camera/lens\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-right\n- Blue/purple RGB accent lighting on back wall\n- Only a silver podcast microphone visible on the clean desk\n- Minimalist podcast setup - just the desk and microphone\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on RIGHT, looking LEFT (Side profile or 3/4 view)\n- EYES AVERTED from camera\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nPROHIBITED: NO generic animals - must look like THE SPECIFIC MASCOT. NO mascot costumes or humans in suits. NO costume seams/zippers/fabric texture. NO text/logos/watermarks. NO EYE CONTACT with camera. Must look LEFT. NO cartoon style, NO Pixar style, NO 3D rendered look, NO animated appearance, NO stylized rendering, NO exaggerated features, NO rubbery textures, NO plastic appearance. NO human-like faces - must have clear animal features. NO masks or human faces with animal ears - must be a real animal head. NO losing animal characteristics - the species must be unmistakably identifiable."
+          "Generate an ULTRA-PHOTOREALISTIC image of a JACKED, MUSCULAR {{away_animal}} character representing {{away_team}} football club in a podcast studio.\n\nCHARACTER DESIGN - CRITICAL:\n- The animal MUST be a {{away_animal}} - this is the specific animal that represents {{away_team}}\n- CRITICAL: This MUST be clearly recognizable as a SPECIFIC {{away_animal}} - unmistakable animal features are REQUIRED\n- The animal must be ANTHROPOMORPHIC: JACKED MUSCULAR build like a professional bodybuilder, but with DISTINCT ANIMAL CHARACTERISTICS\n- ANIMAL HEAD/FACE REQUIREMENTS: Must have a REALISTIC animal head with species-specific features:\n  * If lion: prominent mane, feline snout, whiskers, golden eyes, feline ears\n  * If eagle: hooked beak, sharp eyes, feathered head, talons visible\n  * If wolf: canine snout, pointed ears, fur-covered face, amber/yellow eyes\n  * If bear: rounded ears, broad snout, thick fur, small eyes\n  * If bull: horns, bovine snout, large nostrils, bovine ears\n  * If tiger: striped fur pattern, feline features, whiskers, amber eyes\n- The head MUST be clearly animal - NOT human-like, NOT masked, NOT costumed\n- ULTRA-PHOTOREALISTIC rendering: real fur/skin texture with individual hair follicles visible, detailed musculature with realistic muscle definition, veins visible on arms, natural skin imperfections, realistic lighting on fur/skin\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - NOT a cartoon, NOT a 3D render, NOT Pixar-style, NOT animated\n- Expressive animal face capable of speech and emotions - the animal's natural features express human-like emotions\n- Intelligent, sentient animal eyes with depth, personality, and realistic reflections - but clearly animal eyes (not human)\n- Natural animal features combined with human-like expressions - the animal genuinely understands and communicates like a human, but maintains its animal identity\n- Realistic proportions: DISTINCTLY ANIMAL head/face with human-like body structure (bipedal, human-like torso and arms)\n- Natural fur/skin texture that responds to light realistically - the animal's natural coat/covering must be visible and realistic\n- Animal ears, snout/muzzle, and other species-specific features must be prominent and clearly visible\n- The animal has BECOME a real being that can speak and express like humans - this is documentary-style realism, but it MUST still look like the actual animal species\n\nCHARACTER POSE:\n- Sitting at a simple podcast desk wearing team colors or fitted jersey that shows off muscular physique\n- Black over-ear headphones\n- Skeptical or competitive expression - slight smirk, one eyebrow raised\n- Positioned RIGHT side of frame, body oriented toward someone across the table\n- Looking strictly toward the left side of the frame (PROFILE or 3/4 VIEW) at the other host\n- NEVER looking at the camera/lens\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-right\n- Blue/purple RGB accent lighting on back wall\n- Only a silver podcast microphone visible on the clean desk\n- Minimalist podcast setup - just the desk and microphone\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on RIGHT, looking LEFT (Side profile or 3/4 view)\n- EYES AVERTED from camera\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nPROHIBITED: NO generic animals - must look like THE SPECIFIC MASCOT. NO mascot costumes or humans in suits. NO costume seams/zippers/fabric texture. NO text/logos/watermarks. NO EYE CONTACT with camera. Must look LEFT. NO cartoon style, NO Pixar style, NO 3D rendered look, NO animated appearance, NO stylized rendering, NO exaggerated features, NO rubbery textures, NO plastic appearance. NO human-like faces - must have clear animal features. NO masks or human faces with animal ears - must be a real animal head. NO losing animal characteristics - the species must be unmistakably identifiable."
       outputs:
         away_character_path: $.get('image_path')
 
-    # 4. Upload HOME character image to Google Storage
+    # 8. Upload HOME character image to Google Storage
     - type: connector
       name: upload-home-character
       description: Upload generated HOME character image to Google Storage
@@ -92,7 +184,7 @@ workflow:
       outputs:
         home_podcast_frame_url: $.get('url')
 
-    # 5. Upload AWAY character image to Google Storage
+    # 9. Upload AWAY character image to Google Storage
     - type: connector
       name: upload-away-character
       description: Upload generated AWAY character image to Google Storage
@@ -105,7 +197,7 @@ workflow:
       outputs:
         away_podcast_frame_url: $.get('url')
 
-    # 6. Generate INTRO video (HOME speaker - greetings_intro_home)
+    # 10. Generate INTRO video (HOME speaker - greetings_intro_home)
     - type: connector
       name: generate-intro-video
       description: Generate video for the intro segment using HOME character
@@ -127,7 +219,7 @@ workflow:
         intro_video_path: $.get('video_path')
         intro_raw_api_response: $.get('raw_api_response') or $.get('data', {}).get('raw_api_response')
 
-    # 7. Generate TURN videos (foreach over turns array with inline context enrichment)
+    # 11. Generate TURN videos (foreach over turns array with inline context enrichment)
     - type: connector
       name: generate-turn-videos
       description: Generate video for each turn in the podcast dialogue with conversation context
@@ -157,7 +249,7 @@ workflow:
             $.get('video_path')
           ]
 
-    # 8. Generate CLOSING video (HOME speaker - closing_cta)
+    # 12. Generate CLOSING video (HOME speaker - closing_cta)
     - type: connector
       name: generate-closing-video
       description: Generate video for the closing CTA segment using HOME character
@@ -179,7 +271,7 @@ workflow:
       outputs:
         closing_video_path: $.get('video_path')
 
-    # 9. Consolidate all videos into a single MP4
+    # 13. Consolidate all videos into a single MP4
     - type: connector
       name: consolidate-videos
       description: Merge all generated video segments into one final video
@@ -196,7 +288,7 @@ workflow:
         consolidated_filename: $.get('filename')
         consolidation_status: $.get('status')
 
-    # 10. Upload FINAL consolidated video to Google Storage
+    # 14. Upload FINAL consolidated video to Google Storage
     - type: connector
       name: upload-final-video
       description: Upload the consolidated podcast video to Google Storage
@@ -210,7 +302,7 @@ workflow:
       outputs:
         final_video_url: $.get('url')
 
-    # 11. Store video metadata in a document
+    # 15. Store video metadata in a document
     - type: document
       name: store-podcast-videos
       condition: $.get('final_video_url') is not None
