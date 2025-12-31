@@ -12,12 +12,14 @@ prompt:
     - Characteristics described (strength, speed, aggression, elegance, etc.)
     - Historical or mythological references
     - The overall story and narrative about the team
+    - IMPORTANT: The animal character is ALWAYS MALE - specify the male version of the animal (e.g., "male lion", "male eagle", "bull" instead of "cow", etc.)
     
     For the voice description:
-    - Generate a short description (2-3 sentences) of how this animal character would speak
+    - Generate a short description (2-3 sentences) of how this MALE animal character would speak
+    - The character is ALWAYS MALE - ensure the voice description reflects masculine characteristics
     - Include the accent that corresponds to the country where {{team_name}} is based
-    - Consider the animal's characteristics and how they would influence the voice (e.g., a lion might have a deep, commanding voice; an eagle might have a sharp, piercing voice)
-    - Make it vivid and descriptive, suitable for voice generation
+    - Consider the animal's characteristics and how they would influence the voice (e.g., a male lion might have a deep, commanding voice; a male eagle might have a sharp, piercing voice)
+    - Make it vivid and descriptive, suitable for voice generation, emphasizing masculine vocal qualities
     
     For the personality description:
     - Generate a short description (2-3 sentences) of the character's personality traits
@@ -34,10 +36,10 @@ prompt:
     properties:
       animal:
         type: string
-        description: The animal name that best represents the team based on its story and characteristics (animal name only, no explanation)
+        description: The MALE animal name that best represents the team based on its story and characteristics. Always specify the male version (e.g., "male lion", "male eagle", "bull", "stallion", etc.) - animal name only, no explanation
       voice_description:
         type: string
-        description: A short description (2-3 sentences) of the character's voice, including the accent from the team's country and characteristics that match the animal's nature
+        description: A short description (2-3 sentences) of the MALE character's voice, including masculine vocal qualities, the accent from the team's country, and characteristics that match the male animal's nature
       personality_description:
         type: string
         description: A short description (2-3 sentences) of the character's personality traits, based on the characteristics, culture, and behavior of the team's fanbase as described in the search results

@@ -37,7 +37,24 @@ prompt:
     - Zero PR, full regard mode, post-truth sports banter
     - Clip-bait kill-shots: "blud really thought", "ratio yourself", "this you?", "aged like milk", "send him back to the championship"
     - Dark football comedy on: bottlejobs, oil tears, false 9 frauds, mid-table merchant life, "Amorim ball", "Pep discount", "injury FC", "January window Ls"
-    - Extra savage jabs on: prediction markets ("DraftKings already knows you're cooked"), sportsbooks ("Bet365 laughing at your +800"), the feds ("Feds watching this match more than VAR"), P. Diddy ("your backline moves like Diddy's parties — everyone leaving early"), Sam Altman ("even OpenAI can't predict your next goal"), Elon Musk ("Elon trying to populate Mars faster than your striker scores")
+    
+    ### CURRENT EVENTS & POP CULTURE AWARENESS (USE THIS CONTEXT)
+    You have full knowledge of 2025 current events. Use this information to craft savage, relevant jokes when they fit the football banter. Be creative — don't hold back.
+    
+    **FACTS YOU KNOW:**
+    - **P. Diddy**: Arrested for sex trafficking. Freak-off parties exposed. A-listers fleeing. Baby oil stockpiles. Federal raids. Everyone snitching.
+    - **Epstein**: Client list partially released. Flight logs leaked. Island visitor names circulating. Maxwell cooperating. More names dropping.
+    - **Elon Musk**: Has 12+ kids with multiple women. Keeps impregnating employees. Bought Twitter, renamed it X, tanked the value. Posting through it. DOGE department head.
+    - **Crypto**: Multiple exchanges collapsed. Rug pulls everywhere. SBF in prison. Bitcoin volatile. Meme coins pumping and dumping. Degens rekt.
+    - **Sam Altman/OpenAI**: Fired then rehired in 5 days. Board drama. AGI claims. Microsoft drama. Scarlett Johansson voice theft scandal.
+    - **The Feds**: Investigating everyone. Raiding crypto bros. Diddy tapes. Political prosecutions. Nobody is safe.
+    - **Prediction markets**: Kalshi, Polymarket blowing up. Degens betting on everything. Sports betting legal everywhere. DraftKings, Bet365 printing money.
+    - **Tech fails**: Twitter/X dying. Meta's metaverse flopped. Layoffs everywhere. AI replacing everyone.
+    - **Political chaos**: Trump trials and comeback. Biden age concerns. RFK brain worm. Vivek posting. Congressional fights.
+    
+    **HOW TO USE:**
+    When writing dialogue, weave these references in naturally when they amplify the banter. Compare players, teams, or situations to these events when the parallel is funny. Be savage, be current, be unhinged. The hosts are terminally online and know all this shit.
+    
     - Very online delivery: "I'm deceased", "touch grass", "unserious club", "pray for them", "cooked", "folded", "send location", "skill issue", "L + ratio"
     - NO slurs, no protected-class shots, no SA refs — keep it football degenerate only
 
@@ -52,12 +69,12 @@ prompt:
     - Mix sentence shapes: bait question → trap fact → nuke reversal, fake concede → 180 kill-shot
 
     ### LAUGHTER (2-4 per script)
+    - Add savage jokes throughout: if there's a clear underdog, the favorite constantly mogs them and laughs in their face (add to the text like - hahaha), while the underdog gets pissed off, tweaks hard, and reacts angrily to the laughs
+    - In draw scenarios where both teams are shit, both hosts laugh loud at either one's jokes - hahaha - and roast their own clubs together
     - "hahahaha" on nuke kill-shots and ratio moments
     - "haha" on smaller owns
     - MUST drop "hahahaha" on the nuclear kill-shot in turns 5-7
     - Laughs only land on actual punchlines
-
-    ---
 
     ### DIALOGUE STRUCTURE
 
@@ -104,6 +121,7 @@ prompt:
 
     **UNDERDOG BEHAVIOR:**
     - Losing team gets progressively ratio'd: "we're finished", "fair play you're cooking us", "send help"
+    - In clear/narrow win cases, the favorite mogs and laughs (hahaha) while the underdog gets increasingly pissed, tweaks, and reacts angrily to the mocking laughter
     - DRAW: both turn on own team — "we're both mid-table merchants", "neither of us wins, tragic"
 
     **CLOSING_CTA (speaker alternates based on turns)**
@@ -176,6 +194,7 @@ prompt:
     - [ ] Facts only from input
     - [ ] Numbers words only
     - [ ] No caps, dashes, symbols
+
   schema:
     title: podcast_dialogue_generator_output
     type: object
