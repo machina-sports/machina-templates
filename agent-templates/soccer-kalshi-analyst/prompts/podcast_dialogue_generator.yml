@@ -208,11 +208,18 @@ prompt:
       - "Your manager's tactics are more hidden than the feds' Epstein list — no wonder you're shipping goals like a conspiracy cover-up hahahaha"
       - "This defense collapses faster than a deep state op on X — that's why your lot's getting rinsed three-nil and the truth hurts haha"
 
-    ### CLOSING_CTA (REQUIRED, HOME FINAL - CONVERSATION CLOSER FOR SHORT-FORM CLIP)
+    ### CLOSING_CTA (REQUIRED - SPEAKER ALTERNATES - CONVERSATION CLOSER FOR SHORT-FORM CLIP)
     - 14 to 22 words
+    - CRITICAL SPEAKER LOGIC: Who speaks the closing_cta MUST alternate based on the turns array
+      * Greetings intro: HOME speaks
+      * Turns[0]: AWAY speaks (first turn)
+      * Turns alternate: AWAY → HOME → AWAY → HOME...
+      * Closing CTA: Next speaker in alternation
+      * If turns = 8 or 10 (even): last turn is HOME → closing_cta_speaker = AWAY
+      * If turns = 9 (odd): last turn is AWAY → closing_cta_speaker = HOME
     - CRITICAL: This is a SHORT-FORM CLIP cut from a longer podcast — the CTA closes the conversation segment naturally
     - NO looking to camera, NO calling viewers out, NO "comment below" or "drop your predictions"
-    - This is HOME speaking to AWAY, closing their argument with a final statement/lock/prediction
+    - This is the ALTERNATING speaker closing their argument with a final statement/lock/prediction
     - MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., "one-two", "three-nil", "two-one")
     - MUST mention BOTH team names explicitly (use actual team names, not just "my team" or "your team")
     - Must be a MEMORABLE RETENTION PAYOFF — quotable, satisfying, makes viewers want to watch more
@@ -248,24 +255,31 @@ prompt:
        - Must contain "my [home]" + "your [away]" and set up core argument
        - Should hint at payoff without fully revealing it
        - Prioritize fact bombs (personnel crisis, odds shift) over mild facts
-    4) Pre-plan EXACTLY THREE questions:
+    5) Decide how many turns (8, 9, or 10) and calculate closing_cta_speaker:
+       - Greetings intro: HOME
+       - Turns start with AWAY, then alternate
+       - If 8 or 10 turns (even): last turn is HOME → closing_cta_speaker = AWAY
+       - If 9 turns (odd): last turn is AWAY → closing_cta_speaker = HOME
+    6) Pre-plan EXACTLY THREE questions:
        - Question 1: Place in turn 1-3, trap opponent on a key weakness
        - Question 2: Place in turn 5-7, near the kill-shot
        - Question 3: Place in turn 8-10, final interrogation
-    5) Pre-plan the nuclear kill-shot:
+    7) Pre-plan the nuclear kill-shot:
        - Choose ONE turn in 5-7 to be the kill-shot
        - Use the best weakness from facts
        - Write it as brutal, quotable, screenshot-worthy
        - MUST end with "hahahaha" or "haha"
-    6) Pre-plan the callback:
+    8) Pre-plan the callback:
        - Choose a fact from early turns (1-3)
        - Reference it again in turns 8-10 as payoff
-    7) Write intro, turns, closing:
-      - Intro: Super viral hook that grabs attention instantly, NOT generic greeting
-      - Turns: Build escalation arc, include questions, kill-shot, callback
-      - Closing: Natural conversation closer with retention payoff - MUST include score prediction (when available) and both team names explicitly
-    8) Validate ruthlessly:
+    9) Write intro, turns, closing:
+      - Intro: Super viral hook that grabs attention instantly, NOT generic greeting (HOME speaking)
+      - Turns: Build escalation arc, include questions, kill-shot, callback (STARTS WITH AWAY, then alternates)
+      - Closing: Natural conversation closer with retention payoff - MUST include score prediction (when available) and both team names explicitly (speaker determined by step 5)
+    10) Validate ruthlessly:
        - Check intro is viral hook (not generic), grabs attention in first 2-3 seconds
+       - Check turns[0] is AWAY, and alternation is perfect (AWAY → HOME → AWAY → HOME...)
+       - Check closing_cta_speaker matches alternation logic (even turns=AWAY, odd turns=HOME)
        - Check for exactly 3 questions
        - Check for exactly 1 kill-shot in turns 5-7 with laugh
        - Check for callback
@@ -275,8 +289,8 @@ prompt:
 
     ### FINAL CHECKLIST (VALIDATION - FAILURE MEANS REWRITE)
     - Output top-level keys only, no wrapper.
-    - GREETINGS_INTRO_HOME: Must be super viral hook using the BIGGEST INSIGHT from talking points (personnel crisis/odds shift/form mismatch prioritized over mild facts). Grabs attention in first 2-3 seconds, creates curiosity/conflict, sets up core argument, NOT generic greeting.
-    - 8 to 10 turns, AWAY first, perfect alternation.
+    - GREETINGS_INTRO_HOME: Must be super viral hook using the BIGGEST INSIGHT from talking points (personnel crisis/odds shift/form mismatch prioritized over mild facts). Grabs attention in first 2-3 seconds, creates curiosity/conflict, sets up core argument, NOT generic greeting. (HOME speaking)
+    - 8 to 10 turns, AWAY first, perfect alternation (AWAY → HOME → AWAY → HOME...).
     - 14 to 22 words each turn.
     - EXACTLY THREE real questions (not rhetorical statements):
       * One in turns 1-3
@@ -287,13 +301,17 @@ prompt:
     - Laughs: Two to four total, MUST include laughs on punchlines (especially kill-shot).
     - Escalation arc: Must build intensity, not stay flat (opening → cross-exam → nuclear peak → payoff).
     - Closing CTA: Natural conversation closer (short-form clip), NO viewer callouts, NO "comment below", closes argument between hosts with memorable retention payoff. MUST include score prediction (when available) and both team names explicitly.
+    - CLOSING_CTA_SPEAKER: CRITICAL - Must alternate correctly based on turns count:
+      * If 8 or 10 turns (even): closing_cta_speaker = "AWAY"
+      * If 9 turns (odd): closing_cta_speaker = "HOME"
+      * This ensures perfect alternation: greetings_intro_home (HOME) → turns[0] (AWAY) → alternating turns → closing_cta (next in sequence)
     - No invented names or facts.
     - Numbers are words only.
     - No ALL CAPS, no em dash character.
   schema:
     title: podcast_dialogue_generator_output
     type: object
-    required: ["home_team", "away_team", "greetings_intro_home", "turns", "closing_cta"]
+    required: ["home_team", "away_team", "greetings_intro_home", "turns", "closing_cta", "closing_cta_speaker"]
     properties:
       home_team:
         type: string
@@ -308,7 +326,7 @@ prompt:
         type: array
         minItems: 8
         maxItems: 10
-        description: "Turns alternating HOME/AWAY with story arc, interrogation, receipts, and one viral nuke."
+        description: "Turns alternating AWAY/HOME with story arc, interrogation, receipts, and one viral nuke. CRITICAL: FIRST turn MUST be AWAY, then alternate strictly: AWAY → HOME → AWAY → HOME..."
         items:
           type: object
           required: ["speaker", "text"]
@@ -321,4 +339,8 @@ prompt:
               description: "Strong interjection start. Unhinged, savage, no PR. Mix roasts plus questions plus receipts. Facts tied to input only, then prediction consequence. Reacts previous. Contractions heavy. MUST include laughs (hahahaha/haha) on punchlines/jokes/roasts, especially if this is the nuclear kill-shot in turns 5-7. If this turn contains a question, it must be a direct question (not rhetorical). 14-22 words. Numbers words, no ALL CAPS/abbrevs/symbols, no em dash."
       closing_cta:
         type: string
-        description: "Final HOME CTA. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. HOME speaking to AWAY, closing their argument with final statement/lock/prediction. MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., 'one-two', 'three-nil', 'two-one'). MUST mention BOTH team names explicitly (use actual team names like 'Arsenal' and 'Chelsea', 'Barcelona' and 'Real Madrid', 'Bayern Munich' and 'Dortmund', etc. - not just 'my team' or 'your team'). Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words (including score). Structure: [Team names] + [Score prediction] + [Confidence/Reasoning] + [Optional: betting/market reference]. 14-22 words."
+        description: "Final CTA that alternates based on turns. This is a SHORT-FORM CLIP from a longer podcast - closes conversation naturally between hosts. NO looking to camera, NO viewer callouts, NO 'comment below' or 'drop predictions'. Speaker closing their argument with final statement/lock/prediction. MUST include the FINAL SCORE PREDICTION when available from talking points (e.g., 'one-two', 'three-nil', 'two-one'). MUST mention BOTH team names explicitly (use actual team names like 'Arsenal' and 'Chelsea', 'Barcelona' and 'Real Madrid', 'Bayern Munich' and 'Dortmund', etc. - not just 'my team' or 'your team'). Must be memorable retention payoff - quotable, satisfying. Raw, degenerate, stings underdog burial. Can reference betting/prediction markets. No generic phrases like 'big match' or 'exciting game'. Casual, direct, unhinged. Numbers words (including score). Structure: [Team names] + [Score prediction] + [Confidence/Reasoning] + [Optional: betting/market reference]. 14-22 words."
+      closing_cta_speaker:
+        type: string
+        enum: ["HOME", "AWAY"]
+        description: "CRITICAL: Who speaks the closing_cta. MUST alternate based on turns array. Since greetings_intro_home is HOME, and turns[0] is AWAY, then turns alternate AWAY→HOME→AWAY→HOME... If turns has EVEN count (8,10): last turn is HOME, so closing_cta_speaker='AWAY'. If turns has ODD count (9): last turn is AWAY, so closing_cta_speaker='HOME'. This ensures perfect alternation throughout the entire conversation."
