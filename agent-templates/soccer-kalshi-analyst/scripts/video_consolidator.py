@@ -140,6 +140,7 @@ def consolidate_videos(request_data):
             else:
                 print(f"🔗 Creating overlapping audio transitions ({audio_overlap_seconds}s overlap)...")
                 print("   (Next video's audio starts while previous video continues playing)")
+                print("   (Video image skips overlap duration to sync with audio)")
                 
                 # Build timeline: videos play sequentially, audio overlaps at transitions
                 video_clips = []  # Video clips positioned sequentially
@@ -151,9 +152,24 @@ def consolidate_videos(request_data):
                     video_track = without_audio(clip)
                     audio_track = clip.audio if clip.audio else None
                     
-                    # Video plays sequentially (no overlap)
-                    video_positioned = set_start(video_track, current_time)
-                    video_clips.append(video_positioned)
+                    # Video handling
+                    if i == 0:
+                        # First clip: video starts at 0, plays from beginning
+                        video_positioned = set_start(video_track, current_time)
+                        video_clips.append(video_positioned)
+                    else:
+                        # Subsequent clips: video must skip the overlap duration to sync with audio
+                        # Audio has already been playing for audio_overlap_seconds, so video should start
+                        # from that point in the clip to maintain sync
+                        if audio_overlap_seconds < clip_duration:
+                            # Trim video to start from audio_overlap_seconds into the clip
+                            trimmed_video = video_track.subclip(audio_overlap_seconds, clip_duration)
+                            video_positioned = set_start(trimmed_video, current_time)
+                            video_clips.append(video_positioned)
+                        else:
+                            # If overlap is longer than clip duration, just use the clip as-is
+                            video_positioned = set_start(video_track, current_time)
+                            video_clips.append(video_positioned)
                     
                     # Audio handling
                     if audio_track:
@@ -169,7 +185,13 @@ def consolidate_videos(request_data):
                             audio_clips.append(audio_positioned)
                     
                     # Move to next position
-                    current_time += clip_duration
+                    # For subsequent clips, account for the trimmed video duration
+                    if i == 0:
+                        current_time += clip_duration
+                    else:
+                        # Video duration is reduced by audio_overlap_seconds (we trimmed it)
+                        actual_video_duration = max(0, clip_duration - audio_overlap_seconds)
+                        current_time += actual_video_duration
                 
                 # Calculate total duration
                 total_duration = current_time
