@@ -566,6 +566,7 @@ def invoke_video(request_data):
     Generated videos are stored on server for 2 days before removal.
     """
     import base64
+    import json
     
     params = request_data.get("params")
     headers = request_data.get("headers")
@@ -702,31 +703,42 @@ def invoke_video(request_data):
             poll_data = poll_response.json()
             
             # Check if operation is done
-        if poll_data.get("done", False):
-            print("✅ Video generation completed!")
-            # Log the response structure for debugging
-            print(f"📋 Response keys: {list(poll_data.keys())}")
-            if "response" in poll_data:
-                print(f"📋 Response type: {type(poll_data['response'])}")
-                if isinstance(poll_data["response"], dict):
-                    print(f"📋 Response keys: {list(poll_data['response'].keys())}")
-            break
+            if poll_data.get("done", False):
+                print("✅ Video generation completed!")
+                break
             
-            # Check for error
+            # Check for error during polling
             if "error" in poll_data:
                 error_msg = poll_data["error"].get("message", "Unknown error")
-                return {"status": False, "message": f"Video generation failed: {error_msg}"}
+                raw_response = json.dumps(poll_data, indent=2, default=str)
+                return {
+                    "status": False,
+                    "message": f"Video generation failed: {error_msg}",
+                    "raw_api_response": raw_response
+                }
+        
+        # Capture full raw response for debugging
+        raw_response_json = json.dumps(poll_data, indent=2, default=str)
+        print(f"📋 Full API Response:\n{raw_response_json}")
         
         # Extract response from completed operation
         if "error" in poll_data:
             error_msg = poll_data["error"].get("message", "Unknown error")
-            return {"status": False, "message": f"Video generation failed: {error_msg}"}
+            return {
+                "status": False,
+                "message": f"Video generation failed: {error_msg}",
+                "raw_api_response": raw_response_json
+            }
         
         # Check for errors in response as well
         response_data = poll_data.get("response", {})
         if isinstance(response_data, dict) and "error" in response_data:
             error_msg = response_data["error"].get("message", "Unknown error")
-            return {"status": False, "message": f"Video generation failed in response: {error_msg}"}
+            return {
+                "status": False,
+                "message": f"Video generation failed in response: {error_msg}",
+                "raw_api_response": raw_response_json
+            }
         
         # Try multiple response structures
         generated_samples = None
@@ -750,12 +762,11 @@ def invoke_video(request_data):
             generated_samples = [response_data]
         
         if not generated_samples:
-            # Include full response in error for debugging
-            import json
-            debug_info = json.dumps(poll_data, indent=2, default=str)
+            # Include FULL response in error for debugging
             return {
                 "status": False,
-                "message": f"Video generation completed but no videos were generated. Response structure: {debug_info[:500]}"
+                "message": "Video generation completed but no videos were generated.",
+                "raw_api_response": raw_response_json
             }
         
         print(f"🎬 Generated {len(generated_samples)} video(s)")
@@ -833,7 +844,7 @@ def invoke_video(request_data):
             return {
                 "status": False,
                 "message": "Video generation completed but no videos could be saved.",
-                "debug_response": poll_data
+                "raw_api_response": raw_response_json
             }
         
         # Return single video format for backward compatibility, or multiple if requested
@@ -847,6 +858,7 @@ def invoke_video(request_data):
                     "prompt": prompt,
                     "model": model_name,
                     "input_image_path": image_path if image_path else None,
+                    "raw_api_response": raw_response_json,  # Include full API response
                 },
                 "message": "Video generated successfully.",
             }
@@ -860,6 +872,7 @@ def invoke_video(request_data):
                     "prompt": prompt,
                     "model": model_name,
                     "input_image_path": image_path if image_path else None,
+                    "raw_api_response": raw_response_json,  # Include full API response
                 },
                 "message": f"{len(video_results)} videos generated successfully.",
             }
