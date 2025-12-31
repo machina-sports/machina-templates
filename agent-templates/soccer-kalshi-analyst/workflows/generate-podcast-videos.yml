@@ -221,9 +221,9 @@ workflow:
         name: "'dummy'"
       outputs:
         home_podcast_frame_url: $.get('home_podcast_frame_url_cached', '') if $.get('home_character_exists', False) else $.get('home_podcast_frame_url_uploaded', '')
-        home_animal: $.get('home_animal_response', {}).get('animal', '') if $.get('home_animal_response', {}).get('animal', '') != '' else $.get('home_animal_cached', '')
-        home_voice_description: $.get('home_animal_response', {}).get('voice_description', '') if $.get('home_animal_response', {}).get('voice_description', '') != '' else $.get('home_voice_description_cached', '')
-        home_personality_description: $.get('home_animal_response', {}).get('personality_description', '') if $.get('home_animal_response', {}).get('personality_description', '') != '' else $.get('home_personality_description_cached', '')
+        home_animal: $.get('home_animal_cached', '') if $.get('home_character_exists', False) else ($.get('home_animal_response', {}).get('animal', '') if $.get('home_animal_response', {}).get('animal', '') != '' else $.get('home_animal_cached', ''))
+        home_voice_description: $.get('home_voice_description_cached', '') if $.get('home_character_exists', False) else ($.get('home_animal_response', {}).get('voice_description', '') if $.get('home_animal_response', {}).get('voice_description', '') != '' else $.get('home_voice_description_cached', ''))
+        home_personality_description: $.get('home_personality_description_cached', '') if $.get('home_character_exists', False) else ($.get('home_animal_response', {}).get('personality_description', '') if $.get('home_animal_response', {}).get('personality_description', '') != '' else $.get('home_personality_description_cached', ''))
 
     # 9. Upload AWAY character image to Google Storage (skip if cached)
     - type: connector
@@ -250,9 +250,9 @@ workflow:
         name: "'dummy'"
       outputs:
         away_podcast_frame_url: $.get('away_podcast_frame_url_cached', '') if $.get('away_character_exists', False) else $.get('away_podcast_frame_url_uploaded', '')
-        away_animal: $.get('away_animal_response', {}).get('animal', '') if $.get('away_animal_response', {}).get('animal', '') != '' else $.get('away_animal_cached', '')
-        away_voice_description: $.get('away_animal_response', {}).get('voice_description', '') if $.get('away_animal_response', {}).get('voice_description', '') != '' else $.get('away_voice_description_cached', '')
-        away_personality_description: $.get('away_animal_response', {}).get('personality_description', '') if $.get('away_animal_response', {}).get('personality_description', '') != '' else $.get('away_personality_description_cached', '')
+        away_animal: $.get('away_animal_cached', '') if $.get('away_character_exists', False) else ($.get('away_animal_response', {}).get('animal', '') if $.get('away_animal_response', {}).get('animal', '') != '' else $.get('away_animal_cached', ''))
+        away_voice_description: $.get('away_voice_description_cached', '') if $.get('away_character_exists', False) else ($.get('away_animal_response', {}).get('voice_description', '') if $.get('away_animal_response', {}).get('voice_description', '') != '' else $.get('away_voice_description_cached', ''))
+        away_personality_description: $.get('away_personality_description_cached', '') if $.get('away_character_exists', False) else ($.get('away_animal_response', {}).get('personality_description', '') if $.get('away_animal_response', {}).get('personality_description', '') != '' else $.get('away_personality_description_cached', ''))
 
     # 9.6. Update HOME team character info (if document exists and new data was generated)
     - type: document
