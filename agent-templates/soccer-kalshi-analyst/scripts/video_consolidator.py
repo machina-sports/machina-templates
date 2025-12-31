@@ -107,8 +107,68 @@ def consolidate_videos(request_data):
             if hasattr(clip, 'with_audio'):
                 return clip.with_audio(None)
             return clip.set_audio(None)
+        
+        def subclip(clip, start, end, file_path=None):
+            """
+            Compatibility wrapper for subclip method - works with MoviePy 1.x and 2.x
+            MoviePy 1.x uses: clip.subclip(start, end)
+            MoviePy 2.x uses: clip.subclipped(start, end) or clip[start:end]
+            """
+            # Try MoviePy 1.x method: subclip()
+            if hasattr(clip, 'subclip'):
+                try:
+                    return clip.subclip(start, end)
+                except Exception as e:
+                    print(f"  Warning: clip.subclip() failed: {e}, trying MoviePy 2.x methods...")
+            
+            # Try MoviePy 2.x method: subclipped()
+            if hasattr(clip, 'subclipped'):
+                try:
+                    return clip.subclipped(start, end)
+                except Exception as e:
+                    print(f"  Warning: clip.subclipped() failed: {e}, trying slicing syntax...")
+            
+            # Try MoviePy 2.x slicing syntax: clip[start:end]
+            try:
+                # Check if slicing is supported by trying to access __getitem__
+                if hasattr(clip, '__getitem__'):
+                    return clip[start:end]
+            except Exception as e:
+                print(f"  Warning: Slicing syntax failed: {e}, trying reload from file...")
+            
+            # Fallback: reload from file if we have the path
+            try:
+                path = file_path
+                if not path:
+                    # Try to get filename from clip attributes
+                    path = getattr(clip, 'filename', None) or (getattr(clip, 'reader', {}).get('filename', None) if hasattr(clip, 'reader') and isinstance(getattr(clip, 'reader'), dict) else None)
+                
+                if path and os.path.exists(path):
+                    print(f"  Reloading clip from file for subclip operation...")
+                    new_clip = VideoFileClip(path)
+                    # Try all methods on the reloaded clip
+                    if hasattr(new_clip, 'subclipped'):
+                        return new_clip.subclipped(start, end)
+                    elif hasattr(new_clip, 'subclip'):
+                        return new_clip.subclip(start, end)
+                    elif hasattr(new_clip, '__getitem__'):
+                        return new_clip[start:end]
+            except Exception as e:
+                print(f"  Warning: Could not reload clip for subclip: {e}")
+            
+            # Last resort: raise helpful error
+            available_methods = [m for m in dir(clip) if not m.startswith('_') and ('clip' in m.lower() or m == '__getitem__')]
+            raise AttributeError(
+                f"Clip does not support subclip operation. "
+                f"Clip type: {type(clip)}, "
+                f"Has subclip: {hasattr(clip, 'subclip')}, "
+                f"Has subclipped: {hasattr(clip, 'subclipped')}, "
+                f"Has __getitem__: {hasattr(clip, '__getitem__')}, "
+                f"Available methods: {available_methods[:10]}"
+            )
 
         clips = []
+        clip_paths = []  # Store paths for potential reloading
         try:
             # Load all clips first
             for path in valid_paths:
@@ -116,6 +176,7 @@ def consolidate_videos(request_data):
                 try:
                     clip = VideoFileClip(path)
                     clips.append(clip)
+                    clip_paths.append(path)  # Store path for this clip
                     print(f"    ✓ Loaded: {clip.duration:.2f}s, {clip.size[0]}x{clip.size[1]}")
                 except Exception as e:
                     print(f"    ✗ Failed to load {os.path.basename(path)}: {e}")
@@ -149,12 +210,13 @@ def consolidate_videos(request_data):
                 
                 for i, clip in enumerate(clips):
                     clip_duration = clip.duration
-                    video_track = without_audio(clip)
                     audio_track = clip.audio if clip.audio else None
+                    clip_path = clip_paths[i] if i < len(clip_paths) else None
                     
                     # Video handling
                     if i == 0:
                         # First clip: video starts at 0, plays from beginning
+                        video_track = without_audio(clip)
                         video_positioned = set_start(video_track, current_time)
                         video_clips.append(video_positioned)
                     else:
@@ -162,12 +224,17 @@ def consolidate_videos(request_data):
                         # Audio has already been playing for audio_overlap_seconds, so video should start
                         # from that point in the clip to maintain sync
                         if audio_overlap_seconds < clip_duration:
-                            # Trim video to start from audio_overlap_seconds into the clip
-                            trimmed_video = video_track.subclip(audio_overlap_seconds, clip_duration)
-                            video_positioned = set_start(trimmed_video, current_time)
+                            # Trim the original clip first (before removing audio)
+                            # This ensures subclip works on the full VideoFileClip
+                            # Pass the file path in case we need to reload
+                            trimmed_clip = subclip(clip, audio_overlap_seconds, clip_duration, file_path=clip_path)
+                            # Then remove audio from the trimmed clip
+                            video_track = without_audio(trimmed_clip)
+                            video_positioned = set_start(video_track, current_time)
                             video_clips.append(video_positioned)
                         else:
                             # If overlap is longer than clip duration, just use the clip as-is
+                            video_track = without_audio(clip)
                             video_positioned = set_start(video_track, current_time)
                             video_clips.append(video_positioned)
                     
