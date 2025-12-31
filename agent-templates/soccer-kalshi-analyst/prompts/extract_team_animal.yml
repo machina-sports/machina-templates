@@ -19,10 +19,17 @@ prompt:
     - Consider the animal's characteristics and how they would influence the voice (e.g., a lion might have a deep, commanding voice; an eagle might have a sharp, piercing voice)
     - Make it vivid and descriptive, suitable for voice generation
     
+    For the personality description:
+    - Generate a short description (2-3 sentences) of the character's personality traits
+    - Base this personality on the characteristics, culture, and behavior of {{team_name}}'s fanbase as described in the search results
+    - Consider: Are the fans known for being passionate, loyal, aggressive, optimistic, pessimistic, working-class, sophisticated, underdog supporters, entitled, etc.?
+    - The personality should reflect how the team's supporters typically behave, think, and express themselves
+    - Make it vivid and descriptive, capturing the essence of the fanbase's collective personality
+    
     Search results: {{search_answer}}
   schema:
     title: extract_team_animal_output
-    description: The animal that represents the football team and its character voice description (always returned, inferred from story if no official mascot exists)
+    description: The animal that represents the football team, its character voice description, and personality based on the fanbase (always returned, inferred from story if no official mascot exists)
     type: object
     properties:
       animal:
@@ -31,7 +38,11 @@ prompt:
       voice_description:
         type: string
         description: A short description (2-3 sentences) of the character's voice, including the accent from the team's country and characteristics that match the animal's nature
+      personality_description:
+        type: string
+        description: A short description (2-3 sentences) of the character's personality traits, based on the characteristics, culture, and behavior of the team's fanbase as described in the search results
     required:
       - animal
       - voice_description
+      - personality_description
 
