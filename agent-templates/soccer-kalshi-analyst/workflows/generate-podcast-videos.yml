@@ -55,7 +55,10 @@ workflow:
         command: invoke_search
       inputs:
         model_name: "'gemini-3-flash-preview'"
-        search_query: "Which animal represents " + str($.get('home_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
+        search_query: |
+          (
+            "Which animal represents " + str($.get('home_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
+          )
       outputs:
         home_search_answer: $.get('data', {}).get('answer', '') if $.get('data') else ''
 
@@ -100,7 +103,10 @@ workflow:
         command: invoke_search
       inputs:
         model_name: "'gemini-3-flash-preview'"
-        search_query: "Which animal represents " + str($.get('away_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
+        search_query: |
+          (
+            "Which animal represents " + str($.get('away_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
+          )
       outputs:
         away_search_answer: $.get('data', {}).get('answer', '') if $.get('data') else ''
 
