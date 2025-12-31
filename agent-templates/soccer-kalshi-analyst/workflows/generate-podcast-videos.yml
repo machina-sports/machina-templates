@@ -60,7 +60,7 @@ workflow:
             "Which animal represents " + str($.get('home_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
           )
       outputs:
-        home_search_answer: $.get('data', {}).get('answer', '') if $.get('data') else ''
+        home_search_answer: $.get('answer', '')
 
     # 3. Extract HOME team animal from search results using structured output
     - type: prompt
@@ -108,7 +108,7 @@ workflow:
             "Which animal represents " + str($.get('away_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
           )
       outputs:
-        away_search_answer: $.get('data', {}).get('answer', '') if $.get('data') else ''
+        away_search_answer: $.get('answer', '')
 
     # 5. Extract AWAY team animal from search results using structured output
     - type: prompt
