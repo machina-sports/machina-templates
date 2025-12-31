@@ -12,22 +12,22 @@ prompt:
     {{ kalshi_analysis_doc | json }}
 
     ### TASK
-    Extract 6-8 key talking points that two rival fans would argue about.
+    Extract 6-8 key talking points that two rival fans would argue about while trying to predict the match outcome.
     
     For each point, provide:
     - The topic (what they're discussing)
-    - The HOME fan's take (defending their team or attacking the opponent)
-    - The AWAY fan's take (defending their team or attacking the opponent)
+    - The HOME fan's take (defending their team or attacking the opponent, using specific facts/stats from the analysis)
+    - The AWAY fan's take (defending their team or attacking the opponent, using specific facts/stats from the analysis)
     
-    Focus on:
-    1. The matchup intro (who's playing, why it matters)
-    2. Key injuries or absences
-    3. Recent form / stats that hurt or help
-    4. Tactical mismatches
-    5. The prediction / expected score
-    6. Final verdict
-
-    Keep it factual—just extract the info. The creative writing happens in the next step.
+    Focus on FACTUAL INSIGHTS that fans can use to make predictions:
+    1. The matchup intro (who's playing, why it matters, what's at stake)
+    2. Key injuries or absences (and how they impact the prediction)
+    3. Recent form / stats that hurt or help (specific numbers, trends, patterns)
+    4. Tactical mismatches (head-to-head stats, style clashes)
+    5. Prediction insights (expected score, win probabilities, key factors)
+    6. Betting/prediction angles (what the analysis suggests about the outcome)
+    
+    Each talking point should include SPECIFIC FACTS, STATS, or INSIGHTS from the prediction and analysis that fans can use to argue their prediction. Keep it factual—just extract the info. The creative writing happens in the next step.
   schema:
     title: podcast_talking_points_output
     type: object

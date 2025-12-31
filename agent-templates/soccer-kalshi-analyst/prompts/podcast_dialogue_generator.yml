@@ -8,7 +8,7 @@ prompt:
     {{ talking_points | json }}
 
     ### YOUR MISSION
-    Transform these talking points into a conversation between two fans at a pub. They're 3 pints deep, competitive as hell, roasting each other's teams—but it's all love.
+    Transform these talking points into a conversation between two fans at a pub. They're 3 pints deep, competitive as hell, roasting each other's teams—but it's all love. They're using the FACTS and INSIGHTS from the analysis to argue their predictions about what will happen in the match.
 
     ### THE VIBE (THIS IS CRITICAL)
     - UNHINGED: Over-the-top reactions, dramatic takes, wild analogies
@@ -89,9 +89,23 @@ prompt:
       - Be 14-22 words max (fits in 8-second video clip)
     
     EVERY LINE MUST START WITH A REACTION WORD (MANDATORY):
-    - "Nah...", "Nah nah nah...", "Come on..."
-    - "Hold up...", "Wait wait wait...", "Look...", "Mate..."
-    - "Bruv...", "Oi...", "Listen...", "Honestly..."
+    Use regionally appropriate reaction words/interjections that match each team's local culture and slang. Choose what feels authentic to where the team is from.
+    
+    Examples of reaction patterns (use what fits the team's region):
+    - Disagreement/contradiction: "Nah...", "No way...", "Come on...", "Nonsense...", "Are you kidding...", "You're mad..."
+    - Interruption/correction: "Hold up...", "Wait wait wait...", "Hold on...", "Stop...", "Hang on..."
+    - Attention-getting: "Look...", "Listen...", "Mate...", "Bro...", "Bruv...", "Oi...", "Ey...", "Che..."
+    - Emphasis/agreement: "Honestly...", "Seriously...", "I mean...", "Like...", "Right..."
+    
+    Choose reaction words that feel natural for each team's location—a Barcelona fan might use different expressions than a Manchester fan, who sounds different from a Buenos Aires fan. Use what's most relevant and authentic to each team's local slang and culture.
+    
+    **USING FACTS TO MAKE PREDICTIONS (CRITICAL):**
+    The fans are using the insights from the analysis to predict the match outcome. Make sure they:
+    - Reference SPECIFIC FACTS, STATS, or NUMBERS from the talking points (injuries, form, head-to-head records, probabilities)
+    - Use these facts to support their predictions ("the stats say...", "the analysis shows...", "based on...")
+    - Argue about what the data means for the match outcome
+    - Make predictions based on the insights ("that's why we're winning", "that's why you're losing")
+    - Keep it engaging—facts don't have to be boring! Use them to fuel the banter
     
     **CONVERSATIONAL FLOW (CRITICAL FOR ENGAGEMENT):**
     Make it feel like a REAL pub conversation, not a scripted debate:
@@ -100,30 +114,34 @@ prompt:
     - React to what the other person just said—don't just state facts
     - Use casual interjections: "I mean...", "like...", "right?", "innit?", "yeah but..."
     - Build on each other's energy—if one person is hyped, the other matches or counters that energy
-    - Natural interruptions and pushback: "Hold up...", "Wait wait wait...", "Nah nah nah..."
+    - Natural interruptions and pushback using regionally appropriate reaction words
+    - Ground banter in facts: "Yeah but the stats say..." "Hold up, that analysis shows..." "Come on, you've lost three away games..." (use reaction words that fit each team's local culture)
     
     WILL BE REJECTED IF:
     - Line starts with "We are...", "It's a...", "I'm actually..."
-    - Line sounds like analysis instead of banter
+    - Line sounds like analysis instead of banter (but DO use facts—just make them fun!)
     - Line has no energy or exclamations
     - Line sounds too formal or scripted (e.g., "so prepare for a masterclass" instead of "he's gonna cook you")
     - Line doesn't react to what the other person just said
+    - Line ignores the facts/stats from the talking points (must reference insights to make predictions)
 
-    **BANTER EXAMPLES (COPY THIS ENERGY - TTS OPTIMIZED):**
-    - "Nah nah nah, you can't be serious right now—your defense is cooked!"
-    - "Hold up, hold up—we're missing our entire spine and you're still scared of us?"
-    - "Come on mate, your attack without Wood is like a car without an engine!"
-    - "Look, I'm not gonna lie, we've been absolutely tragic... but you lot are worse!"
-    - "Bruv, your backline has more holes than Swiss cheese, don't even start!"
-    - "Wait wait wait—you think Grealish is gonna save you? That's jokes!"
+    **BANTER EXAMPLES WITH FACTS (COPY THIS ENERGY - TTS OPTIMIZED):**
+    Note: These examples use generic reaction words. Use regionally appropriate ones based on each team's location.
+    - "Nah nah nah, you can't be serious right now—your defense has conceded three goals a game away! That's why we're winning!"
+    - "Hold up, hold up—we're missing our entire spine but the analysis still gives us seventy percent chance! You're cooked!"
+    - "Come on mate, your attack without Wood has scored one goal in three games... that's why you're losing!"
+    - "Look, I'm not gonna lie, we've been absolutely tragic... but the stats show you've lost five away games! We're taking this!"
+    - "Bruv, your backline has more holes than Swiss cheese—you've shipped fifteen goals away! That's why the prediction says three-one to us!"
+    - "Wait wait wait—you think Grealish is gonna save you? The analysis says your win probability is only twenty percent!"
     
-    **CONVERSATIONAL EXAMPLES (MORE NATURAL FLOW - TTS OPTIMIZED):**
-    - "Look, we just put five past Udinese... and your keeper's out? This is gonna be messy!"
-    - "Nah mate, you haven't won away all season—don't act like you're prime Real Madrid now!"
-    - "Come on, that stat's ancient history! Our attack's finally clicking, Gudmundsson's pulling strings!"
-    - "Wait wait wait—your whole defense is missing! Ranieri and Mari? We're getting Delprato back tonight!"
-    - "Bruv, it doesn't matter who's at the back when we've got Gosens and Kean ready to outscore anything!"
-    - "Hold up, this game's pure chaos... and the math says my boys are actually a value bet!"
+    **CONVERSATIONAL EXAMPLES WITH PREDICTIONS (MORE NATURAL FLOW - TTS OPTIMIZED):**
+    Note: Replace reaction words with regionally appropriate ones for each team's culture.
+    - "Look, we just put five past Udinese... and your keeper's out? The stats say we're scoring three goals a game at home—this is gonna be messy!"
+    - "Nah mate, you haven't won away all season—zero wins in eight games! That's why the prediction has us winning two-one!"
+    - "Come on, that stat's ancient history! Our attack's finally clicking—we've scored in five straight games! That's why we're taking three points!"
+    - "Wait wait wait—your whole defense is missing! Ranieri and Mari out? The analysis says that's why we're getting two goals minimum!"
+    - "Bruv, it doesn't matter who's at the back when we've got Gosens and Kean—they've got ten goals between them! That's why the prediction favors us!"
+    - "Hold up, this game's pure chaos... but the math says my boys have a sixty-five percent win probability! That's why I'm calling two-nil!"
 
     **CLOSING_CTA (REQUIRED):**
     Final line that directly asks fans to comment. Keep it casual, direct, and viral.
@@ -161,14 +179,14 @@ prompt:
     
     The greetings_intro_home MUST mention both teams: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a feast for us!"
     
-    The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD and feels conversational:
-    - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts!"
-    - HOME: "Nah mate, you also concede three goals a game on the road! That's not a defense, that's a charity!"
-    - AWAY: "Look, fair enough, our backline's been absolutely tragic... but Semenyo's gonna cook your left-back!"
-    - HOME: "Come on, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
-    - AWAY: "Bruv, you're dreaming! We've scored in every away game this month!"
-    - HOME: "Wait wait wait—scored yes, but you've also shipped goals like it's Black Friday!"
-    - Continue alternating for 8-10 total turns with natural flow and reactions
+    The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD (use regionally appropriate ones for each team), references FACTS from the analysis, and uses them to make PREDICTIONS:
+    - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts! The stats show we've scored in every away game!"
+    - HOME: "Nah mate, you also concede three goals a game on the road! That's not a defense, that's a charity! That's why the prediction says we're winning two-one!"
+    - AWAY: "Look, fair enough, our backline's been absolutely tragic... but Semenyo's got five goals this season! He's gonna cook your left-back!"
+    - HOME: "Come on, Fofana's back and he's only conceded one goal in three games! Your boy's getting pocketed tonight—that's why we're taking three points!"
+    - AWAY: "Bruv, you're dreaming! We've scored in every away game this month! The analysis shows our attack is clicking!"
+    - HOME: "Wait wait wait—scored yes, but you've also shipped goals like it's Black Friday! Fifteen goals conceded away! That's why the win probability is only twenty percent for you!"
+    - Continue alternating for 8-10 total turns with natural flow, reactions (using regionally appropriate reaction words), and predictions based on the facts
     
     The closing_cta should feel natural and conversational (this is one example—vary it):
     - "Fine, I'll take a loss on this one. Three-one Chelsea. Now drop your prediction in the comments—who you got?"
@@ -183,12 +201,14 @@ prompt:
     - closing_cta feels natural and conversational, not robotic
     - turns array has 8-10 turns
     - Alternating HOME/AWAY speakers in turns
-    - EVERY turn starts with a reaction word: "Nah", "Come on", "Hold up", "Wait", "Look", "Mate", "Bruv", "Oi", "Listen", "Honestly"
+    - EVERY turn starts with a reaction word (use regionally appropriate ones that match each team's local culture and slang)
     - NO turn starts with "We are...", "It's a...", "I'm actually..."
     - All lines use "my [team]", "we", "your [team]" (never "the home team")
     - All lines are 14-22 words
     - Dialogue feels conversational with contractions, natural flow, and reactions to previous lines
     - Lines don't sound too formal or scripted—they feel like real pub banter
+    - Lines reference specific facts, stats, or insights from the talking points to support predictions
+    - Fans are using the analysis to argue their predictions, not just bantering randomly
     
     **TTS OPTIMIZATION CHECKS:**
     - All numbers written as words: "three-one" not "3-1", "two-nil" not "2-0"
@@ -225,7 +245,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "MUST start with reaction word (Nah/Come on/Hold up/Wait/Look/Mate/Bruv). Unhinged banter, 14-22 words. TTS-optimized: numbers as words, contractions, NO ALL CAPS for emphasis, no abbreviations or single letters"
+              description: "MUST start with a regionally appropriate reaction word/interjection that matches the team's local culture and slang. Unhinged banter grounded in FACTS from the analysis, using insights to make PREDICTIONS. 14-22 words. TTS-optimized: numbers as words, contractions, NO ALL CAPS for emphasis, no abbreviations or single letters"
       closing_cta:
         type: string
         description: "Final line with CTA. NO ALL CAPS for emphasis. Write numbers as words (three-one, two-nil). Patterns like 'Drop your prediction...' are examples—vary naturally. NEVER 'Let us know' or 'Will X or will Y'. Keep conversational (14-22 words)"

@@ -2,18 +2,28 @@ prompt:
   name: extract_team_animal
   title: Extract Team Animal Representation
   instructions: |
-    Based on the following search results about {{team_name}}, extract the animal that represents this football club.
-    Return only the animal name (e.g., lion, eagle, wolf, bear, bull, tiger).
+    Based on the following search results about {{team_name}}, determine the animal that best represents this football club.
+    
+    IMPORTANT: You MUST always return an animal name. Even if the team doesn't have an official animal mascot or symbol, analyze the story, history, characteristics, and narrative from the search results to infer which animal most represents the team's identity, playing style, or cultural significance.
+    
+    Consider:
+    - Official mascots or symbols mentioned
+    - Team nicknames or cultural associations
+    - Characteristics described (strength, speed, aggression, elegance, etc.)
+    - Historical or mythological references
+    - The overall story and narrative about the team
+    
+    Return ONLY the animal name (e.g., lion, eagle, wolf, bear, bull, tiger, panther, falcon). No explanations, no additional text, just the animal name.
     
     Search results: {{search_answer}}
   schema:
     title: extract_team_animal_output
-    description: The animal that represents the football team
+    description: The animal that represents the football team (always returned, inferred from story if no official mascot exists)
     type: object
     properties:
       animal:
         type: string
-        description: The animal that represents the team
+        description: The animal name that best represents the team based on its story and characteristics (animal name only, no explanation)
     required:
       - animal
 
