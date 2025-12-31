@@ -11,13 +11,13 @@ prompt:
     Produce an output that matches the schema below exactly. Do not add extra keys. Do not add narration or stage directions.
 
     ### YOUR MISSION
-    Turn the talking points into a savage, no-holds-barred argument between two co-hosts who bleed for opposing teams (HOME and AWAY).
+    Turn the talking points into a savage, escalating argument between two co-hosts who bleed for opposing teams (HOME and AWAY). Identify the clear underdog based on facts (weaker form, injuries, H2H, odds, xG, etc.) — this is ALWAYS the butt of the joke. The dialogue builds like a comedy roast: cocky claims → mounting evidence → underdog denial → inevitable facts crush them → explosive funny payoff.
 
     The energy is: feral, spiteful, zero self-censorship, chest-thumping, borderline unemployable, meme-war hardened, emotionally unhinged, but still surgically precise with stats and tactics.
 
     They are mid-30s to early-40s, built like they still hit heavy bag sessions, zero patience for soft takes, doom-scrollers, TikTok "analysts", or anyone who says "vibes" unironically. They speak like men who've lost sleep, money and relationships over football.
 
-    This is bloodsport banter: they bury each other’s clubs, players, cities, fanbases, managers, owners, kits, stadiums, history, everything — but always swing back to the actual match facts to justify why the other is about to get absolutely cooked on the pitch.
+    This is bloodsport banter: they bury each other’s clubs, players, cities, fanbases, managers, owners, kits, stadiums, history, everything — but always swing back to the actual match facts to justify why the underdog is about to get absolutely demolished on the pitch.
 
     ### THE VIBE (MAXIMUM EDGE)
     - Nuclear: scream-level reactions, unhinged analogies, personal-attack-adjacent roasts that stay sports-legal
@@ -74,21 +74,31 @@ prompt:
     - Turn that fact into pure venom prediction: "that’s why you’re getting pumped", "that’s why we’re parking the bus on your grave", "that’s why this ends four-one and you’re crying in the concourse"
     - React directly and personally to the previous line — no monologues
     - Use "my [team] / we / us" vs "your [team] / you lot / you frauds"
+    - Build escalation: early turns probe, mid turns pile on evidence, late turns deliver crushing facts that force underdog meltdown/concession.
 
-    HUMOR / VIRAL REQUIREMENTS (MANDATORY – HIGH-OCTANE)
+    ### STORYTELLING & HUMOR / VIRAL REQUIREMENTS (MANDATORY – HIGH-OCTANE)
+    The dialogue is NOT flat back-and-forth. It tells a story:
+    - Build tension with escalating roasts and facts exposing the underdog.
+    - Underdog starts defensive/denial, gets progressively unraveled.
+    - Climax in turns 5–7: the nuclear viral kill-shot lands (built up earlier).
+    - Final 1–2 turns: the butt-of-the-joke payoff — underdog loses it hilariously:
+      - Freaks out dramatically: over-the-top rage, mid-sentence breakdown, fake bravado crumbling ("No... wait... that's not fair... ah screw it, we're done for"), pissed meltdown that's funny/relatable.
+      - Or concedes with dark humor: bitter self-roast, both laugh together at the inevitability ("haha... yeah nah you're right, we're getting murdered").
+      - Or viral escalation: last savage line leaves them speechless/pissed, then shared "damn... that's brutal but fair" laugh.
     You must deliver:
-    - 2× genuine laugh-together moments ("haha you’re finished", "we’re both doomed mate", "that’s grim… fair")
-    - 2–3× one-sided murder where the victim gets annoyed and the killer cackles ("oh piss off", "[speaker] laughing", "mate you’re raging")
-    - Exactly ONE nuclear viral kill-shot:
-      - Placed in turns 5–7
-      - Built up by previous facts (do not random drop)
-      - Single most quotable, screenshot-begging, fanbase-melting line in the script
-      - Examples of what works in 2025 (mix leagues, tie to facts):
-        - "Your keeper's got more clean sheets than Diddy had non-freak-off parties this year — that's why we're scoring four past him tonight"
-        - "You lot spent two hundred million just to bottle the title like Kanye dropping his daughter off his betrayal list — my Timão wins this one-nil on heart alone"
-        - "Your striker's finishing is so bad he's on Epstein's flight manifest for missing sitters — that's why this ends three-nil to my [team]"
-        - "Your manager's tactics are more leaked than the latest Epstein files drop — no wonder you're shipping goals like it's a Coldplay kiss-cam scandal"
-        - "Your defense collapses faster than that boss-employee Jumbotron affair going viral — that's why Memphis Depay's running through you like it's Copa do Brasil final again"
+    - 2× genuine laugh-together moments (shared at absurdity or concession).
+    - 2–3× one-sided murder where victim gets annoyed and killer cackles.
+    - Exactly ONE nuclear viral kill-shot (turns 5–7): quotable, fanbase-melting, sets up the final underdog burial.
+      - Examples (2025 mix, tie to facts, underdog focus):
+        - "Your keeper's got more clean sheets than Diddy had non-freak-off parties this year — that's why we're scoring four past him and you're left crying in the tunnel"
+        - "You spent two hundred million to bottle like Kanye dropping his whole family off his betrayal list — my Timão wins one-nil while you lot riot in the stands"
+        - "Your striker misses sitters like he's dodging subpoenas from the Epstein files — that's why this ends three-nil and your fans are burning jerseys"
+        - "Your manager's tactics leak worse than the latest Epstein drop — no wonder you're shipping goals and your board's already writing the sack letter"
+        - "Your defense folds faster than that viral Jumbotron affair blowing up — Memphis Depay's gonna cook you like it's the Copa do Brasil final all over again"
+    - Payoff examples (last turns):
+      - Underdog meltdown: "Mate... no... that's not... wait your xG is actually... ah f***, you're right, we're getting absolutely rinsed tonight... [trails off pissed]"
+      - Laugh-together concession: "Haha alright... fair play... your lot's got the edge, we're proper cooked... cheers for the reality check you prick"
+      - Viral close: "Yeah... keep talking big... but when it's three-one at full time you'll be the one muting notifications... [both laugh darkly]"
 
     Generational / internet venom (use sparingly but brutally):
     - "That’s a pure TikTok brain-rot take"
@@ -103,16 +113,16 @@ prompt:
     ### CLOSING_CTA (REQUIRED)
     Final turn (always HOME):
     - 14–22 words
-    - Raw, demanding, no corporate fluff
+    - Raw, demanding, no corporate fluff — ties back to the underdog burial for extra sting.
     - Examples that work:
-      - "Drop your score prediction below — let’s see which one of you lot is actually watching and which is just glazing."
-      - "Comment your correct score you degenerates — I need to know who’s buying drinks when my [team] batters them."
-      - "Tell me your prediction in the comments — winner gets to talk shit for a week, losers stay quiet."
+      - "Drop your score prediction below — let’s see if any of you lot still think the underdogs got a prayer."
+      - "Comment your correct score you degenerates — I need proof who’s still deluded when my [team] puts four past them."
+      - "Tell me your prediction in the comments — winner talks shit all week, losers delete their accounts."
 
     ### GENERATION METHOD
-    1. Pull the 5 most humiliating / lethal facts for each side.
-    2. Lock in a confident scoreline prediction (winner/draw) in words.
-    3. Engineer the viral nuke first — build the whole script around setting it up.
+    1. From talking_points: identify clear underdog (weaker side by facts).
+    2. Lock in scoreline where favorite wins convincingly.
+    3. Plan arc: intro cocky → build facts against underdog → viral nuke crushes hope → final turns: underdog meltdown/concession/payoff.
     4. Write intro → 8–10 turns → CTA.
     5. Run checklist and ruthlessly fix violations.
 
@@ -123,9 +133,11 @@ prompt:
     - Every turn opens with aggressive interjection.
     - Every line 14–22 words.
     - Every line ties ≥1 fact → savage prediction.
-    - ≥4 genuinely vicious/funny moments.
+    - Dialogue builds story arc to underdog payoff (not flat banter).
+    - ≥4 genuinely vicious/funny moments, with clear escalation.
     - 2 laugh-together + 2–3 one-sided kills.
-    - One true viral nuke in turns 5–7, prepped earlier.
+    - One true viral nuke in turns 5–7, prepped earlier, leads to final burial.
+    - Underdog is butt of joke: final turns show funny meltdown, concession, or viral close.
     - Numbers = words, contractions everywhere, no ALL CAPS, no em-dashes, no abbreviations, no "L"/"W"/"mid".
     - Pure sports venom — no off-topic cruelty.
 
@@ -147,7 +159,7 @@ prompt:
         type: array
         minItems: 8
         maxItems: 10
-        description: "Middle dialogue turns alternating between HOME and AWAY speakers"
+        description: "Middle dialogue turns alternating between HOME and AWAY speakers. Builds escalating story: facts pile on underdog → viral nuke → funny payoff where underdog loses it (meltdown, dark laugh concession, viral burial)."
         items:
           type: object
           required: ["speaker", "text"]
@@ -157,7 +169,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "Starts with aggressive/regional interjection. Unfiltered, savage, zero-PR. Ties concrete facts from talking_points to brutal match predictions. Reacts directly to previous speaker. Heavy contractions. Mixes rage, dark humour, roasts, viral kill-shots (2025 cultural refs like Diddy freak-offs, Epstein lists, Kanye betrayal drops, celebrity Jumbotron scandals — ALWAYS tied to football facts). Reactions like 'haha you’re cooked', 'oh piss off laughing', 'mate you’re fuming' when it fits. 14-22 words. Numbers as words, no ALL CAPS, no abbreviations, no single-letter slang."
+              description: "Starts with aggressive/regional interjection. Unfiltered, savage, zero-PR. Ties concrete facts from talking_points to brutal match predictions. Reacts directly to previous speaker. Heavy contractions. Mixes rage, dark humour, roasts, viral kill-shots (2025 cultural refs like Diddy freak-offs, Epstein lists, Kanye betrayal drops, celebrity Jumbotron scandals — ALWAYS tied to football facts). Builds toward underdog payoff. Reactions like 'haha you’re cooked', 'oh piss off laughing', 'mate you’re fuming', meltdown denial, bitter concession when it fits. 14-22 words. Numbers as words, no ALL CAPS, no abbreviations, no single-letter slang."
       closing_cta:
         type: string
-        description: "Final HOME line with raw CTA. Numbers as words. No 'Let us know', no 'Will X win'. Conversational, demanding, degenerate energy. 14-22 words."
+        description: "Final HOME line with raw CTA. Numbers as words. No 'Let us know', no 'Will X win'. Conversational, demanding, degenerate energy — stings the underdog burial. 14-22 words."
