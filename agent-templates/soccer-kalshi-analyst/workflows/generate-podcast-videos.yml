@@ -154,7 +154,8 @@ workflow:
         name: google-storage
         command: invoke_upload
       inputs:
-        video_path: $.get('consolidated_video_path')
+        file_path: $.get('consolidated_video_path')
+        filename: $.get('consolidated_filename')
       outputs:
         final_video_url: $.get('url')
 
