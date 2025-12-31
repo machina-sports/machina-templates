@@ -7,6 +7,8 @@ prompt:
     
     Search results: {{search_answer}}
   schema:
+    title: extract_team_animal_output
+    description: The animal that represents the football team
     type: object
     properties:
       animal:
