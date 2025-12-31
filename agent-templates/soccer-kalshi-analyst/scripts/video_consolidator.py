@@ -8,13 +8,12 @@ def consolidate_videos(request_data):
         output_filename: Optional output filename (default: consolidated_podcast.mp4)
     
     The videos are concatenated in the exact order provided.
-    Uses moviepy for video processing with fallback to ffmpeg CLI.
+    Uses moviepy for video processing.
     """
     try:
         import json
         import os
         import tempfile
-        import subprocess
         
         # Parse request_data
         if isinstance(request_data, str):
@@ -66,26 +65,49 @@ def consolidate_videos(request_data):
         temp_dir = tempfile.gettempdir()
         output_path = os.path.join(temp_dir, output_filename)
         
-        # Try moviepy first, fallback to ffmpeg CLI
-        consolidated = False
-        method_used = None
-        
-        # Method 1: Try moviepy
+        # Use moviepy for video concatenation
         try:
             from moviepy.editor import VideoFileClip, concatenate_videoclips
-            
-            print("📦 Using moviepy for video concatenation...")
-            
-            clips = []
+        except ImportError as e:
+            return {
+                "status": False,
+                "data": {
+                    "error": "moviepy not available",
+                    "details": str(e)
+                },
+                "message": "Video consolidation requires moviepy. Please install it: pip install moviepy"
+            }
+        
+        print("📦 Using moviepy for video concatenation...")
+        
+        clips = []
+        try:
+            # Load all clips first
             for path in valid_paths:
                 print(f"  Loading: {os.path.basename(path)}")
-                clip = VideoFileClip(path)
-                clips.append(clip)
+                try:
+                    clip = VideoFileClip(path)
+                    clips.append(clip)
+                    print(f"    ✓ Loaded: {clip.duration:.2f}s, {clip.size[0]}x{clip.size[1]}")
+                except Exception as e:
+                    print(f"    ✗ Failed to load {os.path.basename(path)}: {e}")
+                    # Close already loaded clips before failing
+                    for c in clips:
+                        try:
+                            c.close()
+                        except:
+                            pass
+                    raise Exception(f"Failed to load video {os.path.basename(path)}: {e}")
             
-            print("🔗 Concatenating clips...")
+            if len(clips) == 0:
+                raise Exception("No clips were successfully loaded")
+            
+            print(f"🔗 Concatenating {len(clips)} clips...")
+            # Use 'compose' method to handle different resolutions/codecs
             final_clip = concatenate_videoclips(clips, method="compose")
             
             print(f"💾 Writing consolidated video to: {output_path}")
+            # Use threads=1 for better compatibility, preset='medium' for balance
             final_clip.write_videofile(
                 output_path,
                 codec='libx264',
@@ -93,96 +115,41 @@ def consolidate_videos(request_data):
                 temp_audiofile=os.path.join(temp_dir, 'temp_audio.m4a'),
                 remove_temp=True,
                 verbose=False,
-                logger=None
+                logger=None,
+                threads=1,
+                preset='medium'
             )
             
             # Close all clips to free resources
+            print("🧹 Cleaning up resources...")
             for clip in clips:
-                clip.close()
-            final_clip.close()
-            
-            consolidated = True
-            method_used = "moviepy"
-            
-        except ImportError:
-            print("⚠️ moviepy not available, trying ffmpeg CLI...")
-        except Exception as e:
-            print(f"⚠️ moviepy failed: {e}, trying ffmpeg CLI...")
-        
-        # Method 2: Fallback to ffmpeg CLI
-        if not consolidated:
+                try:
+                    clip.close()
+                except:
+                    pass
             try:
-                print("📦 Using ffmpeg CLI for video concatenation...")
-                
-                # Create a temporary file list for ffmpeg
-                list_file_path = os.path.join(temp_dir, 'video_list.txt')
-                with open(list_file_path, 'w') as f:
-                    for path in valid_paths:
-                        # Escape single quotes and write in ffmpeg concat format
-                        escaped_path = path.replace("'", "'\\''")
-                        f.write(f"file '{escaped_path}'\n")
-                
-                print(f"  Created file list: {list_file_path}")
-                
-                # Run ffmpeg concat
-                cmd = [
-                    'ffmpeg', '-y',
-                    '-f', 'concat',
-                    '-safe', '0',
-                    '-i', list_file_path,
-                    '-c', 'copy',
-                    output_path
-                ]
-                
-                print(f"  Running: {' '.join(cmd)}")
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True
-                )
-                
-                if result.returncode != 0:
-                    # Try re-encoding if copy fails
-                    print("⚠️ Copy mode failed, trying re-encode...")
-                    cmd = [
-                        'ffmpeg', '-y',
-                        '-f', 'concat',
-                        '-safe', '0',
-                        '-i', list_file_path,
-                        '-c:v', 'libx264',
-                        '-c:a', 'aac',
-                        '-preset', 'fast',
-                        output_path
-                    ]
-                    result = subprocess.run(cmd, capture_output=True, text=True)
-                    
-                    if result.returncode != 0:
-                        raise Exception(f"ffmpeg failed: {result.stderr}")
-                
-                # Clean up temp file
-                os.remove(list_file_path)
-                
-                consolidated = True
-                method_used = "ffmpeg"
-                
-            except FileNotFoundError:
-                return {
-                    "status": False,
-                    "data": {"error": "Neither moviepy nor ffmpeg available"},
-                    "message": "Video consolidation requires moviepy or ffmpeg. Please install one of them."
-                }
-            except Exception as e:
-                return {
-                    "status": False,
-                    "data": {"error": str(e)},
-                    "message": f"ffmpeg consolidation failed: {e}"
-                }
-        
-        if not consolidated:
+                final_clip.close()
+            except:
+                pass
+            
+            print("✅ moviepy consolidation successful!")
+            
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            # Clean up any partially loaded clips
+            for clip in clips:
+                try:
+                    clip.close()
+                except:
+                    pass
             return {
                 "status": False,
-                "data": {"error": "All consolidation methods failed"},
-                "message": "Failed to consolidate videos with any available method"
+                "data": {
+                    "error": str(e),
+                    "traceback": error_trace[:500]
+                },
+                "message": f"Video consolidation failed: {e}"
             }
         
         # Get file info
@@ -192,7 +159,6 @@ def consolidate_videos(request_data):
         print(f"✅ Video consolidated successfully!")
         print(f"  Output: {output_path}")
         print(f"  Size: {file_size_mb} MB")
-        print(f"  Method: {method_used}")
         
         return {
             "status": True,
@@ -202,7 +168,7 @@ def consolidate_videos(request_data):
                 "file_size_bytes": file_size,
                 "file_size_mb": file_size_mb,
                 "input_video_count": len(valid_paths),
-                "method_used": method_used,
+                "method_used": "moviepy",
                 "missing_paths": missing_paths if missing_paths else None
             },
             "message": f"Successfully consolidated {len(valid_paths)} videos into {output_filename} ({file_size_mb} MB)"
