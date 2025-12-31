@@ -41,3 +41,14 @@ agent:
       outputs:
         podcast_script_document_id: $.get('podcast_script_document_id')
         podcast_script_ready: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 4. Generate podcast videos from transcript and mascot frames
+    - name: soccer-generate-podcast-videos
+      description: Generate AI videos for each podcast segment using mascot frames, then consolidate into a single video
+      condition: $.get('mascots_ready') == True and $.get('podcast_script_ready') == True
+      inputs:
+        eventCode: $.get('eventCode')
+      outputs:
+        podcast_videos_document_id: $.get('podcast_videos_document_id')
+        final_video_url: $.get('final_video_url')
+        videos_ready: $.get('workflow-status', 'skipped') == 'executed'
