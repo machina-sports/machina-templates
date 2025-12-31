@@ -29,6 +29,13 @@ workflow:
                 "league_name": "EPL",
                 "title": "English Premier League",
                 "enabled": True
+              },
+              {
+                "league_id": "71",
+                "series_ticker": "KXBRASILEIROGAME",
+                "league_name": "Brasileirão",
+                "title": "Brazilian Brasileirão",
+                "enabled": True
               }
             ]
           }
@@ -104,6 +111,13 @@ workflow:
                 "league_id": "39",
                 "league_name": "EPL",
                 "title": "English Premier League",
+                "season": "2025",
+                "enabled": True
+              },
+              {
+                "league_id": "71",
+                "league_name": "Brasileirão",
+                "title": "Brazilian Brasileirão",
                 "season": "2025",
                 "enabled": True
               }

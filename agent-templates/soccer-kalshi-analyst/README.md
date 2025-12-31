@@ -73,6 +73,26 @@ mcp_machina-client-dev_import_templates_from_git(
 )
 ```
 
+## Setup
+
+After installation, configure leagues for your environment:
+
+```python
+# Development (EPL + Brasileirão)
+mcp_machina-client-dev_executor_workflow_name(
+    name="soccer-kalshi-setup-leagues",
+    context={"environment": "dev"}
+)
+
+# Production (EPL + Serie A + Bundesliga + La Liga + Liga Portugal)
+mcp_machina-client-dev_executor_workflow_name(
+    name="soccer-kalshi-setup-leagues",
+    context={"environment": "prd"}
+)
+```
+
+This creates configuration documents (`kalshi-leagues-config` and `api-football-leagues-config`) used for dynamic event synchronization.
+
 ## Features
 
 ### Data & Intelligence
