@@ -72,18 +72,18 @@ workflow:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url')
-        home_team: $.get('home_team')
-        greetings_intro_home: $.get('greetings_intro_home')
+        dialogue: $.get('greetings_intro_home')
+        speaker_team: $.get('home_team')
         prompt: |
-          "Animated podcast scene. A {{home_team}} mascot character is speaking passionately in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot is delivering this dialogue with emotion: {{greetings_intro_home}}\n\nThe character should be animated, expressive, gesturing while speaking. Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame, looking RIGHT toward conversation partner. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere."
+          "You are a podcast video producer. Generate a video clip for a sports podcast using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference\n- Speaker Team: {{speaker_team}}\n- Dialogue Script: '{{dialogue}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: Photorealistic - NO animation, NO cartoon effects\n- Reference: Preserve the image EXACTLY - all facial features, skin texture, proportions, and scene as shown\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n\nAUDIO:\n- The ONLY audio is the character speaking the dialogue script word-for-word\n- NO music, NO sound effects, NO additional words\n- Voice: Professional podcast host tone - natural, realistic, conversational\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team}} fan/host opening the podcast\n- Match reference image EXACTLY - do not stylize or alter\n- Realistic natural lip sync to the exact dialogue script\n- Subtle facial micro-expressions: eyebrow raises, eye movements, slight head tilts\n- Natural hand gestures\n\nENDING:\n- Look toward the right awaiting response\n- Brief pause, eyebrows raised"
       outputs:
         intro_video_path: $.get('video_path')
         intro_raw_api_response: $.get('raw_api_response') or $.get('data', {}).get('raw_api_response')
 
-    # 4. Generate TURN videos (foreach over turns array)
+    # 4. Generate TURN videos (foreach over turns array with inline context enrichment)
     - type: connector
       name: generate-turn-videos
-      description: Generate video for each turn in the podcast dialogue
+      description: Generate video for each turn in the podcast dialogue with conversation context
       condition: $.get('transcript_exists') and $.get('mascots_exist') and len($.get('turns', [])) > 0
       connector:
         name: google-genai
@@ -92,15 +92,16 @@ workflow:
         concurrent: false
         name: turn_item
         expr: $
-        value: $.get('turns', [])
+        value: "[{**t, 'idx': i, 'previous_text': $.get('greetings_intro_home') if i == 0 else $.get('turns')[i-1].get('text', '')} for i, t in enumerate($.get('turns', []))]"
       inputs:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_podcast_frame_url')
+        dialogue: $.get('turn_item', {}).get('text', '')
+        previous_dialogue: $.get('turn_item', {}).get('previous_text', '')
         speaker_team: $.get('home_team') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_team')
-        current_text: $.get('turn_item', {}).get('text', '')
         prompt: |
-          "Animated podcast scene. A {{speaker_team}} mascot character is speaking in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot is delivering this dialogue with emotion: {{current_text}}\n\nThe character should be animated and expressive, gesturing while speaking passionately. Mouth movements synced to speaking. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere. The mascot shows emotion matching the dialogue - confident, worried, excited, or skeptical as appropriate."
+          "You are a podcast video producer. Generate a video clip for a sports podcast dialogue turn using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference\n- Speaker Team: {{speaker_team}}\n- Dialogue Script: '{{dialogue}}'\n- Previous Dialogue (for reaction context): '{{previous_dialogue}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: Photorealistic - NO animation, NO cartoon effects\n- Reference: Preserve the image EXACTLY - all facial features, skin texture, proportions, and scene as shown\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n\nAUDIO:\n- The ONLY audio is the character speaking the dialogue script word-for-word\n- NO music, NO sound effects, NO additional words\n- Voice: Professional podcast host tone - natural, realistic, conversational\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team}} fan/host responding in the conversation\n- REACTION: Start with brief natural reaction (0.5-1 sec) to the previous dialogue before speaking - skeptical if challenged, nod if good point, smirk if outrageous\n- Match reference image EXACTLY - do not stylize or alter\n- Realistic natural lip sync to the exact dialogue script\n- Genuine expressions: confident smirk, skeptical eyebrow, excited lean-in\n- Natural body language and gestures\n- Micro-expressions: eye shifts, breathing, subtle nods\n\nENDING:\n- Look toward other host position passing conversation back\n- Brief pause, expectant expression"
       outputs:
         turn_video_paths: |
           [
@@ -119,10 +120,11 @@ workflow:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url')
-        home_team: $.get('home_team')
-        closing_cta: $.get('closing_cta')
+        dialogue: $.get('closing_cta')
+        previous_dialogue: $.get('turns', [])[-1].get('text', '') if len($.get('turns', [])) > 0 else ''
+        speaker_team: $.get('home_team')
         prompt: |
-          "Animated podcast scene finale. A {{home_team}} mascot character is delivering an exciting call-to-action in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot says with high energy: {{closing_cta}}\n\nThe character should be animated, energetic, and engaging - leaning forward, making direct eye contact with camera, gesturing enthusiastically. This is the big finish! Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere. High energy closing moment."
+          "You are a podcast video producer. Generate the closing video clip for a sports podcast using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference\n- Speaker Team: {{speaker_team}}\n- Dialogue Script: '{{dialogue}}'\n- Previous Dialogue (for reaction context): '{{previous_dialogue}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: Photorealistic - NO animation, NO cartoon effects\n- Reference: Preserve the image EXACTLY - all facial features, skin texture, proportions, and scene as shown\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n\nAUDIO:\n- The ONLY audio is the character speaking the dialogue script word-for-word\n- NO music, NO sound effects, NO additional words\n- Voice: Professional podcast host tone - natural, realistic, conversational but with energy\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team}} fan/host closing the podcast\n- START: Quick acknowledging nod to other speaker, then address camera directly\n- Match reference image EXACTLY - do not stylize or alter\n- Realistic natural lip sync to the exact dialogue script\n- High energy but NATURAL: genuine smile, raised eyebrows\n- Direct eye contact with viewer\n- Enthusiastic hand gestures - pointing, open palms"
       outputs:
         closing_video_path: $.get('video_path')
 
