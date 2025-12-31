@@ -119,60 +119,24 @@ prompt:
     - Never say "Welcome to" or generic greetings
     - Tone must match facts: cocky if favorite, defiant/bitter if underdog, resigned/sarcastic if doomed
     
-    Hook strategies (use one, prioritizing biggest insight):
+    Hook strategies (use one, prioritizing biggest insight - hook must flow naturally into the facts, not feel forced):
     1) **Fact bomb**: Drop the most shocking fact first (personnel crisis, odds shift, form mismatch)
     2) **Vulnerability reveal**: Expose the key weakness that will be exploited (biggest tactical mismatch)
     3) **Market edge**: Highlight massive odds shift or smart money movement
     4) **Contrarian take**: Challenge conventional wisdom with bold claim based on biggest insight
     5) **Prediction lock**: Make bold claim using biggest insight to set up payoff
-    6) **Question hook**: Start with engaging question that reels listener in (e.g., "Ok bro, do you wanna know what's gonna happen tonight?")
+    6) **Question hook**: Start with engaging question that reels listener in and naturally leads to the facts (e.g., "Ok bro, do you wanna know what's gonna happen tonight?")
     
-    Viral hook examples using BIGGEST INSIGHTS (prioritize these patterns):
+    CRITICAL: The hook opening must connect seamlessly to the facts - don't force viral patterns that don't fit. The hook should feel like a natural conversation starter that immediately reveals the biggest insight, not a generic template.
     
-    **Personnel Crisis (BIGGEST if available):**
-    - "Mate, my Arsenal hosting your Chelsea and you're already cooked — thirty five percent of your squad is gone haha"
-    - "Right then, my Barcelona versus your Real Madrid — you're missing six players to AFCON and your captain's suspended, done deal"
-    - "Here we go, my Bayern Munich taking on your Borussia Dortmund and you can't even field a full team — how do you expect to win?"
-    - "Alright, my Manchester City against your Liverpool — you're missing your entire front three and we're at full strength, done deal"
+    Viral hook examples using BIGGEST INSIGHTS (one example per type, diverse opening patterns - hooks must flow naturally with the facts):
     
-    **Massive Market/Odds Shift (BIGGEST if available):**
-    - "Mate, my PSG hosting your Marseille and the books moved the line three goals because you're finished"
-    - "Right then, my Juventus versus your Inter Milan — prediction market has you at twelve percent, you're cooked"
-    - "Here we go, my Atletico Madrid taking on your Real Madrid and sharps are all fading you — smart money knows you're frauds"
-    - "Alright, my AC Milan against your Napoli — odds drifted six points overnight, even the books know you're done"
-    
-    **Historic Form Mismatch (BIGGEST if available):**
-    - "Alright, my Tottenham against your West Ham — you're unbeaten at home but missing thirty five percent of your squad, fortress crumbles tonight"
-    - "Mate, my Roma hosting your Lazio — you've lost six of eight away games and we're unbeaten here, done deal"
-    - "Right then, my Sevilla versus your Atletico Madrid — you haven't won here in five years and we're on fire, done deal"
-    
-    **Star Player Form/Tactical Mismatch:**
-    - "Right then, my Manchester United versus your Newcastle — Haaland's scoring four past your tiny backup defenders, done deal"
-    - "Here we go, my AC Milan taking on your Juventus — your defense is non-existent and we're banging set-pieces all day"
-    - "Mate, my Dortmund hosting your Leverkusen — Mbappe's on fire and your backline's a joke, three-nil incoming"
-    
-    **Combined Big Insights (BEST - multiple big facts):**
-    - "Mate, my Arsenal hosting your Tottenham — thirty five percent gone, books moved three goals, and sharps are all on us, you're cooked haha"
-    - "Right then, my Barcelona versus your Atletico Madrid — six players out, prediction market at twelve percent, and we're unbeaten here, done deal"
-    - "Here we go, my Bayern Munich taking on your RB Leipzig — your captain's suspended, odds shifted four goals, and we're scoring five tonight"
-    
-    **Question-Based Hooks (REEL YOU IN - conversational, engaging):**
-    - "Ok bro, do you wanna know what's gonna happen tonight between Arsenal and Man United? Your lot's cooked — thirty five percent of your squad is gone haha"
-    - "Alright mate, you ready for this? Barcelona versus Real Madrid tonight and you're missing six players — how do you expect to win?"
-    - "Yo, let me tell you what's going down — Bayern Munich taking on Dortmund and you can't even field a full team, done deal"
-    - "Right, you wanna hear something wild? PSG hosting Marseille and the books moved the line three goals because you're finished"
-    - "Bro, you know what's happening tonight? Juventus versus Inter Milan and prediction market has you at twelve percent — you're cooked"
-    - "Alright, you ready for this prediction? Manchester City against Liverpool and you're missing your entire front three — we're winning this"
-    - "Mate, you know what's crazy? Tottenham versus West Ham and you're unbeaten at home but missing thirty five percent of your squad — fortress crumbles tonight"
-    - "Yo, let me break this down for you — AC Milan taking on Napoli and your defense is non-existent, we're banging set-pieces all day"
-    - "Ok bro, you wanna know the lock? Arsenal two-one Chelsea final score, your fortress crumbles, and we're all getting paid — that's it"
-    - "Right, you ready for this? Three-nil to Barcelona over Real Madrid incoming, your squad's cooked, and the books know it"
-    
-    Avoid generic starts:
-    - ❌ "Right then, my [team] hosting your [team]..." (too generic)
-    - ❌ "Here we go, my [team] against your [team]..." (no hook)
-    - ✅ "Mate, my Arsenal hosting your Chelsea and you're already cooked — thirty five percent gone haha" (immediate hook)
-    - ✅ "Ok bro, do you wanna know what's gonna happen tonight between Arsenal and Man United? Your lot's cooked..." (engaging question hook)
+    1. **Personnel Crisis** (Pattern-Interrupt): "Wait, hold up. My Arsenal hosting your Chelsea and you're already cooked — thirty five percent of your squad is gone haha"
+    2. **Massive Market/Odds Shift** (Statistic-Based): "Twelve percent chance to win. That's what the prediction market gives your Inter Milan against my Juventus — you're cooked"
+    3. **Historic Form Mismatch** (Contrarian): "Everyone says your Atletico Madrid fortress is unbeatable, but you haven't won here in five years — my Sevilla's winning tonight"
+    4. **Star Player Form/Tactical Mismatch** (Bold Claim): "You're betting on the wrong team. My Dortmund hosting your Leverkusen and Mbappe's scoring three past your joke of a backline"
+    5. **Combined Big Insights** (Exclusive Insight): "Most people won't tell you this, but my PSG hosting your Marseille — thirty five percent of your squad gone, books moved the line three goals, and sharps are all fading you, you're cooked haha"
+    6. **Question-Based Hook** (Curiosity-Driven): "Ok bro, do you wanna know what's gonna happen tonight between Corinthians and Grêmio? Your lot's cooked — thirty five percent of your squad is gone haha"
 
     TURNS ARRAY:
     - 8 to 10 turns.
