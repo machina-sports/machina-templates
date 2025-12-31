@@ -1,7 +1,7 @@
 workflow:
   name: soccer-generate-podcast-videos
   title: Soccer Generate Podcast Videos from Transcript
-  description: Generate AI character images and videos for each segment of the podcast transcript, consolidate into a single video
+  description: Generate AI character images and videos for each segment of the podcast transcript, consolidate into a single video (v2)
   context-variables:
     debugger:
       enabled: true
