@@ -104,26 +104,37 @@ prompt:
     - Reference SPECIFIC FACTS, STATS, or NUMBERS from the talking points (injuries, form, head-to-head records, probabilities)
     - Use these facts to support their predictions ("the stats say...", "the analysis shows...", "based on...")
     - Argue about what the data means for the match outcome
-    - Make predictions based on the insights ("that's why we're winning", "that's why you're losing")
+    - ALWAYS connect facts to predictions—don't just state a fact, say what it means ("that's why we're winning", "that's why you're losing", "that's why the prediction says...", "that's why we're taking three points")
     - Keep it engaging—facts don't have to be boring! Use them to fuel the banter
+    
+    BAD EXAMPLE (just states fact without prediction):
+    - "You guys are exhausted after that long flight."
+    
+    GOOD EXAMPLE (connects fact to prediction):
+    - "You guys are exhausted after that long flight... that's why we're winning tonight!"
+    - "You guys are exhausted after that long flight... and the stats show tired teams concede more goals—that's why the prediction says two-one to us!"
     
     **CONVERSATIONAL FLOW (CRITICAL FOR ENGAGEMENT):**
     Make it feel like a REAL pub conversation, not a scripted debate:
-    - Use contractions: "we're", "you're", "don't", "can't", "won't", "that's", "it's"
+    - Use contractions: "we're", "you're", "don't", "can't", "won't", "that's", "it's", "we've", "they've", "I'm", "I'll"
+    - Use casual contractions: "gonna" instead of "going to", "wanna" instead of "want to", "gotta" instead of "got to"
     - Shorter, punchier sentences. Break up long thoughts with natural pauses (ellipses or dashes)
-    - React to what the other person just said—don't just state facts
+    - React to what the other person just said—don't just state facts in isolation
     - Use casual interjections: "I mean...", "like...", "right?", "innit?", "yeah but..."
     - Build on each other's energy—if one person is hyped, the other matches or counters that energy
     - Natural interruptions and pushback using regionally appropriate reaction words
     - Ground banter in facts: "Yeah but the stats say..." "Hold up, that analysis shows..." "Come on, you've lost three away games..." (use reaction words that fit each team's local culture)
+    - ALWAYS connect facts to predictions: Don't just state a fact—say what it means for the outcome ("that's why we're winning", "that's why you're losing", "that's why the prediction says...")
     
     WILL BE REJECTED IF:
-    - Line starts with "We are...", "It's a...", "I'm actually..."
-    - Line sounds like analysis instead of banter (but DO use facts—just make them fun!)
+    - Line starts with "We are...", "It's a...", "I'm actually..." (use contractions: "We're...", "It's...")
+    - Line uses formal language: "we are going to" instead of "we're gonna", "we have" instead of "we've"
+    - Line sounds like analysis instead of banter (but DO use facts—just make them fun and connect them to predictions!)
     - Line has no energy or exclamations
     - Line sounds too formal or scripted (e.g., "so prepare for a masterclass" instead of "he's gonna cook you")
     - Line doesn't react to what the other person just said
     - Line ignores the facts/stats from the talking points (must reference insights to make predictions)
+    - Line states a fact without connecting it to a prediction (e.g., "you're exhausted" → should add "that's why we're winning" or similar)
 
     **BANTER EXAMPLES WITH FACTS (COPY THIS ENERGY - TTS OPTIMIZED):**
     Note: These examples use generic reaction words. Use regionally appropriate ones based on each team's location.
@@ -157,7 +168,9 @@ prompt:
     - "Let us know..."
     - "Will [X] work or will [Y] prevail?"
     - "Will [team] survive or will [team] capitalize?"
-    - Any formal question format
+    - "Think [X] leads to [Y] or can [Z] happen?" (too formal/question format)
+    - "Can [team] do [X] this time?" (formal question format)
+    - Any formal question format—make statements, not questions
     - Digits for scores (use words: "three-one" not "3-1")
     
     PATTERN OPTIONS (these are examples—vary your approach):
@@ -180,13 +193,16 @@ prompt:
     The greetings_intro_home MUST mention both teams: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a feast for us!"
     
     The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD (use regionally appropriate ones for each team), references FACTS from the analysis, and uses them to make PREDICTIONS:
-    - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts! The stats show we've scored in every away game!"
+    
+    Example with contractions and explicit prediction connections:
+    - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts! The stats show we've scored in every away game... that's why we're taking points tonight!"
     - HOME: "Nah mate, you also concede three goals a game on the road! That's not a defense, that's a charity! That's why the prediction says we're winning two-one!"
-    - AWAY: "Look, fair enough, our backline's been absolutely tragic... but Semenyo's got five goals this season! He's gonna cook your left-back!"
+    - AWAY: "Look, fair enough, our backline's been absolutely tragic... but Semenyo's got five goals this season! He's gonna cook your left-back—that's why we're scoring!"
     - HOME: "Come on, Fofana's back and he's only conceded one goal in three games! Your boy's getting pocketed tonight—that's why we're taking three points!"
-    - AWAY: "Bruv, you're dreaming! We've scored in every away game this month! The analysis shows our attack is clicking!"
+    - AWAY: "Bruv, you're dreaming! We've scored in every away game this month! The analysis shows our attack is clicking... that's why the win probability favors us!"
     - HOME: "Wait wait wait—scored yes, but you've also shipped goals like it's Black Friday! Fifteen goals conceded away! That's why the win probability is only twenty percent for you!"
-    - Continue alternating for 8-10 total turns with natural flow, reactions (using regionally appropriate reaction words), and predictions based on the facts
+    
+    Note: Use contractions (we're, you're, don't, can't, won't, gonna, wanna, gotta), connect facts to predictions explicitly, and react to what the other person just said. Continue alternating for 8-10 total turns with natural flow, reactions (using regionally appropriate reaction words), and predictions based on the facts.
     
     The closing_cta should feel natural and conversational (this is one example—vary it):
     - "Fine, I'll take a loss on this one. Three-one Chelsea. Now drop your prediction in the comments—who you got?"
@@ -209,6 +225,9 @@ prompt:
     - Lines don't sound too formal or scripted—they feel like real pub banter
     - Lines reference specific facts, stats, or insights from the talking points to support predictions
     - Fans are using the analysis to argue their predictions, not just bantering randomly
+    - All lines use contractions (we're, you're, don't, can't, won't, gonna, wanna, gotta, etc.)
+    - Facts are explicitly connected to predictions (not just stated in isolation)
+    - Lines react directly to what the other person just said
     
     **TTS OPTIMIZATION CHECKS:**
     - All numbers written as words: "three-one" not "3-1", "two-nil" not "2-0"
@@ -245,7 +264,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "MUST start with a regionally appropriate reaction word/interjection that matches the team's local culture and slang. Unhinged banter grounded in FACTS from the analysis, using insights to make PREDICTIONS. 14-22 words. TTS-optimized: numbers as words, contractions, NO ALL CAPS for emphasis, no abbreviations or single letters"
+              description: "MUST start with a regionally appropriate reaction word/interjection that matches the team's local culture and slang. Unhinged banter grounded in FACTS from the analysis, using insights to make PREDICTIONS. MUST use contractions (we're, you're, don't, can't, won't, gonna, wanna, gotta). MUST connect facts to predictions (don't just state facts—say what they mean for the outcome). MUST react to what the other person just said. 14-22 words. TTS-optimized: numbers as words, contractions, NO ALL CAPS for emphasis, no abbreviations or single letters"
       closing_cta:
         type: string
         description: "Final line with CTA. NO ALL CAPS for emphasis. Write numbers as words (three-one, two-nil). Patterns like 'Drop your prediction...' are examples—vary naturally. NEVER 'Let us know' or 'Will X or will Y'. Keep conversational (14-22 words)"
