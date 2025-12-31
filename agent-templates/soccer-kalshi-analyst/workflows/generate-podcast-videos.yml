@@ -112,6 +112,7 @@ workflow:
       name: extract-home-team-animal
       description: Extract the animal name from search results using structured output
       condition: $.get('home_search_answer') != '' and not $.get('home_character_exists', False)
+      prompt: extract_team_animal
       connector:
         name: google-genai
         command: invoke_prompt
@@ -147,6 +148,7 @@ workflow:
       name: extract-away-team-animal
       description: Extract the animal name from search results using structured output
       condition: $.get('away_search_answer') != '' and not $.get('away_character_exists', False)
+      prompt: extract_team_animal
       connector:
         name: google-genai
         command: invoke_prompt
