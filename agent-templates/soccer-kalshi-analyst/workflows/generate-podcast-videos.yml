@@ -38,12 +38,12 @@ workflow:
         transcript_exists: len($.get('documents', [])) > 0
         podcast_doc: $.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else None
         script: $.get('documents')[0].get('value', {}).get('script', {}) if len($.get('documents', [])) > 0 else {}
-        greetings_intro_home: $.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', '') if len($.get('documents', [])) > 0 else ''
-        greetings_intro_home_text: ($.get('greetings_intro_home', {}).get('text', '') if isinstance($.get('greetings_intro_home', {}), dict) else $.get('greetings_intro_home', ''))
-        greetings_intro_home_emotion: ($.get('greetings_intro_home', {}).get('emotion', 'Confident, chest out') if isinstance($.get('greetings_intro_home', {}), dict) else 'Confident, chest out')
-        closing_cta: $.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', '') if len($.get('documents', [])) > 0 else ''
-        closing_cta_text: ($.get('closing_cta', {}).get('text', '') if isinstance($.get('closing_cta', {}), dict) else $.get('closing_cta', ''))
-        closing_cta_emotion: ($.get('closing_cta', {}).get('emotion', 'Confident, pointing at camera') if isinstance($.get('closing_cta', {}), dict) else 'Confident, pointing at camera')
+        greetings_intro_home_raw: $.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', '') if len($.get('documents', [])) > 0 else ''
+        greetings_intro_home_text: ($.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', {}).get('text', '') if isinstance($.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', ''), dict) else $.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', '')) if len($.get('documents', [])) > 0 else ''
+        greetings_intro_home_emotion: ($.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', {}).get('emotion', 'Confident, chest out') if isinstance($.get('documents')[0].get('value', {}).get('script', {}).get('greetings_intro_home', ''), dict) else 'Confident, chest out') if len($.get('documents', [])) > 0 else 'Confident, chest out'
+        closing_cta_raw: $.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', '') if len($.get('documents', [])) > 0 else ''
+        closing_cta_text: ($.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', {}).get('text', '') if isinstance($.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', ''), dict) else $.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', '')) if len($.get('documents', [])) > 0 else ''
+        closing_cta_emotion: ($.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', {}).get('emotion', 'Confident, pointing at camera') if isinstance($.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta', ''), dict) else 'Confident, pointing at camera') if len($.get('documents', [])) > 0 else 'Confident, pointing at camera'
         closing_cta_speaker: $.get('documents')[0].get('value', {}).get('script', {}).get('closing_cta_speaker', 'HOME') if len($.get('documents', [])) > 0 else 'HOME'
         turns: $.get('documents')[0].get('value', {}).get('script', {}).get('turns', []) if len($.get('documents', [])) > 0 else []
         home_team: $.get('documents')[0].get('value', {}).get('home_team', '') if len($.get('documents', [])) > 0 else ''
