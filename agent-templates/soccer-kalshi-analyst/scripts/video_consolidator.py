@@ -65,17 +65,22 @@ def consolidate_videos(request_data):
         temp_dir = tempfile.gettempdir()
         output_path = os.path.join(temp_dir, output_filename)
         
-        # Use moviepy for video concatenation
+        # Use moviepy for video concatenation (supports MoviePy 2.x and 1.x)
         try:
-            from moviepy.editor import VideoFileClip, concatenate_videoclips
+            # MoviePy 2.x removed `moviepy.editor`; prefer top-level imports.
+            try:
+                from moviepy import VideoFileClip, concatenate_videoclips  # type: ignore
+            except Exception:
+                # Backwards compatibility with MoviePy 1.x
+                from moviepy.editor import VideoFileClip, concatenate_videoclips  # type: ignore
         except ImportError as e:
             return {
                 "status": False,
                 "data": {
                     "error": "moviepy not available",
-                    "details": str(e)
+                    "details": str(e),
                 },
-                "message": "Video consolidation requires moviepy. Please install it: pip install moviepy"
+                "message": "Video consolidation requires moviepy. Please install it: pip install moviepy",
             }
         
         print("📦 Using moviepy for video concatenation...")
@@ -114,7 +119,6 @@ def consolidate_videos(request_data):
                 audio_codec='aac',
                 temp_audiofile=os.path.join(temp_dir, 'temp_audio.m4a'),
                 remove_temp=True,
-                verbose=False,
                 logger=None,
                 threads=1,
                 preset='medium'
