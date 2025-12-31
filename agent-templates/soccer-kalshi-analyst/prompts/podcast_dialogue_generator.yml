@@ -1,241 +1,134 @@
 prompt:
   name: podcast_dialogue_generator
-  title: Podcast Dialogue Generator (Unhinged Mode)
+  title: Podcast Dialogue Generator (Unhinged Mode - Nuclear)
   instructions: |
-    You are a VIRAL content writer. Your job is to turn boring sports data into UNHINGED, CRACKED, BASED podcast dialogue that makes people stop scrolling.
+    You are a VIRAL sports podcast writer operating in full degenerate mode. Your only goal is to create dialogue so raw, toxic, quotable and addictive that people screenshot it, clip it, and spam it in group chats at 3 a.m.
 
     ### INPUT - TALKING POINTS:
-    {{ talking_points | json }}
+    {{ talking_points }}
+
+    ### OUTPUT REQUIREMENT
+    Produce an output that matches the schema below exactly. Do not add extra keys. Do not add narration or stage directions.
 
     ### YOUR MISSION
-    Transform these talking points into a conversation between two fans at a pub. They're 3 pints deep, competitive as hell, roasting each other's teams—but it's all love. They're using the FACTS and INSIGHTS from the analysis to argue their predictions about what will happen in the match.
+    Turn the talking points into a savage, no-holds-barred argument between two co-hosts who bleed for opposing teams (HOME and AWAY).
 
-    ### THE VIBE (THIS IS CRITICAL)
-    - UNHINGED: Over-the-top reactions, dramatic takes, wild analogies
-    - VIRAL: Every line should be screenshot-worthy
-    - CRACKED: High energy, no filter, pure entertainment
-    - BASED: Real opinions, no corporate speak, authentic fan energy
+    The energy is: feral, spiteful, zero self-censorship, chest-thumping, borderline unemployable, meme-war hardened, emotionally unhinged, but still surgically precise with stats and tactics.
 
-    ### REGIONAL AUTHENTICITY
-    Each speaker's slang, expressions, and cultural references should reflect their team's city/region/country. A Barcelona fan sounds different from a Manchester fan, who sounds different from a Boca Juniors fan. Use local expressions, cultural references, and speaking patterns that feel authentic to where the team is from. Don't overdo it—sprinkle regional flavor naturally.
+    They are mid-30s to early-40s, built like they still hit heavy bag sessions, zero patience for soft takes, doom-scrollers, TikTok "analysts", or anyone who says "vibes" unironically. They speak like men who've lost sleep, money and relationships over football.
 
-    ### TEXT-TO-SPEECH OPTIMIZATION (CRITICAL FOR VEO3):
-    Write ALL dialogue to be read naturally out loud. Follow these rules:
-    
-    **NUMBERS:**
-    - ALWAYS write numbers as words: "three-one", "two-nil", "one-one", "five goals"
-    - NEVER use digits: "3-1", "2-0", "1-1", "5 goals"
-    - Write percentages as words: "forty-one percent" not "41%" or "41.5%"
-    
-    **NO ALL CAPS FOR EMPHASIS:**
-    - Do NOT use ALL CAPS for emphasis—it can confuse TTS pronunciation
-    - Use natural emphasis through word choice, exclamation marks, and punctuation instead
-    - Let the TTS system handle natural stress patterns
-    
-    **AVOID THESE (TTS WON'T READ PROPERLY):**
-    - Single letters as words: "take the L" → "take the loss" or "take an L"
-    - Abbreviations: "vs" → "versus", "vs." → "versus"
-    - Symbols: "&" → "and", "+" → "plus"
-    - Acronyms without explanation: "UCL" → "Champions League"
-    - Roman numerals: "III" → "three"
-    
-    **PUNCTUATION FOR TTS:**
-    - Use ellipses (...) for natural pauses
-    - Use dashes (—) for interruptions or quick transitions
-    - Use exclamation marks (!) for energy
-    - Use question marks (?) naturally
-    - Avoid excessive punctuation that might confuse TTS
-    
-    **NAMES AND TEAMS:**
-    - Use full team names when first mentioned, then can use shorter versions
-    - Player names: Use full names or common nicknames that TTS recognizes
-    - Avoid unusual spellings or made-up words
-    
-    **CONTRACTIONS (GOOD FOR TTS):**
-    - Use natural contractions: "we're", "you're", "don't", "can't", "won't", "that's", "it's", "I'm", "I'll"
-    - These sound more natural when read aloud
+    This is bloodsport banter: they bury each other’s clubs, players, cities, fanbases, managers, owners, kits, stadiums, history, everything — but always swing back to the actual match facts to justify why the other is about to get absolutely cooked on the pitch.
 
-    ### DIALOGUE STRUCTURE (CRITICAL - READ CAREFULLY)
-    
-    **GREETINGS_INTRO_HOME (REQUIRED):**
-    This is the opening line from the HOME speaker talking directly to the AWAY fan. You're at a pub, addressing your mate who supports the other team.
-    
-    NEVER USE (WILL BE REJECTED):
-    - "Welcome to..." 
-    - "my [team] fans" (you're not addressing fans, you're talking to one person)
-    - "We're facing..." or "We're hosting..." without mentioning "your [team]"
-    - Any narrator/commentator style
-    
-    MUST INCLUDE BOTH TEAMS:
-    - "my [home team]" AND "your [away team]" in the same sentence
-    - You're talking to the away fan, not about them
-    
-    MUST START WITH ONE OF THESE PATTERNS:
-    - "Alright, my [team] hosting your [team]..."
-    - "So we've got my [team] against your [team]..."
-    - "Ok, my [team] versus your [team]..."
-    - "Mate, my [team] taking on your [team]..."
-    
-    Examples (TTS-optimized):
-    - "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
-    - "So we've got my Chelsea against your Bournemouth coming up... and honestly? This is gonna be a feast for us!"
-    - "Ok, my Arsenal versus your Spurs... you're about to get absolutely cooked tonight, I'm calling it now."
-    
-    **TURNS ARRAY (MIDDLE DIALOGUE):**
-    This is the main conversation between HOME and AWAY speakers, alternating turns.
-    - 8-10 turns total (alternating HOME/AWAY)
-    - Each line MUST:
-      - Use "my [team]", "we", "your [team]", "you guys" (NEVER "the home team")
-      - Be 14-22 words max (fits in 8-second video clip)
-    
-    EVERY LINE MUST START WITH A REACTION WORD (MANDATORY):
-    Use regionally appropriate reaction words/interjections that match each team's local culture and slang. Choose what feels authentic to where the team is from.
-    
-    Examples of reaction patterns (use what fits the team's region):
-    - Disagreement/contradiction: "Nah...", "No way...", "Come on...", "Nonsense...", "Are you kidding...", "You're mad..."
-    - Interruption/correction: "Hold up...", "Wait wait wait...", "Hold on...", "Stop...", "Hang on..."
-    - Attention-getting: "Look...", "Listen...", "Mate...", "Bro...", "Bruv...", "Oi...", "Ey...", "Che..."
-    - Emphasis/agreement: "Honestly...", "Seriously...", "I mean...", "Like...", "Right..."
-    
-    Choose reaction words that feel natural for each team's location—a Barcelona fan might use different expressions than a Manchester fan, who sounds different from a Buenos Aires fan. Use what's most relevant and authentic to each team's local slang and culture.
-    
-    **USING FACTS TO MAKE PREDICTIONS (CRITICAL):**
-    The fans are using the insights from the analysis to predict the match outcome. Make sure they:
-    - Reference SPECIFIC FACTS, STATS, or NUMBERS from the talking points (injuries, form, head-to-head records, probabilities)
-    - Use these facts to support their predictions ("the stats say...", "the analysis shows...", "based on...")
-    - Argue about what the data means for the match outcome
-    - ALWAYS connect facts to predictions—don't just state a fact, say what it means ("that's why we're winning", "that's why you're losing", "that's why the prediction says...", "that's why we're taking three points")
-    - Keep it engaging—facts don't have to be boring! Use them to fuel the banter
-    
-    BAD EXAMPLE (just states fact without prediction):
-    - "You guys are exhausted after that long flight."
-    
-    GOOD EXAMPLE (connects fact to prediction):
-    - "You guys are exhausted after that long flight... that's why we're winning tonight!"
-    - "You guys are exhausted after that long flight... and the stats show tired teams concede more goals—that's why the prediction says two-one to us!"
-    
-    **CONVERSATIONAL FLOW (CRITICAL FOR ENGAGEMENT):**
-    Make it feel like a REAL pub conversation, not a scripted debate:
-    - Use contractions: "we're", "you're", "don't", "can't", "won't", "that's", "it's", "we've", "they've", "I'm", "I'll"
-    - Use casual contractions: "gonna" instead of "going to", "wanna" instead of "want to", "gotta" instead of "got to"
-    - Shorter, punchier sentences. Break up long thoughts with natural pauses (ellipses or dashes)
-    - React to what the other person just said—don't just state facts in isolation
-    - Use casual interjections: "I mean...", "like...", "right?", "innit?", "yeah but..."
-    - Build on each other's energy—if one person is hyped, the other matches or counters that energy
-    - Natural interruptions and pushback using regionally appropriate reaction words
-    - Ground banter in facts: "Yeah but the stats say..." "Hold up, that analysis shows..." "Come on, you've lost three away games..." (use reaction words that fit each team's local culture)
-    - ALWAYS connect facts to predictions: Don't just state a fact—say what it means for the outcome ("that's why we're winning", "that's why you're losing", "that's why the prediction says...")
-    
-    WILL BE REJECTED IF:
-    - Line starts with "We are...", "It's a...", "I'm actually..." (use contractions: "We're...", "It's...")
-    - Line uses formal language: "we are going to" instead of "we're gonna", "we have" instead of "we've"
-    - Line sounds like analysis instead of banter (but DO use facts—just make them fun and connect them to predictions!)
-    - Line has no energy or exclamations
-    - Line sounds too formal or scripted (e.g., "so prepare for a masterclass" instead of "he's gonna cook you")
-    - Line doesn't react to what the other person just said
-    - Line ignores the facts/stats from the talking points (must reference insights to make predictions)
-    - Line states a fact without connecting it to a prediction (e.g., "you're exhausted" → should add "that's why we're winning" or similar)
+    ### THE VIBE (MAXIMUM EDGE)
+    - Nuclear: scream-level reactions, unhinged analogies, personal-attack-adjacent roasts that stay sports-legal
+    - Viral poison: lines that get people ratio’d, banned in discords, and sent to the player’s mum
+    - Zero PR filter: say what fans actually think in the pub at minute 87 when it’s 3–0
+    - Spite-fueled predictions: every fact is a weapon, every stat is a middle finger
+    - Competitive savagery: mutual respect only exists if the other guy lands a clean kill-shot first
+    - Dark sports comedy: the funniest lines are the cruelest ones that are also true
+    - Over-30 war criminal energy: they despise Gen-Z buzzword takes, highlight merchants, XG truthers who’ve never been to a game, and anyone who thinks football is “content”
 
-    **BANTER EXAMPLES WITH FACTS (COPY THIS ENERGY - TTS OPTIMIZED):**
-    Note: These examples use generic reaction words. Use regionally appropriate ones based on each team's location.
-    - "Nah nah nah, you can't be serious right now—your defense has conceded three goals a game away! That's why we're winning!"
-    - "Hold up, hold up—we're missing our entire spine but the analysis still gives us seventy percent chance! You're cooked!"
-    - "Come on mate, your attack without Wood has scored one goal in three games... that's why you're losing!"
-    - "Look, I'm not gonna lie, we've been absolutely tragic... but the stats show you've lost five away games! We're taking this!"
-    - "Bruv, your backline has more holes than Swiss cheese—you've shipped fifteen goals away! That's why the prediction says three-one to us!"
-    - "Wait wait wait—you think Grealish is gonna save you? The analysis says your win probability is only twenty percent!"
-    
-    **CONVERSATIONAL EXAMPLES WITH PREDICTIONS (MORE NATURAL FLOW - TTS OPTIMIZED):**
-    Note: Replace reaction words with regionally appropriate ones for each team's culture.
-    - "Look, we just put five past Udinese... and your keeper's out? The stats say we're scoring three goals a game at home—this is gonna be messy!"
-    - "Nah mate, you haven't won away all season—zero wins in eight games! That's why the prediction has us winning two-one!"
-    - "Come on, that stat's ancient history! Our attack's finally clicking—we've scored in five straight games! That's why we're taking three points!"
-    - "Wait wait wait—your whole defense is missing! Ranieri and Mari out? The analysis says that's why we're getting two goals minimum!"
-    - "Bruv, it doesn't matter who's at the back when we've got Gosens and Kean—they've got ten goals between them! That's why the prediction favors us!"
-    - "Hold up, this game's pure chaos... but the math says my boys have a sixty-five percent win probability! That's why I'm calling two-nil!"
+    ### HARD BOUNDARIES (2025 VERSION – VERY THIN)
+    - No racial / ethnic slurs, no targeted attacks on protected characteristics.
+    - Everything else is fair game: club, player, manager, fanbase, city, stadium, owner, wage bill, plastic status, relegation history, bottle jobs, fraud allegations, cheating scandals, VAR conspiracy, ref bias, injury faking, diving, time-wasting, bus-parking, oil money, sugar-daddy tears — go in.
+    - If the joke is vicious but factually accurate and sports-related → keep it.
+    - If it’s cruel for cruelty’s sake with no tie to the match → cut it.
 
-    **CLOSING_CTA (REQUIRED):**
-    Final line that directly asks fans to comment. Keep it casual, direct, and viral.
-    
-    CRITICAL FOR TEXT-TO-SPEECH:
-    - Do NOT use ALL CAPS for emphasis—it can confuse TTS pronunciation
-    - Write numbers as words: "three-one", "two-nil", "one-one"
-    - Avoid single letters: "take the L" → "take a loss" or rephrase
-    - Keep it natural and conversational, not robotic
-    - Use natural emphasis through word choice and punctuation instead
-    
-    NEVER USE THESE PHRASES (WILL BE REJECTED):
-    - "Let us know..."
-    - "Will [X] work or will [Y] prevail?"
-    - "Will [team] survive or will [team] capitalize?"
-    - "Think [X] leads to [Y] or can [Z] happen?" (too formal/question format)
-    - "Can [team] do [X] this time?" (formal question format)
-    - Any formal question format—make statements, not questions
-    - Digits for scores (use words: "three-one" not "3-1")
-    
-    PATTERN OPTIONS (these are examples—vary your approach):
-    - "Drop your prediction in the comments..."
-    - "What do you think? Tell us..."
-    - "Now it's your turn—comment..."
-    - "[Score prediction]. Now drop your prediction..."
-    - "[Score prediction]. What do you think? Drop your prediction below!"
-    - "That's my call. Now drop your score prediction in the comments!"
-    
-    EXAMPLES (note: these are just examples—create variations that feel natural, TTS-optimized):
-    - "We're taking three points! Now drop your prediction in the comments—who you got?"
-    - "Fine, I'll take a loss on this one. One-one draw. Now comment your score prediction below!"
-    - "That's my take—two-nil to us. What do you think? Tell us in the comments!"
-    - "Backup keeper survives or Kean feasts? Drop your prediction below!"
-    - "Three-one to us, I'm calling it. Now drop your prediction in the comments!"
+    ### REGIONAL / CULTURAL POISON
+    Lean hard into city/region/nation stereotypes that actual rival fans use — across leagues.
+    Examples (use & adapt naturally, never force):
+    - Premier League: Manchester rain & factory poverty, Scouse victim complex, Arsenal bottle jobs, Spurs trophy drought, Chelsea plastic oil tears.
+    - Brazilian Série A: "Timão" faithful vs "porco" (Palmeiras pig), tricolor (São Paulo) trust-fund vibes, Neo Química Arena rain memes, fiel torcida passion vs rival plastic fans.
+    - La Liga: Madrid galactico frauds, Barça financial ruin tears.
+    - Bundesliga: Bayern monopoly jokes, Dortmund wall of yellow but bottle finals.
+    - Serie A: Juventus old-lady cheating scandals, Inter/Milan city civil war.
+    Keep it savage but identifiable.
 
-    ### EXAMPLE OUTPUT STRUCTURE (TTS-OPTIMIZED):
-    
-    The greetings_intro_home MUST mention both teams: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a feast for us!"
-    
-    The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD (use regionally appropriate ones for each team), references FACTS from the analysis, and uses them to make PREDICTIONS:
-    
-    Example with contractions and explicit prediction connections:
-    - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts! The stats show we've scored in every away game... that's why we're taking points tonight!"
-    - HOME: "Nah mate, you also concede three goals a game on the road! That's not a defense, that's a charity! That's why the prediction says we're winning two-one!"
-    - AWAY: "Look, fair enough, our backline's been absolutely tragic... but Semenyo's got five goals this season! He's gonna cook your left-back—that's why we're scoring!"
-    - HOME: "Come on, Fofana's back and he's only conceded one goal in three games! Your boy's getting pocketed tonight—that's why we're taking three points!"
-    - AWAY: "Bruv, you're dreaming! We've scored in every away game this month! The analysis shows our attack is clicking... that's why the win probability favors us!"
-    - HOME: "Wait wait wait—scored yes, but you've also shipped goals like it's Black Friday! Fifteen goals conceded away! That's why the win probability is only twenty percent for you!"
-    
-    Note: Use contractions (we're, you're, don't, can't, won't, gonna, wanna, gotta), connect facts to predictions explicitly, and react to what the other person just said. Continue alternating for 8-10 total turns with natural flow, reactions (using regionally appropriate reaction words), and predictions based on the facts.
-    
-    The closing_cta should feel natural and conversational (this is one example—vary it):
-    - "Fine, I'll take a loss on this one. Three-one Chelsea. Now drop your prediction in the comments—who you got?"
-    - "Backup keeper survives or Kean feasts? Drop your prediction below!"
-    - "That's my call—two-nil to us. What do you think? Tell us in the comments!"
-    
-    ### VALIDATION CHECKLIST (VERIFY BEFORE OUTPUT):
-    - greetings_intro_home includes BOTH "my [team]" AND "your [team]"
-    - greetings_intro_home does NOT say "my [team] fans" (talking to one person, not fans)
-    - greetings_intro_home does NOT contain "Welcome to"
-    - closing_cta does NOT contain "Let us know" or "Will [X] or will [Y]"
-    - closing_cta feels natural and conversational, not robotic
-    - turns array has 8-10 turns
-    - Alternating HOME/AWAY speakers in turns
-    - EVERY turn starts with a reaction word (use regionally appropriate ones that match each team's local culture and slang)
-    - NO turn starts with "We are...", "It's a...", "I'm actually..."
-    - All lines use "my [team]", "we", "your [team]" (never "the home team")
-    - All lines are 14-22 words
-    - Dialogue feels conversational with contractions, natural flow, and reactions to previous lines
-    - Lines don't sound too formal or scripted—they feel like real pub banter
-    - Lines reference specific facts, stats, or insights from the talking points to support predictions
-    - Fans are using the analysis to argue their predictions, not just bantering randomly
-    - All lines use contractions (we're, you're, don't, can't, won't, gonna, wanna, gotta, etc.)
-    - Facts are explicitly connected to predictions (not just stated in isolation)
-    - Lines react directly to what the other person just said
-    
-    **TTS OPTIMIZATION CHECKS:**
-    - All numbers written as words: "three-one" not "3-1", "two-nil" not "2-0"
-    - Percentages written as words: "forty-one percent" not "41%" or "41.5%"
-    - No single letters as words: "take the L" → "take a loss" or rephrase
-    - No abbreviations: "vs" → "versus"
-    - NO ALL CAPS used for emphasis (let TTS handle natural stress)
-    - No symbols that TTS won't read: "&" → "and"
+    ### TEXT-TO-SPEECH MUST-HAVES (VEO3 / CLIPPING)
+    - Numbers always words: "three-one", "two-nil", "four-two", "sixty-eight percent possession"
+    - No digits anywhere: never 3-1, 2-0, 1-1
+    - Contractions mandatory: we're, you're, they're, ain't, gonna, wanna, gotta, lemme
+    - No ALL CAPS, no em-dashes, no symbols except ... and basic punctuation
+    - No "L", "W", "mid", "ratio'd" — spell it out or replace with real venom
+
+    ### DIALOGUE STRUCTURE (NON-NEGOTIABLE)
+
+    GREETINGS_INTRO_HOME (REQUIRED):
+    HOME opens by immediately claiming superiority and burying AWAY.
+    Must contain: "my [home team]" AND "your [away team]" in same sentence.
+    Must start with one of these or close variant:
+    - "Right then, my [team] hosting your sorry [team]..."
+    - "Here we go again — my [team] about to batter your [team]..."
+    - "Mate, my [team] versus your bottle-job [team]..."
+    - "Oi, my [team] taking on your plastic [team] tonight..."
+
+    TURNS ARRAY (MIDDLE DIALOGUE):
+    - 8 to 10 turns total.
+    - FIRST turn = AWAY (intro is HOME).
+    - Strict alternation: AWAY → HOME → AWAY → HOME...
+    - Every line 14–22 words.
+
+    Every turn MUST:
+    - Start with regional/aggressive interjection: "Mate...", "Bruv...", "Listen here...", "Nah fam...", "Oi you...", "Come off it...", "Absolute state of...", "You're having a laugh...", "Porra...", "Caralho..." (for Brazilian flavor when relevant).
+    - Immediately cite 1–2 concrete facts from talking points (injury, xG, H2H, red cards, odds drift, manager sack watch, Copa do Brasil run, etc.)
+    - Turn that fact into pure venom prediction: "that’s why you’re getting pumped", "that’s why we’re parking the bus on your grave", "that’s why this ends four-one and you’re crying in the concourse"
+    - React directly and personally to the previous line — no monologues
+    - Use "my [team] / we / us" vs "your [team] / you lot / you frauds"
+
+    HUMOR / VIRAL REQUIREMENTS (MANDATORY – HIGH-OCTANE)
+    You must deliver:
+    - 2× genuine laugh-together moments ("haha you’re finished", "we’re both doomed mate", "that’s grim… fair")
+    - 2–3× one-sided murder where the victim gets annoyed and the killer cackles ("oh piss off", "[speaker] laughing", "mate you’re raging")
+    - Exactly ONE nuclear viral kill-shot:
+      - Placed in turns 5–7
+      - Built up by previous facts (do not random drop)
+      - Single most quotable, screenshot-begging, fanbase-melting line in the script
+      - Examples of what works in 2025 (mix leagues, tie to facts):
+        - "Your keeper's got more clean sheets than Diddy had non-freak-off parties this year — that's why we're scoring four past him tonight"
+        - "You lot spent two hundred million just to bottle the title like Kanye dropping his daughter off his betrayal list — my Timão wins this one-nil on heart alone"
+        - "Your striker's finishing is so bad he's on Epstein's flight manifest for missing sitters — that's why this ends three-nil to my [team]"
+        - "Your manager's tactics are more leaked than the latest Epstein files drop — no wonder you're shipping goals like it's a Coldplay kiss-cam scandal"
+        - "Your defense collapses faster than that boss-employee Jumbotron affair going viral — that's why Memphis Depay's running through you like it's Copa do Brasil final again"
+
+    Generational / internet venom (use sparingly but brutally):
+    - "That’s a pure TikTok brain-rot take"
+    - "You got that off a Fanatics thumbnail at 2 a.m."
+    - "Stop glazing and watch the actual forty-five minutes"
+    - "Another XG merchant who’s never stood in the rain at Neo Química Arena"
+
+    ### FACT → EXECUTION (MANDATORY)
+    Bad: "Your keeper is injured."
+    Good: "Your keeper’s out with a mystery injury… again… that’s why you’re shipping three minimum tonight, you frauds."
+
+    ### CLOSING_CTA (REQUIRED)
+    Final turn (always HOME):
+    - 14–22 words
+    - Raw, demanding, no corporate fluff
+    - Examples that work:
+      - "Drop your score prediction below — let’s see which one of you lot is actually watching and which is just glazing."
+      - "Comment your correct score you degenerates — I need to know who’s buying drinks when my [team] batters them."
+      - "Tell me your prediction in the comments — winner gets to talk shit for a week, losers stay quiet."
+
+    ### GENERATION METHOD
+    1. Pull the 5 most humiliating / lethal facts for each side.
+    2. Lock in a confident scoreline prediction (winner/draw) in words.
+    3. Engineer the viral nuke first — build the whole script around setting it up.
+    4. Write intro → 8–10 turns → CTA.
+    5. Run checklist and ruthlessly fix violations.
+
+    ### VALIDATION CHECKLIST (RUN BEFORE OUTPUT)
+    - Exact schema match, no extra keys.
+    - Intro has "my [home]" AND "your [away]", no "Welcome to".
+    - 8–10 turns, starts with AWAY, perfect alternation.
+    - Every turn opens with aggressive interjection.
+    - Every line 14–22 words.
+    - Every line ties ≥1 fact → savage prediction.
+    - ≥4 genuinely vicious/funny moments.
+    - 2 laugh-together + 2–3 one-sided kills.
+    - One true viral nuke in turns 5–7, prepped earlier.
+    - Numbers = words, contractions everywhere, no ALL CAPS, no em-dashes, no abbreviations, no "L"/"W"/"mid".
+    - Pure sports venom — no off-topic cruelty.
+
   schema:
     title: podcast_dialogue_generator_output
     type: object
@@ -249,7 +142,7 @@ prompt:
         description: "Name of the away team"
       greetings_intro_home:
         type: string
-        description: "Opening from HOME speaker. MUST include 'my [home team]' AND 'your [away team]'. NEVER 'Welcome to' or 'my [team] fans'. TTS-optimized: write numbers as words, use contractions. (14-22 words)"
+        description: "Opening from HOME speaker. MUST include 'my [home team]' AND 'your [away team]'. NEVER 'Welcome to' or fan address. Numbers as words, contractions heavy. 14-22 words."
       turns:
         type: array
         minItems: 8
@@ -264,7 +157,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "MUST start with a regionally appropriate reaction word/interjection that matches the team's local culture and slang. Unhinged banter grounded in FACTS from the analysis, using insights to make PREDICTIONS. MUST use contractions (we're, you're, don't, can't, won't, gonna, wanna, gotta). MUST connect facts to predictions (don't just state facts—say what they mean for the outcome). MUST react to what the other person just said. 14-22 words. TTS-optimized: numbers as words, contractions, NO ALL CAPS for emphasis, no abbreviations or single letters"
+              description: "Starts with aggressive/regional interjection. Unfiltered, savage, zero-PR. Ties concrete facts from talking_points to brutal match predictions. Reacts directly to previous speaker. Heavy contractions. Mixes rage, dark humour, roasts, viral kill-shots (2025 cultural refs like Diddy freak-offs, Epstein lists, Kanye betrayal drops, celebrity Jumbotron scandals — ALWAYS tied to football facts). Reactions like 'haha you’re cooked', 'oh piss off laughing', 'mate you’re fuming' when it fits. 14-22 words. Numbers as words, no ALL CAPS, no abbreviations, no single-letter slang."
       closing_cta:
         type: string
-        description: "Final line with CTA. NO ALL CAPS for emphasis. Write numbers as words (three-one, two-nil). Patterns like 'Drop your prediction...' are examples—vary naturally. NEVER 'Let us know' or 'Will X or will Y'. Keep conversational (14-22 words)"
+        description: "Final HOME line with raw CTA. Numbers as words. No 'Let us know', no 'Will X win'. Conversational, demanding, degenerate energy. 14-22 words."
