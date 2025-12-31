@@ -46,11 +46,55 @@ workflow:
         away_team: $.get('documents')[0].get('value', {}).get('away_team', '') if len($.get('documents', [])) > 0 else ''
         workflow_executed_status: "'executed'"
 
-    # 2. Search for HOME team animal representation
+    # 1.5. Check for existing HOME team character info
+    - type: document
+      name: check-home-character
+      description: Check if HOME team character info already exists
+      condition: $.get('transcript_exists') and $.get('home_team') != ''
+      config:
+        action: search
+        search-limit: 1
+        sorters: [["_id", -1]]
+      filters:
+        metadata.team_name: $.get('home_team')
+        metadata.document_type: "'team-character'"
+      inputs:
+        name: "'soccer-team-character'"
+      outputs:
+        home_character_exists: len($.get('documents', [])) > 0
+        home_character_doc_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        home_character_doc: $.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}
+        home_animal_cached: $.get('documents')[0].get('value', {}).get('animal', '') if len($.get('documents', [])) > 0 else ''
+        home_voice_description_cached: $.get('documents')[0].get('value', {}).get('voice_description', '') if len($.get('documents', [])) > 0 else ''
+        home_podcast_frame_url_cached: $.get('documents')[0].get('value', {}).get('podcast_frame_url', '') if len($.get('documents', [])) > 0 else ''
+
+    # 1.6. Check for existing AWAY team character info
+    - type: document
+      name: check-away-character
+      description: Check if AWAY team character info already exists
+      condition: $.get('transcript_exists') and $.get('away_team') != ''
+      config:
+        action: search
+        search-limit: 1
+        sorters: [["_id", -1]]
+      filters:
+        metadata.team_name: $.get('away_team')
+        metadata.document_type: "'team-character'"
+      inputs:
+        name: "'soccer-team-character'"
+      outputs:
+        away_character_exists: len($.get('documents', [])) > 0
+        away_character_doc_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        away_character_doc: $.get('documents')[0].get('value') if len($.get('documents', [])) > 0 else {}
+        away_animal_cached: $.get('documents')[0].get('value', {}).get('animal', '') if len($.get('documents', [])) > 0 else ''
+        away_voice_description_cached: $.get('documents')[0].get('value', {}).get('voice_description', '') if len($.get('documents', [])) > 0 else ''
+        away_podcast_frame_url_cached: $.get('documents')[0].get('value', {}).get('podcast_frame_url', '') if len($.get('documents', [])) > 0 else ''
+
+    # 2. Search for HOME team animal representation (skip if cached)
     - type: connector
       name: search-home-animal
       description: Search for which animal represents the HOME team
-      condition: $.get('transcript_exists') and $.get('home_team') != ''
+      condition: $.get('transcript_exists') and $.get('home_team') != '' and not $.get('home_character_exists', False)
       connector:
         name: google-genai
         command: invoke_search
@@ -63,11 +107,11 @@ workflow:
       outputs:
         home_search_answer: $.get('answer', '')
 
-    # 3. Extract HOME team animal from search results using structured output
+    # 3. Extract HOME team animal from search results using structured output (skip if cached)
     - type: prompt
-      name: extract_team_animal
+      name: extract-home-team-animal
       description: Extract the animal name from search results using structured output
-      condition: $.get('home_search_answer') != ''
+      condition: $.get('home_search_answer') != '' and not $.get('home_character_exists', False)
       connector:
         name: google-genai
         command: invoke_prompt
@@ -78,14 +122,14 @@ workflow:
         search_answer: $.get('home_search_answer')
         team_name: $.get('home_team')
       outputs:
-        home_animal: $.get('animal', '')
-        home_voice_description: $.get('voice_description', '')
+        home_animal_extracted: $.get('animal', '')
+        home_voice_description_extracted: $.get('voice_description', '')
 
-    # 4. Search for AWAY team animal representation
+    # 4. Search for AWAY team animal representation (skip if cached)
     - type: connector
       name: search-away-animal
       description: Search for which animal represents the AWAY team
-      condition: $.get('transcript_exists') and $.get('away_team') != ''
+      condition: $.get('transcript_exists') and $.get('away_team') != '' and not $.get('away_character_exists', False)
       connector:
         name: google-genai
         command: invoke_search
@@ -98,11 +142,11 @@ workflow:
       outputs:
         away_search_answer: $.get('answer', '')
 
-    # 5. Extract AWAY team animal from search results using structured output
+    # 5. Extract AWAY team animal from search results using structured output (skip if cached)
     - type: prompt
-      name: extract_team_animal
+      name: extract-away-team-animal
       description: Extract the animal name from search results using structured output
-      condition: $.get('away_search_answer') != ''
+      condition: $.get('away_search_answer') != '' and not $.get('away_character_exists', False)
       connector:
         name: google-genai
         command: invoke_prompt
@@ -113,14 +157,14 @@ workflow:
         search_answer: $.get('away_search_answer')
         team_name: $.get('away_team')
       outputs:
-        away_animal: $.get('animal', '')
-        away_voice_description: $.get('voice_description', '')
+        away_animal_extracted: $.get('animal', '')
+        away_voice_description_extracted: $.get('voice_description', '')
 
-    # 6. Generate HOME team character image (jacked animal representing the team)
+    # 6. Generate HOME team character image (jacked animal representing the team) - skip if cached
     - type: connector
       name: generate-home-character
       description: Generate AI image of HOME team character - a jacked, realistic animal in podcast studio
-      condition: $.get('transcript_exists') and $.get('home_team') != '' and $.get('home_animal') != ''
+      condition: $.get('transcript_exists') and $.get('home_team') != '' and not $.get('home_character_exists', False) and ($.get('home_animal_extracted', '') != '' or $.get('home_animal_cached', '') != '')
       connector:
         name: google-genai
         command: invoke_image
@@ -128,17 +172,17 @@ workflow:
         aspect_ratio: "'9:16'"
         model_name: "'gemini-3-pro-image-preview'"
         home_team: $.get('home_team')
-        home_animal: $.get('home_animal')
+        home_animal: $.get('home_animal_extracted', '') if $.get('home_animal_extracted', '') != '' else $.get('home_animal_cached', '')
         prompt: |
           "Generate an ULTRA-PHOTOREALISTIC image of a JACKED, MUSCULAR {{home_animal}} character representing {{home_team}} football club in a podcast studio.\n\nCHARACTER DESIGN - CRITICAL:\n- The animal MUST be a {{home_animal}} - this is the specific animal that represents {{home_team}}\n- CRITICAL: This MUST be clearly recognizable as a SPECIFIC {{home_animal}} - unmistakable animal features are REQUIRED\n- The animal must be ANTHROPOMORPHIC: JACKED MUSCULAR build like a professional bodybuilder, but with DISTINCT ANIMAL CHARACTERISTICS\n- ANIMAL HEAD/FACE REQUIREMENTS: Must have a REALISTIC animal head with species-specific features:\n  * If lion: prominent mane, feline snout, whiskers, golden eyes, feline ears\n  * If eagle: hooked beak, sharp eyes, feathered head, talons visible\n  * If wolf: canine snout, pointed ears, fur-covered face, amber/yellow eyes\n  * If bear: rounded ears, broad snout, thick fur, small eyes\n  * If bull: horns, bovine snout, large nostrils, bovine ears\n  * If tiger: striped fur pattern, feline features, whiskers, amber eyes\n- The head MUST be clearly animal - NOT human-like, NOT masked, NOT costumed\n- ULTRA-PHOTOREALISTIC rendering: real fur/skin texture with individual hair follicles visible, detailed musculature with realistic muscle definition, veins visible on arms, natural skin imperfections, realistic lighting on fur/skin\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - NOT a cartoon, NOT a 3D render, NOT Pixar-style, NOT animated\n- Expressive animal face capable of speech and emotions - the animal's natural features express human-like emotions\n- Intelligent, sentient animal eyes with depth, personality, and realistic reflections - but clearly animal eyes (not human)\n- Natural animal features combined with human-like expressions - the animal genuinely understands and communicates like a human, but maintains its animal identity\n- Realistic proportions: DISTINCTLY ANIMAL head/face with human-like body structure (bipedal, human-like torso and arms)\n- Natural fur/skin texture that responds to light realistically - the animal's natural coat/covering must be visible and realistic\n- Animal ears, snout/muzzle, and other species-specific features must be prominent and clearly visible\n- The animal has BECOME a real being that can speak and express like humans - this is documentary-style realism, but it MUST still look like the actual animal species\n\nCHARACTER POSE:\n- Sitting at a simple podcast desk wearing a fitted team jersey that shows off muscular physique\n- Black over-ear headphones\n- Confident, charismatic expression - mouth slightly open as if speaking enthusiastically\n- Positioned LEFT side of frame, body oriented toward someone across the table\n- Looking strictly toward the right side of the frame (PROFILE or 3/4 VIEW) at the other host\n- NEVER looking at the camera/lens\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-left\n- Blue/purple RGB accent lighting on back wall\n- Walnut wood desk - rich brown wood grain visible\n- Only a silver podcast microphone visible on the clean desk\n- Minimalist podcast setup - just the desk and microphone\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on LEFT, looking RIGHT (Side profile or 3/4 view)\n- EYES AVERTED from camera\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nPROHIBITED: NO generic animals - must look like THE SPECIFIC MASCOT. NO mascot costumes or humans in suits. NO costume seams/zippers/fabric texture. NO text/logos/watermarks. NO EYE CONTACT with camera. Must look RIGHT. NO cartoon style, NO Pixar style, NO 3D rendered look, NO animated appearance, NO stylized rendering, NO exaggerated features, NO rubbery textures, NO plastic appearance. NO human-like faces - must have clear animal features. NO masks or human faces with animal ears - must be a real animal head. NO losing animal characteristics - the species must be unmistakably identifiable."
       outputs:
         home_character_path: $.get('image_path')
 
-    # 7. Generate AWAY team character image (jacked animal representing the team)
+    # 7. Generate AWAY team character image (jacked animal representing the team) - skip if cached
     - type: connector
       name: generate-away-character
       description: Generate AI image of AWAY team character - a jacked, realistic animal in podcast studio
-      condition: $.get('transcript_exists') and $.get('away_team') != '' and $.get('away_animal') != ''
+      condition: $.get('transcript_exists') and $.get('away_team') != '' and not $.get('away_character_exists', False) and ($.get('away_animal_extracted', '') != '' or $.get('away_animal_cached', '') != '')
       connector:
         name: google-genai
         command: invoke_image
@@ -146,37 +190,150 @@ workflow:
         aspect_ratio: "'9:16'"
         model_name: "'gemini-3-pro-image-preview'"
         away_team: $.get('away_team')
-        away_animal: $.get('away_animal')
+        away_animal: $.get('away_animal_extracted', '') if $.get('away_animal_extracted', '') != '' else $.get('away_animal_cached', '')
         prompt: |
           "Generate an ULTRA-PHOTOREALISTIC image of a JACKED, MUSCULAR {{away_animal}} character representing {{away_team}} football club in a podcast studio.\n\nCHARACTER DESIGN - CRITICAL:\n- The animal MUST be a {{away_animal}} - this is the specific animal that represents {{away_team}}\n- CRITICAL: This MUST be clearly recognizable as a SPECIFIC {{away_animal}} - unmistakable animal features are REQUIRED\n- The animal must be ANTHROPOMORPHIC: JACKED MUSCULAR build like a professional bodybuilder, but with DISTINCT ANIMAL CHARACTERISTICS\n- ANIMAL HEAD/FACE REQUIREMENTS: Must have a REALISTIC animal head with species-specific features:\n  * If lion: prominent mane, feline snout, whiskers, golden eyes, feline ears\n  * If eagle: hooked beak, sharp eyes, feathered head, talons visible\n  * If wolf: canine snout, pointed ears, fur-covered face, amber/yellow eyes\n  * If bear: rounded ears, broad snout, thick fur, small eyes\n  * If bull: horns, bovine snout, large nostrils, bovine ears\n  * If tiger: striped fur pattern, feline features, whiskers, amber eyes\n- The head MUST be clearly animal - NOT human-like, NOT masked, NOT costumed\n- ULTRA-PHOTOREALISTIC rendering: real fur/skin texture with individual hair follicles visible, detailed musculature with realistic muscle definition, veins visible on arms, natural skin imperfections, realistic lighting on fur/skin\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - NOT a cartoon, NOT a 3D render, NOT Pixar-style, NOT animated\n- Expressive animal face capable of speech and emotions - the animal's natural features express human-like emotions\n- Intelligent, sentient animal eyes with depth, personality, and realistic reflections - but clearly animal eyes (not human)\n- Natural animal features combined with human-like expressions - the animal genuinely understands and communicates like a human, but maintains its animal identity\n- Realistic proportions: DISTINCTLY ANIMAL head/face with human-like body structure (bipedal, human-like torso and arms)\n- Natural fur/skin texture that responds to light realistically - the animal's natural coat/covering must be visible and realistic\n- Animal ears, snout/muzzle, and other species-specific features must be prominent and clearly visible\n- The animal has BECOME a real being that can speak and express like humans - this is documentary-style realism, but it MUST still look like the actual animal species\n\nCHARACTER POSE:\n- Sitting at a simple podcast desk wearing team colors or fitted jersey that shows off muscular physique\n- Black over-ear headphones\n- Skeptical or competitive expression - slight smirk, one eyebrow raised\n- Positioned RIGHT side of frame, body oriented toward someone across the table\n- Looking strictly toward the left side of the frame (PROFILE or 3/4 VIEW) at the other host\n- NEVER looking at the camera/lens\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-right\n- Blue/purple RGB accent lighting on back wall\n- Walnut wood desk - rich brown wood grain visible\n- Only a silver podcast microphone visible on the clean desk\n- Minimalist podcast setup - just the desk and microphone\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on RIGHT, looking LEFT (Side profile or 3/4 view)\n- EYES AVERTED from camera\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nPROHIBITED: NO generic animals - must look like THE SPECIFIC MASCOT. NO mascot costumes or humans in suits. NO costume seams/zippers/fabric texture. NO text/logos/watermarks. NO EYE CONTACT with camera. Must look LEFT. NO cartoon style, NO Pixar style, NO 3D rendered look, NO animated appearance, NO stylized rendering, NO exaggerated features, NO rubbery textures, NO plastic appearance. NO human-like faces - must have clear animal features. NO masks or human faces with animal ears - must be a real animal head. NO losing animal characteristics - the species must be unmistakably identifiable."
       outputs:
         away_character_path: $.get('image_path')
 
-    # 8. Upload HOME character image to Google Storage
+    # 8. Upload HOME character image to Google Storage (skip if cached)
     - type: connector
       name: upload-home-character
       description: Upload generated HOME character image to Google Storage
-      condition: $.get('home_character_path') is not None
+      condition: $.get('home_character_path') is not None and not $.get('home_character_exists', False)
       connector:
         name: google-storage
         command: invoke_upload
       inputs:
         image_path: $.get('home_character_path')
       outputs:
-        home_podcast_frame_url: $.get('url')
+        home_podcast_frame_url_uploaded: $.get('url')
 
-    # 9. Upload AWAY character image to Google Storage
+    # 8.5. Set final HOME character values for video generation
+    - type: document
+      name: finalize-home-character-values
+      description: Set final HOME character values (cached or extracted) for use in video generation
+      condition: $.get('transcript_exists') and $.get('home_team') != ''
+      config:
+        action: search
+        search-limit: 0
+      inputs:
+        name: "'dummy'"
+      outputs:
+        home_podcast_frame_url: $.get('home_podcast_frame_url_cached', '') if $.get('home_character_exists', False) else $.get('home_podcast_frame_url_uploaded', '')
+        home_animal: $.get('home_animal_extracted', '') if $.get('home_animal_extracted', '') != '' else $.get('home_animal_cached', '')
+        home_voice_description: $.get('home_voice_description_extracted', '') if $.get('home_voice_description_extracted', '') != '' else $.get('home_voice_description_cached', '')
+
+    # 9. Upload AWAY character image to Google Storage (skip if cached)
     - type: connector
       name: upload-away-character
       description: Upload generated AWAY character image to Google Storage
-      condition: $.get('away_character_path') is not None
+      condition: $.get('away_character_path') is not None and not $.get('away_character_exists', False)
       connector:
         name: google-storage
         command: invoke_upload
       inputs:
         image_path: $.get('away_character_path')
       outputs:
-        away_podcast_frame_url: $.get('url')
+        away_podcast_frame_url_uploaded: $.get('url')
+
+    # 9.6. Update HOME team character info (if document exists and new data was generated)
+    - type: document
+      name: update-home-character
+      description: Update existing HOME team character information (animal, voice, image URL) to document
+      condition: $.get('transcript_exists') and $.get('home_team') != '' and $.get('home_podcast_frame_url_uploaded', '') != '' and $.get('home_character_doc_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('home_character_doc_id')
+      documents:
+        soccer-team-character: |
+          {
+            'team_name': $.get('home_team', ''),
+            'animal': $.get('home_animal_extracted', '') if $.get('home_animal_extracted', '') != '' else $.get('home_animal_cached', ''),
+            'voice_description': $.get('home_voice_description_extracted', '') if $.get('home_voice_description_extracted', '') != '' else $.get('home_voice_description_cached', ''),
+            'podcast_frame_url': $.get('home_podcast_frame_url_uploaded', ''),
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        team_name: $.get('home_team')
+        document_type: "'team-character'"
+      outputs:
+        home_character_document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else $.get('home_character_doc_id')
+
+    # 9.6.5. Save HOME team character info (if document doesn't exist and new data was generated)
+    - type: document
+      name: save-home-character
+      description: Save new HOME team character information (animal, voice, image URL) to document
+      condition: $.get('transcript_exists') and $.get('home_team') != '' and $.get('home_podcast_frame_url_uploaded', '') != '' and $.get('home_character_doc_id') is None
+      config:
+        action: save
+        embed-vector: false
+      documents:
+        soccer-team-character: |
+          {
+            'team_name': $.get('home_team', ''),
+            'animal': $.get('home_animal_extracted', ''),
+            'voice_description': $.get('home_voice_description_extracted', ''),
+            'podcast_frame_url': $.get('home_podcast_frame_url_uploaded', ''),
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        team_name: $.get('home_team')
+        document_type: "'team-character'"
+      outputs:
+        home_character_document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+
+    # 9.7. Update AWAY team character info (if document exists and new data was generated)
+    - type: document
+      name: update-away-character
+      description: Update existing AWAY team character information (animal, voice, image URL) to document
+      condition: $.get('transcript_exists') and $.get('away_team') != '' and $.get('away_podcast_frame_url_uploaded', '') != '' and $.get('away_character_doc_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('away_character_doc_id')
+      documents:
+        soccer-team-character: |
+          {
+            'team_name': $.get('away_team', ''),
+            'animal': $.get('away_animal_extracted', '') if $.get('away_animal_extracted', '') != '' else $.get('away_animal_cached', ''),
+            'voice_description': $.get('away_voice_description_extracted', '') if $.get('away_voice_description_extracted', '') != '' else $.get('away_voice_description_cached', ''),
+            'podcast_frame_url': $.get('away_podcast_frame_url_uploaded', ''),
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        team_name: $.get('away_team')
+        document_type: "'team-character'"
+      outputs:
+        away_character_document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else $.get('away_character_doc_id')
+
+    # 9.7.5. Save AWAY team character info (if document doesn't exist and new data was generated)
+    - type: document
+      name: save-away-character
+      description: Save new AWAY team character information (animal, voice, image URL) to document
+      condition: $.get('transcript_exists') and $.get('away_team') != '' and $.get('away_podcast_frame_url_uploaded', '') != '' and $.get('away_character_doc_id') is None
+      config:
+        action: save
+        embed-vector: false
+      documents:
+        soccer-team-character: |
+          {
+            'team_name': $.get('away_team', ''),
+            'animal': $.get('away_animal_extracted', ''),
+            'voice_description': $.get('away_voice_description_extracted', ''),
+            'podcast_frame_url': $.get('away_podcast_frame_url_uploaded', ''),
+            'timestamp': datetime.utcnow().isoformat()
+          }
+      metadata:
+        team_name: $.get('away_team')
+        document_type: "'team-character'"
+      outputs:
+        away_character_document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
 
     # 10. Generate INTRO video (HOME speaker - greetings_intro_home)
     - type: connector
@@ -196,7 +353,7 @@ workflow:
         home_team: $.get('home_team')
         home_voice_description: $.get('home_voice_description', '')
         prompt: |
-          "You are a podcast video producer. Generate a video clip for a sports podcast using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference - an athletic anthropomorphic animal character\n- Speaker Team: {{home_team}}\n- Dialogue Script: '{{dialogue}}'\n- Voice Description: '{{home_voice_description}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: ULTRA-PHOTOREALISTIC - This must look like a REAL ANIMAL that acts like a human, NOT a cartoon, NOT Pixar, NOT 3D render, NOT animated\n- Reference: Preserve the character image EXACTLY - all facial features, athletic build, fur/skin texture, proportions, and scene as shown\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - documentary-style realism\n- Natural animal features with human-like expressions and movements - the animal genuinely understands and communicates\n- Realistic fur/skin texture that moves naturally with expressions\n- Natural lighting and shadows that respond to movement\n- Realistic depth and dimension - NOT flat or stylized\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n- Natural camera behavior - slight micro-movements acceptable for realism\n\nAUDIO - CRITICAL REQUIREMENTS:\n- AUDIO QUALITY: The audio must sound clean and professional, as if captured on a premium podcast microphone (Shure SM7B) - crisp, clear, warm, and free of any distortion or artifacts\n- The ONLY audio track must be the character speaking the dialogue script word-for-word\n- ABSOLUTELY NO sound effects of any kind - NO ambient sounds, NO background noise, NO room tone, NO microphone handling sounds, NO clothing rustling, NO chair creaking, NO breathing sounds, NO mouth sounds, NO lip smacking, NO clicks, NO pops, NO hiss, NO static, NO echo, NO reverb, NO audio artifacts\n- ABSOLUTELY NO music - NO background music, NO intro music, NO outro music, NO jingles, NO musical elements whatsoever\n- ABSOLUTELY NO additional words beyond the exact dialogue script - NO ad-libs, NO filler words, NO extra commentary\n- PURE CLEAN AUDIO: Only the character's voice speaking the exact dialogue - complete silence when not speaking\n\nVOICE GENERATION - CRITICAL:\n- VOICE REFERENCE: Use this EXACT voice description as the primary guide for generating the character's voice: '{{home_voice_description}}'\n- The voice MUST match this description precisely - including accent, regional dialect, tone, pitch, cadence, and all vocal characteristics described\n- If the voice description mentions specific accent (e.g., British, Spanish, Italian, German), the voice MUST reflect that accent accurately\n- If the voice description mentions tone (e.g., deep, commanding, sharp, piercing), the voice MUST embody that tone\n- If the voice description mentions characteristics (e.g., confident, energetic, calm), the voice MUST convey those characteristics\n- The voice should sound natural and authentic to the description - NOT generic, NOT robotic, NOT artificial\n- CRITICAL: The output video must contain ONLY the character's spoken dialogue matching the voice description - any other audio is PROHIBITED\n\nCHARACTER DIRECTION:\n- This is the {{home_team}} representative - a sentient, intelligent REAL ANIMAL opening the podcast\n- Match reference image EXACTLY - maintain the athletic physique and animal features\n- The animal speaks naturally like a human would - expressive, emotional, engaging\n- This is a REAL ANIMAL that acts like a human - NOT a cartoon character, NOT a mascot, NOT a 3D render\n- Realistic natural lip sync to the exact dialogue script - mouth movements must match the voice and dialogue precisely\n- Subtle facial micro-expressions: eyebrow raises, eye movements, slight head tilts, ear movements\n- Natural hand/paw gestures emphasizing points - realistic movement, NOT exaggerated\n- Natural breathing, blinking, and subtle body movements\n- Realistic fur movement with expressions and gestures\n- Natural animal features combined with human-like communication\n- The character's speaking style should reflect the voice description - confident if described as confident, energetic if described as energetic, etc.\n\nENDING:\n- Look toward the right awaiting response\n- Brief pause, eyebrows raised\n- Natural, realistic movement - NOT cartoonish or exaggerated"
+          "You are a podcast video producer. Generate a video clip for a sports podcast using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference - an athletic anthropomorphic animal character\n- Speaker Team: {{home_team}}\n- Dialogue Script: '{{dialogue}}'\n- Voice Description: '{{home_voice_description}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: ULTRA-PHOTOREALISTIC - This must look like a REAL ANIMAL that acts like a human, NOT a cartoon, NOT Pixar, NOT 3D render, NOT animated\n- Reference: Preserve the character image EXACTLY - all facial features, athletic build, fur/skin texture, proportions, and scene as shown\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - documentary-style realism\n- Natural animal features with human-like expressions and movements - the animal genuinely understands and communicates\n- Realistic fur/skin texture that moves naturally with expressions\n- Natural lighting and shadows that respond to movement\n- Realistic depth and dimension - NOT flat or stylized\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n- Natural camera behavior - slight micro-movements acceptable for realism\n\nAUDIO - CRITICAL REQUIREMENTS:\n- AUDIO QUALITY: The audio must sound clean and professional, as if captured on a premium podcast microphone (Shure SM7B) - crisp, clear, warm, and free of any distortion or artifacts\n- The ONLY audio track must be the character speaking the dialogue script word-for-word\n- ABSOLUTELY NO sound effects of any kind - NO ambient sounds, NO background noise, NO room tone, NO microphone handling sounds, NO clothing rustling, NO chair creaking, NO breathing sounds, NO mouth sounds, NO lip smacking, NO clicks, NO pops, NO hiss, NO static, NO echo, NO reverb, NO audio artifacts\n- ABSOLUTELY NO music - NO background music, NO intro music, NO outro music, NO jingles, NO musical elements whatsoever\n- ABSOLUTELY NO additional words beyond the exact dialogue script - NO ad-libs, NO filler words, NO extra commentary\n- PURE CLEAN AUDIO: Only the character's voice speaking the exact dialogue - complete silence when not speaking\n\nVOICE GENERATION - CRITICAL:\n- VOICE REFERENCE: Use this EXACT voice description as the primary guide for generating the character's voice: '{{home_voice_description}}'\n- The voice MUST match this description precisely - including accent, regional dialect, tone, pitch, cadence, and all vocal characteristics described\n- If the voice description mentions specific accent (e.g., British, Spanish, Italian, German), the voice MUST reflect that accent accurately\n- If the voice description mentions tone (e.g., deep, commanding, sharp, piercing), the voice MUST embody that tone\n- If the voice description mentions characteristics (e.g., confident, energetic, calm), the voice MUST convey those characteristics\n- The voice should sound natural and authentic to the description - NOT generic, NOT robotic, NOT artificial\n- CRITICAL: The output video must contain ONLY the character's spoken dialogue matching the voice description - any other audio is PROHIBITED\n\nCHARACTER DIRECTION:\n- This is the {{home_team}} representative - a sentient, intelligent REAL ANIMAL opening the podcast\n- CRITICAL: This is part of a continuous conversation - speak immediately, NO pauses at the end, NO waiting, NO quiet space - the dialogue flows seamlessly into the next speaker\n- Match reference image EXACTLY - maintain the athletic physique and animal features\n- The animal speaks naturally like a human would - expressive, emotional, engaging\n- This is a REAL ANIMAL that acts like a human - NOT a cartoon character, NOT a mascot, NOT a 3D render\n- Realistic natural lip sync to the exact dialogue script - mouth movements must match the voice and dialogue precisely\n- Subtle facial micro-expressions: eyebrow raises, eye movements, slight head tilts, ear movements\n- Natural hand/paw gestures emphasizing points - realistic movement, NOT exaggerated\n- Natural breathing, blinking, and subtle body movements\n- Realistic fur movement with expressions and gestures\n- Natural animal features combined with human-like communication\n- The character's speaking style should reflect the voice description - confident if described as confident, energetic if described as energetic, etc.\n\nENDING:\n- Look toward the right awaiting response\n- Natural, realistic movement - NOT cartoonish or exaggerated"
       outputs:
         intro_video_path: $.get('video_path')
         intro_raw_api_response: $.get('raw_api_response') or $.get('data', {}).get('raw_api_response')
@@ -225,7 +382,7 @@ workflow:
         speaker_team_name: $.get('turn_item', {}).get('speaker_team_name', '')
         speaker_voice_description: $.get('turn_item', {}).get('speaker_voice_description', '')
         prompt: |
-          "You are a podcast video producer. Generate a video clip for a sports podcast dialogue turn using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference - an athletic anthropomorphic animal character\n- Speaker Team: {{speaker_team_name}}\n- Dialogue Script: '{{dialogue}}'\n- Previous Dialogue (for reaction context): '{{previous_dialogue}}'\n- Voice Description: '{{speaker_voice_description}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: ULTRA-PHOTOREALISTIC - This must look like a REAL ANIMAL that acts like a human, NOT a cartoon, NOT Pixar, NOT 3D render, NOT animated\n- Reference: Preserve the character image EXACTLY - all facial features, athletic build, fur/skin texture, proportions, and scene as shown\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - documentary-style realism\n- Natural animal features with human-like expressions and movements - the animal genuinely understands and communicates\n- Realistic fur/skin texture that moves naturally with expressions\n- Natural lighting and shadows that respond to movement\n- Realistic depth and dimension - NOT flat or stylized\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n- Natural camera behavior - slight micro-movements acceptable for realism\n\nAUDIO - CRITICAL REQUIREMENTS:\n- AUDIO QUALITY: The audio must sound clean and professional, as if captured on a premium podcast microphone (Shure SM7B) - crisp, clear, warm, and free of any distortion or artifacts\n- The ONLY audio track must be the character speaking the dialogue script word-for-word\n- ABSOLUTELY NO sound effects of any kind - NO ambient sounds, NO background noise, NO room tone, NO microphone handling sounds, NO clothing rustling, NO chair creaking, NO breathing sounds, NO mouth sounds, NO lip smacking, NO clicks, NO pops, NO hiss, NO static, NO echo, NO reverb, NO audio artifacts\n- ABSOLUTELY NO music - NO background music, NO intro music, NO outro music, NO jingles, NO musical elements whatsoever\n- ABSOLUTELY NO additional words beyond the exact dialogue script - NO ad-libs, NO filler words, NO extra commentary\n- PURE CLEAN AUDIO: Only the character's voice speaking the exact dialogue - complete silence when not speaking\n\nVOICE GENERATION - CRITICAL:\n- VOICE REFERENCE: Use this EXACT voice description as the primary guide for generating the character's voice: '{{speaker_voice_description}}'\n- The voice MUST match this description precisely - including accent, regional dialect, tone, pitch, cadence, and all vocal characteristics described\n- If the voice description mentions specific accent (e.g., British, Spanish, Italian, German), the voice MUST reflect that accent accurately\n- If the voice description mentions tone (e.g., deep, commanding, sharp, piercing), the voice MUST embody that tone\n- If the voice description mentions characteristics (e.g., confident, energetic, calm), the voice MUST convey those characteristics\n- The voice should sound natural and authentic to the description - NOT generic, NOT robotic, NOT artificial\n- CRITICAL: The output video must contain ONLY the character's spoken dialogue matching the voice description - any other audio is PROHIBITED\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team_name}} representative - a sentient, intelligent REAL ANIMAL responding in the conversation\n- REACTION: Start with brief natural reaction (0.5-1 sec) to the previous dialogue before speaking - skeptical if challenged, nod if good point, smirk if outrageous\n- Match reference image EXACTLY - maintain the athletic physique and animal features\n- The animal speaks naturally like a human would - expressive, emotional, engaging\n- This is a REAL ANIMAL that acts like a human - NOT a cartoon character, NOT a mascot, NOT a 3D render\n- Realistic natural lip sync to the exact dialogue script - mouth movements must match the voice and dialogue precisely\n- Genuine expressions: confident smirk, skeptical eyebrow, excited lean-in - realistic, NOT exaggerated\n- Natural body language and paw/hand gestures - realistic movement, NOT cartoonish\n- Micro-expressions: eye shifts, ear movements, breathing, subtle nods, fur movement\n- Natural animal features combined with human-like communication\n- The character's speaking style should reflect the voice description - confident if described as confident, energetic if described as energetic, etc.\n\nENDING:\n- Look toward other host position passing conversation back\n- Brief pause, expectant expression\n- Natural, realistic movement - NOT cartoonish or exaggerated"
+          "You are a podcast video producer. Generate a video clip for a sports podcast dialogue turn using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference - an athletic anthropomorphic animal character\n- Speaker Team: {{speaker_team_name}}\n- Dialogue Script: '{{dialogue}}'\n- Previous Dialogue (for reaction context): '{{previous_dialogue}}'\n- Voice Description: '{{speaker_voice_description}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: ULTRA-PHOTOREALISTIC - This must look like a REAL ANIMAL that acts like a human, NOT a cartoon, NOT Pixar, NOT 3D render, NOT animated\n- Reference: Preserve the character image EXACTLY - all facial features, athletic build, fur/skin texture, proportions, and scene as shown\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - documentary-style realism\n- Natural animal features with human-like expressions and movements - the animal genuinely understands and communicates\n- Realistic fur/skin texture that moves naturally with expressions\n- Natural lighting and shadows that respond to movement\n- Realistic depth and dimension - NOT flat or stylized\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n- Natural camera behavior - slight micro-movements acceptable for realism\n\nAUDIO - CRITICAL REQUIREMENTS:\n- AUDIO QUALITY: The audio must sound clean and professional, as if captured on a premium podcast microphone (Shure SM7B) - crisp, clear, warm, and free of any distortion or artifacts\n- The ONLY audio track must be the character speaking the dialogue script word-for-word\n- ABSOLUTELY NO sound effects of any kind - NO ambient sounds, NO background noise, NO room tone, NO microphone handling sounds, NO clothing rustling, NO chair creaking, NO breathing sounds, NO mouth sounds, NO lip smacking, NO clicks, NO pops, NO hiss, NO static, NO echo, NO reverb, NO audio artifacts\n- ABSOLUTELY NO music - NO background music, NO intro music, NO outro music, NO jingles, NO musical elements whatsoever\n- ABSOLUTELY NO additional words beyond the exact dialogue script - NO ad-libs, NO filler words, NO extra commentary\n- PURE CLEAN AUDIO: Only the character's voice speaking the exact dialogue - complete silence when not speaking\n\nVOICE GENERATION - CRITICAL:\n- VOICE REFERENCE: Use this EXACT voice description as the primary guide for generating the character's voice: '{{speaker_voice_description}}'\n- The voice MUST match this description precisely - including accent, regional dialect, tone, pitch, cadence, and all vocal characteristics described\n- If the voice description mentions specific accent (e.g., British, Spanish, Italian, German), the voice MUST reflect that accent accurately\n- If the voice description mentions tone (e.g., deep, commanding, sharp, piercing), the voice MUST embody that tone\n- If the voice description mentions characteristics (e.g., confident, energetic, calm), the voice MUST convey those characteristics\n- The voice should sound natural and authentic to the description - NOT generic, NOT robotic, NOT artificial\n- CRITICAL: The output video must contain ONLY the character's spoken dialogue matching the voice description - any other audio is PROHIBITED\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team_name}} representative - a sentient, intelligent REAL ANIMAL responding in the conversation\n- CRITICAL: This is part of a continuous conversation - speak immediately, NO pauses at the end, NO waiting, NO quiet space - the dialogue flows seamlessly into the next speaker\n- REACTION: Start immediately with natural reaction to the previous dialogue while speaking - skeptical if challenged, nod if good point, smirk if outrageous\n- Match reference image EXACTLY - maintain the athletic physique and animal features\n- The animal speaks naturally like a human would - expressive, emotional, engaging\n- This is a REAL ANIMAL that acts like a human - NOT a cartoon character, NOT a mascot, NOT a 3D render\n- Realistic natural lip sync to the exact dialogue script - mouth movements must match the voice and dialogue precisely\n- Genuine expressions: confident smirk, skeptical eyebrow, excited lean-in - realistic, NOT exaggerated\n- Natural body language and paw/hand gestures - realistic movement, NOT cartoonish\n- Micro-expressions: eye shifts, ear movements, breathing, subtle nods, fur movement\n- Natural animal features combined with human-like communication\n- The character's speaking style should reflect the voice description - confident if described as confident, energetic if described as energetic, etc.\n\nENDING:\n- Look toward other host position passing conversation back\n- Natural, realistic movement - NOT cartoonish or exaggerated"
       outputs:
         turn_video_paths: |
           [
@@ -251,7 +408,7 @@ workflow:
         speaker_team_name: $.get('home_team') if $.get('closing_cta_speaker', 'HOME') == 'HOME' else $.get('away_team')
         speaker_voice_description: $.get('home_voice_description', '') if $.get('closing_cta_speaker', 'HOME') == 'HOME' else $.get('away_voice_description', '')
         prompt: |
-          "You are a podcast video producer. Generate the closing video clip for a sports podcast using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference - an athletic anthropomorphic animal character\n- Speaker Team: {{speaker_team_name}}\n- Dialogue Script: '{{dialogue}}'\n- Previous Dialogue (for reaction context): '{{previous_dialogue}}'\n- Voice Description: '{{speaker_voice_description}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: ULTRA-PHOTOREALISTIC - This must look like a REAL ANIMAL that acts like a human, NOT a cartoon, NOT Pixar, NOT 3D render, NOT animated\n- Reference: Preserve the character image EXACTLY - all facial features, athletic build, fur/skin texture, proportions, and scene as shown\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - documentary-style realism\n- Natural animal features with human-like expressions and movements - the animal genuinely understands and communicates\n- Realistic fur/skin texture that moves naturally with expressions\n- Natural lighting and shadows that respond to movement\n- Realistic depth and dimension - NOT flat or stylized\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n- Natural camera behavior - slight micro-movements acceptable for realism\n\nAUDIO - CRITICAL REQUIREMENTS:\n- AUDIO QUALITY: The audio must sound clean and professional, as if captured on a premium podcast microphone (Shure SM7B) - crisp, clear, warm, and free of any distortion or artifacts\n- The ONLY audio track must be the character speaking the dialogue script word-for-word\n- ABSOLUTELY NO sound effects of any kind - NO ambient sounds, NO background noise, NO room tone, NO microphone handling sounds, NO clothing rustling, NO chair creaking, NO breathing sounds, NO mouth sounds, NO lip smacking, NO clicks, NO pops, NO hiss, NO static, NO echo, NO reverb, NO audio artifacts\n- ABSOLUTELY NO music - NO background music, NO intro music, NO outro music, NO jingles, NO musical elements whatsoever\n- ABSOLUTELY NO additional words beyond the exact dialogue script - NO ad-libs, NO filler words, NO extra commentary\n- PURE CLEAN AUDIO: Only the character's voice speaking the exact dialogue - complete silence when not speaking\n\nVOICE GENERATION - CRITICAL:\n- VOICE REFERENCE: Use this EXACT voice description as the primary guide for generating the character's voice: '{{speaker_voice_description}}'\n- The voice MUST match this description precisely - including accent, regional dialect, tone, pitch, cadence, and all vocal characteristics described\n- If the voice description mentions specific accent (e.g., British, Spanish, Italian, German), the voice MUST reflect that accent accurately\n- If the voice description mentions tone (e.g., deep, commanding, sharp, piercing), the voice MUST embody that tone\n- If the voice description mentions characteristics (e.g., confident, energetic, calm), the voice MUST convey those characteristics\n- The voice should sound natural and authentic to the description - NOT generic, NOT robotic, NOT artificial\n- CRITICAL: The output video must contain ONLY the character's spoken dialogue matching the voice description - any other audio is PROHIBITED\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team_name}} representative - a sentient, intelligent REAL ANIMAL closing the podcast\n- START: Quick acknowledging nod to other speaker, then transition to looking directly at the camera/audience\n- Match reference image EXACTLY - maintain the athletic physique and animal features\n- The animal speaks naturally like a human would - expressive, emotional, engaging\n- This is a REAL ANIMAL that acts like a human - NOT a cartoon character, NOT a mascot, NOT a 3D render\n- Realistic natural lip sync to the exact dialogue script - mouth movements must match the voice and dialogue precisely\n- High energy but NATURAL: genuine smile, raised eyebrows - realistic expressions, NOT exaggerated\n- EYE CONTACT: Look directly at the camera/audience for the CTA - engaging, direct connection with viewers\n- Enthusiastic paw/hand gestures - pointing, open palms - realistic movement, NOT cartoonish\n- Natural animal features combined with human-like communication\n- Realistic fur movement with expressions and gestures\n- The character's speaking style should reflect the voice description - confident if described as confident, energetic if described as energetic, etc."
+          "You are a podcast video producer. Generate the closing video clip for a sports podcast using the provided inputs.\n\nINPUTS:\n- Reference Image: Use the provided image_path as the exact visual reference - an athletic anthropomorphic animal character\n- Speaker Team: {{speaker_team_name}}\n- Dialogue Script: '{{dialogue}}'\n- Previous Dialogue (for reaction context): '{{previous_dialogue}}'\n- Voice Description: '{{speaker_voice_description}}'\n\nVIDEO SPECIFICATIONS:\n- Aspect Ratio: Vertical 9:16\n- Style: ULTRA-PHOTOREALISTIC - This must look like a REAL ANIMAL that acts like a human, NOT a cartoon, NOT Pixar, NOT 3D render, NOT animated\n- Reference: Preserve the character image EXACTLY - all facial features, athletic build, fur/skin texture, proportions, and scene as shown\n- This is a REAL LIVING ANIMAL that has evolved to speak and act like humans - documentary-style realism\n- Natural animal features with human-like expressions and movements - the animal genuinely understands and communicates\n- Realistic fur/skin texture that moves naturally with expressions\n- Natural lighting and shadows that respond to movement\n- Realistic depth and dimension - NOT flat or stylized\n\nCAMERA:\n- Static camera, same frame as reference image throughout\n- NO transitions, NO fades, NO zooms\n- Start dry, end dry\n- Natural camera behavior - slight micro-movements acceptable for realism\n\nAUDIO - CRITICAL REQUIREMENTS:\n- AUDIO QUALITY: The audio must sound clean and professional, as if captured on a premium podcast microphone (Shure SM7B) - crisp, clear, warm, and free of any distortion or artifacts\n- The ONLY audio track must be the character speaking the dialogue script word-for-word\n- ABSOLUTELY NO sound effects of any kind - NO ambient sounds, NO background noise, NO room tone, NO microphone handling sounds, NO clothing rustling, NO chair creaking, NO breathing sounds, NO mouth sounds, NO lip smacking, NO clicks, NO pops, NO hiss, NO static, NO echo, NO reverb, NO audio artifacts\n- ABSOLUTELY NO music - NO background music, NO intro music, NO outro music, NO jingles, NO musical elements whatsoever\n- ABSOLUTELY NO additional words beyond the exact dialogue script - NO ad-libs, NO filler words, NO extra commentary\n- PURE CLEAN AUDIO: Only the character's voice speaking the exact dialogue - complete silence when not speaking\n\nVOICE GENERATION - CRITICAL:\n- VOICE REFERENCE: Use this EXACT voice description as the primary guide for generating the character's voice: '{{speaker_voice_description}}'\n- The voice MUST match this description precisely - including accent, regional dialect, tone, pitch, cadence, and all vocal characteristics described\n- If the voice description mentions specific accent (e.g., British, Spanish, Italian, German), the voice MUST reflect that accent accurately\n- If the voice description mentions tone (e.g., deep, commanding, sharp, piercing), the voice MUST embody that tone\n- If the voice description mentions characteristics (e.g., confident, energetic, calm), the voice MUST convey those characteristics\n- The voice should sound natural and authentic to the description - NOT generic, NOT robotic, NOT artificial\n- CRITICAL: The output video must contain ONLY the character's spoken dialogue matching the voice description - any other audio is PROHIBITED\n\nCHARACTER DIRECTION:\n- This is the {{speaker_team_name}} representative - a sentient, intelligent REAL ANIMAL closing the podcast\n- CRITICAL: This is part of a continuous conversation - speak immediately, NO pauses, NO waiting, NO quiet space - maintain natural conversation flow\n- START: Quick acknowledging nod to other speaker, then transition to looking directly at the camera/audience\n- Match reference image EXACTLY - maintain the athletic physique and animal features\n- The animal speaks naturally like a human would - expressive, emotional, engaging\n- This is a REAL ANIMAL that acts like a human - NOT a cartoon character, NOT a mascot, NOT a 3D render\n- Realistic natural lip sync to the exact dialogue script - mouth movements must match the voice and dialogue precisely\n- High energy but NATURAL: genuine smile, raised eyebrows - realistic expressions, NOT exaggerated\n- EYE CONTACT: Look directly at the camera/audience for the CTA - engaging, direct connection with viewers\n- Enthusiastic paw/hand gestures - pointing, open palms - realistic movement, NOT cartoonish\n- Natural animal features combined with human-like communication\n- Realistic fur movement with expressions and gestures\n- The character's speaking style should reflect the voice description - confident if described as confident, energetic if described as energetic, etc."
       outputs:
         closing_video_path: $.get('video_path')
 
