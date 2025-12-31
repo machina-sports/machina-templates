@@ -111,12 +111,13 @@ prompt:
     Good: "Your keeper’s out with a mystery injury… again… that’s why you’re shipping three minimum tonight, you frauds."
 
     ### CLOSING_CTA (REQUIRED)
-    Final turn (always HOME):
-    - 14–22 words
+    Final turn delivered by either HOME or AWAY speaker (determine based on conversation flow):
+    - **closing_cta_speaker**: Must be either "HOME" or "AWAY" - choose based on who should naturally close the conversation (typically the alternate speaker from the last turn, or whoever makes sense contextually)
+    - **closing_cta**: 14–22 words
     - Raw, demanding, no corporate fluff — ties back to the underdog burial for extra sting.
     - Examples that work:
-      - "Drop your score prediction below — let’s see if any of you lot still think the underdogs got a prayer."
-      - "Comment your correct score you degenerates — I need proof who’s still deluded when my [team] puts four past them."
+      - "Drop your score prediction below — let's see if any of you lot still think the underdogs got a prayer."
+      - "Comment your correct score you degenerates — I need proof who's still deluded when my [team] puts four past them."
       - "Tell me your prediction in the comments — winner talks shit all week, losers delete their accounts."
 
     ### GENERATION METHOD
@@ -144,7 +145,7 @@ prompt:
   schema:
     title: podcast_dialogue_generator_output
     type: object
-    required: ["home_team", "away_team", "greetings_intro_home", "turns", "closing_cta"]
+    required: ["home_team", "away_team", "greetings_intro_home", "turns", "closing_cta", "closing_cta_speaker"]
     properties:
       home_team:
         type: string
@@ -172,4 +173,9 @@ prompt:
               description: "Starts with aggressive/regional interjection. Unfiltered, savage, zero-PR. Ties concrete facts from talking_points to brutal match predictions. Reacts directly to previous speaker. Heavy contractions. Mixes rage, dark humour, roasts, viral kill-shots (2025 cultural refs like Diddy freak-offs, Epstein lists, Kanye betrayal drops, celebrity Jumbotron scandals — ALWAYS tied to football facts). Builds toward underdog payoff. Reactions like 'haha you’re cooked', 'oh piss off laughing', 'mate you’re fuming', meltdown denial, bitter concession when it fits. 14-22 words. Numbers as words, no ALL CAPS, no abbreviations, no single-letter slang."
       closing_cta:
         type: string
+        description: "Final CTA line. 14-22 words. Raw, demanding, no corporate fluff. Ties back to the underdog burial for extra sting."
+      closing_cta_speaker:
+        type: string
+        enum: ["HOME", "AWAY"]
+        description: "Which speaker delivers the closing_cta. Must be either HOME or AWAY. Choose based on conversation flow - typically the alternate speaker from the last turn, or whoever makes sense contextually to close the conversation."
         description: "Final HOME line with raw CTA. Numbers as words. No 'Let us know', no 'Will X win'. Conversational, demanding, degenerate energy — stings the underdog burial. 14-22 words."
