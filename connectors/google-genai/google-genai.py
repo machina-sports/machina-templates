@@ -569,6 +569,8 @@ def invoke_video(request_data):
     - dialogue: Optional - Dialogue text to substitute for {{dialogue}} in prompt
     - speaker_team: Optional - Team name to substitute for {{speaker_team}} in prompt
     - previous_dialogue: Optional - Previous dialogue to substitute for {{previous_dialogue}} in prompt
+    - aspect_ratio: Optional - Video aspect ratio (e.g., "16:9", "9:16", "1:1"). Defaults to model default.
+    - negative_prompt: Optional - Text describing what to avoid in the video (e.g., "cartoon, drawing, low quality")
     
     Note: Request latency varies from 11 seconds to 6 minutes during peak hours.
     Generated videos are stored on server for 2 days before removal.
@@ -587,6 +589,10 @@ def invoke_video(request_data):
     output_path = params.get("output_path")  # Optional custom output path
     max_retries = params.get("max_retries", 3)  # Maximum retry attempts
     retry_delay = params.get("retry_delay", 5)  # Seconds between retries
+    
+    # Video generation parameters
+    aspect_ratio = params.get("aspect_ratio")  # e.g., "16:9", "9:16", "1:1"
+    negative_prompt = params.get("negative_prompt")  # e.g., "cartoon, drawing, low quality"
     
     # Input image support for image-to-video
     image_path = params.get("image_path")
@@ -637,6 +643,18 @@ def invoke_video(request_data):
                     }
                 ]
             }
+            
+            # Add parameters (aspectRatio, negativePrompt) if provided
+            parameters = {}
+            if aspect_ratio:
+                parameters["aspectRatio"] = aspect_ratio
+                print(f"📐 Aspect ratio: {aspect_ratio}")
+            if negative_prompt:
+                parameters["negativePrompt"] = negative_prompt
+                print(f"🚫 Negative prompt: {negative_prompt}")
+            
+            if parameters:
+                request_body["parameters"] = parameters
             
             # Prepare input image if provided (image-to-video)
             if image_path:

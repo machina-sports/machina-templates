@@ -71,6 +71,8 @@ workflow:
       inputs:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
+        aspect_ratio: "'9:16'"
+        negative_prompt: "'other person in scene, second speaker, background people, other voices, multiple voices, background music, sound effects, ambient sounds, scene transition, cut, camera pan, camera zoom, camera shake, cartoon, animated, unrealistic'"
         image_path: $.get('home_podcast_frame_url')
         dialogue: $.get('greetings_intro_home')
         speaker_team: $.get('home_team')
@@ -96,6 +98,8 @@ workflow:
       inputs:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
+        aspect_ratio: "'9:16'"
+        negative_prompt: "'other person in scene, second speaker, background people, other voices, multiple voices, background music, sound effects, ambient sounds, scene transition, cut, camera pan, camera zoom, camera shake, cartoon, animated, unrealistic'"
         image_path: $.get('home_podcast_frame_url') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_podcast_frame_url')
         dialogue: $.get('turn_item', {}).get('text', '')
         previous_dialogue: $.get('turn_item', {}).get('previous_text', '')
@@ -119,6 +123,8 @@ workflow:
       inputs:
         model_name: "'veo-3.1-fast-generate-preview'"
         poll_interval: $.get('poll_interval')
+        aspect_ratio: "'9:16'"
+        negative_prompt: "'other person in scene, second speaker, background people, other voices, multiple voices, background music, sound effects, ambient sounds, scene transition, cut, camera pan, camera zoom, camera shake, cartoon, animated, unrealistic'"
         image_path: $.get('home_podcast_frame_url')
         dialogue: $.get('closing_cta')
         previous_dialogue: $.get('turns', [])[-1].get('text', '') if len($.get('turns', [])) > 0 else ''
