@@ -1,13 +1,16 @@
 def consolidate_videos(request_data):
     """
-    Consolidate multiple video files into a single MP4 video.
+    Consolidate multiple video files into a single MP4 video with audio overlap transitions.
     Returns in the standard pyscript pattern: {status, data, message}
     
     Parameters:
         video_paths: List of video file paths in order to concatenate
         output_filename: Optional output filename (default: consolidated_podcast.mp4)
+        audio_overlap_seconds: Optional overlap duration in seconds (default: 0.75)
+            Creates J-cut effect: next video's audio starts while previous video's image continues
     
-    The videos are concatenated in the exact order provided.
+    The videos are concatenated with smooth audio transitions where the next video's audio
+    overlaps with the previous video's image for a more professional, seamless feel.
     Uses moviepy for video processing.
     """
     try:
@@ -32,6 +35,7 @@ def consolidate_videos(request_data):
         
         video_paths = params.get('video_paths', [])
         output_filename = params.get('output_filename', 'consolidated_podcast.mp4')
+        audio_overlap_seconds = params.get('audio_overlap_seconds', 0.75)  # Default 0.75 seconds overlap
         
         if not video_paths or len(video_paths) == 0:
             return {
@@ -69,10 +73,10 @@ def consolidate_videos(request_data):
         try:
             # MoviePy 2.x removed `moviepy.editor`; prefer top-level imports.
             try:
-                from moviepy import VideoFileClip, concatenate_videoclips  # type: ignore
+                from moviepy import VideoFileClip, concatenate_videoclips, CompositeAudioClip, CompositeVideoClip  # type: ignore
             except Exception:
                 # Backwards compatibility with MoviePy 1.x
-                from moviepy.editor import VideoFileClip, concatenate_videoclips  # type: ignore
+                from moviepy.editor import VideoFileClip, concatenate_videoclips, CompositeAudioClip, CompositeVideoClip  # type: ignore
         except ImportError as e:
             return {
                 "status": False,
@@ -107,9 +111,59 @@ def consolidate_videos(request_data):
             if len(clips) == 0:
                 raise Exception("No clips were successfully loaded")
             
-            print(f"🔗 Concatenating {len(clips)} clips...")
-            # Use 'compose' method to handle different resolutions/codecs
-            final_clip = concatenate_videoclips(clips, method="compose")
+            # Validate overlap duration
+            audio_overlap_seconds = max(0.0, min(audio_overlap_seconds, 2.0))  # Clamp between 0 and 2 seconds
+            
+            if len(clips) == 1 or audio_overlap_seconds == 0:
+                # Single clip or no overlap requested
+                print(f"🔗 Concatenating {len(clips)} clips...")
+                final_clip = concatenate_videoclips(clips, method="compose")
+            else:
+                print(f"🔗 Creating overlapping audio transitions ({audio_overlap_seconds}s overlap)...")
+                print("   (Next video's audio starts while previous video continues playing)")
+                
+                # Build timeline: videos play sequentially, audio overlaps at transitions
+                video_clips = []  # Video clips positioned sequentially
+                audio_clips = []  # All audio clips with overlaps
+                current_time = 0.0
+                
+                for i, clip in enumerate(clips):
+                    clip_duration = clip.duration
+                    video_track = clip.without_audio()
+                    audio_track = clip.audio if clip.audio else None
+                    
+                    # Video plays sequentially (no overlap)
+                    video_positioned = video_track.set_start(current_time)
+                    video_clips.append(video_positioned)
+                    
+                    # Audio handling
+                    if audio_track:
+                        if i == 0:
+                            # First clip: audio starts at 0
+                            audio_positioned = audio_track.set_start(0.0)
+                            audio_clips.append(audio_positioned)
+                        else:
+                            # Subsequent clips: audio starts early (during previous clip's overlap)
+                            # Audio starts at (current_time - audio_overlap_seconds)
+                            audio_start_time = current_time - audio_overlap_seconds
+                            audio_positioned = audio_track.set_start(audio_start_time)
+                            audio_clips.append(audio_positioned)
+                    
+                    # Move to next position
+                    current_time += clip_duration
+                
+                # Calculate total duration
+                total_duration = current_time
+                
+                # Create composite video (all videos layered with their start times)
+                composite_video = CompositeVideoClip(video_clips)
+                
+                # Create composite audio (all audio tracks layered with overlaps)
+                if audio_clips:
+                    composite_audio = CompositeAudioClip(audio_clips)
+                    final_clip = composite_video.set_audio(composite_audio).set_duration(total_duration)
+                else:
+                    final_clip = composite_video.set_duration(total_duration)
             
             print(f"💾 Writing consolidated video to: {output_path}")
             # Use threads=1 for better compatibility, preset='medium' for balance
@@ -173,6 +227,7 @@ def consolidate_videos(request_data):
                 "file_size_mb": file_size_mb,
                 "input_video_count": len(valid_paths),
                 "method_used": "moviepy",
+                "audio_overlap_seconds": audio_overlap_seconds if len(valid_paths) > 1 else 0,
                 "missing_paths": missing_paths if missing_paths else None
             },
             "message": f"Successfully consolidated {len(valid_paths)} videos into {output_filename} ({file_size_mb} MB)"
