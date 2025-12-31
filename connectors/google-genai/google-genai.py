@@ -702,9 +702,15 @@ def invoke_video(request_data):
             poll_data = poll_response.json()
             
             # Check if operation is done
-            if poll_data.get("done", False):
-                print("✅ Video generation completed!")
-                break
+        if poll_data.get("done", False):
+            print("✅ Video generation completed!")
+            # Log the response structure for debugging
+            print(f"📋 Response keys: {list(poll_data.keys())}")
+            if "response" in poll_data:
+                print(f"📋 Response type: {type(poll_data['response'])}")
+                if isinstance(poll_data["response"], dict):
+                    print(f"📋 Response keys: {list(poll_data['response'].keys())}")
+            break
             
             # Check for error
             if "error" in poll_data:
@@ -716,20 +722,40 @@ def invoke_video(request_data):
             error_msg = poll_data["error"].get("message", "Unknown error")
             return {"status": False, "message": f"Video generation failed: {error_msg}"}
         
+        # Check for errors in response as well
         response_data = poll_data.get("response", {})
-        generated_samples = response_data.get("generateVideoResponse", {}).get("generatedSamples", [])
+        if isinstance(response_data, dict) and "error" in response_data:
+            error_msg = response_data["error"].get("message", "Unknown error")
+            return {"status": False, "message": f"Video generation failed in response: {error_msg}"}
         
+        # Try multiple response structures
+        generated_samples = None
+        
+        # Structure 1: generateVideoResponse.generatedSamples
         if not generated_samples:
-            # Try alternative response structure
+            generated_samples = response_data.get("generateVideoResponse", {}).get("generatedSamples", [])
+        
+        # Structure 2: predictions array
+        if not generated_samples:
             predictions = response_data.get("predictions", [])
             if predictions:
                 generated_samples = predictions
         
+        # Structure 3: Direct response array
+        if not generated_samples and isinstance(response_data, list):
+            generated_samples = response_data
+        
+        # Structure 4: Check if response itself is the samples
+        if not generated_samples and "video" in response_data:
+            generated_samples = [response_data]
+        
         if not generated_samples:
+            # Include full response in error for debugging
+            import json
+            debug_info = json.dumps(poll_data, indent=2, default=str)
             return {
                 "status": False,
-                "message": "Video generation completed but no videos were generated.",
-                "debug_response": poll_data
+                "message": f"Video generation completed but no videos were generated. Response structure: {debug_info[:500]}"
             }
         
         print(f"🎬 Generated {len(generated_samples)} video(s)")
