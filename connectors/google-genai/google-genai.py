@@ -638,6 +638,9 @@ def invoke_video(request_data):
     speaker_personality_description = params.get("speaker_personality_description", "")
     home_team = params.get("home_team", "")
     speaker_team_name = params.get("speaker_team_name", "")
+    home_animal = params.get("home_animal", "")
+    away_animal = params.get("away_animal", "")
+    speaker_animal = params.get("speaker_animal", "")
     
     # API key is required
     api_key = headers.get("api_key")
@@ -661,6 +664,9 @@ def invoke_video(request_data):
         prompt = prompt.replace("{{speaker_personality_description}}", str(speaker_personality_description))
         prompt = prompt.replace("{{home_team}}", str(home_team))
         prompt = prompt.replace("{{speaker_team_name}}", str(speaker_team_name))
+        prompt = prompt.replace("{{home_animal}}", str(home_animal))
+        prompt = prompt.replace("{{away_animal}}", str(away_animal))
+        prompt = prompt.replace("{{speaker_animal}}", str(speaker_animal))
         print(f"🔄 Template variables substituted in prompt")
     
     # Retry loop for handling empty video responses
