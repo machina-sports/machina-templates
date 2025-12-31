@@ -14,10 +14,8 @@ workflow:
       bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
   inputs:
     eventCode: $.get('eventCode')
-    model_name: $.get('model_name', 'veo-3.1-fast-generate-preview')
-    aspect_ratio: $.get('aspect_ratio', '9:16')
-    duration_seconds: $.get('duration_seconds', 8)
-    poll_interval: $.get('poll_interval', 15)
+    model_name: $.get('model_name') or 'veo-3.1-generate-preview'
+    poll_interval: $.get('poll_interval') or 15
   outputs:
     workflow-status: $.get('workflow_executed_status', 'executed')
     podcast_videos_document_id: $.get('podcast_videos_document_id')
@@ -73,8 +71,6 @@ workflow:
         command: invoke_video
       inputs:
         model_name: $.get('model_name')
-        aspect_ratio: $.get('aspect_ratio')
-        duration_seconds: $.get('duration_seconds')
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url')
         home_team: $.get('home_team')
@@ -99,8 +95,6 @@ workflow:
         value: $.get('turns', [])
       inputs:
         model_name: $.get('model_name')
-        aspect_ratio: $.get('aspect_ratio')
-        duration_seconds: $.get('duration_seconds')
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_podcast_frame_url')
         speaker_team: $.get('home_team') if $.get('turn_item', {}).get('speaker', 'HOME') == 'HOME' else $.get('away_team')
@@ -123,8 +117,6 @@ workflow:
         command: invoke_video
       inputs:
         model_name: $.get('model_name')
-        aspect_ratio: $.get('aspect_ratio')
-        duration_seconds: $.get('duration_seconds')
         poll_interval: $.get('poll_interval')
         image_path: $.get('home_podcast_frame_url')
         home_team: $.get('home_team')
@@ -179,8 +171,6 @@ workflow:
             'home_team': $.get('home_team', ''),
             'away_team': $.get('away_team', ''),
             'model_name': $.get('model_name'),
-            'aspect_ratio': $.get('aspect_ratio'),
-            'duration_seconds': $.get('duration_seconds'),
             'final_video_url': $.get('final_video_url'),
             'consolidated_filename': $.get('consolidated_filename'),
             'segments': {

@@ -547,6 +547,9 @@ def invoke_video(request_data):
     """
     Generate videos using Google's Veo model.
     
+    Follows Google's official example pattern:
+    https://ai.google.dev/gemini-api/docs/video
+    
     Supports both AI Studio (default) and Vertex AI providers.
     
     Parameters:
@@ -558,11 +561,7 @@ def invoke_video(request_data):
         - "veo-3.0-fast-generate-001" (Veo 3 Fast)
         - "veo-2.0-generate-001" (Veo 2 - 720p, 5-8s, up to 2 videos)
     - prompt: Required - Text prompt describing the video to generate
-    - aspect_ratio: Optional - e.g., "16:9", "9:16" (default: "16:9")
-    - negative_prompt: Optional - What to avoid in the video
-    - duration_seconds: Optional - Video duration (4, 6, or 8 seconds depending on model)
-    - number_of_videos: Optional - Number of videos to generate (1 for Veo 3.x, up to 2 for Veo 2)
-    - image_path: Optional - Input image for image-to-video generation
+    - image_path: Optional - Input image URL or path for image-to-video generation
     - poll_interval: Optional - Seconds between status checks (default: 10)
     - output_path: Optional - Custom output path for the video
     
@@ -586,17 +585,11 @@ def invoke_video(request_data):
     
     # Get parameters
     prompt = params.get("prompt")
-    model_name = params.get("model_name", "veo-3.1-fast-generate-preview")
+    model_name = params.get("model_name", "veo-3.1-generate-preview")
     poll_interval = params.get("poll_interval", 10)  # seconds
     output_path = params.get("output_path")  # Optional custom output path
     
-    # Video configuration options (aligned with invoke_image)
-    aspect_ratio = params.get("aspect_ratio", "16:9")  # e.g., "16:9", "9:16"
-    negative_prompt = params.get("negative_prompt")  # What to avoid
-    duration_seconds = params.get("duration_seconds", 8)  # 5 or 8 seconds
-    number_of_videos = params.get("number_of_videos", 1)  # Number of videos to generate
-    
-    # Input image support for image-to-video (aligned with invoke_image)
+    # Input image support for image-to-video
     image_path = params.get("image_path")
     
     if not prompt:
@@ -643,14 +636,9 @@ def invoke_video(request_data):
         
         print(f"🎬 Starting video generation with model: {model_name}")
         print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
-        if aspect_ratio:
-            print(f"📐 Aspect ratio: {aspect_ratio}")
-        if negative_prompt:
-            print(f"🚫 Negative prompt: {negative_prompt[:50]}..." if len(negative_prompt) > 50 else f"🚫 Negative prompt: {negative_prompt}")
-        print(f"⏱️ Duration: {duration_seconds} seconds")
-        print(f"🎞️ Number of videos: {number_of_videos}")
         
         # Prepare input image if provided (image-to-video)
+        # Following Google's pattern: image=image.parts[0].as_image()
         input_image = None
         if image_path:
             print(f"🖼️ Processing input image: {image_path}")
@@ -691,42 +679,27 @@ def invoke_video(request_data):
                 elif image_path.lower().endswith(".webp"):
                     mime_type = "image/webp"
                 
-                input_image = types.Image(
-                    image_bytes=image_data,
-                    mime_type=mime_type,
-                )
-                print(f"✅ Input image prepared ({mime_type})")
+                # Create Image object for video generation
+                # Use types.Image with image_bytes (matching SDK pattern)
+                input_image = types.Image(image_bytes=image_data)
+                print(f"✅ Input image prepared for video generation ({mime_type})")
         
-        # Build generation config
-        config = types.GenerateVideosConfig(
-            aspect_ratio=aspect_ratio,
-            number_of_videos=number_of_videos,
-        )
-        
-        # Add optional config parameters
-        if negative_prompt:
-            config.negative_prompt = negative_prompt
-        
-        # Note: duration_seconds might not be supported by all models/configs
-        # Adding it conditionally to avoid errors
-        try:
-            config.duration_seconds = duration_seconds
-        except AttributeError:
-            print(f"⚠️ duration_seconds not supported for this model, using default")
-        
-        # Start video generation with config
-        generation_params = {
-            "model": model_name,
-            "prompt": prompt,
-            "config": config,
-        }
-        
-        # Add input image if provided (image-to-video)
+        # Start video generation - simplified to match Google's example exactly
+        # Google example: client.models.generate_videos(model=..., prompt=..., image=...)
+        # Note: Do NOT pass config object - Google's example doesn't use it
         if input_image:
-            generation_params["image"] = input_image
             print("🖼️ Using input image for image-to-video generation")
-        
-        operation = client.models.generate_videos(**generation_params)
+            operation = client.models.generate_videos(
+                model=model_name,
+                prompt=prompt,
+                image=input_image,
+            )
+        else:
+            print("📝 Using text-only prompt for video generation")
+            operation = client.models.generate_videos(
+                model=model_name,
+                prompt=prompt,
+            )
         
         print(f"⏳ Video generation operation started. Polling every {poll_interval} seconds...")
         
@@ -806,8 +779,6 @@ def invoke_video(request_data):
                     "video_format": "MP4",
                     "prompt": prompt,
                     "model": model_name,
-                    "aspect_ratio": aspect_ratio,
-                    "duration_seconds": duration_seconds,
                     "input_image_path": image_path if image_path else None,
                 },
                 "message": "Video generated successfully.",
@@ -821,8 +792,6 @@ def invoke_video(request_data):
                     "video_format": "MP4",
                     "prompt": prompt,
                     "model": model_name,
-                    "aspect_ratio": aspect_ratio,
-                    "duration_seconds": duration_seconds,
                     "input_image_path": image_path if image_path else None,
                 },
                 "message": f"{len(video_results)} videos generated successfully.",
