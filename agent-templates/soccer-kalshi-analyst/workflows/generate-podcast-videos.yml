@@ -78,6 +78,7 @@ workflow:
           "Animated podcast scene. A {{home_team}} mascot character is speaking passionately in a podcast studio with dark acoustic panels and neon lighting.\n\nThe mascot is delivering this dialogue with emotion: {{greetings_intro_home}}\n\nThe character should be animated, expressive, gesturing while speaking. Mouth movements synced to speaking. Camera focuses on the mascot positioned on the LEFT side of frame, looking RIGHT toward conversation partner. Podcast microphone visible. Warm lighting with blue/purple accents. Professional podcast atmosphere."
       outputs:
         intro_video_path: $.get('video_path')
+        intro_raw_api_response: $.get('raw_api_response') or $.get('data', {}).get('raw_api_response')
 
     # 4. Generate TURN videos (foreach over turns array)
     - type: connector
