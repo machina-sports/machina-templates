@@ -556,13 +556,19 @@ def invoke_video(request_data):
         - "veo-3.0-generate-001" (Veo 3 - 720p/1080p 16:9 only, 8s)
         - "veo-3.0-fast-generate-001" (Veo 3 Fast)
         - "veo-2.0-generate-001" (Veo 2 - 720p, 5-8s, up to 2 videos)
-    - prompt: Required - Text prompt describing the video to generate
+    - prompt: Required - Text prompt describing the video to generate.
+              Supports template variables: {{dialogue}}, {{speaker_team}}, {{previous_dialogue}}
     - image_path: Optional - Input image URL or path for image-to-video generation
     - poll_interval: Optional - Seconds between status checks (default: 10)
     - output_path: Optional - Custom output path for the video
     - max_retries: Optional - Maximum retry attempts for empty video responses (default: 3)
     - retry_delay: Optional - Seconds to wait between retries (default: 5)
     - api_key: Required - Get from https://aistudio.google.com/apikey
+    
+    Template Variables (for prompt substitution):
+    - dialogue: Optional - Dialogue text to substitute for {{dialogue}} in prompt
+    - speaker_team: Optional - Team name to substitute for {{speaker_team}} in prompt
+    - previous_dialogue: Optional - Previous dialogue to substitute for {{previous_dialogue}} in prompt
     
     Note: Request latency varies from 11 seconds to 6 minutes during peak hours.
     Generated videos are stored on server for 2 days before removal.
@@ -585,6 +591,11 @@ def invoke_video(request_data):
     # Input image support for image-to-video
     image_path = params.get("image_path")
     
+    # Template variables for prompt substitution
+    dialogue = params.get("dialogue", "")
+    speaker_team = params.get("speaker_team", "")
+    previous_dialogue = params.get("previous_dialogue", "")
+    
     # API key is required
     api_key = headers.get("api_key")
     
@@ -593,6 +604,13 @@ def invoke_video(request_data):
     
     if not prompt:
         return {"status": False, "message": "Prompt is required for video generation."}
+    
+    # Substitute template variables in prompt
+    if "{{" in prompt:
+        prompt = prompt.replace("{{dialogue}}", str(dialogue))
+        prompt = prompt.replace("{{speaker_team}}", str(speaker_team))
+        prompt = prompt.replace("{{previous_dialogue}}", str(previous_dialogue))
+        print(f"🔄 Template variables substituted in prompt")
     
     # Retry loop for handling empty video responses
     video_results = None  # Initialize outside loop
