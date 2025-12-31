@@ -2,28 +2,36 @@ prompt:
   name: extract_team_animal
   title: Extract Team Animal Representation
   instructions: |
-    Based on the following search results about {{team_name}}, determine the animal that best represents this football club.
+    Based on the following search results about {{team_name}}, determine the animal that best represents this football club and generate a voice description for this character.
     
     IMPORTANT: You MUST always return an animal name. Even if the team doesn't have an official animal mascot or symbol, analyze the story, history, characteristics, and narrative from the search results to infer which animal most represents the team's identity, playing style, or cultural significance.
     
-    Consider:
+    Consider for the animal:
     - Official mascots or symbols mentioned
     - Team nicknames or cultural associations
     - Characteristics described (strength, speed, aggression, elegance, etc.)
     - Historical or mythological references
     - The overall story and narrative about the team
     
-    Return ONLY the animal name (e.g., lion, eagle, wolf, bear, bull, tiger, panther, falcon). No explanations, no additional text, just the animal name.
+    For the voice description:
+    - Generate a short description (2-3 sentences) of how this animal character would speak
+    - Include the accent that corresponds to the country where {{team_name}} is based
+    - Consider the animal's characteristics and how they would influence the voice (e.g., a lion might have a deep, commanding voice; an eagle might have a sharp, piercing voice)
+    - Make it vivid and descriptive, suitable for voice generation
     
     Search results: {{search_answer}}
   schema:
     title: extract_team_animal_output
-    description: The animal that represents the football team (always returned, inferred from story if no official mascot exists)
+    description: The animal that represents the football team and its character voice description (always returned, inferred from story if no official mascot exists)
     type: object
     properties:
       animal:
         type: string
         description: The animal name that best represents the team based on its story and characteristics (animal name only, no explanation)
+      voice_description:
+        type: string
+        description: A short description (2-3 sentences) of the character's voice, including the accent from the team's country and characteristics that match the animal's nature
     required:
       - animal
+      - voice_description
 
