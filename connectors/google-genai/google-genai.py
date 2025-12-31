@@ -178,6 +178,17 @@ def invoke_image(request_data):
     model_name = params.get("model_name") or "gemini-2.5-flash-image-preview"
     aspect_ratio = params.get("aspect_ratio")  # e.g., "16:9", "1:1", "9:16"
 
+    # Get template variables for replacement
+    home_team = params.get("home_team")
+    away_team = params.get("away_team")
+
+    # Substitute template variables in prompt
+    if "{{" in prompt:
+        if home_team:
+            prompt = prompt.replace("{{home_team}}", str(home_team))
+        if away_team:
+            prompt = prompt.replace("{{away_team}}", str(away_team))
+
     try:
         client = genai.Client(api_key=api_key)
 

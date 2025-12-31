@@ -56,7 +56,8 @@ workflow:
       inputs:
         aspect_ratio: "'9:16'"
         home_team: $.get('home_team')
-        model_name: "'gemini-2.5-flash-image-preview'"
+        model_name: "'gemini-3-pro-image-preview'"
+        home_team: $.get('home_team')
         prompt: |
           "Generate a PHOTOREALISTIC image of a strong, athletic animal character representing {{home_team}} football club in a podcast studio setting.\n\nCHARACTER DESIGN:\n- Choose an animal that symbolically represents {{home_team}} (lion, eagle, wolf, bear, bull, tiger, etc. based on the team's identity, colors, or region)\n- The character is an animal standing upright with human-like posture\n- Strong and athletic build like a professional athlete\n- Photorealistic rendering: real fur or skin texture, natural lighting\n- Expressive face with human-like features capable of showing emotions\n- Intelligent eyes with depth and personality\n\nCHARACTER POSE:\n- Wearing a fitted team jersey or casual clothing\n- Black over-ear headphones\n- Confident, charismatic expression - mouth slightly open as if speaking enthusiastically\n- Positioned LEFT side of frame, body tilted 15-20 degrees to the RIGHT\n- Looking toward someone across the table (not at camera)\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-left\n- Blue/purple RGB accent lighting on back wall\n- Silver podcast microphone visible bottom-right\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on LEFT, looking RIGHT\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nSTYLE: Photorealistic, NOT cartoon or animated. Must look like a real living character. Must look RIGHT not at camera."
       outputs:
@@ -73,7 +74,8 @@ workflow:
       inputs:
         aspect_ratio: "'9:16'"
         away_team: $.get('away_team')
-        model_name: "'gemini-2.5-flash-image-preview'"
+        model_name: "'gemini-3-pro-image-preview'"
+        away_team: $.get('away_team')
         prompt: |
           "Generate a PHOTOREALISTIC image of a strong, athletic animal character representing {{away_team}} football club in a podcast studio setting.\n\nCHARACTER DESIGN:\n- Choose an animal that symbolically represents {{away_team}} (lion, eagle, wolf, bear, bull, tiger, etc. based on the team's identity, colors, or region)\n- MUST BE A DIFFERENT ANIMAL than typical choices - be creative and match the team's spirit\n- The character is an animal standing upright with human-like posture\n- Strong and athletic build like a professional athlete\n- Photorealistic rendering: real fur or skin texture, natural lighting\n- Expressive face with human-like features capable of showing emotions\n- Intelligent eyes with depth and personality\n\nCHARACTER POSE:\n- Wearing team colors or fitted jersey\n- Black over-ear headphones\n- Skeptical or competitive expression - slight smirk, one eyebrow raised\n- Positioned RIGHT side of frame, body tilted 15-20 degrees to the LEFT\n- Looking toward someone across the table (not at camera)\n- Upper body shot\n\nSTUDIO SETUP:\n- Dark charcoal acoustic foam panels (#2D2D2D) background\n- Warm key light from front-right\n- Blue/purple RGB accent lighting on back wall\n- Silver podcast microphone visible bottom-left\n- Slight background bokeh for depth\n\nCOMPOSITION:\n- 9:16 portrait orientation\n- Character on RIGHT, looking LEFT\n- Medium close-up framing\n- Eye-level camera angle\n- Shallow depth of field\n\nSTYLE: Photorealistic, NOT cartoon or animated. Must look like a real living character. Must look LEFT not at camera."
       outputs:
