@@ -122,6 +122,9 @@ datasets:
   - type: prompt
     path: prompts/podcast_talking_points.yml
 
+  - type: prompt
+    path: prompts/extract_team_animal.yml
+
   # Scripts
   - type: connector
     path: scripts/aggregate_features.yml

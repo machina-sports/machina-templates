@@ -1,0 +1,17 @@
+prompt:
+  name: extract_team_animal
+  title: Extract Team Animal Representation
+  instructions: |
+    Based on the following search results about {{team_name}}, extract the animal that represents this football club.
+    Return only the animal name (e.g., lion, eagle, wolf, bear, bull, tiger).
+    
+    Search results: {{search_answer}}
+  schema:
+    type: object
+    properties:
+      animal:
+        type: string
+        description: The animal that represents the team
+    required:
+      - animal
+

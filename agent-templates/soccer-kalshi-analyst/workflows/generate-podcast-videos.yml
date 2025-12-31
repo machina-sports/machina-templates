@@ -63,8 +63,8 @@ workflow:
         home_search_answer: $.get('answer', '')
 
     # 3. Extract HOME team animal from search results using structured output
-    - type: connector
-      name: extract-home-animal
+    - type: prompt
+      name: extract_team_animal
       description: Extract the animal name from search results using structured output
       condition: $.get('home_search_answer') != ''
       connector:
@@ -75,16 +75,7 @@ workflow:
         provider: vertex_ai
       inputs:
         search_answer: $.get('home_search_answer')
-        home_team: $.get('home_team')
-        prompt: "Based on the following search results about {{home_team}}, extract the animal that represents this football club. Return only the animal name (e.g., lion, eagle, wolf, bear, bull, tiger).\n\nSearch results: {{search_answer}}"
-        output_schema:
-          type: object
-          properties:
-            animal:
-              type: string
-              description: The animal that represents the team
-          required:
-            - animal
+        team_name: $.get('home_team')
       outputs:
         home_animal: $.get('animal', '')
 
@@ -106,8 +97,8 @@ workflow:
         away_search_answer: $.get('answer', '')
 
     # 5. Extract AWAY team animal from search results using structured output
-    - type: connector
-      name: extract-away-animal
+    - type: prompt
+      name: extract_team_animal
       description: Extract the animal name from search results using structured output
       condition: $.get('away_search_answer') != ''
       connector:
@@ -118,16 +109,7 @@ workflow:
         provider: vertex_ai
       inputs:
         search_answer: $.get('away_search_answer')
-        away_team: $.get('away_team')
-        prompt: "Based on the following search results about {{away_team}}, extract the animal that represents this football club. Return only the animal name (e.g., lion, eagle, wolf, bear, bull, tiger).\n\nSearch results: {{search_answer}}"
-        output_schema:
-          type: object
-          properties:
-            animal:
-              type: string
-              description: The animal that represents the team
-          required:
-            - animal
+        team_name: $.get('away_team')
       outputs:
         away_animal: $.get('animal', '')
 

@@ -19,31 +19,67 @@ prompt:
     ### REGIONAL AUTHENTICITY
     Each speaker's slang, expressions, and cultural references should reflect their team's city/region/country. A Barcelona fan sounds different from a Manchester fan, who sounds different from a Boca Juniors fan. Use local expressions, cultural references, and speaking patterns that feel authentic to where the team is from. Don't overdo it—sprinkle regional flavor naturally.
 
+    ### TEXT-TO-SPEECH OPTIMIZATION (CRITICAL FOR VEO3):
+    Write ALL dialogue to be read naturally out loud. Follow these rules:
+    
+    **NUMBERS:**
+    - ALWAYS write numbers as words: "three-one", "two-nil", "one-one", "five goals"
+    - NEVER use digits: "3-1", "2-0", "1-1", "5 goals"
+    - Write percentages as words: "forty-one percent" not "41%" or "41.5%"
+    
+    **NO ALL CAPS FOR EMPHASIS:**
+    - Do NOT use ALL CAPS for emphasis—it can confuse TTS pronunciation
+    - Use natural emphasis through word choice, exclamation marks, and punctuation instead
+    - Let the TTS system handle natural stress patterns
+    
+    **AVOID THESE (TTS WON'T READ PROPERLY):**
+    - Single letters as words: "take the L" → "take the loss" or "take an L"
+    - Abbreviations: "vs" → "versus", "vs." → "versus"
+    - Symbols: "&" → "and", "+" → "plus"
+    - Acronyms without explanation: "UCL" → "Champions League"
+    - Roman numerals: "III" → "three"
+    
+    **PUNCTUATION FOR TTS:**
+    - Use ellipses (...) for natural pauses
+    - Use dashes (—) for interruptions or quick transitions
+    - Use exclamation marks (!) for energy
+    - Use question marks (?) naturally
+    - Avoid excessive punctuation that might confuse TTS
+    
+    **NAMES AND TEAMS:**
+    - Use full team names when first mentioned, then can use shorter versions
+    - Player names: Use full names or common nicknames that TTS recognizes
+    - Avoid unusual spellings or made-up words
+    
+    **CONTRACTIONS (GOOD FOR TTS):**
+    - Use natural contractions: "we're", "you're", "don't", "can't", "won't", "that's", "it's", "I'm", "I'll"
+    - These sound more natural when read aloud
+
     ### DIALOGUE STRUCTURE (CRITICAL - READ CAREFULLY)
     
     **GREETINGS_INTRO_HOME (REQUIRED):**
-    This is the opening line from the HOME speaker talking DIRECTLY to the AWAY fan. You're at a pub, addressing YOUR MATE who supports the other team.
+    This is the opening line from the HOME speaker talking directly to the AWAY fan. You're at a pub, addressing your mate who supports the other team.
     
     NEVER USE (WILL BE REJECTED):
     - "Welcome to..." 
-    - "my [team] fans" (you're not addressing fans, you're talking to ONE person)
+    - "my [team] fans" (you're not addressing fans, you're talking to one person)
     - "We're facing..." or "We're hosting..." without mentioning "your [team]"
     - Any narrator/commentator style
     
     MUST INCLUDE BOTH TEAMS:
-    - "my [HOME TEAM]" AND "your [AWAY TEAM]" in the same sentence
-    - You're talking TO the away fan, not about them
+    - "my [home team]" AND "your [away team]" in the same sentence
+    - You're talking to the away fan, not about them
     
     MUST START WITH ONE OF THESE PATTERNS:
     - "Alright, my [team] hosting your [team]..."
     - "So we've got my [team] against your [team]..."
-    - "Ok, my [team] vs your [team]..."
+    - "Ok, my [team] versus your [team]..."
     - "Mate, my [team] taking on your [team]..."
     
-    Examples:
+    Examples (TTS-optimized):
     - "Alright, my Nottingham Forest hosting your Everton... mate, I'm sweating bullets here! No Wood, no Awoniyi?"
-    - "So we've got my Chelsea against your Bournemouth coming up... and honestly? This is gonna be a FEAST for us!"
-    - "Ok, my Arsenal vs your Spurs... you're about to get absolutely cooked tonight, I'm calling it now."
+    - "So we've got my Chelsea against your Bournemouth coming up... and honestly? This is gonna be a feast for us!"
+    - "Ok, my Arsenal versus your Spurs... you're about to get absolutely cooked tonight, I'm calling it now."
     
     **TURNS ARRAY (MIDDLE DIALOGUE):**
     This is the main conversation between HOME and AWAY speakers, alternating turns.
@@ -53,70 +89,114 @@ prompt:
       - Be 14-22 words max (fits in 8-second video clip)
     
     EVERY LINE MUST START WITH A REACTION WORD (MANDATORY):
-    - "Nah...", "Nah nah nah...", "Come on...", "Come ON..."
+    - "Nah...", "Nah nah nah...", "Come on..."
     - "Hold up...", "Wait wait wait...", "Look...", "Mate..."
     - "Bruv...", "Oi...", "Listen...", "Honestly..."
+    
+    **CONVERSATIONAL FLOW (CRITICAL FOR ENGAGEMENT):**
+    Make it feel like a REAL pub conversation, not a scripted debate:
+    - Use contractions: "we're", "you're", "don't", "can't", "won't", "that's", "it's"
+    - Shorter, punchier sentences. Break up long thoughts with natural pauses (ellipses or dashes)
+    - React to what the other person just said—don't just state facts
+    - Use casual interjections: "I mean...", "like...", "right?", "innit?", "yeah but..."
+    - Build on each other's energy—if one person is hyped, the other matches or counters that energy
+    - Natural interruptions and pushback: "Hold up...", "Wait wait wait...", "Nah nah nah..."
     
     WILL BE REJECTED IF:
     - Line starts with "We are...", "It's a...", "I'm actually..."
     - Line sounds like analysis instead of banter
     - Line has no energy or exclamations
+    - Line sounds too formal or scripted (e.g., "so prepare for a masterclass" instead of "he's gonna cook you")
+    - Line doesn't react to what the other person just said
 
-    **BANTER EXAMPLES (COPY THIS ENERGY):**
-    - "Nah nah nah, you can't be serious right now—your defense is COOKED!"
-    - "Hold up, hold up—we're missing our entire spine and you're STILL scared of us?"
-    - "Come ON mate, your attack without Wood is like a car without an engine!"
-    - "Look, I'm not gonna lie, we've been absolutely tragic... but you lot are WORSE!"
+    **BANTER EXAMPLES (COPY THIS ENERGY - TTS OPTIMIZED):**
+    - "Nah nah nah, you can't be serious right now—your defense is cooked!"
+    - "Hold up, hold up—we're missing our entire spine and you're still scared of us?"
+    - "Come on mate, your attack without Wood is like a car without an engine!"
+    - "Look, I'm not gonna lie, we've been absolutely tragic... but you lot are worse!"
     - "Bruv, your backline has more holes than Swiss cheese, don't even start!"
-    - "Wait wait wait—you think Grealish is gonna save you? That's JOKES!"
+    - "Wait wait wait—you think Grealish is gonna save you? That's jokes!"
+    
+    **CONVERSATIONAL EXAMPLES (MORE NATURAL FLOW - TTS OPTIMIZED):**
+    - "Look, we just put five past Udinese... and your keeper's out? This is gonna be messy!"
+    - "Nah mate, you haven't won away all season—don't act like you're prime Real Madrid now!"
+    - "Come on, that stat's ancient history! Our attack's finally clicking, Gudmundsson's pulling strings!"
+    - "Wait wait wait—your whole defense is missing! Ranieri and Mari? We're getting Delprato back tonight!"
+    - "Bruv, it doesn't matter who's at the back when we've got Gosens and Kean ready to outscore anything!"
+    - "Hold up, this game's pure chaos... and the math says my boys are actually a value bet!"
 
     **CLOSING_CTA (REQUIRED):**
     Final line that directly asks fans to comment. Keep it casual, direct, and viral.
+    
+    CRITICAL FOR TEXT-TO-SPEECH:
+    - Do NOT use ALL CAPS for emphasis—it can confuse TTS pronunciation
+    - Write numbers as words: "three-one", "two-nil", "one-one"
+    - Avoid single letters: "take the L" → "take a loss" or rephrase
+    - Keep it natural and conversational, not robotic
+    - Use natural emphasis through word choice and punctuation instead
     
     NEVER USE THESE PHRASES (WILL BE REJECTED):
     - "Let us know..."
     - "Will [X] work or will [Y] prevail?"
     - "Will [team] survive or will [team] capitalize?"
     - Any formal question format
+    - Digits for scores (use words: "three-one" not "3-1")
     
-    MUST USE ONE OF THESE PATTERNS:
-    - "Drop YOUR prediction in the comments..."
-    - "What do YOU think? Tell us..."
+    PATTERN OPTIONS (these are examples—vary your approach):
+    - "Drop your prediction in the comments..."
+    - "What do you think? Tell us..."
     - "Now it's your turn—comment..."
-    - "[Score prediction]. Now drop YOUR prediction..."
+    - "[Score prediction]. Now drop your prediction..."
+    - "[Score prediction]. What do you think? Drop your prediction below!"
+    - "That's my call. Now drop your score prediction in the comments!"
     
-    Examples:
-    - "We're taking three points! Now drop YOUR prediction in the comments—who you got?"
-    - "Fine, I'll take the L. 1-1 draw. Now comment YOUR score prediction below!"
-    - "That's my take—2-0 to us. What do YOU think? Tell us in the comments!"
+    EXAMPLES (note: these are just examples—create variations that feel natural, TTS-optimized):
+    - "We're taking three points! Now drop your prediction in the comments—who you got?"
+    - "Fine, I'll take a loss on this one. One-one draw. Now comment your score prediction below!"
+    - "That's my take—two-nil to us. What do you think? Tell us in the comments!"
+    - "Backup keeper survives or Kean feasts? Drop your prediction below!"
+    - "Three-one to us, I'm calling it. Now drop your prediction in the comments!"
 
-    ### EXAMPLE OUTPUT STRUCTURE:
+    ### EXAMPLE OUTPUT STRUCTURE (TTS-OPTIMIZED):
     
-    The greetings_intro_home MUST mention both teams: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a FEAST for us!"
+    The greetings_intro_home MUST mention both teams: "Alright, my Chelsea hosting your Bournemouth... mate, this is gonna be a feast for us!"
     
-    The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD:
+    The turns array should contain alternating HOME/AWAY dialogue. EVERY LINE STARTS WITH A REACTION WORD and feels conversational:
     - AWAY: "Hold up, hold up—don't get too cocky! We score goals away, that's just facts!"
-    - HOME: "Nah mate, you also CONCEDE three goals a game on the road! That's not a defense, that's a charity!"
-    - AWAY: "Look, fair enough, our backline has been absolutely tragic. But Semenyo's gonna COOK your left-back!"
-    - HOME: "Come ON, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
+    - HOME: "Nah mate, you also concede three goals a game on the road! That's not a defense, that's a charity!"
+    - AWAY: "Look, fair enough, our backline's been absolutely tragic... but Semenyo's gonna cook your left-back!"
+    - HOME: "Come on, Fofana's back and he's gonna lock that down. Your boy's getting pocketed tonight!"
     - AWAY: "Bruv, you're dreaming! We've scored in every away game this month!"
     - HOME: "Wait wait wait—scored yes, but you've also shipped goals like it's Black Friday!"
-    - Continue alternating for 8-10 total turns
+    - Continue alternating for 8-10 total turns with natural flow and reactions
     
-    The closing_cta should be: "Fine, I'll take the L on this one. 3-1 Chelsea. Now drop YOUR prediction in the comments—who you got?"
+    The closing_cta should feel natural and conversational (this is one example—vary it):
+    - "Fine, I'll take a loss on this one. Three-one Chelsea. Now drop your prediction in the comments—who you got?"
+    - "Backup keeper survives or Kean feasts? Drop your prediction below!"
+    - "That's my call—two-nil to us. What do you think? Tell us in the comments!"
     
     ### VALIDATION CHECKLIST (VERIFY BEFORE OUTPUT):
     - greetings_intro_home includes BOTH "my [team]" AND "your [team]"
     - greetings_intro_home does NOT say "my [team] fans" (talking to one person, not fans)
     - greetings_intro_home does NOT contain "Welcome to"
-    - closing_cta uses "Drop YOUR prediction...", "What do YOU think...", or "Now it's your turn..."
     - closing_cta does NOT contain "Let us know" or "Will [X] or will [Y]"
+    - closing_cta feels natural and conversational, not robotic
     - turns array has 8-10 turns
     - Alternating HOME/AWAY speakers in turns
     - EVERY turn starts with a reaction word: "Nah", "Come on", "Hold up", "Wait", "Look", "Mate", "Bruv", "Oi", "Listen", "Honestly"
     - NO turn starts with "We are...", "It's a...", "I'm actually..."
     - All lines use "my [team]", "we", "your [team]" (never "the home team")
     - All lines are 14-22 words
+    - Dialogue feels conversational with contractions, natural flow, and reactions to previous lines
+    - Lines don't sound too formal or scripted—they feel like real pub banter
+    
+    **TTS OPTIMIZATION CHECKS:**
+    - All numbers written as words: "three-one" not "3-1", "two-nil" not "2-0"
+    - Percentages written as words: "forty-one percent" not "41%" or "41.5%"
+    - No single letters as words: "take the L" → "take a loss" or rephrase
+    - No abbreviations: "vs" → "versus"
+    - NO ALL CAPS used for emphasis (let TTS handle natural stress)
+    - No symbols that TTS won't read: "&" → "and"
   schema:
     title: podcast_dialogue_generator_output
     type: object
@@ -130,7 +210,7 @@ prompt:
         description: "Name of the away team"
       greetings_intro_home:
         type: string
-        description: "Opening from HOME speaker. MUST include 'my [home team]' AND 'your [away team]'. NEVER 'Welcome to' or 'my [team] fans'. (14-22 words)"
+        description: "Opening from HOME speaker. MUST include 'my [home team]' AND 'your [away team]'. NEVER 'Welcome to' or 'my [team] fans'. TTS-optimized: write numbers as words, use contractions. (14-22 words)"
       turns:
         type: array
         minItems: 8
@@ -145,7 +225,7 @@ prompt:
               enum: ["HOME", "AWAY"]
             text:
               type: string
-              description: "MUST start with reaction word (Nah/Come on/Hold up/Wait/Look/Mate/Bruv). Unhinged banter, 14-22 words"
+              description: "MUST start with reaction word (Nah/Come on/Hold up/Wait/Look/Mate/Bruv). Unhinged banter, 14-22 words. TTS-optimized: numbers as words, contractions, NO ALL CAPS for emphasis, no abbreviations or single letters"
       closing_cta:
         type: string
-        description: "Final line with CTA. MUST use 'Drop YOUR prediction...' or 'What do YOU think...' - NEVER 'Let us know' or 'Will X or will Y' (14-22 words)"
+        description: "Final line with CTA. NO ALL CAPS for emphasis. Write numbers as words (three-one, two-nil). Patterns like 'Drop your prediction...' are examples—vary naturally. NEVER 'Let us know' or 'Will X or will Y'. Keep conversational (14-22 words)"
