@@ -53,8 +53,8 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
+        model: "gemini-3-flash-preview"
       inputs:
-        model_name: "'gemini-3-flash-preview'"
         search_query: |
           (
             "Which animal represents " + str($.get('home_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."
@@ -101,8 +101,8 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
+        model: "gemini-3-flash-preview"
       inputs:
-        model_name: "'gemini-3-flash-preview'"
         search_query: |
           (
             "Which animal represents " + str($.get('away_team', '')) + " football club? Search for the team's mascot, symbol, or animal representation."

@@ -387,7 +387,8 @@ def invoke_search(request_data):
 
     location = params.get("location", "global")
 
-    model_name = params.get("model_name")
+    # Get model_name from params first, then check headers (connector config)
+    model_name = params.get("model_name") or headers.get("model")
 
     search_query = params.get("search_query")
     # Date filtering (inclusive).
