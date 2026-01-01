@@ -20,41 +20,39 @@ workflow:
     workflow-status: "'executed'"
   tasks:
 
-    # 1. Search local fixture documents
+    # 1. Search fixtures for this team (home OR away), filtered by date, limited to last N
     - type: document
-      name: search-local-fixtures
-      description: Search for finished fixtures from local database
+      name: search-team-fixtures
+      description: Search team fixtures up to date, sorted desc, limited to last_matches
       config:
         action: search
+        search-limit: "$.get('last_matches', 10)"
+        search-sorters: ["metadata.date", -1]
       filters:
         name: "'league-fixture'"
         metadata.league_id: "str($.get('league_id'))"
         metadata.status: "'FT'"
+        metadata.date: "{'$lte': $.get('date')} if $.get('date') else None"
+        '$or': "[{'metadata.team_home_id': str($.get('team_id'))}, {'metadata.team_away_id': str($.get('team_id'))}]"
       outputs:
-        all_fixture_docs: "$.get('documents', [])"
+        fixtures: |
+          [
+            {
+              'fixture': doc.get('value', {}).get('fixture', {}),
+              'teams': doc.get('value', {}).get('teams', {}),
+              'goals': doc.get('value', {}).get('goals', {}),
+              'score': doc.get('value', {}).get('score', {}),
+              'league': doc.get('value', {}).get('league', {})
+            }
+            for doc in $.get('documents', [])
+          ]
+        fixtures_count: "len($.get('documents', []))"
 
-    # 2. Filter fixtures for this team by date
-    - type: connector
-      name: filter-fixtures
-      description: Filter fixtures for team and apply date/limit
-      condition: "len($.get('all_fixture_docs', [])) > 0"
-      connector:
-        name: soccer-power-ranking-calculator
-        command: filter_fixtures_by_date
-      inputs:
-        fixture_docs: "$.get('all_fixture_docs', [])"
-        team_id: "$.get('team_id')"
-        date: "$.get('date')"
-        last_matches: "$.get('last_matches')"
-      outputs:
-        fixtures: "$.get('fixtures', [])"
-        fixtures_count: "$.get('fixtures_count', 0)"
-
-    # 3. Calculate metrics for this team
+    # 2. Calculate metrics for this team
     - type: connector
       name: calculate-metrics
       description: Calculate raw metrics for this team (without normalization)
-      condition: "len($.get('fixtures', [])) > 0"
+      condition: "$.get('fixtures_count', 0) > 0"
       connector:
         name: soccer-power-ranking-calculator
         command: calculate_team_metrics
@@ -67,7 +65,7 @@ workflow:
       outputs:
         team_metrics: "$.get('team_metrics', {})"
 
-    # 4. Save team metrics document
+    # 3. Save team metrics document
     - type: document
       name: save-team-metrics
       description: Save individual team metrics for later aggregation
