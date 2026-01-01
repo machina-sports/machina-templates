@@ -3,24 +3,63 @@ workflow:
   title: Calculate Power Rankings
   description: Calculate team power rankings based on performance metrics
   inputs:
-    league_id: "$.get('league_id', '39')"
+    league_id: "$.get('league_id', '71')"
     season: "$.get('season', '2025')"
   outputs:
-    rankings: "$.get('power-rankings')"
+    rankings: "$.get('rankings', [])"
+    workflow-status: "'executed'"
   tasks:
+    # 1. Load team statistics
+    - type: document
+      name: load-team-statistics
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'teams-statistics'"
+        metadata.league_id: "str($.get('league_id'))"
+        metadata.season: "str($.get('season'))"
+      outputs:
+        teams_stats: "$.get('documents', [])"
+        teams_count: "len($.get('documents', []))"
+
+    # 2. Calculate power rankings using Python
+    - type: connector
+      name: calculate-rankings
+      condition: "$.get('teams_count', 0) > 0"
+      connector:
+        name: soccer-power-ranking-calculator
+        command: calculate_power_rankings
+      inputs:
+        teams_stats: "$.get('teams_stats', [])"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        rankings: "$.get('rankings', [])"
+        league_stats: "$.get('league_stats', {})"
+
+    # 3. Store calculated rankings
     - type: document
       name: store-power-rankings
-      description: Store calculated power rankings
+      condition: "len($.get('rankings', [])) > 0"
       config:
-        action: update
+        action: save
         embed-vector: false
-        force-update: true
       documents:
         power-rankings: |
           {
-            "league_id": "{{ $.get('league_id') }}",
-            "season": "{{ $.get('season') }}",
-            "updated": "{{ $.now() }}",
-            "rankings": []
+            "title": f"Power Rankings - League {$.get('league_id')} - {$.get('season')}",
+            "league_id": $.get('league_id'),
+            "season": $.get('season'),
+            "updated": datetime.utcnow(),
+            "rankings": $.get('rankings', []),
+            "stats": $.get('league_stats', {}),
+            "status": "active"
           }
+      metadata:
+        league_id: "str($.get('league_id'))"
+        season: "str($.get('season'))"
+        document_type: "'power-rankings'"
+        teams_count: "len($.get('rankings', []))"
 

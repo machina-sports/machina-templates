@@ -1,0 +1,19 @@
+agent:
+  name: soccer-power-ranking-collector
+  title: Soccer Power Ranking Data Collector
+  description: |
+    Agent that collects team statistics from all enabled leagues.
+    Orchestrates data collection workflow for power ranking calculation.
+  context:
+    status: "inactive"
+  workflows:
+  
+    # Execute the complete update-team-stats workflow
+    - name: soccer-power-ranking-update-stats
+      description: Update team statistics for all enabled leagues
+      inputs:
+        environment: "$.get('environment', 'dev')"
+      outputs:
+        update_status: $.get('workflow-status', 'skipped')
+        leagues_processed: $.get('status', 'unknown')
+

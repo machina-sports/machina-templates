@@ -39,9 +39,8 @@ workflow:
       name: "task-update-teams-statistics"
       description: "Update the teams statistics document."
       config:
-        action: "update"
+        action: "save"
         embed-vector: false
-        force-update: true
       documents:
         teams-statistics: |
           {
@@ -57,4 +56,9 @@ workflow:
             }
           }
       metadata:
-        document_type: "'synchronization'"
+        document_type: "'team-statistics'"
+        team_id: "str($.get('team'))"
+        league_id: "str($.get('league'))"
+        season: "str($.get('season'))"
+        team_name: "$.get('team-name', 'Unknown')"
+        league_name: "$.get('league-name', 'Unknown')"

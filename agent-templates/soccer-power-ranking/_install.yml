@@ -23,9 +23,15 @@ setup:
 
 datasets:
 
-  # Agent
+  # Agents
   - type: agent
     path: agents/soccer-power-ranking.yml
+
+  - type: agent
+    path: agents/soccer-power-ranking-setup.yml
+
+  - type: agent
+    path: agents/soccer-power-ranking-collector.yml
 
   # Workflows
   - type: workflow
@@ -34,7 +40,20 @@ datasets:
   - type: workflow
     path: workflows/update-team-stats.yml
 
+  - type: workflow
+    path: workflows/load-power-ranking-leagues-config.yml
+
+  - type: workflow
+    path: workflows/get-league-teams.yml
+
   # Configuration
   - type: workflow
     path: configs/setup-leagues.yml
+
+  - type: workflow
+    path: configs/setup-folders.yml
+
+  # Python Scripts
+  - type: connector
+    path: scripts/power_ranking_calculator.yml
 

@@ -1,22 +1,89 @@
 workflow:
   name: soccer-power-ranking-update-stats
   title: Update Team Stats
-  description: Update team statistics for power ranking calculation
+  description: Update team statistics for power ranking calculation for a specific league
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
   inputs:
-    league_id: "$.get('league_id', '39')"
+    league_id: "$.get('league_id', '71')"
+    season: "$.get('season', '2025')"
   outputs:
+    workflow-status: "'executed'"
     status: "'updated'"
+    total_teams_updated: "len($.get('team_ids', []))"
   tasks:
+
+    # Get teams from API Football
+    - type: connector
+      name: api-football-get-teams
+      description: Get all teams from the specified league
+      connector:
+        name: api-football
+        command: get-teams
+      inputs:
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        team_ids: |
+          [
+            team.get('team', {}).get('id')
+            for team in $.get('response', [])
+            if team.get('team', {}).get('id')
+          ]
+
+    # Get statistics for all teams
+    - type: connector
+      name: get-team-statistics
+      description: Get team statistics from API Football for each team
+      condition: "len($.get('team_ids', [])) > 0"
+      connector:
+        name: api-football
+        command: get-teams/statistics
+      foreach:
+        name: team_id
+        expr: $
+        value: $.get('team_ids', [])
+      inputs:
+        league: "$.get('league_id')"
+        team: "$.get('team_id')"
+        season: "$.get('season')"
+      outputs:
+        teams_stats_list: |
+          [
+            {
+              'data': $.get('response', {}),
+              'title': f"{$.get('response', {}).get('league', {}).get('name', 'Unknown')} - {$.get('response', {}).get('team', {}).get('name', 'Unknown')} - {$.get('response', {}).get('league', {}).get('season', 'Unknown')}",
+              'execution': datetime.utcnow(),
+              'status': 'active',
+              'parameters': {
+                'league': $.get('response', {}).get('league', {}).get('id'),
+                'team': $.get('response', {}).get('team', {}).get('id'),
+                'season': $.get('response', {}).get('league', {}).get('season')
+              },
+              'metadata': {
+                'document_type': 'team-statistics',
+                'team_id': str($.get('response', {}).get('team', {}).get('id', '')),
+                'league_id': str($.get('response', {}).get('league', {}).get('id', '')),
+                'season': str($.get('response', {}).get('league', {}).get('season', '')),
+                'team_name': $.get('response', {}).get('team', {}).get('name', 'Unknown'),
+                'league_name': $.get('response', {}).get('league', {}).get('name', 'Unknown')
+              }
+            }
+          ]
+
+    # Bulk save all team statistics
     - type: document
-      name: store-team-stats
-      description: Store team statistics
+      name: bulk-save-team-statistics
+      description: Save all team statistics in bulk
+      condition: "len($.get('teams_stats_list', [])) > 0"
       config:
-        action: update
+        action: bulk-update
         embed-vector: false
+        force-update: true
+      document_name: "'teams-statistics'"
       documents:
-        team-stats: |
-          {
-            "league_id": "{{ $.get('league_id') }}",
-            "updated": "{{ $.now() }}"
-          }
+        items: "$.get('teams_stats_list', [])"
 

@@ -24,13 +24,6 @@ workflow:
             "environment": "dev",
             "leagues": [
               {
-                "league_id": "39",
-                "league_name": "EPL",
-                "title": "English Premier League",
-                "season": "2025",
-                "enabled": True
-              },
-              {
                 "league_id": "71",
                 "league_name": "Brasileirão",
                 "title": "Brazilian Brasileirão",
@@ -56,30 +49,9 @@ workflow:
             "environment": "prd",
             "leagues": [
               {
-                "league_id": "39",
-                "league_name": "EPL",
-                "title": "English Premier League",
-                "season": "2025",
-                "enabled": True
-              },
-              {
-                "league_id": "135",
-                "league_name": "Serie A",
-                "title": "Italian Serie A",
-                "season": "2025",
-                "enabled": True
-              },
-              {
-                "league_id": "78",
-                "league_name": "Bundesliga",
-                "title": "German Bundesliga",
-                "season": "2025",
-                "enabled": True
-              },
-              {
-                "league_id": "140",
-                "league_name": "La Liga",
-                "title": "Spanish La Liga",
+                "league_id": "71",
+                "league_name": "Brasileirão",
+                "title": "Brazilian Brasileirão",
                 "season": "2025",
                 "enabled": True
               }

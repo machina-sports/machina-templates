@@ -1,0 +1,10 @@
+connector:
+  name: "soccer-power-ranking-calculator"
+  description: "Calculate power rankings for soccer teams based on performance metrics"
+  filename: "power_ranking_calculator.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Calculate Power Rankings"
+      value: "calculate_power_rankings"
+
+

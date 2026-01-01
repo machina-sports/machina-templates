@@ -1,0 +1,80 @@
+workflow:
+  name: soccer-power-ranking-setup-folders
+  title: Soccer Power Ranking - Setup Folders
+  description: UI Folder structure for Soccer Power Ranking documents.
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: install-documents
+      description: Install folders for Team Statistics and Power Rankings.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        doc-structure: |
+          [
+            {
+              "title": "Power Ranking",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "teams-statistics",
+                  "title": "1. Team Statistics",
+                  "description": "Team performance statistics from API Football.",
+                  "category": "Power Ranking",
+                  "metadata": {
+                    "name": ["teams-statistics"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "power-rankings",
+                  "title": "2. Power Rankings",
+                  "description": "Calculated team power rankings by league.",
+                  "category": "Power Ranking",
+                  "metadata": {
+                    "name": ["power-rankings"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "power-ranking-stats-update-summary",
+                  "title": "3. Stats Update Summary",
+                  "description": "Summary of team statistics update runs.",
+                  "category": "Power Ranking",
+                  "metadata": {
+                    "name": ["power-ranking-stats-update-summary"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "Configuration",
+              "isActive": True,
+              "icon": "settings",
+              "items": [
+                {
+                  "name": "power-ranking-leagues-config",
+                  "title": "Leagues Configuration",
+                  "description": "Enabled leagues for power ranking calculation.",
+                  "category": "Configuration",
+                  "metadata": {
+                    "name": ["power-ranking-leagues-config"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
+

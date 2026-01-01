@@ -1,0 +1,24 @@
+agent:
+  name: soccer-power-ranking-setup
+  title: Soccer Power Ranking Setup
+  description: |
+    Setup agent that initializes the power ranking system configuration.
+    Run this agent to create leagues config and folder structure.
+  context:
+    status: "inactive"
+  workflows:
+  
+    # 1) Setup leagues configuration
+    - name: soccer-power-ranking-setup-leagues
+      description: Create power ranking leagues configuration document
+      inputs:
+        environment: "$.get('environment', 'dev')"
+      outputs:
+        leagues_status: $.get('workflow-status', 'skipped')
+
+    # 2) Setup folder structure
+    - name: soccer-power-ranking-setup-folders
+      description: Create folder structure for organizing documents
+      outputs:
+        folders_status: $.get('workflow-status', 'skipped')
+
