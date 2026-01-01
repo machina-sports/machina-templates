@@ -1,0 +1,81 @@
+workflow:
+  name: soccer-power-ranking-folders
+  title: Soccer Power Ranking - Folders
+  description: Configure document structure for Soccer Power Ranking
+  
+  context-variables:
+    debugger:
+      enabled: false
+  
+  outputs:
+    workflow-status: "'executed'"
+  
+  tasks:
+
+    - type: document
+      name: install-documents
+      description: Install document structure for Soccer Power Ranking
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-playground: |
+          [
+            {
+              "title": "Sync Fixtures",
+              "name": "soccer-power-ranking-sync-fixtures",
+              "type": "agent",
+              "description": "Sync all fixtures from API Football to local database"
+            },
+            {
+              "title": "Power Rankings",
+              "name": "soccer-power-ranking-progressive",
+              "type": "agent",
+              "description": "Calculate power rankings using local fixture data"
+            }
+          ]
+        doc-structure: |
+          [
+            {
+              "title": "Soccer Rankings",
+              "isActive": True,
+              "icon": "trophy",
+              "items": [
+                {
+                  "name": "fixtures",
+                  "title": "League Fixtures",
+                  "description": "Synced fixtures from API Football",
+                  "category": "Soccer Rankings",
+                  "metadata": {
+                    "name": ["league-fixture"]
+                  },
+                  "sorters": ['metadata.fixture_date', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "team-metrics",
+                  "title": "Team Metrics",
+                  "description": "Individual team performance metrics",
+                  "category": "Soccer Rankings",
+                  "metadata": {
+                    "name": ["team-progressive-metrics"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "power-rankings",
+                  "title": "Power Rankings",
+                  "description": "Normalized power rankings for all teams",
+                  "category": "Soccer Rankings",
+                  "metadata": {
+                    "name": ["power-rankings-progressive"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
+

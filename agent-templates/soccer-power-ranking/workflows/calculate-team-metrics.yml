@@ -1,0 +1,96 @@
+workflow:
+  name: soccer-power-ranking-calculate-team-metrics
+  title: Calculate Team Metrics
+  description: |
+    Calculate raw performance metrics for a single team based on their last N fixtures.
+    Uses local fixture documents (requires sync first via sync-league-fixtures workflow).
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    team_id: "$.get('team_id')"
+    team_name: "$.get('team_name', '')"
+    team_logo: "$.get('team_logo')"
+    league_id: "$.get('league_id', '71')"
+    season: "$.get('season') if $.get('season') else ($.get('date')[:4] if $.get('date') else None)"
+    date: "$.get('date')"
+    last_matches: "$.get('last_matches', 10)"
+  outputs:
+    team_metrics: "$.get('team_metrics', {})"
+    workflow-status: "'executed'"
+  tasks:
+
+    # 1. Search local fixture documents
+    - type: document
+      name: search-local-fixtures
+      description: Search for finished fixtures from local database
+      config:
+        action: search
+      filters:
+        name: "'league-fixture'"
+        metadata.league_id: "str($.get('league_id'))"
+        metadata.status: "'FT'"
+      outputs:
+        all_fixture_docs: "$.get('documents', [])"
+
+    # 2. Filter fixtures for this team by date
+    - type: connector
+      name: filter-fixtures
+      description: Filter fixtures for team and apply date/limit
+      condition: "len($.get('all_fixture_docs', [])) > 0"
+      connector:
+        name: soccer-power-ranking-calculator
+        command: filter_fixtures_by_date
+      inputs:
+        fixture_docs: "$.get('all_fixture_docs', [])"
+        team_id: "$.get('team_id')"
+        date: "$.get('date')"
+        last_matches: "$.get('last_matches')"
+      outputs:
+        fixtures: "$.get('fixtures', [])"
+        fixtures_count: "$.get('fixtures_count', 0)"
+
+    # 3. Calculate metrics for this team
+    - type: connector
+      name: calculate-metrics
+      description: Calculate raw metrics for this team (without normalization)
+      condition: "len($.get('fixtures', [])) > 0"
+      connector:
+        name: soccer-power-ranking-calculator
+        command: calculate_team_metrics
+      inputs:
+        fixtures: "$.get('fixtures', [])"
+        team_id: "$.get('team_id')"
+        team_name: "$.get('team_name')"
+        team_logo: "$.get('team_logo')"
+        last_matches: "$.get('last_matches')"
+      outputs:
+        team_metrics: "$.get('team_metrics', {})"
+
+    # 4. Save team metrics document
+    - type: document
+      name: save-team-metrics
+      description: Save individual team metrics for later aggregation
+      condition: "$.get('team_metrics') is not None and $.get('team_metrics', {}).get('games', 0) > 0"
+      config:
+        action: save
+        embed-vector: false
+      documents:
+        team-progressive-metrics: |
+          {
+            "title": f"Team Metrics - {$.get('team_name', 'Unknown')} - Last {$.get('last_matches')} matches" + (f" (up to {$.get('date')})" if $.get('date') else ""),
+            "team_metrics": $.get('team_metrics', {}),
+            "league_id": $.get('league_id'),
+            "season": $.get('season'),
+            "date": $.get('date'),
+            "last_matches": $.get('last_matches'),
+            "updated_at": datetime.utcnow()
+          }
+      metadata:
+        document_type: "'team-progressive-metrics'"
+        team_id: "str($.get('team_id'))"
+        team_name: "$.get('team_name', '')"
+        league_id: "str($.get('league_id'))"
+        season: "str($.get('season')) if $.get('season') else 'all'"
+        date: "str($.get('date')) if $.get('date') else 'latest'"
+        last_matches: "str($.get('last_matches'))"

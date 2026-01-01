@@ -6,5 +6,15 @@ connector:
   commands:
     - name: "Calculate Power Rankings"
       value: "calculate_power_rankings"
+    - name: "Calculate Progressive Rankings"
+      value: "calculate_progressive_rankings"
+    - name: "Calculate Team Metrics"
+      value: "calculate_team_metrics"
+    - name: "Aggregate and Normalize Rankings"
+      value: "aggregate_and_normalize"
+    - name: "Filter Fixtures for Sync"
+      value: "filter_fixtures_for_sync"
+    - name: "Filter Fixtures by Date"
+      value: "filter_fixtures_by_date"
 
 

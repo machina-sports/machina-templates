@@ -1,0 +1,84 @@
+workflow:
+  name: soccer-power-ranking-aggregate-rankings
+  title: Aggregate and Normalize Rankings
+  description: |
+    Load team metrics documents and calculate normalized power rankings.
+    Supports optional date filter for point-in-time rankings.
+    Season is optional - when null, matches metrics without season constraint.
+  inputs:
+    league_id: "$.get('league_id', '71')"
+    # Derive season from date if not explicitly provided (to match calculate-team-metrics)
+    season: "$.get('season') if $.get('season') else ($.get('date')[:4] if $.get('date') else None)"
+    date: "$.get('date')"
+    last_matches: "$.get('last_matches', 10)"
+  outputs:
+    rankings: "$.get('rankings', [])"
+    league_stats: "$.get('league_stats', {})"
+    workflow-status: "'executed'"
+  tasks:
+
+    # 1. Load all team metrics documents for this league/season/date
+    - type: document
+      name: load-team-metrics
+      description: Load all team metrics documents for aggregation
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'team-progressive-metrics'"
+        metadata.league_id: "str($.get('league_id'))"
+        metadata.season: "str($.get('season')) if $.get('season') else 'all'"
+        metadata.date: "str($.get('date')) if $.get('date') else 'latest'"
+        metadata.last_matches: "str($.get('last_matches'))"
+      outputs:
+        team_metrics_docs: "$.get('documents', [])"
+        teams_count: "len($.get('documents', []))"
+
+    # 2. Aggregate and normalize rankings using connector
+    - type: connector
+      name: aggregate-rankings
+      description: Apply Min-Max normalization and calculate power scores
+      condition: "len($.get('team_metrics_docs', [])) > 0"
+      connector:
+        name: soccer-power-ranking-calculator
+        command: aggregate_and_normalize
+      inputs:
+        team_metrics: "$.get('team_metrics_docs', [])"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"
+        date: "$.get('date')"
+        last_matches: "$.get('last_matches')"
+      outputs:
+        rankings: "$.get('rankings', [])"
+        league_stats: "$.get('league_stats', {})"
+
+    # 3. Store final power rankings
+    - type: document
+      name: store-power-rankings
+      description: Save normalized power rankings
+      condition: "len($.get('rankings', [])) > 0"
+      config:
+        action: save
+        embed-vector: false
+      documents:
+        power-rankings-progressive: |
+          {
+            "title": f"Progressive Rankings - League {$.get('league_id')}" + (f" - {$.get('season')}" if $.get('season') else "") + (f" - up to {$.get('date')}" if $.get('date') else "") + f" - Last {$.get('last_matches')} matches",
+            "league_id": $.get('league_id'),
+            "season": $.get('season'),
+            "date": $.get('date'),
+            "last_matches": $.get('last_matches'),
+            "calculated_at": datetime.utcnow(),
+            "rankings": $.get('rankings', []),
+            "stats": $.get('league_stats', {}),
+            "status": "active"
+          }
+      metadata:
+        document_type: "'power-rankings-progressive'"
+        league_id: "str($.get('league_id'))"
+        season: "str($.get('season')) if $.get('season') else 'all'"
+        date: "str($.get('date')) if $.get('date') else 'latest'"
+        last_matches: "str($.get('last_matches'))"
+        teams_count: "len($.get('rankings', []))"
+

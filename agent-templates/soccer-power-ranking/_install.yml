@@ -1,59 +1,50 @@
 setup:
   title: Soccer Power Ranking
   description: |
-    AI-powered soccer team power ranking system that analyzes team performance across leagues
-    using statistical modeling and generates dynamic power rankings.
+    AI-powered soccer team power ranking system that analyzes team performance
+    using fixture data and statistical modeling.
   category:
     - sports
     - analytics
     - soccer
   estimatedTime: 2 minutes
   features:
-    - Multi-league team performance analysis
-    - Statistical power ranking computation
-    - Team strength indicators and trends
-    - Dynamic ranking updates based on recent form
+    - Progressive power ranking based on last N matches
+    - Local fixture sync for offline simulations
+    - Point-in-time analysis with date filtering
+    - Min-Max normalization across teams
   integrations:
     - api-football
-    - google-genai
-    - machina-ai
   status: available
   value: agent-templates/soccer-power-ranking
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
 
   # Agents
   - type: agent
-    path: agents/soccer-power-ranking.yml
+    path: agents/soccer-power-ranking-progressive.yml
 
   - type: agent
-    path: agents/soccer-power-ranking-setup.yml
-
-  - type: agent
-    path: agents/soccer-power-ranking-collector.yml
+    path: agents/sync-league-fixtures.yml
 
   # Workflows
   - type: workflow
-    path: workflows/calculate-power-rankings.yml
-
-  - type: workflow
-    path: workflows/update-team-stats.yml
-
-  - type: workflow
-    path: workflows/load-power-ranking-leagues-config.yml
-
-  - type: workflow
     path: workflows/get-league-teams.yml
 
-  # Configuration
   - type: workflow
-    path: configs/setup-leagues.yml
+    path: workflows/calculate-team-metrics.yml
 
   - type: workflow
-    path: configs/setup-folders.yml
+    path: workflows/aggregate-rankings.yml
 
-  # Python Scripts
+  - type: workflow
+    path: workflows/sync-league-fixtures.yml
+
+  # Folders
+  - type: workflow
+    path: _folders.yml
+
+  # Python Connector
   - type: connector
     path: scripts/power_ranking_calculator.yml
-

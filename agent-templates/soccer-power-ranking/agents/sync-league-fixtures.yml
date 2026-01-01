@@ -1,0 +1,25 @@
+agent:
+  name: soccer-power-ranking-sync-fixtures
+  title: Sync League Fixtures
+  description: |
+    Agent to synchronize fixtures from API Football to local documents.
+    Supports incremental sync - only fetches new or updated fixtures.
+    Use this to pre-load fixture data for offline power ranking simulations.
+  context:
+    status: "inactive"
+  context-agent:
+    league_id: $.get('league_id', '71')
+    season: $.get('season', '2025')
+  workflows:
+
+    # Sync all fixtures for the league/season
+    - name: soccer-power-ranking-sync-league-fixtures
+      description: Fetch and store all fixtures from API Football
+      inputs:
+        league_id: $.get('league_id', '71')
+        season: $.get('season', '2025')
+      outputs:
+        fixtures_synced: "$.get('fixtures_synced', 0)"
+        fixtures_total: "$.get('fixtures_total', 0)"
+        sync_status: "'completed'"
+
