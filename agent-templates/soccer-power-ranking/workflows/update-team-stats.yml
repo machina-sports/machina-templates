@@ -33,6 +33,42 @@ workflow:
             for team in $.get('response', [])
             if team.get('team', {}).get('id')
           ]
+        teams_info: |
+          [
+            {
+              'team_id': str(team.get('team', {}).get('id')),
+              'team_name': team.get('team', {}).get('name'),
+              'team_logo': team.get('team', {}).get('logo'),
+              'team_code': team.get('team', {}).get('code'),
+              'team_country': team.get('team', {}).get('country'),
+              'venue_name': team.get('venue', {}).get('name'),
+              'venue_city': team.get('venue', {}).get('city')
+            }
+            for team in $.get('response', [])
+            if team.get('team', {}).get('id')
+          ]
+
+    # Save teams info (with logos)
+    - type: document
+      name: save-teams-info
+      description: Save teams info including logos for the league
+      condition: "len($.get('teams_info', [])) > 0"
+      config:
+        action: save
+        embed-vector: false
+      documents:
+        teams-info: |
+          {
+            'title': f"Teams Info - League {$.get('league_id')} - {$.get('season')}",
+            'league_id': $.get('league_id'),
+            'season': $.get('season'),
+            'teams': $.get('teams_info', []),
+            'updated': datetime.utcnow()
+          }
+      metadata:
+        league_id: "str($.get('league_id'))"
+        season: "str($.get('season'))"
+        document_type: "'teams-info'"
 
     # Get statistics for all teams
     - type: connector

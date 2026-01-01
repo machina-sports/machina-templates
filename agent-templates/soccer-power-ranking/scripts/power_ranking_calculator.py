@@ -18,8 +18,15 @@ def calculate_power_rankings(request_data):
         
         params = request_data.get('params', request_data)
         teams_stats = params.get('teams_stats', [])
+        teams_info = params.get('teams_info', [])
         league_id = params.get('league_id', 'unknown')
         season = params.get('season', 'unknown')
+        
+        # Create lookup for team logos from teams_info
+        team_logos = {
+            str(t.get('team_id')): t.get('team_logo')
+            for t in teams_info
+        }
         
         if not teams_stats:
             return {
@@ -140,6 +147,7 @@ def calculate_power_rankings(request_data):
             rankings.append({
                 'team_id': team['team_id'],
                 'team_name': team['team_name'],
+                'team_logo': team_logos.get(team['team_id']),
                 'power_score': round(power_score, 4),
                 'breakdown': {
                     'outcome_score': round(outcome_score, 4),
@@ -151,6 +159,7 @@ def calculate_power_rankings(request_data):
                     'games': team['games'],
                     'wins': team['wins'],
                     'draws': team['draws'],
+                    'losses': team['games'] - team['wins'] - team['draws'],
                     'win_rate': round(win_rate, 4),
                     'points_per_game': round(points_per_game, 2),
                     'goals_per_game': round(team['goals_per_game'], 2),

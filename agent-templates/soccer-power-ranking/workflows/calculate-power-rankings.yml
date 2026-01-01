@@ -24,7 +24,21 @@ workflow:
         teams_stats: "$.get('documents', [])"
         teams_count: "len($.get('documents', []))"
 
-    # 2. Calculate power rankings using Python
+    # 2. Load teams info (with logos)
+    - type: document
+      name: load-teams-info
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'teams-info'"
+        metadata.league_id: "str($.get('league_id'))"
+        metadata.season: "str($.get('season'))"
+      outputs:
+        teams_info: "$.get('documents', [{}])[0].get('value', {}).get('teams', []) if len($.get('documents', [])) > 0 else []"
+
+    # 3. Calculate power rankings using Python
     - type: connector
       name: calculate-rankings
       condition: "$.get('teams_count', 0) > 0"
@@ -33,13 +47,14 @@ workflow:
         command: calculate_power_rankings
       inputs:
         teams_stats: "$.get('teams_stats', [])"
+        teams_info: "$.get('teams_info', [])"
         league_id: "$.get('league_id')"
         season: "$.get('season')"
       outputs:
         rankings: "$.get('rankings', [])"
         league_stats: "$.get('league_stats', {})"
 
-    # 3. Store calculated rankings
+    # 4. Store calculated rankings
     - type: document
       name: store-power-rankings
       condition: "len($.get('rankings', [])) > 0"
