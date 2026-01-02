@@ -1,9 +1,0 @@
-connector:
-  name: "soccer-correlation-analyzer"
-  description: "Analyze correlations between prediction market positions and recommend optimal trades to avoid double exposure"
-  filename: "correlation_analyzer.py"
-  filetype: "pyscript"
-  commands:
-    - name: "Analyze Market Correlations"
-      value: "analyze_market_correlations"
-

@@ -1,9 +1,0 @@
-connector:
-  name: "soccer-monte-carlo"
-  description: "Run Monte Carlo simulations for soccer match forecasting"
-  filename: "monte_carlo.py"
-  filetype: "pyscript"
-  commands:
-    - name: "Run Monte Carlo Simulation"
-      value: "run_monte_carlo_simulation"
-

@@ -1,8 +1,0 @@
-connector:
-  name: "soccer-video-consolidator"
-  description: "Consolidate multiple video files into a single MP4 for podcast production"
-  filename: "video_consolidator.py"
-  filetype: "pyscript"
-  commands:
-    - name: "Consolidate Videos"
-      value: "consolidate_videos"
