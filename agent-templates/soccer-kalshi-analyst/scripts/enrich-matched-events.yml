@@ -1,9 +1,0 @@
-connector:
-  name: "enrich-matched-events"
-  description: "Enriches matched Kalshi events with fixture information from fuzzy matching"
-  filename: "enrich-matched-events.py"
-  filetype: "pyscript"
-  commands:
-    - name: "Enrich Matched Events"
-      value: "enrich_matched_events"
-
