@@ -16,5 +16,9 @@ connector:
       value: "filter_fixtures_for_sync"
     - name: "Filter Fixtures by Date"
       value: "filter_fixtures_by_date"
+    - name: "Filter sport:Event by Team"
+      value: "filter_sport_events_by_team"
+    - name: "Calculate Team Metrics from sport:Event"
+      value: "calculate_team_metrics_from_sport_events"
 
 

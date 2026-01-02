@@ -2,8 +2,8 @@ agent:
   name: soccer-power-ranking-sync-fixtures
   title: Sync League Fixtures
   description: |
-    Agent to synchronize fixtures from API Football to local documents.
-    Supports incremental sync - only fetches new or updated fixtures.
+    Agent to synchronize fixtures from API Football to sport:Event documents.
+    Uses the unified IPTC schema format for cross-system compatibility.
     Use this to pre-load fixture data for offline power ranking simulations.
   context:
     status: "inactive"

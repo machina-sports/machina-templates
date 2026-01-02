@@ -4,23 +4,26 @@ AI-powered team power ranking system for soccer leagues using fixture data and s
 
 ## Architecture
 
+Uses the **unified `sport:Event` schema (IPTC)** for all fixture data, ensuring cross-system compatibility.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│              Sync Layer (1x per season)                     │
+│              Sync Layer (uses api-football-sync-fixtures)   │
 ├─────────────────────────────────────────────────────────────┤
 │  sync-league-fixtures (Agent)                               │
-│     └── sync-league-fixtures (Workflow)                     │
+│     └── api-football-sync-fixtures (Workflow)               │
 │            ├── API Football GET /fixtures                   │
-│            └── Save 380 docs (league-fixture)               │
+│            ├── IPTC Event Mapping                           │
+│            └── Save 380 docs (sport:Event)                  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Document DB (380 fixtures per season)          │
+│              Document DB (380 sport:Event per season)       │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐                    │
-│  │fixture-1 │ │fixture-2 │ │fixture-N │ ...                │
-│  │home/away │ │home/away │ │home/away │                    │
-│  │score,date│ │score,date│ │score,date│                    │
+│  │sport:Evt │ │sport:Evt │ │sport:Evt │ ...                │
+│  │IPTC schem│ │IPTC schem│ │IPTC schem│                    │
+│  │competitors│ │competitors│ │competitors│                  │
 │  └──────────┘ └──────────┘ └──────────┘                    │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -31,7 +34,8 @@ AI-powered team power ranking system for soccer leagues using fixture data and s
 │  soccer-power-ranking-progressive (Agent)                   │
 │     ├── get-league-teams (1x)                               │
 │     ├── calculate-team-metrics (foreach team)               │
-│     │      └── filter from local docs                       │
+│     │      ├── filter sport:Event by team URN               │
+│     │      └── save team-progressive-metrics                │
 │     └── aggregate-rankings (1x)                             │
 │            └── normalize & rank                             │
 └─────────────────────────────────────────────────────────────┘
@@ -86,17 +90,25 @@ mcp_machina-client-dev_execute_agent(
 
 | Agent | Purpose |
 |-------|---------|
-| `soccer-power-ranking-sync-fixtures` | Sync all fixtures from API Football to local database |
+| `soccer-power-ranking-sync-fixtures` | Sync fixtures to sport:Event documents (IPTC schema) |
 | `soccer-power-ranking-progressive` | Calculate power rankings using local fixture data |
 
 ## Workflows
 
 | Workflow | Purpose |
 |----------|---------|
-| `sync-league-fixtures` | Fetch and store all fixtures for a league/season |
+| `sync-league-fixtures` | Delegates to api-football-sync-fixtures for IPTC sport:Event storage |
 | `get-league-teams` | Get all teams from a league |
-| `calculate-team-metrics` | Calculate metrics for a single team from local fixtures |
+| `calculate-team-metrics` | Calculate metrics for a single team from sport:Event documents |
 | `aggregate-rankings` | Normalize and rank all teams |
+
+## Document Types
+
+| Document | Schema | Purpose |
+|----------|--------|---------|
+| `sport:Event` | IPTC | Individual match data (unified across systems) |
+| `team-progressive-metrics` | Custom | Per-team metrics snapshot with considered fixtures |
+| `power-rankings-progressive` | Custom | Final aggregated rankings |
 
 ## Parameters
 
@@ -144,6 +156,39 @@ normalized = (value - min) / (max - min)
 
 This ensures fair comparison regardless of league characteristics.
 
+## sport:Event Schema (IPTC)
+
+The template uses the unified IPTC sport:Event schema:
+
+```json
+{
+  "@id": "urn:apifootball:sport_event:1378969",
+  "name": "Liverpool vs Bournemouth - Premier League",
+  "schema:startDate": "2025-08-15T19:00:00+00:00",
+  "sport:competition": {
+    "@id": "urn:apifootball:league:39",
+    "name": "Premier League"
+  },
+  "sport:competitors": [
+    {
+      "@id": "urn:apifootball:team:40",
+      "name": "Liverpool",
+      "sport:qualifier": "home"
+    },
+    {
+      "@id": "urn:apifootball:team:35",
+      "name": "Bournemouth",
+      "sport:qualifier": "away"
+    }
+  ],
+  "sport:score": {
+    "sport:homeScore": 4,
+    "sport:awayScore": 2
+  },
+  "sport:status": "FT"
+}
+```
+
 ## Example Output
 
 ```json
@@ -181,10 +226,11 @@ This ensures fair comparison regardless of league characteristics.
 
 ## Benefits
 
-1. **Cost Efficient**: Sync once, simulate unlimited times (0 API calls)
-2. **Fast**: No network latency during ranking calculations
-3. **Flexible**: Filter by any date without API restrictions
-4. **Accurate**: Individual team processing prevents cross-contamination
+1. **Unified Schema**: Uses sport:Event (IPTC) for cross-system compatibility
+2. **Cost Efficient**: Sync once, simulate unlimited times (0 API calls)
+3. **Fast**: No network latency during ranking calculations
+4. **Flexible**: Filter by any date without API restrictions
+5. **Accurate**: Individual team processing prevents cross-contamination
 
 ## Supported Leagues
 

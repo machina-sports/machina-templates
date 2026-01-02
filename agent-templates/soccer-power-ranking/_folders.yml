@@ -45,12 +45,12 @@ workflow:
                 {
                   "name": "fixtures",
                   "title": "League Fixtures",
-                  "description": "Synced fixtures from API Football",
+                  "description": "Synced fixtures from API Football (IPTC sport:Event schema)",
                   "category": "Soccer Rankings",
                   "metadata": {
-                    "name": ["league-fixture"]
+                    "name": ["sport:Event"]
                   },
-                  "sorters": ['metadata.fixture_date', -1],
+                  "sorters": ['value.schema:startDate', -1],
                   "view": "list"
                 },
                 {

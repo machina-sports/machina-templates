@@ -13,6 +13,9 @@ workflow:
     last_matches: "$.get('last_matches', 10)"
   outputs:
     rankings: "$.get('rankings', [])"
+    rankings_total: "$.get('rankings_total', [])"
+    rankings_home: "$.get('rankings_home', [])"
+    rankings_away: "$.get('rankings_away', [])"
     league_stats: "$.get('league_stats', {})"
     workflow-status: "'executed'"
   tasks:
@@ -51,6 +54,9 @@ workflow:
         last_matches: "$.get('last_matches')"
       outputs:
         rankings: "$.get('rankings', [])"
+        rankings_total: "$.get('rankings_total', [])"
+        rankings_home: "$.get('rankings_home', [])"
+        rankings_away: "$.get('rankings_away', [])"
         league_stats: "$.get('league_stats', {})"
 
     # 3. Store final power rankings
@@ -71,6 +77,9 @@ workflow:
             "last_matches": $.get('last_matches'),
             "calculated_at": datetime.utcnow(),
             "rankings": $.get('rankings', []),
+            "rankings_total": $.get('rankings_total', []),
+            "rankings_home": $.get('rankings_home', []),
+            "rankings_away": $.get('rankings_away', []),
             "stats": $.get('league_stats', {}),
             "status": "active"
           }

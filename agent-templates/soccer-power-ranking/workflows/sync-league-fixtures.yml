@@ -2,14 +2,9 @@ workflow:
   name: soccer-power-ranking-sync-league-fixtures
   title: Sync League Fixtures
   description: |
-    Synchronize all fixtures from a league/season to local documents.
-    Supports incremental sync - only updates new or changed fixtures.
-    Each fixture is stored as an individual document for efficient querying.
-  context-variables:
-    debugger:
-      enabled: true
-    api-football:
-      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    Synchronize all fixtures from a league/season to sport:Event documents.
+    This workflow delegates to the unified api-football-sync-fixtures workflow
+    which saves fixtures in the IPTC sport:Event schema format.
   inputs:
     league_id: "$.get('league_id', '71')"
     season: "$.get('season', '2025')"
@@ -19,62 +14,15 @@ workflow:
     workflow-status: "'executed'"
   tasks:
 
-    # 1. Fetch all fixtures from API Football
-    - type: connector
-      name: fetch-all-fixtures
-      description: Get all fixtures for the league/season from API
-      connector:
-        name: api-football
-        command: get-fixtures
+    # Delegate to the unified api-football-sync-fixtures workflow
+    # which saves fixtures as sport:Event documents with IPTC schema
+    - type: workflow
+      name: sync-fixtures-to-sport-event
+      description: Sync fixtures using the unified api-football-sync-fixtures workflow
+      workflow: api-football-sync-fixtures
       inputs:
         league: "$.get('league_id')"
         season: "$.get('season')"
       outputs:
-        api_fixtures: "$.get('response', []) or []"
-        fixtures_total: "len($.get('response', []) or [])"
-
-    # 2. Filter to finished fixtures (FT status)
-    - type: connector
-      name: filter-fixtures
-      description: Filter fixtures to sync (finished matches)
-      connector:
-        name: soccer-power-ranking-calculator
-        command: filter_fixtures_for_sync
-      inputs:
-        api_fixtures: "$.get('api_fixtures', [])"
-        existing_fixture_ids: "[]"
-      outputs:
-        fixtures_to_sync: "$.get('fixtures_to_sync', [])"
-        fixtures_synced: "len($.get('fixtures_to_sync', []))"
-
-    # 3. Save fixtures using bulk-update (one at a time via foreach)
-    - type: document
-      name: save-fixture
-      description: Save each fixture as individual document
-      condition: "len($.get('fixtures_to_sync', [])) > 0"
-      foreach:
-        name: fixture
-        expr: $
-        value: $.get('fixtures_to_sync', [])
-      config:
-        action: save
-        embed-vector: false
-      documents:
-        league-fixture: |
-          {
-            'title': f"{$.get('fixture', {}).get('teams', {}).get('home', {}).get('name', 'Home')} vs {$.get('fixture', {}).get('teams', {}).get('away', {}).get('name', 'Away')} - {$.get('fixture', {}).get('fixture', {}).get('date', '')[:10]}",
-            'fixture': $.get('fixture', {}).get('fixture', {}),
-            'league': $.get('fixture', {}).get('league', {}),
-            'teams': $.get('fixture', {}).get('teams', {}),
-            'goals': $.get('fixture', {}).get('goals', {}),
-            'score': $.get('fixture', {}).get('score', {})
-          }
-      metadata:
-        document_type: "'league-fixture'"
-        league_id: "str($.get('league_id'))"
-        season: "str($.get('season'))"
-        fixture_id: "str($.get('fixture', {}).get('fixture', {}).get('id', ''))"
-        team_home_id: "str($.get('fixture', {}).get('teams', {}).get('home', {}).get('id', ''))"
-        team_away_id: "str($.get('fixture', {}).get('teams', {}).get('away', {}).get('id', ''))"
-        date: "$.get('fixture', {}).get('fixture', {}).get('date', '')[:10]"
-        status: "$.get('fixture', {}).get('fixture', {}).get('status', {}).get('short', '')"
+        fixtures_synced: "len($.get('fixtures', []) or [])"
+        fixtures_total: "len($.get('fixtures', []) or [])"

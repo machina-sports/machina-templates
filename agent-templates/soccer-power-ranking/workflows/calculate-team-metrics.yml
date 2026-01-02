@@ -3,7 +3,12 @@ workflow:
   title: Calculate Team Metrics
   description: |
     Calculate raw performance metrics for a single team based on their last N fixtures.
-    Uses local fixture documents (requires sync first via sync-league-fixtures workflow).
+    Uses sport:Event documents in IPTC schema format (requires sync first via sync-league-fixtures workflow).
+    
+    Performs 3 separate searches for symmetric metrics:
+    - Total: last N matches (home OR away)
+    - Home: last N home matches only
+    - Away: last N away matches only
   context-variables:
     debugger:
       enabled: true
@@ -15,57 +20,77 @@ workflow:
     season: "$.get('season') if $.get('season') else ($.get('date')[:4] if $.get('date') else None)"
     date: "$.get('date')"
     last_matches: "$.get('last_matches', 10)"
+    # Construct URN patterns for filtering
+    team_urn: "f'urn:apifootball:team:{$.get(\"team_id\")}'"
+    league_urn: "f'urn:apifootball:league:{$.get(\"league_id\")}'"
   outputs:
     team_metrics: "$.get('team_metrics', {})"
     workflow-status: "'executed'"
   tasks:
 
-    # 1. Search fixtures for this team (home OR away), filtered by date, limited to last N
+    # 1. Search finished fixtures for this team in this league
+    # Filter by team URN in sport:competitors array - matches home OR away
     - type: document
-      name: search-team-fixtures
-      description: Search team fixtures up to date, sorted desc, limited to last_matches
+      name: search-league-fixtures
+      description: Search finished fixtures for this team in the league
       config:
         action: search
-        search-limit: "$.get('last_matches', 10)"
-        search-sorters: ["metadata.date", -1]
+        search-limit: 100
+        search-vector: false
       filters:
-        name: "'league-fixture'"
-        metadata.league_id: "str($.get('league_id'))"
-        metadata.status: "'FT'"
-        metadata.date: "{'$lte': $.get('date')} if $.get('date') else None"
-        '$or': "[{'metadata.team_home_id': str($.get('team_id'))}, {'metadata.team_away_id': str($.get('team_id'))}]"
+        name: "'sport:Event'"
+        value.sport:competition.@id: "f'urn:apifootball:league:{$.get(\"league_id\")}'"
+        value.sport:competitors.@id: "$.get('team_urn')"
+        value.sport:status: "'FT'"
       outputs:
-        fixtures: |
-          [
-            {
-              'fixture': doc.get('value', {}).get('fixture', {}),
-              'teams': doc.get('value', {}).get('teams', {}),
-              'goals': doc.get('value', {}).get('goals', {}),
-              'score': doc.get('value', {}).get('score', {}),
-              'league': doc.get('value', {}).get('league', {})
-            }
-            for doc in $.get('documents', [])
-          ]
-        fixtures_count: "len($.get('documents', []))"
+        all_league_fixtures: "$.get('documents', [])"
+        all_fixtures_count: "len($.get('documents', []))"
 
-    # 2. Calculate metrics for this team
+    # 2. Use Python connector to filter fixtures by team and extract normalized data
+    - type: connector
+      name: filter-and-extract-fixtures
+      description: Filter fixtures by team ID and extract for each context (total/home/away)
+      condition: "$.get('all_fixtures_count', 0) > 0"
+      connector:
+        name: soccer-power-ranking-calculator
+        command: filter_sport_events_by_team
+      inputs:
+        all_fixtures: "$.get('all_league_fixtures', [])"
+        team_id: "$.get('team_id')"
+        team_urn: "$.get('team_urn')"
+        date: "$.get('date')"
+        last_matches: "$.get('last_matches', 10)"
+      outputs:
+        fixtures_total: "$.get('fixtures_total', [])"
+        fixtures_home: "$.get('fixtures_home', [])"
+        fixtures_away: "$.get('fixtures_away', [])"
+        fixtures_total_count: "len($.get('fixtures_total', []))"
+        fixtures_home_count: "len($.get('fixtures_home', []))"
+        fixtures_away_count: "len($.get('fixtures_away', []))"
+
+    # 3. Calculate metrics for this team using 3 separate fixture lists
     - type: connector
       name: calculate-metrics
       description: Calculate raw metrics for this team (without normalization)
-      condition: "$.get('fixtures_count', 0) > 0"
+      condition: "$.get('fixtures_total_count', 0) > 0"
       connector:
         name: soccer-power-ranking-calculator
-        command: calculate_team_metrics
+        command: calculate_team_metrics_from_sport_events
       inputs:
-        fixtures: "$.get('fixtures', [])"
+        fixtures_total: "$.get('fixtures_total', [])"
+        fixtures_home: "$.get('fixtures_home', [])"
+        fixtures_away: "$.get('fixtures_away', [])"
         team_id: "$.get('team_id')"
         team_name: "$.get('team_name')"
         team_logo: "$.get('team_logo')"
         last_matches: "$.get('last_matches')"
       outputs:
         team_metrics: "$.get('team_metrics', {})"
+        metrics_total: "$.get('metrics_total', {})"
+        metrics_home: "$.get('metrics_home', {})"
+        metrics_away: "$.get('metrics_away', {})"
 
-    # 3. Save team metrics document
+    # 4. Save team metrics document (now includes fixtures for modal display)
     - type: document
       name: save-team-metrics
       description: Save individual team metrics for later aggregation
@@ -78,6 +103,15 @@ workflow:
           {
             "title": f"Team Metrics - {$.get('team_name', 'Unknown')} - Last {$.get('last_matches')} matches" + (f" (up to {$.get('date')})" if $.get('date') else ""),
             "team_metrics": $.get('team_metrics', {}),
+            "metrics_total": $.get('metrics_total', {}),
+            "metrics_home": $.get('metrics_home'),
+            "metrics_away": $.get('metrics_away'),
+            "fixtures_total": $.get('fixtures_total', []),
+            "fixtures_home": $.get('fixtures_home', []),
+            "fixtures_away": $.get('fixtures_away', []),
+            "fixtures_total_count": $.get('fixtures_total_count', 0),
+            "fixtures_home_count": $.get('fixtures_home_count', 0),
+            "fixtures_away_count": $.get('fixtures_away_count', 0),
             "league_id": $.get('league_id'),
             "season": $.get('season'),
             "date": $.get('date'),
