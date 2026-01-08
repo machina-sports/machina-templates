@@ -65,7 +65,7 @@ def test_playoffs_correction():
 
 
 def test_current_scenario():
-    """Test current scenario: week 18 returning REG."""
+    """Test current scenario: week 18 after Jan 6 should be PST."""
     request_data = {
         "params": {
             "week_sequence": 18,
@@ -75,10 +75,22 @@ def test_current_scenario():
 
     result = detect_season_type(request_data)
 
-    assert result['status'] == True
-    assert result['data']['season_type'] == 'REG'
-    assert result['data']['corrected'] == False
-    print("✓ Week 18 scenario test passed")
+    # Week 18 after Jan 6 should be detected as PST
+    from datetime import datetime
+    current_date = datetime.now()
+
+    if current_date.month == 1 and current_date.day >= 6:
+        assert result['status'] == True
+        assert result['data']['season_type'] == 'PST'
+        assert result['data']['corrected'] == True
+        assert 'Jan 6' in result['data']['reason']
+        print("✓ Week 18 after Jan 6 (PST) test passed")
+    else:
+        # Before playoffs, week 18 should be REG
+        assert result['status'] == True
+        assert result['data']['season_type'] == 'REG'
+        assert result['data']['corrected'] == False
+        print("✓ Week 18 before playoffs (REG) test passed")
 
 
 def test_wild_card_round():
