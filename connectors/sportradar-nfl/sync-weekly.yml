@@ -31,4 +31,17 @@ workflow:
       outputs:
         weekly: "$"
         week_sequence: "$.get('week', {}).get('sequence', '')"
-        season_type: "$.get('season', {}).get('type', 'REG')"
+        api_season_type: "$.get('season', {}).get('type', 'REG')"
+
+    # task-detect-season-type
+    - type: "connector"
+      name: "task-detect-season-type"
+      description: "Detect correct season type based on week sequence"
+      connector:
+        name: "sportradar-nfl-detect-season-type"
+        command: "detect_season_type"
+      inputs:
+        week_sequence: "$.get('week_sequence')"
+        api_season_type: "$.get('api_season_type')"
+      outputs:
+        season_type: "$.get('season_type')"

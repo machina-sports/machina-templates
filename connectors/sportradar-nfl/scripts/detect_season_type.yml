@@ -1,0 +1,8 @@
+connector:
+  name: sportradar-nfl-detect-season-type
+  description: Detect NFL season type (PRE/REG/PST) based on week sequence
+  filename: detect_season_type.py
+  filetype: pyscript
+  commands:
+    - name: Detect Season Type
+      value: detect_season_type
