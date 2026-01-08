@@ -13,6 +13,7 @@ workflow:
     data_type: "$.get('data_type', 'schedule.json')"
   outputs:
     week_sequence: "$.get('week_sequence')"
+    season_type: "$.get('season_type')"
     workflow-status: "$.get('week_sequence', '') is None and 'skipped' or 'executed'"
   tasks:
 
@@ -30,3 +31,4 @@ workflow:
       outputs:
         weekly: "$"
         week_sequence: "$.get('week', {}).get('sequence', '')"
+        season_type: "$.get('season', {}).get('type', 'REG')"
