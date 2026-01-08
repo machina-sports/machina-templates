@@ -32,9 +32,12 @@ datasets:
     path: agents/event-prelive-update.yml
 
   # connectors
-  
+
   - type: connector
     path: sportradar-nfl.yml
+
+  - type: connector
+    path: scripts/detect_season_type.yml
 
   # mappings
   
