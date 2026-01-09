@@ -14,6 +14,7 @@ workflow:
   outputs:
     week_sequence: "$.get('week_sequence')"
     season_type: "$.get('season_type')"
+    season_year: "$.get('season_year')"
     workflow-status: "$.get('week_sequence', '') is None and 'skipped' or 'executed'"
   tasks:
 
