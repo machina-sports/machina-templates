@@ -128,11 +128,11 @@ workflow:
                 'event_code': str(f.get('@id', '')),
                 'sport_name': str(f.get('schema:sportName', ''))
               },
-              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
+              'title': f"{(f.get('sport:competition') or {}).get('name', '')} - {f.get('name', '')}"
             }
             for f in $.get('all_events', [])
             if (
               str(f.get('@id', '')) not in $.get('existing_events_ids', []) or
-              $.get('existing_events_map', {}).get(str(f.get('@id', ''))) != f.get('name', '')
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', ''))) != f.get('name', '')
             )
           ]
