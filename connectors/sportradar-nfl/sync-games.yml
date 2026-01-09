@@ -130,7 +130,7 @@ workflow:
               },
               'title': f"{(f.get('sport:competition') or {}).get('name', '')} - {f.get('name', '')}"
             }
-            for f in $.get('all_events', [])
+            for f in ($.get('all_events') or [])
             if (
               str(f.get('@id', '')) not in $.get('existing_events_ids', []) or
               ($.get('existing_events_map') or {}).get(str(f.get('@id', ''))) != f.get('name', '')
