@@ -99,10 +99,12 @@ def detect_season_type(request_data):
     corrected = detected_type != api_season_type
 
     # Convert week number for PST (playoffs use weeks 1-5, not 19-23)
-    if detected_type == 'PST':
+    # Week 18 stays as 18 even if PST detected (it's the last REG week)
+    # Only weeks 19+ convert to PST weeks 1-5
+    if detected_type == 'PST' and week_num >= 19:
         pst_week = week_num - 18  # week 19 → 1, week 20 → 2, etc.
     else:
-        pst_week = week_num
+        pst_week = week_num  # Keep original for REG/PRE or week 18
 
     return {
         "status": True,

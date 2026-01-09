@@ -85,13 +85,15 @@ def test_current_scenario():
         assert result['data']['season_type'] == 'PST'
         assert result['data']['corrected'] == True
         assert 'Jan 6' in result['data']['reason']
-        print("✓ Week 18 after Jan 6 (PST) test passed")
+        assert result['data']['pst_week'] == 18  # Week 18 stays as 18 (last REG week)
+        print("✓ Week 18 after Jan 6 (PST detected, pst_week=18) test passed")
     else:
         # Before playoffs, week 18 should be REG
         assert result['status'] == True
         assert result['data']['season_type'] == 'REG'
         assert result['data']['corrected'] == False
-        print("✓ Week 18 before playoffs (REG) test passed")
+        assert result['data']['pst_week'] == 18
+        print("✓ Week 18 before playoffs (REG, pst_week=18) test passed")
 
 
 def test_wild_card_round():
