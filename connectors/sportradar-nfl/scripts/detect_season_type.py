@@ -17,7 +17,16 @@ from datetime import datetime
 
 def detect_season_type(request_data):
     """
-    Detect the correct NFL season type.
+    Detect the correct NFL season type and year.
+
+    Season Type Rules:
+    - Week >= 19: Always PST (Playoffs)
+    - Week 18 + date >= Jan 6: PST (Playoff start with API lag)
+    - All other cases: Trust API (PRE/REG)
+
+    Season Year Rules:
+    - Jan-Jul: Previous year (e.g., Jan 2026 → 2025 season)
+    - Aug-Dec: Current year (e.g., Sep 2026 → 2026 season)
 
     Args:
         request_data: Dictionary with params containing:
@@ -25,7 +34,14 @@ def detect_season_type(request_data):
             - api_season_type: Season type returned by API (may be incorrect)
 
     Returns:
-        Dictionary with status, message, and corrected season_type
+        Dictionary with status, message, and data containing:
+            - season_type (str): Corrected season type (PRE/REG/PST)
+            - season_year (int): Calculated NFL season year
+            - week_sequence (int): Week number
+            - api_season_type (str): Original API value
+            - corrected (bool): Whether season_type was corrected
+            - reason (str): Explanation of detection logic
+            - detection_date (str): Date used for calculation
     """
     params = request_data.get("params", {})
 
@@ -53,6 +69,14 @@ def detect_season_type(request_data):
     current_date = datetime.now()
     current_month = current_date.month
     current_day = current_date.day
+    current_year = current_date.year
+
+    # Calculate season year based on month
+    # NFL season runs Sep-Feb, so Jan-Jul belongs to previous year's season
+    if current_month >= 8:  # August-December
+        season_year = current_year
+    else:  # January-July
+        season_year = current_year - 1
 
     # Determine season type based on week number and date
     # Note: Preseason typically uses different week numbering in API
@@ -75,10 +99,11 @@ def detect_season_type(request_data):
 
     return {
         "status": True,
-        "message": f"Season type detected: {detected_type} ({reason})" +
+        "message": f"Season detection: {season_year} {detected_type} Week {week_num} ({reason})" +
                    (f" - corrected from {api_season_type}" if corrected else ""),
         "data": {
             'season_type': detected_type,
+            'season_year': season_year,
             'week_sequence': week_num,
             'api_season_type': api_season_type,
             'corrected': corrected,

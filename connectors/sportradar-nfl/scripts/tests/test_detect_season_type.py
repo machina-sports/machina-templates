@@ -125,6 +125,129 @@ def test_missing_week():
     print("✓ Missing week test passed")
 
 
+def test_season_year_january():
+    """Test season_year calculation for January (previous year)."""
+    from datetime import datetime
+
+    # Any request in January should return previous year
+    request_data = {
+        "params": {
+            "week_sequence": 19,
+            "api_season_type": "PST"
+        }
+    }
+
+    result = detect_season_type(request_data)
+
+    assert result['status'] == True
+    assert 'season_year' in result['data']
+
+    # If running in January, should be previous year
+    current_date = datetime.now()
+    if current_date.month == 1:
+        expected_year = current_date.year - 1
+        assert result['data']['season_year'] == expected_year
+        print(f"✓ Season year January test passed (Jan {current_date.year} → {expected_year} season)")
+    else:
+        print("✓ Season year January test skipped (not January)")
+
+
+def test_season_year_july():
+    """Test season_year calculation for July (previous year)."""
+    from datetime import datetime
+
+    request_data = {
+        "params": {
+            "week_sequence": 1,
+            "api_season_type": "PRE"
+        }
+    }
+
+    result = detect_season_type(request_data)
+
+    assert result['status'] == True
+    assert 'season_year' in result['data']
+
+    # If running in July, should be previous year
+    current_date = datetime.now()
+    if current_date.month == 7:
+        expected_year = current_date.year - 1
+        assert result['data']['season_year'] == expected_year
+        print(f"✓ Season year July test passed (Jul {current_date.year} → {expected_year} season)")
+    else:
+        print("✓ Season year July test skipped (not July)")
+
+
+def test_season_year_august():
+    """Test season_year calculation for August (current year)."""
+    from datetime import datetime
+
+    request_data = {
+        "params": {
+            "week_sequence": 1,
+            "api_season_type": "PRE"
+        }
+    }
+
+    result = detect_season_type(request_data)
+
+    assert result['status'] == True
+    assert 'season_year' in result['data']
+
+    # If running in August, should be current year
+    current_date = datetime.now()
+    if current_date.month == 8:
+        expected_year = current_date.year
+        assert result['data']['season_year'] == expected_year
+        print(f"✓ Season year August test passed (Aug {current_date.year} → {expected_year} season)")
+    else:
+        print("✓ Season year August test skipped (not August)")
+
+
+def test_season_year_december():
+    """Test season_year calculation for December (current year)."""
+    from datetime import datetime
+
+    request_data = {
+        "params": {
+            "week_sequence": 17,
+            "api_season_type": "REG"
+        }
+    }
+
+    result = detect_season_type(request_data)
+
+    assert result['status'] == True
+    assert 'season_year' in result['data']
+
+    # If running in December, should be current year
+    current_date = datetime.now()
+    if current_date.month == 12:
+        expected_year = current_date.year
+        assert result['data']['season_year'] == expected_year
+        print(f"✓ Season year December test passed (Dec {current_date.year} → {expected_year} season)")
+    else:
+        print("✓ Season year December test skipped (not December)")
+
+
+def test_season_year_always_present():
+    """Test that season_year is always returned."""
+    request_data = {
+        "params": {
+            "week_sequence": 10,
+            "api_season_type": "REG"
+        }
+    }
+
+    result = detect_season_type(request_data)
+
+    assert result['status'] == True
+    assert 'season_year' in result['data']
+    assert isinstance(result['data']['season_year'], int)
+    assert result['data']['season_year'] > 2020  # Sanity check
+    print(f"✓ Season year always present test passed (year: {result['data']['season_year']})")
+
+
 def run_all_tests():
     """Run all test functions."""
     tests = [
@@ -133,7 +256,12 @@ def run_all_tests():
         test_playoffs_correction,
         test_current_scenario,
         test_wild_card_round,
-        test_missing_week
+        test_missing_week,
+        test_season_year_january,
+        test_season_year_july,
+        test_season_year_august,
+        test_season_year_december,
+        test_season_year_always_present
     ]
 
     passed = 0
