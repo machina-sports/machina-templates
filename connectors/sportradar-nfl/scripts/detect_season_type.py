@@ -37,7 +37,8 @@ def detect_season_type(request_data):
         Dictionary with status, message, and data containing:
             - season_type (str): Corrected season type (PRE/REG/PST)
             - season_year (int): Calculated NFL season year
-            - week_sequence (int): Week number
+            - week_sequence (int): Original week number from API
+            - pst_week (int): Week number adjusted for PST (19→1, 20→2, etc.)
             - api_season_type (str): Original API value
             - corrected (bool): Whether season_type was corrected
             - reason (str): Explanation of detection logic
@@ -97,14 +98,21 @@ def detect_season_type(request_data):
     # Check if correction was needed
     corrected = detected_type != api_season_type
 
+    # Convert week number for PST (playoffs use weeks 1-5, not 19-23)
+    if detected_type == 'PST':
+        pst_week = week_num - 18  # week 19 → 1, week 20 → 2, etc.
+    else:
+        pst_week = week_num
+
     return {
         "status": True,
-        "message": f"Season detection: {season_year} {detected_type} Week {week_num} ({reason})" +
+        "message": f"Season detection: {season_year} {detected_type} Week {week_num} (PST week {pst_week if detected_type == 'PST' else 'N/A'}) ({reason})" +
                    (f" - corrected from {api_season_type}" if corrected else ""),
         "data": {
             'season_type': detected_type,
             'season_year': season_year,
             'week_sequence': week_num,
+            'pst_week': pst_week,
             'api_season_type': api_season_type,
             'corrected': corrected,
             'reason': reason,

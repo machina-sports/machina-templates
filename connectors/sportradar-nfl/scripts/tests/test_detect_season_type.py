@@ -61,7 +61,8 @@ def test_playoffs_correction():
     assert result['data']['season_type'] == 'PST'
     assert result['data']['corrected'] == True
     assert result['data']['api_season_type'] == 'REG'
-    print("✓ Playoffs correction test passed")
+    assert result['data']['pst_week'] == 1  # Week 19 → PST week 1
+    print("✓ Playoffs correction test passed (week 19 → PST week 1)")
 
 
 def test_current_scenario():
@@ -107,7 +108,8 @@ def test_wild_card_round():
     assert result['status'] == True
     assert result['data']['season_type'] == 'PST'
     assert result['data']['corrected'] == True
-    print("✓ Wild Card round test passed")
+    assert result['data']['pst_week'] == 1  # Wild Card = PST week 1
+    print("✓ Wild Card round test passed (week 19 → PST week 1)")
 
 
 def test_missing_week():
@@ -248,6 +250,50 @@ def test_season_year_always_present():
     print(f"✓ Season year always present test passed (year: {result['data']['season_year']})")
 
 
+def test_pst_week_conversion():
+    """Test PST week conversion (19→1, 20→2, etc.)."""
+    test_cases = [
+        (19, 1, "Wild Card"),
+        (20, 2, "Divisional"),
+        (21, 3, "Conference"),
+        (22, 4, "Super Bowl")
+    ]
+
+    for api_week, expected_pst_week, round_name in test_cases:
+        request_data = {
+            "params": {
+                "week_sequence": api_week,
+                "api_season_type": "REG"  # API might lag
+            }
+        }
+
+        result = detect_season_type(request_data)
+
+        assert result['status'] == True
+        assert result['data']['season_type'] == 'PST'
+        assert result['data']['week_sequence'] == api_week  # Original week
+        assert result['data']['pst_week'] == expected_pst_week  # Converted week
+        print(f"✓ PST week conversion: week {api_week} → PST week {expected_pst_week} ({round_name})")
+
+
+def test_regular_season_pst_week_equals_sequence():
+    """Test that pst_week equals week_sequence for REG season."""
+    request_data = {
+        "params": {
+            "week_sequence": 10,
+            "api_season_type": "REG"
+        }
+    }
+
+    result = detect_season_type(request_data)
+
+    assert result['status'] == True
+    assert result['data']['season_type'] == 'REG'
+    assert result['data']['week_sequence'] == 10
+    assert result['data']['pst_week'] == 10  # Same for REG
+    print("✓ REG season: pst_week equals week_sequence")
+
+
 def run_all_tests():
     """Run all test functions."""
     tests = [
@@ -261,7 +307,9 @@ def run_all_tests():
         test_season_year_july,
         test_season_year_august,
         test_season_year_december,
-        test_season_year_always_present
+        test_season_year_always_present,
+        test_pst_week_conversion,
+        test_regular_season_pst_week_equals_sequence
     ]
 
     passed = 0
