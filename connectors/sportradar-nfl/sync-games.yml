@@ -106,7 +106,7 @@ workflow:
     - type: document
       name: task-bulk-save-events
       description: Bulk save or update events (new events or events with changed names).
-      condition: len($.get('games_parsed')) > 0 and $.get('all_events_ids') is not None
+      condition: len($.get('new_or_updated_events_list', [])) > 0
       config:
         action: bulk-update
         embed-selector: $.get('title')
