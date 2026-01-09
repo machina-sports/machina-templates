@@ -2,6 +2,7 @@ def summarize_message_data(request_data):
     """
     Transform all data in a user message to LLM-friendly summaries.
     Handles: matched-teams, fixture-events, played-events, head-to-head-events.
+    Also handles: content-articles (optional).
     Passes through: faq-docs, insights-docs, markets-docs, websearch-docs (already summarized).
     
     Args:
@@ -11,6 +12,7 @@ def summarize_message_data(request_data):
                 - played_events (list): Loaded played event documents (optional)
                 - fixture_events (list): Loaded fixture event documents (optional)
                 - head_to_head_events (list): Loaded head-to-head event documents (optional)
+                - content_articles (list): Loaded content-article objects (optional)
                 - timezone (str): Timezone code: 'br' (Brazil, GMT-3), 'es' (Spain, GMT+1), 'en' (Washington D.C., GMT-4) - default: 'br'
     
     Returns:
@@ -973,6 +975,73 @@ def summarize_message_data(request_data):
             markets_docs.append(doc)
         
         return markets_docs
+
+    def summarize_articles(content_articles):
+        """
+        Summarize content-articles to compact strings for LLM.
+        Expected shape (best-effort):
+          {
+            'title': str,
+            'subtitle': str (optional),
+            'slug': str (optional),
+            'execution': datetime/str (optional),
+            'metadata': {'article_type': str, 'language': str, 'event_code': str, ...}
+          }
+        """
+        summaries = []
+        if not isinstance(content_articles, list):
+            return summaries
+
+        for article in content_articles[:10]:
+            if not isinstance(article, dict):
+                continue
+
+            title = article.get("title") or article.get("headline") or article.get("name") or "Matéria"
+            subtitle = article.get("subtitle") or article.get("summary") or ""
+            slug = article.get("slug") or ""
+            metadata = article.get("metadata", {}) if isinstance(article.get("metadata", {}), dict) else {}
+            article_type = metadata.get("article_type") or metadata.get("type") or ""
+
+            parts = [str(title).strip()]
+            if subtitle:
+                parts.append(str(subtitle).strip())
+            if article_type:
+                parts.append(f"tipo: {article_type}")
+            if slug:
+                parts.append(f"slug: {slug}")
+
+            summaries.append(" | ".join([p for p in parts if p]))
+
+        return summaries
+
+    def build_articles_objects(content_articles):
+        """
+        Build UI widget objects for content-articles.
+        Mirrors the shape used in assistant-tools/tools/find-insights.yml (articles-parsed).
+        """
+        objects = []
+        if not isinstance(content_articles, list):
+            return objects
+
+        for index, article in enumerate(content_articles[:5]):
+            if not isinstance(article, dict):
+                continue
+
+            metadata = article.get("metadata", {}) if isinstance(article.get("metadata", {}), dict) else {}
+            objects.append({
+                # Common/id fields
+                "article_id": article.get("article_id") or article.get("_id") or article.get("id"),
+                "article_index": article.get("article_index", index),
+                # Display fields
+                "image_path": article.get("image_path", ""),
+                "title": article.get("title", ""),
+                "subtitle": article.get("subtitle", ""),
+                "slug": article.get("slug", ""),
+                # Metadata passthrough
+                "metadata": metadata,
+            })
+
+        return objects
     
     # Main function logic
     try:
@@ -990,6 +1059,7 @@ def summarize_message_data(request_data):
         fixture_events = params.get("fixture_events", [])
         head_to_head_events = params.get("head_to_head_events", [])
         next_events = params.get("next_events", [])
+        content_articles = params.get("content_articles", [])
         markets_docs = params.get("markets_docs", [])
         markets_parsed = params.get("markets_parsed", [])
         season_standings = params.get("season_standings", [])
@@ -1005,6 +1075,7 @@ def summarize_message_data(request_data):
                     "played_events_summary": [],
                     "head_to_head_events_summary": [],
                     "next_events_summary": [],
+                    "content_articles_summary": [],
                     "season_standings_summary": [],
                     "season_leaders_summary": [],
                     "faq_docs": [],
@@ -1027,6 +1098,10 @@ def summarize_message_data(request_data):
         played_events_summary = summarize_events(played_events if played_events else last_user_msg.get("played-events", []), tz_offset)
         head_to_head_events_summary = summarize_events(head_to_head_events if head_to_head_events else last_user_msg.get("head-to-head-events", []), tz_offset)
         next_events_summary = summarize_events(next_events if next_events else last_user_msg.get("next-events", []), tz_offset)
+
+        # Summarize related content-articles (if provided)
+        content_articles_summary = summarize_articles(content_articles)
+        articles_objects = build_articles_objects(content_articles)
         
         # Pass through already-summarized docs
         faq_docs = last_user_msg.get("faq-docs", [])
@@ -1090,6 +1165,8 @@ def summarize_message_data(request_data):
                 "played_events_summary": played_events_summary,
                 "head_to_head_events_summary": head_to_head_events_summary,
                 "next_events_summary": next_events_summary,
+                "content_articles_summary": content_articles_summary,
+                "articles_objects": articles_objects,
                 "season_standings_summary": season_standings_summary,
                 "season_leaders_summary": season_leaders_summary,
                 "faq_docs": faq_docs,
@@ -1116,6 +1193,8 @@ def summarize_message_data(request_data):
                 "played_events_summary": [],
                 "head_to_head_events_summary": [],
                 "next_events_summary": [],
+                "content_articles_summary": [],
+                "articles_objects": [],
                 "season_standings_summary": [],
                 "season_leaders_summary": [],
                 "faq_docs": [],
