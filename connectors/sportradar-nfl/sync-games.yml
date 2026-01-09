@@ -87,7 +87,7 @@ workflow:
         search-vector: false
       filters:
         metadata.event_code: |
-          {'$in': $.(all_events_ids)}
+          {'$in': $.get('all_events_ids', [])}
       inputs:
         name: "'sport:Event'"
       outputs:
@@ -126,5 +126,5 @@ workflow:
               'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
             }
             for f in $.get('all_events', [])
-            if str(f.get('@id', '')) not in $.(existing_events_ids)
+            if str(f.get('@id', '')) not in $.get('existing_events_ids', [])
           ]
