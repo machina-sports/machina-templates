@@ -96,12 +96,17 @@ workflow:
             fixture.get('metadata', {}).get('event_code', '')
             for fixture in $.get('documents', [])
           ]
+        existing_events_map: |
+          {
+            fixture.get('metadata', {}).get('event_code', ''): fixture.get('value', {}).get('name', '')
+            for fixture in $.get('documents', [])
+          }
 
     # task-bulk-save-events
     - type: document
       name: task-bulk-save-events
-      description: Bulk save the individual events.
-      condition: len($.get('games_parsed')) > 0 and $.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))
+      description: Bulk save or update events (new events or events with changed names).
+      condition: len($.get('games_parsed')) > 0 and $.get('all_events_ids') is not None
       config:
         action: bulk-update
         embed-selector: $.get('title')
@@ -113,9 +118,9 @@ workflow:
         model: text-embedding-3-small
       document_name: "'sport:Event'"
       documents:
-        items: $.get('new_events_list')
+        items: $.get('new_or_updated_events_list')
       inputs:
-        new_events_list: |
+        new_or_updated_events_list: |
           [
             {
               **f,
@@ -126,5 +131,8 @@ workflow:
               'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
             }
             for f in $.get('all_events', [])
-            if str(f.get('@id', '')) not in $.get('existing_events_ids', [])
+            if (
+              str(f.get('@id', '')) not in $.get('existing_events_ids', []) or
+              $.get('existing_events_map', {}).get(str(f.get('@id', ''))) != f.get('name', '')
+            )
           ]
