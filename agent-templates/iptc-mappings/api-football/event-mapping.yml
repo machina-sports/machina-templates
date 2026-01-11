@@ -52,8 +52,8 @@ mappings:
               }
             ],
             "sport:score": {
-              "sport:homeScore": f.get('score', {}).get('fulltime', {}).get('home'),
-              "sport:awayScore": f.get('score', {}).get('fulltime', {}).get('away'),
+              "sport:homeScore": f.get('goals', {}).get('home'),
+              "sport:awayScore": f.get('goals', {}).get('away'),
               "sport:halfTime": f.get('score', {}).get('halftime')
             }
           }
