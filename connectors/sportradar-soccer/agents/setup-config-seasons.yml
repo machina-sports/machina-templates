@@ -1,0 +1,15 @@
+agent:
+  name: setup-sportradar-soccer-config-seasons
+  title: Setup - Sportradar Soccer Config Seasons
+  description: Setup agent to populate coverage-soccer-preview-config with competition IDs
+  context:
+    config-frequency: 99999999
+    status: active
+  workflows:
+
+    # populate-coverage-config
+    - name: populate-coverage-soccer-preview-config
+      description: Populate coverage-soccer-preview-config document with competition IDs
+      outputs:
+        setup-status: $.get('workflow-status', False)
+
