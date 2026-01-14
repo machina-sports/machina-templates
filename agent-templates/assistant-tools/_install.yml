@@ -148,3 +148,6 @@ datasets:
 
   - type: workflow
     path: assets/market-translations-es.yml
+
+  - type: workflow
+    path: assets/world-cup-2026-knowledge.yml

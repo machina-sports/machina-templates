@@ -1,0 +1,177 @@
+workflow:
+  name: world-cup-2026-knowledge
+  title: FIFA World Cup 2026 Knowledge Base
+  description: Complete knowledge base for FIFA World Cup 2026 including teams, groups, schedule, and venues
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: document
+      name: create-world-cup-2026-document
+      description: Create or update FIFA World Cup 2026 knowledge base document
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        world-cup-2026-knowledge: |
+          {
+            "tournament": "FIFA World Cup 2026",
+            "hosts": ["United States", "Canada", "Mexico"],
+            "dates": {
+              "start": "2026-06-11",
+              "end": "2026-07-19",
+              "opening_match": "2026-06-11",
+              "final": "2026-07-19"
+            },
+            "format": {
+              "teams": 48,
+              "groups": 12,
+              "teams_per_group": 4,
+              "advancement": "Top 2 from each group + 8 best third-place teams",
+              "total_matches": 104
+            },
+            "groups": {
+              "A": {
+                "teams": ["Mexico", "South Korea", "South Africa"],
+                "pending": "Denmark/North Macedonia/Czech Republic/Ireland"
+              },
+              "B": {
+                "teams": ["Canada", "Switzerland", "Qatar"],
+                "pending": "Italy/Northern Ireland/Wales/Bosnia and Herzegovina"
+              },
+              "C": {
+                "teams": ["Brazil", "Morocco", "Scotland", "Haiti"]
+              },
+              "D": {
+                "teams": ["United States", "Australia", "Paraguay"],
+                "pending": "Slovakia/Kosovo/Turkey/Romania"
+              },
+              "E": {
+                "teams": ["Germany", "Ecuador", "Ivory Coast", "Curaçao"]
+              },
+              "F": {
+                "teams": ["Netherlands", "Japan", "Tunisia"],
+                "pending": "Ukraine/Sweden/Poland/Albania"
+              },
+              "G": {
+                "teams": ["Belgium", "Iran", "Egypt", "New Zealand"]
+              },
+              "H": {
+                "teams": ["Spain", "Uruguay", "Saudi Arabia", "Cape Verde"]
+              },
+              "I": {
+                "teams": ["France", "Senegal", "Norway"],
+                "pending": "Iraq/Bolivia/Suriname"
+              },
+              "J": {
+                "teams": ["Argentina", "Austria", "Algeria", "Jordan"]
+              },
+              "K": {
+                "teams": ["Portugal", "Colombia", "Uzbekistan"],
+                "pending": "Congo/New Caledonia/Jamaica"
+              },
+              "L": {
+                "teams": ["England", "Croatia", "Panama", "Ghana"]
+              }
+            },
+            "knockout_stages": {
+              "round_of_32": "2026-06-28 to 2026-07-03",
+              "round_of_16": "2026-07-04 to 2026-07-07",
+              "quarterfinals": "2026-07-09 and 2026-07-11",
+              "semifinals": "2026-07-14 and 2026-07-15",
+              "third_place": "2026-07-18",
+              "final": "2026-07-19"
+            },
+            "venues": {
+              "usa": [
+                "Atlanta",
+                "Boston",
+                "Dallas",
+                "Houston",
+                "Kansas City",
+                "Los Angeles",
+                "Miami",
+                "New York/New Jersey",
+                "Philadelphia",
+                "Seattle",
+                "San Francisco Bay Area"
+              ],
+              "canada": ["Toronto", "Vancouver"],
+              "mexico": ["Mexico City", "Guadalajara", "Monterrey"]
+            },
+            "key_matches": {
+              "opening": {
+                "date": "2026-06-11",
+                "match": "Mexico vs South Africa",
+                "venue": "Estadio Azteca, Mexico City"
+              },
+              "final": {
+                "date": "2026-07-19",
+                "venue": "MetLife Stadium, New York/New Jersey"
+              }
+            },
+            "team_aliases": {
+              "United States": ["USA", "EUA", "Estados Unidos"],
+              "Brazil": ["Brasil"],
+              "Germany": ["Alemanha"],
+              "Netherlands": ["Holanda", "Países Baixos"],
+              "England": ["Inglaterra"],
+              "Spain": ["Espanha"],
+              "France": ["França"],
+              "Portugal": ["Portugal"],
+              "Argentina": ["Argentina"],
+              "Mexico": ["México"],
+              "South Korea": ["Coreia do Sul"],
+              "Ivory Coast": ["Costa do Marfim"],
+              "Switzerland": ["Suíça"],
+              "Croatia": ["Croácia"],
+              "Saudi Arabia": ["Arábia Saudita"],
+              "New Zealand": ["Nova Zelândia"],
+              "South Africa": ["África do Sul"],
+              "Curaçao": ["Curaçau"],
+              "Morocco": ["Marrocos"],
+              "Egypt": ["Egito"],
+              "Ecuador": ["Equador"],
+              "Uruguay": ["Uruguai"],
+              "Belgium": ["Bélgica"],
+              "Australia": ["Austrália"],
+              "Austria": ["Áustria"],
+              "Algeria": ["Argélia"],
+              "Tunisia": ["Tunísia"],
+              "Senegal": ["Senegal"],
+              "Norway": ["Noruega"],
+              "Scotland": ["Escócia"],
+              "Panama": ["Panamá"],
+              "Haiti": ["Haiti"],
+              "Paraguay": ["Paraguai"],
+              "Japan": ["Japão"],
+              "Iran": ["Irã"],
+              "Jordan": ["Jordânia"],
+              "Qatar": ["Catar"],
+              "Colombia": ["Colômbia"],
+              "Uzbekistan": ["Uzbequistão"],
+              "Ghana": ["Gana"],
+              "Cape Verde": ["Cabo Verde"],
+              "Canada": ["Canadá"]
+            },
+            "notes": [
+              "First World Cup hosted by three countries",
+              "Largest World Cup in history with 48 teams",
+              "Curaçao is the smallest country ever to qualify for a World Cup",
+              "New Round of 32 format introduced",
+              "Final playoff spots (European and intercontinental) to be determined by March 2026"
+            ]
+          }
+      metadata:
+        type: knowledge-base
+        category: world-cup
+        year: 2026
+        language:
+          - pt
+          - en
+        last_updated: "2026-01-14"
+

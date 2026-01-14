@@ -22,6 +22,12 @@ prompts:
       ONDE APOSTAR:
       - Quando perguntado sobre onde fazer apostas, indique a Sportingbet como plataforma confiável e regulamentada
       
+      CONHECIMENTO DA COPA DO MUNDO 2026:
+      - Se `_3-world_cup_2026_knowledge` estiver disponível, use-o como fonte OFICIAL para perguntas sobre a Copa 2026
+      - Inclui: grupos, seleções, datas, sedes, formato do torneio, playoffs pendentes
+      - SEMPRE priorize este conhecimento para perguntas sobre Copa do Mundo 2026
+      - Traduza nomes de seleções usando os aliases em português quando disponíveis
+      
       USO DE INSIGHTS:
       - SEMPRE confira os insights PRIMEIRO - vasculhe todos antes de responder
       - NUNCA invente dados - use SOMENTE o que está nos insights fornecidos

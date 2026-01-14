@@ -88,6 +88,20 @@ workflow:
         character_data: $.get('documents')[0]['value'] if len($.get('documents', [])) > 0 else {}
         character_loaded: len($.get('documents', [])) > 0
 
+    # load-world-cup-2026-knowledge
+    - type: document
+      name: load-world-cup-2026-knowledge
+      description: Load FIFA World Cup 2026 knowledge base for answering questions about the tournament
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'world-cup-2026-knowledge'"
+      outputs:
+        world_cup_2026_data: $.get('documents')[0]['value'] if len($.get('documents', [])) > 0 else None
+        world_cup_2026_loaded: len($.get('documents', [])) > 0
+
     # assistant-persona-randomizer
     - type: connector
       name: assistant-persona-randomizer
@@ -116,6 +130,7 @@ workflow:
         _0-persona-prompt: $.get('persona_prompt')
         _1-message-history: $.get('message-history')
         _2-found_events_docs: $.get('step_find_events_docs') if len($.get('step_find_events_docs', [])) > 0 else None
+        _3-world_cup_2026_knowledge: $.get('world_cup_2026_data') if $.get('world_cup_2026_loaded') else None
         _4-found_faq_docs: $.get('step_find_faq_docs') if len($.get('step_find_faq_docs', [])) > 0 else None
         _5-found_insights_docs: $.get('step_find_insights_docs') if len($.get('step_find_insights_docs', [])) > 0 else None
         _6-found_markets_docs: $.get('market-docs') if len($.get('market-docs', [])) > 0 else None
