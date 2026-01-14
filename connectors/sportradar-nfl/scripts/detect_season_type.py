@@ -81,30 +81,32 @@ def detect_season_type(request_data):
 
     # Determine season type based on week number and date
     # Note: Preseason typically uses different week numbering in API
+    # IMPORTANT: SportRadar API returns week 1-5 for playoffs, NOT 19-23!
 
-    # Primary check: Week >= 19 is always playoffs
+    # Primary check: Week >= 19 is always playoffs (legacy/manual input)
     if week_num >= 19:
         detected_type = 'PST'
-        reason = f"week >= 19"
+        reason = f"week >= 19 (legacy format)"
+        pst_week = week_num - 18  # week 19 → 1, week 20 → 2, etc.
+    # NEW: January/February with week 1-5 = Playoffs
+    # API returns playoff weeks as 1-5, not 19-23
+    elif current_month in [1, 2] and week_num <= 5:
+        detected_type = 'PST'
+        reason = f"January/February with week {week_num} = playoffs"
+        pst_week = week_num  # Already in PST week format (1-5)
     # Secondary check: Week 18 + date after Jan 6 = playoffs started
     elif week_num == 18 and current_month == 1 and current_day >= 6:
         detected_type = 'PST'
         reason = f"week 18 after Jan 6 (playoffs started)"
+        pst_week = week_num
     else:
         # For all other cases, trust API or default to REG
         detected_type = api_season_type if api_season_type in ['PRE', 'REG'] else 'REG'
         reason = "using API value"
+        pst_week = week_num  # Keep original for REG/PRE
 
     # Check if correction was needed
     corrected = detected_type != api_season_type
-
-    # Convert week number for PST (playoffs use weeks 1-5, not 19-23)
-    # Week 18 stays as 18 even if PST detected (it's the last REG week)
-    # Only weeks 19+ convert to PST weeks 1-5
-    if detected_type == 'PST' and week_num >= 19:
-        pst_week = week_num - 18  # week 19 → 1, week 20 → 2, etc.
-    else:
-        pst_week = week_num  # Keep original for REG/PRE or week 18
 
     return {
         "status": True,
