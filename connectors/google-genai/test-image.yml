@@ -11,7 +11,7 @@ workflow:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
   inputs:
-    model_name: "$.get('model_name', 'gemini-2.5-flash-image-preview')"
+    model_name: "$.get('model_name', 'gemini-3-pro-image-preview')"
     prompt: "$.get('prompt')"
     aspect_ratio: "$.get('aspect_ratio')"  # e.g., "16:9", "1:1", "9:16"
     image_path: "$.get('image_path')"  # For backward compatibility
