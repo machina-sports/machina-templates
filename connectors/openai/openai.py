@@ -3,6 +3,22 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from openai import OpenAI
 
 
+def list_models(params):
+    """List available models from OpenAI API. Useful for testing credentials."""
+    api_key = params.get("headers", {}).get("api_key") or params.get("params", {}).get("api_key") or params.get("api_key", "")
+
+    if not api_key:
+        return {"status": False, "message": "API key is required."}
+
+    try:
+        client = OpenAI(api_key=api_key)
+        models = client.models.list()
+        model_list = [{"id": m.id, "owned_by": m.owned_by} for m in models.data[:10]]
+        return {"status": True, "data": {"models": model_list, "total_count": len(models.data)}, "message": "Models retrieved successfully."}
+    except Exception as e:
+        return {"status": False, "message": f"Error listing models: {str(e)}"}
+
+
 def invoke_embedding(params):
 
     api_key = params.get("api_key", "")

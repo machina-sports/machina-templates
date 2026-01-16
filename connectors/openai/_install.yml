@@ -1,3 +1,6 @@
 datasets:
   - type: "connector"
     path: "openai.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"

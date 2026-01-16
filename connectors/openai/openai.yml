@@ -4,6 +4,9 @@ connector:
   filename: "openai.py"
   filetype: "pyscript"
   commands:
+    - name: "list_models"
+      value: "list_models"
+
     - name: "Embedding"
       value: "invoke_embedding"
 
