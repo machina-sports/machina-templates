@@ -17,3 +17,9 @@ setup:
 datasets:
   - type: "connector"
     path: "machina-ai.yml"
+
+  - type: "prompts"
+    path: "prompts/test-credentials.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"
