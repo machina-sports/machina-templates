@@ -23,4 +23,7 @@ datasets:
   - type: "connector"
     path: "sportradar-nhl.yml"
 
+  - type: "workflow"
+    path: "test-credentials.yml"
+
 

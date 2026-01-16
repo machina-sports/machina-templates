@@ -30,9 +30,12 @@ setup:
   version: 8.0.0
 
 datasets:
-  
+
   - type: "connector"
     path: "sportradar-nba.yml"
-  
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
   - type: "workflow"
     path: "sync-nba-games.yml"
