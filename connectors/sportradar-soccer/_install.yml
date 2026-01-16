@@ -47,6 +47,11 @@ datasets:
   - type: "connector"
     path: "sportradar-soccer.yml"
 
+  # test credentials
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
   # agents
 
   - type: "agent"
