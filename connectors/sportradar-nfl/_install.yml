@@ -36,6 +36,11 @@ datasets:
   - type: connector
     path: sportradar-nfl.yml
 
+  # test credentials
+
+  - type: workflow
+    path: test-credentials.yml
+
   - type: connector
     path: scripts/detect_season_type.yml
 
