@@ -1,0 +1,133 @@
+workflow:
+
+  # sportradar-soccer-sync-season-schedules
+  name: sportradar-soccer-sync-season-schedules
+  title: Sportradar Soccer - Season Schedules
+  description: Workflow to synchronize season schedules from SportRadar API to Machina as season:Schedule documents.
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    season_ids: $.get('season_ids', [])
+  outputs:
+    season_schedules: $.get('season_schedules_list', [])
+    workflow-status: len($.get('season_schedules_list', [])) > 0 and 'executed' or 'skipped'
+  tasks:
+
+    # load-season-schedules
+    - type: connector
+      name: load-season-schedules
+      description: Get season schedules from SportRadar for each season
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/{data_type}
+        command_attribute:
+          season_id: $.get('season_id')
+          data_type: "'schedules.json'"
+      foreach:
+        name: season_id
+        expr: $
+        value: $.get('season_ids', [])
+      condition: $.get('season_ids') is not None and len($.get('season_ids', [])) > 0
+      inputs:
+        api_key: $.get('api_key')
+        start: "'0'"
+      outputs:
+        season_schedules_list: |
+          [
+            {
+              'season_id': $.get('season_id'),
+              'schedules': $.get('schedules', {})
+            }
+          ]
+
+    # check-existing-season-schedules
+    - type: document
+      name: check-existing-season-schedules
+      condition: $.get('season_schedules_list') is not None and len($.get('season_schedules_list', [])) > 0
+      description: Check for existing season schedule documents.
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        name: "'season:Schedule'"
+        metadata.season_id: |
+          {'$in': [item.get('season_id', '') for item in $.get('season_schedules_list', [])]}
+      outputs:
+        existing_season_ids: |
+          [
+            doc.get('metadata', {}).get('season_id', '')
+            for doc in $.get('documents', [])
+          ]
+
+    # prepare-season-schedule-documents
+    - type: connector
+      name: prepare-season-schedule-documents
+      description: Prepare season schedule documents with proper structure and metadata
+      connector:
+        name: assistant-tools
+        command: invoke_python_code
+      condition: $.get('season_schedules_list') is not None and len($.get('season_schedules_list', [])) > 0
+      inputs:
+        code: |
+          import json
+          
+          season_schedules_list = context.get('season_schedules_list', [])
+          existing_season_ids = context.get('existing_season_ids', [])
+          
+          documents = []
+          for item in season_schedules_list:
+              season_id = item.get('season_id', '')
+              schedules_data = item.get('schedules', {})
+              
+              # Extract season info from schedules response
+              season_info = schedules_data.get('season', {})
+              competition_info = schedules_data.get('competition', {})
+              sport_event_schedules = schedules_data.get('sport_event_schedules', [])
+              
+              # Create document
+              doc = {
+                  'name': f'season:Schedule',
+                  'metadata': {
+                      'season_id': season_id,
+                      'season_name': season_info.get('name', ''),
+                      'competition_id': competition_info.get('id', ''),
+                      'competition_name': competition_info.get('name', ''),
+                      'sport': 'soccer'
+                  },
+                  'season': season_info,
+                  'competition': competition_info,
+                  'sport_event_schedules': sport_event_schedules,
+                  'total_events': len(sport_event_schedules),
+                  'title': f"{competition_info.get('name', 'Unknown')} - {season_info.get('name', 'Unknown')} Schedule"
+              }
+              
+              documents.append(doc)
+          
+          return {'documents_to_save': documents}
+      outputs:
+        documents_to_save: $.get('documents_to_save', [])
+
+    # bulk-save-season-schedules
+    - type: document
+      name: bulk-save-season-schedules
+      description: Bulk save season schedule documents
+      condition: $.get('documents_to_save') is not None and len($.get('documents_to_save', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'season:Schedule'"
+      documents:
+        items: $.get('documents_to_save')
+
