@@ -22,6 +22,9 @@ datasets:
   - type: "connector"
     path: "google-genai.yml"
 
+  - type: "prompts"
+    path: "prompts/test-credentials.yml"
+
   - type: "workflow"
     path: "test-image.yml"
 
@@ -30,3 +33,6 @@ datasets:
 
   - type: "workflow"
     path: "test-video.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"
