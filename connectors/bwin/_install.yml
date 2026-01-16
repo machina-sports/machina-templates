@@ -26,7 +26,12 @@ setup:
 
 datasets:
   - type: connector
-    path: bwin.yml 
+    path: bwin.yml
+
+  # test credentials
+
+  - type: workflow
+    path: test-credentials.yml
 
   - type: connector
     path: scripts/grep-sports.yml

@@ -6,3 +6,5 @@ connector:
   commands:
     - name: "get_text_to_speech"
       value: "get_text_to_speech"
+    - name: "get_voices"
+      value: "get_voices"

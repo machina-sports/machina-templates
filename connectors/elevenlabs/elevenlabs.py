@@ -75,3 +75,41 @@ def get_text_to_speech(request_data):
     except Exception as e:
         print(f"Error getting text to speech: {e}")
         return {"status": False, "message": f"Error getting text to speech: {str(e)}"}
+
+
+def get_voices(request_data):
+    """Get available voices from ElevenLabs API. Useful for testing credentials."""
+
+    headers = request_data.get("headers", {})
+    params = request_data.get("params", {})
+
+    api_key = headers.get("api_key") or params.get("api_key", "")
+
+    if not api_key:
+        return {"status": False, "message": "Missing ElevenLabs API key."}
+
+    try:
+        client = elevenlabs.client.ElevenLabs(api_key=api_key)
+        voices_response = client.voices.get_all()
+
+        voices = [
+            {
+                "voice_id": voice.voice_id,
+                "name": voice.name,
+                "category": voice.category,
+            }
+            for voice in voices_response.voices[:10]  # Limit to 10 for sample
+        ]
+
+        return {
+            "status": True,
+            "data": {
+                "voices": voices,
+                "total_count": len(voices_response.voices),
+            },
+            "message": "Voices retrieved successfully.",
+        }
+
+    except Exception as e:
+        print(f"Error getting voices: {e}")
+        return {"status": False, "message": f"Error getting voices: {str(e)}"}
