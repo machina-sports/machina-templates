@@ -98,7 +98,10 @@ workflow:
           ]
         existing_events_map: |
           {
-            fixture.get('metadata', {}).get('event_code', ''): fixture.get('value', {}).get('name', '')
+            fixture.get('metadata', {}).get('event_code', ''): {
+              'name': fixture.get('value', {}).get('name', ''),
+              'status': fixture.get('value', {}).get('sport:status', '')
+            }
             for fixture in $.get('documents', [])
           }
 
@@ -133,6 +136,9 @@ workflow:
             for f in ($.get('all_events') or [])
             if (
               str(f.get('@id', '')) not in $.get('existing_events_ids', []) or
-              ($.get('existing_events_map') or {}).get(str(f.get('@id', ''))) != f.get('name', '')
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') != f.get('name', '') or
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('status', '') != f.get('sport:status', '') or
+              '(win)' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') or
+              'TBD' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '')
             )
           ]
