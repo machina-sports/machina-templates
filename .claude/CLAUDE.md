@@ -283,18 +283,34 @@ LLM interactions:
 ### Import Template (via MCP)
 
 ```python
-# Import shared connector
+# 1. Import shared connector
 mcp__machina_client_dev__get_local_template(
     template="connectors/sportradar-nfl",
     project_path="/app/machina-templates/connectors/sportradar-nfl"
 )
 
-# Import agent template
+# 2. Configure credentials in vault
+mcp__machina_client_dev__create_secrets(
+    data={
+        "name": "TEMP_CONTEXT_VARIABLE_SPORTRADAR_NFL_API_KEY",
+        "key": "your-api-key-here"
+    }
+)
+
+# 3. Test credentials (ALWAYS do this after import!)
+mcp__machina_client_dev__execute_workflow(
+    name="sportradar-nfl-test-credentials"
+)
+# Check workflow-status == 'executed' to confirm success
+
+# 4. Import agent template (after connectors are verified)
 mcp__machina_client_dev__get_local_template(
     template="agent-templates/soccer-predictions-analyst",
     project_path="/app/machina-templates/agent-templates/soccer-predictions-analyst"
 )
 ```
+
+**Important**: Always test credentials immediately after importing connectors. This catches configuration issues early.
 
 ### Environment Variables
 
@@ -329,6 +345,54 @@ MACHINA_CONTEXT_VARIABLE_WORDPRESS_TOKEN=...
 See [SIA Setup Skill](../../docs/.claude/skills/sia-setup/README.md)
 
 ## 🧪 Testing
+
+### Credential Validation Workflows
+
+Most connectors include a `test-credentials.yml` workflow to validate API credentials after installation. **Always run these tests after importing connectors** to verify your credentials are correctly configured.
+
+**Available test-credentials workflows**:
+
+| Connector | Workflow Name | What it Tests |
+|-----------|---------------|---------------|
+| **openai** | `openai-test-credentials` | Lists available models |
+| **groq** | `groq-test-credentials` | Lists available models |
+| **google-genai** | `google-genai-test-credentials` | Lists available models |
+| **perplexity** | `perplexity-test-credentials` | Minimal chat completion |
+| **grok** | `grok-test-credentials` | Minimal chat completion |
+| **exa-search** | `exa-search-test-credentials` | Minimal search query |
+| **api-football** | `api-football-test-credentials` | Fetches timezone list |
+| **sportradar-soccer** | `sportradar-soccer-test-credentials` | Lists competitions |
+| **sportradar-nfl** | `sportradar-nfl-test-credentials` | Fetches league schedule |
+| **sportradar-nba** | `sportradar-nba-test-credentials` | Fetches league injuries |
+| **sportradar-mlb** | `sportradar-mlb-test-credentials` | Fetches schedule |
+| **sportradar-nhl** | `sportradar-nhl-test-credentials` | Fetches schedule |
+| **bwin** | `bwin-test-credentials` | Fetches language codes |
+| **elevenlabs** | `elevenlabs-test-credentials` | Lists available voices |
+| **machina-ai** | `machina-ai-test-credentials` | Minimal chat completion |
+
+**How to use**:
+
+```python
+# 1. First, create secrets with TEMP_ prefix for testing
+mcp__machina_client_dev__create_secrets(
+    data={
+        "name": "TEMP_CONTEXT_VARIABLE_OPENAI_API_KEY",
+        "key": "sk-your-api-key-here"
+    }
+)
+
+# 2. Execute the test workflow
+mcp__machina_client_dev__execute_workflow(
+    name="openai-test-credentials"
+)
+
+# 3. Check results - workflow-status should be 'executed'
+# The 'result' field contains the API response
+```
+
+**Best Practice**: After importing any connector, immediately run its test-credentials workflow to verify credentials are working before using in production workflows.
+
+**Naming Convention**: Test credentials use `$TEMP_CONTEXT_VARIABLE_*` prefix. For production, use `$MACHINA_CONTEXT_VARIABLE_*`.
 
 ### Unit Tests (sportradar-nfl example)
 
@@ -497,7 +561,7 @@ mcp__machina_client_dev__get_local_template(
 
 ---
 
-**Last Updated**: 2026-01-14
+**Last Updated**: 2026-01-16
 **Maintained by**: Claude Code (automated)
 **Total Templates**: 24 agent templates + 38 connectors
-**File Size**: ~11k characters
+**Test Workflows**: 15 credential validation workflows
