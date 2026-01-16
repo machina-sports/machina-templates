@@ -55,9 +55,10 @@ workflow:
         search-limit: 10000
         search-vector: false
       filters:
-        name: "'season:Schedule'"
         metadata.season_id: |
           {'$in': [item.get('season_id', '') for item in $.get('season_schedules_list', [])]}
+      inputs:
+        name: "'season:Schedule'"
       outputs:
         existing_season_ids: |
           [
@@ -130,4 +131,3 @@ workflow:
       document_name: "'season:Schedule'"
       documents:
         items: $.get('documents_to_save')
-
