@@ -36,8 +36,13 @@ datasets:
   - type: "workflow"
     path: "_folders.yml"
 
-  - type: "connector" 
+  - type: "connector"
     path: "api-football.yml"
+
+  # test credentials
+
+  - type: "workflow"
+    path: "test-credentials.yml"
 
   - type: "workflow"
     path: "load-leagues-config.yml"
