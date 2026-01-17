@@ -136,6 +136,17 @@ workflow:
                   "view": "list"
                 },
                 {
+                  "name": "season-schedule",
+                  "title": "Season Schedule",
+                  "description": "Season schedules synced from data providers",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["season:Schedule"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "threads",
                   "title": "Thread",
                   "description": "The threads available in the Conversation API.",

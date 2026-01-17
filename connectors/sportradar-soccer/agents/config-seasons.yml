@@ -15,6 +15,14 @@ agent:
         current-seasons: $.get('current-seasons')
         current-seasons-id: $.get('current-seasons-id')
 
+    # sportradar-soccer-sync-season-schedules
+    - name: sportradar-soccer-sync-season-schedules
+      description: sync-season-schedules
+      inputs:
+        season_ids: $.get('current-seasons-id')
+      outputs:
+        sync-season-schedules-status: $.get('workflow-status', False)
+
     # sportradar-soccer-sync-schedules
     - name: sportradar-soccer-sync-schedules
       description: sync-schedules
