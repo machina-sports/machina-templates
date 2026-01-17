@@ -1,0 +1,9 @@
+{
+  "name": "mkn-templates",
+  "description": "Machina shared templates - connectors, agent templates, and reusable components",
+  "version": "1.0.0",
+  "author": {
+    "name": "Machina Sports"
+  },
+  "keywords": ["machina", "templates", "connectors", "agents", "workflows"]
+}
