@@ -1,6 +1,6 @@
 connector:
   name: "temp-downloader"
-  description: "A simple connector to download images from the web using temporary files"
+  description: "A connector to download files from the web, save to temp, and read JSON"
   filename: "temp-downloader.py"
   filetype: "pyscript"
   commands:
@@ -8,3 +8,5 @@ connector:
       value: "invoke_download"
     - name: "Save to tmp"
       value: "invoke_save_to_tmp"
+    - name: "Read JSON"
+      value: "invoke_read_json"

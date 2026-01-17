@@ -1,4 +1,5 @@
 import base64
+import json
 import mimetypes
 import tempfile
 import urllib.request
@@ -100,4 +101,44 @@ def invoke_save_to_tmp(request_data):
             "status": False,
             "data": {},
             "message": f"Error saving image: {str(e)}",
+        }
+
+
+def invoke_read_json(request_data):
+    """Read JSON content from a file path."""
+    params = request_data.get("params", {})
+    file_path = params.get("file_path")
+
+    if not file_path:
+        return {
+            "status": "error",
+            "message": "file_path is required"
+        }
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = json.load(f)
+
+        return {
+            "status": True,
+            "data": {
+                "json_content": content,
+                "file_path": file_path
+            },
+            "message": "JSON file read successfully."
+        }
+    except json.JSONDecodeError as e:
+        return {
+            "status": "error",
+            "message": f"Invalid JSON: {str(e)}"
+        }
+    except FileNotFoundError:
+        return {
+            "status": "error",
+            "message": f"File not found: {file_path}"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
         }
