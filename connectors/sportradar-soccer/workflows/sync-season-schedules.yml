@@ -26,10 +26,10 @@ workflow:
         name: sportradar-soccer
         command: get-seasons/{season_id}/{data_type}
         command_attribute:
-          season_id: $.get('season_id')
+          season_id: $.get('season-id')
           data_type: "'schedules.json'"
       foreach:
-        name: season_id
+        name: season-id
         expr: $
         value: $.get('season_ids', [])
       condition: $.get('season_ids') is not None and len($.get('season_ids', [])) > 0
@@ -40,8 +40,9 @@ workflow:
         season_schedules_list: |
           [
             {
-              'season_id': $.get('season_id'),
-              'schedules': $.get('schedules', {})
+              'season_id': context.get('season-id'),
+              'sr_session_id': str(context.get('season-id', '')).replace('urn:sportradar:season:', '').replace('sr:season:', ''),
+              'schedules': $.get('schedules', [])
             }
           ]
 
@@ -66,59 +67,11 @@ workflow:
             for doc in $.get('documents', [])
           ]
 
-    # prepare-season-schedule-documents
-    - type: connector
-      name: prepare-season-schedule-documents
-      description: Prepare season schedule documents with proper structure and metadata
-      connector:
-        name: assistant-tools
-        command: invoke_python_code
-      condition: $.get('season_schedules_list') is not None and len($.get('season_schedules_list', [])) > 0
-      inputs:
-        code: |
-          import json
-          
-          season_schedules_list = context.get('season_schedules_list', [])
-          existing_season_ids = context.get('existing_season_ids', [])
-          
-          documents = []
-          for item in season_schedules_list:
-              season_id = item.get('season_id', '')
-              schedules_data = item.get('schedules', {})
-              
-              # Extract season info from schedules response
-              season_info = schedules_data.get('season', {})
-              competition_info = schedules_data.get('competition', {})
-              sport_event_schedules = schedules_data.get('sport_event_schedules', [])
-              
-              # Create document
-              doc = {
-                  'name': f'season:Schedule',
-                  'metadata': {
-                      'season_id': season_id,
-                      'season_name': season_info.get('name', ''),
-                      'competition_id': competition_info.get('id', ''),
-                      'competition_name': competition_info.get('name', ''),
-                      'sport': 'soccer'
-                  },
-                  'season': season_info,
-                  'competition': competition_info,
-                  'sport_event_schedules': sport_event_schedules,
-                  'total_events': len(sport_event_schedules),
-                  'title': f"{competition_info.get('name', 'Unknown')} - {season_info.get('name', 'Unknown')} Schedule"
-              }
-              
-              documents.append(doc)
-          
-          return {'documents_to_save': documents}
-      outputs:
-        documents_to_save: $.get('documents_to_save', [])
-
     # bulk-save-season-schedules
     - type: document
       name: bulk-save-season-schedules
       description: Bulk save season schedule documents
-      condition: $.get('documents_to_save') is not None and len($.get('documents_to_save', [])) > 0
+      condition: $.get('season_schedules_list') is not None and len($.get('season_schedules_list', [])) > 0
       config:
         action: bulk-update
         embed-selector: $.get('title')
@@ -130,4 +83,18 @@ workflow:
         model: text-embedding-3-small
       document_name: "'season:Schedule'"
       documents:
-        items: $.get('documents_to_save')
+        items: |
+          [
+            {
+              'name': 'season:Schedule',
+              'metadata': {
+                'season_id': item.get('season_id', ''),
+                'sr_session_id': item.get('sr_session_id', ''),
+                'sport': 'soccer'
+              },
+              'sport_event_schedules': item.get('schedules', []) if isinstance(item.get('schedules', []), list) else [],
+              'total_events': len(item.get('schedules', []) if isinstance(item.get('schedules', []), list) else []),
+              'title': f"{item.get('season_id', '')} Schedule"
+            }
+            for item in $.get('season_schedules_list', [])
+          ]

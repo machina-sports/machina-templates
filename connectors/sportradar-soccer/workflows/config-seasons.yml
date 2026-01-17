@@ -83,14 +83,7 @@ workflow:
             $.get('current-season', {}).get('id', '')
           ]
 
-    # task-sync-season-schedules
-    - type: workflow
-      name: task-sync-season-schedules
-      description: Sync season schedule documents for all current seasons
-      condition: $.get('current-seasons-id') is not None and len($.get('current-seasons-id', [])) > 0
-      workflow:
-        name: sportradar-soccer-sync-season-schedules
-      inputs:
-        season_ids: $.get('current-seasons-id')
-      outputs:
-        season_schedules: $.get('season_schedules')
+    # NOTE:
+    # Sync of `season:Schedule` documents is orchestrated by the agent
+    # (`connectors/sportradar-soccer/agents/config-seasons.yml`) to avoid
+    # nested `type: workflow` execution issues in this workflow.
