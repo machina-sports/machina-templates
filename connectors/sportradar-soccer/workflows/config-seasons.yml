@@ -85,3 +85,8 @@ workflow:
           [
             $.get('current-season', {}).get('id', '')
           ]
+
+    # NOTE:
+    # Sync of `season:Schedule` documents is orchestrated by the agent
+    # (`connectors/sportradar-soccer/agents/config-seasons.yml`) to avoid
+    # nested `type: workflow` execution issues in this workflow.
