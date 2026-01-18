@@ -68,7 +68,16 @@ def invoke_upload(request_data):
             # For local files, use exact basename (preserve as-is)
             filename = os.path.basename(file_path)
 
-    remote = f"static/{filename}"
+    # Allow custom remote path, default to static/{filename} for backwards compatibility
+    remote_path = params.get("remote_path")
+    if remote_path:
+        # If remote_path ends with /, append filename
+        if remote_path.endswith("/"):
+            remote = f"{remote_path}{filename}"
+        else:
+            remote = remote_path
+    else:
+        remote = f"static/{filename}"
 
     if not api_key:
         return {"status": "error", "message": "API key is required."}
