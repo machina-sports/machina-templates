@@ -14,6 +14,7 @@ This guide documents the **actual** YAML structures used in Machina templates, b
 2. [Workflow YAML](#workflow-yaml)
 3. [Task Types](#task-types)
    - [Document Task](#document-task)
+   - [Metadata Best Practices](#metadata-best-practices)
    - [Vector Search](#vector-search)
    - [Prompt Task](#prompt-task)
    - [Mapping Task](#mapping-task)
@@ -351,6 +352,103 @@ Read, create, update, or search documents in MongoDB.
 - `update` - Update existing document(s)
 - `bulk-save` - Create multiple documents at once
 - `bulk-update` - Update multiple documents at once
+
+### Metadata Best Practices
+
+The `metadata` field serves **two specific purposes** in document operations:
+
+1. **Filtering** - Query documents via `metadata.*` filters
+2. **Unique Identification** - Combined with `name` for upsert deduplication in `bulk-update`
+
+**⚠️ CRITICAL: Metadata is NOT for storing arbitrary data!**
+
+When using `action: bulk-update`, the SDK uses `{metadata, name}` as the filter for upsert:
+- If a document exists with the **same metadata AND name**, it gets **overwritten**
+- This is intentional for deduplication, but can cause data loss if misused
+
+**Structure:**
+
+```yaml
+# Document storage structure
+{
+  "name": "ros-output",           # Document type identifier
+  "metadata": {                   # ONLY for filtering/identification
+    "input_id": "match_123",      # ✅ Used for filtering
+    "league_id": "serie_a"        # ✅ Used for filtering
+  },
+  "value": {                      # Actual document data goes here
+    "title": "Match Title",
+    "spreadsheet_url": "https://...",  # ✅ Data belongs in value
+    "generated_at": "2026-01-18"
+  }
+}
+```
+
+**✅ CORRECT - Metadata for filtering:**
+
+```yaml
+- type: document
+  name: save-event-content
+  config:
+    action: update
+  documents:
+    content-poll: $.get('poll_data')
+  metadata:
+    event_id: $.get('event_id')       # ✅ Filter by event
+    content_type: "'poll'"            # ✅ Filter by type
+    league_id: $.get('league_id')     # ✅ Filter by league
+```
+
+**❌ WRONG - Storing data in metadata:**
+
+```yaml
+- type: document
+  name: save-output
+  documents:
+    ros-output: $.get('document')
+  metadata:
+    spreadsheet_url: $.get('url')     # ❌ This is DATA, not a filter key!
+    filename: $.get('filename')       # ❌ This is DATA, not a filter key!
+    match_title: $.get('title')       # ❌ This is DATA, not a filter key!
+```
+
+**Why this matters:**
+
+1. **Data Duplication**: URL in metadata AND in `value` = wasted storage
+2. **Upsert Conflicts**: Different URLs = different metadata = multiple documents instead of update
+3. **Query Confusion**: Metadata should be stable identifiers, not changing data
+
+**Correct Pattern - Store data in value:**
+
+```yaml
+- type: document
+  name: save-output
+  config:
+    action: update
+  documents:
+    ros-output: |
+      {
+        **$.get('document', {}),
+        'spreadsheet_url': $.get('url'),      # ✅ Data in value
+        'filename': $.get('filename'),        # ✅ Data in value
+        'generated_at': datetime.now().isoformat()
+      }
+  metadata:
+    input_id: $.get('input_id')               # ✅ Stable identifier for filtering
+    league_id: $.get('league_id')             # ✅ Stable identifier for filtering
+```
+
+**When to use metadata:**
+
+| Use Case | In Metadata? | Example |
+|----------|--------------|---------|
+| Filter by event | ✅ Yes | `event_id`, `match_id` |
+| Filter by category | ✅ Yes | `content_type`, `league_id` |
+| Deduplication key | ✅ Yes | `input_id` + `name` |
+| URLs, file paths | ❌ No | Store in `value` |
+| Generated content | ❌ No | Store in `value` |
+| Timestamps | ❌ No | Store in `value` |
+| Titles, descriptions | ❌ No | Store in `value` |
 
 ### Vector Search
 
