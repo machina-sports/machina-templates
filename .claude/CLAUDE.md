@@ -1,8 +1,28 @@
 # Machina Templates - Shared Agent Templates & Connectors
 
+## 🚀 Quick Start
+
+### Available Skills
+
+| Skill | Description |
+|-------|-------------|
+| `/mkn-templates:create-template` | Scaffold new template with correct structure |
+| `/mkn-templates:validate-template` | Validate YAML patterns before installation |
+| `/mkn-templates:install-template` | Install templates via MCP (local or Git) |
+
+### Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](guides/getting-started.md) | Quick start for template development |
+| [Template YAML Reference](guides/template-yaml-reference.md) | Complete YAML syntax and patterns |
+| [Connectors Catalog](guides/connectors-catalog.md) | All 35+ available connectors |
+
+---
+
 ## 📋 Project Overview
 
-Central repository of reusable agent templates and connectors for the Machina Sports platform. Contains 24 agent templates and 38 connectors used across all tenant deployments (DAZN, Entain, etc.).
+Central repository of reusable agent templates and connectors for the Machina Sports platform. Contains 24 agent templates and 38 connectors used across all tenant deployments.
 
 **Repository**: `/Users/fernando/machina/machina-templates`
 **Main Technologies**: Python, YAML configurations, REST API integrations
