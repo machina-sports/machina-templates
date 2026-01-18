@@ -1194,6 +1194,163 @@ merged: |
 
 ## Common Patterns
 
+### Auto-Select with Time Window Queries
+
+Query events within a time window and exclude already processed items:
+
+```yaml
+# Task 1: Get existing processed IDs
+- type: document
+  name: load-existing-inputs
+  config:
+    action: search
+    search-limit: 500
+    search-vector: false
+  filters:
+    name: "'ros-input'"
+  outputs:
+    existing_ids: "[doc.get('metadata', {}).get('input_id', '') for doc in $.get('documents', [])]"
+
+# Task 2: Query upcoming events in time window
+- type: document
+  name: find-upcoming-events
+  config:
+    action: search
+    search-limit: 20
+    search-vector: false
+    search-sorters: ["value.schema:startDate", 1]
+  filters:
+    name: "'sport:Event'"
+    value.sport:status: "{'$in': ['not_started', 'scheduled']}"
+    value.schema:startDate: |
+      {
+        '$gt': __import__('datetime').datetime.utcnow().isoformat() + 'Z',
+        '$lt': (__import__('datetime').datetime.utcnow() + __import__('datetime').timedelta(hours=int($.get('hours_ahead', 24)))).isoformat() + 'Z'
+      }
+  outputs:
+    upcoming_events: "$.get('documents', [])"
+
+# Task 3: Select first unprocessed event (using $nin)
+- type: document
+  name: select-first-pending
+  condition: "len($.get('upcoming_events', [])) > 0"
+  config:
+    action: search
+    search-limit: 1
+    search-sorters: ["value.schema:startDate", 1]
+  filters:
+    name: "'sport:Event'"
+    metadata.event_code: |
+      {
+        '$nin': [
+          'urn:sportradar:sport_event:sr:sport_event:' + id.replace('sr_', '')
+          for id in $.get('existing_ids', [])
+          if id.startswith('sr_')
+        ]
+      }
+  outputs:
+    selected_event: "$.get('documents', [{}])[0] if $.get('documents') else {}"
+    event_found: "len($.get('documents', [])) > 0"
+```
+
+### Web Search with Concurrent Foreach
+
+Execute multiple web searches in parallel and aggregate results:
+
+```yaml
+# Task 1: Generate search queries
+- type: prompt
+  name: generate-search-queries
+  connector:
+    name: google-genai
+    command: invoke_prompt
+    model: gemini-2.0-flash
+    provider: vertex_ai
+    location: global
+  inputs:
+    home_team: "$.get('home_team')"
+    away_team: "$.get('away_team')"
+  outputs:
+    search_queries: "$.get('search_queries', [])"
+
+# Task 2: Execute searches concurrently
+- type: connector
+  name: search-team-info
+  condition: "len($.get('search_queries', [])) > 0"
+  connector:
+    name: google-genai
+    command: invoke_search
+    model: gemini-2.0-flash
+    provider: vertex_ai
+    location: global
+  foreach:
+    concurrent: true
+    name: search_query
+    expr: $
+    value: "$.get('search_queries')"
+  inputs:
+    search_query: "$.get('search_query')"
+    recency_days: 7
+  outputs:
+    search_results: "[$.get('answer', '')]"
+
+# Task 3: Extract structured data from results
+- type: prompt
+  name: extract-research
+  condition: "len($.get('search_results', [])) > 0"
+  connector:
+    name: google-genai
+    command: invoke_prompt
+    model: gemini-2.0-flash
+    provider: vertex_ai
+    location: global
+  inputs:
+    search_results: "$.get('search_results', [])"
+  outputs:
+    team_research: "$"
+```
+
+### Document Merge (Preserve Existing Data)
+
+Load existing document before updating to preserve data:
+
+```yaml
+# Task 1: Load existing document
+- type: document
+  name: load-existing-for-merge
+  condition: "$.get('input_id') is not None"
+  config:
+    action: search
+    search-limit: 1
+    search-vector: false
+  filters:
+    name: "'ros-input'"
+    metadata.input_id: "$.get('input_id')"
+  outputs:
+    existing_value: "$.get('documents', [{}])[0].get('value', {})"
+
+# Task 2: Update with merge (spread existing + new fields)
+- type: document
+  name: update-with-merge
+  condition: "$.get('input_id') is not None"
+  config:
+    action: update
+    embed-vector: false
+    force-update: true
+  filters:
+    name: "'ros-input'"
+    metadata.input_id: "$.get('input_id')"
+  documents:
+    ros-input: |
+      {
+        **$.get('existing_value', {}),
+        'new_field': $.get('new_data', {}),
+        'updated_at': __import__('datetime').datetime.utcnow().isoformat() + 'Z'
+      }
+  outputs:
+    update_saved: "True"
+```
+
 ### One-Shot Agent (No Thread Required)
 
 Create thread automatically if not provided:
