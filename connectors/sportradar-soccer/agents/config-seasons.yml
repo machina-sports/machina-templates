@@ -4,7 +4,7 @@ agent:
   description: Agent to config seasons for coverage tools
   context:
     config-frequency: 10
-    status: inactive
+    status: active
   workflows:
 
     # sportradar-soccer-config-seasons-workflow
