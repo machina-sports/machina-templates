@@ -9,6 +9,8 @@
 | `/mkn-templates:create-template` | Scaffold new template with correct structure |
 | `/mkn-templates:validate-template` | Validate YAML patterns before installation |
 | `/mkn-templates:install-template` | Install templates via MCP (local or Git) |
+| `/mkn-templates:analyze-template` | Analyze template structure, dependencies, secrets |
+| `/mkn-templates:configure-secrets` | Configure vault secrets for connectors |
 
 ### Documentation
 
