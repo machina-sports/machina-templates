@@ -22,19 +22,22 @@ workflow:
 
     # load dispatch configuration
     - type: document
-      name: coverage-soccer-preview-config
-      description: Load dispatch configuration to control player article execution
+      name: load-seasons-config
+      description: Load seasons configuration (supports sportradar-soccer-config or coverage-soccer-preview-config)
       config:
         action: search
         search-limit: 1
         search-vector: false
       filters:
-        name: "'coverage-soccer-preview-config'"
+        name: "{'$in': ['sportradar-soccer-config', 'coverage-soccer-preview-config']}"
+      sorters:
+        - "name"
+        - -1
       outputs:
         coverage-soccer-preview: $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', []) if len($.get('documents', [])) > 0 else []
         competition-ids: |
           [
-            competition_id.replace('urn:sportradar:competition:', '')
+            competition_id.replace('urn:sportradar:competition:', 'sr:competition:')
             for competition_id in $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', [])
           ]
 
