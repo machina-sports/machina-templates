@@ -86,11 +86,6 @@ datasets:
   - type: "mappings"
     path: "mappings/version-control.yml"
   
-  # folders structure
-
-  - type: "workflow"
-    path: "_folders.yml"
-  
   # sync workflows
 
   - type: "workflow"
