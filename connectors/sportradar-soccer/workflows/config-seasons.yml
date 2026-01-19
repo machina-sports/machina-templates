@@ -17,7 +17,6 @@ workflow:
     competition-ids: $.get('competition-ids')
     current-seasons: $.get('current-seasons')
     current-seasons-id: $.get('current-seasons-id')
-    competitor-ids: $.get('all-competitor-ids', [])
     workflow-status: "'executed'"
   tasks:
 
@@ -86,25 +85,6 @@ workflow:
           [
             $.get('current-season', {}).get('id', '')
           ]
-
-    # load-competitors-list
-    - type: document
-      name: load-competitors-list
-      description: Load competitor IDs from competitor documents (synced by sportradar-soccer-sync-competitors)
-      config:
-        action: search
-        search-limit: 10000
-        search-vector: false
-      filters:
-        metadata.competitors: "{'$exists': True}"
-      outputs:
-        all-competitor-ids: |
-          list(set(
-            competitor.get('@id', '').replace('urn:sportradar:team:', '')
-            for doc in $.get('documents', [])
-            for competitor in doc.get('data', [])
-            if competitor.get('@id', '').startswith('urn:sportradar:team:sr:competitor:')
-          ))
 
     # NOTE:
     # Sync of `season:Schedule` and `competitor:Summarie` documents is orchestrated by the agent

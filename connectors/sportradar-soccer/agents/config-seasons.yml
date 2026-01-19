@@ -50,8 +50,6 @@ agent:
     # sportradar-soccer-sync-competitor-summaries
     - name: sportradar-soccer-sync-competitor-summaries
       description: sync-competitor-summaries
-      inputs:
-        competitor_ids: $.get('competitor-ids', [])
       outputs:
         sync-competitor-summaries-status: $.get('workflow-status', False)
 

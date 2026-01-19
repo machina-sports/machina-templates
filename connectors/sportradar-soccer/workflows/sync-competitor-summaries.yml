@@ -11,12 +11,29 @@ workflow:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
     sportradar-soccer:
       api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
-  inputs:
-    competitor_ids: $.get('competitor_ids', [])
   outputs:
     competitor_summaries: $.get('competitor_summaries_list', [])
     workflow-status: len($.get('competitor_summaries_list', [])) > 0 and 'executed' or 'skipped'
   tasks:
+
+    # load-competitors-list
+    - type: document
+      name: load-competitors-list
+      description: Load competitor IDs from competitor documents (synced by sportradar-soccer-sync-competitors)
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.competitors: "{'$exists': True}"
+      outputs:
+        competitor_ids: |
+          list(set(
+            competitor.get('@id', '').replace('urn:sportradar:team:', '')
+            for doc in $.get('documents', [])
+            for competitor in doc.get('data', [])
+            if competitor.get('@id', '').startswith('urn:sportradar:team:sr:competitor:')
+          ))
 
     # load-competitor-summaries
     - type: connector
@@ -137,4 +154,3 @@ workflow:
             }
             for item in $.get('competitor_summaries_list', [])
           ]
-
