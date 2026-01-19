@@ -79,6 +79,7 @@ workflow:
           }
       metadata:
         season_id: $.get('season_id')
+        name: "'competitors'"
 
     # bulk-save-schedules
     - type: document

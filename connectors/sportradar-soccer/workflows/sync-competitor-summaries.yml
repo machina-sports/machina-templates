@@ -25,13 +25,13 @@ workflow:
         search-limit: 10000
         search-vector: false
       filters:
-        metadata.competitors: "{'$exists': True}"
+        name: "'competitors'"
       outputs:
         competitor_ids: |
           list(set(
             competitor.get('@id', '').replace('urn:sportradar:team:', '')
             for doc in $.get('documents', [])
-            for competitor in doc.get('data', [])
+            for competitor in doc.get('value', {}).get('data', doc.get('data', []))
             if competitor.get('@id', '').startswith('urn:sportradar:team:sr:competitor:')
           ))
 
@@ -57,66 +57,18 @@ workflow:
             {
               'competitor_id': context.get('competitor-id'),
               'sr_competitor_id': str(context.get('competitor-id', '')).replace('urn:sportradar:competitor:', '').replace('sr:competitor:', ''),
-              'summaries_data': $
+              'summaries_data': {
+                'generated_at': $.get('generated_at', ''),
+                'competitor': $.get('competitor', {}),
+                'summaries': $.get('summaries', [])
+              }
             }
-          ]
-
-    # normalize-competitor-summaries
-    - type: connector
-      name: normalize-competitor-summaries
-      description: Normalize competitor summaries data for document storage
-      connector:
-        name: machina-ai
-        command: invoke_prompt
-        model: gpt-4o-mini
-      condition: $.get('competitor_summaries_list') is not None and len($.get('competitor_summaries_list', [])) > 0
-      inputs:
-        api_key: $.get('api_key')
-        messages: |
-          [
-            {
-              'role': 'system',
-              'content': 'You are a data normalization assistant. Extract key information from competitor summaries and return as JSON.'
-            },
-            {
-              'role': 'user',
-              'content': f"Normalize this competitor data into a clean structure with: competitor_id, name, country, abbreviation, gender, competitions (list of competition names and ids), recent_summaries (last 10 matches with basic info). Data: {$.get('competitor_summaries_list', [])}"
-            }
-          ]
-      outputs:
-        normalized_summaries: |
-          import json
-          try:
-            content = $.get('choices', [{}])[0].get('message', {}).get('content', '{}')
-            json.loads(content.replace('```json', '').replace('```', '').strip())
-          except:
-            []
-
-    # check-existing-competitor-summaries
-    - type: document
-      name: check-existing-competitor-summaries
-      condition: $.get('competitor_summaries_list') is not None and len($.get('competitor_summaries_list', [])) > 0
-      description: Check for existing competitor summary documents.
-      config:
-        action: search
-        search-limit: 10000
-        search-vector: false
-      filters:
-        metadata.competitor_id: |
-          {'$in': [item.get('competitor_id', '') for item in $.get('competitor_summaries_list', [])]}
-      inputs:
-        name: "'competitor:Summarie'"
-      outputs:
-        existing_competitor_ids: |
-          [
-            doc.get('metadata', {}).get('competitor_id', '')
-            for doc in $.get('documents', [])
           ]
 
     # bulk-save-competitor-summaries
     - type: document
       name: bulk-save-competitor-summaries
-      description: Bulk save competitor summary documents with upsert semantics
+      description: Save each competitor summary as its own document
       condition: $.get('competitor_summaries_list') is not None and len($.get('competitor_summaries_list', [])) > 0
       config:
         action: bulk-update
@@ -134,6 +86,8 @@ workflow:
             {
               'name': 'competitor:Summarie',
               'metadata': {
+                # requirement: allow searching by metadata.name = competitor:Summarie
+                'name': 'competitor:Summarie',
                 'competitor_id': item.get('competitor_id', ''),
                 'sr_competitor_id': item.get('sr_competitor_id', ''),
                 'sport': 'soccer',
@@ -150,7 +104,7 @@ workflow:
               'summaries': item.get('summaries_data', {}).get('summaries', []) if isinstance(item.get('summaries_data', {}).get('summaries', []), list) else [],
               'total_summaries': len(item.get('summaries_data', {}).get('summaries', []) if isinstance(item.get('summaries_data', {}).get('summaries', []), list) else []),
               'last_modified': item.get('summaries_data', {}).get('generated_at', ''),
-              'title': f"{item.get('summaries_data', {}).get('competitor', {}).get('name', 'Unknown')} Summaries"
+              'title': f"{item.get('competitor_id', '')} - Summarie"
             }
             for item in $.get('competitor_summaries_list', [])
           ]
