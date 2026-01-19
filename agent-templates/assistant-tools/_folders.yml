@@ -147,6 +147,17 @@ workflow:
                   "view": "list"
                 },
                 {
+                  "name": "competitor-summaries",
+                  "title": "Competitor Summaries",
+                  "description": "Competitor summaries synced from Sportradar Soccer API",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["competitor:Summarie"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
                   "name": "threads",
                   "title": "Thread",
                   "description": "The threads available in the Conversation API.",
