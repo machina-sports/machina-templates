@@ -23,6 +23,14 @@ agent:
       outputs:
         sync-season-schedules-status: $.get('workflow-status', False)
 
+    # sportradar-soccer-sync-competitor-summaries
+    - name: sportradar-soccer-sync-competitor-summaries
+      description: sync-competitor-summaries
+      inputs:
+        competitor_ids: $.get('competitor-ids', [])
+      outputs:
+        sync-competitor-summaries-status: $.get('workflow-status', False)
+
     # sportradar-soccer-sync-schedules
     - name: sportradar-soccer-sync-schedules
       description: sync-schedules

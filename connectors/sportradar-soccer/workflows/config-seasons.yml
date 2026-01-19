@@ -17,6 +17,7 @@ workflow:
     competition-ids: $.get('competition-ids')
     current-seasons: $.get('current-seasons')
     current-seasons-id: $.get('current-seasons-id')
+    competitor-ids: $.get('all-competitor-ids', [])
     workflow-status: "'executed'"
   tasks:
 
@@ -86,7 +87,32 @@ workflow:
             $.get('current-season', {}).get('id', '')
           ]
 
+    # task-load-competitors-for-summaries
+    - type: connector
+      name: task-load-competitors-for-summaries
+      description: Get competitors from each season to collect for summaries
+      condition: $.get('current-seasons-id') is not None and len($.get('current-seasons-id', [])) > 0
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/{data_type}
+        command_attribute:
+          season_id: $.get('season-id')
+          data_type: "'competitors.json'"
+      foreach:
+        name: season-id
+        expr: $
+        value: $.get('current-seasons-id', [])
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        all-competitor-ids: |
+          list(set(
+            competitor.get('id', '')
+            for competitor in $.get('season_competitors', [])
+            if competitor.get('id', '')
+          ))
+
     # NOTE:
-    # Sync of `season:Schedule` documents is orchestrated by the agent
+    # Sync of `season:Schedule` and `competitor:Summarie` documents is orchestrated by the agent
     # (`connectors/sportradar-soccer/agents/config-seasons.yml`) to avoid
     # nested `type: workflow` execution issues in this workflow.

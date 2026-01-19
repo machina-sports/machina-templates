@@ -102,6 +102,9 @@ datasets:
 
   - type: "workflow"
     path: "workflows/sync-season-schedules.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-competitor-summaries.yml"
   
   - type: "workflow"
     path: "workflows/sync-seasons.yml"

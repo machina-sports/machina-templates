@@ -1,0 +1,140 @@
+workflow:
+
+  # sportradar-soccer-sync-competitor-summaries
+  name: sportradar-soccer-sync-competitor-summaries
+  title: Sportradar Soccer - Competitor Summaries
+  description: Workflow to synchronize competitor summaries from SportRadar API to Machina as competitor:Summarie documents.
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    competitor_ids: $.get('competitor_ids', [])
+  outputs:
+    competitor_summaries: $.get('competitor_summaries_list', [])
+    workflow-status: len($.get('competitor_summaries_list', [])) > 0 and 'executed' or 'skipped'
+  tasks:
+
+    # load-competitor-summaries
+    - type: connector
+      name: load-competitor-summaries
+      description: Get competitor summaries from SportRadar for each competitor
+      connector:
+        name: sportradar-soccer
+        command: get-competitors/{competitor_id}/summaries.json
+        command_attribute:
+          competitor_id: $.get('competitor-id')
+      foreach:
+        name: competitor-id
+        expr: $
+        value: $.get('competitor_ids', [])
+      condition: $.get('competitor_ids') is not None and len($.get('competitor_ids', [])) > 0
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        competitor_summaries_list: |
+          [
+            {
+              'competitor_id': context.get('competitor-id'),
+              'sr_competitor_id': str(context.get('competitor-id', '')).replace('urn:sportradar:competitor:', '').replace('sr:competitor:', ''),
+              'summaries_data': $
+            }
+          ]
+
+    # normalize-competitor-summaries
+    - type: connector
+      name: normalize-competitor-summaries
+      description: Normalize competitor summaries data for document storage
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        model: gpt-4o-mini
+      condition: $.get('competitor_summaries_list') is not None and len($.get('competitor_summaries_list', [])) > 0
+      inputs:
+        api_key: $.get('api_key')
+        messages: |
+          [
+            {
+              'role': 'system',
+              'content': 'You are a data normalization assistant. Extract key information from competitor summaries and return as JSON.'
+            },
+            {
+              'role': 'user',
+              'content': f"Normalize this competitor data into a clean structure with: competitor_id, name, country, abbreviation, gender, competitions (list of competition names and ids), recent_summaries (last 10 matches with basic info). Data: {$.get('competitor_summaries_list', [])}"
+            }
+          ]
+      outputs:
+        normalized_summaries: |
+          import json
+          try:
+            content = $.get('choices', [{}])[0].get('message', {}).get('content', '{}')
+            json.loads(content.replace('```json', '').replace('```', '').strip())
+          except:
+            []
+
+    # check-existing-competitor-summaries
+    - type: document
+      name: check-existing-competitor-summaries
+      condition: $.get('competitor_summaries_list') is not None and len($.get('competitor_summaries_list', [])) > 0
+      description: Check for existing competitor summary documents.
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.competitor_id: |
+          {'$in': [item.get('competitor_id', '') for item in $.get('competitor_summaries_list', [])]}
+      inputs:
+        name: "'competitor:Summarie'"
+      outputs:
+        existing_competitor_ids: |
+          [
+            doc.get('metadata', {}).get('competitor_id', '')
+            for doc in $.get('documents', [])
+          ]
+
+    # bulk-save-competitor-summaries
+    - type: document
+      name: bulk-save-competitor-summaries
+      description: Bulk save competitor summary documents with upsert semantics
+      condition: $.get('competitor_summaries_list') is not None and len($.get('competitor_summaries_list', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'competitor:Summarie'"
+      documents:
+        items: |
+          [
+            {
+              'name': 'competitor:Summarie',
+              'metadata': {
+                'competitor_id': item.get('competitor_id', ''),
+                'sr_competitor_id': item.get('sr_competitor_id', ''),
+                'sport': 'soccer',
+                'data_source': 'sportradar'
+              },
+              'competitor_info': {
+                'id': item.get('summaries_data', {}).get('competitor', {}).get('id', ''),
+                'name': item.get('summaries_data', {}).get('competitor', {}).get('name', ''),
+                'abbreviation': item.get('summaries_data', {}).get('competitor', {}).get('abbreviation', ''),
+                'country': item.get('summaries_data', {}).get('competitor', {}).get('country', ''),
+                'country_code': item.get('summaries_data', {}).get('competitor', {}).get('country_code', ''),
+                'gender': item.get('summaries_data', {}).get('competitor', {}).get('gender', '')
+              },
+              'summaries': item.get('summaries_data', {}).get('summaries', []) if isinstance(item.get('summaries_data', {}).get('summaries', []), list) else [],
+              'total_summaries': len(item.get('summaries_data', {}).get('summaries', []) if isinstance(item.get('summaries_data', {}).get('summaries', []), list) else []),
+              'last_modified': item.get('summaries_data', {}).get('generated_at', ''),
+              'title': f"{item.get('summaries_data', {}).get('competitor', {}).get('name', 'Unknown')} Summaries"
+            }
+            for item in $.get('competitor_summaries_list', [])
+          ]
+
