@@ -87,29 +87,23 @@ workflow:
             $.get('current-season', {}).get('id', '')
           ]
 
-    # task-load-competitors-for-summaries
-    - type: connector
-      name: task-load-competitors-for-summaries
-      description: Get competitors from each season to collect for summaries
-      condition: $.get('current-seasons-id') is not None and len($.get('current-seasons-id', [])) > 0
-      connector:
-        name: sportradar-soccer
-        command: get-seasons/{season_id}/{data_type}
-        command_attribute:
-          season_id: $.get('season-id')
-          data_type: "'competitors.json'"
-      foreach:
-        name: season-id
-        expr: $
-        value: $.get('current-seasons-id', [])
-      inputs:
-        api_key: $.get('api_key')
+    # load-competitors-list
+    - type: document
+      name: load-competitors-list
+      description: Load competitor IDs from competitor documents (synced by sportradar-soccer-sync-competitors)
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.competitors: "{'$exists': True}"
       outputs:
         all-competitor-ids: |
           list(set(
-            competitor.get('id', '')
-            for competitor in $.get('season_competitors', [])
-            if competitor.get('id', '')
+            competitor.get('@id', '').replace('urn:sportradar:team:', '')
+            for doc in $.get('documents', [])
+            for competitor in doc.get('data', [])
+            if competitor.get('@id', '').startswith('urn:sportradar:team:sr:competitor:')
           ))
 
     # NOTE:
