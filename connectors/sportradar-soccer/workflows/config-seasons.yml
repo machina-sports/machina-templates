@@ -34,11 +34,13 @@ workflow:
         - "name"
         - -1
       outputs:
-        coverage-soccer-preview: $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', []) if len($.get('documents', [])) > 0 else []
+        coverage-soccer-preview-raw: $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', []) if len($.get('documents', [])) > 0 else []
+        # Support hybrid format: string (all teams) or object with competition + teams filter
         competition-ids: |
           [
-            competition_id.replace('urn:sportradar:competition:', 'sr:competition:')
-            for competition_id in $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', [])
+            (item if isinstance(item, str) else item.get('competition', '')).replace('urn:sportradar:competition:', 'sr:competition:')
+            for item in $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', [])
+            if isinstance(item, str) or (isinstance(item, dict) and item.get('competition'))
           ]
 
     # task-load-seasons
