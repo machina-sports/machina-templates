@@ -23,11 +23,11 @@ workflow:
       name: "fetch-polymarket-markets"
       connector:
         name: "domeapi"
-        command: "get-polymarket/markets"
+        command: "GetPolymarketMarkets"
       inputs:
-        x-api-key: $.get('api_key')
-        query: $.get('query')
-        limit: $.get('limit')
+        x-api-key: "$TEMP_CONTEXT_VARIABLE_DOMEAPI_API_KEY"
+        query: query
+        limit: limit
       outputs:
         markets_list: $.get('markets', [])
     
@@ -43,11 +43,11 @@ workflow:
         concurrent: true
       connector:
         name: "domeapi"
-        command: "get-polymarket/market-price/{token_id}"
+        command: "GetPolymarketMarketPrice"
         command_attribute:
           token_id: $.get('market_item', {}).get('side_a', {}).get('id', '')
       inputs:
-        x-api-key: $.get('api_key')
+        x-api-key: "$TEMP_CONTEXT_VARIABLE_DOMEAPI_API_KEY"
       outputs:
         prices_list: |
           [
@@ -92,4 +92,3 @@ workflow:
             }
             for item in $.get('prices_list', [])
           ]
-
