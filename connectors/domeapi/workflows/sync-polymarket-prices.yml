@@ -1,0 +1,95 @@
+workflow:
+  name: "domeapi-sync-polymarket-prices"
+  title: "DomeAPI - Sync Polymarket Prices"
+  description: "Dynamically fetch Polymarket markets and load prices for each market"
+  
+  context-variables:
+    domeapi:
+      api_key: "$TEMP_CONTEXT_VARIABLE_DOMEAPI_API_KEY"
+  
+  inputs:
+    query: $.get('query', 'NFL')
+    limit: $.get('limit', 10)
+  
+  outputs:
+    markets: $.get('markets_list', [])
+    prices: $.get('prices_list', [])
+    total_processed: len($.get('prices_list', []))
+    workflow-status: len($.get('prices_list', [])) > 0 and 'executed' or 'skipped'
+  
+  tasks:
+    # 1. Buscar markets do Polymarket
+    - type: "connector"
+      name: "fetch-polymarket-markets"
+      connector:
+        name: "domeapi"
+        command: "get-polymarket/markets"
+      inputs:
+        x-api-key: $.get('api_key')
+        query: $.get('query')
+        limit: $.get('limit')
+      outputs:
+        markets_list: $.get('markets', [])
+    
+    # 2. Para cada market, buscar o preço atual (side_a)
+    - type: "connector"
+      name: "fetch-market-prices-foreach"
+      description: "Fetch current price for each market token"
+      condition: $.get('markets_list') is not None and len($.get('markets_list', [])) > 0
+      foreach:
+        name: market_item
+        expr: $
+        value: $.get('markets_list', [])
+        concurrent: true
+      connector:
+        name: "domeapi"
+        command: "get-polymarket/market-price/{token_id}"
+        command_attribute:
+          token_id: $.get('market_item', {}).get('side_a', {}).get('id', '')
+      inputs:
+        x-api-key: $.get('api_key')
+      outputs:
+        prices_list: |
+          [
+            {
+              'market_slug': context.get('market_item', {}).get('market_slug', ''),
+              'market_title': context.get('market_item', {}).get('title', ''),
+              'token_id': context.get('market_item', {}).get('side_a', {}).get('id', ''),
+              'side_label': context.get('market_item', {}).get('side_a', {}).get('label', ''),
+              'price': $.get('price', 0.0),
+              'fetched_at': $.get('at_time', None)
+            }
+          ]
+    
+    # 3. Salvar todos os preços como documentos
+    - type: "document"
+      name: "save-market-prices"
+      description: "Save all market prices as documents"
+      condition: $.get('prices_list') is not None and len($.get('prices_list', [])) > 0
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'domeapi:market-price'"
+      documents:
+        items: |
+          [
+            {
+              'name': 'domeapi:market-price',
+              'metadata': {
+                'market_slug': item.get('market_slug', ''),
+                'token_id': item.get('token_id', ''),
+                'source': 'polymarket',
+                'query': $.get('query')
+              },
+              'market_slug': item.get('market_slug', ''),
+              'market_title': item.get('market_title', ''),
+              'token_id': item.get('token_id', ''),
+              'side_label': item.get('side_label', ''),
+              'price': item.get('price', 0.0),
+              'fetched_at': item.get('fetched_at'),
+              'import_timestamp': 'import datetime; datetime.datetime.now().isoformat()'
+            }
+            for item in $.get('prices_list', [])
+          ]
+
