@@ -92,8 +92,39 @@ workflow:
                 'sr_session_id': item.get('sr_session_id', ''),
                 'sport': 'soccer'
               },
-              'sport_event_schedules': item.get('schedules', []) if isinstance(item.get('schedules', []), list) else [],
-              'total_events': len(item.get('schedules', []) if isinstance(item.get('schedules', []), list) else []),
+              'season': {
+                'id': item.get('schedules', [{}])[0].get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id', '') if item.get('schedules') else '',
+                'name': item.get('schedules', [{}])[0].get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name', '') if item.get('schedules') else '',
+                'start_date': item.get('schedules', [{}])[0].get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('start_date', '') if item.get('schedules') else '',
+                'end_date': item.get('schedules', [{}])[0].get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('end_date', '') if item.get('schedules') else ''
+              },
+              'competition': {
+                'id': item.get('schedules', [{}])[0].get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id', '') if item.get('schedules') else '',
+                'name': item.get('schedules', [{}])[0].get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', '') if item.get('schedules') else ''
+              },
+              'events': [
+                {
+                  'event_id': schedule.get('sport_event', {}).get('id', ''),
+                  'start_time': schedule.get('sport_event', {}).get('start_time', ''),
+                  'start_time_confirmed': schedule.get('sport_event', {}).get('start_time_confirmed', False),
+                  'home': {
+                    'id': next((c.get('id', '') for c in schedule.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), ''),
+                    'name': next((c.get('name', '') for c in schedule.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), ''),
+                    'abbreviation': next((c.get('abbreviation', '') for c in schedule.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), ''),
+                    'score': schedule.get('sport_event_status', {}).get('home_score') if schedule.get('sport_event_status', {}).get('status') == 'closed' else None
+                  },
+                  'away': {
+                    'id': next((c.get('id', '') for c in schedule.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), ''),
+                    'name': next((c.get('name', '') for c in schedule.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), ''),
+                    'abbreviation': next((c.get('abbreviation', '') for c in schedule.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), ''),
+                    'score': schedule.get('sport_event_status', {}).get('away_score') if schedule.get('sport_event_status', {}).get('status') == 'closed' else None
+                  },
+                  'status': schedule.get('sport_event_status', {}).get('status', 'not_started'),
+                  'match_status': schedule.get('sport_event_status', {}).get('match_status', 'not_started')
+                }
+                for schedule in item.get('schedules', [])
+              ],
+              'total_events': len(item.get('schedules', [])),
               'title': f"{item.get('season_id', '')} Schedule"
             }
             for item in $.get('season_schedules_list', [])
