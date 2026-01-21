@@ -93,12 +93,24 @@ workflow:
                 'sport': 'soccer'
               },
               'season': (
-                lambda schedules: schedules[0].get('sport_event_context', {}).get('season', {})
-                if schedules and len(schedules) > 0 and schedules[0].get('sport_event_context') else {}
+                lambda schedules: {
+                  'id': schedules[0].get('sport_event_context', {}).get('season', {}).get('id', ''),
+                  'name': schedules[0].get('sport_event_context', {}).get('season', {}).get('name', ''),
+                  'start_date': schedules[0].get('sport_event_context', {}).get('season', {}).get('start_date', ''),
+                  'end_date': schedules[0].get('sport_event_context', {}).get('season', {}).get('end_date', '')
+                }
+                if schedules and len(schedules) > 0 and schedules[0].get('sport_event_context') else {
+                  'id': '', 'name': '', 'start_date': '', 'end_date': ''
+                }
               )(item.get('schedules', [])),
               'competition': (
-                lambda schedules: schedules[0].get('sport_event_context', {}).get('competition', {})
-                if schedules and len(schedules) > 0 and schedules[0].get('sport_event_context') else {}
+                lambda schedules: {
+                  'id': schedules[0].get('sport_event_context', {}).get('competition', {}).get('id', ''),
+                  'name': schedules[0].get('sport_event_context', {}).get('competition', {}).get('name', '')
+                }
+                if schedules and len(schedules) > 0 and schedules[0].get('sport_event_context') else {
+                  'id': '', 'name': ''
+                }
               )(item.get('schedules', [])),
               'events': [
                 {
