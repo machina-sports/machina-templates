@@ -60,7 +60,9 @@ def invoke_normalize_teams(request_data):
             'sr:competition:7': 'uefa-champions-league',   # UEFA Champions League
             'sr:competition:384': 'copa-libertadores',     # CONMEBOL Libertadores
             'sr:competition:480': 'copa-sudamericana',     # CONMEBOL Sudamericana
-            'sr:competition:373': 'copa-do-brasil'        # Copa do Brasil
+            'sr:competition:373': 'copa-do-brasil',        # Copa do Brasil
+            'sr:competition:92': 'cariocao-serie-a',       # Campeonato Carioca Serie A
+            'sr:competition:372': 'paulista-serie-a1'      # Campeonato Paulista Serie A1
         }
         
         league_code = competition_mapping.get(comp_id, default_league)
@@ -74,4 +76,3 @@ def invoke_normalize_teams(request_data):
             "league_code": league_code
         }
     }
-
