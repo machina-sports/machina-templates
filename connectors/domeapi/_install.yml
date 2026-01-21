@@ -1,0 +1,13 @@
+dataset_type: "connector"
+dataset_name: "domeapi"
+description: "Dome API connector for prediction markets data (Polymarket, Kalshi)"
+templates:
+  - name: "connector"
+    file: "domeapi.yml"
+  - name: "connector-spec"
+    file: "domeapi.json"
+  - name: "test-credentials-workflow"
+    file: "test-credentials.yml"
+  - name: "readme"
+    file: "README.md"
+
