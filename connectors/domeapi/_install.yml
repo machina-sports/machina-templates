@@ -1,13 +1,32 @@
-dataset_type: "connector"
-dataset_name: "domeapi"
-description: "Dome API connector for prediction markets data (Polymarket, Kalshi)"
-templates:
-  - name: "connector"
-    file: "domeapi.yml"
-  - name: "connector-spec"
-    file: "domeapi.json"
-  - name: "test-credentials-workflow"
-    file: "test-credentials.yml"
-  - name: "readme"
-    file: "README.md"
+setup:
+  title: Dome API
+  description: Connect to Dome API for comprehensive prediction markets data across Polymarket, Kalshi and more platforms.
+  category:
+    - data-acquisition
+    - prediction-markets
+    - sports-betting
+  estimatedTime: 1 minute
+  features:
+    - Polymarket Markets & Prices
+    - Kalshi Markets & Data
+    - Historical Orderbook Data
+    - Trade History
+    - Candlestick Charts
+    - Wallet Analytics
+    - Cross-platform Market Matching
+  integrations:
+    - domeapi
+    - polymarket
+    - kalshi
+  requirements:
+    - DomeAPI-API-Key
+  status: available
+  value: connectors/domeapi
+  version: 1.0.0
 
+datasets:
+  - type: connector
+    path: domeapi.yml
+  
+  - type: workflow
+    path: test-credentials.yml
