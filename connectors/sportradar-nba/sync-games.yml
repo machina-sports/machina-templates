@@ -1,0 +1,104 @@
+workflow:
+  name: "sportradar-nba-sync-games"
+  title: "Sync Games"
+  description: "Workflow to synchronize NBA games from SportRadar API to Machina."
+  context-variables:
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', '2024')"
+    season_type: "$.get('season_type', 'REG')"
+  outputs:
+    nba-games: "$.get('games')"
+    games_synced: "len($.get('new_or_updated_games_list', []))"
+    workflow-status: "len($.get('new_or_updated_games_list', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # load-games
+    - type: "connector"
+      name: "load-games"
+      description: "Get a season games from SportRadar"
+      connector:
+        name: "sportradar-nba"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        games: "$.get('games')"
+        all_games_ids: |
+          [str(c.get('id', '')) for c in $.get('games', [])]
+        games_parsed: |
+          [
+            {
+              **c,
+              'metadata': {
+                'event_code': c.get('id', ''),
+              },
+              'version_control': {
+                'processing': False,
+                'updated': datetime.utcnow()
+              },
+              'season_year': '$.(season_year)',
+              'season_type': '$.(season_type)',
+              'start_time': datetime.strptime(c.get('scheduled'), '%Y-%m-%dT%H:%M:%SZ'),
+              'title': f"{c.get('home', {}).get('name', '')} v {c.get('away', {}).get('name', '')}",
+              'status': c.get('status', '')
+            }
+            for c in $.get('games')
+          ]
+
+    # load-existing-games
+    - type: "document"
+      name: "load-existing-games"
+      description: "Load existing NBA games by IDs to check for changes."
+      condition: "$.get('all_games_ids') is not None"
+      config:
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.get('all_games_ids', [])}
+      inputs:
+        name: "'nba-game'"
+      outputs:
+        existing_games_ids: |
+          [
+            game.get('metadata', {}).get('event_code', '')
+            for game in $.get('documents', [])
+          ]
+        existing_games_map: |
+          {
+            game.get('metadata', {}).get('event_code', ''): {
+              'title': game.get('value', {}).get('title', ''),
+              'status': game.get('value', {}).get('status', '')
+            }
+            for game in $.get('documents', [])
+          }
+
+    # bulk-save-games (only new or changed games)
+    - type: "document"
+      name: "bulk-save-games"
+      description: "Bulk save or update games (new games or games with changed title/status)."
+      condition: "len($.get('new_or_updated_games_list', [])) > 0"
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'nba-game'"
+      documents:
+        items: "$.get('new_or_updated_games_list')"
+      inputs:
+        new_or_updated_games_list: |
+          [
+            game for game in $.get('games_parsed', [])
+            if (
+              str(game.get('metadata', {}).get('event_code', '')) not in $.get('existing_games_ids', []) or
+              ($.get('existing_games_map') or {}).get(str(game.get('metadata', {}).get('event_code', '')), {}).get('title', '') != game.get('title', '') or
+              ($.get('existing_games_map') or {}).get(str(game.get('metadata', {}).get('event_code', '')), {}).get('status', '') != game.get('status', '')
+            )
+          ]

@@ -1,0 +1,19 @@
+workflow:
+  name: "test-injuries-simple"
+  title: "Test Injuries Simple"
+  description: "Simple test to see injuries data structure"
+  context-variables:
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  tasks:
+    - type: connector
+      name: load-injuries
+      connector:
+        name: "sportradar-nba"
+        command: "get-league/injuries.json"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        teams_count: "len($.get('teams', []))"
+        first_team_type: "type($.get('teams', [None])[0]).__name__ if $.get('teams') else 'no teams'"
+        raw_data: "$"

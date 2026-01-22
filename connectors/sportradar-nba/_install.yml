@@ -38,4 +38,10 @@ datasets:
     path: "test-credentials.yml"
 
   - type: "workflow"
-    path: "sync-nba-games.yml"
+    path: "sync-schedule.yml"
+
+  - type: "workflow"
+    path: "sync-games.yml"
+
+  - type: "workflow"
+    path: "sync-injuries.yml"

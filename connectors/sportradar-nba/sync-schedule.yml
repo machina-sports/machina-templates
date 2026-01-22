@@ -1,0 +1,33 @@
+workflow:
+  name: "sportradar-nba-sync-schedule"
+  title: "Sportradar NBA Sync Schedule"
+  description: "Workflow to sync NBA schedule data."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', '2024')"
+  outputs:
+    season_year: "$.get('season_year')"
+    schedule: "$.get('schedule')"
+    workflow-status: "$.get('schedule') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-schedule
+    - type: "connector"
+      name: "task-load-schedule"
+      description: "Get NBA schedule from SportRadar"
+      connector:
+        name: "sportradar-nba"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "'REG'"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        schedule: "$"
+        season_year: "$.get('season', {}).get('year', $.get('season_year'))"
