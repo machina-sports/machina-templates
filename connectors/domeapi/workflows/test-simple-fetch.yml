@@ -1,0 +1,22 @@
+workflow:
+  name: "domeapi-test-simple-fetch"
+  title: "DomeAPI - Test Simple Fetch"
+  description: "Simple test to fetch Polymarket markets"
+  
+  outputs:
+    markets: $.get('markets_list', [])
+    total: len($.get('markets_list', []))
+  
+  tasks:
+    - type: "connector"
+      name: "fetch-polymarket-markets"
+      connector:
+        name: "domeapi"
+        command: "GetPolymarketMarkets"
+      inputs:
+        x-api-key: "$TEMP_CONTEXT_VARIABLE_DOMEAPI_API_KEY"
+        query: "NFL"
+        limit: 3
+      outputs:
+        markets_list: $.get('markets', [])
+

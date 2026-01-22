@@ -1,0 +1,416 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Dome API",
+    "description": "Comprehensive prediction markets data API across Polymarket, Kalshi and more. Access real-time market prices, historical candlestick data, wallet analytics, order tracking, and cross-platform market matching.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Dome API Support",
+      "url": "https://domeapi.io/",
+      "email": "support@domeapi.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.domeapi.io/v1",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "description": "API Key for authentication. Get your key from https://domeapi.io/dashboard",
+        "name": "x-api-key",
+        "in": "header"
+      }
+    }
+  },
+  "paths": {
+    "/polymarket/markets": {
+      "get": {
+        "tags": ["Polymarket"],
+        "summary": "Get Polymarket Markets",
+        "description": "Find markets on Polymarket using various filters including search capability",
+        "operationId": "GetPolymarketMarkets",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Search query to filter markets",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of markets to return",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset for pagination",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/polymarket/market-price/{token_id}": {
+      "get": {
+        "tags": ["Polymarket"],
+        "summary": "Get Market Price",
+        "description": "Fetches the current market price for a market by token_id. Allows historical lookups via the at_time query parameter",
+        "operationId": "GetPolymarketMarketPrice",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "description": "The unique token ID of the market",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "at_time",
+            "in": "query",
+            "description": "Unix timestamp (in seconds) to fetch historical market price",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "price": {
+                      "type": "number"
+                    },
+                    "at_time": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/polymarket/orderbooks": {
+      "get": {
+        "tags": ["Polymarket"],
+        "summary": "Get Orderbook History",
+        "description": "Retrieve historical orderbook data for Polymarket markets",
+        "operationId": "GetPolymarketOrderbookHistory",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "Token ID to filter orderbooks",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "description": "End time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/polymarket/orders": {
+      "get": {
+        "tags": ["Polymarket"],
+        "summary": "Get Order History",
+        "description": "Retrieve historical order data for Polymarket markets",
+        "operationId": "GetPolymarketOrderHistory",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "Token ID to filter orders",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "description": "End time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/polymarket/candlesticks": {
+      "get": {
+        "tags": ["Polymarket"],
+        "summary": "Get Candlesticks",
+        "description": "Get candlestick/OHLCV data for market price charts",
+        "operationId": "GetPolymarketCandlesticks",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "query",
+            "description": "Token ID for the market",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Candlestick interval (e.g., 1m, 5m, 15m, 1h, 1d)",
+            "schema": {
+              "type": "string",
+              "default": "1h"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "description": "End time (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/polymarket/wallet/{wallet_address}/pnl": {
+      "get": {
+        "tags": ["Polymarket"],
+        "summary": "Get Wallet Profit-and-Loss",
+        "description": "Retrieve profit and loss data for a specific wallet address",
+        "operationId": "GetPolymarketWalletPnL",
+        "parameters": [
+          {
+            "name": "wallet_address",
+            "in": "path",
+            "description": "Wallet address to query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/kalshi/markets": {
+      "get": {
+        "tags": ["Kalshi"],
+        "summary": "Get Kalshi Markets",
+        "description": "Find markets on Kalshi using various filters",
+        "operationId": "GetKalshiMarkets",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Search query to filter markets",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of markets to return",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/kalshi/orderbooks": {
+      "get": {
+        "tags": ["Kalshi"],
+        "summary": "Get Kalshi Orderbook History",
+        "description": "Retrieve historical orderbook data for Kalshi markets",
+        "operationId": "GetKalshiOrderbookHistory",
+        "parameters": [
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Event ticker to filter orderbooks",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "description": "End time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/kalshi/orders": {
+      "get": {
+        "tags": ["Kalshi"],
+        "summary": "Get Kalshi Order History",
+        "description": "Retrieve historical order data for Kalshi markets",
+        "operationId": "GetKalshiOrderHistory",
+        "parameters": [
+          {
+            "name": "event_ticker",
+            "in": "query",
+            "description": "Event ticker to filter orders",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time for historical data (Unix timestamp)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/matching-markets/sports": {
+      "get": {
+        "tags": ["Matching Markets"],
+        "summary": "Get Matching Markets for Sports",
+        "description": "Get prediction markets across platforms that match the same sporting events",
+        "operationId": "GetMatchingMarketsSports",
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    },
+    "/matching-markets/sports/{date}": {
+      "get": {
+        "tags": ["Matching Markets"],
+        "summary": "Get Sport Markets by Date",
+        "description": "Get prediction markets for sports on a specific date",
+        "operationId": "GetSportByDate",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "description": "Date in YYYY-MM-DD format",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        }
+      }
+    }
+  }
+}
+
