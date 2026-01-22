@@ -26,14 +26,15 @@ TEMP_CONTEXT_VARIABLE_TALLYSIGHT_API_KEY
 
 ### Correct Format ✅
 ```yaml
-sportsbooks: ["sports-interaction"]
+inputs:
+  sportsbooks: "'sports-interaction'"  # String value with hyphen
 ```
 
 ### Common Sportsbook Slugs
 - `sports-interaction` - Sports Interaction
 - `sportingbet` - Sportingbet
 
-**Note**: The `sportsbooks` parameter is an **array of strings**. Even for a single sportsbook, it must be wrapped in an array.
+**Note**: The `sportsbooks` parameter must be passed as a **string value** in the `inputs` section, not in `command_attribute`.
 
 ## Available Endpoints
 
@@ -125,7 +126,7 @@ workflow:
       key: "$TEMP_CONTEXT_VARIABLE_TALLYSIGHT_API_KEY"
   inputs:
     league: "$.get('league', 'nfl')"
-    player: "$.get('player', 'patrick-mahomes')"
+    player: "$.get('player', 'josh-allen')"
 
   tasks:
     - type: "connector"
@@ -136,7 +137,11 @@ workflow:
         command_attribute:
           league: "$.get('league')"
           player: "$.get('player')"
-          sportsbooks: ["sports-interaction"]  # ✅ Correct format
+      inputs:
+        sportsbooks: "'sports-interaction'"  # ✅ Query parameter as string
+        embed: "'wordpress'"
+        format: "'decimal'"
+        locale: "'en'"
       outputs:
         widget: "$"
 ```
@@ -162,11 +167,17 @@ Expected output:
 
 ### Invalid Sportsbook Parameter
 
-**Problem**: API returns empty results or errors
+**Problem**: API returns empty results or errors, or "Path attribute 'sportsbooks' not found"
 
-**Solution**: Ensure sportsbooks parameter uses correct slug format with hyphens:
-- ❌ Wrong: `sportsbooks: ["sportsinteraction"]`
-- ✅ Correct: `sportsbooks: ["sports-interaction"]`
+**Solution**: Ensure sportsbooks parameter uses correct format:
+- ❌ Wrong: `command_attribute: { sportsbooks: ["sports-interaction"] }`
+- ❌ Wrong: `inputs: { sportsbooks: ["sportsinteraction"] }`
+- ✅ Correct: `inputs: { sportsbooks: "'sports-interaction'" }`
+
+**Key points**:
+1. Must be in `inputs` section, NOT `command_attribute`
+2. Must use hyphenated slug: `sports-interaction` not `sportsinteraction`
+3. Must be a string value: `"'sports-interaction'"` not an array
 
 ### Missing API Key
 
