@@ -26,8 +26,11 @@ setup:
 
 datasets:
   - type: "connector"
-    path: "tallysight.yml" 
+    path: "tallysight.yml"
 
   - type: "workflow"
     path: "load-leagues.yml"
+
+  - type: "workflow"
+    path: "test-connection.yml"
 

@@ -1,0 +1,48 @@
+workflow:
+  name: "tallysight-test-connection"
+  title: "Tallysight - Test Connection"
+  description: "Minimal workflow to test Tallysight API connection by fetching workspaces"
+  context-variables:
+    debugger:
+      enabled: true
+    tallysight:
+      key: "$TEMP_CONTEXT_VARIABLE_TALLYSIGHT_API_KEY"
+  outputs:
+    workspaces: "$.get('workspaces')"
+    brands: "$.get('brands')"
+    leagues: "$.get('leagues')"
+    status: "$.get('status', 'error')"
+
+  tasks:
+    # Task 1: Get Workspaces (simplest endpoint - no parameters)
+    - type: "connector"
+      name: "get-workspaces"
+      description: "Get list of workspaces from Tallysight API"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/workspaces"
+      outputs:
+        workspaces: "$"
+        status: "'workspaces-loaded'"
+
+    # Task 2: Get Brands (no parameters)
+    - type: "connector"
+      name: "get-brands"
+      description: "Get list of brands from Tallysight API"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/brands"
+      outputs:
+        brands: "$"
+        status: "'brands-loaded'"
+
+    # Task 3: Get Leagues (no parameters)
+    - type: "connector"
+      name: "get-leagues"
+      description: "Get list of leagues from Tallysight API"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/leagues"
+      outputs:
+        leagues: "$"
+        status: "'success'"
