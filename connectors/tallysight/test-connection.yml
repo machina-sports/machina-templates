@@ -11,7 +11,7 @@ workflow:
     workspaces: "$.get('workspaces')"
     brands: "$.get('brands')"
     leagues: "$.get('leagues')"
-    status: "$.get('status', 'error')"
+    workflow-status: "$.get('workflow-status', 'error')"
 
   tasks:
     # Task 1: Get Workspaces (simplest endpoint - no parameters)
@@ -23,7 +23,7 @@ workflow:
         command: "get-api/v2/workspaces"
       outputs:
         workspaces: "$"
-        status: "'workspaces-loaded'"
+        workflow-status: "'workspaces-loaded'"
 
     # Task 2: Get Brands (no parameters)
     - type: "connector"
@@ -34,7 +34,7 @@ workflow:
         command: "get-api/v2/brands"
       outputs:
         brands: "$"
-        status: "'brands-loaded'"
+        workflow-status: "'brands-loaded'"
 
     # Task 3: Get Leagues (no parameters)
     - type: "connector"
@@ -45,4 +45,4 @@ workflow:
         command: "get-api/v2/leagues"
       outputs:
         leagues: "$"
-        status: "'success'"
+        workflow-status: "'success'"
