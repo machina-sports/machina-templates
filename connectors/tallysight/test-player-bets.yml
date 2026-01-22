@@ -25,7 +25,11 @@ workflow:
         command_attribute:
           league: "$.get('league')"
           player: "$.get('player')"
-          sportsbooks: ["sports-interaction"]  # ✅ Correct format with hyphen
+      inputs:
+        sportsbooks: "'sports-interaction'"  # ✅ Correct format: query parameter passed as string
+        embed: "'wordpress'"
+        format: "'decimal'"
+        locale: "'en'"
       outputs:
         widget: "$"
         workflow-status: "'success'"
