@@ -1,0 +1,30 @@
+setup:
+  title: YouTube Transcript Connector
+  description: Extract transcripts from YouTube videos using yt-dlp for content analysis, RAG, and AI processing workflows.
+  category:
+    - data-acquisition
+    - content-processing
+    - media
+    - utilities
+  estimatedTime: 2 minutes
+  features:
+    - YouTube Transcript Extraction
+    - Auto-generated Subtitles Support
+    - Manual Subtitles Support
+    - Multi-language Support (PT, EN, ES, etc)
+    - VTT/SRT Format Output
+    - Timestamp Removal & Cleaning
+    - Duplicate Line Detection
+    - Video Metadata Extraction
+  integrations:
+    - youtube-transcript
+  requirements:
+    - yt-dlp>=2025.12.8
+  status: available
+  value: "connectors/youtube-transcript"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "youtube-transcript.yml"
+

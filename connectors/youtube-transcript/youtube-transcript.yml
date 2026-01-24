@@ -1,0 +1,13 @@
+connector:
+  name: "youtube-transcript"
+  description: "Extract transcripts from YouTube videos using yt-dlp"
+  filename: "youtube-transcript.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Extract Transcript"
+      value: "extract_transcript"
+    - name: "Extract Transcript with Timestamps"
+      value: "extract_transcript_with_timestamps"
+    - name: "Get Available Languages"
+      value: "get_available_languages"
+
