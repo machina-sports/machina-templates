@@ -5,6 +5,14 @@ import subprocess
 import json
 from pathlib import Path
 
+# yt-dlp library (installed from requirements.txt)
+# This connector uses yt-dlp CLI via subprocess for maximum compatibility
+try:
+    import yt_dlp
+    YT_DLP_AVAILABLE = True
+except ImportError:
+    YT_DLP_AVAILABLE = False
+
 
 def validate_youtube_url(url):
     """Validate YouTube URL format"""
@@ -383,4 +391,3 @@ def get_available_languages(request_data):
             "message": f"Error retrieving languages: {str(e)}",
             "data": {"video_id": video_id}
         }
-
