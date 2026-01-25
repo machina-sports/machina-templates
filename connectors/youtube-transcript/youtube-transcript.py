@@ -99,8 +99,8 @@ def get_video_info(video_url):
 def extract_transcript(request_data):
     """
     Extract clean transcript from YouTube video (no timestamps)
-    
-    Input:
+
+    Input (via workflow):
     {
         "params": {
             "video_url": "https://www.youtube.com/watch?v=VIDEO_ID",  # Required
@@ -108,7 +108,7 @@ def extract_transcript(request_data):
             "format": "text"                                          # Optional: text|vtt|srt
         }
     }
-    
+
     Output:
     {
         "status": True,
@@ -248,18 +248,19 @@ def extract_transcript(request_data):
 def extract_transcript_with_timestamps(request_data):
     """
     Extract transcript with timestamps (VTT format)
-    
+
     Input: Same as extract_transcript
-    
+
     Output: Includes vtt_content with timestamps
     """
     params = request_data.get("params", {})
-    
+
     # Force VTT format
-    params["format"] = "vtt"
-    request_data["params"] = params
-    
-    result = extract_transcript(request_data)
+    params_copy = params.copy()
+    params_copy["format"] = "vtt"
+
+    request_data_copy = {"params": params_copy}
+    result = extract_transcript(request_data_copy)
     
     if result.get("status"):
         result["data"]["vtt_content"] = result["data"]["transcript"]
@@ -272,14 +273,14 @@ def extract_transcript_with_timestamps(request_data):
 def get_available_languages(request_data):
     """
     Get available subtitle languages for a YouTube video
-    
-    Input:
+
+    Input (via workflow):
     {
         "params": {
             "video_url": "https://www.youtube.com/watch?v=VIDEO_ID"
         }
     }
-    
+
     Output:
     {
         "status": True,
@@ -293,7 +294,6 @@ def get_available_languages(request_data):
     }
     """
     params = request_data.get("params", {})
-    
     video_url = params.get("video_url")
     if not video_url:
         return {
