@@ -62,7 +62,7 @@ workflow:
         action: search
         search-limit: 1
         search-vector: false
-        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+        search-sorters: [["value.version_control.consumer-update-timestamp", 1], ["value.schema:startDate", 1]]
       filters:
         name: "{'$in': ['sport:Event']}"
         value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}"
