@@ -4,7 +4,7 @@ agent:
   description: Agent to schedule Football Competitions
   context:
     config-frequency: 10
-    status: "inactive"
+    status: "active"
   workflows:
 
     # sync Italy Serie A (130971)
@@ -21,3 +21,10 @@ agent:
         season_id: "'sr:season:130971'"
       outputs:
         sync-competitors-status: $.get('workflow-status', False)
+
+    - name: sportradar-soccer-sync-standings
+      description: sync-standings
+      inputs:
+        season_id: "'sr:season:130971'"
+      outputs:
+        sync-standings-status: $.get('workflow-status', False)
