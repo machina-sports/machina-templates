@@ -118,6 +118,9 @@ datasets:
   - type: "workflow"
     path: "workflows/sync-missing-players.yml"
 
+  - type: "workflow"
+    path: "workflows/sync-team-roster.yml"
+
   # update workflows
 
   - type: "workflow"

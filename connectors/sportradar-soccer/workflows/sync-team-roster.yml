@@ -1,0 +1,124 @@
+workflow:
+  name: sportradar-soccer-sync-team-roster
+  title: Sportradar Soccer - Sync Team Roster
+  description: Workflow to sync soccer team roster (players/squad) from competitor profile.
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    competitor_id: "$.get('competitor_id')"
+  outputs:
+    workflow-status: "len($.get('all_players_ids', [])) > len($.get('existing_players_ids', [])) and 'executed' or 'skipped'"
+    players_count: "len($.get('all_players_ids', []))"
+    new_players_count: "len($.get('all_players_ids', [])) - len($.get('existing_players_ids', []))"
+  tasks:
+
+    # task-load-team-profile
+    - type: connector
+      name: task-load-team-profile
+      description: "Get team profile with roster from SportRadar Soccer"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitors/{competitor_id}/profile.json"
+        command_attribute:
+          competitor_id: "$.get('competitor_id')"
+      inputs:
+        api_key: "$.get('x-api-key')"
+      outputs:
+        competitor_data: "$.get('competitor', {})"
+        manager_data: "$.get('manager', {})"
+        venue_data: "$.get('venue', {})"
+        all_players_ids: |
+          [f"urn:sportradar:player:{player.get('id', '')}" for player in $.get('players', [])]
+        new_players_list: |
+          [
+            {
+              'id': f"urn:sportradar:player:{player.get('id', '')}",
+              'metadata': {
+                'player_id': player.get('id', ''),
+                'competitor_id': $.get('competitor', {}).get('id', ''),
+                'position': player.get('type', ''),
+                'jersey_number': player.get('jersey_number', ''),
+                'nationality': player.get('nationality', ''),
+                'generated_at': $.get('generated_at', '')
+              },
+              'player': {
+                'id': player.get('id', ''),
+                'sr_id': player.get('id', ''),
+                'name': player.get('name', ''),
+                'type': player.get('type', ''),
+                'date_of_birth': player.get('date_of_birth', ''),
+                'nationality': player.get('nationality', ''),
+                'country_code': player.get('country_code', ''),
+                'height': player.get('height', ''),
+                'weight': player.get('weight', ''),
+                'jersey_number': player.get('jersey_number', ''),
+                'preferred_foot': player.get('preferred_foot', ''),
+                'gender': player.get('gender', '')
+              },
+              'competitor': {
+                'id': $.get('competitor', {}).get('id', ''),
+                'name': $.get('competitor', {}).get('name', ''),
+                'short_name': $.get('competitor', {}).get('short_name', ''),
+                'abbreviation': $.get('competitor', {}).get('abbreviation', ''),
+                'country': $.get('competitor', {}).get('country', ''),
+                'country_code': $.get('competitor', {}).get('country_code', ''),
+                'sr_id': $.get('competitor', {}).get('id', '')
+              },
+              'position_info': {
+                'type': player.get('type', ''),
+                'is_goalkeeper': player.get('type', '') == 'goalkeeper',
+                'is_defender': player.get('type', '') == 'defender',
+                'is_midfielder': player.get('type', '') == 'midfielder',
+                'is_forward': player.get('type', '') == 'forward'
+              },
+              'title': f"{player.get('name', '')} - {player.get('type', '').title()} - {$.get('competitor', {}).get('name', '')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for player in $.get('players', [])
+          ]
+
+    # load-players-by-ids
+    - type: document
+      name: load-players-by-ids
+      condition: "$.get('all_players_ids') is not None and len($.get('all_players_ids', [])) > 0"
+      description: "Load existing players by IDs."
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        value.id: |
+          {'$in': $.(all_players_ids)}
+      inputs:
+        name: "'soccer-player'"
+      outputs:
+        existing_players_ids: |
+          [
+            player.get('value', {}).get('id', '')
+            for player in $.get('documents', [])
+          ]
+
+    # bulk-save-players
+    - type: document
+      name: bulk-save-players
+      condition: "$.get('all_players_ids') is not None and len($.get('all_players_ids', [])) > len($.get('existing_players_ids', []))"
+      description: "Bulk save team players."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'soccer-player'"
+      documents:
+        items: "$.get('final_players_list')"
+      inputs:
+        final_players_list: |
+          [
+            player for player in $.get('new_players_list', [])
+            if player.get('id', '') not in $.(existing_players_ids)
+          ]
