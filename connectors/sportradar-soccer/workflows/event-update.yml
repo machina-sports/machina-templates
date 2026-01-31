@@ -3,7 +3,7 @@ workflow:
   # sportradar-soccer-event-update
   name: sportradar-soccer-event-update
   title: Sportradar Soccer - Event Update
-  description: Workflow to update a soccer game from SportRadar API by event code.
+  description: Workflow to update a soccer game from SportRadar API by event code. Fetches latest data and updates status.
   context-variables:
     debugger:
       enabled: false
@@ -21,7 +21,7 @@ workflow:
     # load-event-by-code
     - type: document
       name: load-event-by-code
-      description: Search event (sportradar) by code.
+      description: Search event (sportradar) by document ID.
       condition: $.get('event_document_id') is not None
       config:
         action: search
@@ -36,10 +36,95 @@ workflow:
         event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
         event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
 
+    # iptc-sportradar-id-conversion-mapping
+    - type: mapping
+      name: iptc-sportradar-id-conversion-mapping
+      description: Convert IPTC URN IDs to original Sportradar IDs and preserve URN
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_schema_events: |
+          [
+            $.get('event_value')
+          ]
+      outputs:
+        original_event_id: $.get('original_ids', [''])[0]
+
+    # fetch-event-summary
+    - type: connector
+      name: fetch-event-summary
+      description: Get event summary from SportRadar API
+      condition: $.get('event_exists') is True
+      connector:
+        name: sportradar-soccer
+        command: get-sport_events/{event_code}/{data_type}
+        command_attribute:
+          event_code: $.get('original_event_id')
+          data_type: "'summary.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        event_data: $
+        event_exists: "'status' in $.get('sport_event_status', {})"
+
+    # iptc-sportradar-event-mapping
+    - type: mapping
+      name: iptc-sportradar-event-mapping
+      title: IPTC | Sportradar Event Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: $.get('event_exists') is True
+      inputs:
+        schedules: |
+          [
+            $.get('event_data', {})
+          ]
+      outputs:
+        event_updated: $.get('sport_schema_events', [])[0] if $.get('sport_schema_events', []) else None
+        event_updated_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # fetch-event-timeline
+    - type: connector
+      name: fetch-event-timeline
+      description: Get event timeline from SportRadar API
+      condition: $.get('event_exists') is True
+      connector:
+        name: sportradar-soccer
+        command: get-sport_events/{event_code}/{data_type}
+        command_attribute:
+          event_code: $.get('original_event_id')
+          data_type: "'timeline.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        result-event-statistics: $.get('statistics', {})
+        result-event-timeline: $.get('timeline', [])
+
+    # iptc-sportradar-events-statistics-mapping
+    - type: mapping
+      name: iptc-sportradar-events-statistics-mapping
+      title: IPTC | Sportradar Events Statistics Mapping
+      description: Convert Sportradar statistics events to IPTC Sports Schema format
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_events_statistics: $.get('result-event-statistics')
+      outputs:
+        iptc_events_statistics: $.get('iptc_events_statistics', [])
+
+    # iptc-sportradar-events-timeline-mapping
+    - type: mapping
+      name: iptc-sportradar-events-timeline-mapping
+      title: IPTC | Sportradar Events Timeline Mapping
+      description: Convert Sportradar timeline events to IPTC Sports Schema format
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_events_timeline: $.get('result-event-timeline')
+      outputs:
+        iptc_events_timeline: $.get('iptc_events_timeline', [])
+
     # version-control-update
     - type: document
       name: version-control-update
-      description: Update the events document version control.
+      description: Update event document with latest data from Sportradar API.
       condition: $.get('event_exists') is True
       config:
         action: update
@@ -51,9 +136,12 @@ workflow:
         sport:Event: |
           {
             **$.get('event_value', {}),
+            **$.get('event_updated', {}),
+            'schema:statistics': $.get('iptc_events_statistics', []),
+            'schema:timeline': $.get('iptc_events_timeline', []),
             'version_control': {
               **$.get('event_value', {}).get('version_control', {}),
-              'processing': False
+              'processing': False,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
             }
           }
-      
