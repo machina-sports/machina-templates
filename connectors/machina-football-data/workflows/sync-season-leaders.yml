@@ -1,0 +1,50 @@
+workflow:
+  name: "machina-football-data-sync-season-leaders"
+  title: "Machina Football Data - Season Leaders"
+  description: "Workflow to synchronize season leaders (top scorers, assists) from Machina Football Data."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-football-data:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    leaders: "$.get('leaders')"
+    workflow-status: "len($.get('leaders', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # fetch leaders from API
+    - type: "connector"
+      name: "task-load-leaders"
+      description: "Get season leaders from Machina Football Data"
+      connector:
+        name: "machina-football-data"
+        command: "get_season_leaders"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        leaders: "$.get('leaders', [])"
+
+    # save leaders document
+    - type: "document"
+      name: "task-update-leaders"
+      description: "Update the leaders document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        machina-football-leaders: |
+          {
+            'data': $.get('leaders', []),
+            'season_id': $.get('season_id'),
+            'title': f"{$.get('season_id', '')} - Season Leaders",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: "$.get('season_id')"
+        document_type: "'synchronization'"

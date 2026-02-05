@@ -1,0 +1,102 @@
+workflow:
+
+  # machina-football-data-event-consumer-live
+  name: machina-football-data-event-consumer-live
+  title: Machina Football Data - Event Consumer (Live)
+  description: Workflow to consume live football games. Handles live, halftime, and in-progress events.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-football-data:
+      api_key: $TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY
+  inputs:
+    event_code: $.get('event_code')
+  outputs:
+    event_document_id: $.get('event_document_id')
+    event_exists: $.get('event_exists')
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load event by specific code if provided
+    - type: document
+      name: load-event-by-code
+      description: Search event by code.
+      condition: $.get('event_code') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # load coverage configuration
+    - type: document
+      name: coverage-football-live-config
+      description: Load football live configuration to control execution
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-football-live-config'"
+      outputs:
+        coverage-config-exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        coverage-events-live: $.get('documents', [])[0].get('value', {}).get('coverage-events-live', []) if len($.get('documents', [])) > 0 else []
+
+    # find next live event to process
+    - type: document
+      name: load-event-by-schedule
+      description: Search for live schedule events.
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["value.version_control.consumer-update-timestamp", 1], ["value.schema:startDate", 1]]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=6)).isoformat(), '$lt': (datetime.utcnow() + timedelta(minutes=5)).isoformat()}"
+        value.sport:status: "{'$in': ['live', 'halftime', 'suspended', '1st_half', '2nd_half']}"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=5)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        value.sport:competition.@id: |
+          $.get('coverage-config-exists') and {'$in': $.get('coverage-events-live')} or None
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # lock event for processing (version control)
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'counter': $.get('event_value', {}).get('version_control', {}).get('counter', 0) + 1,
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }

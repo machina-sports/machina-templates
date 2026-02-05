@@ -1,0 +1,52 @@
+workflow:
+
+  # machina-football-data-event-update
+  name: machina-football-data-event-update
+  title: Machina Football Data - Event Update
+  description: Finalize event update - release processing lock and check if event is finished.
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    event_code: $.get('event_code')
+    event_document_id: $.get('event_document_id')
+    event_value: $.get('event_value')
+  outputs:
+    workflow-status: $.get('event_document_id') is not None and 'executed' or 'skipped'
+  tasks:
+
+    # determine if event is finished
+    - type: document
+      name: load-event-current
+      description: Load current event state.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        current_event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else $.get('event_value', {})
+
+    # release processing lock
+    - type: document
+      name: version-control-release
+      description: Release processing lock and mark finished if applicable.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('current_event_value', {}),
+            'version_control': {
+              **$.get('current_event_value', {}).get('version_control', {}),
+              'processing': False,
+              'finished': $.get('current_event_value', {}).get('sport:status', '') in ['closed', 'ended', 'cancelled', 'postponed'],
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }

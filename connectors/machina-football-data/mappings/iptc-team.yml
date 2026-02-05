@@ -1,0 +1,36 @@
+datasets:
+
+  # ================================================
+  # Machina Football Team Mapping
+  # Transforms Machina Football Data team → IPTC Sport Schema
+  # ================================================
+
+  machina-football-team-mapping:
+    input:
+      - name: "teams"
+    processing:
+      - set:
+          teams_mapped: |
+            [
+              {
+                '@context': {
+                  'sport': 'https://www.sportschema.org/ontologies/sport#',
+                  'schema': 'https://schema.org/'
+                },
+                '@id': f"urn:machina:team:{t.get('id', '')}",
+                '@type': ['sport:Team', 'schema:SportsTeam'],
+                'name': t.get('name', ''),
+                'title': t.get('name', ''),
+                'schema:name': t.get('name', ''),
+                'sport:officialName': t.get('name', ''),
+                'sport:shortName': t.get('short_name', t.get('name', '')),
+                'sport:code': t.get('abbreviation', ''),
+                'sport:abbreviation': t.get('abbreviation', ''),
+                'sport:country': t.get('country', ''),
+                'sport:countryCode': t.get('country_code', ''),
+                'sport:status': 'active'
+              }
+              for t in $.get('teams', [])
+            ]
+    output:
+      teams_mapped: "$.get('teams_mapped')"

@@ -1,0 +1,79 @@
+template:
+  title: "Machina Football Data"
+  description: "Football data connector by Machina. 5-source architecture: ESPN (primary, no auth), football-data.org (optional enrichment), Understat (xG), FPL API (Premier League player data), and Transfermarkt (market values, transfers). Covers 12 leagues with smart source gating."
+  category: data-acquisition, football
+  version: 1.1.0
+  status: draft
+
+  # Optional: MACHINA_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY (enriches data but not required)
+  requirements: []
+
+  features:
+    - "20 commands covering all football data needs"
+    - "5-source architecture: ESPN, football-data.org, Understat, FPL, Transfermarkt"
+    - "ESPN-primary: works without any API keys"
+    - "Smart source gating: only queries sources with coverage for each league"
+    - "FPL enrichment for Premier League: injury status, xG/xA, form, ICT index, set pieces, price"
+    - "Transfermarkt market values and transfer history via ceapi"
+    - "Understat xG data for top 5 European leagues"
+    - "Optional football-data.org enrichment when API key provided"
+    - "Automatic season detection via ESPN"
+    - "IPTC Sport Schema compatible output via mappings"
+    - "Real-time live match updates"
+    - "Lineups with formations"
+    - "Player-level match statistics"
+    - "Season standings, leaders, transfers, injuries"
+    - "Head-to-head statistics"
+    - "Daily schedule across 12 competitions"
+
+  connectors:
+    - name: machina-football-data
+      file: machina-football-data.yml
+
+  mappings:
+    - name: machina-football-event-mapping
+      file: mappings/iptc-sport-event.yml
+    - name: machina-football-team-mapping
+      file: mappings/iptc-team.yml
+    - name: machina-football-statistics-mapping
+      file: mappings/iptc-sport-event.yml
+    - name: machina-football-timeline-mapping
+      file: mappings/iptc-sport-event.yml
+    - name: machina-football-version-control
+      file: mappings/version-control.yml
+
+  workflows:
+    - name: machina-football-data-test-credentials
+      file: test-credentials.yml
+    - name: machina-football-data-sync-competitions
+      file: workflows/sync-competitions.yml
+    - name: machina-football-data-sync-schedules
+      file: workflows/sync-schedules.yml
+    - name: machina-football-data-sync-standings
+      file: workflows/sync-standings.yml
+    - name: machina-football-data-sync-season-leaders
+      file: workflows/sync-season-leaders.yml
+    - name: machina-football-data-sync-teams
+      file: workflows/sync-teams.yml
+    - name: machina-football-data-sync-missing-players
+      file: workflows/sync-missing-players.yml
+    - name: machina-football-data-sync-transfers
+      file: workflows/sync-transfers.yml
+    - name: machina-football-data-sync-team-roster
+      file: workflows/sync-team-roster.yml
+    - name: machina-football-data-event-consumer-prelive
+      file: workflows/event-consumer-prelive.yml
+    - name: machina-football-data-event-consumer-live
+      file: workflows/event-consumer-live.yml
+    - name: machina-football-data-event-synchronize
+      file: workflows/event-synchronize.yml
+    - name: machina-football-data-event-update
+      file: workflows/event-update.yml
+
+  agents:
+    - name: machina-football-data-event-prelive-update
+      file: agents/event-prelive-update.yml
+    - name: machina-football-data-event-live-update
+      file: agents/event-live-update.yml
+    - name: machina-football-data-config-seasons
+      file: agents/config-seasons.yml

@@ -1,0 +1,192 @@
+datasets:
+
+  # ================================================
+  # Machina Football Event Mapping
+  # Transforms Machina Football Data API response → IPTC Sport Schema
+  # ================================================
+
+  machina-football-event-mapping:
+    input:
+      - name: "events"
+    processing:
+      - set:
+          events: |
+            [
+              {
+                '@context': {
+                  'sport': 'https://www.sportschema.org/ontologies/sport#',
+                  'schema': 'https://schema.org/'
+                },
+                '@id': f"urn:machina:sport_event:{e.get('id', '')}",
+                '@type': ['sport:Event', 'schema:SportsEvent'],
+                'name': f"{e.get('competitors', [{}])[0].get('team', {}).get('name', '')} vs {e.get('competitors', [{}, {}])[1].get('team', {}).get('name', '')}",
+                'title': f"{e.get('competitors', [{}])[0].get('team', {}).get('name', '')} vs {e.get('competitors', [{}, {}])[1].get('team', {}).get('name', '')}",
+                'schema:startDate': e.get('start_time', ''),
+                'start_time': e.get('start_time', ''),
+                'sport:status': e.get('status', 'not_started'),
+                'sport:competition': {
+                  '@id': f"urn:machina:competition:{e.get('competition', {}).get('id', '')}",
+                  'name': e.get('competition', {}).get('name', ''),
+                  'season': {
+                    '@id': f"urn:machina:season:{e.get('season', {}).get('id', '')}",
+                    'name': e.get('season', {}).get('name', ''),
+                    'year': e.get('season', {}).get('year', '')
+                  }
+                },
+                'sport:round': {
+                  'number': e.get('round', ''),
+                  'name': e.get('round_name', '')
+                },
+                'sport:venue': {
+                  '@id': f"urn:machina:venue:{e.get('venue', {}).get('id', '')}",
+                  'name': e.get('venue', {}).get('name', ''),
+                  'city': e.get('venue', {}).get('city', ''),
+                  'country': e.get('venue', {}).get('country', '')
+                },
+                'sport:competitors': [
+                  {
+                    '@id': f"urn:machina:team:{c.get('team', {}).get('id', '')}",
+                    'name': c.get('team', {}).get('name', ''),
+                    'short_name': c.get('team', {}).get('short_name', ''),
+                    'abbreviation': c.get('team', {}).get('abbreviation', ''),
+                    'qualifier': c.get('qualifier', ''),
+                    'score': c.get('score', 0)
+                  }
+                  for c in e.get('competitors', [])
+                ],
+                'sport:score': {
+                  'sport:homeScore': e.get('scores', {}).get('home', 0),
+                  'sport:awayScore': e.get('scores', {}).get('away', 0),
+                  **({'sport:halfTime': {
+                    'sport:homeScore': e.get('scores', {}).get('half_time', {}).get('home'),
+                    'sport:awayScore': e.get('scores', {}).get('half_time', {}).get('away')
+                  }} if e.get('scores', {}).get('half_time', {}).get('home') is not None else {}),
+                  **({'sport:aggregate': {
+                    'sport:homeScore': e.get('scores', {}).get('aggregate', {}).get('home'),
+                    'sport:awayScore': e.get('scores', {}).get('aggregate', {}).get('away')
+                  }} if e.get('scores', {}).get('aggregate', {}).get('home') is not None else {}),
+                  **({'sport:penalties': {
+                    'sport:homeScore': e.get('scores', {}).get('penalties', {}).get('home'),
+                    'sport:awayScore': e.get('scores', {}).get('penalties', {}).get('away')
+                  }} if e.get('scores', {}).get('penalties', {}).get('home') is not None else {})
+                },
+                'version_control': {
+                  'counter': 0,
+                  'processing': False,
+                  'finished': False,
+                  'consumer-update-timestamp': datetime.utcnow().isoformat()
+                }
+              }
+              for e in $.get('events', [])
+            ]
+    output:
+      events: "$.get('events')"
+
+  # ================================================
+  # ID Conversion Mapping
+  # Converts between IPTC URN IDs and raw Machina IDs
+  # ================================================
+
+  machina-football-id-conversion-mapping:
+    input:
+      - name: "events"
+    processing:
+      - set:
+          original_ids: |
+            [
+              e.get('@id', '').replace('urn:machina:sport_event:', '')
+              for e in $.get('events', [])
+            ]
+          iptc_schema_ids: |
+            [
+              f"urn:machina:sport_event:{eid}"
+              for eid in $.get('events', [])
+            ]
+    output:
+      original_ids: "$.get('original_ids')"
+      iptc_schema_ids: "$.get('iptc_schema_ids')"
+
+  # ================================================
+  # Events Statistics Mapping
+  # Transforms team statistics → IPTC format
+  # ================================================
+
+  machina-football-statistics-mapping:
+    input:
+      - name: "statistics"
+    processing:
+      - set:
+          statistics_mapped: |
+            [
+              {
+                '@id': f"urn:machina:team-statistics:{t.get('team', {}).get('id', '')}",
+                '@type': ['sport:TeamStatistics'],
+                'statParticipant': {
+                  'name': t.get('team', {}).get('name', ''),
+                  'qualifier': t.get('qualifier', ''),
+                  'abbreviation': t.get('team', {}).get('abbreviation', '')
+                },
+                'statistics': [
+                  {'statType': 'spsocstat:ball-possession', 'statValue': str(s.get('ball_possession', 0)), 'statLabel': 'Ball Possession'},
+                  {'statType': 'spsocstat:shots-total', 'statValue': str(s.get('shots_total', 0)), 'statLabel': 'Shots Total'},
+                  {'statType': 'spsocstat:shots-on-target', 'statValue': str(s.get('shots_on_target', 0)), 'statLabel': 'Shots on Target'},
+                  {'statType': 'spsocstat:shots-off-target', 'statValue': str(s.get('shots_off_target', 0)), 'statLabel': 'Shots off Target'},
+                  {'statType': 'spsocstat:shots-blocked', 'statValue': str(s.get('shots_blocked', 0)), 'statLabel': 'Shots Blocked'},
+                  {'statType': 'spsocstat:corner-kicks', 'statValue': str(s.get('corner_kicks', 0)), 'statLabel': 'Corner Kicks'},
+                  {'statType': 'spsocstat:free-kicks', 'statValue': str(s.get('free_kicks', 0)), 'statLabel': 'Free Kicks'},
+                  {'statType': 'spsocstat:fouls', 'statValue': str(s.get('fouls', 0)), 'statLabel': 'Fouls'},
+                  {'statType': 'spsocstat:offsides', 'statValue': str(s.get('offsides', 0)), 'statLabel': 'Offsides'},
+                  {'statType': 'spsocstat:yellow-cards', 'statValue': str(s.get('yellow_cards', 0)), 'statLabel': 'Yellow Cards'},
+                  {'statType': 'spsocstat:red-cards', 'statValue': str(s.get('red_cards', 0)), 'statLabel': 'Red Cards'},
+                  {'statType': 'spsocstat:passes-total', 'statValue': str(s.get('passes_total', 0)), 'statLabel': 'Passes Total'},
+                  {'statType': 'spsocstat:passes-accurate', 'statValue': str(s.get('passes_accurate', 0)), 'statLabel': 'Passes Accurate'},
+                  {'statType': 'spsocstat:tackles', 'statValue': str(s.get('tackles', 0)), 'statLabel': 'Tackles'},
+                  {'statType': 'spsocstat:crosses', 'statValue': str(s.get('crosses', 0)), 'statLabel': 'Crosses'},
+                  {'statType': 'spsocstat:goalkeeper-saves', 'statValue': str(s.get('goalkeeper_saves', 0)), 'statLabel': 'Goalkeeper Saves'}
+                ]
+              }
+              for t in $.get('statistics', {}).get('teams', [])
+              for s in [t.get('statistics', {})]
+            ]
+    output:
+      statistics_mapped: "$.get('statistics_mapped')"
+
+  # ================================================
+  # Events Timeline Mapping
+  # Transforms timeline events → IPTC Actions
+  # ================================================
+
+  machina-football-timeline-mapping:
+    input:
+      - name: "timeline"
+    processing:
+      - set:
+          timeline_mapped: |
+            [
+              {
+                '@id': f"urn:machina:action:{ev.get('id', '')}",
+                '@type': ['sport:Action'],
+                'type': ev.get('type', ''),
+                'sport:minutesElapsed': str(ev.get('minute', '')),
+                'sport:period': ev.get('period', ''),
+                'sport:actionDatetime': ev.get('datetime', ''),
+                **({'sport:homeScore': ev.get('home_score'), 'sport:awayScore': ev.get('away_score')} if ev.get('type') in ['goal', 'own_goal', 'penalty_goal'] else {}),
+                **({'sport:cardType': 'yellow'} if ev.get('type') == 'yellow_card' else {}),
+                **({'sport:cardType': 'red'} if ev.get('type') == 'red_card' else {}),
+                **({'sport:cardType': 'yellow_red'} if ev.get('type') == 'yellow_red_card' else {}),
+                **({'sport:fieldLocation': {'x': ev.get('coordinates', {}).get('x'), 'y': ev.get('coordinates', {}).get('y')}} if ev.get('coordinates') else {}),
+                'sport:participation': [
+                  p for p in [
+                    {'@type': 'sport:Team', '@id': f"urn:machina:team:{ev.get('team', {}).get('id', '')}", 'name': ev.get('team', {}).get('name', '')} if ev.get('team') else None,
+                    {'@type': 'sport:Player', '@id': f"urn:machina:player:{ev.get('player', {}).get('id', '')}", 'name': ev.get('player', {}).get('name', '')} if ev.get('player') else None,
+                    {'@type': 'sport:Player', 'role': 'assist', '@id': f"urn:machina:player:{ev.get('assist', {}).get('id', '')}", 'name': ev.get('assist', {}).get('name', '')} if ev.get('assist') else None,
+                    {'@type': 'sport:Player', 'role': 'player_in', '@id': f"urn:machina:player:{ev.get('player_in', {}).get('id', '')}", 'name': ev.get('player_in', {}).get('name', '')} if ev.get('player_in') else None,
+                    {'@type': 'sport:Player', 'role': 'player_out', '@id': f"urn:machina:player:{ev.get('player_out', {}).get('id', '')}", 'name': ev.get('player_out', {}).get('name', '')} if ev.get('player_out') else None
+                  ]
+                  if p is not None
+                ]
+              }
+              for ev in $.get('timeline', {}).get('timeline', [])
+            ]
+    output:
+      timeline_mapped: "$.get('timeline_mapped')"

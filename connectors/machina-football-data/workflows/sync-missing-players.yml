@@ -1,0 +1,50 @@
+workflow:
+  name: "machina-football-data-sync-missing-players"
+  title: "Machina Football Data - Missing Players"
+  description: "Workflow to synchronize injured/suspended players from Machina Football Data."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-football-data:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    teams: "$.get('teams', [])"
+    workflow-status: "len($.get('teams', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # fetch missing players from API
+    - type: "connector"
+      name: "task-load-missing-players"
+      description: "Get missing players for a season from Machina Football Data"
+      connector:
+        name: "machina-football-data"
+        command: "get_missing_players"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        teams: "$.get('teams', [])"
+
+    # save missing players document
+    - type: "document"
+      name: "task-update-missing-players"
+      description: "Update the missing players document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        machina-football-missing-players: |
+          {
+            'data': $.get('teams', []),
+            'season_id': $.get('season_id'),
+            'title': f"{$.get('season_id', '')} - Missing Players",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: "$.get('season_id')"
+        document_type: "'synchronization'"

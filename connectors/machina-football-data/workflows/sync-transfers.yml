@@ -1,0 +1,50 @@
+workflow:
+  name: "machina-football-data-sync-transfers"
+  title: "Machina Football Data - Transfers"
+  description: "Workflow to synchronize player transfers from Machina Football Data."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-football-data:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    transfers: "$.get('transfers', [])"
+    workflow-status: "len($.get('transfers', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # fetch transfers from API
+    - type: "connector"
+      name: "task-load-transfers"
+      description: "Get transfers for a season from Machina Football Data"
+      connector:
+        name: "machina-football-data"
+        command: "get_season_transfers"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        transfers: "$.get('transfers', [])"
+
+    # save transfers document
+    - type: "document"
+      name: "task-update-transfers"
+      description: "Update the transfers document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        machina-football-transfers: |
+          {
+            'data': $.get('transfers', []),
+            'season_id': $.get('season_id'),
+            'title': f"{$.get('season_id', '')} - Transfers",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: "$.get('season_id')"
+        document_type: "'synchronization'"
