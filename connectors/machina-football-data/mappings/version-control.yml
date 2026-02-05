@@ -1,35 +1,24 @@
-datasets:
+mappings:
 
-  # ================================================
-  # Version Control Mapping
-  # Tracks data freshness and update counts per event
-  # ================================================
-
-  machina-football-version-control:
-    input:
-      - name: "event_value"
-    processing:
-      - set:
-          have_lineups: "len($.get('event_value', {}).get('sport:competitors', [])) > 1"
-          have_last_home_matches: "$.get('event_value', {}).get('version_control', {}).get('have_last_home_matches', False)"
-          have_last_away_matches: "$.get('event_value', {}).get('version_control', {}).get('have_last_away_matches', False)"
-          have_timeline: "len($.get('event_value', {}).get('sport:timeline', [])) > 0 if $.get('event_value', {}).get('sport:timeline') else False"
-          update_home_last_matches_count: "$.get('event_value', {}).get('version_control', {}).get('update_home_last_matches_count', 0)"
-          update_away_last_matches_count: "$.get('event_value', {}).get('version_control', {}).get('update_away_last_matches_count', 0)"
-          update_event_summary_count: "$.get('event_value', {}).get('version_control', {}).get('update_event_summary_count', 0)"
-          update_event_lineups_count: "$.get('event_value', {}).get('version_control', {}).get('update_event_lineups_count', 0)"
-          update_event_statistics_count: "$.get('event_value', {}).get('version_control', {}).get('update_event_statistics_count', 0)"
-          update_event_timeline_count: "$.get('event_value', {}).get('version_control', {}).get('update_event_timeline_count', 0)"
-          version_control: "$.get('event_value', {}).get('version_control', {})"
-    output:
-      have_lineups: "$.get('have_lineups')"
-      have_last_home_matches: "$.get('have_last_home_matches')"
-      have_last_away_matches: "$.get('have_last_away_matches')"
-      have_timeline: "$.get('have_timeline')"
-      update_home_last_matches_count: "$.get('update_home_last_matches_count')"
-      update_away_last_matches_count: "$.get('update_away_last_matches_count')"
-      update_event_summary_count: "$.get('update_event_summary_count')"
-      update_event_lineups_count: "$.get('update_event_lineups_count')"
-      update_event_statistics_count: "$.get('update_event_statistics_count')"
-      update_event_timeline_count: "$.get('update_event_timeline_count')"
-      version_control: "$.get('version_control')"
+  # machina-football-version-control
+  - type: "mapping"
+    title: "Machina Football Data - Version Control Mapping"
+    name: "machina-football-version-control"
+    description: "Mapping data from version control"
+    outputs:
+      have_lineups: |
+        (
+          len($.(item).get('sport:competitors', [])) > 1
+          if $.(item)
+          else False
+        )
+      have_last_home_matches: "len($.get('item').get('competitors_home_last_matches', [])) > 0 if $.get('item') else False"
+      have_last_away_matches: "len($.get('item').get('competitors_away_last_matches', [])) > 0 if $.get('item') else False"
+      have_timeline: "len($.get('item').get('sport:timeline', [])) > 0 if $.get('item') and $.get('item').get('sport:timeline') else False"
+      update_home_last_matches_count: "$.get('item').get('version_control', {}).get('update_home_last_matches_count', 0) if $.get('item') else 0"
+      update_away_last_matches_count: "$.get('item').get('version_control', {}).get('update_away_last_matches_count', 0) if $.get('item') else 0"
+      update_event_summary_count: "$.get('item').get('version_control', {}).get('update_event_summary_count', 0) if $.get('item') else 0"
+      update_event_lineups_count: "$.get('item').get('version_control', {}).get('update_event_lineups_count', 0) if $.get('item') else 0"
+      update_event_statistics_count: "$.get('item').get('version_control', {}).get('update_event_statistics_count', 0) if $.get('item') else 0"
+      update_event_timeline_count: "$.get('item').get('version_control', {}).get('update_event_timeline_count', 0) if $.get('item') else 0"
+      version_control: "$.get('item').get('version_control', {}) if $.get('item') else {}"
