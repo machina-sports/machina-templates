@@ -2,11 +2,16 @@ import gzip
 import json
 import re
 import time
-import threading
 import urllib.request
 import urllib.error
 import urllib.parse
 from datetime import datetime, timedelta
+
+
+# No-op lock for pyscript sandbox (single-threaded, no threading module)
+class _NoOpLock:
+    def __enter__(self): return self
+    def __exit__(self, *a): pass
 
 
 # ============================================================
@@ -112,7 +117,7 @@ ESPN_STATUS_MAP = {
 # ============================================================
 
 _cache = {}
-_cache_lock = threading.Lock()
+_cache_lock = _NoOpLock()
 
 
 def _cache_get(key):
@@ -147,7 +152,7 @@ class _RateLimiter:
         self.tokens = max_tokens
         self.refill_rate = refill_rate
         self.last_refill = time.monotonic()
-        self.lock = threading.Lock()
+        self.lock = _NoOpLock()
 
     def acquire(self):
         with self.lock:
