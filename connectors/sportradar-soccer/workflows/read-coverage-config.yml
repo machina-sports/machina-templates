@@ -1,0 +1,25 @@
+workflow:
+  name: read-coverage-config
+  title: Read Coverage Soccer Preview Config
+  description: Read coverage-soccer-preview-config document to extract competition IDs for processing
+  outputs:
+    competition_ids: "$.get('competition_ids', [])"
+    workflow-status: "len($.get('competition_ids', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # Load coverage config document
+    - type: document
+      name: load-coverage-config
+      description: Load the coverage-soccer-preview-config document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-soccer-preview-config'"
+      inputs:
+        name: "'coverage-soccer-preview-config'"
+      outputs:
+        config_document: "$.get('documents')[0] if $.get('documents') else None"
+        competition_ids: |
+          $.get('config_document', {}).get('value', {}).get('coverage-soccer-preview', []) if $.get('config_document') else []
