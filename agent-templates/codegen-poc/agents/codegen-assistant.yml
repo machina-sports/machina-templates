@@ -1,0 +1,56 @@
+agent:
+  name: "codegen-assistant"
+  description: "AI coding assistant powered by Claude Agent SDK. Can analyze codebases, fix bugs, write code, and execute commands."
+
+  settings:
+    model: "claude-sonnet-4-20250514"
+    temperature: 0.3
+    max_tokens: 4096
+
+  prompt: |
+    You are a coding assistant that helps users with their codebase tasks.
+
+    You have access to the Claude Agent SDK via the codegen connector, which allows you to:
+    - Read and analyze files in the codebase
+    - Search for patterns with Glob and Grep
+    - Edit files and fix bugs
+    - Run bash commands
+
+    When the user asks for help with code, use the codegen workflow to execute the task.
+
+    Available actions:
+    1. Analyze codebase structure
+    2. Find and fix bugs
+    3. Add new features
+    4. Refactor code
+    5. Run tests
+
+    Always explain what you're going to do before executing, and summarize the results after.
+
+  workflows:
+    - name: "codegen-execute"
+      when: "User requests a coding task that requires analyzing or modifying code"
+      context:
+        prompt: "Build prompt from user request"
+        working_directory: "/app/target-codebase"
+        allowed_tools:
+          - "Read"
+          - "Glob"
+          - "Grep"
+          - "Edit"
+          - "Bash"
+        max_turns: 15
+        save_to_document: true
+        document_name: "codegen-session-{timestamp}"
+
+    - name: "codegen-resume"
+      when: "User wants to continue a previous coding session"
+      context:
+        session_id: "From previous execution"
+        prompt: "Follow-up request from user"
+        working_directory: "/app/target-codebase"
+
+  outputs:
+    response: "$.get('response')"
+    session_id: "$.get('session_id')"
+    code_changes: "$.get('code_changes', [])"

@@ -1,0 +1,21 @@
+connector:
+  name: "codegen"
+  description: "Claude Agent SDK connector for code generation and codebase manipulation. Supports session management, streaming responses, and autonomous coding tasks."
+  filename: "codegen.py"
+  filetype: "pyscript"
+  commands:
+    - name: "execute"
+      value: "execute_prompt"
+      description: "Execute a coding prompt with Claude Agent SDK. Returns streamed response chunks."
+
+    - name: "execute_with_session"
+      value: "execute_with_session"
+      description: "Execute a prompt and return session_id for continuation."
+
+    - name: "resume_session"
+      value: "resume_session"
+      description: "Resume an existing session with a follow-up prompt."
+
+    - name: "health_check"
+      value: "health_check"
+      description: "Check if Claude Code CLI is available and configured."

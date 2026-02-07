@@ -1,0 +1,39 @@
+workflow:
+  name: "codegen-execute"
+  description: "Execute a coding task using Claude Agent SDK. Supports single prompts and multi-turn sessions."
+  tasks:
+    # Task 1: Execute the coding prompt
+    - name: "execute-codegen"
+      type: "connector"
+      connector_name: "codegen"
+      connector_exec: "execute_with_session"
+      params:
+        prompt: "$.get('prompt', 'Analyze the current directory structure')"
+        working_directory: "$.get('working_directory', '/app')"
+        allowed_tools: "$.get('allowed_tools', ['Read', 'Glob', 'Grep'])"
+        max_turns: "$.get('max_turns', 10)"
+        timeout: "$.get('timeout', 300)"
+      outputs:
+        codegen_result: "$.get('result', '')"
+        codegen_session_id: "$.get('session_id', '')"
+        codegen_messages: "$.get('messages', [])"
+        codegen_message_count: "$.get('message_count', 0)"
+
+    # Task 2: Save result to document (optional)
+    - name: "save-result"
+      type: "document"
+      condition: "$.get('save_to_document', False)"
+      operation: "upsert"
+      document_name: "$.get('document_name', 'codegen-result')"
+      content:
+        prompt: "$.get('prompt')"
+        result: "$.get('codegen_result')"
+        session_id: "$.get('codegen_session_id')"
+        message_count: "$.get('codegen_message_count')"
+        timestamp: "datetime.now().isoformat()"
+
+  outputs:
+    result: "$.get('codegen_result')"
+    session_id: "$.get('codegen_session_id')"
+    message_count: "$.get('codegen_message_count')"
+    messages: "$.get('codegen_messages')"

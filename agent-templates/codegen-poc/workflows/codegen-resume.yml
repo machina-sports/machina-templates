@@ -1,0 +1,37 @@
+workflow:
+  name: "codegen-resume"
+  description: "Resume an existing codegen session with a follow-up prompt. Maintains full conversation context."
+  tasks:
+    # Task 1: Resume the session
+    - name: "resume-session"
+      type: "connector"
+      connector_name: "codegen"
+      connector_exec: "resume_session"
+      params:
+        session_id: "$.get('session_id')"
+        prompt: "$.get('prompt')"
+        working_directory: "$.get('working_directory', '/app')"
+        allowed_tools: "$.get('allowed_tools', ['Read', 'Glob', 'Grep', 'Edit', 'Bash'])"
+        timeout: "$.get('timeout', 300)"
+      outputs:
+        codegen_result: "$.get('result', '')"
+        codegen_session_id: "$.get('session_id', '')"
+        codegen_messages: "$.get('messages', [])"
+        codegen_message_count: "$.get('message_count', 0)"
+
+    # Task 2: Update document with new result (optional)
+    - name: "update-result"
+      type: "document"
+      condition: "$.get('document_id') is not None"
+      operation: "update"
+      document_id: "$.get('document_id')"
+      content:
+        follow_up_prompt: "$.get('prompt')"
+        follow_up_result: "$.get('codegen_result')"
+        total_messages: "$.get('codegen_message_count')"
+        updated_at: "datetime.now().isoformat()"
+
+  outputs:
+    result: "$.get('codegen_result')"
+    session_id: "$.get('codegen_session_id')"
+    message_count: "$.get('codegen_message_count')"
