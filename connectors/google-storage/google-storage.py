@@ -101,6 +101,11 @@ def invoke_upload(request_data):
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(remote)
 
+        # Allow callers to set cache_control via params (e.g. "public, max-age=31536000, immutable")
+        cache_control = params.get("cache_control")
+        if cache_control:
+            blob.cache_control = cache_control
+
         # Download file if it's a URL or use local file
         if is_url:
             # Download from URL to temporary file
