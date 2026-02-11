@@ -1,0 +1,57 @@
+prompts:
+
+  # prompt-bballsports-play-predict
+  - type: prompt
+    name: prompt-bballsports-play-predict
+    title: "BBallSports Game Simulation Analysis"
+    description: "Analyze basketball game simulation results from BBallSports API"
+    instruction: |
+            Analyze the following basketball game data from BBallSports API:
+
+            SIMULATION RESULTS:
+            {{ $.get('simulation-results') }}
+
+            PLAYED GAMES LIST:
+            {{ $.get('played-games') }}
+
+            BOX SCORES DATA (with analysis context):
+            {{ $.get('all-box-scores') }}
+
+            ANALYSIS CONTEXT:
+            - Total simulated games: {{ $.get('total-simulated-games') }}
+            - Games being analyzed: {{ $.get('analysis-context').get('analyzed_games') }}
+            - Note: {{ $.get('analysis-context').get('note') }}
+
+            Please provide:
+            1. Summary of the simulation request and results
+            2. Analysis of the played games list
+            3. Detailed analysis of the box scores data (focusing on the {{ $.get('analysis-context').get('analyzed_games') }} games provided)
+            4. Key statistics and performance metrics from the actual game data
+            5. Notable patterns or insights from the real game results
+            6. Recommendations based on the actual game data
+            7. Acknowledge that this analysis covers {{ $.get('analysis-context').get('analyzed_games') }} out of {{ $.get('analysis-context').get('total_simulated_games') }} total simulated games
+
+            Focus on the real game data (played games and box scores) rather than just the simulation request.
+
+            Format the response in a clear and structured manner.
+    schema:
+      title: "BallsportsPlayedGamesAnalysis"
+      description: "Get played games analysis from BBallSports."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "The analysis of the played games and box scores data."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The title of the snippet."
+              content:
+                type: "string"
+                description: "The content of the snippet."
+              subject:
+                type: "string"
+                description: "The subject of the snippet."
+          required: ["title", "content", "subject"]

@@ -1,0 +1,176 @@
+workflow:
+  name: "bballsports-play-predict"
+  title: "Simulate Basketball Games with Audio"
+  description: "Workflow to simulate basketball games using BBallSports API and generate audio analysis."
+  context-variables:
+    debugger:
+      enabled: true
+    bballsports:
+      apikey: "$TEMP_CONTEXT_VARIABLE_BBALLSPORTS_API_KEY"
+      authorization: "$TEMP_CONTEXT_VARIABLE_BBALLSPORTS_AUTHORIZATION"
+      gamemode: "predict"
+      keeppbp: "N"
+      numgames: "normal"
+      homeaway: "both"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    elevenlabs:
+      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    league_name: "$.get('league_name')"
+    home_team: "$.get('home_team')"
+    away_team: "$.get('away_team')"
+    number_of_games: "$.get('number_of_games')"
+    voice_id: "$.get('voice_id')"
+    personality: "$.get('personality', 'neutral')"
+    language: "$.get('language', 'en')"
+    duration: "$.get('duration', '90')"
+  outputs:
+    simulation-analysis: "$.get('simulation-analysis')"
+    audio_path: "$.get('audio_path')"
+    workflow-status: "$.get('audio_path') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # bballsports-play-predict
+    - type: connector
+      name: "bballsports-play-predict"
+      description: "Simulate basketball games using BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-play_predict.php"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey'),
+            "league_name": $.get('league_name'),
+            "numgames": $.get('numgames'),
+            "homeaway": $.get('homeaway'),
+            "gamemode": $.get('gamemode'),
+            "keeppbp": $.get('keeppbp'),
+            "gamearray": [
+              {
+                "predicthome": $.get('home_team'),
+                "predictaway": $.get('away_team'),
+                "predictgames": $.get('number_of_games')
+              }
+            ]
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        simulation-results: "$"
+
+    # bballsports-get-played-games
+    - type: connector
+      name: "bballsports-get-played-games"
+      description: "Get played game list from BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-get_played_game_list.php"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey')
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        played-games: "$"
+
+    # bballsports-play-mapping
+    - type: mapping
+      name: "bballsports-play-mapping"
+      description: "Mapping data from bballsports play data."
+      inputs:
+        played-games: "$.get('played-games')"
+      outputs:
+        played-games-mapped: "$.get('played-games-mapped', {}).get('data', [])"
+
+    # bballsports-get-box-scores-foreach
+    - type: connector
+      name: "bballsports-get-box-scores-foreach"
+      description: "Get raw box scores for each simulated game from BBallSports."
+      connector:
+        name: "bballsports"
+        command: "post-get_raw_box_scores.php"
+      foreach:
+        name: "game_info"
+        expr: "$"
+        value: "$.get('played-games-mapped', [])"
+      inputs:
+        body: |
+          {
+            "apikey": $.get('apikey'),
+            "game_number": $.get('game_info').get('game_number')
+          }
+        authorization: "$.get('authorization')"
+      outputs:
+        all-box-scores: "$"
+
+    - type: "prompt"
+      name: "prompt-bballsports-play-predict"
+      description: "Prompt to analyze game simulation results from BBallSports with context about total vs analyzed games."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        played-games: "$.get('played-games-mapped')"
+        all-box-scores: "$.get('all-box-scores')"
+        # simulation-results: "$.get('simulation-results')"
+        #consolidated-box-scores: "$.get('consolidated-box-scores')"
+        #total-simulated-games: "$.get('number_of_games')"
+        #analysis-context: "$.get('consolidated-box-scores').get('analysis_context')"
+      outputs:
+        simulation-analysis: "$"
+
+    # generate-audio-content-prompt
+    - type: "prompt"
+      name: "generate-audio-content-prompt"
+      description: "Generate audio content from basketball simulation analysis."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+      inputs:
+        simulation-analysis: "$.get('simulation-analysis')"
+        home_team: "$.get('home_team')"
+        away_team: "$.get('away_team')"
+        number_of_games: "$.get('number_of_games')"
+        personality: "$.get('personality')"
+        language: "$.get('language')"
+        duration: "$.get('duration')"
+      outputs:
+        audio_content: "$.get('content')"
+
+    # get text to speech
+    - type: "connector"
+      name: "get text to speech"
+      description: "Get a text to speech from ElevenLabs"
+      connector:
+        name: "elevenlabs"
+        command: "get_text_to_speech"
+        command_attribute:
+          text: "$.get('audio_content')"
+          voice_id: "$.get('voice_id')"
+          model_id: "$.get('model_id')"
+          optimize_streaming_latency: "$.get('optimize_streaming_latency')"
+          output_format: "$.get('output_format')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        final_filename: f"bballsports-analysis-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # store audio
+    - type: "connector"
+      name: "store audio"
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"

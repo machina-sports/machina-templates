@@ -1,0 +1,8 @@
+mappings:
+
+  - type: mapping
+    title: BBallSports Play Mapping
+    name: bballsports-play-mapping
+    description: "Mapping data from bballsports play data"
+    outputs:
+      played-games-mapped: json.loads($.get('played-games'))
