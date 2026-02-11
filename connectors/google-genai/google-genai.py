@@ -331,11 +331,11 @@ def invoke_image(request_data):
                             image_data = part.inline_data.data
                             image = Image.open(BytesIO(image_data))
                             temp_file = tempfile.NamedTemporaryFile(
-                                delete=False, suffix=".jpg"
+                                delete=False, suffix=".webp"
                             )
                             temp_path = temp_file.name
                             temp_file.close()
-                            image.save(temp_path, format="JPEG")
+                            image.save(temp_path, format="WEBP", quality=85)
 
                             # Extract filename from temp_path
                             filename = os.path.basename(temp_path)
@@ -345,7 +345,7 @@ def invoke_image(request_data):
                                 "data": {
                                     "image_path": temp_path,
                                     "filename": filename,
-                                    "image_format": "JPEG",
+                                    "image_format": "WEBP",
                                     "prompt": prompt,
                                     "model": model_name,
                                     "input_images_count": len(image_parts),
