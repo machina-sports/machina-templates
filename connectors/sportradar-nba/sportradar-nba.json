@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.sportradar.com/nba/trial/v8/en"
+      "url": "https://api.sportradar.com/nba/production/v8/en"
     }
   ],
   "paths": {
@@ -679,8 +679,8 @@
     "securitySchemes": {
       "apiKey": {
         "type": "apiKey",
-        "in": "header",
-        "name": "x-api-key",
+        "in": "query",
+        "name": "api_key",
         "description": "Sportradar NBA API Key"
       }
     }
