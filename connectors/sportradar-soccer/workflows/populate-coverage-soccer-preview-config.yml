@@ -1,0 +1,29 @@
+workflow:
+  name: populate-coverage-soccer-preview-config
+  title: Populate Coverage Soccer Preview Config
+  description: Create or update coverage-soccer-preview-config document with competition IDs
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Save coverage config document
+    - type: document
+      name: save-coverage-config
+      description: Save coverage-soccer-preview-config with competition IDs
+      config:
+        action: save
+        embed-vector: false
+      document_name: coverage-soccer-preview-config
+      document:
+        name: "'coverage-soccer-preview-config'"
+        value:
+          coverage-soccer-preview:
+            - "urn:sportradar:competition:325"  # Serie A (Italy)
+            # Add more competition IDs here as needed
+            # Examples:
+            # - "urn:sportradar:competition:34"   # Premier League
+            # - "urn:sportradar:competition:8"    # La Liga
+            # - "urn:sportradar:competition:35"   # Bundesliga
+      outputs:
+        document-id: $.get('document_id')
+

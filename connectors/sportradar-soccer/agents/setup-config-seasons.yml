@@ -1,0 +1,70 @@
+agent:
+  name: setup-sportradar-soccer-config-seasons
+  title: Setup - Sportradar Soccer Config Seasons & Complete Sync
+  description: Complete setup agent that populates coverage config and syncs all necessary data for each configured league
+  context:
+    config-frequency: 99999999
+    status: active
+  workflows:
+
+    # Step 1: Populate coverage config
+    - name: populate-coverage-soccer-preview-config
+      description: Populate coverage-soccer-preview-config document with competition IDs
+      outputs:
+        setup-status: $.get('workflow-status', False)
+
+    # Step 2: Config seasons - reads coverage config and gets all current seasons
+    - name: sportradar-soccer-config-seasons-workflow
+      description: Get current seasons for all competitions from coverage config
+      outputs:
+        competition-ids: "$.get('competition-ids', [])"
+        current-seasons-id: "$.get('current-seasons-id', [])"
+
+    # Step 3: Sync schedules for all seasons
+    - name: sportradar-soccer-sync-schedules
+      description: Sync schedules for all current seasons
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id', [])
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-schedules-status: $.get('workflow-status', False)
+
+    # Step 4: Sync competitors for all seasons
+    - name: sportradar-soccer-sync-competitors
+      description: Sync competitors for all current seasons
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id', [])
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-competitors-status: $.get('workflow-status', False)
+
+    # Step 5: Sync standings for all seasons
+    - name: sportradar-soccer-sync-standings
+      description: Sync standings for all current seasons
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id', [])
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-standings-status: $.get('workflow-status', False)
+
+    # Step 6: Sync season leaders for all seasons
+    - name: sportradar-soccer-sync-season-leaders
+      description: Sync season leaders for all current seasons
+      foreach:
+        name: current-season-id
+        expr: $
+        value: $.get('current-seasons-id', [])
+      inputs:
+        season_id: $.get('current-season-id')
+      outputs:
+        sync-season-leaders-status: $.get('workflow-status', False)
+
