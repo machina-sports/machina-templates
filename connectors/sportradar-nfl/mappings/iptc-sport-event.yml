@@ -31,12 +31,32 @@ mappings:
                 "sport:year": "2025"
               }
             },
+            "sport:round": {
+              "@type": "sport:Round",
+              "sport:number": f.get('week'),
+              "name": f"Week {f.get('week')}" if f.get('week') else "TBD"
+            },
+            "sport:stage": {
+              "@type": "sport:Stage",
+              "sport:phase": 'regular_season'
+            },
             "sport:venue": {
               "@type": "sport:Venue",
               "@id": f"urn:sportradar:venue:{f.get('venue', {}).get('id')}",
               "name": f.get('venue', {}).get('name'),
-              "schema:addressLocality": f.get('venue', {}).get('city')
+              "schema:addressLocality": f.get('venue', {}).get('city'),
+              "schema:addressRegion": f.get('venue', {}).get('state', '')
             },
+            "sport:channels": [
+              {
+                "@type": "sport:BroadcastChannel",
+                "sport:channelName": channel.get('name'),
+                "sport:channelUrl": channel.get('url'),
+                "sport:country": channel.get('country'),
+                "sport:countryCode": channel.get('country_code')
+              }
+              for channel in f.get('channels', [])
+            ] if f.get('channels') else [],
             "sport:competitors": [
               {
                 "@type": "sport:Team",
@@ -130,13 +150,19 @@ mappings:
             "@type": "sport:Action",
             "type": event.get('type', ''),
             "competitor": event.get('competitor', ''),
-            "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('match_time', 0)}' - Period {event.get('period', 0)}",
-            "sport:actionType": f"http://cv.iptc.org/newscodes/spsocaction/{event.get('type', '').lower().replace('_', '-')}",
+            "sport:label": f"{event.get('type', '').replace('_', ' ').title()} at {event.get('match_time', 0)}' - Q{event.get('quarter', 1)}",
+            "sport:actionType": f"spnflaction:{event.get('type', '').lower().replace('_', '-')}",
             "sport:minutesElapsed": str(event.get('match_time', 0)),
             "sport:actionDateTime": event.get('time'),
+            "sport:quarter": event.get('quarter'),
+            "sport:clockTime": event.get('clock'),
             "sport:periodValue": str(event.get('period', 0)),
+            "sport:periodType": 'overtime' if event.get('quarter', 1) > 4 else 'regular_period',
             "sport:fieldLocation": f"{event.get('x', 0)},{event.get('y', 0)}" if event.get('x') is not None and event.get('y') is not None else None,
             "commentaries": event.get('commentaries', []),
+            **({"sport:homeScore": event.get('home_score'), "sport:awayScore": event.get('away_score'), "sport:scoreMethod": event.get('method', '')} if event.get('type') in ['score_change', 'touchdown', 'field_goal', 'extra_point', 'safety'] else {}),
+            **({"sport:penaltyYards": event.get('penalty_yards', 0), "sport:penaltyType": event.get('penalty_type', event.get('type', ''))} if 'penalty' in event.get('type', '').lower() or 'flag' in event.get('type', '').lower() else {}),
+            **({"sport:turnoverType": event.get('turnover_type', event.get('type', '')), "sport:returningTeam": event.get('competitor')} if 'turnover' in event.get('type', '').lower() or 'fumble' in event.get('type', '').lower() or 'interception' in event.get('type', '').lower() else {}),
             "sport:participation": (
               ([
                 {
@@ -160,8 +186,11 @@ mappings:
                   "sport:participationBy": {
                     "@id": f"urn:sportradar:player:{player.get('id')}",
                     "@type": "sport:Athlete",
-                    "sport:label": player.get('name', 'Unknown Player')
-                  }
+                    "sport:label": player.get('name', 'Unknown Player'),
+                    "sport:jersey": player.get('jersey'),
+                    "sport:position": player.get('position')
+                  },
+                  "sport:playerRole": player.get('type', player.get('role', ''))
                 }
                 for player in event.get('players', [])
               ] if event.get('players') else [])
@@ -266,7 +295,7 @@ mappings:
               "sport:punts": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('punts', {}).get('totals', {}),
               "sport:kickoffs": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('kickoffs', {}).get('totals', {}),
               "sport:fumbles": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('fumbles', {}).get('totals', {}),
-              "sport:interceptions": $.get('game-statistics', {}).get('statistics', {}).get('home', {})
+              "sport:interceptions": $.get('game-statistics', {}).get('statistics', {}).get('home', {}).get('interceptions', {})
             }
           ]
         }
