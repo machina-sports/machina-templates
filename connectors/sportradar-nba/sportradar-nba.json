@@ -34,7 +34,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -122,7 +122,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -185,7 +185,7 @@
         "parameters": [],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -209,7 +209,7 @@
         "parameters": [],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -273,7 +273,7 @@
         "parameters": [],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -353,7 +353,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -434,7 +434,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -522,7 +522,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -618,7 +618,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -698,7 +698,7 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ],
         "responses": {
@@ -758,7 +758,7 @@
   },
   "components": {
     "securitySchemes": {
-      "apiKey": {
+      "x-api-key": {
         "type": "apiKey",
         "in": "header",
         "name": "x-api-key",
