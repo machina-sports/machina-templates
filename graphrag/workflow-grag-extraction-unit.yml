@@ -1,0 +1,156 @@
+workflow:
+  name: "workflow-grag-extraction-unit"
+  title: "Graph Rag Extraction Unit"
+  description: "Workflow to produce a knowledge graph information node from a chunk"
+  context-variables:
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+    snippet_id: "$.get('schema_id') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event-exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search for events in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        value.sport_event.id: "$.get('event_code')"
+      outputs:
+        event-exists: "len($.get('documents', [])) > 0"
+        event-selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event-title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+
+    # 1 load-event-snippets
+    - type: "document"
+      name: "load-event-snippet"
+      description: "Search for event snippet in database"
+      condition: "$.get('event-exists') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        _id: "$.get('snippet_id')"
+        name: "'content-snippet'"
+        metadata.event_code: "$.get('event_code')"
+      outputs:
+        snippet: "$"
+        snippet_value_title: "$.get('documents', [])[0].get('value', {}).get('title', '')"
+        snippet_value_subject: "$.get('documents', [])[0].get('value', {}).get('subject', '')"
+        snippet_value_text: "$.get('documents', [])[0].get('value', {}).get('text', '')"
+
+    # 2 prompt schema questions
+    - type: "prompt"
+      name: "prompt-generate-schema-questions"
+      description: "Generate event context based questions"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        subject: $.get('snippet_value_subject')
+        text: $.get('snippet_value_text')
+        title: $.get('snippet_value_title')
+      outputs:
+        questions: "$.get('questions')"
+
+    # 3 prompt schema model abstract
+    - type: "prompt"
+      name: "prompt-generate-schema-abstract"
+      description: "Generate entity/relationship schema for event"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        questions: "$.get('questions')"
+        snippets: "$.get('snippet')"
+      outputs:
+        schema_abstract: "$"
+
+    # # 3 prompt schema model
+    # - type: "prompt"
+    #   name: "prompt-generate-schema"
+    #   description: "Generate entity/relationship schema for event"
+    #   connector:
+    #     name: "sdk-openai"
+    #     command: "invoke_prompt"
+    #     model: "gpt-4o"
+    #   inputs:
+    #     questions: "$.get('questions')"
+    #     snippets: "$.get('snippet')"
+    #   outputs:
+    #     schema: "$"
+
+    # 4 prompt execute schema
+    - type: "prompt"
+      name: "prompt-execute-schema"
+      description: "Generate entity/relationship data from schema"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        subject: $.get('snippet_value_subject')
+        text: $.get('snippet_value_text')
+        title: $.get('snippet_value_title')
+        schema: "$.get('schema_abstract')"
+      outputs:
+        schema_data: "$"
+
+    # 5 save schema document
+    - type: "document"
+      name: "save_result"
+      description: "Save result in database"
+      config:
+        action: "save"
+        embed-vector: false
+      documents:
+        knowledge-schema: |
+          {
+            'execution': datetime.utcnow(),
+            'event_code': $.get('event_code'), 
+            'event_chunk_id': $.get('snippet_id'),
+            'event_title': $.get('event-title'),
+            'name': 'knowledge-schema',
+            'questions': $.get('questions'),
+            'entities': $.get('schema', {}).get('entities', []),
+            'relations': $.get('schema', {}).get('relations', []),
+            'triples': $.get('schema', {}).get('triples', []),
+            'data': $.get('schema_data', {}),
+            'status': 'active',
+            'version_control': {
+              'grag': 1,
+            },
+          }
+      outputs:
+        knowledge-schema-status: "True"
+
+    # # 5 update snippet version control
+    # - type: "document"
+    #   name: "update-snippet-control"
+    #   description: "Update snippet with grag status."
+    #   condition: "$.get('knowledge-schema-status') is True"
+    #   config:
+    #     action: "update"
+    #     embed-vector: false
+    #     force-update: true
+    #     search-limit: 1
+    #   filters:
+    #     _id: "$.get('snippet', {}).get('_id', '')"
+    #   documents: |
+    #     {
+    #       **$.get('snippet', {}).get('documents', [])[0],
+    #       'version_control': {
+    #         'grag': 1
+    #       }
+    #     }

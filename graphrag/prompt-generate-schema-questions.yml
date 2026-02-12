@@ -1,0 +1,16 @@
+prompts:
+  - type: "prompt"
+    title: "Generate knowledge schema questions"
+    name: "prompt-generate-schema-questions"
+    description: "Given the snippet above, create questions encapsulating the abstract and semantic essence to enchance context."
+    schema:
+      title: "KnowledgeGraphSchemaQuestions"
+      description: "This schema defines structure for a questions list about given snippets."
+      type: "object"
+      properties:
+        questions:
+          type: "array"
+          description: ""
+          items:
+            type: "string"
+            description: "A question that helps understand and validate the knowledge graph schema structure and relationships."

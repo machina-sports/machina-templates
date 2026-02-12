@@ -1,0 +1,58 @@
+prompts:
+  - type: "prompt"
+    title: "Generate knowledge schema"
+    name: "prompt-generate-schema-abstract"
+    description: "Given the snippets, create a knowledge graph schema that encapsulates the abstract and semantic essence of content. Entities in the schema should be abstract concepts (e.g., character, clothing, company, animal, drug, etc.), and relations should be verbs or verbal phrases (e.g., friends with, wears, runs, etc.). Each entity and relation must be described abstractly (e.g., 'an animate being, typically a person in a story') and should have illustrative examples (e.g., 'an animate being, typically a person in a story, e.g., Harry Potter, Ron Weasley,'). Exclude any entities or relations that use camelCase (e.g., include 'operates in' but exclude 'OperatesIn' and 'OPERATES_IN'). The schema should be formatted as a JSON object that adheres to the following `Schema`. Ensure the output is in plain JSON and parsable via `json.loads()`."
+    schema:
+      title: "KnowledgeGraphSchema"
+      description: "Defines the structure of knowledge graph schema."
+      type: "object"
+      properties:
+        entities:
+          type: "array"
+          description: "List of entities related to snippets"
+          items:
+            type: "object"
+            description: "Definition of a single entity"
+            properties:
+              name:
+                type: "string"
+                description: "Name of the entity type (e.g., Person, Organization)"
+              fields:
+                type: "array"
+                description: "List of properties/attributes related to entity"
+                items: 
+                  type: "string"
+                  description: "A prop related to entity (e.g., name, age, title)"
+        relations:
+          type: "array"
+          description: "List of relationships between entities"
+          items:
+            type: "object"
+            description: "Definition of a relationship"
+            properties:
+              name:
+                type: "string"
+                description: "Name of the relationship (e.g., WORKS_FOR, FRIEND_OF)"
+              description:
+                type: "string"
+                description: "Detailed explanation of what this relationship represents"
+        triples:
+          type: "array"
+          description: "List of triple patterns defining valid relationships in the graph"
+          items:
+            type: "object"
+            description: "Definition of a single triple pattern"
+            properties:
+              head:
+                type: "string"
+                description: "The source entity type in the relationship"
+              relation:
+                type: "string"
+                description: "The type of relationship"
+              tail:
+                type: "string"
+                description: "The target entity type in the relationship"
+              description:
+                type: "string"
+                description: "Explanation of this specific entity-relationship pattern"

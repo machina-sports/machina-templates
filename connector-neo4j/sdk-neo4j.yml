@@ -1,0 +1,12 @@
+connector:
+  name: "neo4j-driver"
+  description: "This API allow integrations between workflows and Neo4j Graph Database."
+  filename: "sdk-neo4j.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Consolidate Schemas"
+      value: "consolidate_schemas"
+    - name: "Create Knowledge Graph"
+      value: "create_knowledge_graph"
+    - name: "Query Graph"
+      value: "query_graph"
