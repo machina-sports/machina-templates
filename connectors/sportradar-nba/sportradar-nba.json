@@ -679,8 +679,8 @@
     "securitySchemes": {
       "apiKey": {
         "type": "apiKey",
-        "in": "query",
-        "name": "api_key",
+        "in": "header",
+        "name": "x-api-key",
         "description": "Sportradar NBA API Key"
       }
     }
