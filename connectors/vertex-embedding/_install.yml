@@ -1,0 +1,13 @@
+setup:
+  title: "Vertex AI Text Embeddings"
+  description: "Generate text embeddings using Google Vertex AI text-embedding-004 model for semantic search and RAG applications"
+  category: [connectors]
+  estimatedTime: 2 minutes
+  integrations: [vertex-ai]
+  status: available
+  value: connectors/vertex-embedding
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: vertex-embedding.yml

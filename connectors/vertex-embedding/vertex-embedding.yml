@@ -1,0 +1,12 @@
+connector:
+  name: vertex-embedding
+  description: "Vertex AI Text Embeddings (text-embedding-004) - Generate embeddings for semantic search and RAG applications"
+  filename: vertex-embedding.py
+  filetype: pyscript
+  commands:
+    - name: Generate Embedding (Single Query)
+      value: embed_query
+    - name: Generate Embeddings (Multiple Documents)
+      value: embed_documents
+    - name: Load Embedding Model
+      value: invoke_embedding
