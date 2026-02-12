@@ -1,0 +1,120 @@
+agent:
+  name: "agent-registration"
+  title: "Newsletter Registration"
+  description: "Agent to register a new user in the newsletter"
+  context:
+    email-response: {}
+    newsletter-result: ""
+    resume-athletes: []
+    resume-competitions: []
+    resume-teams: []
+    resume-sports: []
+    resume-subjects: []
+    thread-id: ""
+    user-object: {}
+    user-registration: {}
+  context-variables:
+    api-football:
+      api_key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    api-mailgun:
+      username: "$TEMP_CONTEXT_VARIABLE_MAILGUN_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+    api-perplexity:
+      basicAuth: "$TEMP_CONTEXT_VARIABLE_PERPLEXITY_API_KEY"
+    sdk-audio:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_AUDIO_API_KEY"
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sdk-serper:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SERPER_API_KEY"
+    sdk-slack-sender:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SLACK_BOT_TOKEN"
+  workflows:
+    - name: "workflow-save-user"
+      description: "Save User in Newsletter"
+      inputs:
+        user-object: "$.get('user-object')"
+      outputs:
+        thread-id: "$.get('thread-id', None)"
+        user-analysis: "$.get('user-analysis', {})"
+        user-registration: "$.get('user-registration')"
+
+    - name: "workflow-topic-analysis"
+      description: "Generate athletes resume"
+      condition: "len($.get('user-analysis', {}).get('athletes')) > 0"
+      foreach:
+        name: "item"
+        expr: "$.get('key')"
+        value: "[{'name': name, 'key': str(index)} for index, name in enumerate($.get('user-analysis', {}).get('athletes', []))]"
+      inputs:
+        thread-id: "$.get('thread-id')"
+        user-object: "$.get('user-object')"
+      outputs:
+        resume-athletes: "$.get('topic-resume')"
+
+    - name: "workflow-topic-analysis"
+      description: "Generate competitions resume"
+      condition: "len($.get('user-analysis', {}).get('competitions')) > 0"
+      foreach:
+        name: "item"
+        expr: "$.get('key')"
+        value: "[{'name': name, 'key': str(index)} for index, name in enumerate($.get('user-analysis', {}).get('competitions', []))]"
+      inputs:
+        thread-id: "$.get('thread-id')"
+        user-object: "$.get('user-object')"
+      outputs:
+        resume-competitions: "$.get('topic-resume')"
+
+    - name: "workflow-topic-analysis"
+      description: "Generate teams resume"
+      condition: "len($.get('user-analysis', {}).get('teams')) > 0"
+      foreach:
+        name: "item"
+        expr: "$.get('key')"
+        value: "[{'name': name, 'key': str(index)} for index, name in enumerate($.get('user-analysis', {}).get('teams', []))]"
+      inputs:
+        thread-id: "$.get('thread-id')"
+        user-object: "$.get('user-object')"
+      outputs:
+        resume-teams: "$.get('topic-resume')"
+
+    - name: "workflow-topic-analysis"
+      description: "Generate sports resume"
+      condition: "len($.get('user-analysis', {}).get('sports')) > 0"
+      foreach:
+        name: "item"
+        expr: "$.get('key')"
+        value: "[{'name': name, 'key': str(index)} for index, name in enumerate($.get('user-analysis', {}).get('sports', []))]"
+      inputs:
+        thread-id: "$.get('thread-id')"
+        user-object: "$.get('user-object')"
+      outputs:
+        resume-sports: "$.get('topic-resume')"
+
+    - name: "workflow-topic-analysis"
+      description: "Generate subjects resume"
+      condition: "len($.get('user-analysis', {}).get('subjects')) > 0"
+      foreach:
+        name: "item"
+        expr: "$.get('key')"
+        value: "[{'name': name, 'key': str(index)} for index, name in enumerate($.get('user-analysis', {}).get('subjects', []))]"
+      inputs:
+        thread-id: "$.get('thread-id')"
+        user-object: "$.get('user-object')"
+      outputs:
+        resume-subjects: "$.get('topic-resume')"
+
+    - name: "workflow-topic-review"
+      description: "Generate User Newsletter"
+      inputs:
+        newsletter-title: "'Welcome to your Personalized Sports Newsletter, powered by Machina Sports'"
+        resume-athletes: "$.get('resume-athletes')"
+        resume-competitions: "$.get('resume-competitions')"
+        resume-teams: "$.get('resume-teams')"
+        resume-sports: "$.get('resume-sports')"
+        resume-subjects: "$.get('resume-subjects')"
+        thread-id: "$.get('thread-id')"
+        user-object: "$.get('user-object')"
+        user-registration: "next(iter($.get('user-registration', [])))"
+      outputs:
+        newsletter-result: "$.get('newsletter-result')"

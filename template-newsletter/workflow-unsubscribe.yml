@@ -1,0 +1,47 @@
+workflow:
+  name: "workflow-unsubscribe"
+  title: "Newsletter Unsubscribe"
+  description: "This workflow update user subscription"
+  inputs:
+    user-object: "$.get('user-object')"
+    email: "$.get('user-object').get('email')"
+  outputs:
+    empty: "''"
+    workflow-status: "$.get('email') is not None and 'executed' or 'skipped'"
+  tasks:
+    # task-save-user
+    - type: "document"
+      name: "task-unsubscribe"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        user: |
+          {
+            **$.get('user-object', {}),
+            'unsubscribed': True
+          }
+      metadata:
+        email: "$.get('user-object').get('email')"
+      outputs:
+        empty: "''"
+
+    # notify slack channel (translated)
+    - type: "connector"
+      name: "notify slack channel"
+      condition: "$.get('email') is not None"
+      connector:
+        name: "sdk-slack-sender"
+        command: "send_slack_message"
+      inputs:
+        channel_id: "'C06MPJJJR7Z'"
+        message: f"{'*:outbox_tray:'} UNSUBSCRIBED* {str($.get('email'))}"
+        slack_emoji: "':genius_bet:'"
+        slack_username: "'Site-Newsletter'"
+      outputs:
+        send-result: "$"

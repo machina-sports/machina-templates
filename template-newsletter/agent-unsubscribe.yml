@@ -1,0 +1,37 @@
+agent:
+  name: "agent-unsubscribe"
+  title: "Newsletter Unsubscribe"
+  description: "Agent to unsubscribe user"
+  context:
+    user-selected: {}
+  context-variables:
+    api-football:
+      api_key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    api-mailgun:
+      username: "$TEMP_CONTEXT_VARIABLE_MAILGUN_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+    sdk-audio:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_AUDIO_API_KEY"
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sdk-serper:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SERPER_API_KEY"
+    sdk-slack-sender:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SLACK_BOT_TOKEN"
+  workflows:
+    - name: "workflow-load-user"
+      condition: "$.get('email') is not None"
+      description: "Load User"
+      inputs:
+        email: "$.get('email')"
+      outputs:
+        user-id: "next(iter($.get('users-list', [])), {}).get('_id', None)"
+        user-registration: "next(iter($.get('users-list', [])), None)"
+        user-selected: "next(iter($.get('users-list', [])), {}).get('value', None)"
+
+    - name: "workflow-unsubscribe"
+      condition: "$.get('user-id') is not None"
+      inputs:
+        user-object: "$.get('user-selected')"
+      outputs:
+        empty: "''"

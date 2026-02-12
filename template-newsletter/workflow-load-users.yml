@@ -1,0 +1,25 @@
+workflow:
+  name: "workflow-load-users"
+  title: "Newsletter Load Users"
+  description: "This workflow load newsletter users"
+  inputs:
+    empty: "''"
+  outputs:
+    users-list: "$.get('users-list')"
+    workflow-status: "len($.get('users-list', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: "document"
+      name: "document-search"
+      description: "Search documents"
+      config:
+        action: "search"
+        search-vector: false
+      filters:
+        value.last-execution: "{'$lte': datetime.utcnow() - timedelta(days=7)}"
+        value.processing: "{'$ne': True}"
+        value.unsubscribed: "{'$ne': True}"
+      inputs:
+        name: "'user'"
+        search-limit: "'20'"
+      outputs:
+        users-list: "$.get('documents')"

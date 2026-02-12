@@ -1,0 +1,142 @@
+workflow:
+  name: "workflow-topic-review"
+  title: "Newsletter Topic Review"
+  description: "Workflow to finish newsletter"
+  inputs:
+    newsletter-title: "$.get('newsletter-title')"
+    resume-athletes: "$.get('resume-athletes')"
+    resume-competitions: "$.get('resume-competitions')"
+    resume-teams: "$.get('resume-teams')"
+    resume-sports: "$.get('resume-sports')"
+    resume-subjects: "$.get('resume-subjects')"
+    thread-id: "$.get('thread-id')"
+    user-object: "$.get('user-object')"
+    user-registration: "$.get('user-registration')"
+  outputs:
+    newsletter-result: "$.get('newsletter-result')"
+    workflow-status: "$.get('newsletter-result') is not None and 'executed' or 'skipped'"
+  tasks:
+    # prompt-generate-newsletter
+    - type: "prompt"
+      name: "prompt-generate-newsletter"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        recipient-name: "str($.get('user-object').get('name'))"
+        newsletter-style: f" - Tone / style guidance as {$.get('user-object').get('style')}."
+        language: f" - Write in {$.get('user-object').get('language')} language."
+        user-interests: f" - {$.get('user-object').get('interests')}"
+        documents: "$.get('resume-subjects')"
+      outputs:
+        newsletter-result: "$"
+        newsletter-translated: "$"
+
+    # prompt-generate-title
+    - type: "prompt"
+      name: "prompt-generate-title"
+      condition: "$.get('newsletter-title') is None"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        style: f" - Tone / style guidance as {$.get('user-object').get('style')}."
+        language: f" - Write in {$.get('user-object').get('language')} language."
+        interests: f" - {$.get('user-object').get('interests')}"
+        documents: "$.get('resume-subjects')"
+      outputs:
+        newsletter-title: "$"
+
+    # prompt-review-transform
+    - type: "prompt"
+      name: "prompt-transform-simple-html"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        newsletter-translated: "$.get('newsletter-translated')"
+      outputs:
+        newsletter-parsed: "$"
+
+    # document-save-newsletter
+    - type: "document"
+      name: "document-save-newsletter"
+      config:
+        action: "save"
+        embed-vector: false
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        newsletter: |
+          {
+            'name': $.get('newsletter-title'),
+            'newsletter': $.get('newsletter-parsed')
+          }
+      metadata:
+        email: "$.get('user-object').get('email')"
+      outputs:
+        newsletter: "$"
+
+    # send email
+    - type: "connector"
+      name: "task-send-mail"
+      description: "Send newsletter via email"
+      condition: "$.get('user-object').get('email') is not None"
+      connector:
+        name: "api-mailgun"
+        command: "post-messages"
+        server_params:
+          domain: "'mg.machina.gg'"
+      inputs:
+        body: |
+          {
+            'from': 'newsletter@machina.gg',
+            'to': $.get('user-object').get('email'),
+            'subject': $.get('newsletter-title'),
+            'html': f"<html lang='en'><body style='background-color: #f9fafb; color: #333; margin: 0; padding: 0;'><div style='max-width: 800px; margin: 50px auto; padding: 20px; background-color: #fff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-radius: 8px;'><div style='text-align: center; margin-bottom: 20px;'><a style='color: #3b82f6; href='https://machina.gg/' target='_blank'><img src='https://machina.gg/images/machina-black-new.png' alt='Machina Sports Logo' style='max-width: 200px;'></a></div><div style='padding: 20px 0;'><div style='font-size: 1rem; line-height: 1.75; margin-bottom: 20px;'>{str($.get('newsletter-parsed'))}</div><p style='font-size: 1rem; line-height: 1.75; margin-bottom: 20px;'>Stay bold,<br>Machina Sports Team</p></div><div style='text-align: center; padding: 20px 0; border-top: 1px solid #e5e7eb; font-size: 0.875rem; color: #6b7280;'><p style='font-size: 1rem; line-height: 1.75; margin-bottom: 20px;'>Powered by <a style='color: #3b82f6;' href='https://machina.gg/' target='_blank'>Machina Sports AI.</a> Your Smart Edge in Sports.</p><p style='font-size: 0.75rem; line-height: 1.25; margin-bottom: 20px;'>Click here to <a style='color: #3b82f6;' href='https://machina.gg/newsletter/unsubscribe' target='_blank'>unsubscribe</a>.</p></div></div></body></html>"
+          }
+      outputs:
+        email-response: "$"
+
+    # notify slack channel (translated)
+    - type: "connector"
+      name: "notify slack channel"
+      condition: "$.get('newsletter-result') is not None"
+      connector:
+        name: "sdk-slack-sender"
+        command: "send_slack_message"
+      inputs:
+        channel_id: "'C06MPJJJR7Z'"
+        message: f"{'*:envelope_with_arrow:'} EMAIL SENT*\n\n {str($.get('newsletter-parsed'))}"
+        slack_emoji: "':genius_bet:'"
+        slack_username: "'Site-Newsletter'"
+        thread-id: "$.get('thread-id')"
+      outputs:
+        send-result: "$"
+
+    # task-save-user
+    - type: "document"
+      name: "task-save-user"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        user: |
+          {
+            **$.get('user-registration', {}).get('value'),
+            'last-execution': datetime.utcnow()
+          }
+      metadata:
+        email: "$.get('user-object').get('email')"
+      outputs:
+        empty: "''"

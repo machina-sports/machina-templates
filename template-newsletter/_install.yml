@@ -1,0 +1,39 @@
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../connector-openai/sdk-openai.yml"
+  - type: "connector"
+    path: "../connector-mailgun/api-mailgun.yml"
+  - type: "connector"
+    path: "../connector-perplexity/api-perplexity.yml"
+  - type: "connector"
+    path: "../connector-slack/sdk-slack-sender.yml"
+
+  # template-newsletter
+  - type: "prompts"
+    path: "prompt-newsletter.yml"
+  - type: "workflow"
+    path: "workflow-load-user.yml"
+  - type: "workflow"
+    path: "workflow-load-users.yml"
+  - type: "workflow"
+    path: "workflow-save-user.yml"
+  - type: "workflow"
+    path: "workflow-topic-analysis.yml"
+  - type: "workflow"
+    path: "workflow-topic-review.yml"
+  - type: "workflow"
+    path: "workflow-unsubscribe.yml"
+  - type: "workflow"
+    path: "workflow-update-user.yml"
+
+  # agents & documents setup
+  - type: "workflow"
+    path: "_folders.yml"
+  - type: "agent"
+    path: "agent-registration.yml"
+  - type: "agent"
+    path: "agent-scheduler.yml"
+  - type: "agent"
+    path: "agent-unsubscribe.yml"

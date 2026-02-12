@@ -1,0 +1,148 @@
+workflow:
+  name: "workflow-topic-analysis"
+  title: "Newsletter Topic Analysis"
+  description: "Workflow to handle newsletter topics"
+  inputs:
+    thread-id: "$.get('thread-id')"
+    search-query: f"latest sports news about {$.get('item', {}).get('name', None)}"
+    topic-name: "$.get('item', {}).get('name', None)"
+    user-object: "$.get('user-object')"
+  outputs:
+    topic-resume: |
+      {
+        'name': $.get('topic-name'),
+        'search-query': $.get('search-query'),
+        'search-results': $.get('search-results'),
+        'text-resume': $.get('text-resume'),
+        **$.get('topic-resume', {})
+      }
+    search-result: "$.get('search-result', [])"
+    search-resume: "$.get('search-resume', [])"
+    workflow-status: "$.get('text-resume', None) is not None and 'executed' or 'skipped'"
+  tasks:
+    # - type: "prompt"
+    #   name: "prompt-topic-analysis"
+    #   condition: "$.get('topic-name') is not None"
+    #   connector:
+    #     name: "sdk-openai"
+    #     command: "invoke_prompt"
+    #     model: "gpt-4o"
+    #   inputs:
+    #     topic-name: "$.get('topic-name')"
+    #   outputs:
+    #     search-query: "$.get('search-query')"
+    #     topic-resume: "$"
+
+    # - type: "prompt"
+    #   name: "prompt-topic-translate"
+    #   condition: "$.get('user-object').get('language') != 'en'"
+    #   connector:
+    #     name: "sdk-openai"
+    #     command: "invoke_prompt"
+    #     model: "gpt-4o"
+    #   inputs:
+    #     search-query: "$.get('search-query')"
+    #     topic-resume: "$.get('topic-resume')"
+    #   outputs:
+    #     search-query: "$.get('search-query')"
+    #     topic-resume: "$.get('topic-resume')"
+
+    # # notify slack channel
+    # - type: "connector"
+    #   name: "notify slack channel"
+    #   condition: "$.get('topic-resume') is not None"
+    #   connector:
+    #     name: "sdk-slack-sender"
+    #     command: "send_slack_message"
+    #   inputs:
+    #     channel_id: "'C06MPJJJR7Z'"
+    #     message: f"{'*:spiral_note_pad:'} BRIEFING {$.get('topic-name')}*\n\n {str($.get('topic-resume').get('description'))}"
+    #     slack_emoji: "':genius_bet:'"
+    #     slack_username: "'Site-Newsletter'"
+    #     thread-id: "$.get('thread-id')"
+    #   outputs:
+    #     send-result: "$"
+
+    # # task-topic-websearch
+    # - type: "connector"
+    #   name: "task-topic-websearch"
+    #   connector:
+    #     name: "sdk-serper"
+    #     command: "search_results"
+    #   condition: "$.get('topic-name') is not None"
+    #   inputs:
+    #     geolocation: "$.get('user-object').get('language')"
+    #     search-query: "$.get('topic-name')"
+    #     search-sbd: "'sbd:1'"
+    #     search-type: "'news'"
+    #   outputs:
+    #     search-results: "$.get('news', [])"
+
+    # task-perplexity-search
+    - type: "connector"
+      name: "task-perplexity-search"
+      connector:
+        name: "api-perplexity"
+        command: "post-chat/completions"
+      inputs:
+        body: |
+          {
+            'model': $.get('model', 'llama-3.1-sonar-large-128k-online'),
+            'messages': [
+              {
+                'role': 'system',
+                'content': $.get('system_message', 'Be precise and factual. Bring only the relevant information for the query.')
+              },{
+                'role': 'user',
+                'content': $.get('search-query')
+              }
+            ],
+            'max_tokens': $.get('max_tokens', 1000),
+            'temperature': $.get('temperature', 0.1),
+            'top_p': $.get('top_p', 0.9),
+            'return_citations': $.get('return_citations', True),
+            'return_images': $.get('return_images', False),
+            'return_related_questions': $.get('return_related_questions', True),
+            'search_recency_filter': $.get('search_recency_filter', 'week'),
+            'top_k': $.get('top_k', 0),
+            'stream': $.get('stream', False),
+            'presence_penalty': $.get('presence_penalty', 0),
+            'frequency_penalty': $.get('frequency_penalty', 1)
+          }
+      outputs:
+        perplexity-choices: "$.get('choices')"
+        search-results: "$.get('choices')[0].get('message', {}).get('content', None)"
+
+    # prompt-generate-summary
+    - type: "prompt"
+      name: "prompt-generate-summary"
+      condition: "len($.get('perplexity-choices', [])) > 0"
+      connector:
+        name: "sdk-openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        search-results: "$.get('search-results')"
+      outputs:
+        text-resume: "$"
+
+    # document-save-snippets
+    - type: "document"
+      name: "document-save-snippets"
+      config:
+        action: "save"
+        embed-vector: false
+      connector:
+        name: "sdk-openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        snippets: |
+          {
+            'name': $.get('topic-name'),
+            'search-query': $.get('search-query'),
+            'search-results': $.get('search-results'),
+            'text-resume': $.get('text-resume')
+          }
+      outputs:
+        snippets: "$"
