@@ -1,0 +1,15 @@
+documents:
+  - name: test-document-install
+    title: Test CSV Data
+    filename: test-data.csv
+    filetype: csv
+    metadata:
+      category: data
+      topic: test
+  - name: test-document-install
+    title: Test JSON Config
+    filename: config.json
+    filetype: json
+    metadata:
+      category: config
+      topic: test

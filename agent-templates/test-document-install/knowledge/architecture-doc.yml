@@ -1,0 +1,8 @@
+document:
+  name: test-document-install
+  title: Architecture Overview
+  filename: architecture.md
+  filetype: markdown
+  metadata:
+    category: architecture
+    topic: overview

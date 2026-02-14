@@ -1,7 +1,7 @@
 {
   "name": "mkn-templates",
   "description": "Machina shared templates - connectors, agent templates, and template development tools",
-  "version": "1.1.0",
+  "version": "1.4.0",
   "author": {
     "name": "Machina Sports"
   },
