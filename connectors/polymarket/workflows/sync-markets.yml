@@ -31,7 +31,7 @@ workflow:
         active: true
         closed: false
       outputs:
-        markets: $.get('data', {}).get('markets', [])
+        markets: $.get('markets', [])
         workflow-status: "'executed'"
 
     # polymarket-market-mapping

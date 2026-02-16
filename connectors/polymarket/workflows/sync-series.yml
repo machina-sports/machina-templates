@@ -25,7 +25,7 @@ workflow:
         limit: $.get('limit', 200)
         offset: $.get('offset', 0)
       outputs:
-        series: $.get('data', {}).get('series', [])
+        series: $.get('series', [])
         workflow-status: "'executed'"
 
     # polymarket-series-mapping

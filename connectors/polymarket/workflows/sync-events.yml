@@ -31,7 +31,7 @@ workflow:
         active: true
         closed: false
       outputs:
-        events: $.get('data', {}).get('events', [])
+        events: $.get('events', [])
         workflow-status: "'executed'"
 
     # polymarket-event-mapping
