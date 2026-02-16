@@ -1,5 +1,0 @@
-datasets:
-  - type: document
-    path: knowledge/architecture-doc.yml
-  - type: documents
-    path: knowledge/multi-docs.yml
