@@ -1,0 +1,66 @@
+workflow:
+  name: polymarket-sync-markets
+  title: Polymarket - Sync Markets
+  description: Workflow to synchronize sports market data from Polymarket to Machina.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    tag_id: $.get('tag_id', 1)
+    sports_market_types: $.get('sports_market_types', '')
+    limit: $.get('limit', 100)
+    offset: $.get('offset', 0)
+  outputs:
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-markets
+    - type: connector
+      name: load-markets
+      description: Get sports markets from Polymarket
+      connector:
+        name: polymarket
+        command: get_sports_markets
+      inputs:
+        tag_id: $.get('tag_id', 1)
+        sports_market_types: $.get('sports_market_types', '')
+        limit: $.get('limit', 100)
+        offset: $.get('offset', 0)
+        active: true
+        closed: false
+      outputs:
+        markets: $.get('markets', [])
+        workflow-status: "'executed'"
+
+    # polymarket-market-mapping
+    - type: mapping
+      name: polymarket-market-mapping
+      title: Polymarket - Market Data Mapping
+      description: Mapping data from Polymarket market API responses
+      condition: $.get('markets') is not None and len($.get('markets', [])) > 0
+      inputs:
+        markets: $.get('markets', [])
+      outputs:
+        bulk-markets: $.get('mapped-markets', [])
+
+    # 2 bulk-save-markets
+    - type: document
+      name: bulk-save-markets
+      description: Bulk save the market data.
+      condition: $.get('bulk-markets') is not None and len($.get('bulk-markets', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: $.get('force-update')
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'polymarket-markets'"
+      documents:
+        items: $.get('bulk-markets', [])
+      inputs:
+        bulk-markets: $.get('bulk-markets', [])

@@ -1,0 +1,88 @@
+mappings:
+
+  - type: mapping
+    name: polymarket-market-mapping
+    title: Polymarket Market Data Mapping
+    description: "Mapping data from Polymarket market API responses"
+    outputs:
+      mapped-markets: |
+        [
+          {
+            'id': str(market.get('id', '')),
+            'title': market.get('question', ''),
+            'description': market.get('description', ''),
+            'slug': market.get('slug', ''),
+            'status': market.get('status', ''),
+            'sportsMarketType': market.get('sports_market_type', ''),
+            'gameId': market.get('game_id', ''),
+            'outcomes': market.get('outcomes', []),
+            'volume': market.get('volume', 0),
+            'volume24h': market.get('volume_24h', 0),
+            'liquidity': market.get('liquidity', 0),
+            'spread': market.get('spread', 0),
+            'startDate': market.get('start_date', ''),
+            'endDate': market.get('end_date', ''),
+            'createdAt': market.get('created_at', ''),
+            'updatedAt': market.get('updated_at', ''),
+            'eventId': market.get('event_id', ''),
+            'clobTokenIds': market.get('clob_token_ids', []),
+            'tags': market.get('tags', []),
+            'metadata': {
+              'id': str(market.get('id', '')),
+              'eventId': market.get('event_id', '')
+            }
+          }
+          for market in $.get('markets', [])
+        ]
+
+  - type: mapping
+    name: polymarket-event-mapping
+    title: Polymarket Event Data Mapping
+    description: "Mapping data from Polymarket event API responses"
+    outputs:
+      mapped-events: |
+        [
+          {
+            'id': str(event.get('id', '')),
+            'title': event.get('title', ''),
+            'description': event.get('description', ''),
+            'slug': event.get('slug', ''),
+            'status': event.get('status', ''),
+            'startDate': event.get('start_date', ''),
+            'endDate': event.get('end_date', ''),
+            'createdAt': event.get('created_at', ''),
+            'updatedAt': event.get('updated_at', ''),
+            'volume': event.get('volume', 0),
+            'liquidity': event.get('liquidity', 0),
+            'marketCount': event.get('market_count', 0),
+            'seriesId': event.get('series_id', ''),
+            'tags': event.get('tags', []),
+            'metadata': {
+              'id': str(event.get('id', '')),
+              'seriesId': event.get('series_id', '')
+            }
+          }
+          for event in $.get('events', [])
+        ]
+
+  - type: mapping
+    name: polymarket-series-mapping
+    title: Polymarket Series Data Mapping
+    description: "Mapping data from Polymarket series API responses"
+    outputs:
+      mapped-series: |
+        [
+          {
+            'id': str(series.get('id', '')),
+            'title': series.get('title', ''),
+            'slug': series.get('slug', ''),
+            'description': series.get('description', ''),
+            'image': series.get('image', ''),
+            'createdAt': series.get('created_at', ''),
+            'updatedAt': series.get('updated_at', ''),
+            'metadata': {
+              'id': str(series.get('id', ''))
+            }
+          }
+          for series in $.get('series', [])
+        ]

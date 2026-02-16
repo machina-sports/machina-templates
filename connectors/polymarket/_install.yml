@@ -1,0 +1,41 @@
+setup:
+  title: Polymarket
+  description: Connect to Polymarket prediction markets to access sports events, markets, real-time prices, and order book data. All public endpoints, no API key required.
+  category:
+    - data-acquisition
+    - prediction-markets
+    - sports
+  estimatedTime: 1 minute
+  features:
+    - Sports markets with 58+ market types (moneyline, spreads, totals, props)
+    - Real-time prices and order books via CLOB API
+    - Events and series (leagues) browsing
+    - Full-text market search
+    - Trade history
+    - Multi-sport coverage (NFL, NBA, MLB, Soccer, Tennis, Cricket, MMA, Esports)
+    - No API key required for all read endpoints
+    - Built-in caching and rate limiting
+  integrations:
+    - polymarket
+  status: available
+  value: connectors/polymarket
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: scripts/polymarket.yml
+
+  - type: mappings
+    path: mappings/markets.yml
+
+  - type: workflow
+    path: _folders.yml
+
+  - type: workflow
+    path: workflows/sync-markets.yml
+
+  - type: workflow
+    path: workflows/sync-events.yml
+
+  - type: workflow
+    path: workflows/sync-series.yml

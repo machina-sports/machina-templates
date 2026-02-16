@@ -1,0 +1,63 @@
+workflow:
+  name: polymarket-folders
+  title: Polymarket - Folders
+  description: Polymarket API - Folders Structure
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Setup folder structure
+    - type: document
+      name: install-documents
+      description: Install documents and folder structure.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        doc-structure: |
+          [
+            {
+              "title": "Polymarket",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "polymarket-markets",
+                  "title": "Markets",
+                  "description": "Polymarket sports prediction markets",
+                  "category": "Polymarket",
+                  "metadata": {
+                    "name": ["polymarket-markets"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "polymarket-events",
+                  "title": "Events",
+                  "description": "Polymarket sports events",
+                  "category": "Polymarket",
+                  "metadata": {
+                    "name": ["polymarket-events"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "polymarket-series",
+                  "title": "Series",
+                  "description": "Polymarket series (leagues)",
+                  "category": "Polymarket",
+                  "metadata": {
+                    "name": ["polymarket-series"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
