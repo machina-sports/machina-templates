@@ -39,3 +39,12 @@ datasets:
 
   - type: workflow
     path: workflows/sync-series.yml
+
+  - type: skill
+    path: skills/sync-markets/skill.yml
+
+  - type: skill
+    path: skills/sync-events/skill.yml
+
+  - type: skill
+    path: skills/sync-series/skill.yml

@@ -1,0 +1,40 @@
+skill:
+  name: "polymarket-sync-series"
+  title: "Polymarket - Sync Series"
+  description: "Sync series (leagues/competitions) from Polymarket to Machina documents."
+  version: "1.0.0"
+  category:
+    - "data-acquisition"
+    - "prediction-markets"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+
+    - name: "skill-reference"
+      title: "Series API"
+      filename: "references/series-api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "polymarket-sync-series"
+        reference_id: "series-api"
+
+    - name: "skill-reference"
+      title: "Sports Coverage"
+      filename: "references/sports-coverage.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "polymarket-sync-series"
+        reference_id: "sports-coverage"
+
+  workflows:
+
+    - name: "polymarket-sync-series"
+      description: "sync-series-leagues"
+      inputs:
+        limit: "$.get('limit', 200)"
+        offset: "$.get('offset', 0)"
+      outputs:
+        workflow-status: "$.get('workflow-status', 'skipped')"
