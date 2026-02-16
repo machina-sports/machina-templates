@@ -7,6 +7,7 @@ skill:
     - "devops"
     - "templates"
   status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
 
   references:
 
