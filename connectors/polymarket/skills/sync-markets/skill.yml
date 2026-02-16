@@ -1,0 +1,42 @@
+skill:
+  name: "polymarket-sync-markets"
+  title: "Polymarket - Sync Markets"
+  description: "Sync sports prediction markets from Polymarket to Machina documents."
+  version: "1.0.0"
+  category:
+    - "data-acquisition"
+    - "prediction-markets"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+
+    - name: "skill-reference"
+      title: "Market Types"
+      filename: "references/market-types.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "polymarket-sync-markets"
+        reference_id: "market-types"
+
+    - name: "skill-reference"
+      title: "Pricing API"
+      filename: "references/pricing-api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "polymarket-sync-markets"
+        reference_id: "pricing-api"
+
+  workflows:
+
+    - name: "polymarket-sync-markets"
+      description: "sync-sports-markets"
+      inputs:
+        tag_id: "$.get('tag_id', 1)"
+        sports_market_types: "$.get('sports_market_types', '')"
+        limit: "$.get('limit', 100)"
+        offset: "$.get('offset', 0)"
+      outputs:
+        workflow-status: "$.get('workflow-status', 'skipped')"
