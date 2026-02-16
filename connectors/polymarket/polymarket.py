@@ -590,89 +590,133 @@ def get_sports_market_types(request_data):
 
 
 def search_markets(request_data):
-    """Full-text search across Polymarket markets.
+    """Find sports markets by browsing events and filtering.
+
+    The /search endpoint requires authentication. This function uses
+    the events and markets endpoints with filters for discovery instead.
 
     Params:
-        query (str): Search query (required)
+        query (str): Keyword to match in event titles (optional)
+        sports_market_types (str): Filter by type (e.g. 'moneyline', 'spreads')
+        tag_id (int): Tag ID (default: 1 = Sports)
         limit (int): Max results (default: 20, max: 50)
     """
     try:
         params = request_data.get("params", {})
-        query = params.get("query", "")
+        query = params.get("query", "").lower()
+        limit = min(int(params.get("limit", 20)), 50)
 
-        if not query:
-            return _error("query parameter is required")
-
-        search_params = {
-            "query": query,
-            "limit": min(int(params.get("limit", 20)), 50),
+        # Fetch sports events sorted by volume
+        event_params = {
+            "tag_id": params.get("tag_id", SPORTS_TAG_ID),
+            "limit": min(limit * 2, 100),
+            "active": "true",
+            "closed": "false",
+            "order": "volume",
+            "ascending": "false",
         }
 
-        response = _gamma_request("/search", params=search_params, ttl=60)
+        response = _gamma_request("/events", params=event_params, ttl=60)
         err = _check_error(response)
         if err:
             return err
 
-        # Response may be a list or have a markets key
-        markets = response if isinstance(response, list) else response.get("markets", response)
-        if not isinstance(markets, list):
-            markets = []
+        events = response if isinstance(response, list) else response.get("events", response)
+        if not isinstance(events, list):
+            events = []
 
-        normalized = [_normalize_market(m) for m in markets]
+        # Filter by query keyword if provided
+        if query:
+            events = [
+                e for e in events
+                if query in e.get("title", "").lower()
+                or query in e.get("description", "").lower()
+                or query in e.get("slug", "").lower()
+            ]
+
+        # Collect markets from matching events
+        all_markets = []
+        for e in events[:limit]:
+            markets = e.get("markets", [])
+            smt = params.get("sports_market_types", "")
+            if smt:
+                markets = [m for m in markets if m.get("sportsMarketType", "") == smt]
+            all_markets.extend([_normalize_market(m) for m in markets])
 
         return _success(
-            {"markets": normalized, "count": len(normalized), "query": query},
-            f"Found {len(normalized)} markets for '{query}'"
+            {"markets": all_markets[:limit], "count": len(all_markets[:limit]), "query": query or "(all sports)"},
+            f"Found {len(all_markets[:limit])} markets"
         )
 
     except Exception as e:
         return _error(f"Error searching markets: {str(e)}")
 
 
-def get_trades(request_data):
-    """Get recent trades for markets.
+def get_price_history(request_data):
+    """Get historical price data for a market over time via CLOB API.
 
     Params:
-        market_id (str): Filter by market/condition ID
-        limit (int): Max results (default: 50, max: 100)
+        token_id (str): CLOB token ID (required)
+        interval (str): Time range - "1d", "1w", "1m", "max" (default: "max")
+        fidelity (int): Seconds between data points (default: 120)
     """
     try:
         params = request_data.get("params", {})
+        token_id = params.get("token_id", "")
+
+        if not token_id:
+            return _error("token_id is required")
 
         query = {
-            "limit": min(int(params.get("limit", 50)), 100),
+            "market": token_id,
+            "interval": params.get("interval", "max"),
+            "fidelity": int(params.get("fidelity", 120)),
         }
 
-        if params.get("market_id"):
-            query["market"] = params["market_id"]
-
-        response = _gamma_request("/core/trades", params=query, ttl=30)
+        response = _clob_request("/prices-history", params=query, ttl=60)
         err = _check_error(response)
         if err:
             return err
 
-        trades = response if isinstance(response, list) else response.get("trades", response)
-        if not isinstance(trades, list):
-            trades = []
-
-        normalized = []
-        for t in trades:
-            normalized.append({
-                "id": t.get("id", ""),
-                "market_id": t.get("market", ""),
-                "asset_id": t.get("asset", ""),
-                "side": t.get("side", ""),
-                "size": _safe_float(t.get("size")),
-                "price": _safe_float(t.get("price")),
-                "outcome": t.get("outcome", ""),
-                "created_at": t.get("createdAt", ""),
-                "transaction_hash": t.get("transactionHash", ""),
-            })
+        history = response.get("history", []) if isinstance(response, dict) else response
+        if not isinstance(history, list):
+            history = []
 
         return _success(
-            {"trades": normalized, "count": len(normalized)},
-            f"Retrieved {len(normalized)} trades"
+            {"history": history, "count": len(history), "token_id": token_id},
+            f"Retrieved {len(history)} price data points"
         )
 
     except Exception as e:
-        return _error(f"Error fetching trades: {str(e)}")
+        return _error(f"Error fetching price history: {str(e)}")
+
+
+def get_last_trade_price(request_data):
+    """Get the most recent trade price for a market via CLOB API.
+
+    Params:
+        token_id (str): CLOB token ID (required)
+    """
+    try:
+        params = request_data.get("params", {})
+        token_id = params.get("token_id", "")
+
+        if not token_id:
+            return _error("token_id is required")
+
+        response = _clob_request("/last-trade-price", params={"token_id": token_id}, ttl=15)
+        err = _check_error(response)
+        if err:
+            return err
+
+        return _success(
+            {
+                "token_id": token_id,
+                "price": _safe_float(response.get("price")),
+                "side": response.get("side", ""),
+            },
+            f"Last trade price: {response.get('price', 'N/A')}"
+        )
+
+    except Exception as e:
+        return _error(f"Error fetching last trade price: {str(e)}")
