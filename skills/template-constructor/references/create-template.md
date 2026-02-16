@@ -1,7 +1,3 @@
----
-description: Scaffold new Machina templates with correct YAML structure
----
-
 # DevOps: Create Template
 
 Scaffold new Machina templates with correct YAML structure.
@@ -53,6 +49,10 @@ setup:
 datasets:
   # Order matters - install dependencies first
 
+  # Setup documents (JSON/MD config files)
+  - type: documents
+    path: setup/_index.yml
+
   # Connectors (if any custom ones)
   - type: connector
     path: scripts/custom-connector.yml
@@ -72,7 +72,13 @@ datasets:
   # Agents (last - they depend on workflows)
   - type: agent
     path: agents/main-executor.yml
+
+  # Skills (optional - registers skill metadata in SDK)
+  # - type: skill
+  #   path: skill.yml
 ```
+
+**All dataset types**: `agent`, `connector`, `workflow`, `prompts`, `mappings`, `document`, `documents`, `skill`
 
 ### 4. Generate Agent File
 
@@ -312,6 +318,75 @@ def validate_input(context, inputs):
         'errors': errors
     }
 ```
+
+### 9. Generate Document Index (if config files needed)
+
+`setup/_index.yml` — Maps external files (JSON, MD, CSV) to database documents:
+
+```yaml
+documents:
+  - name: template-name-config
+    title: Template Config
+    filename: config.json
+    filetype: json
+    metadata:
+      category: config
+      template: template-name
+
+  - name: template-name-instructions
+    title: Template Instructions
+    filename: instructions.md
+    filetype: markdown
+    metadata:
+      category: instruction
+      template: template-name
+      instruction_id: main-instructions
+```
+
+`setup/config.json`:
+
+```json
+{
+  "title": "Template Configuration",
+  "enabled": true
+}
+```
+
+**Supported file types**: `json`, `markdown`, `text`, `html`, `csv`, `jsonl`
+
+**Multiple docs with same `name`**: Use `metadata` to differentiate. The importer upserts by `name` + `metadata`.
+
+### 10. Generate Skill File (if registering as SDK skill)
+
+`skill.yml` — Registers a skill in the SDK with its workflows:
+
+```yaml
+skill:
+  name: "template-name"
+  title: "Template Name"
+  description: "What this skill does"
+  status: "available"
+
+  references:
+    - name: "skill-reference"
+      title: "Reference Title"
+      filename: "references/guide.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-name"
+        reference_id: "guide"
+
+  workflows:
+    - name: "template-name-main"
+      description: "Main workflow"
+      inputs:
+        param: "$.get('param', 'default')"
+      outputs:
+        result-status: "$.get('workflow-status')"
+```
+
+**Skill references**: External files (MD, JSON) linked to the skill. Imported as documents and stored as `skill.documents[]` refs.
 
 ## Template Type Examples
 

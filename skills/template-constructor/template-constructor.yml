@@ -1,0 +1,84 @@
+skill:
+  name: "template-constructor"
+  title: "Template Constructor"
+  description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
+  version: "1.0.0"
+  category:
+    - "devops"
+    - "templates"
+  status: "available"
+
+  references:
+
+    - name: "skill-reference"
+      title: "Init Template"
+      filename: "references/init-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "init-template"
+
+    - name: "skill-reference"
+      title: "Create Template"
+      filename: "references/create-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "create-template"
+
+    - name: "skill-reference"
+      title: "Validate Template"
+      filename: "references/validate-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "validate-template"
+
+    - name: "skill-reference"
+      title: "Install Template"
+      filename: "references/install-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "install-template"
+
+    - name: "skill-reference"
+      title: "Analyze Template"
+      filename: "references/analyze-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "analyze-template"
+
+    - name: "skill-reference"
+      title: "Trace Agent"
+      filename: "references/trace-agent.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "trace-agent"
+
+    - name: "skill-reference"
+      title: "Configure Secrets"
+      filename: "references/configure-secrets.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "configure-secrets"
+
+  workflows:
+
+    - name: "template-constructor-check-setup"
+      description: "check-doc-structure"
+      inputs:
+        document_name: "$.get('document_name', 'doc-structure')"
+      outputs:
+        doc-structure: "$.get('doc-structure', {})"
+        check-status: "$.get('workflow-status')"

@@ -1,7 +1,3 @@
----
-description: Install Machina templates from local filesystem or Git repositories
----
-
 # DevOps: Install Template
 
 Install Machina templates from local filesystem or Git repositories.
@@ -38,6 +34,8 @@ setup:
   version: 1.0.0
 
 datasets:
+  - type: documents        # Config files (JSON/MD via _index.yml)
+    path: setup/_index.yml
   - type: connector
     path: scripts/custom.yml
   - type: prompts
@@ -46,7 +44,15 @@ datasets:
     path: workflows/main.yml
   - type: agent
     path: agents/executor.yml
+  - type: skill            # Optional: register as SDK skill
+    path: skill.yml
 ```
+
+**All dataset types**: `agent`, `connector`, `workflow`, `prompts`, `mappings`, `document`, `documents`, `skill`
+
+**`documents` type**: Points to a `_index.yml` file that lists external files (JSON, MD, CSV, JSONL) to import as database documents. Each entry has `name`, `title`, `filename`, `filetype`, and optional `metadata`.
+
+**`skill` type**: Points to a `skill.yml` file that registers a skill in the SDK. Supports `references` (external files linked as documents) and `workflows` (skill entry points).
 
 ### 3. Check Prerequisites
 

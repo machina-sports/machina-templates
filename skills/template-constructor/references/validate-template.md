@@ -1,7 +1,3 @@
----
-description: Validate template YAML files against correct patterns before installation
----
-
 # DevOps: Validate Template
 
 Validate Machina template YAML files against correct patterns before installation.
@@ -163,7 +159,64 @@ connector:
 - Using `script:` instead of `filename:`
 - Missing `commands` list
 
-### 8. Validate Expression Syntax
+### 8. Validate Document Index Files (`_index.yml`)
+
+For each `_index.yml` referenced as `type: documents`:
+
+```yaml
+# CORRECT structure
+documents:
+  - name: doc-name           # Required
+    title: "Display Title"   # Required
+    filename: file.json      # Required - relative to _index.yml
+    filetype: json            # Required - json|markdown|text|html|csv|jsonl
+    metadata:                 # Optional - used for upsert matching
+      category: config
+      template: template-name
+```
+
+**Common errors:**
+- Missing top-level `documents:` array
+- Missing `filename` or `filetype`
+- Invalid `filetype` value (must be `json`, `markdown`, `text`, `html`, `csv`, or `jsonl`)
+- Referenced file does not exist relative to `_index.yml`
+- JSON files with invalid JSON syntax
+
+### 9. Validate Skill Files (`skill.yml`)
+
+For skill YAML files referenced as `type: skill`:
+
+```yaml
+# CORRECT structure
+skill:
+  name: skill-name           # Required
+  title: "Display Title"     # Required
+  description: "..."         # Required
+  status: "available"        # Required
+
+  references:                # Optional - external files linked as documents
+    - name: "skill-reference"
+      title: "Ref Title"
+      filename: "path/to/file.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "skill-name"
+
+  workflows:                 # Optional - skill entry points
+    - name: "workflow-name"
+      description: "..."
+      inputs: {...}
+      outputs: {...}
+```
+
+**Common errors:**
+- Missing top-level `skill:` key
+- Missing `name`, `title`, or `status`
+- References with missing `filename` or `filetype`
+- Referenced files that don't exist
+
+### 10. Validate Expression Syntax
 
 Check all expressions use correct syntax:
 
@@ -176,7 +229,7 @@ Check all expressions use correct syntax:
 | `$field` | ❌ Wrong |
 | `{{field}}` | ❌ Wrong |
 
-### 9. Report Results
+### 11. Report Results
 
 Output validation report:
 
@@ -236,6 +289,12 @@ OVERALL: ❌ 4 errors found. Fix before installing.
 | **Prompt** | Each prompt has `instruction` + `schema` |
 | **Connector** | Uses `filetype:` (not `type:`) |
 | **Connector** | Uses `filename:` (not `script:`) |
+| **_index.yml** | Has `documents:` array |
+| **_index.yml** | Each entry has `name`, `title`, `filename`, `filetype` |
+| **_index.yml** | All referenced files exist |
+| **_index.yml** | `filetype` is one of: json, markdown, text, html, csv, jsonl |
+| **skill.yml** | Has `skill:` top-level key with `name`, `title`, `status` |
+| **skill.yml** | References have `filename` + `filetype`, files exist |
 | **Expressions** | All use `$.get()` syntax |
 
 ## Example Interaction

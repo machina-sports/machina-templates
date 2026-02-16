@@ -1,0 +1,14 @@
+setup:
+  title: "Template Constructor"
+  description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
+  category:
+    - devops
+    - templates
+  status: available
+  value: skills/template-constructor
+  version: 1.0.0
+
+datasets:
+
+  - type: "skill"
+    path: "template-constructor.yml"

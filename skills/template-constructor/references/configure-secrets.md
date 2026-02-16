@@ -1,7 +1,3 @@
----
-description: Configure secrets in the Machina vault for use in workflows and connectors
----
-
 # Configure Secrets
 
 This skill documents how to properly configure secrets in the Machina SDK vault for use with connectors in workflows.

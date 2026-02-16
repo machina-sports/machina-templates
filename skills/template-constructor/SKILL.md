@@ -49,30 +49,24 @@ Load the appropriate reference file based on the user's intent, then follow its 
 
 ## MCP Server Selection
 
-Choose the MCP server based on target environment:
+Ask the user which environment to target. The MCP server prefix follows the pattern `mcp__<environment>__`:
 
 | Environment | MCP Server Prefix |
 |-------------|-------------------|
 | Local dev | `mcp__docker-localhost__` |
-| DAZN Dev | `mcp__dazn-ros-dev__` |
-| DAZN Staging | `mcp__dazn-ros-stg__` |
-| SBot Dev | `mcp__sbot-dev__` |
-| SBot Staging | `mcp__sbot-stg__` |
-| SBot Prod | `mcp__sbot-prd__` |
-| SIA Dev | `mcp__sia-dev__` |
-| Mister AI Dev | `mcp__mister-ai-dev__` |
+
+Additional environments (staging, production) depend on the project's MCP configuration. Check available MCP servers in the current session.
 
 ## SDK Skill Registration
 
 After installing a template, optionally register it as a **skill** in the SDK for discoverability:
 
 ```python
-mcp__docker-localhost__create_skill(
+create_skill(
     name="template-name",
     config={
         "title": "Template Title",
         "description": "What it does",
-        "version": "1.0.0",
         "template_path": "agent-templates/template-name",
         "agents": ["template-name-executor"],
         "workflows": ["template-name-main-workflow"],
@@ -82,13 +76,19 @@ mcp__docker-localhost__create_skill(
 )
 ```
 
-## Template Repository Paths
+## Template Repository Layout
 
-| Repository | Local Path | Docker Path |
-|------------|------------|-------------|
-| machina-templates | `/Users/fernando/machina/machina-templates` | `/app/machina-templates` |
-| dazn-templates | `/Users/fernando/machina/dazn-templates` | `/app/dazn-templates` |
-| entain-templates | `/Users/fernando/machina/entain-templates` | `/app/entain-templates` |
+Templates live in repositories with this structure:
+
+```
+<repo-root>/
+├── agent-templates/    # Reusable agent patterns
+│   └── <template-name>/
+└── connectors/         # External service integrations
+    └── <connector-name>/
+```
+
+When installing via MCP, the `project_path` must point to the template directory inside the container (e.g., `/app/<repo-name>/agent-templates/<template-name>`).
 
 ## Key Constraints
 
