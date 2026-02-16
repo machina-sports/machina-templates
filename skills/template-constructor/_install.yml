@@ -14,4 +14,4 @@ datasets:
     path: "workflows/check-setup.yml"
 
   - type: "skill"
-    path: "template-constructor.yml"
+    path: "skill.yml"
