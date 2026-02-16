@@ -1,0 +1,22 @@
+workflow:
+  name: "template-constructor-check-setup"
+  title: "Template Constructor - Check Setup"
+  description: "Search for the doc-structure document and return its content."
+  inputs:
+    document_name: "$.get('document_name', 'doc-structure')"
+  outputs:
+    doc-structure: "$.get('doc-structure', {})"
+    workflow-status: "$.get('doc-structure') and 'executed' or 'skipped'"
+  tasks:
+
+    - type: "document"
+      name: "task-search-doc-structure"
+      description: "Search for the doc-structure document by name."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "$.get('document_name', 'doc-structure')"
+      outputs:
+        doc-structure: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
