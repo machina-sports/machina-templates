@@ -23,7 +23,7 @@ setup:
 
 datasets:
   - type: connector
-    path: polymarket.yml
+    path: scripts/polymarket.yml
 
   - type: mappings
     path: mappings/markets.yml
