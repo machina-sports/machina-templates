@@ -1,7 +1,3 @@
----
-description: Analyze agent-template structure and provide overview of agents, workflows, prompts, and dependencies
----
-
 # DevOps: Analyze Template
 
 Analyze a Machina agent-template and provide a comprehensive overview of its components.
@@ -42,6 +38,9 @@ Note special structures:
 - `configs/` - Setup/configuration workflows
 - `custom-*/` - Custom subdirectories (polls, quizzes, game, etc.)
 - `documents/` - Static document templates
+- `setup/` - Config documents with `_index.yml` (JSON/MD files imported as database documents)
+- `instructions/` - Instruction documents with `_index.yml` (prompt instructions as JSON/MD)
+- `skill.yml` - SDK skill registration (optional, at template root)
 
 ### 3. Read Installation Manifest
 
@@ -147,6 +146,36 @@ For each mapping, extract:
 - **Inputs** - Source data
 - **Outputs** - Transformed data
 - **Logic** - Transformation expressions
+
+#### Document Indexes (`setup/_index.yml`, `instructions/_index.yml`)
+
+For each `_index.yml` found, extract:
+
+| Property | YAML Path | Notes |
+|----------|-----------|-------|
+| Documents | `documents[]` | Array of document entries |
+| Doc Name | `documents[].name` | Database document name |
+| Doc Title | `documents[].title` | Display title |
+| Filename | `documents[].filename` | Source file path |
+| Filetype | `documents[].filetype` | json, markdown, text, html, csv, jsonl |
+| Metadata | `documents[].metadata` | Category, template, instruction_id |
+
+**Report**: List all document files, group by category (config, instruction, etc.), note file types.
+
+#### Skills (`skill.yml`)
+
+If a `skill.yml` exists, extract:
+
+| Property | YAML Path | Notes |
+|----------|-----------|-------|
+| Name | `skill.name` | Skill identifier |
+| Title | `skill.title` | Display name |
+| Description | `skill.description` | Purpose |
+| Status | `skill.status` | available, beta, etc. |
+| References | `skill.references[]` | Linked documents (MD/JSON files) |
+| Workflows | `skill.workflows[]` | Skill entry points |
+
+**Report**: List skill workflows with inputs/outputs, list references with file types.
 
 #### Connectors (`scripts/*.yml`)
 

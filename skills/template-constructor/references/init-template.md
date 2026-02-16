@@ -1,7 +1,3 @@
----
-description: Initialize new Machina template with directory structure and configuration files
----
-
 # DevOps: Init Template
 
 Scaffold a new Machina template project from scratch with the proper directory structure, configuration files, and documentation.
@@ -49,6 +45,7 @@ mkdir -p {target_repo}/agent-templates/{template_name}/prompts
 mkdir -p {target_repo}/agent-templates/{template_name}/workflows
 mkdir -p {target_repo}/agent-templates/{template_name}/scripts
 mkdir -p {target_repo}/agent-templates/{template_name}/mappings
+mkdir -p {target_repo}/agent-templates/{template_name}/setup
 ```
 
 For `connectors`:
@@ -78,6 +75,10 @@ setup:
 
 datasets:
 
+  # setup documents (JSON/MD files via _index.yml)
+  - type: "documents"
+    path: "setup/_index.yml"
+
   # prompts
   - type: "prompts"
     path: "prompts/main-prompts.yml"
@@ -99,7 +100,51 @@ datasets:
     path: "agents/main-executor.yml"
 ```
 
-### 5. Generate `_folders.yml`
+> **Dataset types**: `agent`, `connector`, `workflow`, `prompts`, `mappings`, `document`, `documents`, `skill`
+
+### 5. Generate `setup/_index.yml`
+
+Write the document index that imports JSON/MD config files into the database:
+
+```yaml
+documents:
+  - name: "{template_name}-config"
+    title: "{title} Config"
+    filename: "config.json"
+    filetype: json
+    metadata:
+      category: config
+      template: "{template_name}"
+```
+
+And create the corresponding `setup/config.json`:
+
+```json
+{
+  "title": "{title} Configuration",
+  "enabled": true
+}
+```
+
+**`_index.yml` format**: Each entry maps a file to a document in the database.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Document name in the database (used for upsert matching) |
+| `title` | Yes | Human-readable title |
+| `filename` | Yes | Path to the file relative to `_index.yml` |
+| `filetype` | Yes | One of: `json`, `markdown`, `text`, `html`, `csv`, `jsonl` |
+| `metadata` | No | Arbitrary metadata (used for search/filtering and upsert matching) |
+
+**Supported file types**:
+- `json` — Parsed and stored as structured object in `document.value`
+- `markdown`, `text`, `html` — Stored as raw string in `document.value`
+- `csv` — Parsed into `{columns, rows, format}` object
+- `jsonl` — Each line parsed, stored as `{rows, format}` object
+
+**Multiple documents with same `name`**: Use `metadata` to differentiate (e.g., `instruction_id`). The importer upserts by `name` + `metadata`.
+
+### 6. Generate `_folders.yml`
 
 Write the folder/document setup workflow:
 
@@ -175,7 +220,7 @@ workflow:
           ]
 ```
 
-### 6. Generate `_setup.yml`
+### 7. Generate `_setup.yml`
 
 Write the setup agent that runs the folders workflow:
 
@@ -195,7 +240,7 @@ agent:
         setup-register-status: "$.get('workflow-status', False)"
 ```
 
-### 7. Generate Stub Files
+### 8. Generate Stub Files
 
 #### `agents/main-executor.yml`
 
@@ -287,7 +332,7 @@ workflow:
         response: "$"
 ```
 
-### 8. Generate Documentation Files
+### 9. Generate Documentation Files
 
 #### `README.md`
 
@@ -358,7 +403,7 @@ See [ROADMAP.md](ROADMAP.md) for planned features.
 - [ ] Extended documentation
 ```
 
-### 9. Display Summary
+### 10. Display Summary
 
 After creating all files, display:
 
@@ -378,6 +423,9 @@ Template initialized successfully!
 │   └── main-prompts.yml   # LLM prompts
 ├── workflows/
 │   └── main-workflow.yml  # Main workflow
+├── setup/                 # Config documents (JSON/MD)
+│   ├── _index.yml         # Document index
+│   └── config.json        # Template configuration
 ├── scripts/               # (empty - add custom connectors)
 └── mappings/              # (empty - add data mappings)
 

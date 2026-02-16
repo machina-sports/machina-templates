@@ -7,80 +7,79 @@ skill:
     - "devops"
     - "templates"
   status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
 
-  commands:
-    - name: "Init Template"
-      value: "init-template"
-      description: "Scaffold new template project from scratch with directory structure and configuration files"
+  references:
 
-    - name: "Create Template"
-      value: "create-template"
-      description: "Generate individual YAML components (agent, workflow, prompt, mapping, connector)"
+    - name: "skill-reference"
+      title: "Init Template"
+      filename: "references/init-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "init-template"
 
-    - name: "Validate Template"
-      value: "validate-template"
-      description: "Check YAML files against correct patterns before installation"
+    - name: "skill-reference"
+      title: "Create Template"
+      filename: "references/create-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "create-template"
 
-    - name: "Install Template"
-      value: "install-template"
-      description: "Import templates via MCP from local filesystem or Git repositories"
+    - name: "skill-reference"
+      title: "Validate Template"
+      filename: "references/validate-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "validate-template"
 
-    - name: "Analyze Template"
-      value: "analyze-template"
-      description: "Analyze template structure, dependencies, secrets, and provide component overview"
+    - name: "skill-reference"
+      title: "Install Template"
+      filename: "references/install-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "install-template"
 
-    - name: "Trace Agent"
-      value: "trace-agent"
-      description: "Trace agent execution chain showing workflows, tasks, variable propagation, and documents"
+    - name: "skill-reference"
+      title: "Analyze Template"
+      filename: "references/analyze-template.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "analyze-template"
 
-    - name: "Configure Secrets"
-      value: "configure-secrets"
-      description: "Configure vault secrets for connectors and workflows"
+    - name: "skill-reference"
+      title: "Trace Agent"
+      filename: "references/trace-agent.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "trace-agent"
+
+    - name: "skill-reference"
+      title: "Configure Secrets"
+      filename: "references/configure-secrets.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "configure-secrets"
 
   workflows:
-    - name: "template-constructor-init"
-      description: "Initialize new template"
-      agent: "template-constructor-executor"
-      inputs:
-        command: "init-template"
-        template_name: "$.get('template_name')"
-        template_type: "$.get('template_type', 'agent-templates')"
-        target_repo: "$.get('target_repo')"
 
-    - name: "template-constructor-validate"
-      description: "Validate template YAML"
-      agent: "template-constructor-executor"
+    - name: "template-constructor-check-setup"
+      description: "check-doc-structure"
       inputs:
-        command: "validate-template"
-        template_path: "$.get('template_path')"
-
-    - name: "template-constructor-install"
-      description: "Install template via MCP"
-      agent: "template-constructor-executor"
-      inputs:
-        command: "install-template"
-        template_path: "$.get('template_path')"
-        environment: "$.get('environment', 'docker-localhost')"
-
-    - name: "template-constructor-analyze"
-      description: "Analyze template structure"
-      agent: "template-constructor-executor"
-      inputs:
-        command: "analyze-template"
-        template_path: "$.get('template_path')"
-
-    - name: "template-constructor-trace"
-      description: "Trace agent execution"
-      agent: "template-constructor-executor"
-      inputs:
-        command: "trace-agent"
-        agent_path: "$.get('agent_path')"
-        environment: "$.get('environment', 'docker-localhost')"
-
-    - name: "template-constructor-secrets"
-      description: "Configure secrets"
-      agent: "template-constructor-executor"
-      inputs:
-        command: "configure-secrets"
-        secrets: "$.get('secrets', [])"
-        environment: "$.get('environment', 'docker-localhost')"
+        document_name: "$.get('document_name', 'doc-structure')"
+      outputs:
+        doc-structure: "$.get('doc-structure', {})"
+        check-status: "$.get('workflow-status')"

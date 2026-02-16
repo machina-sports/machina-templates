@@ -1,7 +1,3 @@
----
-description: Trace agent execution chain showing workflows, tasks, variable propagation, connectors, and documents
----
-
 # DevOps: Trace Agent
 
 Trace the complete execution chain of a Machina agent: from `context-agent` inputs, through each workflow (inputs/outputs/conditions), down to each task (type, connector, command, condition, inputs, outputs). Visualizes data flow and variable propagation for debugging.
