@@ -11,68 +11,85 @@ skill:
 
   references:
 
-    - name: "skill-reference"
-      title: "Init Template"
-      filename: "references/init-template.md"
+    - name: "skill-guide"
+      title: "Template Constructor"
+      filename: "SKILL.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-guide"
         skill: "template-constructor"
-        reference_id: "init-template"
 
     - name: "skill-reference"
-      title: "Create Template"
-      filename: "references/create-template.md"
+      title: "Init"
+      filename: "references/init.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "create-template"
+        reference_id: "init"
 
     - name: "skill-reference"
-      title: "Validate Template"
-      filename: "references/validate-template.md"
+      title: "Create"
+      filename: "references/create.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "validate-template"
+        reference_id: "create"
 
     - name: "skill-reference"
-      title: "Install Template"
-      filename: "references/install-template.md"
+      title: "Validate"
+      filename: "references/validate.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "install-template"
+        reference_id: "validate"
 
     - name: "skill-reference"
-      title: "Analyze Template"
-      filename: "references/analyze-template.md"
+      title: "Install"
+      filename: "references/install.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "analyze-template"
+        reference_id: "install"
 
     - name: "skill-reference"
-      title: "Trace Agent"
-      filename: "references/trace-agent.md"
+      title: "Analyze"
+      filename: "references/analyze.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "trace-agent"
+        reference_id: "analyze"
 
     - name: "skill-reference"
-      title: "Configure Secrets"
-      filename: "references/configure-secrets.md"
+      title: "Trace"
+      filename: "references/trace.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "configure-secrets"
+        reference_id: "trace"
+
+    - name: "skill-reference"
+      title: "Secrets"
+      filename: "references/secrets.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "secrets"
+
+    - name: "skill-reference"
+      title: "API"
+      filename: "references/api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "api"
 
   workflows:
 

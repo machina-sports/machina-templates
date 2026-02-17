@@ -5,90 +5,69 @@ description: Construct and scaffold Machina agent-templates and connectors with 
 
 # Template Constructor
 
-End-to-end skill for building, validating, and deploying Machina templates. Covers the full lifecycle: scaffold -> validate -> install -> analyze -> trace -> configure secrets.
+End-to-end skill for building, validating, and deploying Machina agent-templates and connectors.
 
-## Available Commands
+## References
 
-| Command | Description | Reference |
-|---------|-------------|-----------|
-| `init-template` | Scaffold new template project from scratch | [init-template.md](references/init-template.md) |
-| `create-template` | Generate individual YAML components (agent, workflow, prompt, mapping) | [create-template.md](references/create-template.md) |
-| `validate-template` | Check YAML files against correct patterns before installation | [validate-template.md](references/validate-template.md) |
-| `install-template` | Import templates via MCP (local or Git) | [install-template.md](references/install-template.md) |
-| `analyze-template` | Analyze template structure, dependencies, secrets | [analyze-template.md](references/analyze-template.md) |
-| `trace-agent` | Trace agent execution chain with variable propagation | [trace-agent.md](references/trace-agent.md) |
-| `configure-secrets` | Configure vault secrets for connectors | [configure-secrets.md](references/configure-secrets.md) |
+Procedural guides for each lifecycle stage:
 
-## Quick Workflow
+| Reference | Description |
+|-----------|-------------|
+| [init.md](references/init.md) | Scaffold new template project from scratch |
+| [create.md](references/create.md) | Generate individual YAML components |
+| [validate.md](references/validate.md) | Check YAML files against correct patterns |
+| [install.md](references/install.md) | Import templates via MCP (local or Git) |
+| [analyze.md](references/analyze.md) | Analyze template structure and dependencies |
+| [trace.md](references/trace.md) | Trace agent execution chain with variable propagation |
+| [secrets.md](references/secrets.md) | Configure vault secrets for connectors |
+| [api.md](references/api.md) | MCP operations for all entities (CRUD, execute, search) |
 
-```
-1. init-template    → Scaffold project structure
-2. create-template  → Add YAML components
-3. validate-template → Check syntax before deploy
-4. install-template  → Deploy via MCP
-5. configure-secrets → Set up credentials
-6. analyze-template  → Verify installation
-7. trace-agent       → Debug execution flow
-```
+## Schemas
 
-## Command Dispatch
+Authoritative field definitions for every Machina entity:
 
-When the user triggers this skill, determine which command they need:
+| Schema | Entity |
+|--------|--------|
+| [agent.md](schemas/agent.md) | Agent definition |
+| [connector.md](schemas/connector.md) | Connector (PyScript + REST API) |
+| [document.md](schemas/document.md) | Document task type |
+| [mapping.md](schemas/mapping.md) | Data transformation mapping |
+| [prompt.md](schemas/prompt.md) | Prompt definition + JSON Schema |
+| [setup.md](schemas/setup.md) | `_install.yml` + `_index.yml` |
+| [skill.md](schemas/skill.md) | SDK skill registration |
+| [workflow.md](schemas/workflow.md) | Workflow + task types |
 
-| User Says | Command |
-|-----------|---------|
-| "init template", "scaffold template", "new template project" | Read [init-template.md](references/init-template.md) |
-| "create agent", "create workflow", "scaffold YAML" | Read [create-template.md](references/create-template.md) |
-| "validate", "check YAML", "verify template" | Read [validate-template.md](references/validate-template.md) |
-| "install", "import", "deploy template" | Read [install-template.md](references/install-template.md) |
-| "analyze", "what's in this template", "overview" | Read [analyze-template.md](references/analyze-template.md) |
-| "trace", "execution chain", "variable flow", "debug agent" | Read [trace-agent.md](references/trace-agent.md) |
-| "secrets", "credentials", "configure API key" | Read [configure-secrets.md](references/configure-secrets.md) |
+## Intent Routing
 
-Load the appropriate reference file based on the user's intent, then follow its instructions.
+When the user triggers this skill, load the appropriate reference:
 
-## MCP Server Selection
+| User Says | Reference |
+|-----------|-----------|
+| "init template", "scaffold template", "new template project" | [init.md](references/init.md) |
+| "create agent", "create workflow", "scaffold YAML" | [create.md](references/create.md) |
+| "validate", "check YAML", "verify template" | [validate.md](references/validate.md) |
+| "install", "import", "deploy template" | [install.md](references/install.md) |
+| "analyze", "what's in this template", "overview" | [analyze.md](references/analyze.md) |
+| "trace", "execution chain", "variable flow", "debug agent" | [trace.md](references/trace.md) |
+| "secrets", "credentials", "configure API key" | [secrets.md](references/secrets.md) |
+| "API", "MCP operations", "search agents", "execute workflow" | [api.md](references/api.md) |
 
-Ask the user which environment to target. The MCP server prefix follows the pattern `mcp__<environment>__`:
+For YAML field specifics, read the relevant schema from `schemas/`.
 
-| Environment | MCP Server Prefix |
-|-------------|-------------------|
-| Local dev | `mcp__docker-localhost__` |
+## Workflow
 
-Additional environments (staging, production) depend on the project's MCP configuration. Check available MCP servers in the current session.
+**Name**: `template-constructor-check-setup`
 
-## SDK Skill Registration
+Validates that the `doc-structure` document exists and returns its content.
 
-After installing a template, optionally register it as a **skill** in the SDK for discoverability:
+| Input | Default | Description |
+|-------|---------|-------------|
+| `document_name` | `doc-structure` | Document to check |
 
-```python
-create_skill(
-    name="template-name",
-    config={
-        "title": "Template Title",
-        "description": "What it does",
-        "template_path": "agent-templates/template-name",
-        "agents": ["template-name-executor"],
-        "workflows": ["template-name-main-workflow"],
-        "connectors": ["machina-ai"],
-        "secrets": ["TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"]
-    }
-)
-```
-
-## Template Repository Layout
-
-Templates live in repositories with this structure:
-
-```
-<repo-root>/
-├── agent-templates/    # Reusable agent patterns
-│   └── <template-name>/
-└── connectors/         # External service integrations
-    └── <connector-name>/
-```
-
-When installing via MCP, the `project_path` must point to the template directory inside the container (e.g., `/app/<repo-name>/agent-templates/<template-name>`).
+| Output | Description |
+|--------|-------------|
+| `doc-structure` | Document content |
+| `check-status` | Workflow execution status |
 
 ## Key Constraints
 
@@ -96,4 +75,4 @@ When installing via MCP, the `project_path` must point to the template directory
 - **Expression syntax**: Always use `$.get('field')` — never `${field}` or `$field`
 - **Prompt files**: Use `prompts:` array (not `prompt:`) with `instruction:` (not `messages:`)
 - **Connector YAML**: Use `filetype:` (not `type:`) and `filename:` (not `script:`)
-- **Install order**: connectors -> prompts -> mappings -> workflows -> agents
+- **Install order**: connectors → documents → prompts → mappings → workflows → agents → skills
