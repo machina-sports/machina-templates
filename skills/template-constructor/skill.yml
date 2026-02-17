@@ -20,13 +20,22 @@ skill:
         skill: "template-constructor"
 
     - name: "skill-reference"
-      title: "Init"
-      filename: "references/init.md"
+      title: "Analyze"
+      filename: "references/analyze.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "init"
+        reference_id: "analyze"
+
+    - name: "skill-reference"
+      title: "API"
+      filename: "references/api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "api"
 
     - name: "skill-reference"
       title: "Create"
@@ -38,13 +47,13 @@ skill:
         reference_id: "create"
 
     - name: "skill-reference"
-      title: "Validate"
-      filename: "references/validate.md"
+      title: "Init"
+      filename: "references/init.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "validate"
+        reference_id: "init"
 
     - name: "skill-reference"
       title: "Install"
@@ -56,22 +65,76 @@ skill:
         reference_id: "install"
 
     - name: "skill-reference"
-      title: "Analyze"
-      filename: "references/analyze.md"
+      title: "Schema: Agent"
+      filename: "schemas/agent.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "analyze"
+        reference_id: "schema-agent"
 
     - name: "skill-reference"
-      title: "Trace"
-      filename: "references/trace.md"
+      title: "Schema: Connector"
+      filename: "schemas/connector.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "trace"
+        reference_id: "schema-connector"
+
+    - name: "skill-reference"
+      title: "Schema: Document"
+      filename: "schemas/document.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "schema-document"
+
+    - name: "skill-reference"
+      title: "Schema: Mapping"
+      filename: "schemas/mapping.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "schema-mapping"
+
+    - name: "skill-reference"
+      title: "Schema: Prompt"
+      filename: "schemas/prompt.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "schema-prompt"
+
+    - name: "skill-reference"
+      title: "Schema: Setup"
+      filename: "schemas/setup.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "schema-setup"
+
+    - name: "skill-reference"
+      title: "Schema: Skill"
+      filename: "schemas/skill.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "schema-skill"
+
+    - name: "skill-reference"
+      title: "Schema: Workflow"
+      filename: "schemas/workflow.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "schema-workflow"
 
     - name: "skill-reference"
       title: "Secrets"
@@ -83,13 +146,22 @@ skill:
         reference_id: "secrets"
 
     - name: "skill-reference"
-      title: "API"
-      filename: "references/api.md"
+      title: "Trace"
+      filename: "references/trace.md"
       filetype: "markdown"
       metadata:
         category: "reference"
         skill: "template-constructor"
-        reference_id: "api"
+        reference_id: "trace"
+
+    - name: "skill-reference"
+      title: "Validate"
+      filename: "references/validate.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "template-constructor"
+        reference_id: "validate"
 
   workflows:
 
