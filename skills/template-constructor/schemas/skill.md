@@ -118,7 +118,7 @@ Array of documents linked to the skill. These are imported as documents and beco
 
 ```yaml
 references:
-  - name: <string>            # Required. Document name ("skill-reference" or "skill-guide")
+  - name: <string>            # Required. Document name ("skill-guide", "skill-reference", or "skill-schema")
     title: <string>           # Required. Display title
     filename: <string>        # Required. File path relative to skill directory
     filetype: <string>        # Required. File format
@@ -131,14 +131,15 @@ references:
 |-------------|---------------------|---------|
 | `skill-guide` | `"skill-guide"` | Main guide document (typically `SKILL.md`) |
 | `skill-reference` | `"reference"` | Supporting reference document |
+| `skill-schema` | `"skill-schema"` | YAML field definition / entity schema |
 
 ### `metadata` Fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `category` | Yes | `"skill-guide"` or `"reference"` |
+| `category` | Yes | `"skill-guide"`, `"reference"`, or `"skill-schema"` |
 | `skill` | Yes | Must match the skill `name` |
-| `reference_id` | Only for `skill-reference` | Unique ID within the skill |
+| `reference_id` | Only for `skill-reference` and `skill-schema` | Unique ID within the skill |
 
 ### Examples
 
@@ -178,35 +179,58 @@ references:
       reference_id: "search"
 ```
 
-**Mixed guide + references**:
+**Skill schemas** (YAML entity definitions):
+
+```yaml
+references:
+  - name: "skill-schema"
+    title: "Schema: Agent"
+    filename: "schemas/agent.md"
+    filetype: "markdown"
+    metadata:
+      category: "skill-schema"
+      skill: "template-constructor"
+      reference_id: "schema-agent"
+
+  - name: "skill-schema"
+    title: "Schema: Workflow"
+    filename: "schemas/workflow.md"
+    filetype: "markdown"
+    metadata:
+      category: "skill-schema"
+      skill: "template-constructor"
+      reference_id: "schema-workflow"
+```
+
+**Mixed guide + references + schemas**:
 
 ```yaml
 references:
   - name: "skill-guide"
-    title: "Adapters - Dataset Generate"
+    title: "Template Constructor"
     filename: "SKILL.md"
     filetype: "markdown"
     metadata:
       category: "skill-guide"
-      skill: "adapters-dataset-generate"
+      skill: "template-constructor"
 
   - name: "skill-reference"
-    title: "Batch Prompts"
-    filename: "references/batch-prompts.md"
+    title: "Install"
+    filename: "references/install.md"
     filetype: "markdown"
     metadata:
       category: "reference"
-      skill: "adapters-dataset-generate"
-      reference_id: "batch-prompts"
+      skill: "template-constructor"
+      reference_id: "install"
 
-  - name: "skill-reference"
-    title: "Generation Config"
-    filename: "references/generation-config.md"
+  - name: "skill-schema"
+    title: "Schema: Agent"
+    filename: "schemas/agent.md"
     filetype: "markdown"
     metadata:
-      category: "reference"
-      skill: "adapters-dataset-generate"
-      reference_id: "generation-config"
+      category: "skill-schema"
+      skill: "template-constructor"
+      reference_id: "schema-agent"
 ```
 
 ---
@@ -586,7 +610,7 @@ skills/<skill-name>/
 |---------|-----------|---------|
 | Skill name | kebab-case, descriptive | `polymarket-sync-events` |
 | Skill title | Human-readable with prefix | `"Polymarket - Sync Events"` |
-| Reference `name` | `"skill-guide"` or `"skill-reference"` | — |
+| Reference `name` | `"skill-guide"`, `"skill-reference"`, or `"skill-schema"` | — |
 | Reference `reference_id` | kebab-case | `"events-api"`, `"market-types"` |
 | Category tags | kebab-case, lowercase | `"data-acquisition"`, `"fine-tuning"` |
 | Reference filename | kebab-case `.md` | `references/events-api.md` |

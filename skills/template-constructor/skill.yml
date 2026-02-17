@@ -64,75 +64,75 @@ skill:
         skill: "template-constructor"
         reference_id: "install"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Agent"
       filename: "schemas/agent.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-agent"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Connector"
       filename: "schemas/connector.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-connector"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Document"
       filename: "schemas/document.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-document"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Mapping"
       filename: "schemas/mapping.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-mapping"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Prompt"
       filename: "schemas/prompt.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-prompt"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Setup"
       filename: "schemas/setup.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-setup"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Skill"
       filename: "schemas/skill.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-skill"
 
-    - name: "skill-reference"
+    - name: "skill-schema"
       title: "Schema: Workflow"
       filename: "schemas/workflow.md"
       filetype: "markdown"
       metadata:
-        category: "reference"
+        category: "skill-schema"
         skill: "template-constructor"
         reference_id: "schema-workflow"
 
