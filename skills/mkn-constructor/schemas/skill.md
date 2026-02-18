@@ -35,7 +35,7 @@ Unique identifier. Used for dispatching the skill via the SDK.
 
 ```yaml
 name: "polymarket-sync-events"
-name: "template-constructor"
+name: "mkn-constructor"
 name: "adapters-dataset-generate"
 ```
 
@@ -189,7 +189,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-schema"
-      skill: "template-constructor"
+      skill: "mkn-constructor"
       reference_id: "schema-agent"
 
   - name: "skill-schema"
@@ -198,7 +198,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-schema"
-      skill: "template-constructor"
+      skill: "mkn-constructor"
       reference_id: "schema-workflow"
 ```
 
@@ -212,7 +212,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-guide"
-      skill: "template-constructor"
+      skill: "mkn-constructor"
 
   - name: "skill-reference"
     title: "Install"
@@ -220,7 +220,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "reference"
-      skill: "template-constructor"
+      skill: "mkn-constructor"
       reference_id: "install"
 
   - name: "skill-schema"
@@ -229,7 +229,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-schema"
-      skill: "template-constructor"
+      skill: "mkn-constructor"
       reference_id: "schema-agent"
 ```
 
@@ -396,7 +396,7 @@ skill:
 
 ```yaml
 skill:
-  name: "template-constructor"
+  name: "mkn-constructor"
   title: "Template Constructor"
   description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
   version: "1.0.0"
@@ -413,7 +413,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "init-template"
 
     - name: "skill-reference"
@@ -422,13 +422,13 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "create-template"
 
     # ... more references ...
 
   workflows:
-    - name: "template-constructor-check-setup"
+    - name: "mkn-constructor-check-setup"
       description: "check-doc-structure"
       inputs:
         document_name: "$.get('document_name', 'doc-structure')"

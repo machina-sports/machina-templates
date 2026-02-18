@@ -1,3 +1,9 @@
+## Trigger
+
+Use this reference when the user mentions: "frontend integration", "Next.js API", "document search API", "frontend API", "Next.js integration", "API routes".
+
+---
+
 # Frontend API Integration Guide
 
 Quick reference for integrating Next.js frontends with Machina Client API.

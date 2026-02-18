@@ -1,3 +1,9 @@
+## Trigger
+
+Use this reference when the user mentions: "YAML syntax", "workflow examples", "expression syntax", "task types", "foreach", "document task", "prompt task", "mapping task", "connector task", "workflow YAML", "agent YAML".
+
+---
+
 # Machina Template YAML Reference
 
 **Version**: 1.1

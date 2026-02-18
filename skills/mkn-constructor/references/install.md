@@ -4,7 +4,6 @@ Install Machina templates from local filesystem or Git repositories.
 
 ## Trigger
 
-- `/mkn-templates:install-template`
 - "Install template", "Import template from git"
 
 ## Process

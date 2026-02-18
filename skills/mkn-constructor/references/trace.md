@@ -9,7 +9,6 @@ Trace the execution chain of any Machina entity — from skill down to individua
 
 ## Trigger
 
-- `/mkn-templates:trace-agent`
 - "Trace agent", "Trace workflow", "Trace skill", "Show variable flow", "Show input/output chain"
 
 ## Entry Points

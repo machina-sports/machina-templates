@@ -4,7 +4,6 @@ Analyze a Machina template and provide a comprehensive overview of its component
 
 ## Trigger
 
-- `/mkn-templates:analyze-template`
 - "Analyze template", "What's in this template?", "Overview of template"
 
 ## Process

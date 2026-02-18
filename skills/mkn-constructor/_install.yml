@@ -1,11 +1,11 @@
 setup:
-  title: "Template Constructor"
+  title: "MKN Constructor"
   description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
   category:
     - devops
     - templates
   status: available
-  value: skills/template-constructor
+  value: skills/mkn-constructor
   version: 1.0.0
 
 datasets:

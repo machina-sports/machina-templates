@@ -4,7 +4,6 @@ Configure secrets in the Machina vault for use with connectors in workflows.
 
 ## Trigger
 
-- `/mkn-templates:configure-secrets`
 - "Configure secrets for a connector", "Add API key to vault"
 
 ## Key Concepts

@@ -4,7 +4,6 @@ Validate template YAML files against correct patterns before installation.
 
 ## Trigger
 
-- `/mkn-templates:validate-template`
 - "Validate template", "Check template YAML"
 
 ## Process

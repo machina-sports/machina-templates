@@ -4,7 +4,6 @@ Scaffold individual Machina YAML components with correct structure.
 
 ## Trigger
 
-- `/mkn-templates:create-template`
 - "Create new template", "Scaffold agent template"
 
 ## Process

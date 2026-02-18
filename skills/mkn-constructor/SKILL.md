@@ -1,6 +1,6 @@
 ---
-name: template-constructor
-description: Construct and scaffold Machina agent-templates and connectors with correct YAML structure, then install them via MCP. Use when users ask to "create a template", "scaffold an agent", "init template", "build a new connector", "install template", "validate template", "analyze template", "trace agent", or "configure secrets". Combines template creation, validation, installation, analysis, tracing, and secret configuration into a single skill.
+name: mkn-constructor
+description: Construct and scaffold Machina agent-templates and connectors with correct YAML structure, then install them via MCP. Use when users ask to "create a template", "scaffold an agent", "init template", "build a new connector", "install template", "validate template", "analyze template", "trace agent", or "configure secrets".
 ---
 
 # Template Constructor
@@ -21,6 +21,9 @@ Procedural guides for each lifecycle stage:
 | [trace.md](references/trace.md) | Trace agent execution chain with variable propagation |
 | [secrets.md](references/secrets.md) | Configure vault secrets for connectors |
 | [api.md](references/api.md) | MCP operations for all entities (CRUD, execute, search) |
+| [yaml-reference.md](references/yaml-reference.md) | Complete YAML syntax and patterns |
+| [connectors.md](references/connectors.md) | All available connectors with docs |
+| [frontend-api.md](references/frontend-api.md) | Next.js frontend API integration |
 
 ## Schemas
 
@@ -51,12 +54,15 @@ When the user triggers this skill, load the appropriate reference:
 | "trace", "execution chain", "variable flow", "debug agent" | [trace.md](references/trace.md) |
 | "secrets", "credentials", "configure API key" | [secrets.md](references/secrets.md) |
 | "API", "MCP operations", "search agents", "execute workflow" | [api.md](references/api.md) |
+| "YAML syntax", "task types", "expression syntax", "foreach" | [yaml-reference.md](references/yaml-reference.md) |
+| "connectors", "list connectors", "connector docs" | [connectors.md](references/connectors.md) |
+| "frontend", "Next.js", "API integration", "document search" | [frontend-api.md](references/frontend-api.md) |
 
 For YAML field specifics, read the relevant schema from `schemas/`.
 
 ## Workflow
 
-**Name**: `template-constructor-check-setup`
+**Name**: `mkn-constructor-check-setup`
 
 Validates that the `doc-structure` document exists and returns its content.
 

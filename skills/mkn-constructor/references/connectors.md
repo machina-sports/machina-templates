@@ -1,10 +1,16 @@
+## Trigger
+
+Use this reference when the user mentions: "connector catalog", "list connectors", "available connectors", "connector docs", "which connectors", "connector documentation".
+
+---
+
 # Machina Connectors Catalog
 
-**Version**: 1.0  
-**Last Updated**: 2026-01-17  
+**Version**: 1.0
+**Last Updated**: 2026-01-17
 **Repository**: [machina-templates/connectors](https://github.com/machina-sports/machina-templates/tree/main/connectors)
 
-## 📋 Overview
+## Overview
 
 This catalog documents all available connectors in the Machina platform. Connectors are reusable integrations with external services and APIs, used by agents and workflows to access data, generate content, and interact with third-party systems.
 
@@ -13,7 +19,7 @@ This catalog documents all available connectors in the Machina platform. Connect
 - **PyScript** - Python-based connectors with custom logic
 - **REST API** - OpenAPI spec-based REST connectors
 
-## 🔍 Quick Reference Index
+## Quick Reference Index
 
 ### By Category
 
@@ -71,17 +77,17 @@ This catalog documents all available connectors in the Machina platform. Connect
 
 ---
 
-## 🚀 Priority Connectors (Detailed Documentation)
+## Priority Connectors (Detailed Documentation)
 
 The following connectors are documented in detail due to their high usage and importance in the platform.
 
 ### 1. OpenAI (`openai`)
 
-**Type**: PyScript  
-**Category**: AI/LLM Services  
+**Type**: PyScript
+**Category**: AI/LLM Services
 **Location**: `machina-templates/connectors/openai/`
 
-**Description**:  
+**Description**:
 Official OpenAI SDK connector providing access to GPT models, embeddings, and audio transcription via the OpenAI API.
 
 **Environment Variables**:
@@ -111,7 +117,7 @@ Invoke a GPT model for text generation.
 ```yaml
 - task: llm-generate
   name: Generate content with GPT-4
-  connector: 
+  connector:
     name: openai
     command: invoke_prompt
   params:
@@ -158,11 +164,11 @@ Transcribe audio files using Whisper.
 
 ### 2. Google GenAI (`google-genai`)
 
-**Type**: PyScript  
-**Category**: AI/LLM Services  
+**Type**: PyScript
+**Category**: AI/LLM Services
 **Location**: `machina-templates/connectors/google-genai/`
 
-**Description**:  
+**Description**:
 Google Gemini models connector supporting text, image, video generation, and web-grounded search.
 
 **Environment Variables**:
@@ -204,11 +210,11 @@ Perform web-grounded search with Gemini.
 
 ### 3. Sportradar NFL (`sportradar-nfl`)
 
-**Type**: REST API  
-**Category**: Sports Data  
+**Type**: REST API
+**Category**: Sports Data
 **Location**: `machina-templates/connectors/sportradar-nfl/`
 
-**Description**:  
+**Description**:
 Sportradar NFL API v7 connector for accessing NFL schedules, game data, injuries, and statistics.
 
 **Environment Variables**:
@@ -251,17 +257,15 @@ Get detailed game summary.
 #### `GET /teams/{team_id}/injuries.json`
 Get team injury report.
 
-**Documentation**: See [NFL Season Detection](../features/nfl-season-detection.md)
-
 ---
 
 ### 4. WordPress (`wordpress`)
 
-**Type**: PyScript  
-**Category**: Content & Publishing  
+**Type**: PyScript
+**Category**: Content & Publishing
 **Location**: `machina-templates/connectors/wordpress/`
 
-**Description**:  
+**Description**:
 WordPress REST API connector for creating, updating, and managing posts and content.
 
 **Commands**:
@@ -318,11 +322,11 @@ Retrieve posts by criteria.
 
 ### 5. API-Football (`api-football`)
 
-**Type**: REST API  
-**Category**: Sports Data  
+**Type**: REST API
+**Category**: Sports Data
 **Location**: `machina-templates/connectors/api-football/`
 
-**Description**:  
+**Description**:
 Comprehensive soccer data API providing fixtures, standings, statistics, and predictions for 1000+ competitions worldwide.
 
 **Environment Variables**:
@@ -372,11 +376,11 @@ Get head-to-head records between teams.
 
 ### 6. Sportradar Soccer (`sportradar-soccer`)
 
-**Type**: REST API  
-**Category**: Sports Data  
+**Type**: REST API
+**Category**: Sports Data
 **Location**: `machina-templates/connectors/sportradar-soccer/`
 
-**Description**:  
+**Description**:
 Sportradar Soccer API for accessing match schedules, lineups, statistics, and live data.
 
 **Environment Variables**:
@@ -406,11 +410,11 @@ Get detailed match summary with lineups and stats.
 
 ### 7. Google Storage (`google-storage`, `google-storage-v2`)
 
-**Type**: PyScript  
-**Category**: Storage & Files  
+**Type**: PyScript
+**Category**: Storage & Files
 **Location**: `machina-templates/connectors/google-storage/`
 
-**Description**:  
+**Description**:
 Google Cloud Storage connector for uploading, downloading, and managing files in GCS buckets.
 
 **Commands** (`google-storage`):
@@ -458,11 +462,11 @@ Download a file from GCS.
 
 ### 9. ElevenLabs (`elevenlabs`)
 
-**Type**: PyScript  
-**Category**: Media Generation  
+**Type**: PyScript
+**Category**: Media Generation
 **Location**: `machina-templates/connectors/elevenlabs/`
 
-**Description**:  
+**Description**:
 ElevenLabs text-to-speech connector for generating high-quality voice audio.
 
 **Commands**:
@@ -505,11 +509,11 @@ Generate speech audio from text.
 
 ### 10. Perplexity (`perplexity`)
 
-**Type**: PyScript  
-**Category**: AI/LLM Services  
+**Type**: PyScript
+**Category**: AI/LLM Services
 **Location**: `machina-templates/connectors/perplexity/`
 
-**Description**:  
+**Description**:
 Perplexity AI connector for web-grounded search and question answering.
 
 **Commands**:
@@ -540,11 +544,11 @@ Perform web search with AI summarization.
 
 ### 11. Groq (`groq`)
 
-**Type**: PyScript  
-**Category**: AI/LLM Services  
+**Type**: PyScript
+**Category**: AI/LLM Services
 **Location**: `machina-templates/connectors/groq/`
 
-**Description**:  
+**Description**:
 Groq fast inference connector for LLama and Mixtral models with ultra-low latency.
 
 **Commands**:
@@ -574,11 +578,11 @@ Generate text with Groq models.
 
 ### 12. FastF1 (`fastf1`)
 
-**Type**: PyScript  
-**Category**: Sports Data  
+**Type**: PyScript
+**Category**: Sports Data
 **Location**: `machina-templates/connectors/fastf1/`
 
-**Description**:  
+**Description**:
 Formula 1 data connector using the FastF1 library for telemetry, lap times, and session data.
 
 **Commands**:
@@ -613,11 +617,11 @@ Get telemetry data for specific laps.
 
 ### 13. Stats Perform (`stats-perform`)
 
-**Type**: REST API  
-**Category**: Sports Data  
+**Type**: REST API
+**Category**: Sports Data
 **Location**: `machina-templates/connectors/stats-perform/`
 
-**Description**:  
+**Description**:
 Stats Perform multi-sport data provider with fixtures, standings, and statistics.
 
 **REST Endpoints**:
@@ -642,11 +646,11 @@ Get fixtures for multiple sports.
 
 ### 14. Exa Search (`exa-search`)
 
-**Type**: PyScript  
-**Category**: Data & Search  
+**Type**: PyScript
+**Category**: Data & Search
 **Location**: `machina-templates/connectors/exa-search/`
 
-**Description**:  
+**Description**:
 Exa web search connector for AI-powered web research and content discovery.
 
 **Commands**:
@@ -678,11 +682,11 @@ Search the web with AI ranking.
 
 ### 15. Stability AI (`stability`)
 
-**Type**: PyScript  
-**Category**: Media Generation  
+**Type**: PyScript
+**Category**: Media Generation
 **Location**: `machina-templates/connectors/stability/`
 
-**Description**:  
+**Description**:
 Stability AI connector for image generation using Stable Diffusion models.
 
 **Commands**:
@@ -714,25 +718,25 @@ Generate images from text prompts.
 
 ---
 
-## 📦 Lightweight Connector Documentation
+## Lightweight Connector Documentation
 
 The following connectors are documented with essential information only.
 
 ### AI/LLM Services
 
 #### `grok`
-**Type**: PyScript  
-**Purpose**: xAI Grok model access  
+**Type**: PyScript
+**Purpose**: xAI Grok model access
 **Key Command**: `invoke_prompt`
 
 #### `machina-ai`
-**Type**: PyScript  
-**Purpose**: Custom Machina LLM wrapper  
+**Type**: PyScript
+**Purpose**: Custom Machina LLM wrapper
 **Key Command**: `invoke_prompt`
 
 #### `machina-ai-fast`
-**Type**: PyScript  
-**Purpose**: Fast inference variant of machina-ai  
+**Type**: PyScript
+**Purpose**: Fast inference variant of machina-ai
 **Key Command**: `invoke_prompt`
 
 ---
@@ -740,38 +744,38 @@ The following connectors are documented with essential information only.
 ### Sports Data APIs
 
 #### `american-football`
-**Type**: REST API  
-**Purpose**: American football data  
+**Type**: REST API
+**Purpose**: American football data
 **Key Endpoints**: `/schedule`, `/roster`
 
 #### `mlb-statsapi`
-**Type**: PyScript  
-**Purpose**: MLB statistics via MLB Stats API  
+**Type**: PyScript
+**Purpose**: MLB statistics via MLB Stats API
 **Key Commands**: `get_games`, `get_standings`
 
 #### `sportradar-nba`
-**Type**: REST API  
-**Purpose**: NBA data via Sportradar  
+**Type**: REST API
+**Purpose**: NBA data via Sportradar
 **Key Endpoints**: `/schedule`, `/standings`, `/game_summary`
 
 #### `sportradar-mlb`
-**Type**: REST API  
-**Purpose**: MLB data via Sportradar  
+**Type**: REST API
+**Purpose**: MLB data via Sportradar
 **Key Endpoints**: `/schedule`, `/boxscore`
 
 #### `sportradar-nhl`
-**Type**: REST API  
-**Purpose**: NHL data via Sportradar  
+**Type**: REST API
+**Purpose**: NHL data via Sportradar
 **Key Endpoints**: `/schedule`, `/standings`
 
 #### `sportradar-rugby`
-**Type**: REST API  
-**Purpose**: Rugby data via Sportradar  
+**Type**: REST API
+**Purpose**: Rugby data via Sportradar
 **Key Endpoints**: `/schedule`, `/match_summary`
 
 #### `sportradar-tennis`
-**Type**: REST API  
-**Purpose**: Tennis data via Sportradar  
+**Type**: REST API
+**Purpose**: Tennis data via Sportradar
 **Key Endpoints**: `/schedule`, `/rankings`, `/match_summary`
 
 ---
@@ -779,13 +783,13 @@ The following connectors are documented with essential information only.
 ### Content & Publishing
 
 #### `google-speech-to-text`
-**Type**: PyScript  
-**Purpose**: Audio transcription via Google Cloud  
+**Type**: PyScript
+**Purpose**: Audio transcription via Google Cloud
 **Key Command**: `transcribe_audio`
 
 #### `docling`
-**Type**: PyScript  
-**Purpose**: Document conversion and processing  
+**Type**: PyScript
+**Purpose**: Document conversion and processing
 **Key Command**: `convert_document`
 
 ---
@@ -793,13 +797,13 @@ The following connectors are documented with essential information only.
 ### Storage & Files
 
 #### `storage`
-**Type**: PyScript  
-**Purpose**: Generic storage operations  
+**Type**: PyScript
+**Purpose**: Generic storage operations
 **Key Commands**: `save_file`, `load_file`
 
 #### `temp-downloader`
-**Type**: PyScript  
-**Purpose**: Temporary file download and handling  
+**Type**: PyScript
+**Purpose**: Temporary file download and handling
 **Key Command**: `download_temp_file`
 
 ---
@@ -807,13 +811,13 @@ The following connectors are documented with essential information only.
 ### Data & Search
 
 #### `oxylabs`
-**Type**: PyScript  
-**Purpose**: Web scraping proxy service  
+**Type**: PyScript
+**Purpose**: Web scraping proxy service
 **Key Command**: `scrape_website`
 
 #### `rss-feed`
-**Type**: PyScript  
-**Purpose**: RSS feed parsing and fetching  
+**Type**: PyScript
+**Purpose**: RSS feed parsing and fetching
 **Key Commands**: `fetch_feed`, `parse_feed`
 
 ---
@@ -821,18 +825,18 @@ The following connectors are documented with essential information only.
 ### Betting & Markets
 
 #### `bwin`
-**Type**: REST API  
-**Purpose**: Bwin betting odds and markets  
+**Type**: REST API
+**Purpose**: Bwin betting odds and markets
 **Key Endpoints**: `/odds`, `/markets`
 
 #### `kalshi`
-**Type**: REST API  
-**Purpose**: Kalshi prediction markets  
+**Type**: REST API
+**Purpose**: Kalshi prediction markets
 **Key Endpoints**: `/markets`, `/trades`
 
 #### `tallysight`
-**Type**: PyScript  
-**Purpose**: Sports betting analytics  
+**Type**: PyScript
+**Purpose**: Sports betting analytics
 **Key Command**: `get_analytics`
 
 ---
@@ -840,13 +844,13 @@ The following connectors are documented with essential information only.
 ### Support & Services
 
 #### `zendesk`
-**Type**: REST API  
-**Purpose**: Zendesk support ticket management  
+**Type**: REST API
+**Purpose**: Zendesk support ticket management
 **Key Endpoints**: `/tickets`, `/users`
 
 ---
 
-## 🔧 Usage Patterns
+## Usage Patterns
 
 ### Using Connectors in Workflows
 
@@ -963,15 +967,14 @@ Connector returns:              Workflow context receives:
 ```
 
 **Key points:**
-- ✅ Use `$.get('field')` to access fields from `data`
-- ✅ `status` and `message` are also available directly
-- ❌ Do NOT use `$.get('data').get('field')` - the unwrapping is automatic
+- Use `$.get('field')` to access fields from `data`
+- `status` and `message` are also available directly
+- Do NOT use `$.get('data').get('field')` - the unwrapping is automatic
 
 ---
 
-## 📚 Additional Resources
+## Connector Development
 
-### Connector Development
 - **Location**: `machina-templates/connectors/`
 - **Template Structure**:
   ```
@@ -982,12 +985,6 @@ Connector returns:              Workflow context receives:
   ├── _install.yml           # Installation metadata
   └── test-credentials.yml   # Credential tests
   ```
-
-### Related Documentation
-- [Template Development Workflow](./template-development-workflow.md)
-- [Template Creation Guide](./template-creation-guide.md)
-- [NFL Season Detection Feature](../features/nfl-season-detection.md)
-- [machina-templates CLAUDE.md](https://github.com/machina-sports/machina-templates/blob/main/.claude/CLAUDE.md)
 
 ### Testing Connectors
 
@@ -1000,18 +997,3 @@ test:
   params:
     api_key: $TEST_API_KEY
 ```
-
----
-
-## 🔄 Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2026-01-17 | Initial catalog creation with 38 connectors |
-
----
-
-**Maintained by**: Machina Platform Team  
-**Last Review**: 2026-01-17  
-**Next Review**: 2026-04-17 (Quarterly)
-

@@ -1,6 +1,6 @@
 skill:
-  name: "template-constructor"
-  title: "Template Constructor"
+  name: "mkn-constructor"
+  title: "MKN Constructor"
   description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
   version: "1.0.0"
   category:
@@ -17,7 +17,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-guide"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
 
     - name: "skill-reference"
       title: "Analyze"
@@ -25,7 +25,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "analyze"
 
     - name: "skill-reference"
@@ -34,7 +34,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "api"
 
     - name: "skill-reference"
@@ -43,7 +43,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "create"
 
     - name: "skill-reference"
@@ -52,7 +52,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "init"
 
     - name: "skill-reference"
@@ -61,7 +61,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "install"
 
     - name: "skill-schema"
@@ -70,7 +70,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-agent"
 
     - name: "skill-schema"
@@ -79,7 +79,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-connector"
 
     - name: "skill-schema"
@@ -88,7 +88,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-document"
 
     - name: "skill-schema"
@@ -97,7 +97,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-mapping"
 
     - name: "skill-schema"
@@ -106,7 +106,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-prompt"
 
     - name: "skill-schema"
@@ -115,7 +115,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-setup"
 
     - name: "skill-schema"
@@ -124,7 +124,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-skill"
 
     - name: "skill-schema"
@@ -133,7 +133,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "schema-workflow"
 
     - name: "skill-reference"
@@ -142,7 +142,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "secrets"
 
     - name: "skill-reference"
@@ -151,7 +151,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "trace"
 
     - name: "skill-reference"
@@ -160,12 +160,39 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "template-constructor"
+        skill: "mkn-constructor"
         reference_id: "validate"
+
+    - name: "skill-reference"
+      title: "YAML Reference"
+      filename: "references/yaml-reference.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "yaml-reference"
+
+    - name: "skill-reference"
+      title: "Connectors"
+      filename: "references/connectors.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "connectors"
+
+    - name: "skill-reference"
+      title: "Frontend API"
+      filename: "references/frontend-api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "frontend-api"
 
   workflows:
 
-    - name: "template-constructor-check-setup"
+    - name: "mkn-constructor-check-setup"
       description: "check-doc-structure"
       inputs:
         document_name: "$.get('document_name', 'doc-structure')"

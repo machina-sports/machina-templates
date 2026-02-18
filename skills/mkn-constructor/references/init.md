@@ -4,7 +4,6 @@ Scaffold a new Machina template project from scratch with directory structure, c
 
 ## Trigger
 
-- `/mkn-templates:init-template`
 - "Init template", "Initialize new template", "Scaffold new template project"
 
 ## Process
@@ -302,8 +301,8 @@ Template initialized!
 
 Next steps:
 1. Edit prompts and workflows for your use case
-2. /mkn-templates:validate to verify syntax
-3. /mkn-templates:install to deploy
+2. Ask to "validate template" to verify syntax
+3. Ask to "install template" to deploy
 ```
 
 ## Differences from `create`
