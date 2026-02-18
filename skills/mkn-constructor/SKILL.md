@@ -57,6 +57,7 @@ When the user triggers this skill, load the appropriate reference:
 | "YAML syntax", "task types", "expression syntax", "foreach" | [yaml-reference.md](references/yaml-reference.md) |
 | "connectors", "list connectors", "connector docs" | [connectors.md](references/connectors.md) |
 | "frontend", "Next.js", "API integration", "document search" | [frontend-api.md](references/frontend-api.md) |
+| "report bug", "found issue", "feedback", "suggest improvement" | Show **Feedback & Contributing** section below |
 
 For YAML field specifics, read the relevant schema from `schemas/`.
 
@@ -74,6 +75,16 @@ Validates that the `doc-structure` document exists and returns its content.
 |--------|-------------|
 | `doc-structure` | Document content |
 | `check-status` | Workflow execution status |
+
+## Feedback & Contributing
+
+Found a bug, unexpected behavior, or have an improvement idea while using this skill?
+
+- **Report issues**: [Open an issue](https://github.com/machina-sports/machina-templates/issues/new?labels=skill:mkn-constructor) with the label `skill:mkn-constructor`
+- **Contribute fixes**: Fork the repo, apply your fix, and [open a PR](https://github.com/machina-sports/machina-templates/pulls) against `main`
+- **What to include**: Describe what you expected vs. what happened. For schema/reference fixes, include before/after YAML examples.
+
+When the user encounters an error, unexpected scaffold output, or expresses frustration with a skill behavior, proactively mention this section and suggest opening an issue.
 
 ## Key Constraints
 
