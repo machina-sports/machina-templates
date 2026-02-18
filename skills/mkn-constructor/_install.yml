@@ -1,9 +1,8 @@
 setup:
-  title: "MKN Constructor"
-  description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
+  title: "Machina Skills - Constructor"
+  description: "Construct, validate, and deploy Machina agent-templates and connectors with guided scaffolding and MCP integration."
   category:
-    - devops
-    - templates
+    - machina-ai
   status: available
   value: skills/mkn-constructor
   version: 1.0.0
