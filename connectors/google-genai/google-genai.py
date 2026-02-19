@@ -87,6 +87,7 @@ def invoke_prompt(params):
             "location", "us-central1"
         )  # Default to us-central1, supports "global"
         credential = params.get("credential")  # JSON string or dict
+        priority_mode = params.get("priority_mode", False)  # Priority PayGo tier
 
         if not project_id:
             return {"status": False, "message": "project_id is required for Vertex AI."}
@@ -113,11 +114,16 @@ def invoke_prompt(params):
                 )
                 credentials_source = "provided service account credentials"
 
+            additional_headers = {}
+            if priority_mode:
+                additional_headers["x-vertex-ai-llm-shared-request-type"] = "priority"
+
             llm = ChatVertexAI(
                 model_name=model_name,
                 project=project_id,
                 location=location,
                 credentials=credentials,
+                additional_headers=additional_headers if additional_headers else None,
             )
 
             endpoint_info = (
@@ -459,6 +465,8 @@ def invoke_search(request_data):
         # Keep original query first for relevance, then apply date constraints
         return f"{q} {' '.join(tokens)}".strip()
 
+    priority_mode = params.get("priority_mode", False)  # Priority PayGo tier
+
     credentials = None
     if credential:
         if isinstance(credential, str):
@@ -510,11 +518,16 @@ def invoke_search(request_data):
 
         final_query = _apply_date_filter_to_query(search_query, start_dt, end_dt)
 
+        additional_headers = {}
+        if priority_mode:
+            additional_headers["x-vertex-ai-llm-shared-request-type"] = "priority"
+
         llm = ChatVertexAI(
             model=model_name,
             credentials=credentials,
             location=location,
             project=project_id,
+            additional_headers=additional_headers if additional_headers else None,
         )
 
         llm = llm.bind_tools([{"google_search": {}}])
