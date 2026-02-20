@@ -267,6 +267,9 @@ def instagram_get_posts(request_data):
             return err
 
         data = response if isinstance(response, dict) else {}
+        # Unwrap inner envelope if present (scrape endpoints return {success, data: {actual_data}})
+        if isinstance(data.get("data"), (dict, list)):
+            data = data.get("data", data)
         items = data.get("items", data.get("posts", []))
         if not isinstance(items, list):
             items = []
@@ -274,15 +277,24 @@ def instagram_get_posts(request_data):
         posts = [_normalize_post(item) for item in items]
         next_max_id = data.get("next_max_id", None)
 
+        # Include debug keys in message for troubleshooting
+        resp_keys = list(response.keys()) if isinstance(response, dict) else []
+        data_keys = list(data.keys()) if isinstance(data, dict) else []
+
         return {
             "status": True,
             "data": {
                 "posts": posts,
                 "count": len(posts),
                 "next_max_id": next_max_id,
-                "has_more": next_max_id is not None
+                "has_more": next_max_id is not None,
+                "_debug_resp_keys": resp_keys,
+                "_debug_data_keys": data_keys,
+                "_debug_items_len": len(items),
+                "_debug_response_type": str(type(response).__name__),
+                "_debug_success": response.get("success", "MISSING") if isinstance(response, dict) else "NOT_DICT"
             },
-            "message": f"Retrieved {len(posts)} posts for @{handle}"
+            "message": f"Retrieved {len(posts)} posts for @{handle} | resp_keys={resp_keys} | data_keys={data_keys}"
         }
     except Exception as e:
         return {"status": False, "data": None, "message": f"Error fetching Instagram posts: {str(e)}"}
@@ -373,6 +385,9 @@ def instagram_get_reels(request_data):
             return err
 
         data = response if isinstance(response, dict) else {}
+        # Unwrap inner envelope if present (scrape endpoints return {success, data: {actual_data}})
+        if isinstance(data.get("data"), (dict, list)):
+            data = data.get("data", data)
         items = data.get("items", data.get("reels", []))
         if not isinstance(items, list):
             items = []
@@ -559,6 +574,9 @@ def instagram_get_comments(request_data):
             return err
 
         data = response if isinstance(response, dict) else {}
+        # Unwrap inner envelope if present (scrape endpoints return {success, data: {actual_data}})
+        if isinstance(data.get("data"), (dict, list)):
+            data = data.get("data", data)
         items = data.get("comments", data.get("items", []))
         if not isinstance(items, list):
             items = []
@@ -651,6 +669,9 @@ def instagram_get_highlights(request_data):
             return err
 
         data = response if isinstance(response, dict) else {}
+        # Unwrap inner envelope if present (scrape endpoints return {success, data: {actual_data}})
+        if isinstance(data.get("data"), (dict, list)):
+            data = data.get("data", data)
         items = data.get("highlights", data.get("items", []))
         if not isinstance(items, list):
             items = []
@@ -728,6 +749,9 @@ def instagram_get_transcript(request_data):
             return err
 
         data = response if isinstance(response, dict) else {}
+        # Unwrap inner envelope if present (scrape endpoints return {success, data: {actual_data}})
+        if isinstance(data.get("data"), (dict, list)):
+            data = data.get("data", data)
         items = data.get("transcripts", data.get("items", []))
         if not isinstance(items, list):
             if isinstance(data, dict) and data.get("text"):
