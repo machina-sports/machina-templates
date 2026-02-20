@@ -102,8 +102,9 @@ def instagram_get_profile(request_data):
         if not api_key:
             return {"status": False, "data": None, "message": "API key is required. Set the SociaVault-API-Key secret."}
 
-        handle = params.get("handle", "")
-        if not handle:
+        raw_handle = params.get("handle", "")
+        handle = str(raw_handle).strip() if raw_handle else ""
+        if not handle or handle in ("[]", "None"):
             return {"status": False, "data": None, "message": "Parameter 'handle' is required (Instagram username)."}
 
         trim = params.get("trim", "true")
@@ -250,15 +251,14 @@ def instagram_get_posts(request_data):
         if not api_key:
             return {"status": False, "data": None, "message": "API key is required. Set the SociaVault-API-Key secret."}
 
-        handle = params.get("handle", "")
-        if not handle:
+        raw_handle = params.get("handle", "")
+        handle = str(raw_handle).strip() if raw_handle else ""
+        if not handle or handle in ("[]", "None"):
             return {"status": False, "data": None, "message": "Parameter 'handle' is required (Instagram username)."}
 
         query = {"handle": handle}
         if params.get("next_max_id"):
-            query["next_max_id"] = params["next_max_id"]
-        if params.get("trim"):
-            query["trim"] = params["trim"]
+            query["next_max_id"] = str(params["next_max_id"])
 
         response = _request("/scrape/instagram/posts", params=query, api_key=api_key)
 
@@ -270,16 +270,20 @@ def instagram_get_posts(request_data):
         # Unwrap inner envelope if present (scrape endpoints return {success, data: {actual_data}})
         if isinstance(data.get("data"), (dict, list)):
             data = data.get("data", data)
-        items = data.get("items", data.get("posts", []))
-        if not isinstance(items, list):
+        # API returns items as dict with numeric string keys {"0": {...}, "1": {...}} — convert to list
+        items_raw = data.get("items", data.get("posts", []))
+        if isinstance(items_raw, dict):
+            items = list(items_raw.values())
+        elif isinstance(items_raw, list):
+            items = items_raw
+        else:
             items = []
 
-        posts = [_normalize_post(item) for item in items]
+        posts = []
+        for item in items:
+            if isinstance(item, dict):
+                posts.append(_normalize_post(item))
         next_max_id = data.get("next_max_id", None)
-
-        # Include debug keys in message for troubleshooting
-        resp_keys = list(response.keys()) if isinstance(response, dict) else []
-        data_keys = list(data.keys()) if isinstance(data, dict) else []
 
         return {
             "status": True,
@@ -287,14 +291,9 @@ def instagram_get_posts(request_data):
                 "posts": posts,
                 "count": len(posts),
                 "next_max_id": next_max_id,
-                "has_more": next_max_id is not None,
-                "_debug_resp_keys": resp_keys,
-                "_debug_data_keys": data_keys,
-                "_debug_items_len": len(items),
-                "_debug_response_type": str(type(response).__name__),
-                "_debug_success": response.get("success", "MISSING") if isinstance(response, dict) else "NOT_DICT"
+                "has_more": next_max_id is not None
             },
-            "message": f"Retrieved {len(posts)} posts for @{handle} | resp_keys={resp_keys} | data_keys={data_keys}"
+            "message": f"Retrieved {len(posts)} posts for @{handle}"
         }
     except Exception as e:
         return {"status": False, "data": None, "message": f"Error fetching Instagram posts: {str(e)}"}
@@ -368,8 +367,9 @@ def instagram_get_reels(request_data):
         if not api_key:
             return {"status": False, "data": None, "message": "API key is required. Set the SociaVault-API-Key secret."}
 
-        handle = params.get("handle", "")
-        if not handle:
+        raw_handle = params.get("handle", "")
+        handle = str(raw_handle).strip() if raw_handle else ""
+        if not handle or handle in ("[]", "None"):
             return {"status": False, "data": None, "message": "Parameter 'handle' is required (Instagram username)."}
 
         query = {"handle": handle}
@@ -654,8 +654,9 @@ def instagram_get_highlights(request_data):
         if not api_key:
             return {"status": False, "data": None, "message": "API key is required. Set the SociaVault-API-Key secret."}
 
-        handle = params.get("handle", "")
-        if not handle:
+        raw_handle = params.get("handle", "")
+        handle = str(raw_handle).strip() if raw_handle else ""
+        if not handle or handle in ("[]", "None"):
             return {"status": False, "data": None, "message": "Parameter 'handle' is required (Instagram username)."}
 
         query = {"handle": handle}
