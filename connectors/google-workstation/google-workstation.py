@@ -750,6 +750,53 @@ def invoke_send_message(request_data):
         return {"status": False, "message": f"Error sending message: {e}"}
 
 
+def invoke_stream_update(request_data):
+    import json
+    import os
+    import redis as redis_lib
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    document_id = request_data.get("document_id")
+    content = request_data.get("content", "")
+    update_type = request_data.get("type", "content")
+    metadata = request_data.get("metadata") or {}
+
+    if not document_id:
+        return {"status": False, "message": "document_id is required."}
+
+    valid_types = ("content", "tool_call", "terminal", "status", "error", "done")
+    if update_type not in valid_types:
+        return {"status": False, "message": f"type must be one of: {', '.join(valid_types)}"}
+
+    redis_channel = f"thread:{document_id}:stream"
+
+    try:
+        redis_url = request_data.get("redis_url") or os.environ.get("REDIS_URL", "redis://redis:6379/0")
+        redis_client = redis_lib.from_url(redis_url, decode_responses=True)
+
+        message = json.dumps({
+            "type": update_type,
+            "content": content,
+            "metadata": metadata,
+        })
+
+        subscribers = redis_client.publish(redis_channel, message)
+        redis_client.close()
+
+        return {
+            "status": True,
+            "data": {
+                "published": True,
+                "channel": redis_channel,
+                "type": update_type,
+                "subscribers": subscribers,
+            },
+            "message": f"Published {update_type} update to {redis_channel} ({subscribers} subscriber(s)).",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error publishing stream update: {e}"}
+
+
 def invoke_kill_session(request_data):
     from google.cloud import workstations_v1
     from google.oauth2 import service_account

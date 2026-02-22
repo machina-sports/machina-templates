@@ -40,5 +40,8 @@ connector:
     - name: Send Message
       value: invoke_send_message
 
+    - name: Stream Update
+      value: invoke_stream_update
+
     - name: Kill Session
       value: invoke_kill_session

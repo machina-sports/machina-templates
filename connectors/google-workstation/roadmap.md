@@ -23,7 +23,7 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 - **Workstation**: `machina-ws-01`
 - **SSH disabled** — relay server is the only programmatic access
 
-## Commands (13 total)
+## Commands (14 total)
 
 ### Workstation Lifecycle
 | Command | Description |
@@ -44,6 +44,7 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 | Execute Claude | Legacy composite: start WS + exec prompt (non-streaming) |
 | List Sessions | List running Claude processes via relay `/api/sessions` |
 | Send Message | Execute prompt with NDJSON streaming + Redis pub/sub |
+| Stream Update | Publish structured stream update to Redis pub/sub (MCP proxy) |
 | Kill Session | Kill Claude process by session_id or PID |
 
 ## Completed
@@ -87,10 +88,18 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 - [ ] Verify SocketIO Bridge delivers chunks to frontend in real-time
 
 ### Agent Integration
-- [ ] Create agent template that uses `Send Message` in a workflow
+- [x] Create agent template that uses `Send Message` in a workflow (machina-cockpit template)
 - [x] Configure vault secret for GCW credentials (`TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL`, `TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID`)
 - [x] Define context-variables mapping in workflow (`test-credentials.yml` validated)
-- [ ] Build multi-turn conversation flow using `session_id` continuity
+- [x] Build multi-turn conversation flow using `session_id` continuity (cockpit-executor agent)
+
+### V2: MCP-Based Stream Proxy
+- [x] Create `invoke_stream_update` connector command (Redis pub/sub, no GCW credentials needed)
+- [x] Create `cockpit-stream-proxy` workflow (MCP → Redis → frontend)
+- [ ] Configure MCP server on workstation (`.mcp.json` with `execute_workflow` for stream-proxy)
+- [ ] Update relay to inject MCP config into Claude Code sessions
+- [ ] Update CLAUDE.md/system prompt on workstation with MCP streaming instructions
+- [ ] Validate end-to-end: Claude Code → MCP tool call → stream-proxy workflow → Redis → frontend
 
 ### MCP Configs on Workstation
 - [ ] Auto-configure `.mcp.json` per project via relay or entrypoint

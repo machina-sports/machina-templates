@@ -1,0 +1,62 @@
+workflow:
+
+  # machina-cockpit-stream-proxy
+  name: machina-cockpit-stream-proxy
+  title: Machina Cockpit - Stream Proxy
+  description: Receive stream updates from MCP and publish to Redis pub/sub
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    document_id: $.get('document_id')
+    content: $.get('content', '')
+    type: $.get('type', 'content')
+    metadata: $.get('metadata', {})
+
+  outputs:
+    document_id: $.get('document_id')
+    type: $.get('type')
+    workflow-status: $.get('stream_published') is True and 'executed' or 'skipped'
+
+  tasks:
+
+    # Publish stream update to Redis
+    - type: connector
+      name: stream-update-task
+      description: Publish structured update to Redis pub/sub
+      connector:
+        name: google-workstation
+        command: invoke_stream_update
+      inputs:
+        document_id: "$.get('document_id')"
+        content: "$.get('content', '')"
+        type: "$.get('type', 'content')"
+        metadata: "$.get('metadata', {})"
+      outputs:
+        stream_published: "$.get('published', False)"
+        stream_channel: "$.get('channel', '')"
+        stream_subscribers: "$.get('subscribers', 0)"
+
+    # Update thread document with streaming status
+    - type: document
+      name: update-thread-stream
+      description: Update thread document with stream status
+      condition: "$.get('document_id') is not None and $.get('type') in ('status', 'done', 'error')"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        thread: |
+          {
+            'status': $.get('type') == 'done' and 'idle' or $.get('type') == 'error' and 'error' or 'streaming',
+            'status_message': $.get('type') == 'done' and 'Ready' or $.get('type') == 'error' and $.get('content', 'Error') or $.get('content', 'Processing...'),
+            'last_stream_type': $.get('type'),
+            'last_stream_at': datetime.now().isoformat()
+          }
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        thread_updated: len($.get('documents', [])) > 0
