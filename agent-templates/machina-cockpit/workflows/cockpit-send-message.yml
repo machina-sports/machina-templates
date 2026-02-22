@@ -16,6 +16,9 @@ workflow:
     document_id: $.get('document_id')
     prompt: $.get('prompt')
     session_id: $.get('session_id')
+    cwd: $.get('cwd', '/home/user')
+    _stream_channel: $.get('_stream_channel', '')
+    _redis_pubsub_url: $.get('_redis_pubsub_url', '')
 
   outputs:
     response_text: $.get('response_text', '')
@@ -41,7 +44,10 @@ workflow:
         prompt: "$.get('prompt')"
         session_id: "$.get('session_id')"
         thread_id: "$.get('document_id')"
+        cwd: "$.get('cwd', '/home/user')"
         output_format: "'stream-json'"
+        _stream_channel: "$.get('_stream_channel', '')"
+        redis_url: "$.get('_redis_pubsub_url', '')"
       outputs:
         response_text: "$.get('response', '')"
         session_id: "$.get('session_id')"

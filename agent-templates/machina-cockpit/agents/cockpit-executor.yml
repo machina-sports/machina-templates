@@ -25,6 +25,7 @@ agent:
         document_id: $.get('document_id')
         session_id: $.get('session_id')
         reasoning_status: $.get('workflow-status') == 'executed'
+        stream_status_message: "'Analyzing your request...'"
 
     # Step 2: Send message to Claude Code on workstation
     - name: machina-cockpit-send-message
@@ -38,6 +39,7 @@ agent:
         response_text: $.get('response_text')
         session_id: $.get('session_id')
         send_status: $.get('workflow-status') == 'executed'
+        stream_status_message: "'Executing on workstation...'"
 
     # Step 3: Update thread with response
     - name: machina-cockpit-update
@@ -54,3 +56,4 @@ agent:
         content: $.context.get('response_text', '')
         objects: []
         suggestions: []
+        stream_status_message: "'Saving response...'"

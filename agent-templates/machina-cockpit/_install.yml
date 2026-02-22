@@ -31,7 +31,11 @@ datasets:
   - type: workflow
     path: workflows/cockpit-start-workstation.yml
   - type: workflow
+    path: workflows/cockpit-workstation-status.yml
+  - type: workflow
     path: workflows/cockpit-stream-proxy.yml
+  - type: workflow
+    path: workflows/cockpit-list-sessions.yml
 
   # Agent
   - type: agent

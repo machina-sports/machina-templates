@@ -1,0 +1,38 @@
+workflow:
+
+  # machina-cockpit-workstation-status
+  name: machina-cockpit-workstation-status
+  title: Machina Cockpit - Workstation Status
+  description: Check the current state of the GCW workstation
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-workstation:
+      credential: $TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID
+
+  inputs: {}
+
+  outputs:
+    state: $.get('workstation_state', 'unknown')
+    workflow-status: "'executed'"
+
+  tasks:
+
+    # Get workstation state
+    - type: connector
+      name: get-workstation-status
+      description: Get current GCW workstation state
+      connector:
+        name: google-workstation
+        command: invoke_get_workstation
+      inputs:
+        credential: "$.get('credential')"
+        project_id: "$.get('project_id')"
+        location: "'us-central1'"
+        cluster: "'machina-cluster'"
+        config: "'machina-config'"
+        workstation: "'machina-ws-01'"
+      outputs:
+        workstation_state: "$.get('state', 'unknown')"

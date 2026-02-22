@@ -520,6 +520,8 @@ def invoke_list_sessions(request_data):
     from google.oauth2 import service_account
     import json
     import requests
+    import os
+    import time
 
     request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
@@ -542,31 +544,60 @@ def invoke_list_sessions(request_data):
     if not workstation:
         return {"status": False, "message": "workstation is required."}
 
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
     try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+        # Try cached token + relay_url first (skip get_workstation + generate_access_token)
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
 
-        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
-        state = ws.state.name if ws.state else "UNKNOWN"
-
-        if state != "STATE_RUNNING":
-            return {
-                "status": True,
-                "data": {"sessions": [], "session_count": 0, "workstation_state": state},
-                "message": f"Workstation is {state} — no sessions running.",
-            }
-
-        access_token = client.generate_access_token(
-            request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
-        ).access_token
-        relay_url = f"https://8080-{ws.host}"
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {
+                    "status": True,
+                    "data": {"sessions": [], "session_count": 0, "workstation_state": state},
+                    "message": f"Workstation is {state} — no sessions running.",
+                }
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
 
         response = requests.get(
             f"{relay_url}/api/sessions",
             headers={"Authorization": f"Bearer {access_token}"},
-            timeout=30,
+            timeout=15,
         )
+
+        # Auth failed — invalidate cache so next call re-authenticates
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
 
         if response.status_code != 200:
             return {"status": False, "message": f"Relay error (HTTP {response.status_code}): {response.text}"}
@@ -577,11 +608,21 @@ def invoke_list_sessions(request_data):
             "data": {
                 "sessions": result.get("sessions", []),
                 "session_count": result.get("session_count", 0),
-                "workstation_state": state, "relay_url": relay_url,
+                "workstation_state": "STATE_RUNNING", "relay_url": relay_url,
             },
             "message": f"Found {result.get('session_count', 0)} Claude session(s) running.",
         }
+    except requests.exceptions.ConnectionError:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
+        return {"status": True, "data": {"sessions": [], "session_count": 0, "workstation_state": "STATE_STOPPED"}, "message": "Workstation unreachable — likely stopped."}
     except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
         return {"status": False, "message": f"Error listing sessions: {e}"}
 
 
@@ -591,6 +632,8 @@ def invoke_send_message(request_data):
     import json
     import requests
     import redis as redis_lib
+    import os
+    import time
 
     request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
@@ -618,30 +661,55 @@ def invoke_send_message(request_data):
 
     session_id = request_data.get("session_id")
     thread_id = request_data.get("thread_id")
+    cwd = request_data.get("cwd")
     output_format = request_data.get("output_format", "stream-json")
     timeout = int(request_data.get("timeout", 300))
 
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
     try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+        # Try cached token + relay_url first
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
 
-        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
-        state = ws.state.name if ws.state else "UNKNOWN"
-
-        if state != "STATE_RUNNING":
-            return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot send message."}
-
-        access_token = client.generate_access_token(
-            request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
-        ).access_token
-        relay_url = f"https://8080-{ws.host}"
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot send message."}
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
 
         # Redis pub/sub for real-time streaming
+        # Use injected stream channel from agent streaming pipeline if available,
+        # otherwise fall back to thread-based channel
         redis_client = None
-        redis_channel = None
-        if thread_id:
+        redis_channel = request_data.get("_stream_channel", "")
+        if not redis_channel and thread_id:
             redis_channel = f"thread:{thread_id}:stream"
+        if redis_channel:
             try:
                 redis_url = request_data.get("redis_url", "redis://redis:6379/0")
                 redis_client = redis_lib.from_url(redis_url, decode_responses=True)
@@ -651,12 +719,21 @@ def invoke_send_message(request_data):
         payload = {"prompt": prompt, "output_format": output_format}
         if session_id:
             payload["session_id"] = session_id
+        if cwd:
+            payload["cwd"] = cwd
 
         response = requests.post(
             f"{relay_url}/api/sessions/message",
             headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
             json=payload, stream=True, timeout=timeout,
         )
+
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
 
         if response.status_code != 200:
             return {"status": False, "message": f"Relay error (HTTP {response.status_code}): {response.text}"}
@@ -678,11 +755,12 @@ def invoke_send_message(request_data):
                 result_session_id = chunk.get("session_id", session_id)
 
             elif chunk_type == "assistant":
-                # stream-json: content is in message.content[].text
+                # stream-json: content is in message.content[].text or tool_use
                 msg = chunk.get("message", {})
                 content_blocks = msg.get("content", [])
                 for block in content_blocks:
-                    if block.get("type") == "text":
+                    block_type = block.get("type", "")
+                    if block_type == "text":
                         text = block.get("text", "")
                         if text:
                             full_content.append(text)
@@ -694,6 +772,33 @@ def invoke_send_message(request_data):
                                     }))
                                 except Exception:
                                     pass
+                    elif block_type == "tool_use" and redis_client and redis_channel:
+                        tool_name = block.get("name", "unknown")
+                        tool_input = block.get("input", {})
+                        # Build a human-readable status from the tool call
+                        tool_labels = {
+                            "Read": f"Reading {tool_input.get('file_path', '')}",
+                            "Write": f"Writing {tool_input.get('file_path', '')}",
+                            "Edit": f"Editing {tool_input.get('file_path', '')}",
+                            "Bash": f"Running command",
+                            "Glob": f"Searching files",
+                            "Grep": f"Searching code",
+                            "WebFetch": f"Fetching URL",
+                            "WebSearch": f"Searching web",
+                        }
+                        status_text = tool_labels.get(tool_name, f"Using {tool_name}")
+                        try:
+                            redis_client.publish(redis_channel, json.dumps({
+                                "type": "tool_call",
+                                "content": status_text,
+                                "metadata": {
+                                    "tool": tool_name,
+                                    "input": tool_input,
+                                    "session_id": result_session_id or session_id,
+                                },
+                            }))
+                        except Exception:
+                            pass
 
             elif chunk_type == "result":
                 result_session_id = chunk.get("session_id", result_session_id or session_id)
@@ -740,13 +845,17 @@ def invoke_send_message(request_data):
             "data": {
                 "response": full_text,
                 "session_id": result_session_id or session_id,
-                "relay_url": relay_url, "workstation_state": state,
+                "relay_url": relay_url, "workstation_state": "STATE_RUNNING",
             },
             "message": "Claude response received.",
         }
     except requests.exceptions.Timeout:
         return {"status": False, "message": f"Request timed out after {timeout}s."}
     except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
         return {"status": False, "message": f"Error sending message: {e}"}
 
 
@@ -802,6 +911,8 @@ def invoke_kill_session(request_data):
     from google.oauth2 import service_account
     import json
     import requests
+    import os
+    import time
 
     request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
@@ -829,21 +940,42 @@ def invoke_kill_session(request_data):
     if not session_id and not pid:
         return {"status": False, "message": "session_id or pid is required."}
 
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
     try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+        # Try cached token + relay_url first
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
 
-        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
-        state = ws.state.name if ws.state else "UNKNOWN"
-
-        if state != "STATE_RUNNING":
-            return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot kill session."}
-
-        access_token = client.generate_access_token(
-            request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
-        ).access_token
-        relay_url = f"https://8080-{ws.host}"
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot kill session."}
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
 
         payload = {}
         if session_id:
@@ -857,14 +989,25 @@ def invoke_kill_session(request_data):
             json=payload, timeout=30,
         )
 
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
+
         result = response.json()
         if response.status_code != 200:
             return {"status": False, "message": result.get("message", f"Relay error (HTTP {response.status_code})")}
 
         return {
             "status": True,
-            "data": {"result": result, "relay_url": relay_url, "workstation_state": state},
+            "data": {"result": result, "relay_url": relay_url, "workstation_state": "STATE_RUNNING"},
             "message": result.get("message", "Session killed."),
         }
     except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
         return {"status": False, "message": f"Error killing session: {e}"}
