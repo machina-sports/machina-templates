@@ -10,7 +10,7 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 
 - **Cockpit image**: `machinasports/machina-cockpit:{sha}` (Docker Hub, SHA-tagged)
 - **Service account**: `vertex-express@dev1mymachinadiyproject.iam.gserviceaccount.com`
-- **Vault secret**: `gcw-credential` (service account JSON)
+- **Vault secrets**: `TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL` (service account JSON), `TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID`
 - **Relay server**: `aiohttp` on port 8080, started via `/etc/workstation-startup.d/060-relay-server.sh`
 - **GCW proxy**: `https://8080-{host}.cloudworkstations.dev` with Bearer token auth
 - **ADR**: `docs/adrs/0027-cockpit-relay-server-streaming.md`
@@ -48,6 +48,13 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 
 ## Completed
 
+### 2026-02-22: Workflow Params + Vault Secrets Integration
+- Fixed connector functions to support both MCP (top-level params) and workflow (nested `params`) calling conventions
+- Added `request_data = {**request_data, **request_data.get('params', {})}` to all 13 functions
+- Created vault secrets: `TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL` (service account JSON) and `TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID`
+- Updated `test-credentials.yml` with `context-variables` mapping and explicit task inputs for credential/project_id
+- Validated test-credentials workflow end-to-end: vault secrets → context-variables → connector → GCW API (1.88s)
+
 ### 2026-02-21: End-to-End Stream-JSON Validation
 - Refactored connector to fully self-contained functions (PyScript engine constraint: no module-level helpers)
 - Fixed NDJSON parsing for actual Claude Code `stream-json` format (`message.content[].text`, not top-level `content`)
@@ -81,8 +88,8 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 
 ### Agent Integration
 - [ ] Create agent template that uses `Send Message` in a workflow
-- [x] Configure vault secret for GCW credentials (`gcw-credential`)
-- [ ] Define context-variables mapping in agent template
+- [x] Configure vault secret for GCW credentials (`TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL`, `TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID`)
+- [x] Define context-variables mapping in workflow (`test-credentials.yml` validated)
 - [ ] Build multi-turn conversation flow using `session_id` continuity
 
 ### MCP Configs on Workstation
@@ -125,6 +132,11 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 - **Symptom**: `invoke_list_clusters` returned 403 Permission denied
 - **Root cause**: `development@` SA only has Storage roles, not Workstations
 - **Fix**: Switched to `vertex-express@` SA which has `workstations.user` + `workstations.viewer`
+
+### 2026-02-22: Workflow connector params nesting
+- **Symptom**: `test-credentials` workflow failed with "credential is required" despite vault secrets resolving correctly
+- **Root cause**: Workflow runner puts task inputs into `connector_config["params"]` (nested), but connector functions read from `request_data` top level. MCP `connector_executor` passes params at top level, so direct calls worked but workflow calls didn't
+- **Fix**: Added `request_data = {**request_data, **request_data.get('params', {})}` at the top of all 13 functions to normalize both calling conventions
 
 ### 2026-02-21: adidas-tracker MCP not working
 - **Symptom**: `health_check` OK but `search_agents` returned AUTH-013 (500)
