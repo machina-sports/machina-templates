@@ -8,7 +8,9 @@ Machina Agent → Connector (Celery) → HTTP/NDJSON → Cockpit Relay (port 808
 Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←──────────────────┘
 ```
 
-- **Cockpit image**: `machinasports/machina-cockpit:latest` (Docker Hub → GCW Artifact Registry)
+- **Cockpit image**: `machinasports/machina-cockpit:{sha}` (Docker Hub, SHA-tagged)
+- **Service account**: `vertex-express@dev1mymachinadiyproject.iam.gserviceaccount.com`
+- **Vault secret**: `gcw-credential` (service account JSON)
 - **Relay server**: `aiohttp` on port 8080, started via `/etc/workstation-startup.d/060-relay-server.sh`
 - **GCW proxy**: `https://8080-{host}.cloudworkstations.dev` with Bearer token auth
 - **ADR**: `docs/adrs/0027-cockpit-relay-server-streaming.md`
@@ -46,6 +48,14 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 
 ## Completed
 
+### 2026-02-21: End-to-End Stream-JSON Validation
+- Refactored connector to fully self-contained functions (PyScript engine constraint: no module-level helpers)
+- Fixed NDJSON parsing for actual Claude Code `stream-json` format (`message.content[].text`, not top-level `content`)
+- Validated `Send Message` end-to-end: Celery → GCW SDK → relay → Claude Code → streamed NDJSON → parsed response
+- Configured vault secret `gcw-credential` with `vertex-express@` service account
+- Fixed GCW image caching: switched from `latest` tag to SHA-tagged images (`machinasports/machina-cockpit:{sha}`)
+- SA `development@` lacks Workstations permissions; `vertex-express@` has full access
+
 ### 2026-02-21: Relay Server + Streaming Connector
 - Created `relay_server.py` (aiohttp, ~140 lines) with 4 endpoints
 - Created `start-relay.sh` startup script for workstation startup.d
@@ -65,13 +75,14 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 ## Backlog
 
 ### Stream-JSON End-to-End
-- [ ] Test `Send Message` with `stream-json` output format after cockpit rebuild
+- [x] Test `Send Message` with `stream-json` output format — validated via Celery connector_executor
 - [ ] Validate Redis pub/sub messages appear on `thread:{thread_id}:stream` channel
 - [ ] Verify SocketIO Bridge delivers chunks to frontend in real-time
 
 ### Agent Integration
 - [ ] Create agent template that uses `Send Message` in a workflow
-- [ ] Define context variables for GCW credentials (vault secrets)
+- [x] Configure vault secret for GCW credentials (`gcw-credential`)
+- [ ] Define context-variables mapping in agent template
 - [ ] Build multi-turn conversation flow using `session_id` continuity
 
 ### MCP Configs on Workstation
@@ -99,6 +110,21 @@ Frontend ← SocketIO ← Redis Pub/Sub ← Connector ← Streamed NDJSON ←─
 - **Symptom**: Relay returned error `--output-format=stream-json requires --verbose`
 - **Root cause**: Claude Code CLI requires `--verbose` when using `stream-json` with `-p` flag
 - **Fix**: Added `--verbose` to the claude command in relay_server.py
+
+### 2026-02-21: GCW caches Docker `latest` tag
+- **Symptom**: Workstation restart still ran old relay (without `--verbose`)
+- **Root cause**: GCW caches image digest for `latest` tag; stop/start doesn't re-pull
+- **Fix**: Switch to SHA-tagged images (`machinasports/machina-cockpit:{git-sha}`) and update config before restart
+
+### 2026-02-21: stream-json NDJSON parsing mismatch
+- **Symptom**: `invoke_send_message` returned empty response despite relay success
+- **Root cause**: Connector expected `type:assistant, subtype:text, content:"..."` but actual format is `type:assistant, message.content[].text`
+- **Fix**: Updated parsing to extract from `message.content[].text` + fallback to `result.result`
+
+### 2026-02-21: SA `development@` lacks Workstations permissions
+- **Symptom**: `invoke_list_clusters` returned 403 Permission denied
+- **Root cause**: `development@` SA only has Storage roles, not Workstations
+- **Fix**: Switched to `vertex-express@` SA which has `workstations.user` + `workstations.viewer`
 
 ### 2026-02-21: adidas-tracker MCP not working
 - **Symptom**: `health_check` OK but `search_agents` returned AUTH-013 (500)
