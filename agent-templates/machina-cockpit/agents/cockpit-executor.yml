@@ -1,0 +1,56 @@
+agent:
+
+  # machina-cockpit-executor
+  name: machina-cockpit-executor
+  title: Machina Cockpit - Chat Executor
+  description: Chat agent that executes Claude Code on a remote GCW workstation
+
+  context:
+    status: "inactive"
+
+  context-agent:
+    thread_id: $.get('thread_id', None)
+    messages: $.get('messages', [])
+
+  workflows:
+    # Step 1: Analyze user message and manage thread
+    - name: machina-cockpit-reasoning
+      description: Analyze user message, load/create thread, extract prompt
+      condition: $.get('messages') is not None and len($.get('messages')) > 0
+      inputs:
+        thread_id: $.get('thread_id')
+        input_message: $.get('messages', [])
+      outputs:
+        reasoning: $.get('reasoning')
+        document_id: $.get('document_id')
+        session_id: $.get('session_id')
+        reasoning_status: $.get('workflow-status') == 'executed'
+
+    # Step 2: Send message to Claude Code on workstation
+    - name: machina-cockpit-send-message
+      description: Execute prompt on GCW workstation via relay
+      condition: $.get('document_id') is not None and $.get('reasoning_status') is True
+      inputs:
+        document_id: $.get('document_id')
+        prompt: $.get('reasoning', {}).get('prompt', '')
+        session_id: $.get('session_id')
+      outputs:
+        response_text: $.get('response_text')
+        session_id: $.get('session_id')
+        send_status: $.get('workflow-status') == 'executed'
+
+    # Step 3: Update thread with response
+    - name: machina-cockpit-update
+      description: Save Claude Code response to thread document
+      condition: $.get('document_id') is not None and $.get('send_status') is True
+      inputs:
+        document_id: $.get('document_id')
+        response_text: $.get('response_text')
+        session_id: $.get('session_id')
+      outputs:
+        thread_id: $.get('document_id')
+        workflow-status: $.get('workflow-status')
+        response_text: $.context.get('response_text', '')
+        content: $.context.get('response_text', '')
+        objects: []
+        suggestions: []

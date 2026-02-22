@@ -1,0 +1,47 @@
+workflow:
+
+  # machina-cockpit-send-message
+  name: machina-cockpit-send-message
+  title: Machina Cockpit - Send Message
+  description: Execute prompt on GCW workstation via Claude Code relay
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-workstation:
+      credential: $TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID
+
+  inputs:
+    document_id: $.get('document_id')
+    prompt: $.get('prompt')
+    session_id: $.get('session_id')
+
+  outputs:
+    response_text: $.get('response_text', '')
+    session_id: $.get('session_id')
+    workflow-status: $.get('response_text') is not None and $.get('response_text') != '' and 'executed' or 'skipped'
+
+  tasks:
+
+    # Send message to Claude Code on workstation
+    - type: connector
+      name: cockpit-send-message-task
+      description: Execute prompt on GCW workstation via relay
+      connector:
+        name: google-workstation
+        command: invoke_send_message
+      inputs:
+        credential: "$.get('credential')"
+        project_id: "$.get('project_id')"
+        location: "'us-central1'"
+        cluster: "'machina-cluster'"
+        config: "'machina-config'"
+        workstation: "'machina-ws-01'"
+        prompt: "$.get('prompt')"
+        session_id: "$.get('session_id')"
+        thread_id: "$.get('document_id')"
+        output_format: "'stream-json'"
+      outputs:
+        response_text: "$.get('response', '')"
+        session_id: "$.get('session_id')"

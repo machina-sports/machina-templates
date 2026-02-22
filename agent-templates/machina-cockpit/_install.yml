@@ -1,0 +1,36 @@
+setup:
+  title: Machina Cockpit
+  description: Chat agent that executes Claude Code on a remote GCW workstation with session continuity and streaming.
+  category:
+    - special-templates
+    - assistant
+  estimatedTime: 5 minutes
+  features:
+    - Remote Claude Code execution via GCW relay
+    - Session continuity across messages
+    - Real-time NDJSON streaming via Redis pub/sub
+  integrations:
+    - google-workstation
+    - google-genai
+  status: available
+  value: agent-templates/machina-cockpit
+  version: 1.0.0
+
+datasets:
+  # Prompts
+  - type: prompts
+    path: prompts/cockpit-reasoning.yml
+
+  # Workflows
+  - type: workflow
+    path: workflows/cockpit-reasoning.yml
+  - type: workflow
+    path: workflows/cockpit-send-message.yml
+  - type: workflow
+    path: workflows/cockpit-update.yml
+  - type: workflow
+    path: workflows/cockpit-start-workstation.yml
+
+  # Agent
+  - type: agent
+    path: agents/cockpit-executor.yml
