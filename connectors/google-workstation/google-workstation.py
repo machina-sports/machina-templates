@@ -3,6 +3,7 @@ def invoke_list_clusters(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -41,6 +42,7 @@ def invoke_list_configs(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -98,6 +100,7 @@ def invoke_list_workstations(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -141,6 +144,7 @@ def invoke_get_workstation(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -185,6 +189,7 @@ def invoke_create_workstation(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -247,6 +252,7 @@ def invoke_start_workstation(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -301,6 +307,7 @@ def invoke_stop_workstation(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -355,6 +362,7 @@ def invoke_delete_workstation(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -401,6 +409,7 @@ def invoke_generate_access_token(request_data):
     from google.oauth2 import service_account
     import json
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -445,6 +454,7 @@ def invoke_execute_claude(request_data):
     import json
     import requests
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -511,6 +521,7 @@ def invoke_list_sessions(request_data):
     import json
     import requests
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -581,6 +592,7 @@ def invoke_send_message(request_data):
     import requests
     import redis as redis_lib
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
@@ -744,6 +756,7 @@ def invoke_kill_session(request_data):
     import json
     import requests
 
+    request_data = {**request_data, **request_data.get('params', {})}
     credential = request_data.get("credential")
     if not credential:
         return {"status": False, "message": "credential is required (service account JSON)."}
