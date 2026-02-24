@@ -1,189 +1,6 @@
-def invoke_list_clusters(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        parent = f"projects/{project_id}/locations/{location}"
-
-        clusters = list(client.list_workstation_clusters(
-            request=workstations_v1.ListWorkstationClustersRequest(parent=parent)
-        ))
-        return {
-            "status": True,
-            "data": [{
-                "name": c.name, "display_name": c.display_name, "uid": c.uid,
-                "reconciling": c.reconciling, "network": c.network,
-                "subnetwork": c.subnetwork, "control_plane_ip": c.control_plane_ip,
-                "degraded": c.degraded,
-            } for c in clusters],
-            "message": f"Found {len(clusters)} cluster(s).",
-        }
-    except Exception as e:
-        return {"status": False, "message": f"Error listing clusters: {e}"}
-
-
-def invoke_list_configs(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}"
-
-        configs = list(client.list_workstation_configs(
-            request=workstations_v1.ListWorkstationConfigsRequest(parent=parent)
-        ))
-
-        data = []
-        for cfg in configs:
-            item = {
-                "name": cfg.name, "display_name": cfg.display_name, "uid": cfg.uid,
-                "reconciling": cfg.reconciling,
-                "idle_timeout": str(cfg.idle_timeout) if cfg.idle_timeout else None,
-                "running_timeout": str(cfg.running_timeout) if cfg.running_timeout else None,
-                "replica_zones": list(cfg.replica_zones) if cfg.replica_zones else [],
-            }
-            if cfg.host and cfg.host.gce_instance:
-                item["host"] = {"gce_instance": {
-                    "machine_type": cfg.host.gce_instance.machine_type,
-                    "pool_size": cfg.host.gce_instance.pool_size,
-                    "disable_public_ip_addresses": cfg.host.gce_instance.disable_public_ip_addresses,
-                }}
-            if cfg.container:
-                item["container"] = {
-                    "image": cfg.container.image,
-                    "command": list(cfg.container.command) if cfg.container.command else [],
-                    "args": list(cfg.container.args) if cfg.container.args else [],
-                    "run_as_user": cfg.container.run_as_user,
-                }
-            data.append(item)
-
-        return {"status": True, "data": data, "message": f"Found {len(configs)} config(s)."}
-    except Exception as e:
-        return {"status": False, "message": f"Error listing configs: {e}"}
-
-
-def invoke_list_workstations(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    config = request_data.get("config")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-    if not config:
-        return {"status": False, "message": "config is required."}
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}"
-
-        workstations = list(client.list_workstations(
-            request=workstations_v1.ListWorkstationsRequest(parent=parent)
-        ))
-        return {
-            "status": True,
-            "data": [{
-                "name": ws.name, "display_name": ws.display_name, "uid": ws.uid,
-                "state": ws.state.name if ws.state else None,
-                "host": ws.host, "reconciling": ws.reconciling,
-            } for ws in workstations],
-            "message": f"Found {len(workstations)} workstation(s).",
-        }
-    except Exception as e:
-        return {"status": False, "message": f"Error listing workstations: {e}"}
-
-
-def invoke_get_workstation(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    config = request_data.get("config")
-    workstation = request_data.get("workstation")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-    if not config:
-        return {"status": False, "message": "config is required."}
-    if not workstation:
-        return {"status": False, "message": "workstation is required."}
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
-
-        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
-        return {
-            "status": True,
-            "data": {
-                "name": ws.name, "display_name": ws.display_name, "uid": ws.uid,
-                "state": ws.state.name if ws.state else None,
-                "host": ws.host, "reconciling": ws.reconciling,
-            },
-            "message": f"Workstation state: {ws.state.name if ws.state else 'UNKNOWN'}",
-        }
-    except Exception as e:
-        return {"status": False, "message": f"Error getting workstation: {e}"}
-
-
+###############################################
+# Create a new workstation under a given config
+###############################################
 def invoke_create_workstation(request_data):
     from google.cloud import workstations_v1
     from google.oauth2 import service_account
@@ -247,116 +64,9 @@ def invoke_create_workstation(request_data):
         return {"status": False, "message": f"Error creating workstation: {e}"}
 
 
-def invoke_start_workstation(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    config = request_data.get("config")
-    workstation = request_data.get("workstation")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-    if not config:
-        return {"status": False, "message": "config is required."}
-    if not workstation:
-        return {"status": False, "message": "workstation is required."}
-
-    wait = request_data.get("wait", True)
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
-
-        operation = client.start_workstation(request=workstations_v1.StartWorkstationRequest(name=name))
-
-        if wait:
-            result = operation.result()
-            return {
-                "status": True,
-                "data": {
-                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
-                    "state": result.state.name if result.state else None,
-                    "host": result.host, "reconciling": result.reconciling,
-                },
-                "message": "Workstation started successfully.",
-            }
-        return {
-            "status": True,
-            "data": {"operation_name": operation.operation.name},
-            "message": "Workstation start initiated.",
-        }
-    except Exception as e:
-        return {"status": False, "message": f"Error starting workstation: {e}"}
-
-
-def invoke_stop_workstation(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    config = request_data.get("config")
-    workstation = request_data.get("workstation")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-    if not config:
-        return {"status": False, "message": "config is required."}
-    if not workstation:
-        return {"status": False, "message": "workstation is required."}
-
-    wait = request_data.get("wait", True)
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
-
-        operation = client.stop_workstation(request=workstations_v1.StopWorkstationRequest(name=name))
-
-        if wait:
-            result = operation.result()
-            return {
-                "status": True,
-                "data": {
-                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
-                    "state": result.state.name if result.state else None,
-                    "host": result.host, "reconciling": result.reconciling,
-                },
-                "message": "Workstation stopped successfully.",
-            }
-        return {
-            "status": True,
-            "data": {"operation_name": operation.operation.name},
-            "message": "Workstation stop initiated.",
-        }
-    except Exception as e:
-        return {"status": False, "message": f"Error stopping workstation: {e}"}
-
-
+###############################################
+# Delete an existing workstation permanently
+###############################################
 def invoke_delete_workstation(request_data):
     from google.cloud import workstations_v1
     from google.oauth2 import service_account
@@ -404,50 +114,9 @@ def invoke_delete_workstation(request_data):
         return {"status": False, "message": f"Error deleting workstation: {e}"}
 
 
-def invoke_generate_access_token(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    config = request_data.get("config")
-    workstation = request_data.get("workstation")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-    if not config:
-        return {"status": False, "message": "config is required."}
-    if not workstation:
-        return {"status": False, "message": "workstation is required."}
-
-    try:
-        creds = service_account.Credentials.from_service_account_info(credential)
-        client = workstations_v1.WorkstationsClient(credentials=creds)
-        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
-
-        response = client.generate_access_token(request=workstations_v1.GenerateAccessTokenRequest(workstation=name))
-        return {
-            "status": True,
-            "data": {
-                "access_token": response.access_token,
-                "expire_time": response.expire_time.isoformat() if response.expire_time else None,
-            },
-            "message": "Access token generated.",
-        }
-    except Exception as e:
-        return {"status": False, "message": f"Error generating access token: {e}"}
-
-
+###############################################
+# Execute a Claude prompt on a workstation via the exec API
+###############################################
 def invoke_execute_claude(request_data):
     from google.cloud import workstations_v1
     from google.oauth2 import service_account
@@ -515,6 +184,317 @@ def invoke_execute_claude(request_data):
         return {"status": False, "message": f"Error executing Claude: {e}"}
 
 
+###############################################
+# Generate a short-lived access token for a workstation
+###############################################
+def invoke_generate_access_token(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        response = client.generate_access_token(request=workstations_v1.GenerateAccessTokenRequest(workstation=name))
+        return {
+            "status": True,
+            "data": {
+                "access_token": response.access_token,
+                "expire_time": response.expire_time.isoformat() if response.expire_time else None,
+            },
+            "message": "Access token generated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error generating access token: {e}"}
+
+
+###############################################
+# Get details and state of a single workstation
+###############################################
+def invoke_get_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+        return {
+            "status": True,
+            "data": {
+                "name": ws.name, "display_name": ws.display_name, "uid": ws.uid,
+                "state": ws.state.name if ws.state else None,
+                "host": ws.host, "reconciling": ws.reconciling,
+            },
+            "message": f"Workstation state: {ws.state.name if ws.state else 'UNKNOWN'}",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error getting workstation: {e}"}
+
+
+###############################################
+# Kill a Claude session on a workstation by session_id or pid
+###############################################
+def invoke_kill_session(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+    import requests
+    import os
+    import time
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    session_id = request_data.get("session_id")
+    pid = request_data.get("pid")
+    if not session_id and not pid:
+        return {"status": False, "message": "session_id or pid is required."}
+
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
+    try:
+        # Try cached token + relay_url first
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
+
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot kill session."}
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
+
+        payload = {}
+        if session_id:
+            payload["session_id"] = session_id
+        if pid:
+            payload["pid"] = pid
+
+        response = requests.post(
+            f"{relay_url}/api/sessions/kill",
+            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            json=payload, timeout=30,
+        )
+
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
+
+        result = response.json()
+        if response.status_code != 200:
+            return {"status": False, "message": result.get("message", f"Relay error (HTTP {response.status_code})")}
+
+        return {
+            "status": True,
+            "data": {"result": result, "relay_url": relay_url, "workstation_state": "STATE_RUNNING"},
+            "message": result.get("message", "Session killed."),
+        }
+    except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
+        return {"status": False, "message": f"Error killing session: {e}"}
+
+
+###############################################
+# List all workstation clusters in a project and location
+###############################################
+def invoke_list_clusters(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}"
+
+        clusters = list(client.list_workstation_clusters(
+            request=workstations_v1.ListWorkstationClustersRequest(parent=parent)
+        ))
+        return {
+            "status": True,
+            "data": [{
+                "name": c.name, "display_name": c.display_name, "uid": c.uid,
+                "reconciling": c.reconciling, "network": c.network,
+                "subnetwork": c.subnetwork, "control_plane_ip": c.control_plane_ip,
+                "degraded": c.degraded,
+            } for c in clusters],
+            "message": f"Found {len(clusters)} cluster(s).",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error listing clusters: {e}"}
+
+
+###############################################
+# List all workstation configs within a cluster
+###############################################
+def invoke_list_configs(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}"
+
+        configs = list(client.list_workstation_configs(
+            request=workstations_v1.ListWorkstationConfigsRequest(parent=parent)
+        ))
+
+        data = []
+        for cfg in configs:
+            item = {
+                "name": cfg.name, "display_name": cfg.display_name, "uid": cfg.uid,
+                "reconciling": cfg.reconciling,
+                "idle_timeout": str(cfg.idle_timeout) if cfg.idle_timeout else None,
+                "running_timeout": str(cfg.running_timeout) if cfg.running_timeout else None,
+                "replica_zones": list(cfg.replica_zones) if cfg.replica_zones else [],
+            }
+            if cfg.host and cfg.host.gce_instance:
+                item["host"] = {"gce_instance": {
+                    "machine_type": cfg.host.gce_instance.machine_type,
+                    "pool_size": cfg.host.gce_instance.pool_size,
+                    "disable_public_ip_addresses": cfg.host.gce_instance.disable_public_ip_addresses,
+                }}
+            if cfg.container:
+                item["container"] = {
+                    "image": cfg.container.image,
+                    "command": list(cfg.container.command) if cfg.container.command else [],
+                    "args": list(cfg.container.args) if cfg.container.args else [],
+                    "run_as_user": cfg.container.run_as_user,
+                }
+            data.append(item)
+
+        return {"status": True, "data": data, "message": f"Found {len(configs)} config(s)."}
+    except Exception as e:
+        return {"status": False, "message": f"Error listing configs: {e}"}
+
+
+###############################################
+# List active Claude sessions on a workstation via the relay API
+###############################################
 def invoke_list_sessions(request_data):
     from google.cloud import workstations_v1
     from google.oauth2 import service_account
@@ -626,6 +606,56 @@ def invoke_list_sessions(request_data):
         return {"status": False, "message": f"Error listing sessions: {e}"}
 
 
+###############################################
+# List all workstations under a given config
+###############################################
+def invoke_list_workstations(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}"
+
+        workstations = list(client.list_workstations(
+            request=workstations_v1.ListWorkstationsRequest(parent=parent)
+        ))
+        return {
+            "status": True,
+            "data": [{
+                "name": ws.name, "display_name": ws.display_name, "uid": ws.uid,
+                "state": ws.state.name if ws.state else None,
+                "host": ws.host, "reconciling": ws.reconciling,
+            } for ws in workstations],
+            "message": f"Found {len(workstations)} workstation(s).",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error listing workstations: {e}"}
+
+
+###############################################
+# Send a prompt to Claude on a workstation with real-time streaming via Redis pub/sub
+###############################################
 def invoke_send_message(request_data):
     from google.cloud import workstations_v1
     from google.oauth2 import service_account
@@ -825,6 +855,24 @@ def invoke_send_message(request_data):
 
         full_text = "".join(full_content)
 
+        # Extract JSON objects from code blocks (e.g., athlete cards)
+        import re
+        objects = []
+        display_text = full_text
+        json_block_pattern = re.compile(r'```json\s*\n([\s\S]*?)```')
+        matches = json_block_pattern.findall(full_text)
+        for match in matches:
+            try:
+                parsed = json.loads(match)
+                if isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
+                    objects = parsed
+                    display_text = json_block_pattern.sub('', display_text).strip()
+                    break
+            except (json.JSONDecodeError, IndexError):
+                continue
+        if objects:
+            full_text = display_text
+
         if redis_client and redis_channel:
             try:
                 redis_client.publish(redis_channel, json.dumps({
@@ -844,6 +892,7 @@ def invoke_send_message(request_data):
             "status": True,
             "data": {
                 "response": full_text,
+                "objects": objects,
                 "session_id": result_session_id or session_id,
                 "relay_url": relay_url, "workstation_state": "STATE_RUNNING",
             },
@@ -859,6 +908,125 @@ def invoke_send_message(request_data):
         return {"status": False, "message": f"Error sending message: {e}"}
 
 
+###############################################
+# Start a stopped workstation
+###############################################
+def invoke_start_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    wait = request_data.get("wait", True)
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        operation = client.start_workstation(request=workstations_v1.StartWorkstationRequest(name=name))
+
+        if wait:
+            result = operation.result()
+            return {
+                "status": True,
+                "data": {
+                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
+                    "state": result.state.name if result.state else None,
+                    "host": result.host, "reconciling": result.reconciling,
+                },
+                "message": "Workstation started successfully.",
+            }
+        return {
+            "status": True,
+            "data": {"operation_name": operation.operation.name},
+            "message": "Workstation start initiated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error starting workstation: {e}"}
+
+
+###############################################
+# Stop a running workstation
+###############################################
+def invoke_stop_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    wait = request_data.get("wait", True)
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        operation = client.stop_workstation(request=workstations_v1.StopWorkstationRequest(name=name))
+
+        if wait:
+            result = operation.result()
+            return {
+                "status": True,
+                "data": {
+                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
+                    "state": result.state.name if result.state else None,
+                    "host": result.host, "reconciling": result.reconciling,
+                },
+                "message": "Workstation stopped successfully.",
+            }
+        return {
+            "status": True,
+            "data": {"operation_name": operation.operation.name},
+            "message": "Workstation stop initiated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error stopping workstation: {e}"}
+
+
+###############################################
+# Publish a stream update to a Redis pub/sub channel for real-time UI updates
+###############################################
 def invoke_stream_update(request_data):
     import json
     import os
@@ -904,110 +1072,3 @@ def invoke_stream_update(request_data):
         }
     except Exception as e:
         return {"status": False, "message": f"Error publishing stream update: {e}"}
-
-
-def invoke_kill_session(request_data):
-    from google.cloud import workstations_v1
-    from google.oauth2 import service_account
-    import json
-    import requests
-    import os
-    import time
-
-    request_data = {**request_data, **request_data.get('params', {})}
-    credential = request_data.get("credential")
-    if not credential:
-        return {"status": False, "message": "credential is required (service account JSON)."}
-    if isinstance(credential, str):
-        credential = json.loads(credential)
-
-    project_id = request_data.get("project_id")
-    location = request_data.get("location", "us-central1")
-    cluster = request_data.get("cluster")
-    config = request_data.get("config")
-    workstation = request_data.get("workstation")
-    if not project_id:
-        return {"status": False, "message": "project_id is required."}
-    if not cluster:
-        return {"status": False, "message": "cluster is required."}
-    if not config:
-        return {"status": False, "message": "config is required."}
-    if not workstation:
-        return {"status": False, "message": "workstation is required."}
-
-    session_id = request_data.get("session_id")
-    pid = request_data.get("pid")
-    if not session_id and not pid:
-        return {"status": False, "message": "session_id or pid is required."}
-
-    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
-    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
-
-    try:
-        # Try cached token + relay_url first
-        access_token = None
-        relay_url = None
-        if os.path.exists(cache_file):
-            try:
-                with open(cache_file, 'r') as f:
-                    cache = json.load(f)
-                if cache.get('expires_at', 0) > time.time() + 60:
-                    access_token = cache.get('access_token')
-                    relay_url = cache.get('relay_url')
-            except Exception:
-                pass
-
-        # Cache miss — authenticate and cache
-        if not access_token or not relay_url:
-            creds = service_account.Credentials.from_service_account_info(credential)
-            client = workstations_v1.WorkstationsClient(credentials=creds)
-            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
-            state = ws.state.name if ws.state else "UNKNOWN"
-            if state != "STATE_RUNNING":
-                return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot kill session."}
-            token_response = client.generate_access_token(
-                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
-            )
-            access_token = token_response.access_token
-            relay_url = f"https://8080-{ws.host}"
-            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
-            try:
-                with open(cache_file, 'w') as f:
-                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
-            except Exception:
-                pass
-
-        payload = {}
-        if session_id:
-            payload["session_id"] = session_id
-        if pid:
-            payload["pid"] = pid
-
-        response = requests.post(
-            f"{relay_url}/api/sessions/kill",
-            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
-            json=payload, timeout=30,
-        )
-
-        if response.status_code == 401:
-            try:
-                os.remove(cache_file)
-            except Exception:
-                pass
-            return {"status": False, "message": "Token expired — cache cleared, retry."}
-
-        result = response.json()
-        if response.status_code != 200:
-            return {"status": False, "message": result.get("message", f"Relay error (HTTP {response.status_code})")}
-
-        return {
-            "status": True,
-            "data": {"result": result, "relay_url": relay_url, "workstation_state": "STATE_RUNNING"},
-            "message": result.get("message", "Session killed."),
-        }
-    except Exception as e:
-        try:
-            os.remove(cache_file)
-        except Exception:
-            pass
-        return {"status": False, "message": f"Error killing session: {e}"}
