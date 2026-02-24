@@ -1,0 +1,161 @@
+workflow:
+  name: "alexa-personalized-update"
+  title: "Alexa Personalized Sports Update"
+  description: "Generate personalized sports update based on user's favorite teams"
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NFL_API_KEY"
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NBA_API_KEY"
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    user_id: "$.get('user_id')"
+    language: "$.get('language', 'en-US')"
+    nfl_season_year: "$.get('nfl_season_year', '2025')"
+    nfl_season_type: "$.get('nfl_season_type', 'POST')"
+    nba_season_year: "$.get('nba_season_year', '2024')"
+    nba_season_type: "$.get('nba_season_type', 'REG')"
+    season_id: "$.get('season_id', 'sr:season:128461')"
+  outputs:
+    response_text: |
+      $.get('response_text') or ("You haven't set any favorite teams yet. Say: my favorite team is the Kansas City Chiefs, to get started." if $.get('language', 'en-US').startswith('en') else "Você ainda não definiu times favoritos. Diga: meu time favorito é o Flamengo, para começar.")
+    favorite_teams: "$.get('favorite_teams', [])"
+    workflow-status: "$.get('response_text') is not None and 'executed' or 'failed'"
+  tasks:
+
+    # 1. Load user profile and detect which sports the user follows
+    - type: "document"
+      name: "load-user-profile"
+      description: "Load user's favorite teams and detect followed sports"
+      config:
+        action: "search"
+        threshold-docs: 1
+        search-vector: false
+      inputs:
+        name: "'alexa-user-profile'"
+        metadata:
+          user_id: "$.get('user_id')"
+      outputs:
+        favorite_teams: "$.get('documents', [{}])[0].get('value', {}).get('favorite_teams', [])"
+        has_favorites: "len($.get('documents', [{}])[0].get('value', {}).get('favorite_teams', [])) > 0"
+        has_soccer: "any(t.get('sport') in ['soccer', 'futebol'] for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []))"
+        has_nfl: "any(t.get('sport') == 'nfl' for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []))"
+        has_nba: "any(t.get('sport') == 'nba' for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []))"
+
+    # -------------------------
+    # 2. Fetch soccer data (only if user follows soccer teams)
+    # -------------------------
+    - type: "connector"
+      name: "load-soccer-schedules"
+      description: "Fetch soccer schedules for users with soccer favorites"
+      condition: "$.get('has_soccer', False)"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('season_id')"
+          data_type: "'schedules.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        soccer_events: |
+          [
+            {
+              'home': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), 'Unknown'),
+              'away': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), 'Unknown'),
+              'home_score': (s.get('sport_event_status') or {}).get('home_score'),
+              'away_score': (s.get('sport_event_status') or {}).get('away_score'),
+              'status': (s.get('sport_event_status') or {}).get('status', 'not_started'),
+              'competition': s.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Soccer')
+            }
+            for s in $.get('schedules', [])
+            if (s.get('sport_event_status') or {}).get('status') in ['closed', 'ended']
+          ][-10:]
+
+    # -------------------------
+    # 3. Fetch NFL data (only if user follows NFL teams)
+    # -------------------------
+    - type: "connector"
+      name: "load-nfl-schedule"
+      description: "Fetch NFL schedule for users with NFL favorites"
+      condition: "$.get('has_nfl', False)"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('nfl_season_year')"
+          season_type: "$.get('nfl_season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        nfl_events: |
+          [
+            {
+              'home': g.get('home', {}).get('name', 'Unknown'),
+              'away': g.get('away', {}).get('name', 'Unknown'),
+              'home_score': g.get('scoring', {}).get('home_points'),
+              'away_score': g.get('scoring', {}).get('away_points'),
+              'status': g.get('status', 'scheduled'),
+              'competition': 'NFL'
+            }
+            for week in $.get('weeks', [])
+            for g in week.get('games', [])
+            if g.get('status') in ['closed', 'complete']
+          ][-10:]
+
+    # -------------------------
+    # 4. Fetch NBA data (only if user follows NBA teams)
+    # -------------------------
+    - type: "connector"
+      name: "load-nba-schedule"
+      description: "Fetch NBA schedule for users with NBA favorites"
+      condition: "$.get('has_nba', False)"
+      connector:
+        name: "sportradar-nba"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('nba_season_year')"
+          season_type: "$.get('nba_season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        nba_events: |
+          [
+            {
+              'home': g.get('home', {}).get('name', 'Unknown'),
+              'away': g.get('away', {}).get('name', 'Unknown'),
+              'home_score': g.get('home_points'),
+              'away_score': g.get('away_points'),
+              'status': g.get('status', 'scheduled'),
+              'competition': 'NBA'
+            }
+            for g in $.get('games', [])
+            if g.get('status') in ['closed', 'complete']
+          ][-10:]
+
+    # -------------------------
+    # 5. Generate personalized response via LLM
+    # -------------------------
+    - type: "prompt"
+      name: "generate-personalized-response"
+      description: "Generate personalized multi-sport update focused on favorite teams"
+      condition: "$.get('has_favorites', False)"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o-mini"
+      inputs:
+        favorite_teams: "$.get('favorite_teams', [])"
+        soccer_events: "$.get('soccer_events', [])"
+        nfl_events: "$.get('nfl_events', [])"
+        nba_events: "$.get('nba_events', [])"
+        language: "$.get('language')"
+      outputs:
+        response_text: "$.get('response_text', '')"

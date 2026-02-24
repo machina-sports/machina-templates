@@ -1,0 +1,40 @@
+setup:
+  title: "Alexa Sports Narrator"
+  description: "Alexa skill for narrating sports data"
+  category:
+    - alexa
+    - sports
+  status: available
+  version: 1.0.0
+
+datasets:
+
+  # connectors required
+  - type: connector
+    path: "../../connectors/sportradar-nfl/sportradar-nfl.yml"
+
+  - type: connector
+    path: "../../connectors/sportradar-nba/sportradar-nba.yml"
+
+  - type: connector
+    path: "../../connectors/sportradar-soccer/sportradar-soccer.yml"
+
+  - type: connector
+    path: "../../connectors/machina-ai/machina-ai.yml"
+
+  # workflows
+  - type: workflow
+    path: "workflows/alexa-test-simple.yml"
+
+  - type: workflow
+    path: "workflows/alexa-sports-query.yml"
+
+  - type: workflow
+    path: "workflows/alexa-personalized-update.yml"
+
+  - type: workflow
+    path: "workflows/alexa-save-favorite-team.yml"
+
+  # prompts
+  - type: prompts
+    path: "workflows/prompts/generate-alexa-response.yml"

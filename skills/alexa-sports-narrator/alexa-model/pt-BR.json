@@ -1,0 +1,204 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "narrador esportivo",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "GetNFLScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "SportTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "quais foram os resultados da NFL hoje",
+            "me diga os resultados da NFL",
+            "placar da NFL",
+            "como foi o {team} hoje",
+            "o {team} ganhou hoje",
+            "qual foi o placar do {team}",
+            "resultados da NFL de {date}",
+            "jogos da NFL de ontem"
+          ]
+        },
+        {
+          "name": "GetNBAScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "SportTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "quais foram os resultados da NBA hoje",
+            "me diga os resultados da NBA",
+            "placar da NBA",
+            "como foi o {team} no basquete",
+            "jogos da NBA hoje",
+            "quem ganhou na NBA",
+            "resultados da NBA de {date}"
+          ]
+        },
+        {
+          "name": "GetSoccerScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "SportTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "quais foram os placares do futebol",
+            "me diga os resultados do futebol",
+            "placar do futebol hoje",
+            "como foi o {team} no futebol",
+            "resultados do brasileirão",
+            "resultados da champions league",
+            "jogos de hoje"
+          ]
+        },
+        {
+          "name": "GetTeamStatsIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "SportTeam"
+            },
+            {
+              "name": "sport",
+              "type": "SportType"
+            }
+          ],
+          "samples": [
+            "como está o {team} nesta temporada",
+            "me fale sobre o {team}",
+            "quais são as estatísticas do {team}",
+            "estatísticas do {team}",
+            "como está o desempenho do {team}",
+            "me conte sobre a temporada do {team}"
+          ]
+        },
+        {
+          "name": "GetPlayerStatsIntent",
+          "slots": [
+            {
+              "name": "player",
+              "type": "AMAZON.Person"
+            }
+          ],
+          "samples": [
+            "como está o {player}",
+            "me fale sobre o {player}",
+            "quais são as estatísticas do {player}",
+            "estatísticas do {player}",
+            "desempenho do {player}",
+            "quantos pontos o {player} tem"
+          ]
+        },
+        {
+          "name": "GetPersonalizedUpdateIntent",
+          "slots": [],
+          "samples": [
+            "me dê minha atualização esportiva",
+            "minha atualização personalizada",
+            "minhas notícias esportivas",
+            "o que está acontecendo com meus times",
+            "me atualize sobre meus times",
+            "como estão meus times"
+          ]
+        },
+        {
+          "name": "SetFavoriteTeamIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "SportTeam"
+            },
+            {
+              "name": "sport",
+              "type": "SportType"
+            }
+          ],
+          "samples": [
+            "meu time favorito é o {team}",
+            "eu torço para o {team}",
+            "adicione o {team} aos meus favoritos",
+            "eu sou fã do {team}",
+            "eu gosto do {team}",
+            "defina o {team} como meu favorito",
+            "eu apoio o {team}",
+            "meu time é o {team}"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "SportTeam",
+          "values": [
+            { "name": { "value": "Flamengo", "synonyms": ["Mengão", "Fla"] } },
+            { "name": { "value": "Palmeiras", "synonyms": ["Porco", "Verdão"] } },
+            { "name": { "value": "Corinthians", "synonyms": ["Timão", "Coringão"] } },
+            { "name": { "value": "São Paulo", "synonyms": ["Tricolor", "Soberano"] } },
+            { "name": { "value": "Santos", "synonyms": ["Peixe"] } },
+            { "name": { "value": "Grêmio", "synonyms": ["Tricolor Gaúcho", "Imortal"] } },
+            { "name": { "value": "Internacional", "synonyms": ["Inter", "Colorado"] } },
+            { "name": { "value": "Atlético Mineiro", "synonyms": ["Galo", "Atlético MG"] } },
+            { "name": { "value": "Cruzeiro", "synonyms": ["Raposa"] } },
+            { "name": { "value": "Botafogo", "synonyms": ["Estrela Solitária", "Glorioso"] } },
+            { "name": { "value": "Vasco", "synonyms": ["Vasco da Gama", "Cruz Maltina"] } },
+            { "name": { "value": "Fluminense", "synonyms": ["Flu", "Tricolor Carioca"] } },
+            { "name": { "value": "Bahia", "synonyms": ["Esquadrão"] } },
+            { "name": { "value": "Fortaleza", "synonyms": ["Leão do Pici"] } },
+            { "name": { "value": "Athletico Paranaense", "synonyms": ["Furacão", "Athletico PR"] } },
+            { "name": { "value": "Bragantino", "synonyms": ["Red Bull Bragantino", "Massa Bruta"] } },
+            { "name": { "value": "Vitória", "synonyms": ["Leão da Barra"] } },
+            { "name": { "value": "Juventude", "synonyms": ["Ju"] } },
+            { "name": { "value": "Ceará", "synonyms": ["Vozão"] } },
+            { "name": { "value": "Criciúma", "synonyms": ["Tigre"] } },
+            { "name": { "value": "Kansas City Chiefs", "synonyms": ["Chiefs"] } },
+            { "name": { "value": "Dallas Cowboys", "synonyms": ["Cowboys"] } },
+            { "name": { "value": "New England Patriots", "synonyms": ["Patriots"] } },
+            { "name": { "value": "Los Angeles Lakers", "synonyms": ["Lakers"] } },
+            { "name": { "value": "Golden State Warriors", "synonyms": ["Warriors"] } },
+            { "name": { "value": "Boston Celtics", "synonyms": ["Celtics"] } }
+          ]
+        },
+        {
+          "name": "SportType",
+          "values": [
+            { "name": { "value": "nfl", "synonyms": ["futebol americano"] } },
+            { "name": { "value": "nba", "synonyms": ["basquete", "basketball"] } },
+            { "name": { "value": "soccer", "synonyms": ["futebol"] } },
+            { "name": { "value": "mlb", "synonyms": ["baseball", "beisebol"] } },
+            { "name": { "value": "nhl", "synonyms": ["hóquei", "hockey"] } }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "sports narrator",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "GetNFLScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "what were the NFL scores today",
+            "tell me the NFL results",
+            "NFL scores",
+            "how did {team} do today",
+            "how did {team} do",
+            "did {team} win today",
+            "what was the {team} score",
+            "give me NFL scores for {date}",
+            "what were yesterday's NFL games",
+            "NFL results from {date}"
+          ]
+        },
+        {
+          "name": "GetNBAScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "what were the NBA scores today",
+            "tell me the NBA results",
+            "NBA scores",
+            "how did the {team} do in basketball",
+            "basketball scores",
+            "NBA games today",
+            "who won in the NBA",
+            "NBA results from {date}"
+          ]
+        },
+        {
+          "name": "GetSoccerScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "what were the soccer scores",
+            "tell me the soccer results",
+            "soccer scores today",
+            "football scores",
+            "how did {team} do in soccer",
+            "premier league scores",
+            "champions league results"
+          ]
+        },
+        {
+          "name": "GetTeamStatsIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "sport",
+              "type": "SportType"
+            }
+          ],
+          "samples": [
+            "how is {team} doing this season",
+            "tell me about {team}",
+            "what are {team}'s stats",
+            "{team} statistics",
+            "how are the {team} doing",
+            "{team} season stats",
+            "how is {team} performing",
+            "tell me about the {team} season"
+          ]
+        },
+        {
+          "name": "GetPlayerStatsIntent",
+          "slots": [
+            {
+              "name": "player",
+              "type": "AMAZON.Person"
+            }
+          ],
+          "samples": [
+            "how is {player} doing",
+            "tell me about {player}",
+            "what are {player}'s stats",
+            "{player} statistics",
+            "{player} performance",
+            "how many points does {player} have"
+          ]
+        },
+        {
+          "name": "GetPersonalizedUpdateIntent",
+          "slots": [],
+          "samples": [
+            "give me my sports update",
+            "my personalized update",
+            "my sports news",
+            "what's happening with my teams",
+            "update me on my teams",
+            "how are my teams doing"
+          ]
+        },
+        {
+          "name": "SetFavoriteTeamIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "sport",
+              "type": "SportType"
+            }
+          ],
+          "samples": [
+            "my favorite team is {team}",
+            "I follow {team}",
+            "add {team} to my favorites",
+            "I'm a {team} fan",
+            "I like {team}",
+            "set {team} as my favorite",
+            "I support {team}",
+            "my team is {team}"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "SportType",
+          "values": [
+            {
+              "name": {
+                "value": "nfl",
+                "synonyms": [
+                  "football",
+                  "american football"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "nba",
+                "synonyms": [
+                  "basketball"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "soccer",
+                "synonyms": [
+                  "football",
+                  "futbol"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "mlb",
+                "synonyms": [
+                  "baseball"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "nhl",
+                "synonyms": [
+                  "hockey",
+                  "ice hockey"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

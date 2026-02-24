@@ -1,0 +1,52 @@
+workflow:
+  name: "alexa-save-favorite-team"
+  title: "Save Favorite Team"
+  description: "Save user's favorite team to profile"
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    user_id: "$.get('user_id')"
+    team_name: "$.get('team_name')"
+    sport: "$.get('sport', 'soccer')"
+    language: "$.get('language', 'en-US')"
+  outputs:
+    response_text: |
+      f"Great! I've added {$.get('team_name', 'your team')} to your favorite teams. You can now ask for your personalized sports update." if $.get('language', 'en-US').startswith('en') else f"Ótimo! Adicionei {$.get('team_name', 'seu time')} aos seus times favoritos. Agora você pode pedir sua atualização esportiva personalizada."
+    success: "True"
+    workflow-status: "'executed'"
+  tasks:
+
+    # 1. Load existing profile and compute updated teams list in one step
+    - type: "document"
+      name: "load-existing-profile"
+      description: "Load user's existing profile and compute updated teams list"
+      config:
+        action: "search"
+        threshold-docs: 1
+        search-vector: false
+      inputs:
+        name: "'alexa-user-profile'"
+        metadata:
+          user_id: "$.get('user_id')"
+      outputs:
+        existing_teams: "$.get('documents', [{}])[0].get('value', {}).get('favorite_teams', [])"
+        updated_teams: |
+          [t for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []) if t.get('name', '').lower() != $.context.get('team_name', '').lower()] + [{'name': $.context.get('team_name'), 'sport': $.context.get('sport', 'soccer')}]
+
+    # 2. Save updated profile
+    - type: "document"
+      name: "save-user-profile"
+      description: "Save updated user profile with favorite teams"
+      config:
+        action: "create"
+      inputs:
+        name: "'alexa-user-profile'"
+        value:
+          user_id: "$.get('user_id')"
+          favorite_teams: "$.get('updated_teams', [])"
+        metadata:
+          user_id: "$.get('user_id')"
+          document_type: "'user-profile'"
+      outputs:
+        save_status: "$.get('status', 'saved')"

@@ -1,0 +1,122 @@
+skill:
+  name: "alexa-sports-narrator"
+  title: "Alexa Sports Narrator"
+  description: "Alexa skill for narrating sports data in real-time using Machina sports templates and voice synthesis"
+  version: "1.0.0"
+  category:
+    - "alexa"
+    - "sports"
+    - "voice"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+
+    - name: "skill-guide"
+      title: "Alexa Sports Narrator"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "alexa-sports-narrator"
+
+    - name: "skill-reference"
+      title: "Setup Guide"
+      filename: "references/setup.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "setup"
+
+    - name: "skill-reference"
+      title: "Intents Guide"
+      filename: "references/intents.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "intents"
+
+    - name: "skill-reference"
+      title: "Workflows Guide"
+      filename: "references/workflows.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "workflows"
+
+    - name: "skill-reference"
+      title: "Lambda Guide"
+      filename: "references/lambda.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "lambda"
+
+    - name: "skill-schema"
+      title: "Schema: Alexa Request"
+      filename: "schemas/alexa-request.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "alexa-sports-narrator"
+        reference_id: "schema-alexa-request"
+
+    - name: "skill-schema"
+      title: "Schema: Alexa Response"
+      filename: "schemas/alexa-response.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "alexa-sports-narrator"
+        reference_id: "schema-alexa-response"
+
+    - name: "skill-schema"
+      title: "Schema: Sports Intents"
+      filename: "schemas/sports-intents.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "alexa-sports-narrator"
+        reference_id: "schema-sports-intents"
+
+  workflows:
+
+    - name: "alexa-sports-query"
+      description: "Process Alexa sports queries"
+      inputs:
+        intent_name: "$.get('intent_name')"
+        sport: "$.get('sport', 'nfl')"
+        team: "$.get('team')"
+        player: "$.get('player')"
+        date: "$.get('date')"
+        language: "$.get('language', 'en-US')"
+        user_id: "$.get('user_id')"
+      outputs:
+        response_text: "$.get('response_text')"
+        card_title: "$.get('card_title')"
+        card_text: "$.get('card_text')"
+        should_end_session: "$.get('should_end_session', True)"
+
+    - name: "alexa-personalized-update"
+      description: "Generate personalized sports update"
+      inputs:
+        user_id: "$.get('user_id')"
+        language: "$.get('language', 'en-US')"
+      outputs:
+        response_text: "$.get('response_text')"
+        favorite_teams: "$.get('favorite_teams', [])"
+
+    - name: "alexa-save-favorite-team"
+      description: "Save user's favorite team"
+      inputs:
+        user_id: "$.get('user_id')"
+        team_name: "$.get('team_name')"
+        sport: "$.get('sport', 'nfl')"
+        language: "$.get('language', 'en-US')"
+      outputs:
+        response_text: "$.get('response_text')"
+        success: "$.get('success', False)"
