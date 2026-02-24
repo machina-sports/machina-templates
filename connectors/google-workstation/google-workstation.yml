@@ -4,20 +4,38 @@ connector:
   filename: google-workstation.py
   filetype: pyscript
   commands:
+    - name: Create Workstation
+      value: invoke_create_workstation
+
+    - name: Delete Workstation
+      value: invoke_delete_workstation
+
+    - name: Execute Claude
+      value: invoke_execute_claude
+
+    - name: Generate Access Token
+      value: invoke_generate_access_token
+
+    - name: Get Workstation
+      value: invoke_get_workstation
+
+    - name: Kill Session
+      value: invoke_kill_session
+
     - name: List Clusters
       value: invoke_list_clusters
 
     - name: List Configs
       value: invoke_list_configs
 
+    - name: List Sessions
+      value: invoke_list_sessions
+
     - name: List Workstations
       value: invoke_list_workstations
 
-    - name: Get Workstation
-      value: invoke_get_workstation
-
-    - name: Create Workstation
-      value: invoke_create_workstation
+    - name: Send Message
+      value: invoke_send_message
 
     - name: Start Workstation
       value: invoke_start_workstation
@@ -25,23 +43,5 @@ connector:
     - name: Stop Workstation
       value: invoke_stop_workstation
 
-    - name: Delete Workstation
-      value: invoke_delete_workstation
-
-    - name: Generate Access Token
-      value: invoke_generate_access_token
-
-    - name: Execute Claude
-      value: invoke_execute_claude
-
-    - name: List Sessions
-      value: invoke_list_sessions
-
-    - name: Send Message
-      value: invoke_send_message
-
     - name: Stream Update
       value: invoke_stream_update
-
-    - name: Kill Session
-      value: invoke_kill_session

@@ -36,16 +36,20 @@ The `credential` parameter accepts a GCP service account JSON key (string or dic
 
 | Command | Description | Required Params |
 |---------|-------------|-----------------|
+| `invoke_create_workstation` | Create a new workstation | + workstation_id |
+| `invoke_delete_workstation` | Delete a workstation | + workstation |
+| `invoke_execute_claude` | Run Claude Code headless | + workstation, prompt |
+| `invoke_generate_access_token` | Get short-lived access token | + workstation |
+| `invoke_get_workstation` | Get workstation details/state | + workstation |
+| `invoke_kill_session` | Kill a Claude session by session_id or pid | + workstation, session_id or pid |
 | `invoke_list_clusters` | List clusters in a location | credential, project_id |
 | `invoke_list_configs` | List configs in a cluster | + cluster |
+| `invoke_list_sessions` | List active Claude sessions on a workstation | + workstation |
 | `invoke_list_workstations` | List workstations in a config | + config |
-| `invoke_get_workstation` | Get workstation details/state | + workstation |
-| `invoke_create_workstation` | Create a new workstation | + workstation_id |
+| `invoke_send_message` | Send a prompt to Claude with real-time streaming | + workstation, prompt |
 | `invoke_start_workstation` | Start a stopped workstation | + workstation |
 | `invoke_stop_workstation` | Stop a running workstation | + workstation |
-| `invoke_delete_workstation` | Delete a workstation | + workstation |
-| `invoke_generate_access_token` | Get short-lived access token | + workstation |
-| `invoke_execute_claude` | Run Claude Code headless | + workstation, prompt |
+| `invoke_stream_update` | Publish a stream update to Redis pub/sub | document_id |
 
 All commands accept optional `location` (default: `us-central1`).
 
