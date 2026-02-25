@@ -24,29 +24,29 @@ workflow:
       config:
         action: "search"
         threshold-docs: 1
+        search-limit: 10
         search-vector: false
       inputs:
         name: "'alexa-user-profile'"
-        metadata:
-          user_id: "$.get('user_id')"
+      filters:
+        "metadata.user_id": "$.get('user_id')"
       outputs:
         existing_teams: "$.get('documents', [{}])[0].get('value', {}).get('favorite_teams', [])"
         updated_teams: |
-          [t for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []) if t.get('name', '').lower() != $.context.get('team_name', '').lower()] + [{'name': $.context.get('team_name'), 'sport': $.context.get('sport', 'soccer')}]
+          [t for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict) and (t.get('name') or '').lower() != ($.context.get('team_name') or '').lower()] + [{'name': $.context.get('team_name') or '', 'sport': $.context.get('sport', 'soccer')}]
 
     # 2. Save updated profile
     - type: "document"
       name: "save-user-profile"
       description: "Save updated user profile with favorite teams"
       config:
-        action: "create"
-      inputs:
-        name: "'alexa-user-profile'"
-        value:
-          user_id: "$.get('user_id')"
-          favorite_teams: "$.get('updated_teams', [])"
-        metadata:
-          user_id: "$.get('user_id')"
-          document_type: "'user-profile'"
+        action: "update"
+        force-update: true
+        search-vector: false
+      metadata:
+        user_id: "$.get('user_id')"
+        document_type: "'user-profile'"
+      documents:
+        alexa-user-profile: "{'user_id': context.get('user_id'), 'favorite_teams': context.get('updated_teams', [])}"
       outputs:
         save_status: "$.get('status', 'saved')"

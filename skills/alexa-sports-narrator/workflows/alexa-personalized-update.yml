@@ -35,20 +35,42 @@ workflow:
       config:
         action: "search"
         threshold-docs: 1
+        search-limit: 10
         search-vector: false
       inputs:
         name: "'alexa-user-profile'"
-        metadata:
-          user_id: "$.get('user_id')"
+      filters:
+        "metadata.user_id": "$.get('user_id')"
       outputs:
-        favorite_teams: "$.get('documents', [{}])[0].get('value', {}).get('favorite_teams', [])"
-        has_favorites: "len($.get('documents', [{}])[0].get('value', {}).get('favorite_teams', [])) > 0"
-        has_soccer: "any(t.get('sport') in ['soccer', 'futebol'] for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []))"
-        has_nfl: "any(t.get('sport') == 'nfl' for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []))"
-        has_nba: "any(t.get('sport') == 'nba' for t in $.get('documents', [{}])[0].get('value', {}).get('favorite_teams', []))"
+        favorite_teams: "[t for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict)]"
+        has_favorites: "len([t for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict)]) > 0"
+        has_soccer: "any(t.get('sport') in ['soccer', 'futebol'] for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict))"
+        has_nfl: "any(t.get('sport') == 'nfl' for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict))"
+        has_nba: "any(t.get('sport') == 'nba' for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict))"
 
     # -------------------------
-    # 2. Fetch soccer data (only if user follows soccer teams)
+    # 2a. Get current Brasileirao season dynamically
+    # -------------------------
+    - type: "connector"
+      name: "load-current-season"
+      description: "Fetch current Brasileirao season ID from competition"
+      condition: "$.get('has_soccer', False)"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitions/{competition_id}/seasons.json"
+        command_attribute:
+          competition_id: "'sr:competition:325'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        current_season_id: |
+          next(
+            (s.get('id') for s in sorted($.get('seasons', []), key=lambda x: x.get('year', ''), reverse=True)),
+            'sr:season:128461'
+          )
+
+    # -------------------------
+    # 2b. Fetch soccer data (only if user follows soccer teams)
     # -------------------------
     - type: "connector"
       name: "load-soccer-schedules"
@@ -58,7 +80,7 @@ workflow:
         name: "sportradar-soccer"
         command: "get-seasons/{season_id}/{data_type}"
         command_attribute:
-          season_id: "$.get('season_id')"
+          season_id: "$.get('current_season_id', $.get('season_id'))"
           data_type: "'schedules.json'"
       inputs:
         api_key: "$.get('api_key')"
@@ -76,6 +98,24 @@ workflow:
             for s in $.get('schedules', [])
             if (s.get('sport_event_status') or {}).get('status') in ['closed', 'ended']
           ][-10:]
+        # Extract competitor ID from closed games — reuses this API call to avoid
+        # a separate season/competitors request.
+        soccer_competitor_id: |
+          next(
+            (
+              c.get('id')
+              for s in $.get('schedules', [])
+              if (s.get('sport_event_status') or {}).get('status') in ['closed', 'ended']
+              for c in s.get('sport_event', {}).get('competitors', [])
+              for t in $.context.get('favorite_teams', [])
+              if t.get('sport') in ['soccer', 'futebol']
+              and (
+                t.get('name', '').lower() in (c.get('name', '') or '').lower()
+                or (c.get('name', '') or '').lower() in t.get('name', '').lower()
+              )
+            ),
+            None
+          )
 
     # -------------------------
     # 3. Fetch NFL data (only if user follows NFL teams)
@@ -141,7 +181,41 @@ workflow:
           ][-10:]
 
     # -------------------------
-    # 5. Generate personalized response via LLM
+    # 5. Fetch upcoming soccer matches via competitor-specific endpoint.
+    #    soccer_competitor_id was extracted from load-soccer-schedules above.
+    #    /competitors/{id}/schedules.json returns upcoming matches regardless
+    #    of whether future rounds have been published in the season schedule.
+    # -------------------------
+    - type: "connector"
+      name: "load-upcoming-soccer"
+      description: "Fetch upcoming soccer matches for favorite team via competitor endpoint"
+      condition: "$.get('has_soccer', False) and $.get('soccer_competitor_id') is not None"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitors/{competitor_id}/schedules.json"
+        command_attribute:
+          competitor_id: "$.get('soccer_competitor_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        upcoming_soccer: |
+          sorted(
+            [
+              {
+                'team': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('id') == $.context.get('soccer_competitor_id')), None),
+                'opponent': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('id') != $.context.get('soccer_competitor_id')), 'Unknown'),
+                'start_time': s.get('sport_event', {}).get('start_time', ''),
+                'venue': s.get('sport_event', {}).get('venue', {}).get('name', ''),
+                'competition': s.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Soccer')
+              }
+              for s in $.get('schedules', [])
+              if (s.get('sport_event_status') or {}).get('status') in ['not_started', 'scheduled']
+            ],
+            key=lambda x: x.get('start_time', '')
+          )[:3]
+
+    # -------------------------
+    # 6. Generate personalized response via LLM
     # -------------------------
     - type: "prompt"
       name: "generate-personalized-response"
@@ -156,6 +230,7 @@ workflow:
         soccer_events: "$.get('soccer_events', [])"
         nfl_events: "$.get('nfl_events', [])"
         nba_events: "$.get('nba_events', [])"
+        upcoming_matches: "$.get('upcoming_soccer', [])"
         language: "$.get('language')"
       outputs:
         response_text: "$.get('response_text', '')"

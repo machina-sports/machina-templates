@@ -47,13 +47,16 @@ def get_nba_season_info():
 
 
 def call_machina_workflow(workflow_name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
-    """Call Machina workflow via REST API"""
+    """Call Machina workflow via REST API (synchronous via skip_delay=True)"""
     try:
         url = f"{MACHINA_BASE_URL}/workflow/executor/{workflow_name}"
         headers = {
             'Content-Type': 'application/json',
             'X-Api-Token': MACHINA_API_KEY
         }
+
+        # skip_delay=True makes Machina execute synchronously and return outputs inline
+        inputs['skip_delay'] = True
 
         logger.info(f"Calling workflow: {workflow_name} at {url}")
         logger.info(f"Inputs: {json.dumps(inputs)}")
@@ -64,10 +67,11 @@ def call_machina_workflow(workflow_name: str, inputs: Dict[str, Any]) -> Dict[st
         data = response.json()
         logger.info(f"Workflow response: {json.dumps(data)}")
 
-        # Machina API returns {'status': True, 'data': {'outputs': {...}, 'totals': {...}}}
-        # Extract the workflow outputs so handlers can read keys directly
+        # With skip_delay=True the response is:
+        # {"status": 200, "data": {"status": true, "data": {"workflow_run_id": "...", "outputs": {...}}}}
         if isinstance(data, dict) and 'data' in data:
-            outputs = data.get('data', {}).get('outputs', {})
+            inner = data.get('data', {})
+            outputs = inner.get('data', {}).get('outputs', {})
             if outputs:
                 return outputs
 
@@ -137,6 +141,13 @@ def handle_intent_request(event: Dict[str, Any]) -> Dict[str, Any]:
 
     logger.info(f"Processing intent: {intent_name}")
 
+    # Inject Alexa API context into intent for handlers that need it (e.g. Reminders API)
+    system = event.get('context', {}).get('System', {})
+    intent['_event_context'] = {
+        'api_access_token': system.get('apiAccessToken', ''),
+        'api_endpoint': system.get('apiEndpoint', 'https://api.amazonalexa.com')
+    }
+
     # Route to appropriate handler
     intent_handlers = {
         'GetNFLScoresIntent': handle_sports_query,
@@ -146,6 +157,7 @@ def handle_intent_request(event: Dict[str, Any]) -> Dict[str, Any]:
         'GetPlayerStatsIntent': handle_sports_query,
         'GetPersonalizedUpdateIntent': handle_personalized_update,
         'SetFavoriteTeamIntent': handle_set_favorite_team,
+        'SetGameReminderIntent': handle_set_game_reminder,
         'AMAZON.HelpIntent': handle_help,
         'AMAZON.CancelIntent': handle_cancel,
         'AMAZON.StopIntent': handle_stop,
@@ -226,7 +238,6 @@ def handle_personalized_update(intent: Dict[str, Any], user_id: str, language: s
         'nfl_season_type': nfl_type,
         'nba_season_year': nba_year,
         'nba_season_type': nba_type,
-        'season_id': 'sr:season:128461'  # Brasileirao Serie A
     }
 
     result = call_machina_workflow('alexa-personalized-update', workflow_inputs)
@@ -242,15 +253,47 @@ def handle_personalized_update(intent: Dict[str, Any], user_id: str, language: s
         speech_text=response_text,
         card_title="Personalized Update",
         card_text=response_text[:200],
-        should_end_session=True
+        should_end_session=False
     )
+
+
+NFL_TEAMS = {
+    'chiefs', 'eagles', 'bills', 'ravens', 'lions', 'cowboys', 'packers', '49ers',
+    'niners', 'dolphins', 'jets', 'patriots', 'steelers', 'bengals', 'browns',
+    'texans', 'colts', 'jaguars', 'titans', 'broncos', 'chargers', 'raiders',
+    'commanders', 'giants', 'bears', 'vikings', 'saints', 'falcons', 'buccaneers',
+    'bucs', 'panthers', 'seahawks', 'rams', 'cardinals',
+}
+
+NBA_TEAMS = {
+    'lakers', 'celtics', 'warriors', 'nuggets', 'heat', 'bucks', 'suns', 'nets',
+    'knicks', 'sixers', '76ers', 'cavaliers', 'cavs', 'clippers', 'mavericks',
+    'mavs', 'rockets', 'grizzlies', 'pelicans', 'hawks', 'raptors', 'bulls',
+    'blazers', 'trail blazers', 'jazz', 'kings', 'timberwolves', 'wolves',
+    'spurs', 'magic', 'pacers', 'pistons', 'hornets', 'wizards', 'thunder',
+}
+
+
+def infer_sport(team_name: str) -> str:
+    """Infer sport from team name when no sport slot is provided."""
+    name_lower = team_name.lower()
+    for nfl_team in NFL_TEAMS:
+        if nfl_team in name_lower:
+            return 'nfl'
+    for nba_team in NBA_TEAMS:
+        if nba_team in name_lower:
+            return 'nba'
+    return 'soccer'
 
 
 def handle_set_favorite_team(intent: Dict[str, Any], user_id: str, language: str) -> Dict[str, Any]:
     """Handle set favorite team intent"""
     slots = intent.get('slots', {})
-    team = slots.get('team', {}).get('value', 'your team')
-    sport = slots.get('sport', {}).get('value', 'soccer')
+    # en-US uses slot 'teamName' (AMAZON.SearchQuery), pt-BR uses 'team' (SportTeam)
+    team = (slots.get('teamName', {}).get('value')
+            or slots.get('team', {}).get('value')
+            or 'your team')
+    sport = slots.get('sport', {}).get('value') or infer_sport(team)
 
     workflow_inputs = {
         'user_id': user_id,
@@ -273,6 +316,107 @@ def handle_set_favorite_team(intent: Dict[str, Any], user_id: str, language: str
         card_title="Favorite Team Saved",
         card_text=response_text,
         should_end_session=False
+    )
+
+
+def handle_set_game_reminder(intent: Dict[str, Any], user_id: str, language: str) -> Dict[str, Any]:
+    """Handle set game reminder intent — finds next match and sets Alexa Reminder"""
+    event_context = intent.get('_event_context', {})
+    api_access_token = event_context.get('api_access_token', '')
+    api_endpoint = event_context.get('api_endpoint', 'https://api.amazonalexa.com')
+
+    nfl_year, nfl_type = get_nfl_season_info()
+    nba_year, nba_type = get_nba_season_info()
+
+    workflow_inputs = {
+        'user_id': user_id,
+        'language': language,
+        'nfl_season_year': nfl_year,
+        'nfl_season_type': nfl_type,
+        'nba_season_year': nba_year,
+        'nba_season_type': nba_type,
+    }
+
+    result = call_machina_workflow('alexa-next-match', workflow_inputs)
+    next_match = result.get('next_match')
+
+    if not next_match or not next_match.get('start_time'):
+        if language.startswith('pt'):
+            msg = "Não encontrei jogos agendados para seus times favoritos no momento."
+        else:
+            msg = "I couldn't find any upcoming games for your favorite teams right now."
+        return build_response(speech_text=msg, card_title="Game Reminder", card_text=msg, should_end_session=True)
+
+    team = next_match.get('team', 'Your team')
+    opponent = next_match.get('opponent', 'TBD')
+    venue = next_match.get('venue', '')
+    start_time = next_match.get('start_time', '')  # ISO 8601 UTC
+    competition = next_match.get('competition', '')
+
+    # Set reminder 1 hour before match
+    reminder_set = False
+    if api_access_token and start_time:
+        try:
+            from datetime import timezone, timedelta
+            match_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            reminder_dt = match_dt - timedelta(hours=1)
+            # scheduledTime must be in UTC to match the timezone_id below
+            scheduled_time = reminder_dt.strftime('%Y-%m-%dT%H:%M:%S.000')
+
+            if language.startswith('pt'):
+                reminder_text = f"{team} joga daqui a uma hora contra {opponent}{' em ' + venue if venue else ''}!"
+            else:
+                reminder_text = f"{team} plays in one hour against {opponent}{' at ' + venue if venue else ''}!"
+
+            reminder_payload = {
+                "requestTime": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+                "trigger": {
+                    "type": "SCHEDULED_ABSOLUTE",
+                    "scheduledTime": scheduled_time,
+                    "timeZoneId": "UTC"
+                },
+                "alertInfo": {
+                    "spokenInfo": {
+                        "content": [{"locale": language, "text": reminder_text}]
+                    }
+                },
+                "pushNotification": {"status": "ENABLED"}
+            }
+
+            reminder_response = requests.post(
+                f"{api_endpoint}/v1/alerts/reminders",
+                json=reminder_payload,
+                headers={
+                    'Authorization': f'Bearer {api_access_token}',
+                    'Content-Type': 'application/json'
+                },
+                timeout=10
+            )
+            reminder_set = reminder_response.status_code in [200, 201]
+            logger.info(f"Reminders API response: {reminder_response.status_code}")
+        except Exception as e:
+            logger.error(f"Failed to set reminder: {str(e)}", exc_info=True)
+
+    # Build confirmation response
+    match_date = start_time[:10] if start_time else 'TBD'
+    match_time = start_time[11:16] + ' UTC' if len(start_time) >= 16 else ''
+
+    if language.startswith('pt'):
+        if reminder_set:
+            speech = f"Tudo certo! {team} joga contra {opponent}{' em ' + venue if venue else ''} em {match_date}. Vou te lembrar uma hora antes!"
+        else:
+            speech = f"{team} joga contra {opponent}{' em ' + venue if venue else ''} em {match_date}{' às ' + match_time if match_time else ''}."
+    else:
+        if reminder_set:
+            speech = f"Done! {team} plays against {opponent}{' at ' + venue if venue else ''} on {match_date}. I'll remind you one hour before!"
+        else:
+            speech = f"{team} plays against {opponent}{' at ' + venue if venue else ''} on {match_date}{' at ' + match_time if match_time else ''}."
+
+    return build_response(
+        speech_text=speech,
+        card_title=f"Next Game: {team}",
+        card_text=f"{team} vs {opponent} | {match_date} | {venue or competition}",
+        should_end_session=True
     )
 
 

@@ -133,6 +133,19 @@
           ]
         },
         {
+          "name": "SetGameReminderIntent",
+          "slots": [],
+          "samples": [
+            "quando meu time joga",
+            "quando é o próximo jogo do meu time",
+            "qual o próximo jogo do meu time",
+            "me diga quando meu time joga",
+            "próximo jogo do meu time",
+            "me avise antes do jogo do meu time",
+            "avisar antes do próximo jogo"
+          ]
+        },
+        {
           "name": "SetFavoriteTeamIntent",
           "slots": [
             {

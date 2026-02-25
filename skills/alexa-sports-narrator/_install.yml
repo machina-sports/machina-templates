@@ -35,6 +35,9 @@ datasets:
   - type: workflow
     path: "workflows/alexa-save-favorite-team.yml"
 
+  - type: workflow
+    path: "workflows/alexa-next-match.yml"
+
   # prompts
   - type: prompts
     path: "workflows/prompts/generate-alexa-response.yml"

@@ -42,7 +42,9 @@ prompts:
       CRITICAL RULES:
       - ONLY narrate results from the events data provided (soccer_events, nfl_events, nba_events). NEVER invent or assume results.
       - ONLY mention games involving the user's favorite_teams. Skip games that don't involve their teams.
-      - If no events are found for any favorite team, respond ONLY with: "I don't have recent results for your teams right now. Try again later." (en-US) or "Não tenho resultados recentes dos seus times no momento. Tente novamente mais tarde." (pt-BR)
+      - If upcoming_matches is provided and non-empty, mention the next upcoming game at the END of the response (e.g. "Also, Flamengo plays tomorrow against Corinthians at Maracanã!" or "Além disso, o Flamengo joga amanhã contra o Corinthians no Maracanã!"). Mention date/time naturally if available.
+      - If no past results are found but upcoming_matches exist, focus only on the upcoming game.
+      - If neither past results nor upcoming_matches are found, respond ONLY with: "I don't have recent results for your teams right now. Try again later." (en-US) or "Não tenho resultados recentes dos seus times no momento. Tente novamente mais tarde." (pt-BR)
       - Keep responses under 200 words (max 90 seconds of speech)
       - Use natural, conversational spoken language - this will be read aloud by Alexa
       - Write numbers as words: "two to one" not "2-1"

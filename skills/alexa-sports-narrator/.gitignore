@@ -1,0 +1,3 @@
+# Lambda build artifacts
+lambda/package/
+lambda/lambda.zip

@@ -1,0 +1,217 @@
+workflow:
+  name: "alexa-next-match"
+  title: "Get Next Match for Favorite Team"
+  description: "Find the next upcoming match for the user's favorite teams across all sports"
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NFL_API_KEY"
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NBA_API_KEY"
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    user_id: "$.get('user_id')"
+    language: "$.get('language', 'en-US')"
+    nfl_season_year: "$.get('nfl_season_year', '2025')"
+    nfl_season_type: "$.get('nfl_season_type', 'POST')"
+    nba_season_year: "$.get('nba_season_year', '2024')"
+    nba_season_type: "$.get('nba_season_type', 'REG')"
+    season_id: "$.get('season_id', 'sr:season:128461')"
+  outputs:
+    upcoming_matches: |
+      sorted(
+        [m for m in ($.get('upcoming_soccer', []) or []) + ($.get('upcoming_nfl', []) or []) + ($.get('upcoming_nba', []) or []) if isinstance(m, dict) and m.get('team')],
+        key=lambda x: x.get('start_time', '')
+      )[:5]
+    next_match: |
+      next(iter(sorted(
+        [m for m in ($.get('upcoming_soccer', []) or []) + ($.get('upcoming_nfl', []) or []) + ($.get('upcoming_nba', []) or []) if isinstance(m, dict) and m.get('team')],
+        key=lambda x: x.get('start_time', '')
+      )), None)
+    workflow-status: "'executed'"
+  tasks:
+
+    # 1. Load user profile and detect followed sports
+    - type: "document"
+      name: "load-user-profile"
+      description: "Load user's favorite teams"
+      config:
+        action: "search"
+        threshold-docs: 1
+        search-limit: 10
+        search-vector: false
+      inputs:
+        name: "'alexa-user-profile'"
+      filters:
+        "metadata.user_id": "$.get('user_id')"
+      outputs:
+        favorite_teams: "[t for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict)]"
+        has_favorites: "len([t for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict)]) > 0"
+        has_soccer: "any(t.get('sport') in ['soccer', 'futebol'] for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict))"
+        has_nfl: "any(t.get('sport') == 'nfl' for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict))"
+        has_nba: "any(t.get('sport') == 'nba' for t in (next(iter($.get('documents', [])), {}).get('value', {}).get('favorite_teams') or []) if isinstance(t, dict))"
+
+    # -------------------------
+    # 2a. Get current Brasileirao season dynamically
+    # -------------------------
+    - type: "connector"
+      name: "load-current-season"
+      description: "Fetch current Brasileirao season ID from competition"
+      condition: "$.get('has_soccer', False)"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitions/{competition_id}/seasons.json"
+        command_attribute:
+          competition_id: "'sr:competition:325'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        current_season_id: |
+          next(
+            (s.get('id') for s in sorted($.get('seasons', []), key=lambda x: x.get('year', ''), reverse=True)),
+            'sr:season:128461'
+          )
+
+    # -------------------------
+    # 2b. Fetch season schedule — extracts competitor ID from closed games.
+    #     The season schedules endpoint returns raw competitor objects (with IDs)
+    #     in closed games; we reuse this data to get the team's competitor_id
+    #     without an extra API call.
+    # -------------------------
+    - type: "connector"
+      name: "load-closed-games"
+      description: "Fetch season schedule to extract competitor ID from closed games"
+      condition: "$.get('has_soccer', False)"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('current_season_id', 'sr:season:128461')"
+          data_type: "'schedules.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        soccer_competitor_id: |
+          next(
+            (
+              c.get('id')
+              for s in $.get('schedules', [])
+              if (s.get('sport_event_status') or {}).get('status') in ['closed', 'ended']
+              for c in s.get('sport_event', {}).get('competitors', [])
+              for t in $.context.get('favorite_teams', [])
+              if t.get('sport') in ['soccer', 'futebol']
+              and (
+                t.get('name', '').lower() in (c.get('name', '') or '').lower()
+                or (c.get('name', '') or '').lower() in t.get('name', '').lower()
+              )
+            ),
+            None
+          )
+
+    # -------------------------
+    # 2c. Upcoming soccer matches via competitor-specific schedule endpoint.
+    #     /competitors/{id}/schedules.json returns upcoming matches regardless
+    #     of whether future rounds have been published in the season schedule.
+    # -------------------------
+    - type: "connector"
+      name: "load-upcoming-soccer"
+      description: "Fetch upcoming soccer matches for favorite team via competitor endpoint"
+      condition: "$.get('has_soccer', False) and $.get('soccer_competitor_id') is not None"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-competitors/{competitor_id}/schedules.json"
+        command_attribute:
+          competitor_id: "$.get('soccer_competitor_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        upcoming_soccer: |
+          sorted(
+            [
+              {
+                'team': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('id') == $.context.get('soccer_competitor_id')), None),
+                'opponent': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('id') != $.context.get('soccer_competitor_id')), 'Unknown'),
+                'start_time': s.get('sport_event', {}).get('start_time', ''),
+                'venue': s.get('sport_event', {}).get('venue', {}).get('name', ''),
+                'competition': s.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Soccer'),
+                'sport': 'soccer'
+              }
+              for s in $.get('schedules', [])
+              if (s.get('sport_event_status') or {}).get('status') in ['not_started', 'scheduled']
+            ],
+            key=lambda x: x.get('start_time', '')
+          )[:3]
+
+    # -------------------------
+    # 3. Upcoming NFL matches for favorite teams
+    # -------------------------
+    - type: "connector"
+      name: "load-upcoming-nfl"
+      description: "Fetch upcoming NFL matches for favorite teams"
+      condition: "$.get('has_nfl', False)"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('nfl_season_year')"
+          season_type: "$.get('nfl_season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        upcoming_nfl: |
+          [
+            {
+              'team': g.get('home', {}).get('name') if g.get('home', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])] else g.get('away', {}).get('name'),
+              'opponent': g.get('away', {}).get('name') if g.get('home', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])] else g.get('home', {}).get('name'),
+              'start_time': g.get('scheduled', ''),
+              'venue': g.get('venue', {}).get('name', ''),
+              'competition': 'NFL',
+              'sport': 'nfl'
+            }
+            for week in $.get('weeks', [])
+            for g in week.get('games', [])
+            if g.get('status') in ['scheduled', 'created', 'flex-schedule']
+            and (
+              g.get('home', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])]
+              or g.get('away', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])]
+            )
+          ][:3]
+
+    # -------------------------
+    # 4. Upcoming NBA matches for favorite teams
+    # -------------------------
+    - type: "connector"
+      name: "load-upcoming-nba"
+      description: "Fetch upcoming NBA matches for favorite teams"
+      condition: "$.get('has_nba', False)"
+      connector:
+        name: "sportradar-nba"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('nba_season_year')"
+          season_type: "$.get('nba_season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        upcoming_nba: |
+          [
+            {
+              'team': g.get('home', {}).get('name') if g.get('home', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])] else g.get('away', {}).get('name'),
+              'opponent': g.get('away', {}).get('name') if g.get('home', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])] else g.get('home', {}).get('name'),
+              'start_time': g.get('scheduled', ''),
+              'venue': g.get('venue', {}).get('name', ''),
+              'competition': 'NBA',
+              'sport': 'nba'
+            }
+            for g in $.get('games', [])
+            if g.get('status') in ['scheduled', 'created']
+            and (
+              g.get('home', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])]
+              or g.get('away', {}).get('name', '').lower() in [t.get('name', '').lower() for t in $.context.get('favorite_teams', [])]
+            )
+          ][:3]
+

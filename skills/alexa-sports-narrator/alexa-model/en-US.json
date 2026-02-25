@@ -36,7 +36,7 @@
             "did {team} win today",
             "what was the {team} score",
             "give me NFL scores for {date}",
-            "what were yesterday's NFL games",
+            "what were the NFL games yesterday",
             "NFL results from {date}"
           ]
         },
@@ -82,7 +82,9 @@
             "football scores",
             "how did {team} do in soccer",
             "premier league scores",
-            "champions league results"
+            "champions league results",
+            "soccer scores for {date}",
+            "soccer results from {date}"
           ]
         },
         {
@@ -100,12 +102,13 @@
           "samples": [
             "how is {team} doing this season",
             "tell me about {team}",
-            "what are {team}'s stats",
+            "tell me {team} stats",
             "{team} statistics",
             "how are the {team} doing",
             "{team} season stats",
             "how is {team} performing",
-            "tell me about the {team} season"
+            "tell me about the {team} season",
+            "how is {team} doing in {sport}"
           ]
         },
         {
@@ -119,7 +122,7 @@
           "samples": [
             "how is {player} doing",
             "tell me about {player}",
-            "what are {player}'s stats",
+            "tell me {player} stats",
             "{player} statistics",
             "{player} performance",
             "how many points does {player} have"
@@ -132,32 +135,42 @@
             "give me my sports update",
             "my personalized update",
             "my sports news",
-            "what's happening with my teams",
+            "what is happening with my teams",
             "update me on my teams",
             "how are my teams doing"
+          ]
+        },
+        {
+          "name": "SetGameReminderIntent",
+          "slots": [],
+          "samples": [
+            "when does my team play next",
+            "when is my next game",
+            "what is my next game",
+            "find my next game",
+            "next match for my team",
+            "alert me before my next match",
+            "notify me before my next game"
           ]
         },
         {
           "name": "SetFavoriteTeamIntent",
           "slots": [
             {
-              "name": "team",
-              "type": "AMAZON.SportsTeam"
-            },
-            {
-              "name": "sport",
-              "type": "SportType"
+              "name": "teamName",
+              "type": "AMAZON.SearchQuery"
             }
           ],
           "samples": [
-            "my favorite team is {team}",
-            "I follow {team}",
-            "add {team} to my favorites",
-            "I'm a {team} fan",
-            "I like {team}",
-            "set {team} as my favorite",
-            "I support {team}",
-            "my team is {team}"
+            "my favorite team is {teamName}",
+            "my favorite teams is {teamName}",
+            "I follow {teamName}",
+            "add {teamName} to my favorites",
+            "I am a {teamName} fan",
+            "I like {teamName}",
+            "set {teamName} as my favorite",
+            "I support {teamName}",
+            "my team is {teamName}"
           ]
         }
       ],
