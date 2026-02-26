@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alexa-sports-narrator-html
+  namespace: default
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Sports Narrator — Alexa Skill</title>
+      <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          background: #0d0d0d;
+          color: #e8e8e8;
+          line-height: 1.7;
+          min-height: 100vh;
+        }
+        header {
+          background: #111;
+          border-bottom: 1px solid #222;
+          padding: 1.5rem 2rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+        header .logo { font-size: 1.5rem; font-weight: 700; color: #fff; }
+        header .badge {
+          font-size: 0.75rem;
+          background: #1a73e8;
+          color: #fff;
+          padding: 0.2rem 0.6rem;
+          border-radius: 99px;
+          font-weight: 600;
+        }
+        nav { margin-left: auto; display: flex; gap: 1.5rem; }
+        nav a { color: #aaa; text-decoration: none; font-size: 0.9rem; }
+        nav a:hover, nav a.active { color: #fff; }
+        main { max-width: 760px; margin: 0 auto; padding: 3rem 2rem; }
+        h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .subtitle { color: #888; font-size: 0.95rem; margin-bottom: 3rem; }
+        h2 { font-size: 1.2rem; font-weight: 600; color: #fff; margin: 2.5rem 0 0.75rem; }
+        p, li { color: #ccc; font-size: 0.95rem; }
+        ul { padding-left: 1.5rem; margin-top: 0.5rem; }
+        li { margin-bottom: 0.3rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+        th { text-align: left; padding: 0.6rem 1rem; background: #1a1a1a; color: #aaa; font-weight: 600; border-bottom: 1px solid #2a2a2a; }
+        td { padding: 0.6rem 1rem; border-bottom: 1px solid #1e1e1e; color: #ccc; vertical-align: top; }
+        a { color: #4da6ff; }
+        .tag { display: inline-block; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; padding: 0.1rem 0.5rem; font-size: 0.8rem; color: #aaa; margin-right: 0.3rem; }
+        .updated { color: #666; font-size: 0.85rem; margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid #1e1e1e; }
+        footer { text-align: center; padding: 2rem; color: #555; font-size: 0.8rem; }
+      </style>
+    </head>
+    <body>
+      <header>
+        <span class="logo">Machina Sports</span>
+        <span class="badge">Alexa Skill</span>
+        <nav>
+          <a href="#privacy" class="active">Privacy Policy</a>
+          <a href="https://machina.gg" target="_blank">machina.gg</a>
+        </nav>
+      </header>
+
+      <main id="privacy">
+        <h1>Privacy Policy</h1>
+        <p class="subtitle">Sports Narrator — Alexa Skill &nbsp;·&nbsp; Last updated: February 2026</p>
+
+        <p>This Privacy Policy describes how <strong>Machina Sports</strong> collects, uses, and stores information when you use the <strong>Sports Narrator</strong> Alexa skill.</p>
+
+        <h2>1. Information We Collect</h2>
+        <table>
+          <thead>
+            <tr><th>Data</th><th>Purpose</th><th>Retention</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag">Alexa User ID</span></td>
+              <td>Identify your profile across sessions (anonymous, opaque)</td>
+              <td>Until you request deletion</td>
+            </tr>
+            <tr>
+              <td><span class="tag">Favorite teams</span></td>
+              <td>Personalize sports updates and game reminders</td>
+              <td>Until removed by you or on deletion request</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top:0.75rem">We do <strong>not</strong> collect your name, email, payment details, or any other personally identifiable information beyond the anonymized Alexa User ID provided by Amazon.</p>
+
+        <h2>2. How We Use Your Information</h2>
+        <ul>
+          <li>Deliver personalized sports updates for your saved favorite teams</li>
+          <li>Identify your next upcoming match to schedule Alexa Reminders</li>
+          <li>Improve skill performance via anonymized, aggregated usage logs</li>
+        </ul>
+        <p style="margin-top:0.75rem">We do <strong>not</strong> sell, rent, or share your data with third parties for marketing.</p>
+
+        <h2>3. Third-Party Services</h2>
+        <ul>
+          <li><strong>Sportradar</strong> — real-time sports data (NFL, NBA, Soccer). Fetched on-demand, not stored. <a href="https://sportradar.com/about-us/privacy-policy/" target="_blank">Privacy Policy ↗</a></li>
+          <li><strong>Machina AI</strong> — our platform processes requests and stores your favorite team preferences in encrypted MongoDB Atlas.</li>
+          <li><strong>Amazon Alexa Reminders API</strong> — reminder content is provided by the skill; storage and delivery are managed by Amazon.</li>
+        </ul>
+
+        <h2>4. Data Storage and Security</h2>
+        <ul>
+          <li>All data stored on AWS infrastructure with encryption at rest and in transit (TLS)</li>
+          <li>Access restricted to authorized Machina personnel only</li>
+          <li>Your Alexa User ID cannot be mapped to your real identity by us</li>
+        </ul>
+
+        <h2>5. Your Rights</h2>
+        <p>To delete your stored data:</p>
+        <ul>
+          <li>Disable the skill in the Alexa app (stops future collection)</li>
+          <li>Email <a href="mailto:privacy@machina.gg">privacy@machina.gg</a> with subject <em>"Delete my Alexa Sports Narrator data"</em></li>
+        </ul>
+        <p style="margin-top:0.5rem">We process deletion requests within 30 days.</p>
+
+        <h2>6. Children's Privacy</h2>
+        <p>This skill is not directed at children under 13. We do not knowingly collect information from children.</p>
+
+        <h2>7. Changes to This Policy</h2>
+        <p>We may update this policy from time to time. Significant changes will be reflected in the "Last updated" date above.</p>
+
+        <h2>8. Contact</h2>
+        <p><strong>Machina Sports</strong><br/>
+        Email: <a href="mailto:privacy@machina.gg">privacy@machina.gg</a><br/>
+        Website: <a href="https://machina.gg">machina.gg</a></p>
+
+        <p class="updated">Sports Narrator Alexa Skill &nbsp;·&nbsp; Machina Sports &nbsp;·&nbsp; February 2026</p>
+      </main>
+
+      <footer>&copy; 2026 Machina Sports. All rights reserved.</footer>
+    </body>
+    </html>
