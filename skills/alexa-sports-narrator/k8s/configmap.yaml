@@ -154,7 +154,7 @@ data:
 
         <h2>3. Third-Party Services</h2>
         <ul>
-          <li><strong>Sports Skillss</strong> — real-time sports data (NFL, NBA, Soccer). Fetched on-demand, not stored. <a href="https://sports-skills.sh" target="_blank">Privacy Policy ↗</a></li>
+          <li><strong>Sports Skills</strong> — real-time sports data (NFL, NBA, Soccer). Fetched on-demand, not stored. <a href="https://sports-skills.sh" target="_blank">Privacy Policy ↗</a></li>
           <li><strong>Machina AI</strong> — our platform processes requests and stores your favorite team preferences in encrypted MongoDB Atlas.</li>
           <li><strong>Amazon Alexa Reminders API</strong> — reminder content is provided by the skill; storage and delivery are managed by Amazon.</li>
         </ul>
