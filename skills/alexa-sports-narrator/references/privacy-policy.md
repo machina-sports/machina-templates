@@ -35,7 +35,7 @@ We do **not** sell, rent, or share your personal data with third parties for mar
 
 The Skill integrates with the following third-party services to provide sports data:
 
-- **Sportradar** — provides real-time sports data (NFL, NBA, Soccer). Data is fetched on-demand and not stored beyond the response. [Sportradar Privacy Policy](https://sportradar.com/about-us/privacy-policy/)
+- **Sportradar** — provides real-time sports data (NFL, NBA, Soccer). Data is fetched on-demand and not stored beyond the response. [Sportradar Privacy Policy](https://sports-skills.sh/)
 - **Machina AI** — our own platform processes your requests and stores your favorite team preferences. Data is stored in a secure, encrypted database (MongoDB Atlas).
 - **Amazon Alexa Reminders API** — used to set reminders on your Alexa device. Reminder content is provided by the Skill but stored and managed by Amazon.
 
