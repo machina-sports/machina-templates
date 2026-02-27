@@ -1,0 +1,229 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "sports narrator",
+      "intents": [
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "GetNFLScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "what were the NFL scores today",
+            "tell me the NFL results",
+            "NFL scores",
+            "how did {team} do today",
+            "how did {team} do",
+            "did {team} win today",
+            "what was the {team} score",
+            "give me NFL scores for {date}",
+            "what were the NFL games yesterday",
+            "NFL results from {date}"
+          ]
+        },
+        {
+          "name": "GetNBAScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "what were the NBA scores today",
+            "tell me the NBA results",
+            "NBA scores",
+            "how did the {team} do in basketball",
+            "basketball scores",
+            "NBA games today",
+            "who won in the NBA",
+            "NBA results from {date}"
+          ]
+        },
+        {
+          "name": "GetSoccerScoresIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "date",
+              "type": "AMAZON.DATE"
+            }
+          ],
+          "samples": [
+            "what were the soccer scores",
+            "tell me the soccer results",
+            "soccer scores today",
+            "football scores",
+            "how did {team} do in soccer",
+            "premier league scores",
+            "champions league results",
+            "soccer scores for {date}",
+            "soccer results from {date}"
+          ]
+        },
+        {
+          "name": "GetTeamStatsIntent",
+          "slots": [
+            {
+              "name": "team",
+              "type": "AMAZON.SportsTeam"
+            },
+            {
+              "name": "sport",
+              "type": "SportType"
+            }
+          ],
+          "samples": [
+            "how is {team} doing this season",
+            "tell me about {team}",
+            "tell me {team} stats",
+            "{team} statistics",
+            "how are the {team} doing",
+            "{team} season stats",
+            "how is {team} performing",
+            "tell me about the {team} season",
+            "how is {team} doing in {sport}"
+          ]
+        },
+        {
+          "name": "GetPlayerStatsIntent",
+          "slots": [
+            {
+              "name": "player",
+              "type": "AMAZON.Person"
+            }
+          ],
+          "samples": [
+            "how is {player} doing",
+            "tell me about {player}",
+            "tell me {player} stats",
+            "{player} statistics",
+            "{player} performance",
+            "how many points does {player} have"
+          ]
+        },
+        {
+          "name": "GetPersonalizedUpdateIntent",
+          "slots": [],
+          "samples": [
+            "give me my sports update",
+            "my personalized update",
+            "my sports news",
+            "what is happening with my teams",
+            "update me on my teams",
+            "how are my teams doing"
+          ]
+        },
+        {
+          "name": "SetGameReminderIntent",
+          "slots": [],
+          "samples": [
+            "when does my team play next",
+            "when is my next game",
+            "what is my next game",
+            "find my next game",
+            "next match for my team",
+            "alert me before my next match",
+            "notify me before my next game"
+          ]
+        },
+        {
+          "name": "SetFavoriteTeamIntent",
+          "slots": [
+            {
+              "name": "teamName",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "my favorite team is {teamName}",
+            "my favorite teams is {teamName}",
+            "I follow {teamName}",
+            "add {teamName} to my favorites",
+            "I am a {teamName} fan",
+            "I like {teamName}",
+            "set {teamName} as my favorite",
+            "I support {teamName}",
+            "my team is {teamName}"
+          ]
+        }
+      ],
+      "types": [
+        {
+          "name": "SportType",
+          "values": [
+            {
+              "name": {
+                "value": "nfl",
+                "synonyms": [
+                  "football",
+                  "american football"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "nba",
+                "synonyms": [
+                  "basketball"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "soccer",
+                "synonyms": [
+                  "football",
+                  "futbol"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "mlb",
+                "synonyms": [
+                  "baseball"
+                ]
+              }
+            },
+            {
+              "name": {
+                "value": "nhl",
+                "synonyms": [
+                  "hockey",
+                  "ice hockey"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

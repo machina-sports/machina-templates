@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: alexa-sports-narrator-site
+  namespace: default
+spec:
+  selector:
+    app: alexa-sports-narrator-site
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

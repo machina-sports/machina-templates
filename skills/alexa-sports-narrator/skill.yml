@@ -1,0 +1,99 @@
+skill:
+  name: "alexa-sports-narrator"
+  title: "Alexa Sports Narrator"
+  description: "Alexa skill for narrating sports data in real-time using Machina sports templates and voice synthesis"
+  version: "1.0.0"
+  category:
+    - "alexa"
+    - "sports"
+    - "voice"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+
+    - name: "skill-guide"
+      title: "Alexa Sports Narrator"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "alexa-sports-narrator"
+
+    - name: "skill-reference"
+      title: "Setup Guide"
+      filename: "references/setup.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "setup"
+
+    - name: "skill-reference"
+      title: "Intents Guide"
+      filename: "references/intents.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "intents"
+
+    - name: "skill-reference"
+      title: "Privacy Policy"
+      filename: "references/privacy-policy.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "alexa-sports-narrator"
+        reference_id: "privacy-policy"
+
+  workflows:
+
+    - name: "alexa-sports-query"
+      description: "Process Alexa sports queries"
+      inputs:
+        intent_name: "$.get('intent_name')"
+        sport: "$.get('sport', 'nfl')"
+        team: "$.get('team')"
+        player: "$.get('player')"
+        date: "$.get('date')"
+        language: "$.get('language', 'en-US')"
+        user_id: "$.get('user_id')"
+      outputs:
+        response_text: "$.get('response_text')"
+        card_title: "$.get('card_title')"
+        card_text: "$.get('card_text')"
+        should_end_session: "$.get('should_end_session', True)"
+
+    - name: "alexa-personalized-update"
+      description: "Generate personalized sports update"
+      inputs:
+        user_id: "$.get('user_id')"
+        language: "$.get('language', 'en-US')"
+      outputs:
+        response_text: "$.get('response_text')"
+        favorite_teams: "$.get('favorite_teams', [])"
+
+    - name: "alexa-save-favorite-team"
+      description: "Save user's favorite team"
+      inputs:
+        user_id: "$.get('user_id')"
+        team_name: "$.get('team_name')"
+        sport: "$.get('sport', 'soccer')"
+        language: "$.get('language', 'en-US')"
+      outputs:
+        response_text: "$.get('response_text')"
+        success: "$.get('success', False)"
+
+    - name: "alexa-next-match"
+      description: "Find next upcoming match for user's favorite teams and set Alexa Reminder"
+      inputs:
+        user_id: "$.get('user_id')"
+        language: "$.get('language', 'en-US')"
+        nfl_season_year: "$.get('nfl_season_year')"
+        nfl_season_type: "$.get('nfl_season_type', 'REG')"
+        nba_season_year: "$.get('nba_season_year')"
+        nba_season_type: "$.get('nba_season_type', 'REG')"
+      outputs:
+        next_match: "$.get('next_match')"
+        all_upcoming: "$.get('all_upcoming', [])"

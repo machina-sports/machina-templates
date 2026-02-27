@@ -1,0 +1,76 @@
+workflow:
+  name: "alexa-test-simple"
+  title: "Alexa Sports Narrator - Simple Test"
+  description: "Step 1: test Sportradar credentials. Step 2: discover Brasileirao seasons. Run step 1 first to verify connectivity."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  outputs:
+    # After step 1 succeeds: use the season_id in alexa-sports-query
+    current_season_id: "$.get('current_season_id', '')"
+    seasons_available: "$.get('seasons_available', [])"
+    competitions_count: "$.get('competitions_count', 0)"
+    workflow-status: "$.get('competitions_count', 0) > 0 and 'executed' or 'failed'"
+  tasks:
+
+    # Step 1: Verify credentials with the simplest possible call (no path params)
+    # Same endpoint as sportradar-soccer-test-credentials workflow
+    - type: connector
+      name: test-sportradar-connection
+      description: Verify API key works by fetching list of all competitions
+      connector:
+        name: sportradar-soccer
+        command: get-competitions.json
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        raw_competitions: "$.get('competitions', [])"
+        competitions_count: "len($.get('competitions', []))"
+
+    # Step 2: Find Brasileirao (sr:competition:325) in the competitions list
+    - type: python
+      name: find-brasileirao
+      description: Find Brasileirao competition ID from the list
+      inputs:
+        raw_competitions: "$.get('raw_competitions', [])"
+      outputs:
+        brasileirao_found: |
+          next(
+            (c for c in $.get('raw_competitions', []) if '325' in c.get('id', '') or 'Brasil' in c.get('name', '')),
+            {}
+          )
+        brasileirao_id: |
+          next(
+            (c.get('id') for c in $.get('raw_competitions', []) if '325' in c.get('id', '') or 'Brasil' in c.get('name', '')),
+            'not_found'
+          )
+
+    # Step 3: Fetch seasons for Brasileirao using the competition ID
+    # Only runs if we confirmed competition exists above
+    - type: connector
+      name: load-brasileirao-seasons
+      description: Get all seasons for Brasileirao Serie A (sr:competition:325)
+      connector:
+        name: sportradar-soccer
+        command: "get-competitions/{competition_id}/seasons.json"
+        command_attribute:
+          competition_id: "'sr:competition:325'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        raw_seasons: "$.get('seasons', [])"
+
+    # Step 4: Parse seasons and find the most recent (2025/2026)
+    - type: python
+      name: parse-seasons
+      inputs:
+        raw_seasons: "$.get('raw_seasons', [])"
+      outputs:
+        seasons_available: |
+          [
+            {'id': s.get('id'), 'name': s.get('name'), 'year': s.get('year'), 'start_date': s.get('start_date')}
+            for s in $.get('raw_seasons', [])
+          ][-5:]
+        current_season_id: "$.get('raw_seasons', [{}])[-1].get('id', '') if $.get('raw_seasons') else ''"
