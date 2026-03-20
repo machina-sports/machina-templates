@@ -28,12 +28,12 @@ workflow:
       connector:
         name: "google-genai"
         command: "invoke_tts"
-        command_attribute:
-          text: "$.get('text')"
-          voice_name: "$.get('voice_name', 'Kore')"
-          model_id: "$.get('model_id', 'gemini-2.5-flash-tts')"
-          language_code: "$.get('language_code', 'en-us')"
-          prompt: "$.get('prompt')"
+      inputs:
+        text: "$.get('text')"
+        voice_name: "$.get('voice_name', 'Kore')"
+        model_id: "$.get('model_id', 'gemini-2.5-flash-tts')"
+        language_code: "$.get('language_code', 'en-us')"
+        prompt: "$.get('prompt')"
       outputs:
         data: "$"
         full_filepath: "$.get('file_path')"

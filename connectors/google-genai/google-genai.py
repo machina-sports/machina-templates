@@ -1065,7 +1065,7 @@ def invoke_tts(request_data):
     """
     Text-to-Speech using Gemini TTS models via REST API.
 
-    Parameters (via path_attribute / command_attribute in workflows):
+    Parameters (via inputs in workflows):
     - text: Required - Text content to synthesize
     - voice_name: Voice to use (default: "Kore")
     - model_id: TTS model (default: "gemini-2.5-flash-tts")
@@ -1077,15 +1077,14 @@ def invoke_tts(request_data):
     """
     params = request_data.get("params", {})
     headers = request_data.get("headers", {})
-    path_attr = request_data.get("path_attribute", {})
 
     api_key = headers.get("api_key")
 
-    text = path_attr.get("text") or params.get("text")
-    voice_name = path_attr.get("voice_name") or params.get("voice_name", "Kore")
-    model_id = path_attr.get("model_id") or params.get("model_id", "gemini-2.5-flash-tts")
-    language_code = path_attr.get("language_code") or params.get("language_code", "en-us")
-    style_prompt = path_attr.get("prompt") or params.get("prompt")
+    text = params.get("text")
+    voice_name = params.get("voice_name") or "Kore"
+    model_id = params.get("model_id") or "gemini-2.5-flash-tts"
+    language_code = params.get("language_code") or "en-us"
+    style_prompt = params.get("prompt")
 
     if not api_key:
         return {"status": False, "message": "Missing API key."}
