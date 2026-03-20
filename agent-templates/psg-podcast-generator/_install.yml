@@ -8,7 +8,6 @@ setup:
     - AI Agent to generate PSG podcasts.
     - AI Reporter to generate PSG podcasts.
   integrations:
-    - elevenlabs
     - google-genai
     - machina-ai
     - machina-ai-fast
