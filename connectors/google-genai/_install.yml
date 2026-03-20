@@ -8,6 +8,7 @@ setup:
     - Real-time chat completion (AI Studio & Vertex AI)
     - Real-time content generation (AI Studio & Vertex AI)
     - Real-time image generation (AI Studio)
+    - Real-time text-to-speech (AI Studio & Vertex AI - Gemini TTS)
     - Real-time video generation (AI Studio & Vertex AI - Veo models)
     - Vertex AI Global Endpoint support
     - Enterprise-grade Vertex AI integration
@@ -33,6 +34,9 @@ datasets:
 
   - type: "workflow"
     path: "test-video.yml"
+
+  - type: "workflow"
+    path: "test-tts.yml"
 
   - type: "workflow"
     path: "test-credentials.yml"
