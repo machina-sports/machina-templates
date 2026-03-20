@@ -1063,21 +1063,12 @@ def invoke_video(request_data):
 
 def invoke_tts(request_data):
     """
-    Text-to-Speech using Gemini TTS models.
-
-    Replaces ElevenLabs TTS with Google Gemini TTS.
-    Supports both AI Studio (API key) and Vertex AI (service account credentials).
+    Text-to-Speech using Gemini TTS models via REST API.
 
     Parameters (via path_attribute / command_attribute in workflows):
     - text: Required - Text content to synthesize
-    - voice_name: Voice to use (default: "Kore"). Available voices:
-        Female: Achernar, Aoede, Autonoe, Callirrhoe, Despina, Erinome, Gacrux,
-                Kore, Laomedeia, Leda, Pulcherrima, Sulafat, Vindemiatrix, Zephyr
-        Male:   Achird, Algenib, Algieba, Alnilam, Charon, Enceladus, Fenrir,
-                Iapetus, Orus, Puck, Rasalgethi, Sadachbia, Sadaltager, Schedar,
-                Umbriel, Zubenelgenubi
-    - model_id: TTS model (default: "gemini-2.5-flash-tts").
-        Options: "gemini-2.5-flash-tts", "gemini-2.5-pro-tts"
+    - voice_name: Voice to use (default: "Kore")
+    - model_id: TTS model (default: "gemini-2.5-flash-tts")
     - language_code: BCP-47 language code (default: "en-us")
     - prompt: Optional styling instructions (e.g., "Say in a cheerful tone")
 
@@ -1088,91 +1079,89 @@ def invoke_tts(request_data):
     headers = request_data.get("headers", {})
     path_attr = request_data.get("path_attribute", {})
 
-    # Get API key or credentials
     api_key = headers.get("api_key")
-    credential = headers.get("credential")
-    project_id = headers.get("project_id")
 
-    # Get TTS parameters (path_attribute from workflow command_attribute, fallback to params)
     text = path_attr.get("text") or params.get("text")
     voice_name = path_attr.get("voice_name") or params.get("voice_name", "Kore")
     model_id = path_attr.get("model_id") or params.get("model_id", "gemini-2.5-flash-tts")
     language_code = path_attr.get("language_code") or params.get("language_code", "en-us")
     style_prompt = path_attr.get("prompt") or params.get("prompt")
-    location = path_attr.get("location") or params.get("location", "us-central1")
+
+    if not api_key:
+        return {"status": False, "message": "Missing API key."}
 
     if not text:
         return {"status": False, "message": "Missing text parameter."}
 
     try:
-        # Create client based on available credentials
-        if credential and project_id:
-            # Vertex AI path
-            credentials = None
-            if isinstance(credential, str):
-                try:
-                    credential = json.loads(credential)
-                except json.JSONDecodeError:
-                    return {"status": False, "message": "credential must be valid JSON"}
-
-            credentials = service_account.Credentials.from_service_account_info(credential)
-            client = genai.Client(
-                vertexai=True,
-                project=project_id,
-                location=location,
-                credentials=credentials,
-            )
-            print(f"TTS: Using Vertex AI (project={project_id}, location={location})")
-        elif api_key:
-            # AI Studio path
-            client = genai.Client(api_key=api_key)
-            print("TTS: Using AI Studio (API key)")
-        else:
-            return {"status": False, "message": "Missing API key or Vertex AI credentials."}
-
-        # Build contents with optional style prompt
         if style_prompt:
-            contents = f"{style_prompt}: {text}"
+            content_text = f"{style_prompt}: {text}"
         else:
-            contents = text
+            content_text = text
 
-        print(f"TTS: model={model_id}, voice={voice_name}, lang={language_code}")
-        print(f"TTS: text length={len(text)} chars")
+        print(f"TTS: model={model_id}, voice={voice_name}, lang={language_code}, text_len={len(text)}")
 
-        # Generate speech
-        response = client.models.generate_content(
-            model=model_id,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                speech_config=types.SpeechConfig(
-                    language_code=language_code,
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name=voice_name,
-                        )
-                    ),
-                ),
-                temperature=2.0,
-            ),
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
+
+        payload = {
+            "contents": [{
+                "parts": [{"text": content_text}]
+            }],
+            "generationConfig": {
+                "response_modalities": ["AUDIO"],
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {
+                            "voiceName": voice_name
+                        }
+                    }
+                }
+            }
+        }
+
+        response = requests.post(
+            url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=120,
         )
 
-        # Extract audio data (PCM 16-bit, 24kHz)
-        audio_data = response.candidates[0].content.parts[0].inline_data.data
+        if response.status_code != 200:
+            error_text = response.text[:500]
+            print(f"TTS API error: {response.status_code} - {error_text}")
+            return {"status": False, "message": f"TTS API error {response.status_code}: {error_text}"}
 
-        if not audio_data:
+        result = response.json()
+
+        candidates = result.get("candidates", [])
+        if not candidates:
+            print(f"TTS: No candidates in response: {json.dumps(result)[:500]}")
+            return {"status": False, "message": "TTS response contained no candidates."}
+
+        parts = candidates[0].get("content", {}).get("parts", [])
+        if not parts:
+            print(f"TTS: No parts in response: {json.dumps(result)[:500]}")
+            return {"status": False, "message": "TTS response contained no audio parts."}
+
+        inline_data = parts[0].get("inlineData", {})
+        audio_b64 = inline_data.get("data")
+
+        if not audio_b64:
+            print(f"TTS: No audio data in response: {json.dumps(result)[:500]}")
             return {"status": False, "message": "TTS response contained no audio data."}
 
-        # Save as WAV file
+        audio_data = base64.b64decode(audio_b64)
+
         temp_dir = tempfile.mkdtemp()
         save_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.wav")
 
         with wave.open(save_file_path, "wb") as wf:
             wf.setnchannels(1)
-            wf.setsampwidth(2)  # 16-bit
-            wf.setframerate(24000)  # 24kHz
+            wf.setsampwidth(2)
+            wf.setframerate(24000)
             wf.writeframes(audio_data)
 
-        audio_duration = len(audio_data) / (24000 * 2)  # bytes / (sample_rate * bytes_per_sample)
+        audio_duration = len(audio_data) / (24000 * 2)
         print(f"TTS: Audio saved to {save_file_path} ({audio_duration:.1f}s)")
 
         return {
@@ -1184,5 +1173,5 @@ def invoke_tts(request_data):
         }
 
     except Exception as e:
-        print(f"Error generating speech: {e}")
+        print(f"TTS Error: {e}")
         return {"status": False, "message": f"Error generating speech: {str(e)}"}
