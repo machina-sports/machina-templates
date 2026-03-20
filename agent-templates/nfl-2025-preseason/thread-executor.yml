@@ -173,11 +173,11 @@ workflow:
       connector:
         name: "google-genai"
         command: "invoke_tts"
-        command_attribute:
-          text: "$.get('content').get('speech_to_avatar')"
-          voice_name: "$.get('voice_name', 'Kore')"
-          model_id: "gemini-2.5-flash-tts"
-          language_code: "en-us"
+      inputs:
+        text: "$.get('content').get('speech_to_avatar')"
+        voice_name: "$.get('voice_name', 'Kore')"
+        model_id: "gemini-2.5-flash-tts"
+        language_code: "en-us"
       outputs:
         final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
         full_filepath: "$.get('file_path')"
