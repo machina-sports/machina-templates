@@ -6,7 +6,7 @@ workflow:
     debugger:
       enabled: true
     google-genai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     google-storage:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
