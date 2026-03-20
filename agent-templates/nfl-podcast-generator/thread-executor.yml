@@ -5,8 +5,6 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    elevenlabs:
-      api_key: "$TEMP_CONTEXT_VARIABLE_ELEVENLABS_API_KEY"
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
     machina-ai:
@@ -18,7 +16,7 @@ workflow:
   inputs:
     input_status: "$.get('input_status', 'waiting')"
     output_status: "$.get('output_status', 'idle')"
-    voice_id: "$.get('voice_id', '1SM7GgM6IMuvQlz2BwM3')"
+    voice_name: "$.get('voice_name', 'Kore')"
   outputs:
     content: "$.get('content')"
     documents: "$.get('documents')"
@@ -118,18 +116,18 @@ workflow:
     # get text to speech
     - type: "connector"
       name: "get text to speech"
-      description: "Get a text to speech from ElevenLabs"
+      description: "Get a text to speech from Gemini TTS"
       condition: "$.get('document_id') is not None"
       connector:
-        name: "elevenlabs"
-        command: "get_text_to_speech"
+        name: "google-genai"
+        command: "invoke_tts"
         command_attribute:
           text: "$.get('content').get('speech_to_avatar')"
-          voice_id: "$.get('voice_id')"
-      inputs:
-        api_key: "$.get('api_key')"
+          voice_name: "$.get('voice_name', 'Kore')"
+          model_id: "gemini-2.5-flash-tts"
+          language_code: "en-us"
       outputs:
-        final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        final_filename: f"text-to-speech-{datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
         full_filepath: "$.get('file_path')"
 
     # store audio

@@ -15,3 +15,6 @@ connector:
 
     - name: Video
       value: invoke_video
+
+    - name: TTS
+      value: invoke_tts

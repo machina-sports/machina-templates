@@ -53,9 +53,9 @@ datasets:
   - type: "prompts"
     path: "_prompts.yml"
 
-  # elevenlabs
+  # google-genai
   - type: "connector"
-    path: "../../connectors/elevenlabs/elevenlabs.yml"
+    path: "../../connectors/google-genai/google-genai.yml"
 
   # storage
   - type: "connector"

@@ -10,7 +10,6 @@ setup:
   integrations:
     - machina-ai
     - google-genai
-    - elevenlabs
     - google-storage
     - api-mailgun
     - oxylabs
