@@ -1063,7 +1063,7 @@ def invoke_video(request_data):
 
 def invoke_tts(request_data):
     """
-    Text-to-Speech using Gemini TTS via Cloud Text-to-Speech API.
+    Text-to-Speech using Gemini TTS via Vertex AI API.
 
     Parameters (via inputs in workflows):
     - text: Required - Text content to synthesize
@@ -1071,20 +1071,19 @@ def invoke_tts(request_data):
     - model_id: TTS model (default: "gemini-2.5-flash-tts")
     - language_code: BCP-47 language code (default: "en-us")
     - prompt: Optional styling instructions (e.g., "Say in a cheerful tone")
+    - location: Vertex AI region (default: "us-central1")
 
     Authentication (via context-variables headers):
-    - credential + project_id: Vertex AI service account (preferred)
-    - api_key: Fallback to API key auth
+    - credential + project_id: Vertex AI service account (required)
 
     Returns:
-    - file_path: Path to generated MP3 audio file
+    - file_path: Path to generated WAV audio file
     """
     from google.auth.transport.requests import Request as AuthRequest
 
     params = request_data.get("params", {})
     headers = request_data.get("headers", {})
 
-    api_key = headers.get("api_key")
     credential = headers.get("credential")
     project_id = headers.get("project_id")
 
@@ -1093,58 +1092,70 @@ def invoke_tts(request_data):
     model_id = params.get("model_id") or "gemini-2.5-flash-tts"
     language_code = params.get("language_code") or "en-us"
     style_prompt = params.get("prompt")
+    location = params.get("location") or "us-central1"
+
+    if not credential or not project_id:
+        return {"status": False, "message": "Missing Vertex AI credentials (credential + project_id required)."}
 
     if not text:
         return {"status": False, "message": "Missing text parameter."}
 
     try:
-        # Build Cloud TTS API payload
-        tts_input = {"text": text}
+        # Parse credentials
+        cred = credential
+        if isinstance(cred, str):
+            try:
+                cred = json.loads(cred)
+            except json.JSONDecodeError:
+                return {"status": False, "message": "credential must be valid JSON"}
+
+        credentials = service_account.Credentials.from_service_account_info(
+            cred,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+        credentials.refresh(AuthRequest())
+
+        # Build content text
         if style_prompt:
-            tts_input["prompt"] = style_prompt
+            content_text = f"{style_prompt}: {text}"
+        else:
+            content_text = text
+
+        print(f"TTS: model={model_id}, voice={voice_name}, lang={language_code}, location={location}, text_len={len(text)}")
+
+        # Vertex AI API endpoint
+        url = (
+            f"https://{location}-aiplatform.googleapis.com/v1"
+            f"/projects/{project_id}/locations/{location}"
+            f"/publishers/google/models/{model_id}:generateContent"
+        )
 
         payload = {
-            "input": tts_input,
-            "voice": {
-                "languageCode": language_code,
-                "name": voice_name,
-                "modelName": model_id,
+            "contents": {
+                "role": "user",
+                "parts": {"text": content_text},
             },
-            "audioConfig": {
-                "audioEncoding": "MP3",
+            "generationConfig": {
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {
+                            "voiceName": voice_name
+                        }
+                    }
+                },
+                "temperature": 2.0,
             },
         }
 
-        tts_url = "https://texttospeech.googleapis.com/v1/text:synthesize"
-        auth_headers = {"Content-Type": "application/json"}
-
-        # Authenticate with service account credentials (preferred)
-        if credential:
-            cred = credential
-            if isinstance(cred, str):
-                try:
-                    cred = json.loads(cred)
-                except json.JSONDecodeError:
-                    return {"status": False, "message": "credential must be valid JSON"}
-
-            credentials = service_account.Credentials.from_service_account_info(
-                cred,
-                scopes=["https://www.googleapis.com/auth/cloud-platform"],
-            )
-            credentials.refresh(AuthRequest())
-            auth_headers["Authorization"] = f"Bearer {credentials.token}"
-            if project_id:
-                auth_headers["x-goog-user-project"] = project_id
-            print(f"TTS: Using service account auth (project={project_id})")
-        elif api_key:
-            tts_url += f"?key={api_key}"
-            print("TTS: Using API key auth")
-        else:
-            return {"status": False, "message": "Missing credentials. Provide credential (service account) or api_key."}
-
-        print(f"TTS: model={model_id}, voice={voice_name}, lang={language_code}, text_len={len(text)}")
-
-        response = requests.post(tts_url, json=payload, headers=auth_headers, timeout=120)
+        response = requests.post(
+            url,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {credentials.token}",
+                "Content-Type": "application/json",
+            },
+            timeout=120,
+        )
 
         if response.status_code != 200:
             error_text = response.text[:500]
@@ -1152,21 +1163,36 @@ def invoke_tts(request_data):
             return {"status": False, "message": f"TTS API error {response.status_code}: {error_text}"}
 
         result = response.json()
-        audio_b64 = result.get("audioContent")
+
+        # Extract audio from Vertex AI response
+        candidates = result.get("candidates", [])
+        if not candidates:
+            return {"status": False, "message": f"No candidates in response: {json.dumps(result)[:500]}"}
+
+        parts = candidates[0].get("content", {}).get("parts", [])
+        if not parts:
+            return {"status": False, "message": "No audio parts in response."}
+
+        inline_data = parts[0].get("inlineData", {})
+        audio_b64 = inline_data.get("data")
 
         if not audio_b64:
-            print(f"TTS: No audioContent in response: {json.dumps(result)[:500]}")
-            return {"status": False, "message": "TTS response contained no audio data."}
+            return {"status": False, "message": "No audio data in response."}
 
         audio_data = base64.b64decode(audio_b64)
 
+        # Save as WAV (Vertex AI returns PCM 24kHz 16-bit)
         temp_dir = tempfile.mkdtemp()
-        save_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.mp3")
+        save_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.wav")
 
-        with open(save_file_path, "wb") as f:
-            f.write(audio_data)
+        with wave.open(save_file_path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(24000)
+            wf.writeframes(audio_data)
 
-        print(f"TTS: MP3 saved to {save_file_path} ({len(audio_data)} bytes)")
+        audio_duration = len(audio_data) / (24000 * 2)
+        print(f"TTS: WAV saved to {save_file_path} ({audio_duration:.1f}s, {len(audio_data)} bytes)")
 
         return {
             "status": True,
