@@ -1063,7 +1063,7 @@ def invoke_video(request_data):
 
 def invoke_tts(request_data):
     """
-    Text-to-Speech using Gemini TTS models via REST API.
+    Text-to-Speech using Gemini TTS via Cloud Text-to-Speech API.
 
     Parameters (via inputs in workflows):
     - text: Required - Text content to synthesize
@@ -1072,13 +1072,21 @@ def invoke_tts(request_data):
     - language_code: BCP-47 language code (default: "en-us")
     - prompt: Optional styling instructions (e.g., "Say in a cheerful tone")
 
+    Authentication (via context-variables headers):
+    - credential + project_id: Vertex AI service account (preferred)
+    - api_key: Fallback to API key auth
+
     Returns:
-    - file_path: Path to generated WAV audio file (PCM 16-bit, 24kHz)
+    - file_path: Path to generated MP3 audio file
     """
+    from google.auth.transport.requests import Request as AuthRequest
+
     params = request_data.get("params", {})
     headers = request_data.get("headers", {})
 
     api_key = headers.get("api_key")
+    credential = headers.get("credential")
+    project_id = headers.get("project_id")
 
     text = params.get("text")
     voice_name = params.get("voice_name") or "Kore"
@@ -1086,44 +1094,57 @@ def invoke_tts(request_data):
     language_code = params.get("language_code") or "en-us"
     style_prompt = params.get("prompt")
 
-    if not api_key:
-        return {"status": False, "message": "Missing API key."}
-
     if not text:
         return {"status": False, "message": "Missing text parameter."}
 
     try:
+        # Build Cloud TTS API payload
+        tts_input = {"text": text}
         if style_prompt:
-            content_text = f"{style_prompt}: {text}"
+            tts_input["prompt"] = style_prompt
+
+        payload = {
+            "input": tts_input,
+            "voice": {
+                "languageCode": language_code,
+                "name": voice_name,
+                "modelName": model_id,
+            },
+            "audioConfig": {
+                "audioEncoding": "MP3",
+            },
+        }
+
+        tts_url = "https://texttospeech.googleapis.com/v1/text:synthesize"
+        auth_headers = {"Content-Type": "application/json"}
+
+        # Authenticate with service account credentials (preferred)
+        if credential:
+            cred = credential
+            if isinstance(cred, str):
+                try:
+                    cred = json.loads(cred)
+                except json.JSONDecodeError:
+                    return {"status": False, "message": "credential must be valid JSON"}
+
+            credentials = service_account.Credentials.from_service_account_info(
+                cred,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+            credentials.refresh(AuthRequest())
+            auth_headers["Authorization"] = f"Bearer {credentials.token}"
+            if project_id:
+                auth_headers["x-goog-user-project"] = project_id
+            print(f"TTS: Using service account auth (project={project_id})")
+        elif api_key:
+            tts_url += f"?key={api_key}"
+            print("TTS: Using API key auth")
         else:
-            content_text = text
+            return {"status": False, "message": "Missing credentials. Provide credential (service account) or api_key."}
 
         print(f"TTS: model={model_id}, voice={voice_name}, lang={language_code}, text_len={len(text)}")
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
-
-        payload = {
-            "contents": [{
-                "parts": [{"text": content_text}]
-            }],
-            "generationConfig": {
-                "response_modalities": ["AUDIO"],
-                "speechConfig": {
-                    "voiceConfig": {
-                        "prebuiltVoiceConfig": {
-                            "voiceName": voice_name
-                        }
-                    }
-                }
-            }
-        }
-
-        response = requests.post(
-            url,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=120,
-        )
+        response = requests.post(tts_url, json=payload, headers=auth_headers, timeout=120)
 
         if response.status_code != 200:
             error_text = response.text[:500]
@@ -1131,37 +1152,21 @@ def invoke_tts(request_data):
             return {"status": False, "message": f"TTS API error {response.status_code}: {error_text}"}
 
         result = response.json()
-
-        candidates = result.get("candidates", [])
-        if not candidates:
-            print(f"TTS: No candidates in response: {json.dumps(result)[:500]}")
-            return {"status": False, "message": "TTS response contained no candidates."}
-
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            print(f"TTS: No parts in response: {json.dumps(result)[:500]}")
-            return {"status": False, "message": "TTS response contained no audio parts."}
-
-        inline_data = parts[0].get("inlineData", {})
-        audio_b64 = inline_data.get("data")
+        audio_b64 = result.get("audioContent")
 
         if not audio_b64:
-            print(f"TTS: No audio data in response: {json.dumps(result)[:500]}")
+            print(f"TTS: No audioContent in response: {json.dumps(result)[:500]}")
             return {"status": False, "message": "TTS response contained no audio data."}
 
         audio_data = base64.b64decode(audio_b64)
 
         temp_dir = tempfile.mkdtemp()
-        save_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.wav")
+        save_file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.mp3")
 
-        with wave.open(save_file_path, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(24000)
-            wf.writeframes(audio_data)
+        with open(save_file_path, "wb") as f:
+            f.write(audio_data)
 
-        audio_duration = len(audio_data) / (24000 * 2)
-        print(f"TTS: Audio saved to {save_file_path} ({audio_duration:.1f}s)")
+        print(f"TTS: MP3 saved to {save_file_path} ({len(audio_data)} bytes)")
 
         return {
             "status": True,
