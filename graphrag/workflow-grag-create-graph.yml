@@ -1,0 +1,72 @@
+workflow:
+  name: "workflow-grag-create-graph"
+  title: "Knowledge Graph Creation"
+  description: "Create a knowledge graph based on schema filtered data."
+  context-variables:
+    neo4j-driver:
+      uri: "neo4j://192.168.88.207:7687"
+      username: "neo4j"
+      password: "sofia-maximum-tape-maestro-story-3965"
+    sdk-openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code')"
+    schema_ids: "$.get('schema_ids').split(', ') or []"
+  outputs:
+    workflow-status: "$.get('event-exists') is not True and 'skipped' or 'executed'"
+  tasks:
+  
+    # 0 load-event-document
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search for events in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        value.sport_event.id: "$.get('event_code')"
+      outputs:
+        event-exists: "len($.get('documents', [])) > 0"
+        event-selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event-title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+
+    # 1 load-selected-knowledge-schemas
+    - type: "document"
+      name: "load-knowledge-schemas"
+      description: "Search for context related knowledge schemas"
+      condition: "$.get('event-exists') is True"
+      config:
+        action: "search"
+        search-vector: false
+      filters:
+        _id: "{'$in': $.get('schema_ids')}"
+        name: "'knowledge-schema'"
+      outputs:
+        schemas: "$.get('documents', [])"
+
+    # 2 consolidate-schemas-data
+    - type: "connector"
+      name: "consolidate_schemas"
+      description: "Consolidate schemas entities and triples for neo4j"
+      connector:
+        name: "neo4j-driver"
+        command: "consolidate_schemas"
+      inputs:
+        schemas: "$.get('schemas', [])"
+      outputs:
+        nodetriples: "$"
+
+    # 3 create-graph-db-connector
+    - type: "connector"
+      name: "create_knowledge_graph"
+      description: "Create Knowledge Graph based on selected schemas"
+      connector:
+        name: "neo4j-driver"
+        command: "create_knowledge_graph"
+      inputs:
+        nodetriples: "$.get('nodetriples', [])"
+      outputs:
+        graph: "$"
