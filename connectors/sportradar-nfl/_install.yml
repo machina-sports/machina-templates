@@ -49,6 +49,9 @@ datasets:
   - type: mappings
     path: mappings/iptc-sport-event.yml
 
+  - type: mappings
+    path: mappings/iptc-nfl-team.yml
+
   # workflows
 
   - type: workflow
