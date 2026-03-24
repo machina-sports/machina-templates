@@ -1,0 +1,9 @@
+connector:
+  name: assistant-tools-conversation-history
+  title: Assistant Tools - Conversation History
+  description: Build conversation history from thread messages for response LLM context. Extracts last Q&A pairs for conversational continuity.
+  filename: conversation-history.py
+  filetype: pyscript
+  commands:
+    - name: build_conversation_history
+      value: build_conversation_history

@@ -102,6 +102,9 @@ datasets:
   # tools
 
   - type: connector
+    path: tools/conversation-history.yml
+
+  - type: connector
     path: tools/event-id-collector.yml
   
   - type: workflow
