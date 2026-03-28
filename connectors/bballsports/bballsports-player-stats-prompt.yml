@@ -1,0 +1,47 @@
+prompts:
+
+  # prompt-bballsports-player-stats
+  - type: prompt
+    name: prompt-bballsports-player-stats
+    title: "Ballsports Player Stats"
+    description: "Prompt to get player statistics from BBallSports."
+    instruction: |
+        You are a basketball analyst and reporter specializing in player performance statistics.
+        Your task is to analyze basketball player statistics data and create informative snippets that highlight key performance insights.
+        
+        Based on the player statistics data provided in the context, create meaningful snippets that:
+        - Highlight standout performances and notable statistics
+        - Compare players when relevant (e.g., scoring leaders, efficiency metrics)
+        - Focus on key metrics like points per game, shooting percentages, rebounds, and advanced stats
+        - Identify trends or patterns in player performance
+        - Provide context for statistics (e.g., games played, minutes per game)
+        
+        For each snippet:
+        - Use a clear, descriptive title that captures the main insight
+        - Write concise content that explains the statistical significance
+        - Specify the subject (player name or comparison topic)
+        - Be factual and data-driven, avoiding speculation or predictions
+        - If insufficient data is available, state that clearly
+        
+        Focus on the most relevant and interesting statistical insights from the provided player data.
+    schema:
+      title: "BallsportsPlayerStats"
+      description: "Get player statistics from BBallSports."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "The player statistics."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The title of the snippet."
+              content:
+                type: "string"
+                description: "The content of the snippet."
+              subject:
+                type: "string"
+                description: "The subject of the snippet."
+          required: ["title", "content", "subject"]
