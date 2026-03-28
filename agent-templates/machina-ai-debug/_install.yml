@@ -1,0 +1,27 @@
+setup:
+  title: "Debug Assistant"
+  description: AI-powered debugging assistant for workflow execution errors.
+  category:
+    - special-templates
+  estimatedTime: 2 minutes
+  features:
+    - Inline debugging for failed/skipped workflow tasks
+    - Automatic error pattern recognition
+    - Context-aware fix suggestions
+    - Credential and configuration diagnostics
+  integrations:
+    - machina-ai
+  status: available
+  value: agent-templates/machina-ai-debug
+  version: 1.0.0
+
+datasets:
+
+  - type: "prompts"
+    path: "prompts/debug-analyzer.yml"
+
+  - type: "workflow"
+    path: "workflows/machina-ai-debug.yml"
+
+  - type: "workflow"
+    path: "_playground.yml"

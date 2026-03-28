@@ -1,0 +1,28 @@
+workflow:
+  name: "machina-ai-debug"
+  title: "Debug Assistant"
+  description: "AI-powered workflow debugging assistant."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    messages: "$.get('messages', [])"
+    error_context: "$.get('error_context', '')"
+  outputs:
+    message: "$.get('message')"
+    workflow-status: "$.get('message') is not None and 'executed' or 'skipped'"
+  tasks:
+    - type: "prompt"
+      name: "debug-analyzer-prompt"
+      description: "Analyze execution error."
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1-mini"
+      inputs:
+        error_context: "$.get('error_context', '')"
+        messages: "$.get('messages', [])"
+      outputs:
+        message: "$.get('choices')[0].get('message').get('content')"
