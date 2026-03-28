@@ -20,7 +20,7 @@ workflow:
       connector:
         name: "machina-ai"
         command: "invoke_prompt"
-        model: "gpt-4.1-mini"
+        model: "gpt-4.1"
       inputs:
         error_context: "$.get('error_context', '')"
         messages: "$.get('messages', [])"
