@@ -1,0 +1,157 @@
+workflow:
+  name: "alexa-sports-query"
+  title: "Alexa Sports Query"
+  description: "Process Alexa sports queries and return natural language responses"
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NFL_API_KEY"
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NBA_API_KEY"
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    intent_name: "$.get('intent_name')"
+    sport: "$.get('sport', 'soccer')"
+    # Soccer: sr:competition:325 = Brasileirão, sr:season:128461 = current season
+    # Copa do Brasil: sr:season:128463
+    season_id: "$.get('season_id', 'sr:season:128461')"
+    # NFL/NBA: year + type
+    season_year: "$.get('season_year', '2025')"
+    season_type: "$.get('season_type', 'POST')"
+    language: "$.get('language', 'en-US')"
+    user_id: "$.get('user_id')"
+  outputs:
+    response_text: "$.get('response_text', 'Sorry, I could not get sports data right now.')"
+    card_title: "$.get('card_title', 'Sports Update')"
+    card_text: "$.get('card_text', '')"
+    should_end_session: "$.get('should_end_session', True)"
+    workflow-status: "$.get('response_text') is not None and 'executed' or 'failed'"
+  tasks:
+
+    # -------------------------
+    # SOCCER - Season Schedules
+    # Command pattern: get-seasons/{season_id}/{data_type}
+    # Brasileirão: sr:season:128461 | Copa do Brasil: sr:season:128463
+    # Response: { schedules: [{ sport_event, sport_event_status }] }
+    # -------------------------
+    - type: "connector"
+      name: "load-soccer-schedules"
+      description: "Fetch soccer season schedules from Sportradar and parse events"
+      condition: "$.get('sport') == 'soccer'"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('season_id')"
+          data_type: "'schedules.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sport_events: |
+          [
+            {
+              'home': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'home'), 'Unknown'),
+              'away': next((c.get('name') for c in s.get('sport_event', {}).get('competitors', []) if c.get('qualifier') == 'away'), 'Unknown'),
+              'home_score': (s.get('sport_event_status') or {}).get('home_score'),
+              'away_score': (s.get('sport_event_status') or {}).get('away_score'),
+              'status': (s.get('sport_event_status') or {}).get('status', 'not_started'),
+              'start_time': s.get('sport_event', {}).get('start_time', ''),
+              'competition': s.get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name', 'Soccer')
+            }
+            for s in $.get('schedules', [])
+            if (s.get('sport_event_status') or {}).get('status') in ['closed', 'ended', 'live']
+          ][-7:]
+
+    # -------------------------
+    # NFL - Season Schedule
+    # Command pattern: get-games/{season_year}/{season_type}/{data_type}
+    # Response: { weeks: [{ games: [{ home, away, scoring, status }] }] }
+    # -------------------------
+    - type: "connector"
+      name: "load-nfl-schedule"
+      description: "Fetch NFL season schedule from Sportradar and parse events"
+      condition: "$.get('sport') == 'nfl'"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sport_events: |
+          [
+            {
+              'home': g.get('home', {}).get('name', 'Unknown'),
+              'away': g.get('away', {}).get('name', 'Unknown'),
+              'home_score': g.get('scoring', {}).get('home_points'),
+              'away_score': g.get('scoring', {}).get('away_points'),
+              'status': g.get('status', 'scheduled'),
+              'start_time': g.get('scheduled', ''),
+              'competition': 'NFL'
+            }
+            for week in $.get('weeks', [])
+            for g in week.get('games', [])
+            if g.get('status') in ['closed', 'complete']
+          ][-7:]
+
+    # -------------------------
+    # NBA - Season Schedule
+    # Command pattern: get-games/{season_year}/{season_type}/{data_type}
+    # Response: { games: [{ home, away, home_points, away_points, status }] }
+    # -------------------------
+    - type: "connector"
+      name: "load-nba-schedule"
+      description: "Fetch NBA season schedule from Sportradar and parse events"
+      condition: "$.get('sport') == 'nba'"
+      connector:
+        name: "sportradar-nba"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sport_events: |
+          [
+            {
+              'home': g.get('home', {}).get('name', 'Unknown'),
+              'away': g.get('away', {}).get('name', 'Unknown'),
+              'home_score': g.get('home_points'),
+              'away_score': g.get('away_points'),
+              'status': g.get('status', 'scheduled'),
+              'start_time': g.get('scheduled', ''),
+              'competition': 'NBA'
+            }
+            for g in $.get('games', [])
+            if g.get('status') in ['closed', 'complete']
+          ][-7:]
+
+    # -------------------------
+    # LLM: Generate Alexa Response
+    # -------------------------
+    - type: "prompt"
+      name: "generate-alexa-response"
+      description: "Generate conversational Alexa response from sport events"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o-mini"
+      inputs:
+        sport_events: "$.get('sport_events', [])"
+        sport: "$.get('sport')"
+        intent_name: "$.get('intent_name')"
+        language: "$.get('language')"
+      outputs:
+        response_text: "$.get('response_text', 'No data available.')"
+        card_title: "$.context.get('sport', 'Sports').upper() + ' Update'"
+        card_text: "$.get('response_text', '')[:200]"
+        should_end_session: "True"
