@@ -1,0 +1,8 @@
+connector:
+  name: "gemini-tts-eap"
+  description: "Connector for Google Gemini 3.1 Flash TTS Early Access Program (EAP), featuring expressive inline audio tags."
+  filename: "gemini-tts-eap.py"
+  filetype: "pyscript"
+  commands:
+    - name: "generate_speech"
+      value: "generate_speech"

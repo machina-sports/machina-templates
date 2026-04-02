@@ -1,0 +1,26 @@
+workflow:
+  name: "gemini-tts-eap-test"
+  title: "Gemini 3.1 Flash TTS EAP Test"
+  description: "Workflow to test the new expressive Gemini TTS with inline tags."
+  context-variables:
+    gemini-tts-eap:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GEMINI_API_KEY"
+  inputs:
+    text: "$.get('text', 'Welcome to the Machina Sports Alpha Engine. [sighs] What a disaster for the spread. [shouting] Unbelievable!')"
+    voice_name: "$.get('voice_name', 'Puck')"
+  outputs:
+    file_path: "$.get('full_filepath')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    - type: "connector"
+      name: "generate-speech"
+      description: "Generate expressive speech"
+      connector:
+        name: "gemini-tts-eap"
+        command: "generate_speech"
+      inputs:
+        text: "$.get('text')"
+        voice_name: "$.get('voice_name')"
+      outputs:
+        full_filepath: "$.get('file_path')"
+        workflow-status: "'executed'"

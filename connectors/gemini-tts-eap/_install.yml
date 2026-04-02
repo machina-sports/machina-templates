@@ -1,0 +1,4 @@
+variables:
+  - name: "GEMINI_API_KEY"
+    description: "Google AI Studio API Key (must be enabled for the EAP projects)"
+    value: ""
