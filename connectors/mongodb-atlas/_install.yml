@@ -1,0 +1,25 @@
+setup:
+  title: MongoDB Atlas
+  description: Shared MongoDB Atlas connector for multi-tenant data caching with TTL support. Enables "sync once, read many" patterns across tenants.
+  category:
+    - special-templates
+  estimatedTime: 2 minutes
+  features:
+    - Document read/write with upsert support
+    - Bulk write operations
+    - TTL-based auto-expiry via MongoDB TTL indexes
+    - Search cache with google-genai invoke_search compatible output
+    - Flexible query/lookup with projections and sorting
+    - Multi-tenant shared cache support
+  integrations:
+    - mongodb
+  status: available
+  value: connectors/mongodb-atlas
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "mongodb-atlas.yml"
+
+  - type: "workflow"
+    path: "test-connection.yml"
