@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alexa-sports-narrator-site
+  namespace: default
+  labels:
+    app: alexa-sports-narrator-site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alexa-sports-narrator-site
+  template:
+    metadata:
+      labels:
+        app: alexa-sports-narrator-site
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          configMap:
+            name: alexa-sports-narrator-html

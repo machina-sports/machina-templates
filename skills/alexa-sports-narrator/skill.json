@@ -1,0 +1,74 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "name": "Sports Narrator",
+          "summary": "Get personalized sports updates for NFL, NBA, and Soccer via Machina AI.",
+          "description": "Sports Narrator delivers real-time sports updates powered by Machina AI. Ask about NFL scores, NBA results, or Brasileirao matches. Save your favorite teams to get personalized updates and set reminders for upcoming games.\n\nFeatures:\n- NFL, NBA, and Soccer (Brasileirao) scores and stats\n- Personalized updates based on your favorite teams\n- Game reminders — Alexa will notify you 1 hour before kickoff\n- Bilingual: English and Brazilian Portuguese",
+          "examplePhrases": [
+            "Alexa, open Sports Narrator",
+            "What were the NFL scores today",
+            "My favorite team is the Lakers"
+          ],
+          "keywords": [
+            "sports", "NFL", "NBA", "soccer", "football", "scores", "stats", "Brasileirao"
+          ],
+          "smallIconUri": "https://s3.amazonaws.com/BUCKET/small_icon.png",
+          "largeIconUri": "https://s3.amazonaws.com/BUCKET/large_icon.png"
+        },
+        "pt-BR": {
+          "name": "Narrador Esportivo",
+          "summary": "Receba atualizações esportivas personalizadas de NFL, NBA e Futebol via Machina AI.",
+          "description": "O Narrador Esportivo entrega atualizações esportivas em tempo real com inteligência artificial da Machina. Pergunte sobre resultados da NFL, NBA ou do Brasileirão. Salve seus times favoritos para receber atualizações personalizadas e configure lembretes para os próximos jogos.\n\nRecursos:\n- Resultados e estatísticas de NFL, NBA e Futebol (Brasileirão)\n- Atualizações personalizadas dos seus times favoritos\n- Lembretes de jogos — a Alexa te avisa 1 hora antes do apito inicial\n- Bilíngue: inglês e português brasileiro",
+          "examplePhrases": [
+            "Alexa, abrir narrador esportivo",
+            "Quais foram os resultados do Brasileirão hoje",
+            "Meu time favorito é o Flamengo"
+          ],
+          "keywords": [
+            "esporte", "futebol", "NFL", "NBA", "Brasileirão", "resultados", "estatísticas"
+          ],
+          "smallIconUri": "https://s3.amazonaws.com/BUCKET/small_icon.png",
+          "largeIconUri": "https://s3.amazonaws.com/BUCKET/large_icon.png"
+        }
+      },
+      "isAvailableWorldwide": false,
+      "testingInstructions": "1. Open the skill: 'Alexa, open Sports Narrator'\n2. Ask for scores: 'What were the NFL scores today'\n3. Get personalized update: 'Give me my sports update'\n4. Save a favorite team: 'My favorite team is the Lakers'\n5. Set a game reminder: 'Set a reminder for my next game'\n\nNote: Favorite team data persists across sessions via Machina document store.",
+      "category": "SPORTS",
+      "distributionCountries": ["US", "BR"]
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "arn:aws:lambda:sa-east-1:882574060149:function:alexa-sports-narrator",
+          "sslCertificateType": "Wildcard"
+        },
+        "interfaces": []
+      }
+    },
+    "manifestVersion": "1.0",
+    "permissions": [
+      {
+        "name": "alexa:alerts:reminders:skill:readwrite"
+      }
+    ],
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": true,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": {
+        "en-US": {
+          "privacyPolicyUrl": "https://machina.gg/privacy/alexa-sports-narrator",
+          "termsOfUseUrl": "https://machina.gg/terms"
+        },
+        "pt-BR": {
+          "privacyPolicyUrl": "https://machina.gg/privacy/alexa-sports-narrator",
+          "termsOfUseUrl": "https://machina.gg/terms"
+        }
+      }
+    }
+  }
+}
