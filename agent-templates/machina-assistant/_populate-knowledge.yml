@@ -254,3 +254,27 @@ workflow:
         category: "'frontend'"
         topic: "'architecture'"
 
+    # YAML Formatting documentation
+    - type: document
+      name: save-yaml-formatting-docs
+      description: Save YAML formatting feature documentation
+      config:
+        action: save
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        machina-knowledge: |
+          {
+            'title': 'YAML Formatting and Prettifying',
+            'category': 'tools',
+            'content': 'The Machina Assistant includes a built-in YAML formatter and prettifier. This tool helps users align, indent, and fix structural issues in their Machina configuration files. Capability: The assistant can detect YAML blocks in user messages and provide a cleaned version with consistent 2-space indentation and proper alignment. Use cases: Fixing indentation errors in connectors, workflows, or agent definitions, validating YAML structure, and prettifying messy configs. Best Practices: Paste the YAML directly in the chat and ask the assistant to format or prettify it. The assistant will return the corrected YAML in a clean code block.',
+            'tags': ['yaml', 'formatting', 'prettify', 'indentation', 'tools']
+          }
+      metadata:
+        category: "'tools'"
+        topic: "'yaml-formatting'"
+

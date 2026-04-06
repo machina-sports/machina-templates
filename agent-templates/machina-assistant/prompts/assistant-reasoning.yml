@@ -61,7 +61,13 @@ prompts:
          - IPTC mappings
          Examples: "How to use SportRadar?", "What APIs are available?", "How to scrape websites?"
       
-      8. GENERAL (is_general_question)
+      8. YAML_FORMATTING (is_yaml_formatting)
+         - User wants to format, prettify, or align a YAML block
+         - Correcting indentation or structure of Machina configs
+         - Validating YAML syntax
+         Examples: "Format this YAML", "Prettify this", "Fix the indentation in this config"
+
+      9. GENERAL (is_general_question)
          - Getting started questions
          - Platform overview
          - Best practices
@@ -102,6 +108,7 @@ prompts:
         "is_quiz_question",
         "is_database_question",
         "is_api_question",
+        "is_yaml_formatting",
         "is_general_question",
         "response_type",
         "complexity",
@@ -130,6 +137,9 @@ prompts:
         is_api_question:
           type: boolean
           description: "User needs information about external APIs or integrations"
+        is_yaml_formatting:
+          type: boolean
+          description: "User wants to format, prettify, or fix a YAML code block"
         is_general_question:
           type: boolean
           description: "General platform questions, getting started, or overview"
