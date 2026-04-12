@@ -99,6 +99,28 @@ workflow:
         event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
         event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
 
+    # load-stale-live-events - safety mechanism for events that fell outside the time window
+    - type: document
+      name: load-stale-live-events
+      description: Find live/interrupted events outside the startDate window that still need processing.
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.sport:status: "{'$in': ['live', 'interrupted']}"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
     # version-control-update
     - type: document
       name: version-control-update
