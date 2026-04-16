@@ -1,0 +1,201 @@
+skill:
+  name: "mkn-constructor"
+  title: "Machina Skills - Constructor"
+  description: "Construct, validate, and deploy Machina agent-templates and connectors with guided scaffolding and MCP integration."
+  version: "1.0.0"
+  category:
+    - "devops"
+    - "templates"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+
+    - name: "skill-guide"
+      title: "Template Constructor"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "mkn-constructor"
+
+    - name: "skill-reference"
+      title: "Analyze"
+      filename: "references/analyze.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "analyze"
+
+    - name: "skill-reference"
+      title: "API"
+      filename: "references/api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "api"
+
+    - name: "skill-reference"
+      title: "Create"
+      filename: "references/create.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "create"
+
+    - name: "skill-reference"
+      title: "Init"
+      filename: "references/init.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "init"
+
+    - name: "skill-reference"
+      title: "Install"
+      filename: "references/install.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "install"
+
+    - name: "skill-schema"
+      title: "Schema: Agent"
+      filename: "schemas/agent.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-agent"
+
+    - name: "skill-schema"
+      title: "Schema: Connector"
+      filename: "schemas/connector.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-connector"
+
+    - name: "skill-schema"
+      title: "Schema: Document"
+      filename: "schemas/document.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-document"
+
+    - name: "skill-schema"
+      title: "Schema: Mapping"
+      filename: "schemas/mapping.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-mapping"
+
+    - name: "skill-schema"
+      title: "Schema: Prompt"
+      filename: "schemas/prompt.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-prompt"
+
+    - name: "skill-schema"
+      title: "Schema: Setup"
+      filename: "schemas/setup.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-setup"
+
+    - name: "skill-schema"
+      title: "Schema: Skill"
+      filename: "schemas/skill.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-skill"
+
+    - name: "skill-schema"
+      title: "Schema: Workflow"
+      filename: "schemas/workflow.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-schema"
+        skill: "mkn-constructor"
+        reference_id: "schema-workflow"
+
+    - name: "skill-reference"
+      title: "Secrets"
+      filename: "references/secrets.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "secrets"
+
+    - name: "skill-reference"
+      title: "Trace"
+      filename: "references/trace.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "trace"
+
+    - name: "skill-reference"
+      title: "Validate"
+      filename: "references/validate.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "validate"
+
+    - name: "skill-reference"
+      title: "YAML Reference"
+      filename: "references/yaml-reference.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "yaml-reference"
+
+    - name: "skill-reference"
+      title: "Connectors"
+      filename: "references/connectors.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "connectors"
+
+    - name: "skill-reference"
+      title: "Frontend API"
+      filename: "references/frontend-api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "mkn-constructor"
+        reference_id: "frontend-api"
+
+  workflows:
+
+    - name: "mkn-constructor-check-setup"
+      description: "check-doc-structure"
+      inputs:
+        document_name: "$.get('document_name', 'doc-structure')"
+      outputs:
+        doc-structure: "$.get('doc-structure', {})"
+        check-status: "$.get('workflow-status')"
