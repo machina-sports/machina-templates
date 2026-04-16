@@ -1,0 +1,5 @@
+connector:
+  name: "goalserve-soccer-pyscript"
+  description: "Goalserve Soccer Data Feed API (Python Script)"
+  filename: "goalserve-soccer.py"
+  filetype: "pyscript"

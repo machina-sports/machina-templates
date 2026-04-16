@@ -1,0 +1,81 @@
+workflow:
+  name: "goalserve-soccer-sync-livescores"
+  title: "Goalserve Soccer - Sync Livescores"
+  description: "Workflow to synchronize live soccer scores from Goalserve API."
+  context-variables:
+    debugger:
+      enabled: true
+    goalserve-soccer-pyscript:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOALSERVE_API_KEY"
+  inputs:
+    day: "$.get('day', 'home')"
+    league_id: "$.get('league_id', '')"
+  outputs:
+    matches: "$.get('matches')"
+    matches_count: "$.get('matches_count', 0)"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # task-load-livescores
+    - type: "connector"
+      name: "task-load-livescores"
+      description: "Get Livescores from Goalserve"
+      connector:
+        name: "goalserve-soccer-pyscript"
+        command: "get_livescores"
+      inputs:
+        api_key: "$.get('api_key')"
+        day: "$.get('day', 'home')"
+        cat: "$.get('league_id') if $.get('league_id') else None"
+      outputs:
+        categories_raw: "$.get('categories', {}).get('category', [])"
+        matches: |
+          [
+            {
+              'league_id': cat.get('@id'),
+              'league_name': cat.get('@name'),
+              'league_gid': cat.get('@gid'),
+              'match_id': m.get('@id'),
+              'static_id': m.get('@static_id'),
+              'status': m.get('@status'),
+              'timer': m.get('@timer'),
+              'date': m.get('@date'),
+              'time': m.get('@time'),
+              'home_team': m.get('localteam', {}).get('@name'),
+              'home_id': m.get('localteam', {}).get('@id'),
+              'home_score': m.get('localteam', {}).get('@score'),
+              'away_team': m.get('visitorteam', {}).get('@name'),
+              'away_id': m.get('visitorteam', {}).get('@id'),
+              'away_score': m.get('visitorteam', {}).get('@score'),
+              'ht_score': m.get('@ht_score', ''),
+              'ft_score': m.get('@ft_score', '')
+            }
+            for cat in ($.get('categories', {}).get('category', []) if isinstance($.get('categories', {}).get('category'), list) else [$.get('categories', {}).get('category', {})] if $.get('categories', {}).get('category') else [])
+            for m in (cat.get('matches', {}).get('match', []) if isinstance(cat.get('matches', {}).get('match'), list) else [cat.get('matches', {}).get('match', {})] if cat.get('matches', {}).get('match') else [])
+          ]
+        matches_count: "len($.get('matches', []))"
+        workflow-status: "'executed'"
+
+    # task-save-livescores
+    - type: "document"
+      name: "task-save-livescores"
+      description: "Save livescores snapshot."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        goalserve-livescores: |
+          {
+            'data': $.get('matches'),
+            'title': f"Goalserve Livescores - {$.get('day', 'home')}",
+            'matches_count': $.get('matches_count', 0),
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'livescores'"

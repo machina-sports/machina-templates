@@ -1,0 +1,57 @@
+setup:
+  title: Goalserve Soccer Data Feed
+  description: Connect to the Goalserve Soccer API for livescores, fixtures, standings, statistics, odds, and more.
+  category:
+    - data-acquisition
+    - soccer
+  estimatedTime: 1 minute
+  features:
+    - Real-time livescores with 5-second refresh rate
+    - Full season fixtures and results
+    - League standings with home/away splits
+    - Live match statistics and lineups (top leagues)
+    - Predicted lineups for upcoming matches
+    - Player and team profiles with career statistics
+    - Head-to-head historical data (last 50 matches)
+    - Pregame odds comparison from multiple bookmakers
+    - Injuries and suspensions feed
+    - Top scorers, assists, and cards leaders
+    - Historical results for past seasons
+    - Video highlights
+    - Timestamp-based incremental sync support
+    - JSON output via ?json=1 parameter
+
+  integrations:
+    - goalserve
+  status: available
+  value: connectors/goalserve-soccer
+  version: 1.0.0
+
+datasets:
+
+  # connector
+
+  - type: "connector"
+    path: "goalserve-soccer-pyscript.yml"
+
+  # test credentials
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
+  # sync workflows
+
+  - type: "workflow"
+    path: "workflows/sync-leagues.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-livescores.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-standings.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-fixtures.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-seasons.yml"

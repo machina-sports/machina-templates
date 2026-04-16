@@ -1,0 +1,96 @@
+workflow:
+  name: "goalserve-soccer-sync-standings"
+  title: "Goalserve Soccer - Sync Standings"
+  description: "Workflow to synchronize league standings from Goalserve API."
+  context-variables:
+    debugger:
+      enabled: true
+    goalserve-soccer-pyscript:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOALSERVE_API_KEY"
+  inputs:
+    league_id: "$.get('league_id', '1204')"
+    season: "$.get('season', '')"
+  outputs:
+    standings: "$.get('standings')"
+    league_name: "$.get('league_name')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # task-load-standings
+    - type: "connector"
+      name: "task-load-standings"
+      description: "Get Standings from Goalserve"
+      connector:
+        name: "goalserve-soccer-pyscript"
+        command: "get_standings"
+      inputs:
+        api_key: "$.get('api_key')"
+        league_id: "$.get('league_id', '1204')"
+        season: "$.get('season') if $.get('season') else None"
+      outputs:
+        standings_raw: "$.get('standings', {})"
+        league_name: "$.get('standings', {}).get('tournament', {}).get('@league', '')"
+        season: "$.get('standings', {}).get('tournament', {}).get('@season', '')"
+        standings: |
+          [
+            {
+              'position': t.get('@position'),
+              'team_id': t.get('@id'),
+              'team_name': t.get('@name'),
+              'recent_form': t.get('@recent_form', ''),
+              'played': t.get('overall', {}).get('@gp'),
+              'won': t.get('overall', {}).get('@w'),
+              'drawn': t.get('overall', {}).get('@d'),
+              'lost': t.get('overall', {}).get('@l'),
+              'goals_for': t.get('overall', {}).get('@gs'),
+              'goals_against': t.get('overall', {}).get('@ga'),
+              'goal_diff': t.get('total', {}).get('@gd'),
+              'points': t.get('total', {}).get('@p'),
+              'description': t.get('description', {}).get('@value', '') if isinstance(t.get('description'), dict) else t.get('@description', ''),
+              'home': {
+                'played': t.get('home', {}).get('@gp'),
+                'won': t.get('home', {}).get('@w'),
+                'drawn': t.get('home', {}).get('@d'),
+                'lost': t.get('home', {}).get('@l'),
+                'goals_for': t.get('home', {}).get('@gs'),
+                'goals_against': t.get('home', {}).get('@ga')
+              },
+              'away': {
+                'played': t.get('away', {}).get('@gp'),
+                'won': t.get('away', {}).get('@w'),
+                'drawn': t.get('away', {}).get('@d'),
+                'lost': t.get('away', {}).get('@l'),
+                'goals_for': t.get('away', {}).get('@gs'),
+                'goals_against': t.get('away', {}).get('@ga')
+              }
+            }
+            for t in ($.get('standings', {}).get('tournament', {}).get('team', []) if isinstance($.get('standings', {}).get('tournament', {}).get('team'), list) else [$.get('standings', {}).get('tournament', {}).get('team', {})] if $.get('standings', {}).get('tournament', {}).get('team') else [])
+          ]
+        workflow-status: "'executed'"
+
+    # task-save-standings
+    - type: "document"
+      name: "task-save-standings"
+      description: "Save standings to document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        goalserve-standings: |
+          {
+            'data': $.get('standings'),
+            'league_id': $.get('league_id'),
+            'league_name': $.get('league_name'),
+            'season': $.get('season'),
+            'title': f"Standings - {$.get('league_name') or $.get('league_id')} {$.get('season', '')}",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'standings'"
+        league_id: "$.get('league_id')"
