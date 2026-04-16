@@ -1,0 +1,110 @@
+workflow:
+  name: "goalserve-soccer-sync-leagues"
+  title: "Goalserve Soccer - Sync Leagues"
+  description: "Workflow to synchronize soccer leagues from Goalserve API to Machina."
+  context-variables:
+    goalserve-soccer-pyscript:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOALSERVE_API_KEY"
+  outputs:
+    leagues: "$.get('leagues')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # task-check-document-timedelta
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the leagues document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=3)}"
+        value.status: "'active'"
+      inputs:
+        name: "'goalserve-leagues'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-load-leagues
+    - type: "connector"
+      name: "task-load-leagues"
+      description: "Get Leagues from Goalserve"
+      connector:
+        name: "goalserve-soccer-pyscript"
+        command: "get_leagues_mapping"
+      condition: "$.get('should_update') == True"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        leagues_raw: "$.get('fixtures', {}).get('mapping', [])"
+        leagues: |
+          [
+            {
+              'id': l.get('@id'),
+              'name': l.get('@name'),
+              'country': l.get('@country'),
+              'live_lineups': l.get('@live_lineups'),
+              'live_stats': l.get('@live_stats'),
+              'season_start': l.get('@date_start'),
+              'season_end': l.get('@date_end'),
+              'season': l.get('@season')
+            }
+            for l in ($.get('fixtures', {}).get('mapping', []) if isinstance($.get('fixtures', {}).get('mapping'), list) else [])
+          ]
+
+    # task-update-leagues
+    - type: "document"
+      name: "task-update-leagues"
+      description: "Update the leagues document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        goalserve-leagues: |
+          {
+            'data': $.get('leagues'),
+            'title': 'Goalserve Soccer Leagues',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-leagues
+    - type: "document"
+      name: "task-bulk-save-leagues"
+      description: "Bulk save the leagues."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "goalserve-league"
+      documents:
+        items: |
+          [
+            {
+              **l,
+              'title': f"{l.get('country', '')} - {l.get('name', '')}",
+              'selected': False
+            }
+            for l in $.get('leagues', [])
+          ]
+      metadata:
+        document_type: "'league'"
