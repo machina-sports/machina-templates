@@ -1,0 +1,59 @@
+workflow:
+  name: get-active-seasons
+  title: Get Active Seasons for Competitions
+  description: Get list of active seasons for all configured competitions
+  inputs:
+    competition_ids: "$.get('competition_ids', [])"
+  outputs:
+    active_seasons: "$.get('active_seasons', [])"
+    workflow-status: "len($.get('active_seasons', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # Get all seasons for competitions
+    - type: document
+      name: load-all-seasons
+      description: Load all season documents for the configured competitions
+      config:
+        action: search
+        search-limit: 1000
+        search-vector: false
+      filters:
+        name: "'season'"
+        value.status: "'active'"
+        metadata.document_type: "'season'"
+      inputs:
+        name: "'season'"
+      outputs:
+        season_documents: "$.get('documents', [])"
+        
+    # Filter and format active seasons
+    - type: connector
+      name: process-active-seasons
+      description: Process season documents to extract active season data
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o-mini"
+      inputs:
+        messages: |
+          [{
+            "role": "system",
+            "content": "You are a data processor. Extract active seasons from the season documents. Return only seasons that are currently active (status='active') and belong to the configured competition IDs. Return as JSON array with season_id, competition_id, and season_name fields."
+          }, {
+            "role": "user", 
+            "content": f"Competition IDs to process: {$.get('competition_ids', [])}\n\nSeason documents: {$.get('season_documents', [])}"
+          }]
+      outputs:
+        active_seasons: |
+          [
+            {
+              'season_id': season.get('id', ''),
+              'competition_id': season.get('competition_id', ''),
+              'season_name': season.get('name', ''),
+              'year': season.get('year', '')
+            }
+            for season in $.get('season_documents', [])
+            if season.get('value', {}).get('status') == 'active' and 
+               any(comp_id in season.get('id', '') or comp_id in str(season.get('value', {})) 
+                   for comp_id in $.get('competition_ids', []))
+          ]
