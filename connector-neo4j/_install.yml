@@ -1,0 +1,3 @@
+datasets:
+  - type: "connector"
+    path: "sdk-neo4j.yml"
