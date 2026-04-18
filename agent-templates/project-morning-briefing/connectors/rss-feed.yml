@@ -1,0 +1,19 @@
+connector:
+  name: rss-feed
+  description: "Fetches items from an RSS feed"
+  version: 1.0.0
+  scheme: "https"
+  base_path: "api.rss2json.com/v1"
+  operations:
+    - name: get-feed
+      command: "get-api.json"
+      method: "GET"
+      parameters:
+        - name: "rss_url"
+          in: "query"
+          required: true
+          description: "The URL of the RSS feed to fetch"
+          schema:
+            type: "string"
+      outputs:
+        items: "$.items"
