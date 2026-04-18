@@ -1,0 +1,21 @@
+name: summarize-articles
+description: "Summarizes a list of articles into a morning briefing."
+connector:
+  name: google-genai
+  command: invoke_prompt
+  model: gemini-1.5-flash
+  provider: vertex_ai
+  location: global
+inputs:
+  articles: []
+prompt: |
+  You are an expert at summarizing news. Your tone is friendly and informative.
+  Given the following articles, please generate a 5-bullet point morning briefing.
+  Group the bullet points by topic.
+
+  Articles:
+  {{ articles }}
+
+  Your summary should be in markdown format.
+outputs:
+  briefing_markdown: "$.get('result', '')"

@@ -1,0 +1,21 @@
+name: generate-briefing
+description: "Generates a morning briefing from an RSS feed."
+inputs:
+  rss_url: "http://feeds.bbci.co.uk/news/rss.xml"
+  timezone: "'America/Sao_Paulo'"
+  lookback_hours: 24
+tasks:
+  - name: fetch-articles
+    workflow: rss-feed
+    inputs:
+      url: "{{ inputs.rss_url }}"
+      lookback_hours: "{{ inputs.lookback_hours }}"
+  - name: summarize-briefing
+    workflow: summarize-articles
+    inputs:
+      articles: "{{ tasks.fetch-articles.outputs.documents }}"
+outputs:
+  briefing_markdown: "{{ tasks.summarize-briefing.outputs.briefing_markdown }}"
+  items_considered: "{{ tasks.fetch-articles.outputs.documents }}"
+  result: "{{ tasks.summarize-briefing.outputs.briefing_markdown }}"
+  workflow-status: "$.get('result', '') != ''"

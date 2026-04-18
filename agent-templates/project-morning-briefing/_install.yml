@@ -1,0 +1,25 @@
+setup:
+  title: Project Morning Briefing
+  description: An agent template that generates a daily morning briefing from an RSS feed.
+  version: 0.1.0
+  author: Machina
+  author_url: https://machina.gg
+
+connectors:
+  - type: connector
+    source: connectors/rss-feed.yml
+
+prompts:
+  - type: prompt
+    source: prompts/summarize-articles.yml
+
+workflows:
+  - type: workflow
+    source: workflows/generate-briefing.yml
+
+agents:
+  - type: agent
+    name: morning-briefing-agent
+    description: "An agent that generates and delivers a morning briefing."
+    workflows:
+      - name: generate-briefing

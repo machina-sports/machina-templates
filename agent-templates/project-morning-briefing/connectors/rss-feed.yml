@@ -1,0 +1,14 @@
+name: rss-feed
+description: "Fetches and parses an RSS feed"
+type: rss
+tags:
+  - data-loader
+inputs:
+  url: "http://feeds.bbci.co.uk/news/rss.xml"
+  lookback_hours: 24
+outputs:
+  documents:
+    - title: "$.title"
+      content: "$.summary"
+      url: "$.link"
+      timestamp: "$.published"
