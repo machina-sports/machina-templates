@@ -1,0 +1,12 @@
+name: summarize-items
+description: Summarizes a list of items into five concise bullet points.
+tasks:
+  - method: google-genai.invoke_prompt
+    on-success: success
+    on-failure: failure
+inputs:
+  items: []
+  prompt: morning-briefing-summary
+outputs:
+  briefing_markdown: $.get('result', '')
+  workflow-status: "$.get('result', '') != ''"

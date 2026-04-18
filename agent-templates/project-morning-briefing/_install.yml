@@ -1,0 +1,131 @@
+setup:
+  name: project-morning-briefing
+  title: Project Morning Briefing
+  description: Sends a daily project briefing to a list of recipients.
+  version: 0.0.1
+  type: agent
+
+# Agent
+agent:
+  name: project-morning-briefing
+  description: Fetches recent project items, summarizes them, and emails a briefing.
+  type: event_driven
+  event_driven:
+    - workflow: fetch-recent
+    - workflow: summarize-items
+    - workflow: deliver-briefing
+
+# Workflows
+workflows:
+  - name: fetch-recent
+    description: Fetches recent items from the last 24 hours from a specified URL.
+    tasks:
+      - method: temp-downloader.get-process
+        on-success: success
+        on-failure: failure
+    inputs:
+      url: 'https://some-data-source.com/api/recent-items'
+    outputs:
+      items: $.get('result', [])
+      workflow-status: "$.get('result') != None"
+
+  - name: summarize-items
+    description: Summarizes a list of items into five concise bullet points.
+    tasks:
+      - method: google-genai.invoke_prompt
+        on-success: success
+        on-failure: failure
+    inputs:
+      items: []
+      prompt: morning-briefing-summary
+    outputs:
+      briefing_markdown: $.get('result', '')
+      workflow-status: "$.get('result', '') != ''"
+
+  - name: deliver-briefing
+    description: Sends the briefing to a list of recipients via email.
+    tasks:
+      - method: email-sender.post-send
+        on-success: success
+        on-failure: failure
+    inputs:
+      recipients: "$TEMP_CONTEXT_VARIABLE_BRIEFING_RECIPIENTS"
+      subject: "Project Morning Briefing"
+      briefing_markdown: ""
+    outputs:
+      delivery_status: $.get('status_code', 'failed')
+      workflow-status: "$.get('status_code') == 202"
+
+# Connectors
+connectors:
+  - name: email-sender
+    description: Sends an email using SendGrid.
+    type: http
+    http:
+      base_url: https://api.sendgrid.com/v3
+      security_schemes:
+        bearerAuth:
+          type: http
+          scheme: bearer
+      context_variables:
+        bearerAuth: "$TEMP_CONTEXT_VARIABLE_SENDGRID_API_KEY"
+    commands:
+      - name: post-send
+        method: post
+        path: /mail/send
+        body: |
+          {
+            "personalizations": [
+              {
+                "to": [
+                  {
+                    "email": "{{ recipient }}"
+                  }
+                ]
+              }
+            ],
+            "from": {
+              "email": "briefings@machina.gg"
+            },
+            "subject": "{{ subject }}",
+            "content": [
+              {
+                "type": "text/markdown",
+                "value": "{{ briefing_markdown }}"
+              }
+            ]
+          }
+        parameters:
+          - name: recipients
+            in: body
+            path: personalizations.0.to
+            type: array
+            items:
+              type: object
+              properties:
+                email:
+                  type: string
+          - name: subject
+            in: body
+            path: subject
+            type: string
+          - name: briefing_markdown
+            in: body
+            path: content.0.value
+            type: string
+
+# Prompts
+prompts:
+  - name: morning-briefing-summary
+    description: Creates a 5-bullet summary of recent project items.
+    model_name: gemini-1.5-flash
+    model_provider: google
+    prompt: |
+      You are a project manager's assistant.
+      Review the following items from the last 24 hours and generate a concise 5-bullet summary.
+      Group the bullets by topic.
+
+      Items:
+      {{ items }}
+
+      Your summary should be in Markdown format.

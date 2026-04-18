@@ -1,0 +1,13 @@
+name: deliver-briefing
+description: Sends the briefing to a list of recipients via email.
+tasks:
+  - method: email-sender.post-send
+    on-success: success
+    on-failure: failure
+inputs:
+  recipients: "$TEMP_CONTEXT_VARIABLE_BRIEFING_RECIPIENTS"
+  subject: "Project Morning Briefing"
+  briefing_markdown: ""
+outputs:
+  delivery_status: $.get('status_code', 'failed')
+  workflow-status: "$.get('status_code') == 202"
