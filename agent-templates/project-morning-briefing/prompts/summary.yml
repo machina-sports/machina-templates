@@ -1,0 +1,24 @@
+prompt:
+  name: "morning-briefing-summary"
+  description: "Summarizes a list of articles into a 5-bullet morning briefing."
+  version: 1.0.0
+  model: "gemini-1.5-flash"
+  provider: "vertex_ai"
+  location: "global"
+  inputs:
+    - name: "items"
+      type: "array"
+      required: true
+      description: "A list of articles with title, link, and content."
+  template: |
+    You are an assistant that creates a concise morning briefing.
+    Summarize the following items into a 5-bullet point summary.
+    Group the bullets by topic.
+    Keep a friendly and informative tone.
+
+    Here are the items:
+    {{ items | tojson }}
+
+    Please provide the summary in Markdown format.
+  outputs:
+    briefing_markdown: "$.text"

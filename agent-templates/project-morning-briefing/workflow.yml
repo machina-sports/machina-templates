@@ -1,0 +1,59 @@
+workflow:
+  name: "project-morning-briefing"
+  description: "Fetches recent items from an RSS feed and generates a morning briefing."
+  version: 1.0.0
+  inputs:
+    - name: "rss_url"
+      type: "string"
+      required: true
+      description: "The URL of the RSS feed to fetch."
+    - name: "timezone"
+      type: "string"
+      default: "'America/Sao_Paulo'"
+      description: "The timezone to use for the lookback period."
+    - name: "lookback_hours"
+      type: "integer"
+      default: 24
+      description: "How many hours back to look for items."
+  tasks:
+    - name: "fetch_feed"
+      connector: "rss-feed"
+      command: "get-feed"
+      inputs:
+        rss_url: "{{ inputs.rss_url }}"
+      outputs:
+        items: "$.items"
+
+    - name: "filter_recent_items"
+      language: "python"
+      code: |
+        import datetime
+        import pytz
+        from dateutil.parser import parse
+
+        now = datetime.datetime.now(pytz.timezone({{ inputs.timezone }}))
+        lookback = now - datetime.timedelta(hours={{ inputs.lookback_hours }})
+        recent_items = []
+        for item in {{ tasks.fetch_feed.outputs.items }}:
+            pub_date = parse(item['pubDate'])
+            if pub_date.tzinfo is None:
+                pub_date = pytz.utc.localize(pub_date) # Assume UTC if no timezone
+            if pub_date > lookback:
+                recent_items.append(item)
+        result = {"items": recent_items}
+      outputs:
+        items: "$.items"
+
+    - name: "summarize_items"
+      connector: "google-genai"
+      command: "invoke_prompt"
+      prompt: "morning-briefing-summary"
+      inputs:
+        items: "{{ tasks.filter_recent_items.outputs.items }}"
+      outputs:
+        briefing_markdown: "$.text"
+
+  outputs:
+    briefing_markdown: "{{ tasks.summarize_items.outputs.briefing_markdown }}"
+    items_considered: "{{ tasks.filter_recent_items.outputs.items }}"
+    workflow-status: "len('{{ tasks.summarize_items.outputs.briefing_markdown }}') > 0"

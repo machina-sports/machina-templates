@@ -1,0 +1,25 @@
+setup:
+  title: "Project Morning Briefing"
+  description: "Generates a daily morning briefing from an RSS feed."
+  category:
+    - "custom-templates"
+  estimatedTime: "5 minutes"
+  features:
+    - "Fetches RSS feed items"
+    - "Filters for recent items (default 24 hours)"
+    - "Summarizes items into a 5-bullet briefing using Google GenAI"
+    - "Configurable timezone and lookback period"
+  integrations:
+    - "rss"
+    - "google-genai"
+  status: "available"
+  value: "agent-templates/project-morning-briefing"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "connectors/rss-feed.yml"
+  - type: "prompt"
+    path: "prompts/summary.yml"
+  - type: "workflow"
+    path: "workflow.yml"
