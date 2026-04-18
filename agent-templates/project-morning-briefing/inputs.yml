@@ -1,0 +1,8 @@
+- name: timezone
+  description: IANA tz string
+  type: string
+  default: America/Sao_Paulo
+- name: recipients
+  description: array of emails (from vault, not hardcoded)
+  type: vault
+  default: BRIEFING_RECIPIENTS

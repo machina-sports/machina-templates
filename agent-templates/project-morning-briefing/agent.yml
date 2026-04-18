@@ -1,0 +1,7 @@
+name: project-morning-briefing
+description: Fetches recent project items, summarizes them, and emails a briefing.
+type: event_driven
+event_driven:
+  - workflow: fetch-recent
+  - workflow: summarize-items
+  - workflow: deliver-briefing

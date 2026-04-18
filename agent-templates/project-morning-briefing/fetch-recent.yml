@@ -1,0 +1,11 @@
+name: fetch-recent
+description: Fetches recent items from the last 24 hours from a specified URL.
+tasks:
+  - method: temp-downloader.get-process
+    on-success: success
+    on-failure: failure
+inputs:
+  url: 'https://some-data-source.com/api/recent-items'
+outputs:
+  items: $.get('result', [])
+  workflow-status: "$.get('result') != None"
