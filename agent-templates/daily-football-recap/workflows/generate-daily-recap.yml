@@ -32,16 +32,7 @@ workflow:
     workflow-status: "'executed'"
   tasks:
 
-    # resolve yesterday's date if not provided
-    - type: expression
-      name: resolve-recap-date
-      description: "Resolve the target date for the recap (defaults to yesterday, UTC)."
-      inputs:
-        recap_date: "$.get('recap_date')"
-      outputs:
-        target_date: "$.get('recap_date') or (datetime.utcnow() - timedelta(days=1)).date().isoformat()"
-
-    # fetch Bundesliga fixtures
+    # fetch Bundesliga fixtures (defaults recap_date to yesterday UTC when not provided)
     - type: connector
       name: fetch-bundesliga-fixtures
       description: "Fetch Bundesliga fixtures for the target date from API Football."
@@ -51,10 +42,11 @@ workflow:
       inputs:
         league: "$.get('bundesliga_league_id')"
         season: "$.get('season')"
-        date: "$.get('target_date')"
+        date: "$.get('recap_date') or (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')"
         timezone: "$.get('timezone')"
       outputs:
         bundesliga_fixtures: "$.get('response', [])"
+        target_date: "$.get('recap_date') or (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')"
 
     # fetch Premier League fixtures
     - type: connector
