@@ -1,0 +1,21 @@
+setup:
+  title: "Corinthians Fan Engagement"
+  description: "An agent template for generating match-day content for Corinthians fans, including match previews, summaries, and social media updates."
+  category:
+    - content-creation
+  estimatedTime: 10 minutes
+  features:
+    - AI-powered match previews
+    - Automated match summaries
+    - Social media content generation
+  integrations:
+    - sportradar
+  status: available
+  value: "agent-templates/machina-for-corinthians"
+  version: 1.0.0
+
+datasets:
+  - type: "prompt"
+    path: "prompts/generate-match-preview-prompt.yml"
+  - type: "workflow"
+    path: "workflows/generate-match-preview.yml"

@@ -1,0 +1,39 @@
+workflow:
+  name: "generate-match-preview"
+  title: "Generate Corinthians Match Preview"
+  description: "A workflow to generate a match preview for an upcoming Corinthians game."
+  inputs:
+    - name: "home_team"
+      type: "string"
+      description: "The home team."
+      default: "Corinthians"
+    - name: "away_team"
+      type: "string"
+      description: "The away team."
+      required: true
+    - name: "match_date"
+      type: "string"
+      description: "The date of the match."
+      required: true
+    - name: "match_venue"
+      type: "string"
+      description: "The venue of the match."
+      required: true
+    - name: "competition"
+      type: "string"
+      description: "The competition."
+      required: true
+  tasks:
+    - name: "generate_preview"
+      connector: "openai"
+      command: "invoke_prompt"
+      prompt: "corinthians-match-preview"
+      inputs:
+        home_team: "{{ inputs.home_team }}"
+        away_team: "{{ inputs.away_team }}"
+        match_date: "{{ inputs.match_date }}"
+        match_venue: "{{ inputs.match_venue }}"
+        competition: "{{ inputs.competition }}"
+  outputs:
+    - name: "match_preview"
+      value: "{{ tasks.generate_preview.result }}"
