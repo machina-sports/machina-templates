@@ -28,9 +28,6 @@ datasets:
   - type: connector
     path: connectors/api-mailgun.yml
 
-  - type: connector
-    path: ../../connectors/api-football/api-football.yml
-
   # prompts
 
   - type: prompts
