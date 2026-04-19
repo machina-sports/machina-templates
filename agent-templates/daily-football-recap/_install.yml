@@ -1,0 +1,42 @@
+setup:
+  title: Daily Football Recap
+  description: AI-powered daily email recap summarizing yesterday's Bundesliga, Premier League, and Italian Serie A matches.
+  category:
+    - fan-engagement
+  estimatedTime: 1 minute
+  features:
+    - Fetches yesterday's fixtures from Bundesliga, Premier League, and Serie A.
+    - Generates a readable LLM-written recap of the matches.
+    - Sends the recap via email to the configured recipient.
+  integrations:
+    - api-football
+    - google-genai
+    - api-mailgun
+  status: available
+  value: agent-templates/daily-football-recap
+  version: 1.0.0
+
+datasets:
+
+  # agent
+
+  - type: agent
+    path: agents/daily-recap-agent.yml
+
+  # connectors
+
+  - type: connector
+    path: connectors/api-mailgun.yml
+
+  - type: connector
+    path: ../../connectors/api-football/api-football.yml
+
+  # prompts
+
+  - type: prompts
+    path: prompts/generate-recap.yml
+
+  # workflows
+
+  - type: workflow
+    path: workflows/generate-daily-recap.yml
