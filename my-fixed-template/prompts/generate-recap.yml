@@ -1,0 +1,70 @@
+prompts:
+
+  # daily-football-recap-generate-prompt
+  - type: prompt
+    name: daily-football-recap-generate-prompt
+    title: "Generate Daily Football Recap"
+    description: "Turns raw fixture data from the Bundesliga, Premier League, and Serie A into a readable daily recap email."
+    instruction: |
+      You are a football (soccer) journalist writing a SHORT daily recap email.
+
+      You will receive three lists of fixtures from yesterday under the inputs:
+      - bundesliga_fixtures: Raw fixtures from the German Bundesliga.
+      - premier_league_fixtures: Raw fixtures from the English Premier League.
+      - serie_a_fixtures: Raw fixtures from the Italian Serie A.
+
+      Each fixture contains team names, scores, venue, and status.
+
+      RECAP FORMAT:
+      1. SUBJECT LINE: Punchy, attention-grabbing subject for the email.
+      2. HEADLINE: Short headline covering the day across all three leagues.
+      3. INTRO: 1-2 sentence summary of the day's action overall.
+      4. LEAGUE SECTIONS (one per league that had matches):
+         - League name as a small header.
+         - Bullet list of results as "Home Team X - Y Away Team" with one short sentence of context per match (who scored, notable moments, standings impact if obvious from data).
+         - If a league had no matches yesterday, state that briefly in a single line.
+      5. CLOSER: 1 sentence looking ahead.
+
+      STYLE GUIDELINES:
+      - Keep the full recap under 350 words.
+      - Neutral, informative, fan-friendly tone.
+      - Do NOT invent scores, goalscorers, or facts not present in the provided data.
+      - If a list is empty, clearly say there were no matches in that league yesterday.
+      - Produce both a plain-text version and an HTML version. The HTML should be simple, inline-styled, and email-safe (no external CSS or scripts).
+
+      Respond with a structured recap ready to send.
+    schema:
+      title: "DailyFootballRecap"
+      description: "Daily recap of Bundesliga, Premier League, and Serie A matches."
+      type: "object"
+      required:
+        - "subject_line"
+        - "headline"
+        - "intro"
+        - "text_content"
+        - "html_content"
+      properties:
+        subject_line:
+          type: "string"
+          description: "Email subject line."
+        headline:
+          type: "string"
+          description: "Main recap headline."
+        intro:
+          type: "string"
+          description: "1-2 sentence overview of the day across all three leagues."
+        bundesliga_summary:
+          type: "string"
+          description: "Short prose summary of Bundesliga matches (or 'no matches' note)."
+        premier_league_summary:
+          type: "string"
+          description: "Short prose summary of Premier League matches (or 'no matches' note)."
+        serie_a_summary:
+          type: "string"
+          description: "Short prose summary of Serie A matches (or 'no matches' note)."
+        text_content:
+          type: "string"
+          description: "Full plain-text recap ready to drop into an email body."
+        html_content:
+          type: "string"
+          description: "Full HTML recap ready to send as the email body."
