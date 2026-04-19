@@ -1,6 +1,6 @@
 connector:
   name: "google-storage"
-  description: "This connector is the google-storage"
+  description: "Upload files to Google Cloud Storage from local paths, HTTP(S) URLs, gs:// authenticated sources, raw bytes, or Base64 (Data URI or raw)."
   filename: "google-storage.py"
   filetype: "pyscript"
   commands:
