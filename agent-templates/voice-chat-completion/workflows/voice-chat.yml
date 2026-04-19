@@ -7,7 +7,7 @@ workflow:
       enabled: true
     google-speech-to-text:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
-    google-storage-v2:
+    google-storage:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
     google-genai:
@@ -43,7 +43,7 @@ workflow:
     - type: "connector"
       name: "upload-to-gcs"
       connector:
-        name: "google-storage-v2"
+        name: "google-storage"
         command: "invoke_upload"
       inputs:
         file_path: "$.get('temp_audio_path')"
