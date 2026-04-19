@@ -1,21 +1,22 @@
 setup:
   title: Google Storage
-  description: Connect to the Google Storage API to get AI responses.
+  description: Upload files to Google Cloud Storage from local paths, URLs, authenticated gs:// sources, raw bytes, or Base64.
   category:
     - special-templates
   estimatedTime: 1 minute
   features:
-    - Real-time file upload
-    - Real-time file download
-    - Real-time file deletion
+    - Upload local files, HTTP/HTTPS URLs, raw bytes, and Base64 (Data URI or raw)
+    - Authenticated gs:// and storage.googleapis.com downloads
+    - Custom remote_path and cache_control overrides
+    - GCS V4 compatibility
   integrations:
     - google
   status: available
   value: connectors/google-storage
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
-  
+
   - type: "connector"
     path: "google-storage.yml"
 

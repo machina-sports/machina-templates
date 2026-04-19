@@ -10,7 +10,7 @@ setup:
   integrations:
     - machina-ai
     - google-speech-to-text
-    - google-storage-v2
+    - google-storage
   status: available
   value: agent-templates/voice-chat-completion
   version: 1.0.0

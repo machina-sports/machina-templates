@@ -28,7 +28,7 @@ This catalog documents all available connectors in the Machina platform. Connect
 | **AI/LLM Services** | openai, google-genai, groq, grok, perplexity, machina-ai, machina-ai-fast | 7 |
 | **Sports Data** | api-football, sportradar-soccer, sportradar-nfl, sportradar-nba, sportradar-mlb, sportradar-nhl, sportradar-rugby, sportradar-tennis, opta (stats-perform), american-football, mlb-statsapi, fastf1 | 12 |
 | **Content & Publishing** | wordpress, elevenlabs, google-speech-to-text, docling | 4 |
-| **Storage & Files** | google-storage, google-storage-v2, storage, temp-downloader | 4 |
+| **Storage & Files** | google-storage, storage, temp-downloader | 3 |
 | **Data & Search** | exa-search, oxylabs, rss-feed | 3 |
 | **Betting & Markets** | bwin, tallysight | 2 |
 | **Support & Services** | zendesk | 1 |
@@ -47,8 +47,7 @@ This catalog documents all available connectors in the Machina platform. Connect
 | fastf1 | PyScript | Sports Data | (see connector yml) |
 | google-genai | PyScript | AI/LLM | invoke_prompt, invoke_image, invoke_video, invoke_search |
 | google-speech-to-text | PyScript | Content | (see connector yml) |
-| google-storage | PyScript | Storage | (see connector yml) |
-| google-storage-v2 | PyScript | Storage | invoke_upload |
+| google-storage | PyScript | Storage | invoke_upload |
 | grok | REST | AI/LLM | (OpenAPI spec) |
 | groq | PyScript | AI/LLM | invoke_prompt |
 | machina-ai | PyScript | AI/LLM | invoke_prompt |
@@ -408,7 +407,7 @@ Get detailed match summary with lineups and stats.
 
 ---
 
-### 7. Google Storage (`google-storage`, `google-storage-v2`)
+### 7. Google Storage (`google-storage`)
 
 **Type**: PyScript
 **Category**: Storage & Files
