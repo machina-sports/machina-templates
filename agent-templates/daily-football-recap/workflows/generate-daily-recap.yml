@@ -1,0 +1,134 @@
+workflow:
+  name: daily-football-recap-generate-daily-recap
+  title: Daily Football Recap - Generate Daily Recap
+  description: Fetches yesterday's Bundesliga, Premier League, and Serie A fixtures, generates a recap using an LLM, and sends the recap by email.
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+    api-mailgun:
+      username: "api"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    recap_date: "$.get('recap_date')"
+    season: "$.get('season', 2024)"
+    bundesliga_league_id: "$.get('bundesliga_league_id', 78)"
+    premier_league_id: "$.get('premier_league_id', 39)"
+    serie_a_league_id: "$.get('serie_a_league_id', 135)"
+    timezone: "$.get('timezone', 'Europe/London')"
+    email_address: "$.get('email_address')"
+    from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
+    mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
+  outputs:
+    recap_subject: "$.get('recap_subject')"
+    recap_html: "$.get('recap_html')"
+    recap_text: "$.get('recap_text')"
+    email-sent: "$.get('email-sent')"
+    workflow-status: "'executed'"
+  tasks:
+
+    # resolve yesterday's date if not provided
+    - type: expression
+      name: resolve-recap-date
+      description: "Resolve the target date for the recap (defaults to yesterday, UTC)."
+      inputs:
+        recap_date: "$.get('recap_date')"
+      outputs:
+        target_date: |
+          __import__('datetime').datetime.utcnow().date().__sub__(__import__('datetime').timedelta(days=1)).isoformat() if not $.get('recap_date') else $.get('recap_date')
+
+    # fetch Bundesliga fixtures
+    - type: connector
+      name: fetch-bundesliga-fixtures
+      description: "Fetch Bundesliga fixtures for the target date from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        league: "$.get('bundesliga_league_id')"
+        season: "$.get('season')"
+        date: "$.get('target_date')"
+        timezone: "$.get('timezone')"
+      outputs:
+        bundesliga_fixtures: "$.get('response', [])"
+
+    # fetch Premier League fixtures
+    - type: connector
+      name: fetch-premier-league-fixtures
+      description: "Fetch Premier League fixtures for the target date from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        league: "$.get('premier_league_id')"
+        season: "$.get('season')"
+        date: "$.get('target_date')"
+        timezone: "$.get('timezone')"
+      outputs:
+        premier_league_fixtures: "$.get('response', [])"
+
+    # fetch Serie A fixtures
+    - type: connector
+      name: fetch-serie-a-fixtures
+      description: "Fetch Italian Serie A fixtures for the target date from API Football."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        league: "$.get('serie_a_league_id')"
+        season: "$.get('season')"
+        date: "$.get('target_date')"
+        timezone: "$.get('timezone')"
+      outputs:
+        serie_a_fixtures: "$.get('response', [])"
+
+    # generate recap via LLM
+    - type: prompt
+      name: daily-football-recap-generate-prompt
+      description: "Generate the recap email content from the raw fixture data."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        recap_date: "$.get('target_date')"
+        bundesliga_fixtures: "$.get('bundesliga_fixtures', [])"
+        premier_league_fixtures: "$.get('premier_league_fixtures', [])"
+        serie_a_fixtures: "$.get('serie_a_fixtures', [])"
+      outputs:
+        recap_subject: "$.get('subject_line')"
+        recap_headline: "$.get('headline')"
+        recap_intro: "$.get('intro')"
+        recap_text: "$.get('text_content')"
+        recap_html: "$.get('html_content')"
+
+    # send recap email via Mailgun
+    - type: connector
+      name: send-recap-email
+      description: "Send the recap email via Mailgun."
+      condition: "$.get('recap_html') is not None and $.get('email_address') is not None"
+      connector:
+        name: "api-mailgun"
+        command: "post-{domain}/messages"
+        command_attribute:
+          domain: "$.get('mailgun_domain') or 'mg.machina.gg'"
+      inputs:
+        body: |
+          {
+            "from": $.get('from_email', 'noreply@mg.machina.gg'),
+            "to": $.get('email_address'),
+            "subject": $.get('recap_subject') or 'Your Daily Football Recap',
+            "html": $.get('recap_html'),
+            "text": $.get('recap_text') or ''
+          }
+      outputs:
+        email-sent: "$.get('message') is not None"
+        email-status: "$.get('message')"
+        email-id: "$.get('id')"
