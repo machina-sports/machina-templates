@@ -39,8 +39,7 @@ workflow:
       inputs:
         recap_date: "$.get('recap_date')"
       outputs:
-        target_date: |
-          __import__('datetime').datetime.utcnow().date().__sub__(__import__('datetime').timedelta(days=1)).isoformat() if not $.get('recap_date') else $.get('recap_date')
+        target_date: "$.get('recap_date') or (datetime.utcnow() - timedelta(days=1)).date().isoformat()"
 
     # fetch Bundesliga fixtures
     - type: connector
