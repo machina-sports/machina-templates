@@ -6,7 +6,7 @@ workflow:
     competition_id: "$.get('competition_id')"
   outputs:
     result: "$.get('leaders', {'unsupported': True})"
-    workflow-status: "$.get('result') is not None and 'executed' or 'skipped'"
+    workflow-status: "$.get('leaders') is not None and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "get_current_season"
@@ -19,7 +19,7 @@ workflow:
         command: "'get_current_season'"
         competition_id: "$.get('competition_id')"
       outputs:
-        season_id: "$.get('result').get('season_id')"
+        season_id: "$.get('payload', {}).get('season', {}).get('id') if $.get('payload') else None"
 
     - type: "connector"
       name: "get_season_leaders"
@@ -32,4 +32,4 @@ workflow:
         command: "'get_season_leaders'"
         season_id: "$.get('season_id')"
       outputs:
-        leaders: "$.get('result')"
+        leaders: "$.get('payload')"
