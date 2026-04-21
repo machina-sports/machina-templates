@@ -67,13 +67,8 @@ def football(request_data):
     command = params.get("command")
 
     if command == "ping":
-        return {
-            "status": True,
-            "sk_output": {
-                "ping": "pong",
-                "received_params": params,
-            },
-        }
+        out = {"ping": "pong", "received_params": params}
+        return {"status": True, "data": out, "sk_output": out}
 
     if not command:
         return {"status": False, "sk_output": {"error": "'command' input is required"}}
