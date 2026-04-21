@@ -1,0 +1,64 @@
+prompt:
+  name: storyline-detection-prompt
+  title: Storyline Detection
+  description: "Analyzes normalized data streams to detect and extract newsworthy storylines."
+  
+  # The schema for the AI's response, which should be a JSON object containing an array of storylines.
+  schema:
+    type: "object"
+    properties:
+      candidate_storylines:
+        type: "array"
+        description: "A list of detected storylines based on the input data."
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+              description: "A unique identifier for the storyline (e.g., a hash of the headline and event)."
+            event_ref:
+              type: "string"
+              description: "A reference to the parent event object's ID."
+            type:
+              type: "string"
+              description: "The category of the storyline (e.g., live_swing, injury, trade, market_move, milestone, upset, narrative)."
+            urgency:
+              type: "string"
+              description: "The priority of the storyline (breaking, high, medium, low)."
+            headline:
+              type: "string"
+              description: "A concise, machine-readable summary of the storyline."
+            supporting_facts:
+              type: "array"
+              items:
+                type: "string"
+              description: "A list of data points or facts that support the headline. Must be grounded in the provided data."
+            created_at:
+              type: "string"
+              format: "date-time"
+              description: "The timestamp when the storyline was first identified (ISO 8601 format)."
+          required: ["id", "event_ref", "type", "urgency", "headline", "supporting_facts", "created_at"]
+  
+  # The text of the prompt sent to the language model.
+  text: |
+    You are an automated sports desk producer for Machina Media. Your task is to analyze incoming data streams and identify newsworthy storylines.
+
+    Your coverage scope is: {coverage_scope}
+
+    Analyze the following data:
+    - Live Events: {normalized_events}
+    - News Feeds: {normalized_news}
+    - Market Signals: {normalized_market_signals}
+
+    Based ONLY on the provided data, identify and extract compelling storylines. Do not invent statistics or events. Each storyline must be grounded in specific, verifiable facts from the inputs.
+
+    Return a JSON object containing a `candidate_storylines` array. Each object in the array must conform to the specified schema:
+    - id: A unique ID for the storyline.
+    - event_ref: The ID of the event this storyline relates to.
+    - type: The type of story (e.g., 'live_swing', 'injury', 'milestone').
+    - urgency: How critical is this story ('breaking', 'high', 'medium', 'low').
+    - headline: A concise, sports-media tone headline.
+    - supporting_facts: An array of strings with the exact data points that support this storyline.
+    - created_at: The current timestamp in ISO 8601 format.
+
+    Adopt a concise, sports-media tone. Avoid filler and overly analytical language. Focus on what is newsworthy and engaging for a modern sports audience.
