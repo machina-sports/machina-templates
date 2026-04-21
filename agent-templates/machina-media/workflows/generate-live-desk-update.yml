@@ -1,0 +1,36 @@
+workflow:
+  name: generate-live-desk-update
+  description: "Generates a live desk update script."
+  inputs:
+    storyline:
+      type: object
+      description: "The storyline to generate an update for."
+      required: true
+    live_context:
+      type: object
+      description: "Current live context of the event or story."
+      required: true
+    target_duration_sec:
+      type: integer
+      description: "Target duration of the spoken segment in seconds."
+      default: 60
+  tasks:
+    - name: generate_update
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt: live-desk-update-prompt
+      inputs:
+        current_storyline: "$.get('storyline')"
+        live_context: "$.get('live_context')"
+        target_duration_sec: "$.get('target_duration_sec', 60)"
+  outputs:
+    desk_script: "$.get('generate_update', {}).get('desk_script', '')"
+    lower_thirds: "$.get('generate_update', {}).get('lower_thirds', [])"
+    clip_candidate: "$.get('generate_update', {}).get('clip_candidate', '')"
+    social_draft: "$.get('generate_update', {}).get('social_draft', '')"
+    workflow-status: "$.get('generate_update', {}).get('desk_script', '') != ''"

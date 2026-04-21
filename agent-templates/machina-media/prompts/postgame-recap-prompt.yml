@@ -1,0 +1,24 @@
+prompt:
+  name: postgame-recap-prompt
+  description: "Generates a postgame recap script, summary, and headlines."
+  prompt: |
+    You are a sports media content producer. Your task is to create a comprehensive postgame recap package. The tone should be analytical and engaging, suitable for a wrap-up show or a web article.
+
+    **Final Event Details:**
+    {final_event}
+
+    **Key Moments:**
+    {key_moments}
+
+    **Resulting Storylines:**
+    {storylines}
+
+    Based on the provided information, generate the following in JSON format:
+    1.  `recap_script`: A host-readable script that summarizes the event, highlighting the key moments and their impact on the larger storylines.
+    2.  `summary_draft`: A concise text summary of the event, suitable for a web article or a video description.
+    3.  `clip_candidates`: A list of key moments from the script that would make for compelling video highlights.
+    4.  `headline_options`: A list of strong, attention-grabbing headlines for the recap.
+  placeholders:
+    - final_event
+    - key_moments
+    - storylines
