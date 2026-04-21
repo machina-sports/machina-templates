@@ -1,114 +1,53 @@
-"""sports-skills pyscript connector — single dispatcher entry point.
+def football(request_data):
+    params = request_data.get("params") if isinstance(request_data, dict) else None
 
-The ea-football-chat tools call this connector with `command: "football"` and
-pass the internal function name via the `command` input param, e.g.:
+    if params is None:
+        params = request_data if isinstance(request_data, dict) else {}
 
-    connector:
-      name: sports-skills
-      command: football
-    inputs:
-      command: "'get_season_standings'"
-      season_id: "$.get('season_id')"
+    command = params.get("command") if isinstance(params, dict) else None
 
-This `football()` function dispatches the request to the corresponding
-`sports_skills.football._connector` function, which returns an ESPN /
-Understat / FPL / Transfermarkt payload. Returned as `{"result": <data>}`
-so the tools can read it via `$.get('result')`.
-"""
-
-from __future__ import annotations
-
-
-_ALLOWED = {
-    "get_current_season",
-    "get_competitions",
-    "get_competition_seasons",
-    "get_season_schedule",
-    "get_season_standings",
-    "get_season_leaders",
-    "get_season_teams",
-    "search_team",
-    "search_player",
-    "get_team_profile",
-    "get_team_schedule",
-    "get_daily_schedule",
-    "get_event_summary",
-    "get_event_lineups",
-    "get_event_statistics",
-    "get_event_timeline",
-    "get_event_xg",
-    "get_event_players_statistics",
-    "get_head_to_head",
-    "get_missing_players",
-    "get_season_transfers",
-    "get_player_profile",
-    "get_player_season_stats",
-}
-
-
-def football(params):
-    """Dispatch to the named sports_skills.football function.
-
-    params: flat dict of all workflow inputs. Reads `command` to pick the
-    function; forwards the remaining keys as the function's params.
-    """
-    # Diagnostic shield — surface the actual input shape instead of
-    # propagating AttributeErrors from wrong assumptions about `params`.
-    if not isinstance(params, dict):
-        return {
-            "result": {
-                "error": True,
-                "message": f"params is not a dict: got {type(params).__name__} = {params!r}",
-            }
-        }
-
-    command = params.get("command")
-
-    # Diagnostic ping — does not touch the sports-skills library.
     if command == "ping":
         return {
+            "status": True,
             "result": {
                 "ping": "pong",
-                "params_received": params,
-                "params_type": type(params).__name__,
-            }
+                "received_request_shape": type(request_data).__name__,
+                "received_params_shape": type(params).__name__,
+                "received_keys": list(request_data.keys()) if isinstance(request_data, dict) else None,
+            },
         }
 
     if not command:
-        return {"result": {"error": True, "message": "'command' input is required"}}
+        return {"status": False, "result": {"error": "command is required", "shape_dump": str(request_data)[:500]}}
+
+    _ALLOWED = {
+        "get_current_season", "get_competitions", "get_competition_seasons",
+        "get_season_schedule", "get_season_standings", "get_season_leaders",
+        "get_season_teams", "search_team", "search_player", "get_team_profile",
+        "get_team_schedule", "get_daily_schedule", "get_event_summary",
+        "get_event_lineups", "get_event_statistics", "get_event_timeline",
+        "get_event_xg", "get_event_players_statistics", "get_head_to_head",
+        "get_missing_players", "get_season_transfers", "get_player_profile",
+        "get_player_season_stats",
+    }
 
     if command not in _ALLOWED:
-        return {"result": {"error": True, "message": f"Unknown command: {command}"}}
+        return {"status": False, "result": {"error": "unknown command: " + str(command)}}
 
     try:
         from sports_skills.football import _connector
     except Exception as exc:
-        return {
-            "result": {
-                "error": True,
-                "message": f"sports-skills import failed: {type(exc).__name__}: {exc}",
-            }
-        }
+        return {"status": False, "result": {"error": "import failed: " + repr(exc)}}
 
     fn = getattr(_connector, command, None)
     if fn is None:
-        return {
-            "result": {
-                "error": True,
-                "message": f"Command not found on module: {command}",
-            }
-        }
+        return {"status": False, "result": {"error": "no function: " + command}}
 
     forwarded = {k: v for k, v in params.items() if k != "command"}
 
     try:
         data = fn({"params": forwarded})
     except Exception as exc:
-        return {
-            "result": {
-                "error": True,
-                "message": f"{command} raised {type(exc).__name__}: {exc}",
-            }
-        }
+        return {"status": False, "result": {"error": command + " raised " + repr(exc)}}
 
-    return {"result": data}
+    return {"status": True, "result": data}
