@@ -1,14 +1,12 @@
 workflow:
   name: diag-ping
   title: "Diagnostic Ping"
-  description: "Calls sports-skills connector with command=ping to isolate the bool error."
+  description: "Calls sports-skills connector with command=ping to confirm dispatcher is alive."
   inputs: {}
   outputs:
-    sk_output: "$.get('sk_output')"
-    whole_dollar: "$.get('whole_dollar')"
-    status_seen: "$.get('status_seen')"
-    literal: "$.get('literal')"
-    workflow-status: "'executed'"
+    ping: "$.get('ping')"
+    received_params: "$.get('received_params')"
+    workflow-status: "$.get('ping') == 'pong' and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "ping"
@@ -18,9 +16,6 @@ workflow:
         command: "football"
       inputs:
         command: "'ping'"
-        sample: "'hello'"
       outputs:
-        sk_output: "$.get('sk_output')"
-        whole_dollar: "$"
-        status_seen: "$.get('status')"
-        literal: "'alive'"
+        ping: "$.get('ping')"
+        received_params: "$.get('received_params')"

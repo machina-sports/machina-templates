@@ -19,7 +19,7 @@ workflow:
         command: "'get_current_season'"
         competition_id: "$.get('competition_id')"
       outputs:
-        season_id: "$.get('payload', {}).get('season', {}).get('id') if $.get('payload') else None"
+        season_id: "$.get('season', {}).get('id') if $.get('season') else None"
 
     - type: "connector"
       name: "get_season_leaders"
@@ -32,4 +32,4 @@ workflow:
         command: "'get_season_leaders'"
         season_id: "$.get('season_id')"
       outputs:
-        leaders: "$.get('payload')"
+        leaders: "$.get('leaders')"

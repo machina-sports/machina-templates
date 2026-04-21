@@ -18,7 +18,7 @@ workflow:
         command: "'search_team'"
         query: "$.get('query')"
       outputs:
-        teams: "$.get('payload')"
+        teams: "$.get('results', [])"
 
     - type: "connector"
       name: "search_players"
@@ -30,4 +30,4 @@ workflow:
         command: "'search_player'"
         query: "$.get('query')"
       outputs:
-        players: "$.get('payload')"
+        players: "$.get('results', [])"

@@ -1,12 +1,15 @@
 """sports-skills pyscript connector — single dispatcher entry point.
 
-The framework wraps inputs as `{"params": {...}, "headers": {}, ...}` and
-strips `status` / `result` / `data` keys from the response. Data is
-returned under the non-reserved `payload` key so tools can read it via
-`$.get('payload')`.
+Framework contract discovered by probing the pyscript invoker:
+- Inputs arrive as ``request_data = {"params": {...}, "headers": {}, ...}``.
+  The task's ``inputs:`` block lands inside ``request_data["params"]``.
+- The response MUST have ``{"status": True, "data": <dict>}``. The
+  ``data`` value is exposed as ``$`` inside the task's ``outputs:`` block;
+  every other top-level key in the response (including ``result``,
+  ``message`` and custom names) is stripped.
 
-The ea-football-chat tools call this connector with `command: "football"`
-and pass the internal function name via the `command` input param, e.g.:
+Tools call this connector with ``command: "football"`` and pass the
+internal function name via the ``command`` input, e.g.:
 
     connector:
       name: sports-skills
@@ -15,9 +18,9 @@ and pass the internal function name via the `command` input param, e.g.:
       command: "'get_season_standings'"
       season_id: "$.get('season_id')"
 
-This `football()` function dispatches to
-`sports_skills.football._connector.<fn>` and returns the result under
-`payload`.
+The dispatcher forwards to ``sports_skills.football._connector.<fn>``
+and returns whatever the library returned under ``data``. Tools read
+library fields directly via ``$.get('<field>')``.
 """
 
 _ALLOWED = {
@@ -47,49 +50,51 @@ _ALLOWED = {
 }
 
 
+def _err(message):
+    return {"status": False, "data": {"error": str(message)}}
+
+
 def football(request_data):
-    """Dispatch to the named sports_skills.football function.
-
-    request_data is the framework-provided dict of shape:
-      {"params": {...}, "headers": {...}, "connector_exec": "football", ...}
-
-    Reads the inner `command` from params, forwards the remaining params
-    to the corresponding `sports_skills.football._connector` function, and
-    returns the library output under `payload`.
-    """
+    """Dispatch to the named sports_skills.football._connector.<fn>."""
     if not isinstance(request_data, dict):
-        return {"status": False, "sk_output": {"error": "request_data is not a dict"}}
+        return _err("request_data is not a dict")
 
     params = request_data.get("params") or {}
     if not isinstance(params, dict):
-        params = {}
+        return _err("params is not a dict")
 
     command = params.get("command")
 
     if command == "ping":
-        out = {"ping": "pong", "received_params": params}
-        return {"status": True, "data": out, "sk_output": out}
+        return {"status": True, "data": {"ping": "pong", "received_params": params}}
 
     if not command:
-        return {"status": False, "sk_output": {"error": "'command' input is required"}}
+        return _err("'command' input is required")
 
     if command not in _ALLOWED:
-        return {"status": False, "sk_output": {"error": "unknown command: " + str(command)}}
+        return _err("unknown command: " + str(command))
 
     try:
         from sports_skills.football import _connector
     except Exception as exc:
-        return {"status": False, "sk_output": {"error": "sports-skills import failed: " + repr(exc)}}
+        return _err("sports-skills import failed: " + repr(exc))
 
     fn = getattr(_connector, command, None)
     if fn is None:
-        return {"status": False, "sk_output": {"error": "no function: " + command}}
+        return _err("no function: " + command)
 
-    forwarded = {k: v for k, v in params.items() if k not in ("command", "model_name")}
+    forwarded = {
+        k: v
+        for k, v in params.items()
+        if k not in ("command", "model_name") and v is not None
+    }
 
     try:
         data = fn({"params": forwarded})
     except Exception as exc:
-        return {"status": False, "sk_output": {"error": command + " raised " + repr(exc)}}
+        return _err(command + " raised " + repr(exc))
 
-    return {"status": True, "sk_output": data}
+    if not isinstance(data, dict):
+        return {"status": True, "data": {"value": data}}
+
+    return {"status": True, "data": data}
