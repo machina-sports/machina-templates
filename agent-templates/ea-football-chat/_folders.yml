@@ -1,0 +1,24 @@
+folders:
+- name: Prompts
+  color: blue
+  description: "Prompts for reasoning and response generation"
+  files:
+    - prompts/chat-reasoning.yml
+    - prompts/chat-response.yml
+    - prompts/tool-catalog.yml
+- name: Workflows
+  color: green
+  description: "Core agent workflows"
+  files:
+    - workflows/chat-reasoning.yml
+    - workflows/chat-response.yml
+- name: Tools
+  color: purple
+  description: "Workflows that act as tools for the agent"
+  files:
+    - tools/get-league-standings.yml
+    - tools/get-daily-fixtures.yml
+    - tools/get-team-form.yml
+    - tools/get-match-report.yml
+    - tools/get-top-scorers.yml
+    - tools/search-entity.yml

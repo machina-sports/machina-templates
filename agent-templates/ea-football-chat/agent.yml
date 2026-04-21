@@ -1,0 +1,26 @@
+agent:
+  name: ea-football-chat
+  title: "EA Sports Hub Football Chat"
+  inputs:
+    - { name: messages, type: list }
+    - { name: thread_id, type: string, required: false }
+    - { name: league, type: string, required: false, default: "premier-league" }
+  tasks:
+    - { name: reason, type: workflow,
+        workflow: { name: chat-reasoning },
+        inputs: { messages: "$.get('messages')", league: "$.get('league')" },
+        outputs: { tool_calls: "$.get('tool_calls')" } }
+    - { name: execute_tools, type: map,
+        map: { variable: tool_calls, iterator: call,
+               tasks: [ { type: workflow,
+                          workflow: { name: "$.get('call').get('tool')" },
+                          inputs: "$.get('call').get('args')" } ] } }
+    - { name: respond, type: workflow,
+        workflow: { name: chat-response },
+        inputs: { messages: "$.get('messages')",
+                  tool_results: "$.get('execute_tools')" },
+        outputs: { message: "$.get('message')",
+                   suggestions: "$.get('suggestions')" } }
+  outputs:
+    result: "$.get('message')"
+    workflow-status: "executed"

@@ -1,0 +1,27 @@
+workflow:
+  name: chat-response
+  title: "Chat Response"
+  description: "Formats the final assistant turn (text + suggestions)."
+  inputs:
+    - { name: messages, type: list }
+    - { name: tool_results, type: list }
+  outputs:
+    message: "$.get('message')"
+    suggestions: "$.get('suggestions')"
+    workflow-status: "executed"
+  tasks:
+    - type: "prompt"
+      name: "response_prompt"
+      description: "Invoke the main response prompt."
+      prompt:
+        name: "ea-football-chat-response"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        messages: "$.get('messages')"
+        tool_results: "$.get('tool_results')"
+      outputs:
+        message: "$.get('message')"
+        suggestions: "$.get('suggestions')"

@@ -1,0 +1,33 @@
+workflow:
+  name: search-entity
+  title: "Search Entity"
+  description: "Searches for a team or player by name to get their unique ID."
+  inputs:
+    - { name: query, type: string }
+  outputs:
+    result: "{'teams': $.get('teams', []), 'players': $.get('players', [])}"
+    workflow-status: "$.get('teams') is not None or $.get('players') is not None"
+  tasks:
+    - type: "connector"
+      name: "search_team"
+      description: "Search for a team by name."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_team'"
+        query: "$.get('query')"
+      outputs:
+        teams: "$.get('result')"
+
+    - type: "connector"
+      name: "search_player"
+      description: "Search for a player by name."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_player'"
+        query: "$.get('query')"
+      outputs:
+        players: "$.get('result')"

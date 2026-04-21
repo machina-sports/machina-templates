@@ -1,0 +1,62 @@
+workflow:
+  name: chat-reasoning
+  title: "Chat Reasoning"
+  description: "Routes user message to tool selection."
+  inputs:
+    - { name: messages, type: list }
+    - { name: league, type: string }
+  outputs:
+    tool_calls: "$.get('tool_calls')"
+    workflow-status: "executed"
+  tasks:
+    - type: "prompt"
+      name: "get_tool_catalog"
+      description: "Get the tool catalog content."
+      prompt:
+        # This is an inline prompt that just returns the static catalog.
+        # It's a workaround for not being able to read files directly in a workflow.
+        template: |
+          {{ tools | tojson }}
+        context:
+          tools:
+            - tool: get-league-standings
+              description: "Fetches the current league table/standings for a given football competition."
+              args:
+                competition_id: "The league to get standings for. Supported: premier-league, la-liga, serie-a, bundesliga, ligue-1, champions-league."
+            - tool: get-daily-fixtures
+              description: "Gets the schedule of all matches happening on the current day across all supported leagues."
+              args: {}
+            - tool: get-team-form
+              description: "Retrieves the recent form (last 5-8 matches) for a specific team in a competition."
+              args:
+                query: "The name of the team to search for."
+                competition_id: "The league the team belongs to. Supported: premier-league, la-liga, serie-a, bundesliga, ligue-1, champions-league."
+            - tool: get-match-report
+              description: "Provides a detailed report for a specific match, including summary, statistics, and expected goals (xG) if available."
+              args:
+                event_id: "The unique identifier for the match."
+            - tool: get-top-scorers
+              description: "Gets the list of top goal scorers for a specific competition season. Only reliably works for Premier League."
+              args:
+                competition_id: "The league to get top scorers for. Supported: premier-league."
+            - tool: search-entity
+              description: "Searches for a team or player by name to get their unique ID."
+              args:
+                query: "The name of the team or player to search for."
+      outputs:
+        tool_catalog: "$.get('result')"
+
+    - type: "prompt"
+      name: "reasoning_prompt"
+      description: "Invoke the main reasoning prompt."
+      prompt:
+        name: "ea-football-chat-reasoning"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        messages: "$.get('messages')"
+        tool_catalog: "$.get('tool_catalog')"
+      outputs:
+        tool_calls: "$.get('tool_calls')"

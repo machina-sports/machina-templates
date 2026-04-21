@@ -1,0 +1,45 @@
+setup:
+  title: "EA Sports Hub Football Chat"
+  description: "A conversational agent for football data, providing real-time stats, scores, and match reports."
+  category:
+    - custom-templates
+  estimatedTime: 2 minutes
+  features:
+    - "Conversational football data queries"
+    - "Tool-based architecture for reliable data fetching"
+    - "Supports major European leagues"
+    - "Provides match reports, standings, and player stats"
+  integrations:
+    - sports-skills
+  status: available
+  value: "agent-templates/ea-football-chat"
+  version: 1.0.0
+
+datasets:
+  - type: "agent"
+    path: "agent.yml"
+  
+  - type: "prompt"
+    path: "prompts/chat-reasoning.yml"
+  - type: "prompt"
+    path: "prompts/chat-response.yml"
+  - type: "prompt"
+    path: "prompts/tool-catalog.yml"
+
+  - type: "workflow"
+    path: "workflows/chat-reasoning.yml"
+  - type: "workflow"
+    path: "workflows/chat-response.yml"
+    
+  - type: "workflow"
+    path: "tools/get-league-standings.yml"
+  - type: "workflow"
+    path: "tools/get-daily-fixtures.yml"
+  - type: "workflow"
+    path: "tools/get-team-form.yml"
+  - type: "workflow"
+    path: "tools/get-match-report.yml"
+  - type: "workflow"
+    path: "tools/get-top-scorers.yml"
+  - type: "workflow"
+    path: "tools/search-entity.yml"
