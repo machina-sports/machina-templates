@@ -1,0 +1,8 @@
+connector:
+  name: "sports-skills"
+  description: "Football data via the sports-skills Python library (ESPN, Understat, FPL, Transfermarkt). Single dispatcher command — tools pass the internal function name via the `command` input."
+  filename: "sports_skills.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Football"
+      value: "football"

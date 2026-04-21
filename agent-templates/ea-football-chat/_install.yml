@@ -16,6 +16,9 @@ setup:
   version: 1.0.0
 
 datasets:
+  - type: "connector"
+    path: "connectors/sports-skills.yml"
+
   - type: "agent"
     path: "agent.yml"
   
