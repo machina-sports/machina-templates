@@ -9,7 +9,7 @@ workflow:
   tasks:
     - type: "connector"
       name: "get_daily_schedule"
-      description: "Get the schedule for the current day."
+      description: "Get the daily schedule."
       connector:
         name: "sports-skills"
         command: "football"

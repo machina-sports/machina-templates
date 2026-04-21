@@ -6,9 +6,9 @@ workflow:
     - { name: messages, type: list }
     - { name: tool_results, type: list }
   outputs:
-    message: "$.get('message')"
-    suggestions: "$.get('suggestions')"
-    workflow-status: "executed"
+    message: "$.get('result').get('message', 'I was unable to retrieve the information.')"
+    suggestions: "$.get('result').get('suggestions', [])"
+    workflow-status: "$.get('result') is not None"
   tasks:
     - type: "prompt"
       name: "response_prompt"
@@ -18,10 +18,9 @@ workflow:
       connector:
         name: "machina-ai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
       inputs:
         messages: "$.get('messages')"
         tool_results: "$.get('tool_results')"
       outputs:
-        message: "$.get('message')"
-        suggestions: "$.get('suggestions')"
+        result: "$.get('result')"
