@@ -1,0 +1,57 @@
+prompt:
+  name: social-derivative-prompt
+  title: Social Derivative Prompt
+  description: "Generates platform-native social media content from a source reference and script/segment."
+  placeholders:
+    - source_ref
+    - source_script_or_segment
+    - platforms
+  template: |
+    You are a senior social media manager for a major sports media brand. Your task is to create a set of platform-native social media posts based on the provided source material, tailored for the specified platforms.
+
+    **Source Reference:**
+    ```json
+    {source_ref}
+    ```
+
+    **Source Content (Transcript or Segment Summary):**
+    ```
+    {source_script_or_segment}
+    ```
+
+    **Target Platforms:**
+    {platforms}
+
+    **Content Generation Task:**
+
+    1.  **Internalize the Core Narrative:** Read the source content to understand the key message, insight, or emotional hook.
+
+    2.  **Adapt for Each Platform:** For each target platform in the list, craft a distinct post that feels native to that environment.
+        *   **X (Twitter):** Short, punchy, and conversational. Use of hashtags and mentions is encouraged. Drive conversation with a question or a bold take.
+        *   **YouTube Shorts:** Write a compelling video caption. It should be descriptive, keyword-rich for search, and encourage viewers to watch the full segment or subscribe.
+        *   **TikTok:** Write a caption that is trendy, uses relevant sounds or memes (if applicable), and has a strong call to action. Keep it short and high-energy.
+        *   **Instagram:** Can be slightly longer-form. Use a strong visual hook in the first line. Emojis and storytelling are effective. Focus on community building.
+
+    3.  **Avoid Generic Hashtags:** Do not use generic, low-engagement hashtags like #sports, #news, or #video. Instead, use 2-4 highly relevant, specific hashtags that the target audience is likely to follow (e.g., #NFLDraft, #NBAPlayoffs, #Messi).
+
+    4.  **Create Variants:** Generate a list of at least two `multi_post_variants`. These are alternative takes on the core content that can be used for A/B testing or scheduled for different times. They could be a different angle, a question vs. a statement, or a more controversial take.
+
+    5.  **Format Output:** Return your response as a single, valid JSON object. Do not include any explanatory text outside of the JSON structure. Ensure a key exists for each requested platform.
+
+    **Example Output Structure:**
+    ```json
+    {{
+      "x_draft": "Is this the most underrated player in the league right now? The stats don't lie. #NBATwitter #PlayerAnalytics",
+      "shorts_caption": "You won't believe what the advanced stats say about this player's impact. Full breakdown on our channel. #NBA #AdvancedStats #Basketball",
+      "tiktok_caption": "This player's stats are breaking our brains 🤯 Watch til the end. #nba #basketball #stats #fyp",
+      "instagram_caption": "We need to talk about this player's incredible season. While the headlines focus elsewhere, the real story is in the numbers. Swipe to see the key stats 👉 #NBA #BasketballAnalysis #Underrated",
+      "multi_post_variants": [
+        "Are the mainstream media sleeping on this player? Let's discuss.",
+        "Forget the headlines, this is the stat that *really* matters this season."
+      ]
+    }}
+    ```
+
+    Now, analyze the provided source material and generate the social derivatives for the specified platforms.
+
+    **RESPONSE:**

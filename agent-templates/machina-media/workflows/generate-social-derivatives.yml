@@ -1,0 +1,40 @@
+workflow:
+  name: generate-social-derivatives
+  title: Generate Social Derivatives
+  description: "Generates platform-native social media content from a source reference."
+  inputs:
+    - name: source_ref
+      type: object
+      description: "Reference object for the source media or storyline."
+      required: true
+    - name: source_script_or_segment
+      type: object
+      description: "Transcript or summary of the source content."
+      required: true
+    - name: platforms
+      type: array
+      description: "List of target social platforms."
+      default: '["x", "youtube_shorts", "tiktok", "instagram"]'
+  tasks:
+    - name: generate-social-posts
+      type: prompt
+      description: "Use an LLM to generate social content for multiple platforms."
+      connector:
+        name: machina-gcp-ai
+        command: invoke_prompt
+        model: gemini-1.5-flash
+      prompt:
+        name: social-derivative-prompt
+      inputs:
+        source_ref: "$.get('source_ref')"
+        source_script_or_segment: "$.get('source_script_or_segment')"
+        platforms: "$.get('platforms')"
+      outputs:
+        derivatives: "$.get('result', {})"
+  outputs:
+    x_draft: "$.get('derivatives', {}).get('x_draft', '')"
+    shorts_caption: "$.get('derivatives', {}).get('shorts_caption', '')"
+    tiktok_caption: "$.get('derivatives', {}).get('tiktok_caption', '')"
+    instagram_caption: "$.get('derivatives', {}).get('instagram_caption', '')"
+    multi_post_variants: "$.get('derivatives', {}).get('multi_post_variants', [])"
+    workflow-status: "$.get('derivatives', {}).get('x_draft', '') != ''"

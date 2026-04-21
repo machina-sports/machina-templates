@@ -1,0 +1,90 @@
+agent:
+  name: desk-program-agent
+  title: Desk Program Agent (Scheduled)
+  description: "Orchestrates the main content pipeline based on a schedule (e.g., morning briefing, postgame recap)."
+  context-variables:
+    - name: coverage_scope
+      type: object
+      description: "Defines the scope of sports/leagues/teams to cover."
+      default: "{'leagues': ['nba', 'nfl']}"
+    - name: briefing_date
+      type: string
+      description: "The target date for the content, in YYYY-MM-DD format."
+      default: "'_today_'"
+    - name: current_slot
+      type: string
+      description: "The type of programming slot to generate (morning_briefing | postgame_recap | live_desk)."
+      default: "'morning_briefing'"
+  workflows:
+    - name: sync-sports-state
+      description: "Ingest the latest sports data based on the coverage scope."
+      inputs:
+        coverage_scope: "$.get('coverage_scope')"
+        target_date: "$.get('briefing_date')"
+      outputs:
+        sports_state: "$.get('sports_state')"
+
+    - name: detect-storylines
+      description: "Analyze the current sports state to identify potential storylines."
+      inputs:
+        sports_state: "$.get('sports_state')"
+      outputs:
+        storylines: "$.get('storylines')"
+
+    - name: rank-storylines
+      description: "Rank the detected storylines for newsworthiness in the current slot."
+      inputs:
+        storylines: "$.get('storylines')"
+        current_slot: "$.get('current_slot')"
+      outputs:
+        ranked_storylines: "$.get('ranked_storylines')"
+
+    - name: generate-morning-briefing
+      description: "Generate a morning briefing script from the top storylines."
+      gate: "$.get('current_slot') == 'morning_briefing'"
+      inputs:
+        storylines: "$.get('ranked_storylines')"
+        briefing_date: "$.get('briefing_date')"
+      outputs:
+        show_script: "$.get('show_script')"
+        show_segments: "$.get('show_segments')"
+
+    - name: generate-postgame-recap
+      description: "Generate a postgame recap script from the top storylines."
+      gate: "$.get('current_slot') == 'postgame_recap'"
+      inputs:
+        storylines: "$.get('ranked_storylines')"
+      outputs:
+        show_script: "$.get('show_script')"
+        show_segments: "$.get('show_segments')"
+
+    - name: generate-live-desk-update
+      description: "Generate a live desk update script from the top storylines."
+      gate: "$.get('current_slot') == 'live_desk'"
+      inputs:
+        storylines: "$.get('ranked_storylines')"
+      outputs:
+        show_script: "$.get('show_script')"
+        show_segments: "$.get('show_segments')"
+
+    - name: generate-clip-candidates
+      description: "Identify potential social media clips from the generated script."
+      gate: "$.get('show_script') is not None"
+      inputs:
+        # This assumes we are clipping the first segment for simplicity.
+        # A real implementation might loop over all segments.
+        source_segment: "$.get('show_segments', [])[0]"
+        source_script: "$.get('show_script')"
+        target_platform: "'youtube_shorts'"
+      outputs:
+        clip_candidates: "$.get('clip_candidates')"
+
+    - name: generate-social-derivatives
+      description: "Create social media posts based on the generated script."
+      gate: "$.get('show_script') is not None"
+      inputs:
+        source_ref: "{'type': 'show_script', 'slot': $.get('current_slot')}"
+        source_script_or_segment: "$.get('show_script')"
+        platforms: "['x', 'instagram']"
+      outputs:
+        social_posts: "$.get('x_draft')"
