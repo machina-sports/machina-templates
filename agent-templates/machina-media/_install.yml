@@ -1,0 +1,76 @@
+setup:
+  title: "Machina Media: AI Sports Desk"
+  description: "An always-on AI sports desk for generating YouTube-first content, including live hits, briefings, recaps, and breaking news."
+  category:
+    - custom-templates
+  estimatedTime: 15 minutes
+  features:
+    - "Automated content generation for NFL and NBA"
+    - "Scheduled briefings and event-triggered live updates"
+    - "Multi-platform output: YouTube Live, Shorts, X, TikTok, Instagram"
+    - "Editorial orchestration to identify and prioritize storylines"
+  integrations:
+    - sportradar
+    - google-genai
+  status: available
+  value: 'agent-templates/machina-media'
+  version: 1.0.0
+
+datasets:
+  # Connectors
+  - type: "connector"
+    path: "connectors/sports-data-aggregator.yml"
+  - type: "connector"
+    path: "connectors/publishing-api.yml"
+
+  # Mappings
+  - type: "mapping"
+    path: "mappings/event-to-storyline.yml"
+  - type: "mapping"
+    path: "mappings/storyline-to-segment.yml"
+
+  # Prompts
+  - type: "prompt"
+    path: "prompts/generate-script.yml"
+  - type: "prompt"
+    path: "prompts/generate-social-posts.yml"
+  - type: "prompt"
+    path: "prompts/rank-storylines.yml"
+  - type: "prompt"
+    path: "prompts/detect-storylines.yml"
+  - type: "prompt"
+    path: "prompts/generate-title-options.yml"
+  - type: "prompt"
+    path: "prompts/generate-clip-hooks.yml"
+  - type: "prompt"
+    path: "prompts/breaking-news-headline.yml"
+  - type: "prompt"
+    path: "prompts/live-desk-update.yml"
+
+  # Workflows
+  - type: "workflow"
+    path: "workflows/ingest-and-normalize-data.yml"
+  - type: "workflow"
+    path: "workflows/detect-storylines.yml"
+  - type: "workflow"
+    path: "workflows/rank-storylines.yml"
+  - type: "workflow"
+    path: "workflows/generate-program-rundown.yml"
+  - type: "workflow"
+    path: "workflows/generate-segment-script.yml"
+  - type: "workflow"
+    path: "workflows/live-desk-update.yml"
+  - type: "workflow"
+    path: "workflows/breaking-news-alert.yml"
+  - type: "workflow"
+    path: "workflows/post-game-recap.yml"
+  - type: "workflow"
+    path: "workflows/generate-social-derivatives.yml"
+
+  # Agents
+  - type: "agent"
+    path: "agents/desk-program-agent.yml"
+  - type: "agent"
+    path: "agents/desk-reactive-agent.yml"
+  - type: "agent"
+    path: "agents/desk-executor-agent.yml"
