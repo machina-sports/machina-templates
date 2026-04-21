@@ -1,5 +1,5 @@
 workflow:
-  name: _diag-ping
+  name: diag-ping
   title: "Diagnostic Ping"
   description: "Calls sports-skills connector with command=ping to isolate the bool error."
   inputs: {}
