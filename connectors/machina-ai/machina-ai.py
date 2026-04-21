@@ -9,15 +9,26 @@ def invoke_embedding(params):
 
     model_name = params.get("model_name")
 
+    organization = params.get("organization") or params.get("org_id")
+
+    project = params.get("project") or params.get("project_id")
+
     if not api_key:
         return {"status": "error", "message": "API key is required."}
 
     if not model_name:
         return {"status": "error", "message": "Model name is required."}
 
+    kwargs = {"api_key": api_key, "model": model_name}
+
+    if organization:
+        kwargs["organization"] = organization
+
+    if project:
+        kwargs["default_headers"] = {"OpenAI-Project": project}
+
     try:
-        llm = OpenAIEmbeddings(api_key=api_key, model=model_name)
-        # llm = OpenAI(api_key=api_key)
+        llm = OpenAIEmbeddings(**kwargs)
 
     except Exception as e:
         return {"status": "error", "message": f"Exception when creating model: {e}"}
@@ -31,14 +42,31 @@ def invoke_prompt(params):
 
     model_name = params.get("model_name")
 
+    organization = params.get("organization") or params.get("org_id")
+
+    project = params.get("project") or params.get("project_id")
+
+    base_url = params.get("base_url")
+
     if not api_key:
         return {"status": "error", "message": "API key is required."}
 
     if not model_name:
         return {"status": "error", "message": "Model name is required."}
 
+    kwargs = {"model": model_name, "api_key": api_key}
+
+    if organization:
+        kwargs["organization"] = organization
+
+    if project:
+        kwargs["default_headers"] = {"OpenAI-Project": project}
+
+    if base_url:
+        kwargs["base_url"] = base_url
+
     try:
-        llm = ChatOpenAI(model=model_name, api_key=api_key)
+        llm = ChatOpenAI(**kwargs)
 
     except Exception as e:
         return {"status": "error", "message": f"Exception when creating model: {e}"}
