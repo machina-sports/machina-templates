@@ -1,0 +1,33 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sports News API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.sports-news.com/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "paths": {
+    "/articles": {
+      "get": {
+        "summary": "Get articles",
+        "operationId": "get-articles"
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Polymarket API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.polymarket.com/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "paths": {
+    "/markets": {
+      "get": {
+        "summary": "Get markets",
+        "operationId": "get-markets"
+      }
+    }
+  }
+}

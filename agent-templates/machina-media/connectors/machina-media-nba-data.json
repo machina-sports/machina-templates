@@ -1,0 +1,33 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "NBA Data API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.nba-data.com/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "paths": {
+    "/games": {
+      "get": {
+        "summary": "Get games",
+        "operationId": "get-games"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+connector:
+  name: machina-media-polymarket
+  description: "Fetches Polymarket market data."
+  filetype: restapi
+  filename: machina-media-polymarket.json
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_POLYMARKET_API_KEY"

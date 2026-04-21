@@ -19,13 +19,27 @@ setup:
 datasets:
   # Connectors
   - type: "connector"
-    path: "connectors/sports-data-aggregator.yml"
+    path: "connectors/machina-media-football-data.yml"
   - type: "connector"
-    path: "connectors/publishing-api.yml"
+    path: "connectors/machina-media-nfl-data.yml"
+  - type: "connector"
+    path: "connectors/machina-media-nba-data.yml"
+  - type: "connector"
+    path: "connectors/machina-media-sports-news.yml"
+  - type: "connector"
+    path: "connectors/machina-media-kalshi.yml"
+  - type: "connector"
+    path: "connectors/machina-media-polymarket.yml"
+  - type: "connector"
+    path: "connectors/machina-media-metadata.yml"
 
   # Mappings
   - type: "mapping"
-    path: "mappings/event-to-storyline.yml"
+    path: "mappings/map-normalize-event.yml"
+  - type: "mapping"
+    path: "mappings/map-normalize-news-item.yml"
+  - type: "mapping"
+    path: "mappings/map-normalize-market-signal.yml"
   - type: "mapping"
     path: "mappings/storyline-to-segment.yml"
 
@@ -49,7 +63,7 @@ datasets:
 
   # Workflows
   - type: "workflow"
-    path: "workflows/ingest-and-normalize-data.yml"
+    path: "workflows/sync-sports-state.yml"
   - type: "workflow"
     path: "workflows/detect-storylines.yml"
   - type: "workflow"

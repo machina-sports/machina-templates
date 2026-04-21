@@ -1,0 +1,11 @@
+mapping:
+  name: map-normalize-news-item
+  title: "Normalize News Item"
+  description: "Maps a raw news article to a pre-storyline news item object."
+  outputs:
+    headline: "$.get('raw_news_item', {}).get('title')"
+    source: "$.get('raw_news_item', {}).get('source', {}).get('name')"
+    url: "$.get('raw_news_item', {}).get('url')"
+    published_at: "$.get('raw_news_item', {}).get('publishedAt')"
+    sport: "$.get('raw_news_item', {}).get('sport', 'unknown')"
+    entities: "$.get('raw_news_item', {}).get('entities', [])"

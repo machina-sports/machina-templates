@@ -1,0 +1,7 @@
+connector:
+  name: machina-media-football-data
+  description: "Fetches football data for fixtures, results, standings, and live scores."
+  filetype: restapi
+  filename: machina-media-football-data.json
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"

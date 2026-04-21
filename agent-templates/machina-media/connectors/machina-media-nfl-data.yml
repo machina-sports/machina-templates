@@ -1,0 +1,7 @@
+connector:
+  name: machina-media-nfl-data
+  description: "Fetches NFL data."
+  filetype: restapi
+  filename: machina-media-nfl-data.json
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_NFL_DATA_API_KEY"

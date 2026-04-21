@@ -1,0 +1,120 @@
+workflow:
+  name: sync-sports-state
+  title: "Sync Sports State"
+  description: "Orchestrates the ingestion and normalization of sports data, news, and market signals."
+
+  inputs:
+    sport_list: "$.get('sport_list', ['football', 'nfl', 'nba'])"
+    league_list: "$.get('league_list', [])"
+    date_or_window: "$.get('date_or_window')"
+    news_toggle: "$.get('news_toggle', True)"
+    market_toggle: "$.get('market_toggle', True)"
+
+  tasks:
+    # a. Fetch raw events
+    - type: "connector"
+      name: "fetch-football-events"
+      when: "'football' in $.get('sport_list', [])"
+      connector:
+        name: "machina-media-football-data"
+        command: "get-matches"
+      inputs:
+        date: "$.get('date_or_window')"
+      outputs:
+        raw_football_events: "$.get('matches', [])"
+
+    - type: "connector"
+      name: "fetch-nfl-events"
+      when: "'nfl' in $.get('sport_list', [])"
+      connector:
+        name: "machina-media-nfl-data"
+        command: "get-games"
+      inputs:
+        date: "$.get('date_or_window')"
+      outputs:
+        raw_nfl_events: "$.get('games', [])"
+
+    - type: "connector"
+      name: "fetch-nba-events"
+      when: "'nba' in $.get('sport_list', [])"
+      connector:
+        name: "machina-media-nba-data"
+        command: "get-games"
+      inputs:
+        date: "$.get('date_or_window')"
+      outputs:
+        raw_nba_events: "$.get('games', [])"
+        
+    # b. Normalize events
+    - type: "mapping"
+      name: "normalize-events"
+      config:
+        action: "transform"
+        mapping: "map-normalize-event"
+      inputs:
+        raw_events: "$.get('raw_football_events', []) + $.get('raw_nfl_events', []) + $.get('raw_nba_events', [])"
+      outputs:
+        normalized_events: "$"
+
+    # c. Fetch and normalize news
+    - type: "connector"
+      name: "fetch-sports-news"
+      when: "$.get('news_toggle', False)"
+      connector:
+        name: "machina-media-sports-news"
+        command: "get-articles"
+      inputs:
+        sports: "$.get('sport_list')"
+      outputs:
+        raw_news: "$.get('articles', [])"
+
+    - type: "mapping"
+      name: "normalize-news"
+      when: "$.get('news_toggle', False)"
+      config:
+        action: "transform"
+        mapping: "map-normalize-news-item"
+      inputs:
+        raw_news_items: "$.get('raw_news', [])"
+      outputs:
+        normalized_news: "$"
+
+    # d. Fetch and normalize market signals
+    - type: "connector"
+      name: "fetch-kalshi-markets"
+      when: "$.get('market_toggle', False)"
+      connector:
+        name: "machina-media-kalshi"
+        command: "get-markets"
+      inputs:
+        sports: "$.get('sport_list')"
+      outputs:
+        raw_kalshi_markets: "$.get('markets', [])"
+
+    - type: "connector"
+      name: "fetch-polymarket-markets"
+      when: "$.get('market_toggle', False)"
+      connector:
+        name: "machina-media-polymarket"
+        command: "get-markets"
+      inputs:
+        sports: "$.get('sport_list')"
+      outputs:
+        raw_polymarket_markets: "$.get('markets', [])"
+
+    - type: "mapping"
+      name: "normalize-market-signals"
+      when: "$.get('market_toggle', False)"
+      config:
+        action: "transform"
+        mapping: "map-normalize-market-signal"
+      inputs:
+        raw_market_signals: "$.get('raw_kalshi_markets', []) + $.get('raw_polymarket_markets', [])"
+      outputs:
+        normalized_market_signals: "$"
+
+  outputs:
+    normalized_events: "$.get('normalized_events', [])"
+    normalized_news: "$.get('normalized_news', [])"
+    normalized_market_signals: "$.get('normalized_market_signals', [])"
+    workflow-status: "len($.get('normalized_events', [])) > 0 or len($.get('normalized_news', [])) > 0"

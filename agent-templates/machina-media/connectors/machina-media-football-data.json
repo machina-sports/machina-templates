@@ -1,0 +1,39 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Football Data API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.football-data.org/v4"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "paths": {
+    "/matches": {
+      "get": {
+        "summary": "Get matches",
+        "operationId": "get-matches"
+      }
+    },
+    "/competitions/{id}/standings": {
+      "get": {
+        "summary": "Get standings",
+        "operationId": "get-standings"
+      }
+    }
+  }
+}

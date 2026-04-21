@@ -1,0 +1,7 @@
+connector:
+  name: machina-media-kalshi
+  description: "Fetches Kalshi market data."
+  filetype: restapi
+  filename: machina-media-kalshi.json
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
