@@ -52,27 +52,63 @@ def football(params):
     params: flat dict of all workflow inputs. Reads `command` to pick the
     function; forwards the remaining keys as the function's params.
     """
+    # Diagnostic shield — surface the actual input shape instead of
+    # propagating AttributeErrors from wrong assumptions about `params`.
+    if not isinstance(params, dict):
+        return {
+            "result": {
+                "error": True,
+                "message": f"params is not a dict: got {type(params).__name__} = {params!r}",
+            }
+        }
+
     command = params.get("command")
+
+    # Diagnostic ping — does not touch the sports-skills library.
+    if command == "ping":
+        return {
+            "result": {
+                "ping": "pong",
+                "params_received": params,
+                "params_type": type(params).__name__,
+            }
+        }
+
     if not command:
-        return {"error": True, "message": "'command' input is required"}
+        return {"result": {"error": True, "message": "'command' input is required"}}
 
     if command not in _ALLOWED:
-        return {"error": True, "message": f"Unknown command: {command}"}
+        return {"result": {"error": True, "message": f"Unknown command: {command}"}}
 
     try:
         from sports_skills.football import _connector
-    except ImportError as exc:
-        return {"error": True, "message": f"sports-skills not installed: {exc}"}
+    except Exception as exc:
+        return {
+            "result": {
+                "error": True,
+                "message": f"sports-skills import failed: {type(exc).__name__}: {exc}",
+            }
+        }
 
     fn = getattr(_connector, command, None)
     if fn is None:
-        return {"error": True, "message": f"Command not found on module: {command}"}
+        return {
+            "result": {
+                "error": True,
+                "message": f"Command not found on module: {command}",
+            }
+        }
 
     forwarded = {k: v for k, v in params.items() if k != "command"}
 
     try:
         data = fn({"params": forwarded})
     except Exception as exc:
-        return {"error": True, "message": f"{command} failed: {exc}"}
+        return {
+            "result": {
+                "error": True,
+                "message": f"{command} raised {type(exc).__name__}: {exc}",
+            }
+        }
 
     return {"result": data}
