@@ -19,11 +19,11 @@ datasets:
   - type: "agent"
     path: "agent.yml"
   
-  - type: "prompt"
+  - type: "prompts"
     path: "prompts/chat-reasoning.yml"
-  - type: "prompt"
+  - type: "prompts"
     path: "prompts/chat-response.yml"
-  - type: "prompt"
+  - type: "prompts"
     path: "prompts/tool-catalog.yml"
 
   - type: "workflow"
