@@ -1,0 +1,42 @@
+connector:
+  name: "news"
+  description: "Connector for a news API to fetch articles."
+  filetype: "restapi"
+  apiSpec:
+    openapi: "3.0.0"
+    info:
+      title: "News API"
+      version: "v2"
+    servers:
+      - url: "https://newsapi.org/v2"
+    security:
+      - bearerAuth: []
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: Bearer
+    paths:
+      /everything:
+        get:
+          summary: "Search for news articles"
+          operationId: "get-everything"
+          parameters:
+            - name: "q"
+              in: "query"
+              required: true
+              schema:
+                type: "string"
+            - name: "sortBy"
+              in: "query"
+              required: false
+              schema:
+                type: "string"
+          responses:
+            '200':
+              description: "A list of articles"
+              content:
+                application/json: {}
+  commands:
+    - name: "Get Everything"
+      value: "get-everything"

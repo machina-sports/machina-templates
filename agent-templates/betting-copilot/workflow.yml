@@ -1,0 +1,58 @@
+workflow:
+  name: "betting-copilot-workflow"
+  title: "Betting Copilot Workflow"
+  description: "Orchestrates fetching market data and news to provide betting insights."
+  inputs:
+    user_query: "$.get('user_query', '')"
+  outputs:
+    response: "$.get('llm_response')"
+    workflow-status: "$.get('llm_response') is not None"
+  tasks:
+    - type: "connector"
+      name: "search_kalshi_markets"
+      description: "Searches for markets on Kalshi based on the user query."
+      connector:
+        name: "kalshi"
+        command: "get-events"
+      inputs:
+        search: "$.get('user_query')"
+      outputs:
+        kalshi_markets: "$"
+
+    - type: "connector"
+      name: "search_polymarket_markets"
+      description: "Searches for markets on Polymarket based on the user query."
+      connector:
+        name: "polymarket"
+        command: "get-markets"
+      inputs:
+        q: "$.get('user_query')" # Assuming 'q' is a valid param, or it will be ignored
+      outputs:
+        polymarket_markets: "$"
+
+    - type: "connector"
+      name: "fetch_news"
+      description: "Fetches news articles related to the user query."
+      connector:
+        name: "news"
+        command: "get-everything"
+      inputs:
+        q: "$.get('user_query')"
+      outputs:
+        news_articles: "$"
+
+    - type: "prompt"
+      name: "generate_response"
+      description: "Generates a response using the Grok LLM and market/news data."
+      connector:
+        name: "grok-llm"
+        command: "post-chat/completions"
+        model: "grok-1.5-flash" # Placeholder model
+      prompt: "betting-copilot-prompt"
+      inputs:
+        user_query: "$.get('user_query')"
+        kalshi_data: "$.get('kalshi_markets')"
+        polymarket_data: "$.get('polymarket_markets')"
+        news_data: "$.get('news_articles')"
+      outputs:
+        llm_response: "$.get('choices')[0].get('message').get('content')"

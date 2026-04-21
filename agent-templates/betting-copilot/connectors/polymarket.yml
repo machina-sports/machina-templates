@@ -1,0 +1,40 @@
+connector:
+  name: "polymarket"
+  description: "Connector for the Polymarket API to fetch data on prediction markets."
+  filetype: "restapi"
+  apiSpec:
+    openapi: "3.0.0"
+    info:
+      title: "Polymarket API"
+      version: "1.0"
+    servers:
+      - url: "https://strapi-matic.polymarket.com"
+    paths:
+      /markets:
+        get:
+          summary: "Get a list of markets"
+          operationId: "get-markets"
+          parameters:
+            - name: "active"
+              in: "query"
+              required: false
+              schema:
+                type: "boolean"
+            - name: "_sort"
+              in: "query"
+              required: false
+              schema:
+                type: "string"
+            - name: "_limit"
+              in: "query"
+              required: false
+              schema:
+                type: "integer"
+          responses:
+            '200':
+              description: "A list of markets"
+              content:
+                application/json: {}
+  commands:
+    - name: "Get Markets"
+      value: "get-markets"
