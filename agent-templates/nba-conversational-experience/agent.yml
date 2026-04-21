@@ -1,0 +1,37 @@
+agent:
+  name: nba-conversational-agent
+  title: "NBA Conversational Agent"
+  description: "Fetches NBA news and analyzes sentiment."
+  inputs:
+    - name: team
+      type: string
+      description: "The NBA team to get news for."
+      default: "Golden State Warriors"
+  tasks:
+    - name: get_news
+      type: workflow
+      workflow:
+        name: get-nba-data
+      inputs:
+        team_name: "$.get('team')"
+      outputs:
+        news: "$.get('result')"
+    - name: sentiment_analysis
+      type: map
+      map:
+        variable: "news"
+        iterator: "article"
+        tasks:
+          - name: analyze_article_sentiment
+            type: workflow
+            workflow:
+              name: analyze-sentiment
+            inputs:
+              text_to_analyze: "$.get('article').get('title')"
+            outputs:
+              sentiment: "$.get('result')"
+      outputs:
+        analyzed_articles: "$.map(lambda item: {**item.get('article'), 'sentiment': item.get('sentiment')})"
+  outputs:
+    result: "$.get('analyzed_articles')"
+    workflow-status: "True"

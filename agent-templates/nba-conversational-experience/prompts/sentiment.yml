@@ -1,0 +1,8 @@
+prompt:
+    name: sentiment-analysis-prompt
+    title: "Sentiment Analysis Prompt"
+    description: "A prompt to classify text sentiment."
+    tags:
+        - sentiment
+        - classification
+    content: "Analyze the sentiment of the following text and classify it as positive, negative, or neutral. Provide a one-sentence justification for your classification.\n\nText: {text_input}\n\nSentiment:"

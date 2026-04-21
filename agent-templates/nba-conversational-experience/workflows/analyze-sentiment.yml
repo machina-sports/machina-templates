@@ -1,0 +1,24 @@
+workflow:
+  name: analyze-sentiment
+  title: "Analyze Sentiment"
+  description: "Analyzes the sentiment of a given text using xAI Grok."
+  inputs:
+    - name: text_to_analyze
+      type: string
+      description: "The text to be analyzed."
+  tasks:
+    - name: analyze
+      type: prompt
+      connector:
+        name: "xAI Grok"
+        command: "invoke_prompt"
+        model: "grok-1.5-flash"
+      prompt:
+        name: "sentiment-analysis-prompt"
+      inputs:
+        text_input: "$.get('text_to_analyze')"
+      outputs:
+        sentiment_result: "$.get('result')"
+  outputs:
+    result: "$.get('sentiment_result')"
+    workflow-status: "$.get('sentiment_result') != ''"
