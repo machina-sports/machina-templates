@@ -1,0 +1,25 @@
+setup:
+  title: "NBA Conversational Experience"
+  description: "Provides NBA news and fan sentiment analysis using Sportradar and xAI Grok."
+  category:
+    - custom-templates
+  estimatedTime: 5 minutes
+  features:
+    - "Fetches NBA news for a specific team."
+    - "Analyzes fan sentiment on news articles."
+  integrations:
+    - sportradar
+    - xai
+  status: available
+  value: "agent-templates/nba-conversational-experience"
+  version: 1.0.0
+
+datasets:
+  - type: "workflow"
+    path: "workflows/get-nba-data.yml"
+  - type: "workflow"
+    path: "workflows/analyze-sentiment.yml"
+  - type: "prompt"
+    path: "prompts/sentiment.yml"
+  - type: "agent"
+    path: "agent.yml"
