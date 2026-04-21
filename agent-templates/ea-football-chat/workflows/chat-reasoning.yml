@@ -1,25 +1,26 @@
 workflow:
   name: chat-reasoning
-  title: "Chat Reasoning"
+  title: "EA Football Chat Reasoning"
   description: "Routes user message to tool selection."
+  context-variables:
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
-    messages: "$.get('messages')"
-    league: "$.get('league')"
+    messages: "$.get('messages', [])"
+    league: "$.get('league', 'premier-league')"
   outputs:
-    tool_calls: "$.get('result').get('tool_calls', [])"
-    workflow-status: "$.get('result') is not None"
+    tool_calls: "$.get('tool_calls', [])"
+    workflow-status: "'executed'"
   tasks:
     - type: "prompt"
-      name: "reasoning_prompt"
-      description: "Invoke the main reasoning prompt."
-      prompt:
-        name: "ea-football-chat-reasoning"
+      name: "ea-football-chat-reasoning"
+      description: "Invoke the reasoning prompt."
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-flash"
       inputs:
         messages: "$.get('messages')"
         league: "$.get('league')"
       outputs:
-        result: "$.get('result')"
+        tool_calls: "$.get('tool_calls', [])"
