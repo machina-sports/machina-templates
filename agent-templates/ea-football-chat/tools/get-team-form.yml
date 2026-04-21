@@ -1,29 +1,30 @@
 workflow:
   name: get-team-form
   title: "Get Team Form"
-  description: "Retrieves the recent form (last 5-8 matches) for a specific team in a competition."
+  description: "Retrieves the recent form (last 5 matches) for a specific team."
   inputs:
     - { name: query, type: string }
-    - { name: competition_id, type: string }
+    - { name: competition_id, type: string, required: false }
   outputs:
     result: "$.get('summaries')"
     workflow-status: "$.get('summaries') is not None"
   tasks:
     - type: "connector"
       name: "search_for_team"
-      description: "Search for the team to get its ID."
+      description: "Search for the team by name."
       connector:
         name: "sports-skills"
         command: "football"
       inputs:
         command: "'search_team'"
         query: "$.get('query')"
+        competition_id: "$.get('competition_id')"
       outputs:
-        team_id: "$.get('result')[0].get('id')"
+        team_id: "$.get('result')[0].get('id') if $.get('result') else None"
 
     - type: "connector"
       name: "get_team_schedule"
-      description: "Get the team's recent schedule."
+      description: "Get the team's schedule."
       condition: "$.get('team_id') is not None"
       connector:
         name: "sports-skills"
@@ -31,22 +32,26 @@ workflow:
       inputs:
         command: "'get_team_schedule'"
         team_id: "$.get('team_id')"
-        competition_id: "$.get('competition_id')"
+        limit: 5
       outputs:
         schedule: "$.get('result')"
 
-    # The prompt implies getting multiple event summaries.
-    # A map task would be ideal here, but for simplicity and to avoid complex
-    # data manipulation without being able to test, I will assume the
-    # get_team_schedule command returns enough form information.
-    # If a map is needed, it would look something like this, but this is
-    # often hard to get right without trial and error.
-    # For now, I will just output the schedule.
-    # The response prompt will have to be smart enough to interpret it.
-    - type: "mapping"
-      name: "format_output"
-      description: "Passing schedule through as the result"
-      inputs:
-        summaries: "$.get('schedule')"
+    - type: "map"
+      name: "get_match_summaries"
+      description: "Get summaries for the last 5 matches."
+      condition: "$.get('schedule') is not None"
+      map:
+        variable: "schedule"
+        iterator: "match"
+        tasks:
+          - type: "connector"
+            connector:
+              name: "sports-skills"
+              command: "football"
+            inputs:
+              command: "'get_event_summary'"
+              event_id: "$.get('match').get('id')"
+            outputs:
+              summary: "$.get('result')"
       outputs:
-        summaries: "$.get('summaries')"
+        summaries: "[task.get('summary') for task in $.get('results')]"
