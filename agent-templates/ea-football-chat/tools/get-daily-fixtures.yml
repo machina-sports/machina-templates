@@ -1,0 +1,19 @@
+workflow:
+  name: get-daily-fixtures
+  title: "Get Daily Fixtures"
+  description: "Gets the schedule of all matches happening on the current day across all supported leagues."
+  inputs: []
+  outputs:
+    result: "$.get('result')"
+    workflow-status: "$.get('result') is not None"
+  tasks:
+    - type: "connector"
+      name: "get_daily_schedule"
+      description: "Get the schedule for the current day."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_daily_schedule'"
+      outputs:
+        result: "$.get('result')"
