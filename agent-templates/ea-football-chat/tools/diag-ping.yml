@@ -5,6 +5,9 @@ workflow:
   inputs: {}
   outputs:
     sk_output: "$.get('sk_output')"
+    whole_dollar: "$.get('whole_dollar')"
+    status_seen: "$.get('status_seen')"
+    literal: "$.get('literal')"
     workflow-status: "'executed'"
   tasks:
     - type: "connector"
@@ -18,3 +21,6 @@ workflow:
         sample: "'hello'"
       outputs:
         sk_output: "$.get('sk_output')"
+        whole_dollar: "$"
+        status_seen: "$.get('status')"
+        literal: "'alive'"
