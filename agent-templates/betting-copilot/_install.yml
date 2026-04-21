@@ -1,0 +1,34 @@
+setup:
+  title: "Betting Copilot"
+  description: "An agent that provides betting insights using market data and news."
+  category:
+    - custom-templates
+  estimatedTime: 5 minutes
+  features:
+    - "Fetches data from Kalshi and Polymarket"
+    - "Analyzes news articles for context"
+    - "Uses Grok LLM to generate betting insights"
+  integrations:
+    - kalshi
+    - polymarket
+    - news
+    - grok
+  status: available
+  value: "agent-templates/betting-copilot"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "connectors/kalshi.yml"
+  - type: "connector"
+    path: "connectors/polymarket.yml"
+  - type: "connector"
+    path: "connectors/grok.yml"
+  - type: "connector"
+    path: "connectors/news.yml"
+  - type: "workflow"
+    path: "workflow.yml"
+  - type: "prompt"
+    path: "prompts/prompt.yml"
+  - type: "agent"
+    path: "agent.yml"

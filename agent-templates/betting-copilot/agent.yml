@@ -1,0 +1,16 @@
+agent:
+  name: "betting-copilot"
+  title: "Betting Copilot Agent"
+  description: "An agent that provides betting insights using market data and news."
+  type: "interaction"
+  entry-point: "betting-copilot-workflow"
+  context-variables:
+    kalshi:
+      bearerAuth: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
+    polymarket:
+      # No API key needed for public endpoints
+      bearerAuth: ""
+    news:
+      bearerAuth: "$TEMP_CONTEXT_VARIABLE_NEWS_API_KEY"
+    grok-llm:
+      bearerAuth: "$TEMP_CONTEXT_VARIABLE_GROK_API_KEY"

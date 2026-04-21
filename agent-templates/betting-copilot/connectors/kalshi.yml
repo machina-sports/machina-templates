@@ -1,0 +1,37 @@
+connector:
+  name: "kalshi"
+  description: "Connector for the Kalshi API to fetch data on prediction markets."
+  filetype: "restapi"
+  apiSpec:
+    openapi: "3.0.0"
+    info:
+      title: "Kalshi API"
+      version: "v2"
+    servers:
+      - url: "https://trading-api.kalshi.com/v2"
+    security:
+      - bearerAuth: []
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: Bearer
+    paths:
+      /events:
+        get:
+          summary: "Search for events (markets)"
+          operationId: "get-events"
+          parameters:
+            - name: "search"
+              in: "query"
+              required: false
+              schema:
+                type: "string"
+          responses:
+            '200':
+              description: "A list of events"
+              content:
+                application/json: {}
+  commands:
+    - name: "Get Events"
+      value: "get-events"
