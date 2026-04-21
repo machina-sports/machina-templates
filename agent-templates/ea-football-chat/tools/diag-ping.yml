@@ -4,12 +4,7 @@ workflow:
   description: "Calls sports-skills connector with command=ping to isolate the bool error."
   inputs: {}
   outputs:
-    payload: "$.get('payload')"
-    raw_status: "$.get('raw_status')"
-    raw_result: "$.get('raw_result')"
-    raw_data: "$.get('raw_data')"
-    raw_received_type: "$.get('raw_received_type')"
-    raw_received_repr: "$.get('raw_received_repr')"
+    sk_output: "$.get('sk_output')"
     workflow-status: "'executed'"
   tasks:
     - type: "connector"
@@ -22,9 +17,4 @@ workflow:
         command: "'ping'"
         sample: "'hello'"
       outputs:
-        payload: "$"
-        raw_status: "$.get('status')"
-        raw_result: "$.get('result')"
-        raw_data: "$.get('data')"
-        raw_received_type: "$.get('received_type')"
-        raw_received_repr: "$.get('received_repr')"
+        sk_output: "$.get('sk_output')"

@@ -58,7 +58,7 @@ def football(request_data):
     returns the library output under `payload`.
     """
     if not isinstance(request_data, dict):
-        return {"payload": {"error": "request_data is not a dict"}}
+        return {"sk_output": {"error": "request_data is not a dict"}}
 
     params = request_data.get("params") or {}
     if not isinstance(params, dict):
@@ -68,32 +68,32 @@ def football(request_data):
 
     if command == "ping":
         return {
-            "payload": {
+            "sk_output": {
                 "ping": "pong",
                 "received_params": params,
             }
         }
 
     if not command:
-        return {"payload": {"error": "'command' input is required"}}
+        return {"sk_output": {"error": "'command' input is required"}}
 
     if command not in _ALLOWED:
-        return {"payload": {"error": "unknown command: " + str(command)}}
+        return {"sk_output": {"error": "unknown command: " + str(command)}}
 
     try:
         from sports_skills.football import _connector
     except Exception as exc:
-        return {"payload": {"error": "sports-skills import failed: " + repr(exc)}}
+        return {"sk_output": {"error": "sports-skills import failed: " + repr(exc)}}
 
     fn = getattr(_connector, command, None)
     if fn is None:
-        return {"payload": {"error": "no function: " + command}}
+        return {"sk_output": {"error": "no function: " + command}}
 
     forwarded = {k: v for k, v in params.items() if k not in ("command", "model_name")}
 
     try:
         data = fn({"params": forwarded})
     except Exception as exc:
-        return {"payload": {"error": command + " raised " + repr(exc)}}
+        return {"sk_output": {"error": command + " raised " + repr(exc)}}
 
-    return {"payload": data}
+    return {"sk_output": data}
