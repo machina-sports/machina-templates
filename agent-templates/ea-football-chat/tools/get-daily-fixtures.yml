@@ -5,7 +5,7 @@ workflow:
   inputs: {}
   outputs:
     result: "$.get('result')"
-    workflow-status: "$.get('result') is not None"
+    workflow-status: "$.get('result') is not None and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "get_daily_schedule"
