@@ -1,7 +1,7 @@
 workflow:
   name: chat-response
   title: "EA Football Chat Response"
-  description: "Composes the final markdown answer from tool results."
+  description: "Composes the final answer from tool results."
   context-variables:
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
@@ -9,8 +9,8 @@ workflow:
     messages: "$.get('messages', [])"
     tool_results: "$.get('tool_results', [])"
   outputs:
-    message: "$.get('message', '')"
-    suggestions: "$.get('suggestions', [])"
+    message: "$.get('content', '')"
+    suggestions: "[]"
     workflow-status: "'executed'"
   tasks:
     - type: "prompt"
@@ -19,10 +19,9 @@ workflow:
       connector:
         name: "google-genai"
         command: "invoke_prompt"
-        model: "gemini-2.5-pro"
+        model: "gemini-2.5-flash"
       inputs:
         messages: "$.get('messages')"
         tool_results: "$.get('tool_results')"
       outputs:
-        message: "$.get('message', '')"
-        suggestions: "$.get('suggestions', [])"
+        content: "$.get('choices')[0].get('message').get('content')"

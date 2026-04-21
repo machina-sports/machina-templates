@@ -1,26 +1,11 @@
 workflow:
   name: chat-reasoning
   title: "EA Football Chat Reasoning"
-  description: "Routes user message to tool selection."
-  context-variables:
-    google-genai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  description: "Routes user message to tool selection (returns [] for now — wired for LLM tool routing)."
   inputs:
     messages: "$.get('messages', [])"
     league: "$.get('league', 'premier-league')"
   outputs:
-    tool_calls: "$.get('tool_calls', [])"
+    tool_calls: "[]"
     workflow-status: "'executed'"
-  tasks:
-    - type: "prompt"
-      name: "ea-football-chat-reasoning"
-      description: "Invoke the reasoning prompt."
-      connector:
-        name: "google-genai"
-        command: "invoke_prompt"
-        model: "gemini-2.5-flash"
-      inputs:
-        messages: "$.get('messages')"
-        league: "$.get('league')"
-      outputs:
-        tool_calls: "$.get('tool_calls', [])"
+  tasks: []
