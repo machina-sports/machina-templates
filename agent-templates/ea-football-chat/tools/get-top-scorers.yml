@@ -3,7 +3,7 @@ workflow:
   title: "Get Top Scorers"
   description: "Gets the list of top goal scorers for a specific competition season."
   inputs:
-    - { name: competition_id, type: string }
+    competition_id: "$.get('competition_id')"
   outputs:
     result: "$.get('leaders', {'unsupported': True})"
     workflow-status: "$.get('result') is not None"

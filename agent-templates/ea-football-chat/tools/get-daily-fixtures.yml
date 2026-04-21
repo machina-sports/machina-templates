@@ -2,7 +2,7 @@ workflow:
   name: get-daily-fixtures
   title: "Get Daily Fixtures"
   description: "Gets the schedule of all matches happening on the current day across all supported leagues."
-  inputs: []
+  inputs: {}
   outputs:
     result: "$.get('result')"
     workflow-status: "$.get('result') is not None"

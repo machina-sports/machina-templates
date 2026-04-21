@@ -3,8 +3,8 @@ workflow:
   title: "Chat Response"
   description: "Formats the final assistant turn (text + suggestions)."
   inputs:
-    - { name: messages, type: list }
-    - { name: tool_results, type: list }
+    messages: "$.get('messages')"
+    tool_results: "$.get('tool_results')"
   outputs:
     message: "$.get('result').get('message', 'I was unable to retrieve the information.')"
     suggestions: "$.get('result').get('suggestions', [])"

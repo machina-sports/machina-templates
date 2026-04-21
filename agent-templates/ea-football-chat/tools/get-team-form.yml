@@ -3,8 +3,8 @@ workflow:
   title: "Get Team Form"
   description: "Retrieves the recent form (last 5 matches) for a specific team."
   inputs:
-    - { name: query, type: string }
-    - { name: competition_id, type: string, required: false }
+    query: "$.get('query')"
+    competition_id: "$.get('competition_id')"
   outputs:
     result: "$.get('summaries')"
     workflow-status: "$.get('summaries') is not None"

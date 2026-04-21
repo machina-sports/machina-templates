@@ -3,8 +3,8 @@ workflow:
   title: "Get Match Report"
   description: "Provides a detailed report for a specific match."
   inputs:
-    - { name: event_id, type: string }
-    - { name: competition_id, type: string, required: false }
+    event_id: "$.get('event_id')"
+    competition_id: "$.get('competition_id')"
   outputs:
     result: "{'summary': $.get('summary'), 'statistics': $.get('statistics'), 'xg': $.get('xg', 'N/A')}"
     workflow-status: "$.get('summary') is not None"

@@ -3,7 +3,7 @@ workflow:
   title: "Search Entity"
   description: "Searches for a team or player by name."
   inputs:
-    - { name: query, type: string }
+    query: "$.get('query')"
   outputs:
     result: "{'teams': $.get('teams', []), 'players': $.get('players', [])}"
     workflow-status: "True"

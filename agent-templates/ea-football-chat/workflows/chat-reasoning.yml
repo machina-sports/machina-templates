@@ -3,8 +3,8 @@ workflow:
   title: "Chat Reasoning"
   description: "Routes user message to tool selection."
   inputs:
-    - { name: messages, type: list }
-    - { name: league, type: string, required: false }
+    messages: "$.get('messages')"
+    league: "$.get('league')"
   outputs:
     tool_calls: "$.get('result').get('tool_calls', [])"
     workflow-status: "$.get('result') is not None"
