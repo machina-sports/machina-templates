@@ -1,18 +1,14 @@
 prompts:
-- type: prompt
-  name: tool-catalog
-  title: tool-catalog
-  description: Reference catalog of football-data tools available to the ea-football-chat
-    agent.
-  instruction: "Tool catalog for the EA Sports Hub football chat router.\n\nAllowed\
-    \ tool names (exact match):\n- get-league-standings({competition_id})\n- get-daily-fixtures({})\n\
-    - get-team-form({query, competition_id})\n- get-match-report({event_id})\n- get-top-scorers({competition_id})\
-    \   # Premier League only\n- search-entity({query})\n\nAllowed competition_id\
-    \ values (ONLY these six):\npremier-league, serie-a, la-liga, bundesliga, ligue-1,\
-    \ champions-league\n\nHard rules:\n- Never fabricate tool or command names. If\
-    \ no allowed tool fits, emit no tool calls.\n- get-top-scorers works only for\
-    \ Premier League.\n- get-match-report's xG breakdown is only available for top-5\
-    \ domestic leagues\n  (premier-league, serie-a, la-liga, bundesliga, ligue-1),\
-    \ NOT champions-league.\n- Never hardcode season_id; tools resolve it internally\
-    \ via get_current_season.\n- Team nicknames or short names → call search-entity\
-    \ first, then the real tool.\n"
+  - type: prompt
+    name: tool-catalog
+    title: "EA Football Tool Catalog"
+    description: "Reference catalog of football-data tools available to the agent."
+    instruction: |
+      Tool catalog for the EA Sports Hub football chat router.
+      Allowed tool names (exact match):
+      - get-league-standings({competition_id})
+      - get-daily-fixtures({})
+      - get-team-form({query, competition_id})
+      - get-match-report({event_id})
+      - get-top-scorers({competition_id})   # Premier League only
+      - search-entity({query})
