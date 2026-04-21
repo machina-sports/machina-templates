@@ -35,6 +35,8 @@ datasets:
     path: "workflows/chat-response.yml"
     
   - type: "workflow"
+    path: "tools/_diag-ping.yml"
+  - type: "workflow"
     path: "tools/get-league-standings.yml"
   - type: "workflow"
     path: "tools/get-daily-fixtures.yml"

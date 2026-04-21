@@ -1,0 +1,20 @@
+workflow:
+  name: _diag-ping
+  title: "Diagnostic Ping"
+  description: "Calls sports-skills connector with command=ping to isolate the bool error."
+  inputs: {}
+  outputs:
+    result: "$.get('result')"
+    workflow-status: "'executed'"
+  tasks:
+    - type: "connector"
+      name: "ping"
+      description: "Ping the dispatcher."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'ping'"
+        sample: "'hello'"
+      outputs:
+        result: "$.get('result')"
