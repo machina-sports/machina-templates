@@ -18,9 +18,9 @@ agent:
     - { name: respond, type: workflow,
         workflow: { name: chat-response },
         inputs: { messages: "$.get('messages')",
+                  league: "$.get('league')",
                   tool_results: "$.get('execute_tools')" },
-        outputs: { message: "$.get('message')",
-                   suggestions: "$.get('suggestions')" } }
+        outputs: { message: "$.get('message')" } }
   outputs:
     result: "$.get('message')"
     workflow-status: "executed"

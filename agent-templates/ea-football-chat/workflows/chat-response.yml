@@ -1,23 +1,25 @@
 workflow:
   name: chat-response
   title: "EA Football Chat Response"
-  description: "Calls google-genai directly with messages."
+  description: "Composes the final answer by invoking the ea-football-chat-response prompt with tool results."
   inputs:
     messages: "$.get('messages', [])"
+    league: "$.get('league', 'premier-league')"
     tool_results: "$.get('tool_results', [])"
   outputs:
-    message: "$.get('content', 'No response.')"
-    suggestions: "[]"
+    message: "$.get('message', 'No response.')"
     workflow-status: "'executed'"
   tasks:
-    - type: "connector"
-      name: "llm_call"
-      description: "Direct google-genai call."
+    - type: prompt
+      name: ea-football-chat-response
+      description: "Compose answer grounded in sports-skills tool results."
       connector:
-        name: "google-genai"
-        command: "invoke_chat"
-        model: "gemini-2.5-flash"
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
       inputs:
-        messages: "$.get('messages', [])"
+        _1-league: "$.get('league', 'premier-league')"
+        _2-messages: "$.get('messages', [])"
+        _3-tool_results: "str($.get('tool_results', []))"
       outputs:
-        content: "$.get('content', $.get('text', ''))"
+        message: "$.get('choices')[0].get('message').get('content')"
