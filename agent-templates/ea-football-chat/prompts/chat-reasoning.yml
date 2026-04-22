@@ -22,32 +22,37 @@ prompts:
         If the user names no specific league, use _1-league value as competition_id.
 
       ALLOWED TOOLS:
-      - get-league-standings   args: {"competition_id": "<league>"}
-      - get-daily-fixtures     args: {}
-      - get-team-form          args: {"query": "<team name>", "competition_id": "<league>"}
-      - get-match-report       args: {"event_id": "<id>", "competition_id": "<league>"}
-      - get-top-scorers        args: {"competition_id": "<league>"}
-      - search-entity          args: {"query": "<name>"}
+      - get-league-standings    args: {"competition_id": "<league>"}
+      - get-daily-fixtures      args: {}
+      - get-upcoming-fixtures   args: {"competition_id": "<league>"}
+      - get-team-form           args: {"query": "<team name>", "competition_id": "<league>"}
+      - get-match-report        args: {"event_id": "<id>", "competition_id": "<league>"}
+      - get-top-scorers         args: {"competition_id": "<league>"}
+      - search-entity           args: {"query": "<name>"}
 
       MANDATORY RULES:
-      1. ALWAYS include competition_id for: get-league-standings, get-top-scorers,
-         get-team-form, get-match-report. Never leave it empty or absent.
+      1. ALWAYS include competition_id for: get-league-standings, get-upcoming-fixtures,
+         get-top-scorers, get-team-form, get-match-report. Never leave it empty or absent.
       2. Derive competition_id from the user message first; fall back to _1-league.
       3. Max 3 tool_calls per turn.
-      4. If the question is vague, default to get-league-standings + get-daily-fixtures
+      4. Use get-daily-fixtures for "today's matches" / "what's on today".
+         Use get-upcoming-fixtures for "next matches" / "what's next" / "upcoming" / schedule questions.
+      5. If the question is vague, default to get-league-standings + get-upcoming-fixtures
          for the competition_id derived from _1-league.
-      5. For "how is <team> doing" questions, call get-team-form + get-league-standings.
-      6. If you don't recognise a team name, call search-entity FIRST.
-      7. NEVER invent tool names or arguments not listed above.
-      8. If no tool fits, return {"tool_calls":[]}.
+      6. For "how is <team> doing" questions, call get-team-form + get-league-standings.
+      7. If you don't recognise a team name, call search-entity FIRST.
+      8. NEVER invent tool names or arguments not listed above.
+      9. If no tool fits, return {"tool_calls":[]}.
 
       EXAMPLES:
       User: "Premier League standings" → [{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]
-      User: "UCL fixtures" → [{"tool":"get-daily-fixtures","args":{}},{"tool":"get-league-standings","args":{"competition_id":"champions-league"}}]
+      User: "What's next in the Premier League?" → [{"tool":"get-upcoming-fixtures","args":{"competition_id":"premier-league"}}]
+      User: "UCL fixtures" → [{"tool":"get-upcoming-fixtures","args":{"competition_id":"champions-league"}},{"tool":"get-daily-fixtures","args":{}}]
       User: "Serie A top scorers" → [{"tool":"get-top-scorers","args":{"competition_id":"serie-a"}}]
       User: "How is Arsenal doing" → [{"tool":"get-team-form","args":{"query":"Arsenal","competition_id":"premier-league"}},{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]
       User: "Bundesliga table" → [{"tool":"get-league-standings","args":{"competition_id":"bundesliga"}}]
       User: "Ligue 1 top scorers" → [{"tool":"get-top-scorers","args":{"competition_id":"ligue-1"}}]
+      User: "Next La Liga matches" → [{"tool":"get-upcoming-fixtures","args":{"competition_id":"la-liga"}}]
     schema:
       title: "EAFootballChatReasoning"
       description: "Structured tool routing decision."
@@ -68,6 +73,7 @@ prompts:
                 enum:
                   - get-league-standings
                   - get-daily-fixtures
+                  - get-upcoming-fixtures
                   - get-team-form
                   - get-match-report
                   - get-top-scorers

@@ -1,0 +1,35 @@
+workflow:
+  name: get-upcoming-fixtures
+  title: "Get Upcoming Fixtures"
+  description: "Fetches the upcoming scheduled matches for a specific competition."
+  inputs:
+    competition_id: "$.get('competition_id')"
+  outputs:
+    result: "$.get('schedule')"
+    workflow-status: "$.get('schedule') is not None"
+  tasks:
+    - type: "connector"
+      name: "get_current_season"
+      description: "Get the current season ID for the competition."
+      condition: "$.get('competition_id') is not None"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_current_season'"
+        competition_id: "$.get('competition_id')"
+      outputs:
+        season_id: "$.get('result').get('season_id')"
+
+    - type: "connector"
+      name: "get_season_schedule"
+      description: "Get the upcoming fixture schedule for the season."
+      condition: "$.get('season_id') is not None"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_season_schedule'"
+        season_id: "$.get('season_id')"
+      outputs:
+        schedule: "$.get('result')"
