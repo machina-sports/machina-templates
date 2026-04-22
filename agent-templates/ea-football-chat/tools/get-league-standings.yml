@@ -14,10 +14,9 @@ workflow:
       connector:
         name: "sports-skills"
         command: "football"
-        command_attribute:
-          competition_id: "$.get('competition_id')"
       inputs:
         command: "'get_current_season'"
+        competition_id: "$.get('competition_id')"
       outputs:
         season_ref: "$.get('season', {}).get('id')"
 
@@ -28,9 +27,8 @@ workflow:
       connector:
         name: "sports-skills"
         command: "football"
-        command_attribute:
-          season_id: "$.get('season_ref')"
       inputs:
         command: "'get_season_standings'"
+        season_id: "$.get('season_ref')"
       outputs:
         standings: "$.get('standings')"

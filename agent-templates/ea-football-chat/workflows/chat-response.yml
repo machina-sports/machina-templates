@@ -1,23 +1,32 @@
 workflow:
   name: chat-response
   title: "EA Football Chat Response"
-  description: "Calls google-genai directly with messages."
+  description: "Format tool output + user message as a chat reply via google-genai."
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     messages: "$.get('messages', [])"
     tool_results: "$.get('tool_results', [])"
   outputs:
-    message: "$.get('content', 'No response.')"
+    message: "$.get('message', 'No response.')"
     suggestions: "[]"
     workflow-status: "'executed'"
   tasks:
-    - type: "connector"
-      name: "llm_call"
-      description: "Direct google-genai call."
+    - type: "prompt"
+      name: "ea-football-chat-response"
+      description: "Format the reply."
       connector:
         name: "google-genai"
-        command: "invoke_chat"
+        command: "invoke_prompt"
         model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         messages: "$.get('messages', [])"
+        tool_results: "$.get('tool_results', [])"
       outputs:
-        content: "$.get('content', $.get('text', ''))"
+        message: "$.get('content', $.get('choices', [{}])[0].get('message', {}).get('content', ''))"

@@ -1,11 +1,31 @@
 workflow:
   name: chat-reasoning
   title: "EA Football Chat Reasoning"
-  description: "Routes user message to tool selection (returns [] for now — wired for LLM tool routing)."
+  description: "Routes user message to tool selection via google-genai (vertex_ai)."
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     messages: "$.get('messages', [])"
     league: "$.get('league', 'premier-league')"
   outputs:
-    tool_calls: "[]"
+    tool_calls: "$.get('tool_calls', [])"
     workflow-status: "'executed'"
-  tasks: []
+  tasks:
+    - type: "prompt"
+      name: "ea-football-chat-reasoning"
+      description: "Pick the tool and args."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        messages: "$.get('messages', [])"
+        league: "$.get('league', 'premier-league')"
+      outputs:
+        tool_calls: "$.get('tool_calls', [])"
