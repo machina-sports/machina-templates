@@ -69,6 +69,28 @@ def football(request_data):
         import sys, os, importlib
         user_site = "/home/machina/.local/lib/python3.11/site-packages"
         fs_check = {}
+        try:
+            fs_check["hostname"] = os.uname().nodename
+            fs_check["uid"] = os.getuid()
+            fs_check["euid"] = os.geteuid()
+            fs_check["cwd"] = os.getcwd()
+        except Exception as e:
+            fs_check["ident_error"] = repr(e)
+        try:
+            with open("/etc/hostname") as f:
+                fs_check["etc_hostname"] = f.read().strip()
+        except Exception as e:
+            fs_check["etc_hostname_error"] = repr(e)
+        try:
+            fs_check["root_home_contents"] = sorted(os.listdir("/root"))[:10]
+        except Exception as e:
+            fs_check["root_home_err"] = repr(e)
+        try:
+            fs_check["system_sp_has_sports"] = any(
+                n.startswith("sports") for n in os.listdir("/usr/local/lib/python3.11/site-packages")
+            )
+        except Exception as e:
+            fs_check["system_sp_err"] = repr(e)
         fs_check["user_site_exists"] = os.path.isdir(user_site)
         if os.path.isdir(user_site):
             try:
