@@ -1,23 +1,24 @@
 """sports-skills pyscript connector — single dispatcher entry point.
 
-The ea-football-chat tools call this connector with `command: "football"` and
-pass the internal function name via the `command` input param, e.g.:
+Machina calls pyscript functions with request_data = {
+    "connector_exec": "football",
+    "headers": {...},
+    "params": { ...task inputs... },
+    ...
+}
 
-    connector:
-      name: sports-skills
-      command: football
-    inputs:
-      command: "'get_season_standings'"
-      season_id: "$.get('season_id')"
-
-This `football()` function dispatches the request to the corresponding
-`sports_skills.football._connector` function, which returns an ESPN /
-Understat / FPL / Transfermarkt payload. Returned as `{"result": <data>}`
-so the tools can read it via `$.get('result')`.
+Task inputs land under request_data["params"]. Must return:
+    {"status": True, "data": <payload>}          on success
+    {"status": False, "data": {}, "error": {"code": N, "message": "..."}}  on error
 """
 
 from __future__ import annotations
 
+import os
+import sys
+import subprocess
+
+_CUSTOM_PATH = "/tmp/sports_skills_pkg"
 
 _ALLOWED = {
     "get_current_season",
@@ -46,33 +47,58 @@ _ALLOWED = {
 }
 
 
-def football(params):
-    """Dispatch to the named sports_skills.football function.
-
-    params: flat dict of all workflow inputs. Reads `command` to pick the
-    function; forwards the remaining keys as the function's params.
-    """
-    command = params.get("command")
-    if not command:
-        return {"error": True, "message": "'command' input is required"}
-
-    if command not in _ALLOWED:
-        return {"error": True, "message": f"Unknown command: {command}"}
-
+def _get_connector():
+    if os.path.isdir(_CUSTOM_PATH) and _CUSTOM_PATH not in sys.path:
+        sys.path.insert(0, _CUSTOM_PATH)
     try:
         from sports_skills.football import _connector
-    except ImportError as exc:
-        return {"error": True, "message": f"sports-skills not installed: {exc}"}
+        return _connector
+    except ImportError:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "sports-skills>=0.4.0",
+             "--target", _CUSTOM_PATH, "-q", "--no-cache-dir"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"pip install failed (exit {result.returncode}): {result.stderr.strip()[:500]}"
+            )
+        if _CUSTOM_PATH not in sys.path:
+            sys.path.insert(0, _CUSTOM_PATH)
+        from sports_skills.football import _connector
+        return _connector
+
+
+def football(request_data):
+    """Dispatch to the named sports_skills.football function.
+
+    request_data["params"] contains the evaluated task inputs.
+    Reads request_data["params"]["command"] to pick the function;
+    forwards remaining params as the function's input payload.
+    """
+    task_inputs = request_data.get("params", {})
+    command = task_inputs.get("command")
+    if not command:
+        return {"status": False, "data": {}, "error": {"code": 400, "message": "'command' input is required"}}
+
+    if command not in _ALLOWED:
+        return {"status": False, "data": {}, "error": {"code": 400, "message": f"Unknown command: {command}"}}
+
+    try:
+        _connector = _get_connector()
+    except Exception as exc:
+        return {"status": False, "data": {}, "error": {"code": 500, "message": f"sports-skills install failed: {exc}"}}
 
     fn = getattr(_connector, command, None)
     if fn is None:
-        return {"error": True, "message": f"Command not found on module: {command}"}
+        return {"status": False, "data": {}, "error": {"code": 404, "message": f"Command not found: {command}"}}
 
-    forwarded = {k: v for k, v in params.items() if k != "command"}
+    forwarded = {k: v for k, v in task_inputs.items() if k != "command"}
 
     try:
         data = fn({"params": forwarded})
     except Exception as exc:
-        return {"error": True, "message": f"{command} failed: {exc}"}
+        return {"status": False, "data": {}, "error": {"code": 500, "message": f"{command} failed: {exc}"}}
 
-    return {"result": data}
+    return {"status": True, "data": data}

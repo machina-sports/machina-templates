@@ -16,4 +16,4 @@ workflow:
       inputs:
         command: "'get_daily_schedule'"
       outputs:
-        result: "$.get('result')"
+        result: "$"

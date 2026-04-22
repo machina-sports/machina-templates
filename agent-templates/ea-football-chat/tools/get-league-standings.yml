@@ -18,7 +18,7 @@ workflow:
         command: "'get_current_season'"
         competition_id: "$.get('competition_id')"
       outputs:
-        season_id: "$.get('result').get('season_id')"
+        season_id: "$.get('season', {}).get('id')"
 
     - type: "connector"
       name: "get_season_standings"
@@ -31,4 +31,4 @@ workflow:
         command: "'get_season_standings'"
         season_id: "$.get('season_id')"
       outputs:
-        standings: "$.get('result')"
+        standings: "$"

@@ -19,18 +19,18 @@ workflow:
         command: "'search_team'"
         query: "$.get('query')"
       outputs:
-        team_id: "$.get('result', {}).get('results', [{}])[0].get('team', {}).get('id') if $.get('result', {}).get('results') else None"
+        search_result: "$"
 
     - type: "connector"
       name: "get_team_schedule"
       description: "Get the team's upcoming and recent schedule."
-      condition: "$.get('team_id') is not None"
+      condition: "$.get('search_result', {}).get('results', [])"
       connector:
         name: "sports-skills"
         command: "football"
       inputs:
         command: "'get_team_schedule'"
-        team_id: "$.get('team_id')"
+        team_id: "$.get('search_result', {}).get('results', [{}])[0].get('team', {}).get('id')"
         limit: 10
       outputs:
-        schedule: "$.get('result')"
+        schedule: "$.get('events')"
