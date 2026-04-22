@@ -3,11 +3,12 @@ workflow:
   title: "Get League Standings"
   description: "Fetches the current league table/standings for a given football competition."
   inputs:
-    competition_id: "$.get('competition_id')"
+    # Workflow stores input under a differently-named key to avoid
+    # self-reference collision when a task's input key matches the name
+    # it would read from $.
+    comp: "$.get('competition_id')"
   outputs:
     result: "$.get('standings')"
-    debug_season_id: "$.get('season_id')"
-    debug_season: "$.get('season_debug')"
     workflow-status: "$.get('standings') is not None and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
@@ -18,20 +19,19 @@ workflow:
         command: "football"
       inputs:
         command: "'get_current_season'"
-        competition_id: "$.get('competition_id')"
+        competition_id: "$.get('comp')"
       outputs:
-        season_id: "$.get('season', {}).get('id')"
-        season_debug: "$"
+        season_ref: "$.get('season', {}).get('id')"
 
     - type: "connector"
       name: "get_season_standings"
       description: "Get the standings for the season."
-      condition: "$.get('season_id') is not None"
+      condition: "$.get('season_ref') is not None"
       connector:
         name: "sports-skills"
         command: "football"
       inputs:
         command: "'get_season_standings'"
-        season_id: "$.get('season_id')"
+        season_id: "$.get('season_ref')"
       outputs:
         standings: "$.get('standings')"
