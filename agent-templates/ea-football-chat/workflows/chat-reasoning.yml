@@ -1,17 +1,17 @@
 workflow:
   name: chat-reasoning
   title: "EA Football Chat Reasoning"
-  description: "Routes user message to sports-skills tool calls via the ea-football-chat-reasoning prompt."
+  description: "Classifies user intent and extracts football query parameters."
   inputs:
     messages: "$.get('messages', [])"
     league: "$.get('league', 'premier-league')"
   outputs:
-    tool_calls: "$.get('tool_calls', [])"
+    reasoning: "$.get('reasoning', {})"
     workflow-status: "'executed'"
   tasks:
     - type: prompt
       name: ea-football-chat-reasoning
-      description: "Select sports-skills tool calls from the user's message."
+      description: "Classify intent and extract football query parameters."
       connector:
         command: invoke_prompt
         name: google-genai
@@ -22,4 +22,4 @@ workflow:
         _1-league: "$.get('league')"
         _2-messages: "$.get('messages', [])"
       outputs:
-        tool_calls: "$.get('tool_calls', [])"
+        reasoning: $

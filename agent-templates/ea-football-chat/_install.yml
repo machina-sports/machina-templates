@@ -21,25 +21,27 @@ datasets:
 
   - type: "agent"
     path: "agent.yml"
-  
+
   - type: "prompts"
     path: "prompts/chat-reasoning.yml"
   - type: "prompts"
     path: "prompts/chat-response.yml"
-  - type: "prompts"
-    path: "prompts/tool-catalog.yml"
 
   - type: "workflow"
     path: "workflows/chat-reasoning.yml"
   - type: "workflow"
     path: "workflows/chat-response.yml"
-    
+
   - type: "workflow"
     path: "tools/get-league-standings.yml"
   - type: "workflow"
     path: "tools/get-daily-fixtures.yml"
   - type: "workflow"
+    path: "tools/get-upcoming-fixtures.yml"
+  - type: "workflow"
     path: "tools/get-team-form.yml"
+  - type: "workflow"
+    path: "tools/get-team-schedule.yml"
   - type: "workflow"
     path: "tools/get-match-report.yml"
   - type: "workflow"

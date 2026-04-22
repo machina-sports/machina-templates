@@ -2,95 +2,99 @@ prompts:
   - type: prompt
     name: ea-football-chat-reasoning
     title: "EA Football Chat Reasoning"
-    description: "Selects the appropriate football data tools to call based on the user's query."
+    description: "Classifies user intent for football queries and extracts typed parameters."
     instruction: |
-      You are the router for a football chat agent. Given the user's league
-      preference (_1-league) and the conversation history (_2-messages),
-      decide which tools to call to answer the question. Respond ONLY with
-      strict JSON matching the schema — no markdown, no prose.
+      Analyze the user's latest message (from _2-messages) and classify intent.
+      The user's default league preference is _1-league.
 
-      OUTPUT SHAPE — competition_id and query are TOP-LEVEL fields, NOT nested:
-      {"tool_calls":[{"tool":"<name>","competition_id":"<league>","query":"<team>"}, ...]}
+      STEP 1 — DETECT STANDINGS KEYWORDS
+      Words: "standings", "table", "ranked", "position", "points", "top of"
+      → action = "standings"
+
+      STEP 2 — DETECT TODAY'S FIXTURES KEYWORDS
+      Words: "today", "tonight", "on now", "playing today", "this evening"
+      → action = "daily-fixtures"
+
+      STEP 3 — DETECT UPCOMING FIXTURES FOR A LEAGUE
+      Words: "next matches", "upcoming games", "next gameweek", "fixtures", "schedule"
+      — without a specific team name — → action = "upcoming-fixtures"
+
+      STEP 4 — DETECT TEAM SCHEDULE / NEXT FIXTURE
+      Words: "next fixture", "next game", "when do [team] play", "[team]'s next"
+      — WITH a specific team name — → action = "team-schedule"
+
+      STEP 5 — DETECT TEAM FORM / RESULTS
+      Words: "form", "results", "how is [team] doing", "last matches", "recent games"
+      → action = "team-form"
+
+      STEP 6 — DETECT TOP SCORERS
+      Words: "top scorers", "goals", "golden boot", "leading scorer", "most goals"
+      → action = "top-scorers"
+
+      STEP 7 — DETECT ENTITY SEARCH
+      Words: looking up an unfamiliar team or player name
+      → action = "search-entity"
+
+      STEP 8 — DEFAULT
+      None of the above → action = "general"
 
       LEAGUE MAPPING — use EXACTLY these competition_id values:
-        "Premier League" / "EPL" / "PL" / "England"  → "premier-league"
-        "Serie A" / "Italy" / "Italian"               → "serie-a"
-        "La Liga" / "Spain" / "Spanish"               → "la-liga"
-        "Bundesliga" / "Germany" / "German"           → "bundesliga"
-        "Ligue 1" / "France" / "French"               → "ligue-1"
-        "Champions League" / "UCL" / "CL" / "UEFA"   → "champions-league"
-        If the user names no specific league, use _1-league value.
+        "Premier League" / "EPL" / "PL"          → "premier-league"
+        "Serie A" / "Italy" / "Italian"           → "serie-a"
+        "La Liga" / "Spain" / "Spanish"           → "la-liga"
+        "Bundesliga" / "Germany" / "German"       → "bundesliga"
+        "Ligue 1" / "France" / "French"           → "ligue-1"
+        "Champions League" / "UCL" / "CL"         → "champions-league"
+        No league mentioned → use _1-league value
 
-      TOOLS AND REQUIRED FIELDS:
-      - get-league-standings    requires: competition_id
-      - get-daily-fixtures      requires: nothing
-      - get-upcoming-fixtures   requires: competition_id
-      - get-team-form           requires: competition_id + query (team name)
-      - get-team-schedule       requires: competition_id + query (team name)
-      - get-match-report        requires: competition_id + event_id
-      - get-top-scorers         requires: competition_id
-      - search-entity           requires: query (team or player name)
+      PARAMETER EXTRACTION:
+      - competition_id: derive from message; fall back to _1-league
+      - query: exact team or player name from the message (for team-form, team-schedule, search-entity)
+      - event_id: match ID if mentioned (for match reports)
 
-      ROUTING RULES:
-      - "standings" / "table" / "league" → get-league-standings
-      - "today's matches" / "on today"   → get-daily-fixtures
-      - "next matches" / "upcoming" for a LEAGUE → get-upcoming-fixtures
-      - "next fixture" / "upcoming" for a TEAM  → get-team-schedule
-      - "form" / "results" / "how is <team>"    → get-team-form + get-league-standings
-      - "top scorers" / "goals"                 → get-top-scorers
-      - Vague question: get-league-standings + get-upcoming-fixtures using _1-league
-      - Unknown team name: search-entity FIRST
-
-      EXAMPLES (fields are top-level, NOT inside args):
-      "Premier League standings"    → [{"tool":"get-league-standings","competition_id":"premier-league"}]
-      "What's next in the PL?"      → [{"tool":"get-upcoming-fixtures","competition_id":"premier-league"}]
-      "Bayern's next fixture"        → [{"tool":"get-team-schedule","query":"Bayern Munich","competition_id":"bundesliga"}]
-      "PSG upcoming matches"         → [{"tool":"get-team-schedule","query":"PSG","competition_id":"ligue-1"}]
-      "UCL fixtures"                 → [{"tool":"get-upcoming-fixtures","competition_id":"champions-league"},{"tool":"get-daily-fixtures"}]
-      "Serie A top scorers"          → [{"tool":"get-top-scorers","competition_id":"serie-a"}]
-      "How is Arsenal doing"         → [{"tool":"get-team-form","query":"Arsenal","competition_id":"premier-league"},{"tool":"get-league-standings","competition_id":"premier-league"}]
-      "Bundesliga table"             → [{"tool":"get-league-standings","competition_id":"bundesliga"}]
-      "Ligue 1 top scorers"          → [{"tool":"get-top-scorers","competition_id":"ligue-1"}]
-      "Next La Liga matches"         → [{"tool":"get-upcoming-fixtures","competition_id":"la-liga"}]
+      EXAMPLES:
+      "Premier League standings"    → action=standings,   competition_id=premier-league
+      "Bayern's next fixture"        → action=team-schedule, query=Bayern Munich, competition_id=bundesliga
+      "How is Arsenal doing?"        → action=team-form,   query=Arsenal, competition_id=premier-league
+      "Serie A top scorers"          → action=top-scorers, competition_id=serie-a
+      "UCL upcoming fixtures"        → action=upcoming-fixtures, competition_id=champions-league
+      "What's on today?"             → action=daily-fixtures
+      "PSG next game"                → action=team-schedule, query=PSG, competition_id=ligue-1
     schema:
       title: "EAFootballChatReasoning"
-      description: "Structured tool routing decision."
+      description: "Intent classification with typed parameters for football queries."
       type: "object"
-      required: [tool_calls]
+      required: [action, parameters]
       properties:
-        tool_calls:
-          type: "array"
-          description: "List of tool invocations (max 3)."
-          maxItems: 3
-          items:
-            type: "object"
-            required: [tool]
-            properties:
-              tool:
-                type: "string"
-                description: "Name of the tool workflow to invoke."
-                enum:
-                  - get-league-standings
-                  - get-daily-fixtures
-                  - get-upcoming-fixtures
-                  - get-team-form
-                  - get-team-schedule
-                  - get-match-report
-                  - get-top-scorers
-                  - search-entity
-              competition_id:
-                type: "string"
-                description: "Competition slug. Required for all tools except get-daily-fixtures and search-entity."
-                enum:
-                  - premier-league
-                  - serie-a
-                  - la-liga
-                  - bundesliga
-                  - ligue-1
-                  - champions-league
-              query:
-                type: "string"
-                description: "Team or player name. Required for get-team-form, get-team-schedule, search-entity."
-              event_id:
-                type: "string"
-                description: "Match event ID. Required for get-match-report."
+        action:
+          type: "string"
+          description: "Primary action to execute based on user intent."
+          enum:
+            - standings
+            - daily-fixtures
+            - upcoming-fixtures
+            - team-form
+            - team-schedule
+            - top-scorers
+            - search-entity
+            - general
+        parameters:
+          type: "object"
+          description: "Typed parameters for the selected action."
+          properties:
+            competition_id:
+              type: "string"
+              description: "League slug. Required for standings, upcoming-fixtures, team-form, team-schedule, top-scorers."
+              enum:
+                - premier-league
+                - serie-a
+                - la-liga
+                - bundesliga
+                - ligue-1
+                - champions-league
+            query:
+              type: "string"
+              description: "Team or player name. Required for team-form, team-schedule, search-entity."
+            event_id:
+              type: "string"
+              description: "Match event ID. Required for match-report."

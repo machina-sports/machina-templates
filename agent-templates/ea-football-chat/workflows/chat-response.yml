@@ -1,18 +1,19 @@
 workflow:
   name: chat-response
   title: "EA Football Chat Response"
-  description: "Composes the final answer by invoking the ea-football-chat-response prompt with tool results."
+  description: "Composes the final football answer from reasoning context and tool result."
   inputs:
     messages: "$.get('messages', [])"
     league: "$.get('league', 'premier-league')"
-    tool_results: "$.get('tool_results', [])"
+    reasoning: "$.get('reasoning', {})"
+    tool_result: "$.get('tool_result')"
   outputs:
     message: "$.get('message', '')"
     workflow-status: "'executed'"
   tasks:
     - type: prompt
       name: ea-football-chat-response
-      description: "Compose answer grounded in sports-skills tool results."
+      description: "Compose answer grounded in tool result data."
       connector:
         command: invoke_prompt
         name: google-genai
@@ -22,6 +23,7 @@ workflow:
       inputs:
         _1-league: "$.get('league', 'premier-league')"
         _2-messages: "$.get('messages', [])"
-        _3-tool_results: "$.get('tool_results', [])"
+        _3-reasoning: "$.get('reasoning', {})"
+        _4-tool_result: "$.get('tool_result')"
       outputs:
         message: "$.get('choices', [{}])[0].get('message', {}).get('content', '')"
