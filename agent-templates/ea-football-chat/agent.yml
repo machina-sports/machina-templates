@@ -13,41 +13,71 @@ agent:
 
   workflows:
 
-    # 1. Reasoning — pick the tool (or none) and prep args.
+    # 1. Reasoning — pick tool + args
     - name: chat-reasoning
-      description: "Decide which tool to call."
+      description: "Pick the tool and args."
       condition: $.get('messages') is not None and len($.get('messages')) > 0
       inputs:
         messages: $.get('messages')
         league: $.get('league')
       outputs:
         tool_calls: $.get('tool_calls', [])
-        reasoning_status: $.get('workflow-status') == 'executed'
+        picked_tool: "$.get('tool_calls', [{}])[0].get('tool') if len($.get('tool_calls', [])) > 0 else None"
+        picked_args: "$.get('tool_calls', [{}])[0].get('args', {}) if len($.get('tool_calls', [])) > 0 else {}"
 
     # 2a. League standings
     - name: get-league-standings
       description: "League table"
-      condition: "any(c.get('tool') == 'get-league-standings' for c in $.get('tool_calls', []))"
+      condition: "$.get('picked_tool') == 'get-league-standings'"
       inputs:
-        competition_id: "next((c.get('args', {}).get('competition_id') for c in $.get('tool_calls', []) if c.get('tool') == 'get-league-standings'), 'premier-league')"
+        competition_id: "$.get('picked_args', {}).get('competition_id') or $.get('league', 'premier-league')"
       outputs:
         standings_result: $.get('result')
 
     # 2b. Daily fixtures
     - name: get-daily-fixtures
       description: "Today's matches"
-      condition: "any(c.get('tool') == 'get-daily-fixtures' for c in $.get('tool_calls', []))"
+      condition: "$.get('picked_tool') == 'get-daily-fixtures'"
       outputs:
         fixtures_result: $.get('result')
 
-    # 2c. Top scorers
+    # 2c. Team form
+    - name: get-team-form
+      description: "Team's recent form"
+      condition: "$.get('picked_tool') == 'get-team-form'"
+      inputs:
+        query: "$.get('picked_args', {}).get('query')"
+        competition_id: "$.get('picked_args', {}).get('competition_id') or $.get('league', 'premier-league')"
+      outputs:
+        team_form_result: $.get('result')
+
+    # 2d. Match report
+    - name: get-match-report
+      description: "Match summary + stats + xG"
+      condition: "$.get('picked_tool') == 'get-match-report'"
+      inputs:
+        event_id: "$.get('picked_args', {}).get('event_id')"
+        competition_id: "$.get('picked_args', {}).get('competition_id') or $.get('league', 'premier-league')"
+      outputs:
+        match_report_result: $.get('result')
+
+    # 2e. Top scorers
     - name: get-top-scorers
       description: "Season leaders"
-      condition: "any(c.get('tool') == 'get-top-scorers' for c in $.get('tool_calls', []))"
+      condition: "$.get('picked_tool') == 'get-top-scorers'"
       inputs:
-        competition_id: "next((c.get('args', {}).get('competition_id') for c in $.get('tool_calls', []) if c.get('tool') == 'get-top-scorers'), 'premier-league')"
+        competition_id: "$.get('picked_args', {}).get('competition_id') or $.get('league', 'premier-league')"
       outputs:
         scorers_result: $.get('result')
+
+    # 2f. Search entity
+    - name: search-entity
+      description: "Search team or player"
+      condition: "$.get('picked_tool') == 'search-entity'"
+      inputs:
+        query: "$.get('picked_args', {}).get('query')"
+      outputs:
+        search_result: $.get('result')
 
     # 3. Response — format reply
     - name: chat-response
@@ -57,17 +87,22 @@ agent:
         messages: $.get('messages')
         tool_results: |
           {
+            'picked_tool': $.get('picked_tool'),
+            'picked_args': $.get('picked_args'),
             'standings': $.get('standings_result'),
             'fixtures': $.get('fixtures_result'),
-            'scorers': $.get('scorers_result')
+            'team_form': $.get('team_form_result'),
+            'match_report': $.get('match_report_result'),
+            'scorers': $.get('scorers_result'),
+            'search': $.get('search_result')
           }
       outputs:
         message: $.get('message', '')
         content: $.get('message', '')
         response_text: $.get('message', '')
-        tool_calls: $.get('tool_calls', [])
 
   outputs:
     result: $.get('message', '')
     content: $.get('message', '')
+    message: $.get('message', '')
     workflow-status: "'executed'"

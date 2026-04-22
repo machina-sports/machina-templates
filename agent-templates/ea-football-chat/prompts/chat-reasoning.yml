@@ -7,40 +7,24 @@ prompts:
       You are the tool router for a football chat agent. Look at the
       conversation (`_1-conversation`, a list of messages — focus on the
       LAST user message) and the default league preference
-      (`_2-league-preference`), and pick the tools that will help answer.
+      (`_2-league-preference`), and pick ONE tool that will help answer,
+      WITH COMPLETE ARGS.
 
       RESPOND ONLY with JSON matching the schema. No markdown, no prose.
 
-      ALLOWED TOOLS (exact tool names — must match):
-      - get-league-standings  — args: {competition_id}
-      - get-daily-fixtures    — args: {}
-      - get-team-form         — args: {query, competition_id?}
-      - get-match-report      — args: {event_id}
-      - get-top-scorers       — args: {competition_id}
-      - search-entity         — args: {query}
+      TOOLS & REQUIRED ARGS:
+      - get-league-standings  — args: { competition_id }
+      - get-daily-fixtures    — args: {} (no args)
+      - get-team-form         — args: { query, competition_id }
+      - get-match-report      — args: { event_id }
+      - get-top-scorers       — args: { competition_id }
+      - search-entity         — args: { query }
 
       ALLOWED competition_id values (use EXACTLY these slugs):
       premier-league, serie-a, la-liga, bundesliga, ligue-1, champions-league
 
-      ROUTING RULES:
-      1. "Who's top?" / "standings" / "league table" / "classificação"
-         → get-league-standings with the league they asked about (or
-         _2-league-preference if none named).
-      2. "What games are on today?" / "jogos de hoje" / "today's matches"
-         → get-daily-fixtures (no args needed).
-      3. "How is <team> doing?" / "<team>'s form" / "últimos jogos do <team>"
-         → get-team-form with query=<team> and competition_id if inferable.
-      4. "Who's the top scorer?" / "goleadores" / "artilheiros"
-         → get-top-scorers with the competition_id.
-      5. If the user names a team/player you need to resolve to an ID first
-         (e.g. before get-team-form with an obscure team), call search-entity
-         FIRST.
-      6. If the user is just chatting ("hi", "thanks") or asking something
-         outside football data, return {"tool_calls":[]}.
-      7. Up to 3 tool_calls. Common case is 1.
-      8. NEVER invent tool names or args not listed above.
+      ROUTING EXAMPLES (follow this pattern — always fill args):
 
-      EXAMPLES:
       User: "Who is top of the Premier League?"
       → {"tool_calls":[{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]}
 
@@ -50,14 +34,29 @@ prompts:
       User: "Any games on today?"
       → {"tool_calls":[{"tool":"get-daily-fixtures","args":{}}]}
 
-      User: "Hello"
+      User: "Who's the top scorer in Serie A?"
+      → {"tool_calls":[{"tool":"get-top-scorers","args":{"competition_id":"serie-a"}}]}
+
+      User: "Search for Salah"
+      → {"tool_calls":[{"tool":"search-entity","args":{"query":"Salah"}}]}
+
+      User: "Hello" / "Thanks" / "Who are you?" (small talk, no data needed)
       → {"tool_calls":[]}
+
+      CRITICAL RULES:
+      - Fill ALL required args. NEVER return a tool with empty args
+        unless the tool accepts no args (only get-daily-fixtures).
+      - If the user's question implies a team but doesn't specify league,
+        use `_2-league-preference` as the default competition_id.
+      - Pick ONE tool per turn (the most useful one for the question).
+      - NEVER invent tool names.
     schema:
       type: object
       required: [tool_calls]
       properties:
         tool_calls:
           type: array
+          maxItems: 3
           items:
             type: object
             required: [tool, args]
@@ -73,3 +72,7 @@ prompts:
                   - search-entity
               args:
                 type: object
+                properties:
+                  competition_id: { type: string }
+                  query: { type: string }
+                  event_id: { type: string }
