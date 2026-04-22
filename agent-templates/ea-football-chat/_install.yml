@@ -48,3 +48,7 @@ datasets:
     path: "tools/get-top-scorers.yml"
   - type: "workflow"
     path: "tools/search-entity.yml"
+  - type: "workflow"
+    path: "tools/get-player-comparison.yml"
+  - type: "workflow"
+    path: "tools/get-team-h2h.yml"
