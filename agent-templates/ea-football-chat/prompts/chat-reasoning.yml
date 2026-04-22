@@ -12,27 +12,42 @@ prompts:
       OUTPUT SHAPE:
       {"tool_calls":[{"tool":"<name>","args":{...}}, ...]}
 
+      LEAGUE MAPPING — use EXACTLY these competition_id strings:
+        "Premier League" / "EPL" / "PL" / "England"  → "premier-league"
+        "Serie A" / "Italy" / "Italian"               → "serie-a"
+        "La Liga" / "Spain" / "Spanish"               → "la-liga"
+        "Bundesliga" / "Germany" / "German"           → "bundesliga"
+        "Ligue 1" / "France" / "French"               → "ligue-1"
+        "Champions League" / "UCL" / "CL" / "UEFA"   → "champions-league"
+        If the user names no specific league, use _1-league value as competition_id.
+
       ALLOWED TOOLS:
-      - get-league-standings({competition_id})
-      - get-daily-fixtures({})
-      - get-team-form({query, competition_id})
-      - get-match-report({event_id, competition_id})
-      - get-top-scorers({competition_id})    # Premier League only
-      - search-entity({query})
+      - get-league-standings   args: {"competition_id": "<league>"}
+      - get-daily-fixtures     args: {}
+      - get-team-form          args: {"query": "<team name>", "competition_id": "<league>"}
+      - get-match-report       args: {"event_id": "<id>", "competition_id": "<league>"}
+      - get-top-scorers        args: {"competition_id": "<league>"}
+      - search-entity          args: {"query": "<name>"}
 
-      ALLOWED competition_id: premier-league, serie-a, la-liga, bundesliga, ligue-1, champions-league
+      MANDATORY RULES:
+      1. ALWAYS include competition_id for: get-league-standings, get-top-scorers,
+         get-team-form, get-match-report. Never leave it empty or absent.
+      2. Derive competition_id from the user message first; fall back to _1-league.
+      3. Max 3 tool_calls per turn.
+      4. If the question is vague, default to get-league-standings + get-daily-fixtures
+         for the competition_id derived from _1-league.
+      5. For "how is <team> doing" questions, call get-team-form + get-league-standings.
+      6. If you don't recognise a team name, call search-entity FIRST.
+      7. NEVER invent tool names or arguments not listed above.
+      8. If no tool fits, return {"tool_calls":[]}.
 
-      RULES:
-      - Max 3 tool_calls per turn.
-      - If the question is vague AND _1-league is set, default to
-        get-league-standings({competition_id: league}) + get-daily-fixtures.
-      - If a team name is given by nickname, call search-entity FIRST.
-      - For questions about a specific team's season ("how is Arsenal doing"),
-        combine get-team-form + get-league-standings for that team's league.
-      - For match-report questions, always include competition_id so xG data
-        can be fetched when the competition supports it.
-      - NEVER invent tool names or arguments.
-      - If no tool fits, return {"tool_calls":[]}.
+      EXAMPLES:
+      User: "Premier League standings" → [{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]
+      User: "UCL fixtures" → [{"tool":"get-daily-fixtures","args":{}},{"tool":"get-league-standings","args":{"competition_id":"champions-league"}}]
+      User: "Serie A top scorers" → [{"tool":"get-top-scorers","args":{"competition_id":"serie-a"}}]
+      User: "How is Arsenal doing" → [{"tool":"get-team-form","args":{"query":"Arsenal","competition_id":"premier-league"}},{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]
+      User: "Bundesliga table" → [{"tool":"get-league-standings","args":{"competition_id":"bundesliga"}}]
+      User: "Ligue 1 top scorers" → [{"tool":"get-top-scorers","args":{"competition_id":"ligue-1"}}]
     schema:
       title: "EAFootballChatReasoning"
       description: "Structured tool routing decision."
@@ -45,7 +60,7 @@ prompts:
           maxItems: 3
           items:
             type: "object"
-            required: [tool]
+            required: [tool, args]
             properties:
               tool:
                 type: "string"

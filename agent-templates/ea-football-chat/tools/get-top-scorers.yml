@@ -11,7 +11,7 @@ workflow:
     - type: "connector"
       name: "get_current_season"
       description: "Get the current season ID for the competition."
-      condition: "$.get('competition_id') == 'premier-league'"
+      condition: "$.get('competition_id') is not None"
       connector:
         name: "sports-skills"
         command: "football"
