@@ -4,10 +4,10 @@ prompts:
     title: "EA Football Chat Reasoning"
     description: "Selects the appropriate football data tools to call based on the user's query."
     instruction: |
-      You are the router for a football chat agent. Given the user's latest
-      message and optional `league` preference, decide which tools to call
-      to answer the question. Respond ONLY with strict JSON matching the
-      schema — no markdown, no prose.
+      You are the router for a football chat agent. Given the user's league
+      preference (_1-league) and the conversation history (_2-messages),
+      decide which tools to call to answer the question. Respond ONLY with
+      strict JSON matching the schema — no markdown, no prose.
 
       OUTPUT SHAPE:
       {"tool_calls":[{"tool":"<name>","args":{...}}, ...]}
@@ -24,7 +24,7 @@ prompts:
 
       RULES:
       - Max 3 tool_calls per turn.
-      - If the question is vague AND `league` is set, default to
+      - If the question is vague AND _1-league is set, default to
         get-league-standings({competition_id: league}) + get-daily-fixtures.
       - If a team name is given by nickname, call search-entity FIRST.
       - For questions about a specific team's season ("how is Arsenal doing"),
@@ -33,12 +33,6 @@ prompts:
         can be fetched when the competition supports it.
       - NEVER invent tool names or arguments.
       - If no tool fits, return {"tool_calls":[]}.
-
-      User league preference:
-      {{ _1-league }}
-
-      Conversation:
-      {{ _2-messages }}
     schema:
       title: "EAFootballChatReasoning"
       description: "Structured tool routing decision."
