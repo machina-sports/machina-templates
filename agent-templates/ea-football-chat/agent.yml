@@ -1,26 +1,73 @@
 agent:
   name: ea-football-chat
   title: "EA Sports Hub Football Chat"
-  inputs:
-    - { name: messages, type: list }
-    - { name: thread_id, type: string, required: false }
-    - { name: league, type: string, required: false, default: "premier-league" }
-  tasks:
-    - { name: reason, type: workflow,
-        workflow: { name: chat-reasoning },
-        inputs: { messages: "$.get('messages')", league: "$.get('league')" },
-        outputs: { tool_calls: "$.get('tool_calls')" } }
-    - { name: execute_tools, type: map,
-        map: { variable: tool_calls, iterator: call,
-               tasks: [ { type: workflow,
-                          workflow: { name: "$.get('call').get('tool')" },
-                          inputs: "$.get('call').get('args')" } ] } }
-    - { name: respond, type: workflow,
-        workflow: { name: chat-response },
-        inputs: { messages: "$.get('messages')",
-                  tool_results: "$.get('execute_tools')" },
-        outputs: { message: "$.get('message')",
-                   suggestions: "$.get('suggestions')" } }
+  description: "Chat agent that answers football questions using live ESPN/Understat data."
+
+  context:
+    status: "inactive"
+
+  context-agent:
+    messages: $.get('messages', [])
+    league: $.get('league', 'premier-league')
+    thread_id: $.get('thread_id', None)
+
+  workflows:
+
+    # 1. Reasoning — pick the tool (or none) and prep args.
+    - name: chat-reasoning
+      description: "Decide which tool to call."
+      condition: $.get('messages') is not None and len($.get('messages')) > 0
+      inputs:
+        messages: $.get('messages')
+        league: $.get('league')
+      outputs:
+        tool_calls: $.get('tool_calls', [])
+        reasoning_status: $.get('workflow-status') == 'executed'
+
+    # 2a. League standings
+    - name: get-league-standings
+      description: "League table"
+      condition: "any(c.get('tool') == 'get-league-standings' for c in $.get('tool_calls', []))"
+      inputs:
+        competition_id: "next((c.get('args', {}).get('competition_id') for c in $.get('tool_calls', []) if c.get('tool') == 'get-league-standings'), 'premier-league')"
+      outputs:
+        standings_result: $.get('result')
+
+    # 2b. Daily fixtures
+    - name: get-daily-fixtures
+      description: "Today's matches"
+      condition: "any(c.get('tool') == 'get-daily-fixtures' for c in $.get('tool_calls', []))"
+      outputs:
+        fixtures_result: $.get('result')
+
+    # 2c. Top scorers
+    - name: get-top-scorers
+      description: "Season leaders"
+      condition: "any(c.get('tool') == 'get-top-scorers' for c in $.get('tool_calls', []))"
+      inputs:
+        competition_id: "next((c.get('args', {}).get('competition_id') for c in $.get('tool_calls', []) if c.get('tool') == 'get-top-scorers'), 'premier-league')"
+      outputs:
+        scorers_result: $.get('result')
+
+    # 3. Response — format reply
+    - name: chat-response
+      description: "Format the final reply."
+      condition: $.get('messages') is not None and len($.get('messages')) > 0
+      inputs:
+        messages: $.get('messages')
+        tool_results: |
+          {
+            'standings': $.get('standings_result'),
+            'fixtures': $.get('fixtures_result'),
+            'scorers': $.get('scorers_result')
+          }
+      outputs:
+        message: $.get('message', '')
+        content: $.get('message', '')
+        response_text: $.get('message', '')
+        tool_calls: $.get('tool_calls', [])
+
   outputs:
-    result: "$.get('message')"
-    workflow-status: "executed"
+    result: $.get('message', '')
+    content: $.get('message', '')
+    workflow-status: "'executed'"
