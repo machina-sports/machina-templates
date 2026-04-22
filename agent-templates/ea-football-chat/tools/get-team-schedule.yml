@@ -19,7 +19,7 @@ workflow:
         command: "'search_team'"
         query: "$.get('query')"
       outputs:
-        team_id: "$.get('result')[0].get('id') if $.get('result') else None"
+        team_id: "$.get('result', {}).get('results', [{}])[0].get('team', {}).get('id') if $.get('result', {}).get('results') else None"
 
     - type: "connector"
       name: "get_team_schedule"
