@@ -26,7 +26,8 @@ workflow:
         location: "global"
         provider: "vertex_ai"
       inputs:
-        messages: "$.get('messages', [])"
-        tool_results: "$.get('tool_results', [])"
+        _1-user-message: "$.get('messages', [])[-1] if len($.get('messages', [])) > 0 else None"
+        _2-tool-results: "$.get('tool_results', {})"
+        _3-conversation-history: "$.get('messages', [])[:-1]"
       outputs:
         message: "$.get('content', $.get('choices', [{}])[0].get('message', {}).get('content', ''))"
