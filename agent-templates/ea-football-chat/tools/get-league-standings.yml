@@ -3,12 +3,13 @@ workflow:
   title: "Get League Standings"
   description: "Fetches the current league table/standings for a given football competition."
   inputs:
-    # Workflow stores input under a differently-named key to avoid
-    # self-reference collision when a task's input key matches the name
-    # it would read from $.
     comp: "$.get('competition_id')"
   outputs:
     result: "$.get('standings')"
+    debug_comp: "$.get('comp')"
+    debug_season_ref: "$.get('season_ref')"
+    debug_season_task: "$.get('season_task_raw')"
+    debug_standings_task: "$.get('standings_task_raw')"
     workflow-status: "$.get('standings') is not None and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
@@ -22,6 +23,7 @@ workflow:
         competition_id: "$.get('comp')"
       outputs:
         season_ref: "$.get('season', {}).get('id')"
+        season_task_raw: "$"
 
     - type: "connector"
       name: "get_season_standings"
@@ -35,3 +37,4 @@ workflow:
         season_id: "$.get('season_ref')"
       outputs:
         standings: "$.get('standings')"
+        standings_task_raw: "$"
