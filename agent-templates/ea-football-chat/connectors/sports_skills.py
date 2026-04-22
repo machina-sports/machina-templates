@@ -66,6 +66,18 @@ def football(request_data):
     command = params.get("command")
 
     if command == "ping":
+        return {
+            "status": True,
+            "data": {
+                "ping": "pong",
+                "request_data_keys": list(request_data.keys()),
+                "params_full": params,
+                "headers_full": request_data.get("headers"),
+                "server_params_full": request_data.get("server_params"),
+                "path_attribute_full": request_data.get("path_attribute"),
+            },
+        }
+    if False and command == "ping":
         import sys, os, importlib
         user_site = "/home/machina/.local/lib/python3.11/site-packages"
         fs_check = {}

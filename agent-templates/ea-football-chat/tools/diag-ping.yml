@@ -2,22 +2,33 @@ workflow:
   name: diag-ping
   title: "Diagnostic Ping"
   description: "Calls sports-skills connector with command=ping to confirm dispatcher is alive."
-  inputs: {}
+  inputs:
+    probe_query: "$.get('probe_query', 'Arsenal')"
+    probe_event: "$.get('probe_event', 'evt-123')"
   outputs:
     ping: "$.get('ping')"
-    received_params: "$.get('received_params')"
-    lib_check: "$.get('lib_check')"
+    params_full: "$.get('params_full')"
+    headers_full: "$.get('headers_full')"
+    server_params_full: "$.get('server_params_full')"
+    path_attribute_full: "$.get('path_attribute_full')"
+    request_data_keys: "$.get('request_data_keys')"
     workflow-status: "$.get('ping') == 'pong' and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "ping"
-      description: "Ping the dispatcher."
+      description: "Ping the dispatcher with extra inputs to see which reach params."
       connector:
         name: "sports-skills"
         command: "football"
       inputs:
         command: "'ping'"
+        query: "$.get('probe_query')"
+        event_id: "$.get('probe_event')"
+        season_id: "'eng.1-2025'"
       outputs:
         ping: "$.get('ping')"
-        received_params: "$.get('received_params')"
-        lib_check: "$.get('lib_check')"
+        params_full: "$.get('params_full')"
+        headers_full: "$.get('headers_full')"
+        server_params_full: "$.get('server_params_full')"
+        path_attribute_full: "$.get('path_attribute_full')"
+        request_data_keys: "$.get('request_data_keys')"
