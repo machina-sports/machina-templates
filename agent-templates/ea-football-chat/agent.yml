@@ -8,7 +8,7 @@ agent:
 
   context-agent:
     messages: $.get('messages', [])
-    league: $.get('league', 'premier-league')
+    league: "$.get('inputs', {}).get('league') or $.get('league', 'premier-league')"
     thread_id: $.get('thread_id', None)
 
   workflows:
