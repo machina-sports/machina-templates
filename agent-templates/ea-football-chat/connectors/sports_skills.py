@@ -66,9 +66,15 @@ def football(request_data):
     command = params.get("command")
 
     if command == "ping":
-        import importlib
+        import sys, importlib
+        for _p in (
+            "/home/machina/.local/lib/python3.11/site-packages",
+            "/root/.local/lib/python3.11/site-packages",
+        ):
+            if _p not in sys.path:
+                sys.path.insert(0, _p)
         importlib.invalidate_caches()
-        lib_check = {}
+        lib_check = {"sys_path": list(sys.path)}
         try:
             import sports_skills
 
