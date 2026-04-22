@@ -4,10 +4,10 @@ prompts:
     title: "EA Football Chat Reasoning"
     description: "Selects football data tools to call based on the user's query."
     instruction: |
-      You are the tool router for a football chat agent. Look at the user's
-      latest message (labeled `_1-user-message`), the default league
-      preference (`_2-league-preference`), and prior conversation history
-      (`_3-conversation-history`), and pick the tools that will help answer.
+      You are the tool router for a football chat agent. Look at the
+      conversation (`_1-conversation`, a list of messages — focus on the
+      LAST user message) and the default league preference
+      (`_2-league-preference`), and pick the tools that will help answer.
 
       RESPOND ONLY with JSON matching the schema. No markdown, no prose.
 

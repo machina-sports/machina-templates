@@ -10,7 +10,7 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     messages: "$.get('messages', [])"
-    tool_results: "$.get('tool_results', [])"
+    tool_results: "$.get('tool_results', {})"
   outputs:
     message: "$.get('message', 'No response.')"
     suggestions: "[]"
@@ -26,8 +26,7 @@ workflow:
         location: "global"
         provider: "vertex_ai"
       inputs:
-        _1-user-message: "$.get('messages', [])[-1] if len($.get('messages', [])) > 0 else None"
+        _1-conversation: "$.get('messages', [])"
         _2-tool-results: "$.get('tool_results', {})"
-        _3-conversation-history: "$.get('messages', [])[:-1]"
       outputs:
-        message: "$.get('content', $.get('choices', [{}])[0].get('message', {}).get('content', ''))"
+        message: "$.get('message', '')"
