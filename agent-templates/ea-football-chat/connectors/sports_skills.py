@@ -185,11 +185,20 @@ def football(request_data):
     if fn is None:
         return _err("no function: " + command)
 
-    forwarded = {
-        k: v
-        for k, v in params.items()
-        if k not in ("command", "model_name") and v is not None
-    }
+    # Merge path_attribute (where command_attribute declarations land) and
+    # server_params into the forwarded dict, then flat params.
+    forwarded = {}
+    for extra in (request_data.get("server_params"), request_data.get("path_attribute")):
+        if isinstance(extra, dict):
+            for ek, ev in extra.items():
+                if ev is not None:
+                    forwarded[ek] = ev
+    for k, v in params.items():
+        if k in ("command", "model_name"):
+            continue
+        if v is None:
+            continue
+        forwarded[k] = v
 
     try:
         data = fn({"params": forwarded})
