@@ -66,6 +66,8 @@ def football(request_data):
     command = params.get("command")
 
     if command == "ping":
+        import importlib
+        importlib.invalidate_caches()
         lib_check = {}
         try:
             import sports_skills
@@ -103,6 +105,8 @@ def football(request_data):
         return _err("unknown command: " + str(command))
 
     try:
+        import importlib
+        importlib.invalidate_caches()
         from sports_skills.football import _connector
     except Exception as exc:
         return _err("sports-skills import failed: " + repr(exc))
