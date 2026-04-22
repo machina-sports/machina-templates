@@ -100,6 +100,7 @@ def football(request_data):
         ss_init = user_site + "/sports_skills/__init__.py"
         fs_check["sports_skills_init_exists"] = os.path.isfile(ss_init)
         for _p in (
+            "/tmp/pylib",
             user_site,
             "/root/.local/lib/python3.11/site-packages",
         ):
@@ -144,7 +145,11 @@ def football(request_data):
 
     try:
         import sys, importlib
-        for _p in ("/home/machina/.local/lib/python3.11/site-packages",):
+        for _p in (
+            "/tmp/pylib",
+            "/home/machina/.local/lib/python3.11/site-packages",
+            "/root/.local/lib/python3.11/site-packages",
+        ):
             if _p not in sys.path:
                 sys.path.insert(0, _p)
         importlib.invalidate_caches()
