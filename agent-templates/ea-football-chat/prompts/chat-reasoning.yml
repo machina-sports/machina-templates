@@ -9,55 +9,49 @@ prompts:
       decide which tools to call to answer the question. Respond ONLY with
       strict JSON matching the schema — no markdown, no prose.
 
-      OUTPUT SHAPE:
-      {"tool_calls":[{"tool":"<name>","args":{...}}, ...]}
+      OUTPUT SHAPE — competition_id and query are TOP-LEVEL fields, NOT nested:
+      {"tool_calls":[{"tool":"<name>","competition_id":"<league>","query":"<team>"}, ...]}
 
-      LEAGUE MAPPING — use EXACTLY these competition_id strings:
+      LEAGUE MAPPING — use EXACTLY these competition_id values:
         "Premier League" / "EPL" / "PL" / "England"  → "premier-league"
         "Serie A" / "Italy" / "Italian"               → "serie-a"
         "La Liga" / "Spain" / "Spanish"               → "la-liga"
         "Bundesliga" / "Germany" / "German"           → "bundesliga"
         "Ligue 1" / "France" / "French"               → "ligue-1"
         "Champions League" / "UCL" / "CL" / "UEFA"   → "champions-league"
-        If the user names no specific league, use _1-league value as competition_id.
+        If the user names no specific league, use _1-league value.
 
-      ALLOWED TOOLS:
-      - get-league-standings    args: {"competition_id": "<league>"}
-      - get-daily-fixtures      args: {}
-      - get-upcoming-fixtures   args: {"competition_id": "<league>"}
-      - get-team-form           args: {"query": "<team name>", "competition_id": "<league>"}
-      - get-team-schedule       args: {"query": "<team name>", "competition_id": "<league>"}
-      - get-match-report        args: {"event_id": "<id>", "competition_id": "<league>"}
-      - get-top-scorers         args: {"competition_id": "<league>"}
-      - search-entity           args: {"query": "<name>"}
+      TOOLS AND REQUIRED FIELDS:
+      - get-league-standings    requires: competition_id
+      - get-daily-fixtures      requires: nothing
+      - get-upcoming-fixtures   requires: competition_id
+      - get-team-form           requires: competition_id + query (team name)
+      - get-team-schedule       requires: competition_id + query (team name)
+      - get-match-report        requires: competition_id + event_id
+      - get-top-scorers         requires: competition_id
+      - search-entity           requires: query (team or player name)
 
-      MANDATORY RULES:
-      1. ALWAYS include competition_id for: get-league-standings, get-upcoming-fixtures,
-         get-top-scorers, get-team-form, get-team-schedule, get-match-report.
-         Never leave competition_id empty or absent.
-      2. Derive competition_id from the user message first; fall back to _1-league.
-      3. Max 3 tool_calls per turn.
-      4. Use get-daily-fixtures for "today's matches" / "what's on today".
-         Use get-upcoming-fixtures for "next matches" / "what's next" for a whole LEAGUE.
-         Use get-team-schedule for "next fixture" / "upcoming" for a specific TEAM.
-         Use get-team-form for "form" / "results" / "how is <team> doing".
-      5. If the question is vague, default to get-league-standings + get-upcoming-fixtures
-         for the competition_id derived from _1-league.
-      6. If you don't recognise a team name, call search-entity FIRST.
-      7. NEVER invent tool names or arguments not listed above.
-      8. If no tool fits, return {"tool_calls":[]}.
+      ROUTING RULES:
+      - "standings" / "table" / "league" → get-league-standings
+      - "today's matches" / "on today"   → get-daily-fixtures
+      - "next matches" / "upcoming" for a LEAGUE → get-upcoming-fixtures
+      - "next fixture" / "upcoming" for a TEAM  → get-team-schedule
+      - "form" / "results" / "how is <team>"    → get-team-form + get-league-standings
+      - "top scorers" / "goals"                 → get-top-scorers
+      - Vague question: get-league-standings + get-upcoming-fixtures using _1-league
+      - Unknown team name: search-entity FIRST
 
-      EXAMPLES:
-      User: "Premier League standings" → [{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]
-      User: "What's next in the Premier League?" → [{"tool":"get-upcoming-fixtures","args":{"competition_id":"premier-league"}}]
-      User: "Bayern's next fixture" → [{"tool":"get-team-schedule","args":{"query":"Bayern Munich","competition_id":"bundesliga"}}]
-      User: "PSG upcoming matches" → [{"tool":"get-team-schedule","args":{"query":"PSG","competition_id":"ligue-1"}}]
-      User: "UCL fixtures" → [{"tool":"get-upcoming-fixtures","args":{"competition_id":"champions-league"}},{"tool":"get-daily-fixtures","args":{}}]
-      User: "Serie A top scorers" → [{"tool":"get-top-scorers","args":{"competition_id":"serie-a"}}]
-      User: "How is Arsenal doing" → [{"tool":"get-team-form","args":{"query":"Arsenal","competition_id":"premier-league"}},{"tool":"get-league-standings","args":{"competition_id":"premier-league"}}]
-      User: "Bundesliga table" → [{"tool":"get-league-standings","args":{"competition_id":"bundesliga"}}]
-      User: "Ligue 1 top scorers" → [{"tool":"get-top-scorers","args":{"competition_id":"ligue-1"}}]
-      User: "Next La Liga matches" → [{"tool":"get-upcoming-fixtures","args":{"competition_id":"la-liga"}}]
+      EXAMPLES (fields are top-level, NOT inside args):
+      "Premier League standings"    → [{"tool":"get-league-standings","competition_id":"premier-league"}]
+      "What's next in the PL?"      → [{"tool":"get-upcoming-fixtures","competition_id":"premier-league"}]
+      "Bayern's next fixture"        → [{"tool":"get-team-schedule","query":"Bayern Munich","competition_id":"bundesliga"}]
+      "PSG upcoming matches"         → [{"tool":"get-team-schedule","query":"PSG","competition_id":"ligue-1"}]
+      "UCL fixtures"                 → [{"tool":"get-upcoming-fixtures","competition_id":"champions-league"},{"tool":"get-daily-fixtures"}]
+      "Serie A top scorers"          → [{"tool":"get-top-scorers","competition_id":"serie-a"}]
+      "How is Arsenal doing"         → [{"tool":"get-team-form","query":"Arsenal","competition_id":"premier-league"},{"tool":"get-league-standings","competition_id":"premier-league"}]
+      "Bundesliga table"             → [{"tool":"get-league-standings","competition_id":"bundesliga"}]
+      "Ligue 1 top scorers"          → [{"tool":"get-top-scorers","competition_id":"ligue-1"}]
+      "Next La Liga matches"         → [{"tool":"get-upcoming-fixtures","competition_id":"la-liga"}]
     schema:
       title: "EAFootballChatReasoning"
       description: "Structured tool routing decision."
@@ -66,11 +60,11 @@ prompts:
       properties:
         tool_calls:
           type: "array"
-          description: "List of tool invocations to fulfill the user request (max 3)."
+          description: "List of tool invocations (max 3)."
           maxItems: 3
           items:
             type: "object"
-            required: [tool, args]
+            required: [tool]
             properties:
               tool:
                 type: "string"
@@ -84,6 +78,19 @@ prompts:
                   - get-match-report
                   - get-top-scorers
                   - search-entity
-              args:
-                type: "object"
-                description: "Arguments to pass to the tool workflow."
+              competition_id:
+                type: "string"
+                description: "Competition slug. Required for all tools except get-daily-fixtures and search-entity."
+                enum:
+                  - premier-league
+                  - serie-a
+                  - la-liga
+                  - bundesliga
+                  - ligue-1
+                  - champions-league
+              query:
+                type: "string"
+                description: "Team or player name. Required for get-team-form, get-team-schedule, search-entity."
+              event_id:
+                type: "string"
+                description: "Match event ID. Required for get-match-report."

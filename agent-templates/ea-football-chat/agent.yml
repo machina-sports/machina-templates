@@ -14,7 +14,7 @@ agent:
         map: { variable: tool_calls, iterator: call,
                tasks: [ { type: workflow,
                           workflow: { name: "$.get('call').get('tool')" },
-                          inputs: "$.get('call').get('args')" } ] } }
+                          inputs: "{k: v for k, v in $.get('call').items() if k != 'tool'}" } ] } }
     - { name: respond, type: workflow,
         workflow: { name: chat-response },
         inputs: { messages: "$.get('messages')",
