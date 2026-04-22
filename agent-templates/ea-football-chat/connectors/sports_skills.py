@@ -91,6 +91,18 @@ def football(request_data):
             )
         except Exception as e:
             fs_check["system_sp_err"] = repr(e)
+        fs_check["tmp_pylib_exists"] = os.path.isdir("/tmp/pylib")
+        if fs_check["tmp_pylib_exists"]:
+            try:
+                fs_check["tmp_pylib_contents"] = sorted(os.listdir("/tmp/pylib"))[:20]
+            except Exception as e:
+                fs_check["tmp_pylib_err"] = repr(e)
+        # Identify which container by checking init-process command line
+        try:
+            with open("/proc/1/cmdline", "rb") as f:
+                fs_check["proc1_cmd"] = f.read().replace(b"\x00", b" ").decode("utf-8", "replace").strip()
+        except Exception as e:
+            fs_check["proc1_err"] = repr(e)
         fs_check["user_site_exists"] = os.path.isdir(user_site)
         if os.path.isdir(user_site):
             try:
