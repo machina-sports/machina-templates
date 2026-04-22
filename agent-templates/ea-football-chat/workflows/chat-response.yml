@@ -22,4 +22,4 @@ workflow:
         _2-messages: "$.get('messages', [])"
         _3-tool_results: "str($.get('tool_results', []))"
       outputs:
-        message: "$.get('choices')[0].get('message').get('content')"
+        message: "($.get('choices') or [{}])[0].get('message', {}).get('content', '')"
