@@ -66,15 +66,25 @@ def football(request_data):
     command = params.get("command")
 
     if command == "ping":
-        import sys, importlib
+        import sys, os, importlib
+        user_site = "/home/machina/.local/lib/python3.11/site-packages"
+        fs_check = {}
+        fs_check["user_site_exists"] = os.path.isdir(user_site)
+        if os.path.isdir(user_site):
+            try:
+                fs_check["user_site_contents"] = sorted(os.listdir(user_site))[:20]
+            except Exception as exc:
+                fs_check["user_site_listing_error"] = repr(exc)
+        ss_init = user_site + "/sports_skills/__init__.py"
+        fs_check["sports_skills_init_exists"] = os.path.isfile(ss_init)
         for _p in (
-            "/home/machina/.local/lib/python3.11/site-packages",
+            user_site,
             "/root/.local/lib/python3.11/site-packages",
         ):
             if _p not in sys.path:
                 sys.path.insert(0, _p)
         importlib.invalidate_caches()
-        lib_check = {"sys_path": list(sys.path)}
+        lib_check = {"sys_path": list(sys.path), "fs_check": fs_check}
         try:
             import sports_skills
 
