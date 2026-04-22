@@ -19,7 +19,7 @@ workflow:
         command: "'get_event_summary'"
         event_id: "$.get('event_id')"
       outputs:
-        summary: "$.get('result')"
+        summary: "$"
 
     - type: "connector"
       name: "get_stats"
@@ -31,7 +31,7 @@ workflow:
         command: "'get_event_statistics'"
         event_id: "$.get('event_id')"
       outputs:
-        statistics: "$.get('result')"
+        statistics: "$"
 
     - type: "connector"
       name: "get_xg"
@@ -44,4 +44,4 @@ workflow:
         command: "'get_event_xg'"
         event_id: "$.get('event_id')"
       outputs:
-        xg: "$.get('result')"
+        xg: "$"

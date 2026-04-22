@@ -4,62 +4,168 @@ prompts:
     title: "EA Football Chat Reasoning"
     description: "Classifies user intent for football queries and extracts typed parameters."
     instruction: |
-      Analyze the user's latest message (from _2-messages) and classify intent.
-      The user's default league preference is _1-league.
+      You receive _2-messages (full conversation history) and _1-league (default league).
+      Your job: output the single best action + parameters for the LATEST user message.
 
-      STEP 1 — DETECT STANDINGS KEYWORDS
-      Words: "standings", "table", "ranked", "position", "points", "top of"
+      ══════════════════════════════════════════
+      STEP 0 — FOLLOW-UP / CARRY-OVER  ← CHECK THIS FIRST, EVERY TIME
+      ══════════════════════════════════════════
+      A message is a follow-up when it is short, ambiguous, or clearly continues
+      something the assistant just said. Examples: "yeah", "yes", "ok", "sure",
+      "give me", "show me", "those", "the results", "go ahead", "tell me more",
+      "what else", "previous ones", "and?", or any message under ~6 words that
+      does NOT introduce a brand-new league or team.
+
+      A message is a CARRY-OVER when it introduces a new value for one parameter
+      (league or team) but keeps the same intent. Examples:
+        "same for La Liga" → keep action, swap competition_id to la-liga
+        "and Bayern?"      → keep action (team-form or team-schedule), swap query/team
+        "what about Serie A standings?" → action=standings, competition_id=serie-a
+
+      WHEN you detect a follow-up or carry-over:
+        1. Read the previous user + assistant messages to find action / competition_id / query.
+        2. Reuse those values. Only replace what the new message explicitly changes.
+        3. NEVER fall back to "general" when the conversation history has football context.
+
+      FOLLOW-UP EXAMPLES — memorise these patterns:
+      ┌──────────────────────────────────────────────────────────────────────────────┐
+      │ History: user asked Bundesliga matches, assistant said "all concluded,       │
+      │   can show past results" → user: "yeah give me the results"                 │
+      │ ► upcoming-fixtures, competition_id=bundesliga                               │
+      ├──────────────────────────────────────────────────────────────────────────────┤
+      │ History: user asked Arsenal form, assistant gave results                     │
+      │   → user: "what about their schedule?" / "and their next game?"             │
+      │ ► team-schedule, query=Arsenal, competition_id=premier-league               │
+      ├──────────────────────────────────────────────────────────────────────────────┤
+      │ History: discussed Arsenal → user: "same for Man City"                       │
+      │ ► same action as previous, query=Manchester City, competition_id=premier-league│
+      ├──────────────────────────────────────────────────────────────────────────────┤
+      │ History: showed Bundesliga results → user: "same for La Liga"               │
+      │ ► upcoming-fixtures, competition_id=la-liga                                 │
+      ├──────────────────────────────────────────────────────────────────────────────┤
+      │ History: assistant offered "I can show the Serie A table"                   │
+      │   → user: "yes" / "show me" / "go ahead"                                   │
+      │ ► standings, competition_id=serie-a                                         │
+      ├──────────────────────────────────────────────────────────────────────────────┤
+      │ History: showed a specific match → user: "what was the score?"              │
+      │ ► general (answer directly from prior context, no tool needed)              │
+      └──────────────────────────────────────────────────────────────────────────────┘
+
+      COMPETITION CARRY-OVER RULE:
+        If the user does NOT mention a league but the last 1-2 turns were about
+        a specific league, keep that competition_id — do NOT reset to _1-league.
+        Only use _1-league as the default when there is truly no league context.
+
+      ══════════════════════════════════════════
+      STEP 1 — STANDINGS
+      ══════════════════════════════════════════
+      Triggers: "standings", "table", "ranked", "position", "points", "top of",
+        "league leader", "first place", "bottom of the table", "who is winning",
+        "who won the league", "who leads", "who is top", "how many points",
+        "where is [team] in the table"
       → action = "standings"
 
-      STEP 2 — DETECT TODAY'S FIXTURES KEYWORDS
-      Words: "today", "tonight", "on now", "playing today", "this evening"
+      ══════════════════════════════════════════
+      STEP 2 — TODAY'S LIVE FIXTURES
+      ══════════════════════════════════════════
+      Triggers: "today", "tonight", "on now", "playing today", "this evening",
+        "right now", "live", "what's on", "games today", "matches today",
+        "what happened yesterday", "yesterday's results"
       → action = "daily-fixtures"
 
-      STEP 3 — DETECT UPCOMING FIXTURES FOR A LEAGUE
-      Words: "next matches", "upcoming games", "next gameweek", "fixtures", "schedule"
-      — without a specific team name — → action = "upcoming-fixtures"
+      ══════════════════════════════════════════
+      STEP 3 — LEAGUE FIXTURES / RESULTS  (no specific team)
+      ══════════════════════════════════════════
+      Triggers (league-level, no team name): "next matches", "upcoming", "fixtures",
+        "schedule", "draw", "matchups", "who plays", "quarter-final", "semi-final",
+        "final", "round of 16", "knockout", "next round", "next gameweek",
+        "this weekend", "results", "recent matches", "last matches", "past matches",
+        "last round", "what happened in [league]", "games this week",
+        "matchday results", "scores", "[league] results", "latest results"
+      → action = "upcoming-fixtures"
+      NOTE: "results" WITH a team name → team-form (Step 5). Without → upcoming-fixtures.
 
-      STEP 4 — DETECT TEAM SCHEDULE / NEXT FIXTURE
-      Words: "next fixture", "next game", "when do [team] play", "[team]'s next"
-      — WITH a specific team name — → action = "team-schedule"
+      ══════════════════════════════════════════
+      STEP 4 — TEAM SCHEDULE / NEXT FIXTURE  (with a specific team)
+      ══════════════════════════════════════════
+      Triggers: "next fixture", "next game", "when do [team] play", "[team] next",
+        "[team] upcoming", "[team] schedule", "when is [team]", "next match for [team]"
+      → action = "team-schedule"
 
-      STEP 5 — DETECT TEAM FORM / RESULTS
-      Words: "form", "results", "how is [team] doing", "last matches", "recent games"
+      ══════════════════════════════════════════
+      STEP 5 — TEAM FORM / RESULTS  (with a specific team)
+      ══════════════════════════════════════════
+      Triggers: "form", "results", "how is [team] doing", "last matches",
+        "recent games", "winning streak", "losing streak", "performance",
+        "how have [team] been", "[team] season", "how did [team] do",
+        "is [team] in good form", "[team] wins", "unbeaten run"
       → action = "team-form"
 
-      STEP 6 — DETECT TOP SCORERS
-      Words: "top scorers", "goals", "golden boot", "leading scorer", "most goals"
+      ══════════════════════════════════════════
+      STEP 6 — TOP SCORERS
+      ══════════════════════════════════════════
+      Triggers: "top scorers", "goals", "golden boot", "leading scorer",
+        "most goals", "who is scoring", "goal king", "who has scored",
+        "best striker", "top goalscorer", "who leads in goals"
       → action = "top-scorers"
 
-      STEP 7 — DETECT ENTITY SEARCH
-      Words: looking up an unfamiliar team or player name
+      ══════════════════════════════════════════
+      STEP 7 — ENTITY SEARCH
+      ══════════════════════════════════════════
+      Triggers: unfamiliar team/player name, "who is", "find [name]",
+        "look up [name]", "tell me about [name]"
       → action = "search-entity"
 
-      STEP 8 — DEFAULT
-      None of the above → action = "general"
+      ══════════════════════════════════════════
+      STEP 8 — GENERAL  (absolute last resort)
+      ══════════════════════════════════════════
+      ONLY if neither the current message NOR conversation history contain any
+      football topic, OR if a prior answer already covers the question.
+      → action = "general"
 
-      LEAGUE MAPPING — use EXACTLY these competition_id values:
-        "Premier League" / "EPL" / "PL"          → "premier-league"
-        "Serie A" / "Italy" / "Italian"           → "serie-a"
-        "La Liga" / "Spain" / "Spanish"           → "la-liga"
-        "Bundesliga" / "Germany" / "German"       → "bundesliga"
-        "Ligue 1" / "France" / "French"           → "ligue-1"
-        "Champions League" / "UCL" / "CL"         → "champions-league"
-        No league mentioned → use _1-league value
+      ══════════════════════════════════════════
+      LEAGUE MAPPING
+      ══════════════════════════════════════════
+        "Premier League" / "EPL" / "PL" / "England"   → "premier-league"
+        "Serie A" / "Italy" / "Italian"                → "serie-a"
+        "La Liga" / "Spain" / "Spanish"                → "la-liga"
+        "Bundesliga" / "Germany" / "German"            → "bundesliga"
+        "Ligue 1" / "France" / "French"                → "ligue-1"
+        "Champions League" / "UCL" / "CL" / "UEFA"    → "champions-league"
+        No league in message → carry over from conversation, else use _1-league
 
-      PARAMETER EXTRACTION:
-      - competition_id: derive from message; fall back to _1-league
-      - query: exact team or player name from the message (for team-form, team-schedule, search-entity)
-      - event_id: match ID if mentioned (for match reports)
+      ══════════════════════════════════════════
+      TEAM → LEAGUE INFERENCE
+      ══════════════════════════════════════════
+        Arsenal, Chelsea, Liverpool, Man City, Man United, Tottenham,
+        Newcastle, Aston Villa, Brighton, West Ham, Everton          → "premier-league"
+        Bayern Munich, Bayern, Borussia Dortmund, BVB, RB Leipzig,
+        Bayer Leverkusen, Eintracht Frankfurt, Stuttgart              → "bundesliga"
+        Real Madrid, Barcelona, Atletico Madrid, Sevilla, Valencia,
+        Villarreal, Real Sociedad, Athletic Bilbao                    → "la-liga"
+        Juventus, Inter Milan, Internazionale, AC Milan, Napoli,
+        Roma, Lazio, Fiorentina, Atalanta, Torino                    → "serie-a"
+        PSG, Paris Saint-Germain, Lyon, Marseille, Monaco, Lille,
+        Nice, Lens, Rennes                                            → "ligue-1"
 
-      EXAMPLES:
-      "Premier League standings"    → action=standings,   competition_id=premier-league
-      "Bayern's next fixture"        → action=team-schedule, query=Bayern Munich, competition_id=bundesliga
-      "How is Arsenal doing?"        → action=team-form,   query=Arsenal, competition_id=premier-league
-      "Serie A top scorers"          → action=top-scorers, competition_id=serie-a
-      "UCL upcoming fixtures"        → action=upcoming-fixtures, competition_id=champions-league
-      "What's on today?"             → action=daily-fixtures
-      "PSG next game"                → action=team-schedule, query=PSG, competition_id=ligue-1
+      ══════════════════════════════════════════
+      QUICK-REFERENCE EXAMPLES
+      ══════════════════════════════════════════
+        "Premier League standings"              → standings,          competition_id=premier-league
+        "Who is top of the Bundesliga?"         → standings,          competition_id=bundesliga
+        "Bayern next fixture"                   → team-schedule,      query=Bayern Munich, competition_id=bundesliga
+        "How is Arsenal doing?"                 → team-form,          query=Arsenal, competition_id=premier-league
+        "Arsenal season"                        → team-form,          query=Arsenal, competition_id=premier-league
+        "Serie A top scorers"                   → top-scorers,        competition_id=serie-a
+        "UCL upcoming fixtures"                 → upcoming-fixtures,  competition_id=champions-league
+        "Bundesliga results"                    → upcoming-fixtures,  competition_id=bundesliga
+        "What happened in Ligue 1 last round?"  → upcoming-fixtures,  competition_id=ligue-1
+        "What's on today?"                      → daily-fixtures
+        "PSG next game"                         → team-schedule,      query=PSG, competition_id=ligue-1
+        "Bundesliga this weekend"               → upcoming-fixtures,  competition_id=bundesliga
+        "Real Madrid season"                    → team-form,          query=Real Madrid, competition_id=la-liga
+        "Who won the Champions League?"         → standings,          competition_id=champions-league
+        "How many points does Liverpool have?"  → standings,          competition_id=premier-league
     schema:
       title: "EAFootballChatReasoning"
       description: "Intent classification with typed parameters for football queries."

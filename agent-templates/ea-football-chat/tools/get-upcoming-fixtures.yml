@@ -19,7 +19,7 @@ workflow:
         command: "'get_current_season'"
         competition_id: "$.get('competition_id')"
       outputs:
-        season_id: "$.get('result').get('season_id')"
+        season_id: "$.get('season', {}).get('id')"
 
     - type: "connector"
       name: "get_season_schedule"
@@ -32,4 +32,4 @@ workflow:
         command: "'get_season_schedule'"
         season_id: "$.get('season_id')"
       outputs:
-        schedule: "$.get('result')"
+        schedule: "$"
