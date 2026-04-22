@@ -20,6 +20,9 @@ workflow:
       connector:
         name: "sports-skills"
         command: "football"
+        command_attribute:
+          competition_id: "$.get('probe_query')"
+          via_attr_event: "$.get('probe_event')"
       inputs:
         command: "'ping'"
         query: "$.get('probe_query')"
