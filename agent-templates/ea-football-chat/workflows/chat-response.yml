@@ -9,6 +9,8 @@ workflow:
     tool_result: "$.get('tool_result')"
   outputs:
     message: "$.get('message', '')"
+    card_data: "$.get('card_data')"
+    follow_up_chips: "$.get('follow_up_chips', [])"
     workflow-status: "'executed'"
   tasks:
     - type: prompt
@@ -26,4 +28,6 @@ workflow:
         _3-reasoning: "$.get('reasoning', {})"
         _4-tool_result: "$.get('tool_result')"
       outputs:
-        message: "$.get('choices', [{}])[0].get('message', {}).get('content', '')"
+        message: "$.get('message', '')"
+        card_data: "$.get('card_data')"
+        follow_up_chips: "$.get('follow_up_chips', [])"
