@@ -18,7 +18,6 @@ workflow:
       inputs:
         command: "'search_team'"
         query: "$.get('query')"
-        competition_id: "$.get('competition_id')"
       outputs:
         team_id: "$.get('result')[0].get('id') if $.get('result') else None"
 
