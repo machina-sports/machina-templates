@@ -6,7 +6,6 @@ workflow:
     query: "$.get('query')"
   outputs:
     result: "{'teams': $.get('teams', []), 'players': $.get('players', [])}"
-    debug: "{'teams_task_raw': $.get('teams_task_raw'), 'teams_task_results': $.get('teams_task_results')}"
     workflow-status: "'executed'"
   tasks:
     - type: "connector"
@@ -17,11 +16,9 @@ workflow:
         command: "football"
       inputs:
         command: "'search_team'"
-        query: "$.get('query')"
+        query: "str($.get('query'))"
       outputs:
         teams: "$.get('results', [])"
-        teams_task_raw: "$"
-        teams_task_results: "$.get('results')"
 
     - type: "connector"
       name: "search_players"
@@ -31,6 +28,6 @@ workflow:
         command: "football"
       inputs:
         command: "'search_player'"
-        query: "$.get('query')"
+        query: "str($.get('query'))"
       outputs:
         players: "$.get('results', [])"
