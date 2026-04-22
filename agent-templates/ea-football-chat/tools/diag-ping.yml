@@ -6,6 +6,7 @@ workflow:
   outputs:
     ping: "$.get('ping')"
     received_params: "$.get('received_params')"
+    lib_check: "$.get('lib_check')"
     workflow-status: "$.get('ping') == 'pong' and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
@@ -19,3 +20,4 @@ workflow:
       outputs:
         ping: "$.get('ping')"
         received_params: "$.get('received_params')"
+        lib_check: "$.get('lib_check')"

@@ -66,7 +66,35 @@ def football(request_data):
     command = params.get("command")
 
     if command == "ping":
-        return {"status": True, "data": {"ping": "pong", "received_params": params}}
+        lib_check = {}
+        try:
+            import sports_skills
+
+            lib_check["sports_skills_version"] = getattr(
+                sports_skills, "__version__", "unknown"
+            )
+            lib_check["import_ok"] = True
+        except Exception as exc:
+            lib_check["import_ok"] = False
+            lib_check["import_error"] = repr(exc)
+        try:
+            from sports_skills.football import _connector
+
+            lib_check["football_module_ok"] = True
+            lib_check["football_fns_sample"] = [
+                n for n in dir(_connector) if n.startswith("get_")
+            ][:5]
+        except Exception as exc:
+            lib_check["football_module_ok"] = False
+            lib_check["football_module_error"] = repr(exc)
+        return {
+            "status": True,
+            "data": {
+                "ping": "pong",
+                "received_params": params,
+                "lib_check": lib_check,
+            },
+        }
 
     if not command:
         return _err("'command' input is required")
