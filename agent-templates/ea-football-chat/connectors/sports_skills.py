@@ -105,7 +105,10 @@ def football(request_data):
         return _err("unknown command: " + str(command))
 
     try:
-        import importlib
+        import sys, importlib
+        for _p in ("/home/machina/.local/lib/python3.11/site-packages",):
+            if _p not in sys.path:
+                sys.path.insert(0, _p)
         importlib.invalidate_caches()
         from sports_skills.football import _connector
     except Exception as exc:
