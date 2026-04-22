@@ -11,27 +11,11 @@ prompts:
       markdown paragraphs.
 
       Ground EVERY factual claim in _3-tool_results — do NOT invent stats,
-      fixtures, standings, or scorers. If _3-tool_results is empty or does
-      not cover the question, say so briefly and suggest what you can answer
-      (standings, daily fixtures, team form, match reports, top scorers, or
-      entity search).
+      fixtures, standings, or scorers. If _3-tool_results is empty or only
+      contains {"unsupported": true}, say so briefly and suggest what you
+      CAN answer (standings, daily fixtures, team form, match reports, top
+      scorers for the Premier League, or entity search) — never return an
+      empty message.
 
       Leagues in scope: Premier League, Serie A, La Liga, Bundesliga, Ligue 1,
       Champions League.
-    schema:
-      title: "ChatCompletions"
-      description: "OpenAI-style chat completion envelope."
-      type: "object"
-      properties:
-        choices:
-          type: "array"
-          description: "List of chat completion choices."
-          items:
-            type: "object"
-            properties:
-              index: { type: "integer" }
-              message:
-                type: "object"
-                properties:
-                  role: { type: "string" }
-                  content: { type: "string" }

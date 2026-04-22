@@ -7,19 +7,21 @@ workflow:
     league: "$.get('league', 'premier-league')"
     tool_results: "$.get('tool_results', [])"
   outputs:
-    message: "$.get('message', 'No response.')"
+    message: "$.get('message', '')"
     workflow-status: "'executed'"
   tasks:
     - type: prompt
       name: ea-football-chat-response
       description: "Compose answer grounded in sports-skills tool results."
       connector:
-        name: google-genai
         command: invoke_prompt
+        name: google-genai
         model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-league: "$.get('league', 'premier-league')"
         _2-messages: "$.get('messages', [])"
-        _3-tool_results: "str($.get('tool_results', []))"
+        _3-tool_results: "$.get('tool_results', [])"
       outputs:
-        message: "($.get('choices') or [{}])[0].get('message', {}).get('content', '')"
+        message: "$ if isinstance($, str) else str($)"

@@ -13,9 +13,11 @@ workflow:
       name: ea-football-chat-reasoning
       description: "Select sports-skills tool calls from the user's message."
       connector:
-        name: google-genai
         command: invoke_prompt
+        name: google-genai
         model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
       inputs:
         _1-league: "$.get('league')"
         _2-messages: "$.get('messages', [])"
