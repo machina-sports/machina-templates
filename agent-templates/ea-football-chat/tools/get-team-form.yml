@@ -6,8 +6,8 @@ workflow:
     query: "$.get('query')"
     competition_id: "$.get('competition_id')"
   outputs:
-    result: "$.get('summaries')"
-    workflow-status: "$.get('summaries') is not None"
+    result: "$.get('schedule')"
+    workflow-status: "$.get('schedule') is not None"
   tasks:
     - type: "connector"
       name: "search_for_team"
@@ -34,23 +34,3 @@ workflow:
         limit: 5
       outputs:
         schedule: "$.get('events')"
-
-    - type: "map"
-      name: "get_match_summaries"
-      description: "Get summaries for the last 5 matches."
-      condition: "$.get('schedule') is not None"
-      map:
-        variable: "schedule"
-        iterator: "match"
-        tasks:
-          - type: "connector"
-            connector:
-              name: "sports-skills"
-              command: "football"
-            inputs:
-              command: "'get_event_summary'"
-              event_id: "$.get('match').get('id')"
-            outputs:
-              summary: "$"
-      outputs:
-        summaries: "[task.get('summary') for task in $.get('results')]"
