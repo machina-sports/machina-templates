@@ -1,7 +1,7 @@
 setup:
   title: "Event Podcast Generator"
   description: "Produces a 5-minute podcast episode for a given sports event ID. It generates a script, synthesizes audio, and uploads it to cloud storage."
-  value: "agent-templates/event-podcast"
+  value: "agent-templates/event-podcast-generator"
   category:
     - "custom-templates"
   status: "available"
