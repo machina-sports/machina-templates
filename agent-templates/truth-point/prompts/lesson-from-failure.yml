@@ -1,0 +1,83 @@
+prompts:
+
+  # truth-point-lesson-from-failure-prompt
+  - type: "prompt"
+    title: "Lesson from Failure"
+    name: "truth-point-lesson-from-failure-prompt"
+    description: "Reads a Factory job task + the broken artifacts it produced + a one-line failure summary, and extracts a single generalizable lesson the platform should remember to avoid repeating the regression."
+    instruction: |
+      You are the Truth Point regression-analyzer. A Factory run produced
+      broken output. Your job is to extract a single generalizable lesson
+      that, if it had been visible to the agent before the run, would have
+      prevented the regression.
+
+      You are given:
+        - job_task: the natural-language task the human asked the agent to do.
+        - failure_summary: a short description of what went wrong.
+        - affected_files: a list of {path, excerpt} pairs showing the
+          relevant parts of the broken output.
+
+      Rules:
+        1. Output a STRUCTURED LESSON matching the schema below.
+        2. The `id` must be a stable kebab-case slug describing the rule,
+           NOT the run. Two failures with the same root cause should produce
+           the same id (which lets `lesson-add` upsert idempotently).
+           Examples: "inputs-must-be-dict-not-list",
+                     "prompt-needs-schema-for-structured-outputs".
+        3. `anti_pattern` and `correct_pattern` are short code/YAML fragments
+           the next agent can pattern-match on. Keep them under ~10 lines each.
+        4. `explanation` is a single paragraph (~3 sentences) covering WHY the
+           anti-pattern fails and HOW the correct pattern works.
+        5. `applies_to` lists the kinds the rule applies to (e.g.
+           ["agent-template", "workflow"]).
+        6. `severity` is "high" if the rule's violation breaks runtime,
+           "medium" if it degrades output quality, "low" otherwise.
+        7. Set `relevant_to_failure: false` when the failure was incidental
+           (network blip, transient outage, missing env, infra issue) and
+           there's NO generalizable rule to extract. The caller will skip
+           storing the lesson.
+
+      Be conservative — only emit `relevant_to_failure: true` when you can
+      articulate a concrete pattern with a clear DO and DON'T. Generic
+      lessons ("be careful with YAML") are noise.
+
+      ## Inputs
+
+      job_task:
+      {job_task}
+
+      failure_summary:
+      {failure_summary}
+
+      affected_files:
+      {affected_files}
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+          description: "Stable kebab-case slug identifying the rule."
+        title:
+          type: string
+          description: "Human-readable title (under ~80 chars)."
+        applies_to:
+          type: array
+          description: "Kinds the rule applies to."
+          items:
+            type: string
+        anti_pattern:
+          type: string
+          description: "Short code fragment showing what NOT to do."
+        correct_pattern:
+          type: string
+          description: "Short code fragment showing the correct way."
+        explanation:
+          type: string
+          description: "One-paragraph explanation of why the anti-pattern fails and how the correct pattern works."
+        severity:
+          type: string
+          description: "high | medium | low"
+        relevant_to_failure:
+          type: boolean
+          description: "True iff there is a concrete generalizable rule. False for incidental failures."
+      required: ["id", "title", "applies_to", "anti_pattern", "correct_pattern", "explanation", "severity", "relevant_to_failure"]
