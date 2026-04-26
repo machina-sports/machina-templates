@@ -23,6 +23,8 @@ workflow:
     source_repo: $.get('source_repo', '')
     source_path: $.get('source_path', '')
     source_ref: $.get('source_ref', '')
+    manifest: $.get('manifest', '')
+    files: $.get('files', [])
 
   outputs:
     component_id: $.get('kind') + ':' + $.get('name')
@@ -77,6 +79,8 @@ workflow:
             'source_repo': $.get('source_repo', ''),
             'source_path': $.get('source_path', ''),
             'source_ref': $.get('source_ref', ''),
+            'manifest': $.get('manifest', ''),
+            'files': $.get('files', []),
             'verdict_history': $.get('existing_verdict_history', []),
             'last_verdict': $.get('existing_last_verdict'),
             'last_verdict_at': $.get('existing_last_verdict_at'),

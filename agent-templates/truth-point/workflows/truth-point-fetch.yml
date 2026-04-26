@@ -1,0 +1,59 @@
+workflow:
+
+  # truth-point-fetch
+  name: truth-point-fetch
+  title: Truth Point — Fetch Component (by id)
+  description: Precise lookup of a single indexed component by component_id. Returns the full machina-knowledge value (manifest + files + integrations + verdict_history) without running a vector search. Backs the Factory's `truth_point_lookup` agent tool — gives the agent rich content on demand instead of forcing the system prompt to carry it.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    component_id: $.get('component_id', '')
+
+  outputs:
+    component_id: $.get('component_id', '')
+    found: $.get('found', False)
+    component: $.get('component', {})
+    workflow-status: $.get('component_id') and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: lookup-by-id
+      description: Search machina-knowledge by metadata.component_id
+      condition: $.get('component_id') is not None and $.get('component_id') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'machina-knowledge'"
+        metadata.component_id: $.get('component_id')
+      outputs:
+        found: len($.get('documents', [])) > 0
+        # Project a lean shape: full manifest + file PATHS (no content) + metadata.
+        # The runtime caps workflow output at ~50KB, and components like
+        # bundesliga-podcast carry 100KB+ of file content. Returning paths
+        # only keeps the response well under the cap; the agent reads
+        # specific files via the Read tool when needed.
+        component: |
+          {
+            'component_id': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('component_id', ''),
+            'kind': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('kind', ''),
+            'name': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('name', ''),
+            'title': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('title', ''),
+            'description': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('description', ''),
+            'categories': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('categories', []),
+            'integrations': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('integrations', []),
+            'version': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('version', ''),
+            'source_repo': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('source_repo', ''),
+            'source_path': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('source_path', ''),
+            'source_ref': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('source_ref', ''),
+            'manifest': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('manifest', ''),
+            'file_paths': [f.get('path', '') for f in (($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('files') or [])],
+            'verdict_history': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('verdict_history', []),
+            'last_verdict': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('last_verdict'),
+            'ingested_at': ($.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}).get('ingested_at')
+          }
