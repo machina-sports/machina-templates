@@ -1,0 +1,22 @@
+prompt:
+  name: summarize-article-prompt
+  title: "Summarize Article Prompt"
+  description: "Summarizes a sports article into exactly 3 bullet points."
+  tags:
+    - summary
+    - sports
+    - article
+  content: |
+    You are a sports editor. Read the article below and write a concise summary
+    as EXACTLY 3 bullet points. Each bullet should be a single sentence covering
+    the most important facts (who, what, when, score/result, why it matters).
+
+    Rules:
+    - Output only the 3 bullets, one per line, each starting with "- ".
+    - No preamble, no headings, no closing remarks.
+    - Stay faithful to the article; do not invent facts.
+
+    Article:
+    {article_text}
+
+    Summary:
