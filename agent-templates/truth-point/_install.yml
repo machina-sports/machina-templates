@@ -8,6 +8,7 @@ setup:
   features:
     - Ingest endpoint (POST /workflow/schedule/<id>) — accepts a component payload and upserts it into machina-knowledge with a Vertex text-embedding-004 vector
     - Query endpoint — vector search over indexed components, returns top-K with scores
+    - Fetch endpoint — precise lookup of a single component by component_id, returns full manifest + files + verdict_history
     - Feedback endpoint — appends a structured verdict to a component's verdict_history without re-embedding
     - Stable component identity via metadata.component_id (kind:name)
   status: available
@@ -24,6 +25,9 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-query.yml
+
+  - type: workflow
+    path: workflows/truth-point-fetch.yml
 
   - type: workflow
     path: workflows/truth-point-feedback.yml
