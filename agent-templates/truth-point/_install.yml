@@ -1,0 +1,29 @@
+setup:
+  title: Truth Point
+  description: Single source of truth for the Machina platform — receives component manifests from machina-templates (ingest), serves semantic retrieval to consumers like the Factory (query), and absorbs verdicts from job runs to keep itself current (feedback).
+  category:
+    - special-templates
+    - platform
+  estimatedTime: 5 minutes
+  features:
+    - Ingest endpoint (POST /workflow/schedule/<id>) — accepts a component payload and upserts it into machina-knowledge with a Vertex text-embedding-004 vector
+    - Query endpoint — vector search over indexed components, returns top-K with scores
+    - Feedback endpoint — appends a structured verdict to a component's verdict_history without re-embedding
+    - Stable component identity via metadata.component_id (kind:name)
+  status: available
+  integrations:
+    - google-vertex
+  value: agent-templates/truth-point
+  version: 1.0.0
+
+datasets:
+
+  # Workflows
+  - type: workflow
+    path: workflows/truth-point-ingest.yml
+
+  - type: workflow
+    path: workflows/truth-point-query.yml
+
+  - type: workflow
+    path: workflows/truth-point-feedback.yml

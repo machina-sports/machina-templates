@@ -1,0 +1,81 @@
+workflow:
+
+  # truth-point-query
+  name: truth-point-query
+  title: Truth Point — Query Components
+  description: Vector search over indexed components. Given a natural-language query, returns the top-K most relevant components (kind/name/title/description/source_path) and their similarity scores. Used by the Factory before kicking off a job.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    query: $.get('query', '')
+    limit: $.get('limit', 5)
+    threshold: $.get('threshold', 0.3)
+    kind: $.get('kind', None)            # optional pre-filter (agent-template | connector | skill)
+    integration: $.get('integration', None)  # optional pre-filter (e.g. "google-vertex")
+
+  outputs:
+    query: $.get('query', '')
+    components: $.get('components', [])
+    workflow-status: $.get('query') is not None and $.get('query') != '' and 'executed' or 'skipped'
+
+  tasks:
+
+    # Build the metadata pre-filter as a dict (kind / integration are optional)
+    - type: expression
+      name: build-prefilter
+      condition: $.get('query') is not None and $.get('query') != ''
+      outputs:
+        prefilter: |
+          {
+            **({'metadata.kind': $.get('kind')} if $.get('kind') else {}),
+            **({'integrations': {'$in': [$.get('integration')]}} if $.get('integration') else {})
+          }
+
+    # Vector search across machina-knowledge with optional pre-filter
+    - type: document
+      name: vector-search
+      description: Embed the query and run cosine similarity over the KB
+      condition: $.get('query') is not None and $.get('query') != ''
+      config:
+        action: search
+        search-vector: true
+        search-limit: 100
+        threshold-docs: $.get('limit', 5)
+        threshold-similarity: $.get('threshold', 0.3)
+      connector:
+        name: "google-genai"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
+      inputs:
+        name: "'machina-knowledge'"
+        search-query: $.get('query')
+      filters:
+        name: "'machina-knowledge'"
+      outputs:
+        components: |
+          [
+            {
+              'component_id': d.get('value', {}).get('component_id', ''),
+              'kind': d.get('value', {}).get('kind', ''),
+              'name': d.get('value', {}).get('name', ''),
+              'title': d.get('value', {}).get('title', ''),
+              'description': d.get('value', {}).get('description', ''),
+              'source_path': d.get('value', {}).get('source_path', ''),
+              'source_ref': d.get('value', {}).get('source_ref', ''),
+              'version': d.get('value', {}).get('version', ''),
+              'integrations': d.get('value', {}).get('integrations', []),
+              'categories': d.get('value', {}).get('categories', []),
+              'similarity': d.get('similarity_score', 0),
+              'verdict_summary': {
+                'count': len(d.get('value', {}).get('verdict_history', []) or []),
+                'last': (d.get('value', {}).get('verdict_history', []) or [{}])[-1] if (d.get('value', {}).get('verdict_history', []) or []) else None
+              }
+            }
+            for d in $.get('documents', [])
+          ]

@@ -1,0 +1,90 @@
+name: Truth Point — Ingest Components
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agent-templates/**"
+      - "connectors/**"
+      - "skills/**"
+      - ".github/scripts/truth_point_ingest.py"
+      - ".github/workflows/truth-point-ingest.yml"
+  pull_request:
+    paths:
+      - "agent-templates/**"
+      - "connectors/**"
+      - "skills/**"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = re-ingest every component; diff = only changed since base"
+        type: choice
+        options: [full, diff]
+        default: full
+      strict:
+        description: "Fail the workflow on any per-component error"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install --quiet pyyaml
+
+      - name: Compute changed paths
+        id: changed
+        env:
+          MODE: ${{ inputs.mode }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          out=changed.txt
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$out"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "$MODE" == "full" ]]; then
+            : > "$out"   # empty → script ingests everything
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            if [[ -n "${BEFORE_SHA:-}" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+              git diff --name-only "$BEFORE_SHA" "${{ github.sha }}" > "$out"
+            else
+              : > "$out"
+            fi
+          else
+            : > "$out"
+          fi
+          echo "----- changed paths -----"
+          cat "$out" || true
+          echo "-------------------------"
+
+      - name: Ingest
+        env:
+          TRUTH_POINT_INGEST_URL: ${{ secrets.TRUTH_POINT_INGEST_URL }}
+          TRUTH_POINT_API_TOKEN: ${{ secrets.TRUTH_POINT_API_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          extra=""
+          if [[ "${{ inputs.strict || 'false' }}" == "true" || "${{ github.event_name }}" == "push" ]]; then
+            extra="--strict"
+          fi
+          python .github/scripts/truth_point_ingest.py \
+            --root . \
+            --changed-paths changed.txt \
+            $extra \
+            | tee -a "$GITHUB_STEP_SUMMARY"
