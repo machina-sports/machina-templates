@@ -3,9 +3,7 @@ workflow:
   title: "Analyze Sentiment"
   description: "Analyzes the sentiment of a given text using xAI Grok."
   inputs:
-    - name: text_to_analyze
-      type: string
-      description: "The text to be analyzed."
+    text_to_analyze: $.get('text_to_analyze', '')
   tasks:
     - name: analyze
       type: prompt

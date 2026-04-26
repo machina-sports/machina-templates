@@ -1,11 +1,10 @@
 workflow:
   name: summarize-event
   title: "Summarize Event"
-  description: "Takes a sports event description and returns a one-line headline plus 3 key-fact bullets in the input's language."
+  description: "Takes a sports event description and returns a one-line headline
+    plus 3 key-fact bullets in the input's language."
   inputs:
-    - name: event_text
-      type: string
-      description: "Free-form description of the sports event to summarize."
+    event_text: $.get('event_text', '')
   tasks:
     - name: summarize
       type: prompt
