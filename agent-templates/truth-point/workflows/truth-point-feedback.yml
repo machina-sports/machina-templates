@@ -3,7 +3,7 @@ workflow:
   # truth-point-feedback
   name: truth-point-feedback
   title: Truth Point — Record Verdict
-  description: Append a structured verdict for a component (success/partial/fail + artifacts) to its verdict_history. Used by the Factory and CI hooks to keep Truth Point aligned with reality. Does not re-embed.
+  description: Append a structured verdict for a component to its verdict_history. Used by the Factory and CI hooks to keep Truth Point aligned with reality. Does not re-embed.
 
   context-variables:
     debugger:
@@ -11,23 +11,21 @@ workflow:
 
   inputs:
     component_id: $.get('component_id', '')
-    verdict: $.get('verdict', '')        # success | partial | fail
-    summary: $.get('summary', '')        # one-line human reason
-    artifacts: $.get('artifacts', {})    # arbitrary {logs_url, pr_url, run_id, ...}
-    actor: $.get('actor', '')            # who/what produced the verdict (factory, ci, human, ...)
+    verdict: $.get('verdict', '')
+    summary: $.get('summary', '')
+    artifacts: $.get('artifacts', {})
+    actor: $.get('actor', '')
 
   outputs:
     component_id: $.get('component_id', '')
     document_id: $.get('document_id', None)
-    verdicts_total: $.get('verdicts_total', 0)
     workflow-status: $.get('document_id') is not None and 'executed' or 'skipped'
 
   tasks:
 
-    # Locate the component doc by stable id
     - type: document
       name: lookup-component
-      description: Resolve component doc by component_id
+      description: Resolve the component doc by component_id
       condition: $.get('component_id') is not None and $.get('component_id') != ''
       config:
         action: search
@@ -41,10 +39,9 @@ workflow:
         document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
         existing_history: $.get('documents')[0].get('value', {}).get('verdict_history', []) if len($.get('documents', [])) > 0 else []
 
-    # Append the verdict atomically (no re-embedding)
     - type: document
       name: append-verdict
-      description: Append the new verdict to verdict_history
+      description: Append the new verdict (no re-embedding)
       condition: $.get('document_id') is not None and $.get('verdict') in ['success', 'partial', 'fail']
       config:
         action: update
@@ -69,5 +66,3 @@ workflow:
           }
       filters:
         document_id: $.get('document_id')
-      outputs:
-        verdicts_total: len($.get('existing_history', [])) + 1
