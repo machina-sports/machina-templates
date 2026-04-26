@@ -1,0 +1,92 @@
+workflow:
+  name: "event-podcast"
+  title: "Event Podcast Generator"
+  description: "Takes a sports event ID, generates a ~5-minute podcast script via LLM, synthesizes audio via Gemini TTS, and uploads the audio file to cloud storage."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    event_id: "$.get('event_id', '')"
+    voice_name: "$.get('voice_name', 'Kore')"
+    language_code: "$.get('language_code', 'en-us')"
+  outputs:
+    event_id: "$.get('event_id')"
+    title: "$.get('title')"
+    summary: "$.get('summary')"
+    script: "$.get('script')"
+    audio_path: "$.get('audio_path')"
+    workflow-status: "$.get('audio_path') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # Look up any stored event details for this event_id (best-effort).
+    - type: "document"
+      name: "load-event-details"
+      description: "Look up event details by event_id (optional — if no document is found the prompt still runs with just the ID)."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.event_code: "$.get('event_id')"
+      inputs:
+        name: "'soccer-game'"
+      outputs:
+        event_details: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+
+    # Generate the ~5-minute podcast script.
+    - type: "prompt"
+      name: "event-podcast-script-prompt"
+      description: "Generate a ~5-minute podcast script for the given event."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        event_id: "$.get('event_id')"
+        event_details: "$.get('event_details', {})"
+      outputs:
+        title: "$.get('title')"
+        summary: "$.get('summary')"
+        script: "$.get('script')"
+        file_name: "$.get('file_name')"
+
+    # Synthesize the script as audio via Gemini TTS.
+    - type: "connector"
+      name: "synthesize-podcast-audio"
+      description: "Convert the generated podcast script to audio."
+      condition: "$.get('script') is not None and len($.get('script', '')) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_tts"
+      inputs:
+        text: "$.get('script', '')"
+        voice_name: "$.get('voice_name', 'Kore')"
+        model_id: "gemini-2.5-flash-tts"
+        language_code: "$.get('language_code', 'en-us')"
+      outputs:
+        final_filename: f"event-podcast-{$.get('file_name', $.get('event_id', 'episode'))}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
+        full_filepath: "$.get('file_path')"
+
+    # Upload the audio file to cloud storage.
+    - type: "connector"
+      name: "upload-podcast-audio"
+      description: "Upload the synthesized audio to cloud storage."
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "storage"
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        audio_path: "$.get('data')"

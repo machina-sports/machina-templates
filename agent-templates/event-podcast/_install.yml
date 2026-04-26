@@ -1,0 +1,31 @@
+setup:
+  title: "Event-Based Podcast Generator"
+  description: "Takes a sports event ID and produces a 5-minute podcast episode: LLM-generated script, TTS audio synthesis, and upload to cloud storage."
+  category:
+    - custom-templates
+  estimatedTime: 5 minutes
+  features:
+    - "Generates a ~5-minute podcast script from a sports event ID using an LLM."
+    - "Synthesizes audio with Gemini TTS."
+    - "Uploads the resulting audio file to cloud storage and returns its path."
+  integrations:
+    - google-genai
+    - machina-ai
+    - storage
+  status: available
+  value: "agent-templates/event-podcast"
+  version: 1.0.0
+
+datasets:
+
+  - type: "connector"
+    path: "connectors/storage.yml"
+
+  - type: "prompts"
+    path: "prompts.yml"
+
+  - type: "workflow"
+    path: "event-podcast.yml"
+
+  - type: "agent"
+    path: "agent.yml"
