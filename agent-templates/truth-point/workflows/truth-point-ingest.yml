@@ -1,0 +1,116 @@
+workflow:
+
+  # truth-point-ingest
+  name: truth-point-ingest
+  title: Truth Point — Ingest Component
+  description: Receives a component payload from machina-templates and upserts it into machina-knowledge with a Vertex embedding. Idempotent — re-ingest of the same component_id replaces the doc value but preserves verdict_history.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    kind: $.get('kind', '')
+    name: $.get('name', '')
+    source_repo: $.get('source_repo', '')
+    source_path: $.get('source_path', '')
+    source_ref: $.get('source_ref', '')
+    version: $.get('version', '')
+    title: $.get('title', '')
+    description: $.get('description', '')
+    categories: $.get('categories', [])
+    integrations: $.get('integrations', [])
+    status: $.get('status', '')
+    manifest: $.get('manifest', '')
+    files: $.get('files', [])
+
+  outputs:
+    component_id: $.get('component_id', '')
+    document_id: $.get('document_id', None)
+    action_taken: $.get('action_taken', 'noop')
+    workflow-status: $.get('component_id') and 'executed' or 'skipped'
+
+  tasks:
+
+    # Build a stable identity + the text we'll embed
+    - type: expression
+      name: prepare-identity
+      description: Compute component_id and the embedding_text used as embed-selector input
+      condition: $.get('kind') is not None and $.get('name') is not None and $.get('kind') != '' and $.get('name') != ''
+      outputs:
+        component_id: f"{$.get('kind')}:{$.get('name')}"
+        embedding_text: |
+          "\n".join([
+            $.get('title', '') or $.get('name', ''),
+            $.get('description', '') or '',
+            "Kind: " + ($.get('kind') or ''),
+            "Categories: " + ", ".join($.get('categories', []) or []),
+            "Integrations: " + ", ".join($.get('integrations', []) or []),
+            "Source: " + ($.get('source_repo', '') or '') + "/" + ($.get('source_path', '') or ''),
+            "",
+            ($.get('manifest', '') or '')[:6000]
+          ]).strip()
+
+    # Look for an existing doc with the same component_id so we preserve verdict_history
+    - type: document
+      name: lookup-existing
+      description: Find existing component doc by component_id (preserve verdict_history)
+      condition: $.get('component_id') is not None and $.get('component_id') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'machina-knowledge'"
+        metadata.component_id: $.get('component_id')
+      outputs:
+        existing_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        existing_verdict_history: $.get('documents')[0].get('value', {}).get('verdict_history', []) if len($.get('documents', [])) > 0 else []
+
+    # Upsert with a fresh embedding sourced from the embedding_text field via embed-selector
+    - type: document
+      name: save-component
+      description: Save (or replace) the component doc; embed only the embedding_text field
+      condition: $.get('component_id') is not None and $.get('component_id') != ''
+      config:
+        action: save
+        embed-vector: true
+        embed-selector: embedding_text
+        force-update: true
+      connector:
+        name: "google-genai"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
+      documents:
+        machina-knowledge: |
+          {
+            'title': $.get('title', '') or $.get('name', ''),
+            'kind': $.get('kind', ''),
+            'name': $.get('name', ''),
+            'component_id': $.get('component_id'),
+            'source_repo': $.get('source_repo', ''),
+            'source_path': $.get('source_path', ''),
+            'source_ref': $.get('source_ref', ''),
+            'version': $.get('version', ''),
+            'description': $.get('description', ''),
+            'categories': $.get('categories', []),
+            'integrations': $.get('integrations', []),
+            'status': $.get('status', ''),
+            'manifest': $.get('manifest', ''),
+            'files': $.get('files', []),
+            'embedding_text': $.get('embedding_text', ''),
+            'verdict_history': $.get('existing_verdict_history', []),
+            'ingested_at': datetime.now().isoformat()
+          }
+      metadata:
+        component_id: $.get('component_id')
+        kind: $.get('kind', '')
+        name: $.get('name', '')
+        source_repo: $.get('source_repo', '')
+        source_ref: $.get('source_ref', '')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        action_taken: $.get('existing_id') and 'updated' or 'created'
