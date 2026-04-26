@@ -1,0 +1,10 @@
+connector:
+  name: "storage"
+  description: "Cloud storage connector (Azure Blob) used to upload generated podcast audio files."
+  filename: "storage.py"
+  filetype: "pyscript"
+  commands:
+    - name: "store_image"
+      value: "store_image"
+    - name: "store_base64_image"
+      value: "store_base64_image"

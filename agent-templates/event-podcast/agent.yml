@@ -1,0 +1,16 @@
+agent:
+  name: "event-podcast"
+  title: "Event Podcast Generator"
+  description: "Agent that produces a 5-minute podcast episode from a sports event ID: LLM script -> TTS -> cloud storage upload."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    - name: event-podcast
+      description: "Generate a 5-minute podcast for a sports event ID."
+      inputs:
+        event_id: "$.get('event_id', '')"
+        voice_name: "$.get('voice_name', 'Kore')"
+        language_code: "$.get('language_code', 'en-us')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
