@@ -1,0 +1,52 @@
+workflow:
+
+  # truth-point-incident-resolve
+  name: truth-point-incident-resolve
+  title: Truth Point — Resolve Incident
+  description: Close an incident by id. Sets ended_at on the matching incident in platform-incidents.incidents. Once resolved, the Factory's next agent run no longer warns against the affected component.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    id: $.get('id', '')
+
+  outputs:
+    id: $.get('id', '')
+    workflow-status: $.get('document_id') is not None and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: lookup-incidents
+      description: Read the platform-incidents doc
+      condition: $.get('id') is not None and $.get('id') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'platform-incidents'"
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        existing_incidents: $.get('documents')[0].get('value', {}).get('incidents', []) if len($.get('documents', [])) > 0 else []
+
+    - type: document
+      name: close-incident
+      description: Map over incidents; set ended_at on the one with matching id
+      condition: $.get('document_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        platform-incidents: |
+          {
+            'incidents': [
+              {**i, 'ended_at': datetime.now().isoformat()} if i.get('id') == $.get('id') and i.get('ended_at') is None else i
+              for i in $.get('existing_incidents', [])
+            ]
+          }
+      filters:
+        document_id: $.get('document_id')
