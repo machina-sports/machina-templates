@@ -1,0 +1,49 @@
+prompt:
+  name: summarize-event-prompt
+  title: "Summarize Event Prompt"
+  description: "Turns a sports event description into a one-line headline plus exactly 3 key-fact bullet points, returned as structured JSON."
+  tags:
+    - summary
+    - sports
+    - event
+  instructions: |
+    You are a sports editor. Read the event description below and produce a
+    structured summary with two parts:
+
+    1. headline: a single, punchy line (max ~140 characters) capturing the
+       most newsworthy angle of the event.
+    2. bullets: EXACTLY 3 bullet points, each a single sentence covering one
+       of the key facts (who, what, when, score/result, why it matters).
+
+    Rules:
+    - Stay strictly faithful to the event description; do not invent facts,
+      stats, names, or outcomes that are not in the input.
+    - Do not include preambles, headings, or closing remarks. Return only
+      the structured fields defined in the schema.
+    - Each bullet must be concise (one sentence, no sub-bullets).
+
+    Language: match the language of the input. If the event is described in
+    Brazilian Portuguese, reply in Brazilian Portuguese. Same rule for any
+    other language (Spanish, French, German, Italian, etc.). Proper nouns
+    (team names, player names, venues, competitions) stay in their native
+    form.
+
+    Event description:
+    {event_text}
+  schema:
+    title: EventSummary
+    description: Structured summary of a sports event.
+    type: object
+    required: ["headline", "bullets"]
+    properties:
+      headline:
+        type: string
+        description: One-line headline summarizing the event in the input language.
+      bullets:
+        type: array
+        description: Exactly 3 single-sentence bullet points covering the key facts, in the input language.
+        minItems: 3
+        maxItems: 3
+        items:
+          type: string
+          description: A single key-fact bullet point.
