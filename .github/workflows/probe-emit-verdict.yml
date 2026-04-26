@@ -1,0 +1,39 @@
+name: Probe — Emit Verdict (one-off smoke)
+
+# Throwaway workflow used to smoke-test
+# machina-sports/.github/.github/workflows/reusable-emit-verdict.yml@v1
+# end-to-end against the live machina-truth-truth-point tenant. Delete this
+# file (and the probe/emit-verdict branch) after the verdict_history is
+# confirmed to grow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      component_id:
+        description: "Stable id <kind>:<name>"
+        required: true
+        type: string
+        default: "connector:vertex-embedding"
+      verdict:
+        description: "success | partial | fail"
+        required: true
+        type: choice
+        options: [success, partial, fail]
+        default: success
+      summary:
+        description: "One-line reason"
+        required: false
+        type: string
+        default: "smoke probe of reusable-emit-verdict@v1"
+
+jobs:
+  probe:
+    uses: machina-sports/.github/.github/workflows/reusable-emit-verdict.yml@v1
+    with:
+      component-id: ${{ inputs.component_id }}
+      verdict: ${{ inputs.verdict }}
+      summary: ${{ inputs.summary }}
+      actor: probe-machina-templates
+    secrets:
+      TRUTH_POINT_FEEDBACK_URL: ${{ secrets.TRUTH_POINT_FEEDBACK_URL }}
+      TRUTH_POINT_API_TOKEN: ${{ secrets.TRUTH_POINT_API_TOKEN }}
