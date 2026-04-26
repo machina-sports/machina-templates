@@ -1,0 +1,30 @@
+workflow:
+  name: "event-quiz"
+  title: "Event Quiz"
+  description: "Generate a 3-question multiple-choice quiz from a sports event description."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_description: "$.get('event_description') or None"
+  outputs:
+    event_description: "$.get('event_description')"
+    questions: "$.get('content-quiz', [])"
+    workflow-status: "$.get('event_description') is None and 'skipped' or 'executed'"
+  tasks:
+
+    # 1 prompt-event-quiz
+    - type: "prompt"
+      name: "prompt-event-quiz"
+      description: "Generate a 3-question multiple-choice quiz about the event."
+      condition: "$.get('event_description') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        event_description: "$.get('event_description')"
+      outputs:
+        content-quiz: "$.get('questions', [])"

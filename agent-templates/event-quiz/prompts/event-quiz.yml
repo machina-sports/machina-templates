@@ -1,0 +1,56 @@
+prompts:
+
+  # prompt-event-quiz
+  - type: "prompt"
+    title: "Event Quiz"
+    name: "prompt-event-quiz"
+    description: |
+      You are a sports trivia writer. Given a description of a single sports event,
+      produce exactly THREE engaging multiple-choice quiz questions about that event.
+
+      Guidelines:
+      - Base every question strictly on facts present in or reasonably inferable
+        from the provided event description. Do NOT invent details that contradict it.
+      - Mix difficulty: 1 easy, 1 medium, 1 challenging.
+      - Each question must have exactly 4 short, distinct, plausible answer options.
+      - Exactly ONE option per question must be marked correct.
+      - Keep questions concise (under ~20 words) and answers short (1-5 words).
+      - Avoid ambiguous or trick wording.
+
+      The event description is provided in {event_description}.
+    schema:
+      title: "EventQuiz"
+      description: "A 3-question multiple-choice quiz about a sports event."
+      type: "object"
+      properties:
+        questions:
+          type: "array"
+          description: "Exactly three quiz questions about the event."
+          minItems: 3
+          maxItems: 3
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The quiz question text."
+              difficulty:
+                type: "string"
+                description: "Difficulty level: easy, medium, or hard."
+              answers:
+                type: "array"
+                description: "Four answer options; exactly one must be correct."
+                minItems: 4
+                maxItems: 4
+                items:
+                  type: "object"
+                  properties:
+                    title:
+                      type: "string"
+                      description: "A concise multiple-choice option."
+                    correct:
+                      type: "boolean"
+                      description: "Whether this option is the correct answer."
+                  required: ["title", "correct"]
+            required: ["title", "difficulty", "answers"]
+      required: ["questions"]

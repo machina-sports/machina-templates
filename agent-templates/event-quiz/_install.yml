@@ -1,0 +1,21 @@
+setup:
+  title: "Event Quiz Generator"
+  description: AI-powered generator that turns a sports event description into a 3-question multiple-choice quiz.
+  category:
+    - content-creation
+  estimatedTime: 5 minutes
+  features:
+    - Generate a 3-question multiple-choice quiz from an event description
+  integrations:
+    - machina-ai
+  status: available
+  value: agent-templates/event-quiz
+  version: 1.0.0
+
+datasets:
+
+  - type: "prompts"
+    path: "prompts/event-quiz.yml"
+
+  - type: "workflow"
+    path: "workflows/event-quiz.yml"
