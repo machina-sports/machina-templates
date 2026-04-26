@@ -1,0 +1,21 @@
+setup:
+  title: "Transfer Rumors Recap"
+  description: "Turns a JSON array of football transfer rumors into a one-paragraph news summary with a per-rumor confidence score."
+  category:
+    - custom-templates
+  estimatedTime: 2 minutes
+  features:
+    - "Accepts a JSON array of transfer rumors (player, from_club, to_club, source_url)."
+    - "Produces a single-paragraph editorial summary covering the rumor batch."
+    - "Returns a confidence score (0.0 - 1.0) per rumor based on source plausibility."
+  integrations:
+    - google-genai
+  status: available
+  value: "agent-templates/transfer-rumors-recap"
+  version: 1.0.0
+
+datasets:
+  - type: "prompt"
+    path: "prompts/recap-transfer-rumors.yml"
+  - type: "workflow"
+    path: "workflows/recap-transfer-rumors.yml"

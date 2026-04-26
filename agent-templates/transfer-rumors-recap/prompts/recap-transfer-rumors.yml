@@ -1,0 +1,86 @@
+prompts:
+
+  - type: prompt
+    name: recap-transfer-rumors-prompt
+    title: "Recap Transfer Rumors Prompt"
+    description: "Summarizes a batch of football transfer rumors and scores each one's plausibility."
+    tags:
+      - football
+      - transfers
+      - summary
+    instruction: |
+      You are a senior football transfer-desk editor.
+
+      You receive a JSON array of transfer rumors. Each rumor has:
+        - player: the footballer involved
+        - from_club: the club the player is currently at (may be empty)
+        - to_club: the club linked with a move (may be empty)
+        - source_url: the URL the rumor was reported by (may be empty)
+
+      Your job:
+      1. Write ONE concise editorial paragraph (4-7 sentences) that recaps the
+         most newsworthy storylines across the whole batch. Mention the players,
+         the clubs involved, and any pattern you notice (same league, same
+         agent, same club shopping multiple positions, etc.). Do not invent
+         facts that aren't in the input. Do not list every rumor mechanically -
+         this is a news brief, not a table.
+      2. For EACH rumor in the input array, return a confidence score between
+         0.0 and 1.0 reflecting how plausible the rumor looks based ONLY on the
+         data provided. Use this rubric:
+           - 0.85-1.00: tier-1 outlet (BBC, The Athletic, Sky Sports, ESPN,
+             L'Equipe, Bild, Gazzetta, Globo) AND a coherent player/club fit.
+           - 0.60-0.84: reputable outlet OR strong club fit, minor red flags.
+           - 0.30-0.59: mid-tier blog / aggregator, or thin details, or
+             unusual fit.
+           - 0.00-0.29: tabloid / unknown source, missing fields, or
+             implausible move.
+         If source_url is empty or unrecognized, cap confidence at 0.40.
+         If both from_club and to_club are empty, cap confidence at 0.25.
+      3. Preserve the rumor order from the input. Echo player, from_club and
+         to_club back exactly as received so callers can join on them.
+
+      Language: match the language of the input. If players' names or club
+      names are in Portuguese / Spanish / Italian / German, write the recap
+      in that same language. Proper nouns stay in their native form.
+
+      Input rumors (JSON):
+      {rumors_json}
+    schema:
+      title: TransferRumorsRecap
+      description: "One-paragraph recap plus per-rumor confidence scores."
+      type: "object"
+      required:
+        - summary
+        - scored_rumors
+      properties:
+        summary:
+          type: "string"
+          description: "Single editorial paragraph (4-7 sentences) recapping the rumor batch."
+        scored_rumors:
+          type: "array"
+          description: "One entry per input rumor, in the same order."
+          items:
+            type: "object"
+            required:
+              - player
+              - confidence
+              - reasoning
+            properties:
+              player:
+                type: "string"
+                description: "Player name, echoed from the input."
+              from_club:
+                type: "string"
+                description: "Origin club, echoed from the input (empty string if not provided)."
+              to_club:
+                type: "string"
+                description: "Destination club, echoed from the input (empty string if not provided)."
+              source_url:
+                type: "string"
+                description: "Source URL, echoed from the input (empty string if not provided)."
+              confidence:
+                type: "number"
+                description: "Plausibility score from 0.0 to 1.0."
+              reasoning:
+                type: "string"
+                description: "One-sentence justification for the confidence score."
