@@ -1,0 +1,25 @@
+prompt:
+  name: "podcast-script-generator"
+  description: "Generates a 5-minute podcast script for a sports event."
+  version: "1.0"
+  inputs:
+    - name: "event_details"
+      type: "string"
+      description: "The details of the sports event."
+      required: true
+  template: |
+    Generate a 5-minute podcast script about the sports event with the following details: {event_details}.
+    The script should have the following structure:
+    1. Introduction (30 seconds): Introduce the event, the teams/players involved, and what's at stake.
+    2. First Half Analysis (2 minutes): Detail the key moments, turning points, and standout performances from the first half of the event.
+    3. Second Half Analysis (2 minutes): Cover the progression of the event in the second half, highlighting crucial plays and the final outcome.
+    4. Conclusion (30 seconds): Summarize the event, offer some final thoughts, and sign off.
+
+    The tone should be engaging, conversational, and informative.
+    The script should have the following structure:
+    1. Introduction (30 seconds): Introduce the event, the teams/players involved, and what's at stake.
+    2. First Half Analysis (2 minutes): Detail the key moments, turning points, and standout performances from the first half of the event.
+    3. Second Half Analysis (2 minutes): Cover the progression of the event in the second half, highlighting crucial plays and the final outcome.
+    4. Conclusion (30 seconds): Summarize the event, offer some final thoughts, and sign off.
+
+    The tone should be engaging, conversational, and informative.
