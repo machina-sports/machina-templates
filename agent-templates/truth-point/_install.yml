@@ -31,3 +31,14 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-feedback.yml
+
+  # Incident system: marks connectors / components as DOWN / DEGRADED so the
+  # Factory stops generating new workflows against them until resolved.
+  - type: workflow
+    path: workflows/truth-point-incident-open.yml
+
+  - type: workflow
+    path: workflows/truth-point-incident-resolve.yml
+
+  - type: workflow
+    path: workflows/truth-point-active-incidents.yml

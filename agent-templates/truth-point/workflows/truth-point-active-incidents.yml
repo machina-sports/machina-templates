@@ -1,0 +1,39 @@
+workflow:
+
+  # truth-point-active-incidents
+  name: truth-point-active-incidents
+  title: Truth Point — Active Incidents
+  description: Returns the list of currently open (ended_at is null) platform incidents. Consumed by the Factory before every agent run so the system prompt can warn the agent off any DOWN / DEGRADED components.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs: {}
+
+  outputs:
+    incidents: $.get('incidents', [])
+    count: $.get('count', 0)
+    workflow-status: "'executed'"
+
+  tasks:
+
+    - type: document
+      name: lookup-incidents
+      description: Fetch platform-incidents and project to active-only incidents
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'platform-incidents'"
+      outputs:
+        # Output expressions run against the document-search response, where
+        # `documents` is set. We project to incidents-with-no-ended_at in a
+        # single comprehension to avoid an expression task (which lacks a
+        # runner handler — its outputs always evaluate against an empty
+        # response).
+        incidents: |
+          [i for i in ($.get('documents', [])[0].get('value', {}).get('incidents', []) if len($.get('documents', [])) > 0 else []) if i.get('ended_at') is None]
+        count: |
+          len([i for i in ($.get('documents', [])[0].get('value', {}).get('incidents', []) if len($.get('documents', [])) > 0 else []) if i.get('ended_at') is None])
