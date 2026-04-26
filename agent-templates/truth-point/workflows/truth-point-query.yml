@@ -55,7 +55,7 @@ workflow:
               'version': d.get('value', {}).get('version', ''),
               'integrations': d.get('value', {}).get('integrations', []),
               'categories': d.get('value', {}).get('categories', []),
-              'similarity': d.get('similarity_score', 0)
+              'similarity': d.get('similarity', d.get('similarity_score', 0))
             }
             for d in $.get('documents', [])
           ]
