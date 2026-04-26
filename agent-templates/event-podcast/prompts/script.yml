@@ -1,0 +1,13 @@
+prompt:
+  name: podcast-script
+  description: "Generates a 5-minute podcast script for a sports event."
+  inputs:
+    - name: event_id
+      type: string
+      description: "The ID of the sports event."
+      required: true
+  content: |
+    Generate a 5-minute podcast script about the sports event with ID {event_id}.
+    The script should have an introduction, a main body discussing the key moments, and a concluding outro.
+    The tone should be engaging and informative for a general sports audience.
+    Make sure the script is approximately 800 words long.

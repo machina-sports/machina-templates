@@ -1,0 +1,11 @@
+agent:
+  name: event-podcast-generator
+  description: "Generates a 5-minute podcast episode for a sports event."
+  context-variables:
+    - name: event_id
+      type: string
+      description: "The ID of the sports event to generate the podcast for."
+      required: true
+  workflows:
+    - name: generate-podcast-episode
+      entry-point: true

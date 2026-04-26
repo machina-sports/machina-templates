@@ -1,0 +1,23 @@
+connector:
+  name: tts-service
+  description: "A connector for a Text-to-Speech (TTS) service."
+  base-url: "https://api.tts-service.com/v1"
+  commands:
+    - name: post-synthesize
+      description: "Synthesizes audio from text."
+      path: "/synthesize"
+      method: "POST"
+      body:
+        - name: text
+          type: string
+          required: true
+        - name: voice
+          type: string
+          required: false
+          default: "alloy"
+      outputs:
+        audio_url: "$.get('url', '')"
+  security:
+    - type: "http"
+      scheme: "bearer"
+      name: "bearerAuth"

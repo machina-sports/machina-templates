@@ -1,0 +1,24 @@
+connector:
+  name: cloud-storage
+  description: "A connector for a cloud storage service (e.g., S3, Google Cloud Storage)."
+  base-url: "https://storage-api.example.com"
+  commands:
+    - name: post-upload
+      description: "Uploads a file."
+      path: "/upload"
+      method: "POST"
+      body:
+        - name: file_url
+          type: string
+          required: true
+          description: "The URL of the file to upload."
+        - name: file_name
+          type: string
+          required: true
+          description: "The desired name of the file in storage."
+      outputs:
+        public_url: "$.get('public_url', '')"
+  security:
+    - type: "http"
+      scheme: "bearer"
+      name: "bearerAuth"

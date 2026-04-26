@@ -1,0 +1,40 @@
+workflow:
+  name: generate-podcast-episode
+  description: "Generates a podcast script, synthesizes audio, and uploads it."
+  tasks:
+    - name: generate-script
+      type: prompt
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        model: gpt-4
+      inputs:
+        event_id: "$.get('event_id')"
+        prompt_name: "'podcast-script'"
+      outputs:
+        script: "$.get('result', '')"
+        workflow-status: "$.get('result', '') != ''"
+
+    - name: synthesize-audio
+      type: connector
+      connector:
+        name: tts-service
+        command: post-synthesize
+      inputs:
+        text: "$.get('script')"
+        voice: "'alloy'"
+      outputs:
+        audio_url: "$.get('audio_url', '')"
+        workflow-status: "$.get('audio_url', '') != ''"
+
+    - name: upload-audio
+      type: connector
+      connector:
+        name: cloud-storage
+        command: post-upload
+      inputs:
+        file_url: "$.get('audio_url')"
+        file_name: "'podcast-episode-' + $.get('event_id') + '.mp3'"
+      outputs:
+        public_url: "$.get('public_url', '')"
+        workflow-status: "$.get('public_url', '') != ''"
