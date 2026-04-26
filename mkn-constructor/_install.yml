@@ -1,0 +1,16 @@
+setup:
+  title: "Machina Skills - Constructor"
+  description: "Construct, validate, and deploy Machina agent-templates and connectors with guided scaffolding and MCP integration."
+  category:
+    - machina-ai
+  status: available
+  value: skills/mkn-constructor
+  version: 1.0.0
+
+datasets:
+
+  - type: "workflow"
+    path: "workflows/check-setup.yml"
+
+  - type: "skill"
+    path: "skill.yml"

@@ -1,0 +1,33 @@
+connector:
+  name: "sport-events"
+  description: "Fetches information about a sports event."
+  version: "1.0"
+  type: "api"
+  openapi:
+    openapi: "3.0.0"
+    info:
+      title: "Sport Events"
+      version: "1.0"
+    paths:
+      /events/{event_id}:
+        get:
+          summary: "Get event by ID"
+          operationId: "get_event_by_id"
+          parameters:
+            - name: "event_id"
+              in: "path"
+              required: true
+              schema:
+                type: "string"
+          responses:
+            "200":
+              description: "Event information"
+              content:
+                application/json:
+                  schema:
+                    type: "object"
+                    properties:
+                      event_details:
+                        type: "string"
+  servers:
+    - url: "https://api.sport-events.com"

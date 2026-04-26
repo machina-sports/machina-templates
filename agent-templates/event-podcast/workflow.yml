@@ -1,0 +1,60 @@
+workflow:
+  name: "event-podcast-workflow"
+  description: "Generates a 5-minute podcast episode for a sports event."
+  version: "1.0"
+  inputs:
+    - name: "event_id"
+      type: "string"
+      required: true
+
+  tasks:
+    - name: "get-event-details"
+      type: "connector"
+      connector:
+        name: "sport-events"
+        command: "get_event_by_id"
+      inputs:
+        event_id: "$.get('event_id')"
+      outputs:
+        event_details: "$.get('event_details')"
+
+    - name: "generate-script"
+      type: "prompt"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "claude-3-haiku-20240307"
+      prompt: "podcast-script-generator"
+      inputs:
+        event_details: "$.get('event_details')"
+      outputs:
+        script: "$.get('result', '')"
+
+    - name: "synthesize-audio"
+      type: "connector"
+      connector:
+        name: "google-genai"
+        command: "invoke_tts"
+      inputs:
+        text: "$.get('script')"
+        voice_name: "'Kore'"
+        model_id: "'gemini-2.5-flash-tts'"
+        language_code: "'en-us'"
+      outputs:
+        audio_content: "$.get('file_path')"
+
+    - name: "upload-audio"
+      type: "connector"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        file_path: "$.get('audio_content')"
+      outputs:
+        podcast_url: "$.get('url')"
+
+  outputs:
+    - name: "podcast_url"
+      value: "$.get('podcast_url')"
+    - name: "workflow-status"
+      value: "$.get('podcast_url') != ''"
