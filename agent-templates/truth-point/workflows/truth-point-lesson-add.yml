@@ -1,0 +1,69 @@
+workflow:
+
+  # truth-point-lesson-add
+  name: truth-point-lesson-add
+  title: Truth Point — Add Lesson Learned
+  description: Append a lesson-learned (anti-pattern + correct pattern + explanation) to the singleton lessons-learned doc. The Factory consumes this list before each agent run so the agent can avoid known regressions. Caller passes a stable id, title, applies_to scope, and the do/don't pair.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    id: $.get('id', '')
+    title: $.get('title', '')
+    applies_to: $.get('applies_to', [])
+    anti_pattern: $.get('anti_pattern', '')
+    correct_pattern: $.get('correct_pattern', '')
+    explanation: $.get('explanation', '')
+    severity: $.get('severity', 'medium')
+    source_run_id: $.get('source_run_id', '')
+
+  outputs:
+    id: $.get('id', '')
+    workflow-status: $.get('id') and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: lookup-lessons
+      description: Read the singleton lessons-learned doc; we'll append to its lessons
+      condition: $.get('id') is not None and $.get('id') != '' and $.get('title') is not None and $.get('title') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'lessons-learned'"
+      outputs:
+        existing_lessons: $.get('documents', [])[0].get('value', {}).get('lessons', []) if len($.get('documents', [])) > 0 else []
+
+    # Idempotent on id: if a lesson with the same id exists, replace it; otherwise append.
+    - type: document
+      name: append-lesson
+      description: Write lessons-learned with the new entry merged in (replace by id if present)
+      condition: $.get('id') is not None and $.get('id') != ''
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        lessons-learned: |
+          {
+            'lessons': [
+              *[l for l in $.get('existing_lessons', []) if l.get('id') != $.get('id')],
+              {
+                'id': $.get('id'),
+                'title': $.get('title', ''),
+                'applies_to': $.get('applies_to', []),
+                'anti_pattern': $.get('anti_pattern', ''),
+                'correct_pattern': $.get('correct_pattern', ''),
+                'explanation': $.get('explanation', ''),
+                'severity': $.get('severity', 'medium'),
+                'source_run_id': $.get('source_run_id', ''),
+                'created_at': datetime.now().isoformat()
+              }
+            ]
+          }
+      metadata:
+        kind: "'lessons-learned'"
