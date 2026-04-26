@@ -42,3 +42,11 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-active-incidents.yml
+
+  # Lessons-learned system: stores DO / DON'T patterns surfaced from
+  # historical regressions so the Factory's agent stops repeating them.
+  - type: workflow
+    path: workflows/truth-point-lesson-add.yml
+
+  - type: workflow
+    path: workflows/truth-point-lessons-active.yml

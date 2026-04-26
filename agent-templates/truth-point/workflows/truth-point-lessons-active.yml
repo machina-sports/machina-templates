@@ -1,0 +1,49 @@
+workflow:
+
+  # truth-point-lessons-active
+  name: truth-point-lessons-active
+  title: Truth Point — Active Lessons Learned
+  description: Returns the list of lessons-learned, optionally filtered by `applies_to` (e.g. only show lessons relevant to agent-template work). Consumed by the Factory before every agent run so the system prompt can warn off known regressions.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    applies_to: $.get('applies_to', '')
+
+  outputs:
+    lessons: $.get('lessons', [])
+    count: $.get('count', 0)
+    workflow-status: "'executed'"
+
+  tasks:
+
+    - type: document
+      name: lookup-lessons
+      description: Fetch lessons-learned, project to the (optionally filtered) list
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'lessons-learned'"
+      outputs:
+        # If applies_to is empty string, return all; otherwise keep only lessons whose
+        # applies_to array contains the requested category.
+        lessons: |
+          [
+            l for l in (
+              $.get('documents', [])[0].get('value', {}).get('lessons', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+            if not $.get('applies_to') or $.get('applies_to') in (l.get('applies_to') or [])
+          ]
+        count: |
+          len([
+            l for l in (
+              $.get('documents', [])[0].get('value', {}).get('lessons', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+            if not $.get('applies_to') or $.get('applies_to') in (l.get('applies_to') or [])
+          ])
