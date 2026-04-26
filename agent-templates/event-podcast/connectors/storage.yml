@@ -1,0 +1,23 @@
+connector:
+  name: storage
+  description: "A connector for a generic cloud storage service."
+  version: 1.0
+  commands:
+    - name: post-upload
+      method: "POST"
+      path: "/upload"
+      payload:
+        encoding: "multipart"
+        parts:
+          - name: "file"
+            value: "$.get('file_content')"
+            filename: "$.get('file_name')"
+            content_type: "$.get('content_type')"
+      parameters: []
+      response:
+        type: "json"
+        schema:
+          type: "object"
+          properties:
+            url:
+              type: "string"

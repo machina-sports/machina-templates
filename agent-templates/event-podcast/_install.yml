@@ -1,0 +1,25 @@
+setup:
+  title: "Event Podcast Generator"
+  description: "Produces a 5-minute podcast episode for a given sports event ID. It generates a script, synthesizes audio, and uploads it to cloud storage."
+  category:
+    - custom-templates
+  estimatedTime: 5 minutes
+  features:
+    - "Generates a podcast script for a sports event."
+    - "Synthesizes audio using Text-to-Speech."
+    - "Uploads the final MP3 to a cloud storage."
+  integrations:
+    - machina-ai
+  status: available
+  value: "agent-templates/event-podcast"
+  version: 1.0.0
+
+datasets:
+  - type: "agent"
+    path: "agent.yml"
+  - type: "workflow"
+    path: "workflow.yml"
+  - type: "prompt"
+    path: "prompts/script.yml"
+  - type: "connector"
+    path: "connectors/storage.yml"

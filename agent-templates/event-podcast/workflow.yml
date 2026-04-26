@@ -1,0 +1,44 @@
+workflow:
+  name: event-podcast-workflow
+  description: "Workflow to generate a podcast for a sports event."
+  version: 1.0
+  tasks:
+    - name: generate-script
+      type: prompt
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        model: gpt-4
+      prompt:
+        name: event-podcast-script
+      inputs:
+        event_id: "$.get('event_id')"
+      outputs:
+        script: "$.get('result', '')"
+
+    - name: synthesize-audio
+      type: connector
+      connector:
+        name: machina-ai
+        command: text_to_speech
+        model: tts-1
+      inputs:
+        text: "$.get('script')"
+        voice: "'alloy'"
+      outputs:
+        audio_content: "$.get('result', '')"
+        
+    - name: upload-audio
+      type: connector
+      connector:
+        name: storage
+        command: post-upload
+      inputs:
+        file_content: "$.get('audio_content')"
+        file_name: "'podcast-' + $.get('event_id') + '.mp3'"
+        content_type: "'audio/mpeg'"
+      outputs:
+        podcast_url: "$.get('url')"
+  outputs:
+    podcast_url: "$.get('podcast_url')"
+    workflow-status: "$.get('podcast_url') != ''"

@@ -1,0 +1,15 @@
+prompt:
+  name: event-podcast-script
+  description: "Generates a 5-minute podcast script for a sports event."
+  version: 1.0
+  inputs:
+    - name: event_id
+      type: text
+  template: |
+    You are a sports commentator. Write a script for a 5-minute podcast episode about the sports event with the ID: {event_id}.
+    The script should be engaging and informative.
+    It should cover the highlights of the event, key players, and the final outcome.
+    The tone should be enthusiastic and professional.
+    The script should be approximately 800 words long.
+    Do not include any intro or outro music cues.
+    Start the script with a catchy hook and end with a concluding thought.

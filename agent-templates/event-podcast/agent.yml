@@ -1,0 +1,23 @@
+agent:
+  name: event-podcast-generator
+  description: "Generates a 5-minute podcast episode for a sports event."
+  icon: "headphones"
+  version: 1.0
+  workflow: event-podcast-workflow
+  inputs:
+    - name: "event_id"
+      label: "Event ID"
+      type: "text"
+      required: true
+      default: ""
+      description: "The ID of the sports event."
+  outputs:
+    - name: "podcast_url"
+      label: "Podcast URL"
+      type: "text"
+  readme: |
+    This agent generates a 5-minute podcast episode for a given sports event ID.
+    Provide the event ID to start the process. The agent will:
+    1. Generate a script for the podcast.
+    2. Convert the script to audio.
+    3. Upload the audio to cloud storage and provide a URL.
