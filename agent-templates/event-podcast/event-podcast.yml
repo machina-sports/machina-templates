@@ -17,6 +17,12 @@ workflow:
     event_id: "$.get('event_id', '')"
     voice_name: "$.get('voice_name', 'Kore')"
     language_code: "$.get('language_code', 'en-us')"
+    # Optional style hint prepended to the script before TTS. Use this to
+    # nudge tone (calm/excited), pacing, and especially pronunciation —
+    # for non-English content set a hint in the target language so the
+    # model treats proper nouns and accents naturally. Defaults to a
+    # neutral "podcast host" cue.
+    style_prompt: "$.get('style_prompt', 'Read the following text as an engaging, natural sports podcast host. Maintain a conversational pace and pronounce all proper nouns clearly')"
   outputs:
     event_id: "$.get('event_id')"
     title: "$.get('title')"
@@ -73,6 +79,7 @@ workflow:
         voice_name: "$.get('voice_name', 'Kore')"
         model_id: "gemini-2.5-flash-tts"
         language_code: "$.get('language_code', 'en-us')"
+        prompt: "$.get('style_prompt', '')"
       outputs:
         final_filename: f"event-podcast-{$.get('file_name', $.get('event_id', 'episode'))}-{datetime.now().strftime('%Y%m%d-%H%M%S')}.mp3"
         full_filepath: "$.get('file_path')"
