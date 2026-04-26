@@ -1,0 +1,42 @@
+prompt:
+  name: summarize-event-prompt
+  title: "Summarize Event Prompt"
+  description: "Summarizes a sports event description into a one-line headline and exactly 3 bullet points."
+  tags:
+    - summary
+    - sports
+    - event
+  content: |
+    You are a sports editor. Read the event description below and produce:
+      1. A single-line headline (no trailing period, no emojis, max ~14 words)
+         that captures the event in one punchy line.
+      2. EXACTLY 3 bullet points covering the most important facts of the
+         event (who, what, when, score/result, why it matters). Each bullet
+         must be a single sentence.
+
+    Rules:
+    - Stay faithful to the event description; do not invent facts.
+    - Do not add preamble, headings, or closing remarks.
+    - Language: match the language of the input. If the event is described
+      in Brazilian Portuguese, reply in Brazilian Portuguese. Same rule for
+      Spanish, English, German, or any other language. Proper nouns stay
+      in their native form.
+
+    Event description:
+    {event_description}
+  schema:
+    type: object
+    properties:
+      headline:
+        type: string
+        description: "One-line headline summarizing the event."
+      bullets:
+        type: array
+        description: "Exactly 3 bullet points covering the key facts."
+        items:
+          type: string
+        minItems: 3
+        maxItems: 3
+    required:
+      - headline
+      - bullets

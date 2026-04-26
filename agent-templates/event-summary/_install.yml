@@ -1,0 +1,21 @@
+setup:
+  title: "Event Summary"
+  description: "Turns a sports event description into a one-line headline and 3 key-fact bullet points, in the input's language."
+  category:
+    - custom-templates
+  estimatedTime: 2 minutes
+  features:
+    - "Accepts arbitrary sports event description text as input."
+    - "Produces a one-line headline plus exactly 3 bullet points covering the key facts."
+    - "Output language automatically matches the input language."
+  integrations:
+    - google-genai
+  status: available
+  value: "agent-templates/event-summary"
+  version: 1.0.0
+
+datasets:
+  - type: "prompt"
+    path: "prompts/summarize-event.yml"
+  - type: "workflow"
+    path: "workflows/summarize-event.yml"
