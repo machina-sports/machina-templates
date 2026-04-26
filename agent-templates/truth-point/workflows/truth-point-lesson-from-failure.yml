@@ -1,0 +1,100 @@
+workflow:
+
+  # truth-point-lesson-from-failure
+  name: truth-point-lesson-from-failure
+  title: Truth Point — Extract Lesson from Failure
+  description: Given a failed Factory run (task + broken artifacts + failure summary), use Gemini to extract a single generalizable lesson and append it to the lessons-learned doc. Caller fires-and-forgets; the workflow returns the extracted lesson and stores it idempotently when `relevant_to_failure` is true. Closes the self-improving loop — Tier 3 of the lessons system.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    job_task: $.get('job_task', '')
+    failure_summary: $.get('failure_summary', '')
+    affected_files: $.get('affected_files', '')
+    source_run_id: $.get('source_run_id', '')
+
+  outputs:
+    extracted_id: $.get('id', '')
+    extracted_title: $.get('title', '')
+    relevant_to_failure: $.get('relevant_to_failure', False)
+    workflow-status: $.get('id') and 'executed' or 'skipped'
+
+  tasks:
+
+    # 1. Read existing lessons (so the upsert step preserves them).
+    - type: document
+      name: lookup-lessons
+      description: Pull existing lessons-learned to preserve through upsert
+      condition: $.get('job_task') is not None and $.get('job_task') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'lessons-learned'"
+      outputs:
+        existing_lessons: $.get('documents', [])[0].get('value', {}).get('lessons', []) if len($.get('documents', [])) > 0 else []
+
+    # 2. Ask Gemini to extract a structured lesson.
+    # The runner resolves the prompt by `task.name`, so this MUST match the
+    # prompt declared in prompts/lesson-from-failure.yml.
+    - type: prompt
+      name: truth-point-lesson-from-failure-prompt
+      description: Run the regression-analyzer prompt to produce a structured lesson
+      condition: $.get('job_task') is not None and $.get('job_task') != ''
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        job_task: $.get('job_task', '')
+        failure_summary: $.get('failure_summary', '')
+        affected_files: $.get('affected_files', '')
+      outputs:
+        id: $.get('id', '')
+        title: $.get('title', '')
+        applies_to: $.get('applies_to', [])
+        anti_pattern: $.get('anti_pattern', '')
+        correct_pattern: $.get('correct_pattern', '')
+        explanation: $.get('explanation', '')
+        severity: $.get('severity', 'medium')
+        relevant_to_failure: $.get('relevant_to_failure', False)
+
+    # 3. Upsert into lessons-learned ONLY when the analyzer flagged it as a
+    # generalizable rule (not an incidental failure).
+    - type: document
+      name: append-lesson
+      description: Append the extracted lesson, idempotent on id
+      condition: $.get('relevant_to_failure') is True and $.get('id') is not None and $.get('id') != ''
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        lessons-learned: |
+          {
+            'lessons': [
+              *[l for l in $.get('existing_lessons', []) if l.get('id') != $.get('id')],
+              {
+                'id': $.get('id'),
+                'title': $.get('title', ''),
+                'applies_to': $.get('applies_to', []),
+                'anti_pattern': $.get('anti_pattern', ''),
+                'correct_pattern': $.get('correct_pattern', ''),
+                'explanation': $.get('explanation', ''),
+                'severity': $.get('severity', 'medium'),
+                'source_run_id': $.get('source_run_id', ''),
+                'auto_extracted': True,
+                'created_at': datetime.now().isoformat()
+              }
+            ]
+          }
+      metadata:
+        kind: "'lessons-learned'"

@@ -50,3 +50,11 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-lessons-active.yml
+
+  # Tier 3 — auto-extraction: given a failed run + broken artifacts,
+  # ask Gemini to derive a generalizable lesson and append it.
+  - type: prompts
+    path: prompts/lesson-from-failure.yml
+
+  - type: workflow
+    path: workflows/truth-point-lesson-from-failure.yml
