@@ -1,0 +1,27 @@
+workflow:
+  name: summarize-event
+  title: "Summarize Event"
+  description: "Takes a sports event description and returns a one-line headline
+    plus 3 key-fact bullet points."
+  inputs:
+    event_description: $.get('event_description', '')
+  tasks:
+    - name: summarize
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt:
+        name: summarize-event-prompt
+      inputs:
+        event_description: "$.get('event_description')"
+      outputs:
+        headline: "$.get('headline', '')"
+        bullets: "$.get('bullets', [])"
+  outputs:
+    headline: "$.get('headline', '')"
+    bullets: "$.get('bullets', [])"
+    workflow-status: "$.get('headline', '') != '' and len($.get('bullets', [])) > 0"

@@ -3,9 +3,7 @@ workflow:
   title: "Summarize Article"
   description: "Takes a pasted sports article and returns a 3-bullet summary."
   inputs:
-    - name: article_text
-      type: string
-      description: "The full text of the sports article to summarize."
+    article_text: $.get('article_text', '')
   tasks:
     - name: summarize
       type: prompt

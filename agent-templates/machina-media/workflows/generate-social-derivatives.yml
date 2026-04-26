@@ -3,18 +3,9 @@ workflow:
   title: Generate Social Derivatives
   description: "Generates platform-native social media content from a source reference."
   inputs:
-    - name: source_ref
-      type: object
-      description: "Reference object for the source media or storyline."
-      required: true
-    - name: source_script_or_segment
-      type: object
-      description: "Transcript or summary of the source content."
-      required: true
-    - name: platforms
-      type: array
-      description: "List of target social platforms."
-      default: '["x", "youtube_shorts", "tiktok", "instagram"]'
+    source_ref: $.get('source_ref', '')
+    source_script_or_segment: $.get('source_script_or_segment', '')
+    platforms: $.get('platforms', '')
   tasks:
     - name: generate-social-posts
       type: prompt
