@@ -1,0 +1,48 @@
+workflow:
+  name: event-podcast-generator
+  description: Generates a 5-minute podcast episode from a sports event ID.
+  inputs:
+    - name: event_id
+      type: string
+      description: The ID of the sports event.
+      required: true
+  tasks:
+    - name: generate-script
+      type: prompt
+      prompt:
+        name: event-podcast-script-generator
+      inputs:
+        event_id: "$.get('event_id')"
+      outputs:
+        script: "$.get('result', '')"
+
+    - name: synthesize-audio
+      type: connector
+      connector:
+        name: elevenlabs
+        command: text_to_speech
+      inputs:
+        text: "$.get('script')"
+        voice_id: "'21m00Tcm4TlvDq8ikWAM'" # Default voice, can be changed
+      outputs:
+        audio_file_path: "$.get('file_path', '')"
+      depends_on:
+        - generate-script
+
+    - name: upload-audio
+      type: connector
+      connector:
+        name: google-storage
+        command: upload_file
+      inputs:
+        bucket: "'your-gcs-bucket-name'" # Needs to be configured
+        source_file_name: "$.get('audio_file_path')"
+        destination_blob_name: "f'podcast-episode-{$.get('event_id')}.mp3'"
+      outputs:
+        public_url: "$.get('public_url', '')"
+      depends_on:
+        - synthesize-audio
+
+  outputs:
+    podcast_url: "$.get('public_url', '')"
+    workflow-status: "$.get('public_url', '') != ''"

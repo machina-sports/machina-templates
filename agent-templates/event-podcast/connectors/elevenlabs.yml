@@ -1,0 +1,10 @@
+connector:
+  name: "elevenlabs"
+  description: "The ElevenLabs connector is a connector for the ElevenLabs API."
+  filename: "elevenlabs.py"
+  filetype: "pyscript"
+  commands:
+    - name: "text_to_speech"
+      value: "get_text_to_speech"
+    - name: "get_voices"
+      value: "get_voices"

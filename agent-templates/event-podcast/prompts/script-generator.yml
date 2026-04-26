@@ -1,0 +1,27 @@
+prompt:
+  name: event-podcast-script-generator
+  description: Generates a 5-minute podcast script for a sports event.
+  inputs:
+    - name: event_id
+      type: string
+      description: The ID of the sports event.
+      required: true
+  connector:
+    name: machina-ai
+    command: chat
+    model: gpt-4
+  template: |
+    You are a sports commentator. Write a script for a 5-minute podcast episode about the sports event with the ID: {event_id}.
+    The script should be engaging and informative.
+    It should have an introduction, a main body discussing the key moments of the event, and a concluding summary.
+    The total length of the spoken script should be approximately 750 words to fit a 5-minute episode.
+
+    Structure the script as follows:
+    [INTRO]
+    ...
+
+    [MAIN BODY]
+    ...
+
+    [OUTRO]
+    ...

@@ -1,0 +1,8 @@
+connector:
+  name: "google-storage"
+  description: "The Google Storage connector is a connector for the Google Storage API."
+  filename: "google-storage.py"
+  filetype: "pyscript"
+  commands:
+    - name: "upload_file"
+      value: "invoke_upload"

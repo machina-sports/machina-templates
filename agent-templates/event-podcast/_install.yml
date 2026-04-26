@@ -1,0 +1,33 @@
+setup:
+  title: Event-Based Podcast Generator
+  description: AI-powered podcast generator that takes a sports event ID and produces a 5-minute podcast episode.
+  category:
+    - fan-engagement
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to generate a podcast script from a sports event ID.
+    - Text-to-Speech synthesis of the generated script.
+    - Automatic upload of the podcast episode to cloud storage.
+  integrations:
+    - machina-ai
+    - elevenlabs
+    - google-storage
+  status: available
+  value: agent-templates/event-podcast
+  version: 1.0.0
+
+datasets:
+  - type: agent
+    path: "agent.yml"
+  - type: workflow
+    path: "workflow.yml"
+  - type: prompt
+    path: "prompts/script-generator.yml"
+  - type: connector
+    path: "connectors/elevenlabs.yml"
+  - type: connector
+    path: "connectors/google-storage.yml"
+  - type: "pyscript"
+    path: "connectors/elevenlabs.py"
+  - type: "pyscript"
+    path: "connectors/google-storage.py"

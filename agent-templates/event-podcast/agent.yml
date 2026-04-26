@@ -1,0 +1,17 @@
+agent:
+  name: event-podcast-agent
+  description: "Agent that runs the event-podcast-generator workflow."
+  workflows:
+    - name: event-podcast-generator
+  context-variables:
+    - name: ELEVENLABS_API_KEY
+      description: "API key for ElevenLabs TTS service."
+      type: "vault"
+    - name: GOOGLE_APPLICATION_CREDENTIALS
+      description: "JSON credentials for Google Cloud Storage."
+      type: "vault"
+  inputs:
+    - name: event_id
+      type: string
+      description: "The ID of the sports event."
+      required: true
