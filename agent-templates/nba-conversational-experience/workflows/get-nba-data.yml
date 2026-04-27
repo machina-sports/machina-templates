@@ -16,4 +16,4 @@ workflow:
         news_articles: "$.get('articles', [])"
   outputs:
     result: "$.get('news_articles')"
-    workflow-status: "$.get('news_articles') != []"
+    workflow-status: "$.get('news_articles') and 'executed' or 'skipped'"

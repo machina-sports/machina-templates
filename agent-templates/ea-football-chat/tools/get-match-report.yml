@@ -7,7 +7,7 @@ workflow:
     competition_id: "$.get('competition_id')"
   outputs:
     result: "{'summary': $.get('summary'), 'statistics': $.get('statistics'), 'xg': $.get('xg', 'N/A')}"
-    workflow-status: "$.get('summary') is not None"
+    workflow-status: "($.get('summary') is not None) and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "get_summary"

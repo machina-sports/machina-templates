@@ -28,4 +28,4 @@ workflow:
     tiktok_caption: "$.get('derivatives', {}).get('tiktok_caption', '')"
     instagram_caption: "$.get('derivatives', {}).get('instagram_caption', '')"
     multi_post_variants: "$.get('derivatives', {}).get('multi_post_variants', [])"
-    workflow-status: "$.get('derivatives', {}).get('x_draft', '') != ''"
+    workflow-status: "$.get('derivatives', {}).get('x_draft', '') and 'executed' or 'skipped'"

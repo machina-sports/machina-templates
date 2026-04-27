@@ -9,7 +9,7 @@ workflow:
   outputs:
     summary: $.get('summary', '')
     scored_rumors: $.get('scored_rumors', [])
-    workflow-status: $.get('summary', '') != '' and len($.get('scored_rumors', [])) > 0
+    workflow-status: ($.get('summary', '') != '' and len($.get('scored_rumors', [])) > 0) and 'executed' or 'skipped'
   tasks:
 
     - name: recap
