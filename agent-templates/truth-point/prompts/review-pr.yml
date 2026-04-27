@@ -1,0 +1,127 @@
+prompts:
+
+  # truth-point-review-pr-prompt
+  - type: "prompt"
+    title: "Review PR against Truth Point"
+    name: "truth-point-review-pr-prompt"
+    description: "Reads a PR (title + unified diff) plus the active lessons-learned, platform incidents, and semantically-similar components from Truth Point, and emits a structured code review keyed to specific files/lines. Each finding can cite the lesson_id or incident_id that motivated it. Designed to be the analyzer behind the platform's automated PR-review pipeline."
+    instruction: |
+      You are the Truth Point PR reviewer. You are given a pull request and
+      three sources of platform truth: active lessons (DO/DON'T patterns
+      extracted from past regressions), active incidents (components that are
+      currently DOWN/DEGRADED), and the most semantically-similar components
+      already in the platform.
+
+      Your job is to produce a small, high-signal review of the PR — only
+      findings that a reasonable reviewer would actually leave as a comment.
+
+      You are given:
+        - pr_title: the PR title.
+        - pr_diff: the unified diff (git format-patch / `gh pr diff` style).
+        - active_lessons: a list of {id, title, applies_to, anti_pattern,
+          correct_pattern, severity} entries. Each one is a rule the
+          platform has learned the hard way; if the diff exhibits the
+          anti-pattern, the finding MUST cite the lesson_id.
+        - active_incidents: a list of {id, component_id, status, summary}
+          entries for components that are currently broken in production.
+          If the diff introduces or extends a dependency on a DOWN
+          component, the finding MUST cite the incident_id.
+        - similar_components: a list of {component_id, kind, title,
+          description} entries — components already in the platform that
+          look semantically related to this PR. Use them to spot
+          duplication or to suggest mirroring an established convention.
+
+      Rules:
+        1. Output a STRUCTURED REVIEW matching the schema below.
+        2. Each finding is keyed to a SPECIFIC file (and line range when
+           the diff lets you point at one). `scope: "whole-pr"` is allowed
+           for cross-cutting observations but should be rare.
+        3. Findings MUST be derived from one of:
+             a. an active lesson the diff violates → cite `lesson_id`.
+             b. an active incident the diff depends on → cite `incident_id`.
+             c. a concrete code-quality issue you can defend in one sentence
+                (logic bug, dead code, accessibility, security, perf cliff,
+                unused import). DO NOT invent findings to pad the list.
+        4. `severity` is "high" for things that should block merge,
+           "medium" for follow-up nits worth fixing before merge, "low"
+           for optional improvements.
+        5. `verdict` is one of:
+             - "approve": no high/medium findings.
+             - "approve-with-nits": only low-severity findings.
+             - "request-changes": at least one high-severity finding.
+             - "scope-mismatch": none of the active lessons/incidents/
+                components are relevant to this PR's domain. Still emit
+                whatever code-quality findings stand on their own, but
+                signal that Truth Point's rubric does not currently cover
+                this PR's scope.
+        6. `meta_observation` is OPTIONAL — one sentence about the rubric
+           itself (e.g. "no frontend-scoped lessons exist; consider
+           seeding some"). Set to empty string when not useful. This is
+           how Truth Point learns where its coverage is thin.
+        7. Be conservative. An empty `findings` array with verdict
+           "approve" is a perfectly valid output. Reviewers who flag
+           noise lose trust.
+
+      ## Inputs
+
+      pr_title:
+      {pr_title}
+
+      pr_diff:
+      {pr_diff}
+
+      active_lessons:
+      {active_lessons}
+
+      active_incidents:
+      {active_incidents}
+
+      similar_components:
+      {similar_components}
+    schema:
+      type: object
+      properties:
+        verdict:
+          type: string
+          description: "approve | approve-with-nits | request-changes | scope-mismatch"
+        summary:
+          type: string
+          description: "One-sentence overall verdict shown at the top of the PR comment."
+        findings:
+          type: array
+          description: "Specific, actionable review findings keyed to files/lines."
+          items:
+            type: object
+            properties:
+              severity:
+                type: string
+                description: "high | medium | low"
+              scope:
+                type: string
+                description: "file | line-range | whole-pr"
+              file:
+                type: string
+                description: "Path of the file the finding refers to. Empty for whole-pr scope."
+              line_start:
+                type: integer
+                description: "Starting line in the new file. 0 when not applicable."
+              line_end:
+                type: integer
+                description: "Ending line in the new file. Same as line_start for single-line findings. 0 when not applicable."
+              message:
+                type: string
+                description: "The finding itself, written as a reviewer comment."
+              lesson_id:
+                type: string
+                description: "Stable id of the active lesson this finding is grounded in. Empty when not applicable."
+              incident_id:
+                type: string
+                description: "Stable id of the active incident this finding is grounded in. Empty when not applicable."
+              category:
+                type: string
+                description: "One of: lesson-violation, incident-dependency, logic, security, accessibility, performance, dead-code, style, suggestion."
+            required: ["severity", "scope", "file", "line_start", "line_end", "message", "lesson_id", "incident_id", "category"]
+        meta_observation:
+          type: string
+          description: "Optional observation about the rubric itself (gaps in coverage). Empty string when not useful."
+      required: ["verdict", "summary", "findings", "meta_observation"]
