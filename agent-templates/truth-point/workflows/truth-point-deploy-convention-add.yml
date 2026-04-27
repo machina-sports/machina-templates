@@ -1,0 +1,79 @@
+workflow:
+
+  # truth-point-deploy-convention-add
+  name: truth-point-deploy-convention-add
+  title: Truth Point — Add Deploy Convention
+  description: |
+    Upsert a deploy convention for a repo into the singleton
+    `deploy-conventions` doc. Factory's deploy mode reads this list before
+    merging a PR so it can:
+      - identify which post-merge GitHub Actions workflow is the deploy
+        (and not confuse it with PR-checks runs)
+      - know the tag prefix the repo's semantic-release uses
+      - know whether the PR should target `staging` (gets auto-tagged) vs
+        `main` (production gate)
+
+    Idempotent on `repo` (e.g. "machina-sports/machina-studio"). A
+    convention with the same `repo` is replaced; otherwise the new one is
+    appended.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    repo: $.get('repo', '')
+    target_branch_for_pr: $.get('target_branch_for_pr', 'main')
+    deploy_workflow_files: $.get('deploy_workflow_files', [])
+    tag_prefix_staging: $.get('tag_prefix_staging', '')
+    tag_prefix_production: $.get('tag_prefix_production', '')
+    semantic_release: $.get('semantic_release', True)
+    notes: $.get('notes', '')
+
+  outputs:
+    repo: $.get('repo', '')
+    workflow-status: $.get('repo') and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: lookup-conventions
+      description: Read the singleton deploy-conventions doc to preserve siblings
+      condition: $.get('repo') is not None and $.get('repo') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'deploy-conventions'"
+      outputs:
+        existing_conventions: $.get('documents', [])[0].get('value', {}).get('conventions', []) if len($.get('documents', [])) > 0 else []
+
+    # Idempotent on repo: replace if present, append otherwise.
+    - type: document
+      name: append-convention
+      description: Write deploy-conventions with the new entry merged in (replace by repo)
+      condition: $.get('repo') is not None and $.get('repo') != ''
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        deploy-conventions: |
+          {
+            'conventions': [
+              *[c for c in $.get('existing_conventions', []) if c.get('repo') != $.get('repo')],
+              {
+                'repo': $.get('repo'),
+                'target_branch_for_pr': $.get('target_branch_for_pr', 'main'),
+                'deploy_workflow_files': $.get('deploy_workflow_files', []),
+                'tag_prefix_staging': $.get('tag_prefix_staging', ''),
+                'tag_prefix_production': $.get('tag_prefix_production', ''),
+                'semantic_release': $.get('semantic_release', True),
+                'notes': $.get('notes', ''),
+                'updated_at': datetime.now().isoformat()
+              }
+            ]
+          }
+      metadata:
+        kind: "'deploy-conventions'"
