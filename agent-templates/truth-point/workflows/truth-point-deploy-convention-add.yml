@@ -12,6 +12,11 @@ workflow:
       - know the tag prefix the repo's semantic-release uses
       - know whether the PR should target `staging` (gets auto-tagged) vs
         `main` (production gate)
+      - know whether a post-merge promote step is needed before the
+        deploy workflow fires (e.g. machina-core-api: PRs merge to
+        `master` but `release-staging.yml` only triggers on push to the
+        `release-staging` branch — Factory must fast-forward
+        release-staging to master before the deploy can run)
 
     Idempotent on `repo` (e.g. "machina-sports/machina-studio"). A
     convention with the same `repo` is replaced; otherwise the new one is
@@ -28,6 +33,12 @@ workflow:
     tag_prefix_staging: $.get('tag_prefix_staging', '')
     tag_prefix_production: $.get('tag_prefix_production', '')
     semantic_release: $.get('semantic_release', True)
+    # Optional post-merge promote target. When set and different from
+    # target_branch_for_pr, Factory fast-forwards this branch to the
+    # merge SHA after merging the PR, then watches the deploy workflow
+    # there. Empty string = no promote step (default — deploy runs
+    # directly on target_branch_for_pr).
+    deploy_trigger_branch: $.get('deploy_trigger_branch', '')
     notes: $.get('notes', '')
 
   outputs:
@@ -70,6 +81,7 @@ workflow:
                 'tag_prefix_staging': $.get('tag_prefix_staging', ''),
                 'tag_prefix_production': $.get('tag_prefix_production', ''),
                 'semantic_release': $.get('semantic_release', True),
+                'deploy_trigger_branch': $.get('deploy_trigger_branch', ''),
                 'notes': $.get('notes', ''),
                 'updated_at': datetime.now().isoformat()
               }
