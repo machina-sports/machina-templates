@@ -33,4 +33,4 @@ workflow:
     summary_draft: "$.get('generate_recap', {}).get('summary_draft', '')"
     clip_candidates: "$.get('generate_recap', {}).get('clip_candidates', [])"
     headline_options: "$.get('generate_recap', {}).get('headline_options', [])"
-    workflow-status: "$.get('generate_recap', {}).get('recap_script', '') != ''"
+    workflow-status: "$.get('generate_recap', {}).get('recap_script', '') and 'executed' or 'skipped'"

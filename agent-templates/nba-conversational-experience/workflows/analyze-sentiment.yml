@@ -19,4 +19,4 @@ workflow:
         sentiment_result: "$.get('result')"
   outputs:
     result: "$.get('sentiment_result')"
-    workflow-status: "$.get('sentiment_result') != ''"
+    workflow-status: "$.get('sentiment_result') and 'executed' or 'skipped'"

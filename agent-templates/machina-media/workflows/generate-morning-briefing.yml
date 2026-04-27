@@ -43,4 +43,4 @@ workflow:
     chapters: "$.get('generate_briefing', {}).get('chapters', [])"
     title_options: "$.get('generate_briefing', {}).get('title_options', [])"
     clip_candidates: "$.get('generate_briefing', {}).get('clip_candidates', [])"
-    workflow-status: "$.get('generate_briefing', {}).get('briefing_script', '') != ''"
+    workflow-status: "$.get('generate_briefing', {}).get('briefing_script', '') and 'executed' or 'skipped'"

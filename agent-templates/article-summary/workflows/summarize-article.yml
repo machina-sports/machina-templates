@@ -21,4 +21,4 @@ workflow:
         summary: "$.get('result')"
   outputs:
     result: "$.get('summary', '')"
-    workflow-status: "$.get('summary', '') != ''"
+    workflow-status: "$.get('summary', '') and 'executed' or 'skipped'"
