@@ -39,6 +39,15 @@ workflow:
     # there. Empty string = no promote step (default — deploy runs
     # directly on target_branch_for_pr).
     deploy_trigger_branch: $.get('deploy_trigger_branch', '')
+    # Production-environment overrides. When env=production at deploy
+    # time, Factory prefers these over the staging-defaulted fields
+    # above. Empty / absent = fall back to the staging fields (lets
+    # repos that share a single workflow / branch keep one entry).
+    # Example for machina-core-api: staging fires release-staging.yml
+    # via the release-staging branch; production fires
+    # release-production.yml via the release-production branch.
+    deploy_workflow_files_production: $.get('deploy_workflow_files_production', [])
+    deploy_trigger_branch_production: $.get('deploy_trigger_branch_production', '')
     notes: $.get('notes', '')
 
   outputs:
@@ -82,6 +91,8 @@ workflow:
                 'tag_prefix_production': $.get('tag_prefix_production', ''),
                 'semantic_release': $.get('semantic_release', True),
                 'deploy_trigger_branch': $.get('deploy_trigger_branch', ''),
+                'deploy_workflow_files_production': $.get('deploy_workflow_files_production', []),
+                'deploy_trigger_branch_production': $.get('deploy_trigger_branch_production', ''),
                 'notes': $.get('notes', ''),
                 'updated_at': datetime.now().isoformat()
               }
