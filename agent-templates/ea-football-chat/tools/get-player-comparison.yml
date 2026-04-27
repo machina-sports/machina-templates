@@ -7,7 +7,7 @@ workflow:
     player2: "$.get('player2', '')"
   outputs:
     result: "{'player1': $.get('player1_stats'), 'player2': $.get('player2_stats')}"
-    workflow-status: "$.get('player1_stats') is not None and $.get('player2_stats') is not None"
+    workflow-status: "($.get('player1_stats') is not None and $.get('player2_stats') is not None) and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "search_player1"

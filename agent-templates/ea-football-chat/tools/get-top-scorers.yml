@@ -6,7 +6,7 @@ workflow:
     competition_id: "$.get('competition_id')"
   outputs:
     result: "$.get('leaders')"
-    workflow-status: "$.get('leaders') is not None"
+    workflow-status: "($.get('leaders') is not None) and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "get_current_season"

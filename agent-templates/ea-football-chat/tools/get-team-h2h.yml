@@ -7,7 +7,7 @@ workflow:
     team2: "$.get('team2', '')"
   outputs:
     result: "{'team1': {'search': $.get('team1_search'), 'profile': $.get('team1_profile'), 'schedule': $.get('team1_schedule')}, 'team2': {'search': $.get('team2_search'), 'profile': $.get('team2_profile'), 'schedule': $.get('team2_schedule')}}"
-    workflow-status: "$.get('team1_profile') is not None and $.get('team2_profile') is not None"
+    workflow-status: "($.get('team1_profile') is not None and $.get('team2_profile') is not None) and 'executed' or 'skipped'"
   tasks:
     - type: "connector"
       name: "search_team1"
