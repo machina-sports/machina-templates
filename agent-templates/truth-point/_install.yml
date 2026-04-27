@@ -58,3 +58,13 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-lesson-from-failure.yml
+
+  # PR-review pipeline: takes a unified diff + title, pulls the relevant
+  # slice of lessons / incidents / similar components, and asks Gemini for
+  # a structured review keyed to specific files/lines. The reusable
+  # GitHub Action in machina-sports/.github wraps this workflow.
+  - type: prompts
+    path: prompts/review-pr.yml
+
+  - type: workflow
+    path: workflows/truth-point-review-pr.yml
