@@ -24,16 +24,19 @@ workflow:
 
   outputs:
     repo: $.get('repo', '')
-    found: $.get('found', False)
-    convention: $.get('convention', {})
-    workflow-status: $.get('repo') and 'executed' or 'skipped'
+    conventions: $.get('conventions', [])
+    workflow-status: "'executed'"
 
   tasks:
 
+    # Returns the full list of conventions. The caller (Factory) filters
+    # by `repo` client-side. We tried filtering by repo here but
+    # `$.get('repo')` in an output expression resolves against the
+    # search response, not the workflow inputs — so the filter never
+    # matched. Returning all conventions sidesteps that.
     - type: document
       name: lookup-conventions
-      description: Pull the deploy-conventions doc and project to the matching repo
-      condition: $.get('repo') is not None and $.get('repo') != ''
+      description: Pull the deploy-conventions doc and surface the full list
       config:
         action: search
         search-limit: 1
@@ -41,24 +44,5 @@ workflow:
       filters:
         name: "'deploy-conventions'"
       outputs:
-        # Match by repo (owner/name); first match wins. Returns an empty
-        # dict when no convention exists for the repo.
-        convention: |
-          next(
-            (
-              c for c in (
-                $.get('documents', [])[0].get('value', {}).get('conventions', [])
-                if len($.get('documents', [])) > 0 else []
-              )
-              if c.get('repo') == $.get('repo')
-            ),
-            {}
-          )
-        found: |
-          any(
-            c.get('repo') == $.get('repo')
-            for c in (
-              $.get('documents', [])[0].get('value', {}).get('conventions', [])
-              if len($.get('documents', [])) > 0 else []
-            )
-          )
+        conventions: |
+          $.get('documents', [])[0].get('value', {}).get('conventions', []) if len($.get('documents', [])) > 0 else []
