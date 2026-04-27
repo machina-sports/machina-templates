@@ -1,0 +1,64 @@
+workflow:
+
+  # truth-point-deploy-convention-get
+  name: truth-point-deploy-convention-get
+  title: Truth Point — Get Deploy Convention
+  description: |
+    Lookup the deploy convention for a given repo
+    (e.g. "machina-sports/machina-studio"). Returns the matching entry
+    from the singleton `deploy-conventions` doc, or an empty result when
+    no convention has been seeded yet — Factory falls back to "blind
+    merge" in that case.
+
+    Consumed by Factory's deploy mode immediately before merging a PR so
+    it can identify the right post-merge GitHub Actions workflow to watch
+    (vs. picking the first run on the merge SHA, which can be a PR-checks
+    run).
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    repo: $.get('repo', '')
+
+  outputs:
+    repo: $.get('repo', '')
+    found: $.get('found', False)
+    convention: $.get('convention', {})
+    workflow-status: $.get('repo') and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: lookup-conventions
+      description: Pull the deploy-conventions doc and project to the matching repo
+      condition: $.get('repo') is not None and $.get('repo') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'deploy-conventions'"
+      outputs:
+        # Match by repo (owner/name); first match wins. Returns an empty
+        # dict when no convention exists for the repo.
+        convention: |
+          next(
+            (
+              c for c in (
+                $.get('documents', [])[0].get('value', {}).get('conventions', [])
+                if len($.get('documents', [])) > 0 else []
+              )
+              if c.get('repo') == $.get('repo')
+            ),
+            {}
+          )
+        found: |
+          any(
+            c.get('repo') == $.get('repo')
+            for c in (
+              $.get('documents', [])[0].get('value', {}).get('conventions', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+          )

@@ -68,3 +68,13 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-review-pr.yml
+
+  # Deploy conventions: stores per-repo deploy knowledge (target branch,
+  # deploy workflow files, tag prefix, semantic-release flag) so Factory's
+  # deploy mode knows which post-merge GitHub Actions workflow to watch
+  # instead of guessing the first run on the merge SHA.
+  - type: workflow
+    path: workflows/truth-point-deploy-convention-add.yml
+
+  - type: workflow
+    path: workflows/truth-point-deploy-convention-get.yml
