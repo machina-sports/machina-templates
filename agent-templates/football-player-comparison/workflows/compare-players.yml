@@ -1,0 +1,33 @@
+workflow:
+  name: football-player-comparison-compare-players
+  title: "Compare Two Football Players"
+  description: "Takes a JSON array of two football players (name + basic stats) and returns a 3-paragraph comparative analysis with a contextual verdict."
+  context-variables:
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  inputs:
+    players: $.get('players', [])
+  tasks:
+
+    # football-player-comparison-prompt
+    - type: prompt
+      name: football-player-comparison-prompt
+      description: "Generate the 3-paragraph comparative analysis with verdict."
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      inputs:
+        players: "$.get('players', [])"
+      outputs:
+        analysis: "$.get('analysis', '')"
+        verdict: "$.get('verdict', '')"
+
+  outputs:
+    analysis: "$.get('analysis', '')"
+    verdict: "$.get('verdict', '')"
+    workflow-status: "$.get('analysis', '') != ''"
