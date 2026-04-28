@@ -1,0 +1,9 @@
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  - type: "connector"
+    path: "connectors/news-api-connector.yml"
+  - type: "prompts"
+    path: "prompts/cluster-articles-prompt.yml"
+  - type: "workflow"
+    path: "workflows/news-monitor-workflow.yml"

@@ -1,0 +1,84 @@
+prompts:
+  - type: "prompt"
+    name: cluster-articles-prompt
+    title: "Cluster Articles into Storylines"
+    description: "Analyzes a list of news articles and groups them into storylines."
+    tags:
+      - news
+      - clustering
+      - analysis
+    instruction: |
+      You are a sports news analyst. You will receive a JSON array of news articles about a specific entity.
+      Your task is to identify and cluster these articles into distinct storylines (e.g., transfer rumor, injury update, controversial statement, match performance).
+
+      For each identified storyline, you must provide:
+      1.  A canonical, neutral headline that summarizes the core event of the storyline.
+      2.  The start and end dates of the articles within that storyline.
+      3.  The current status of the storyline (e.g., "developing", "confirmed", "resolved", "speculation").
+      4.  A list of unique sources that reported on this storyline.
+      5.  A concise summary of the storyline's evolution over time.
+      6.  A recommended action for a content team (e.g., "write feature article", "monitor for updates", "produce social media content", "debunk rumor").
+
+      Articles that do not fit into any clear storyline should be placed in the 'outliers' list.
+
+      The input is a JSON string of articles. Produce a single valid JSON object as output that adheres to the provided schema.
+
+      Input articles (JSON):
+      {articles_json}
+    schema:
+      title: NewsStorylines
+      description: "Clustered news articles into storylines."
+      type: "object"
+      required:
+        - storylines
+        - outliers
+      properties:
+        storylines:
+          type: "array"
+          description: "A list of identified storylines."
+          items:
+            type: "object"
+            required:
+              - title
+              - started_at
+              - last_update
+              - status
+              - sources
+              - summary
+              - recommended_action
+            properties:
+              title:
+                type: "string"
+                description: "The canonical headline for the storyline."
+              started_at:
+                type: "string"
+                description: "The publication date of the earliest article in the storyline (YYYY-MM-DD)."
+              last_update:
+                type: "string"
+                description: "The publication date of the most recent article in the storyline (YYYY-MM-DD)."
+              status:
+                type: "string"
+                description: "The current status of the storyline (e.g., developing, confirmed, resolved, speculation)."
+              sources:
+                type: "array"
+                description: "A list of unique source names that reported on the storyline."
+                items:
+                  type: "string"
+              summary:
+                type: "string"
+                description: "A summary of the storyline's evolution."
+              recommended_action:
+                type: "string"
+                description: "A recommended action for a content team."
+        outliers:
+          type: "array"
+          description: "A list of articles that do not fit into any storyline."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+              source:
+                type: "string"
+              url:
+                type: "string"
