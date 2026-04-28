@@ -78,3 +78,15 @@ datasets:
 
   - type: workflow
     path: workflows/truth-point-deploy-convention-get.yml
+
+  # Pre-flight: read a free-form task description and emit a structured
+  # intent (mode, target/reference repos, required credentials,
+  # applicable lessons) the Factory dashboard uses to auto-fill its
+  # form. Same RAG shape as the review-pr pipeline — pulls deploy
+  # conventions / lessons / similar components and asks Gemini for a
+  # schema-guided plan.
+  - type: prompts
+    path: prompts/pre-flight-task.yml
+
+  - type: workflow
+    path: workflows/truth-point-pre-flight-task.yml
