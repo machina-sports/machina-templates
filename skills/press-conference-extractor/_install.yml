@@ -1,0 +1,9 @@
+# Installation manifest for the Press Conference Extractor skill
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  - type: "prompts"
+    path: "prompts/press-conference-extractor.yml"
+  - type: "workflow"
+    path: "workflows/press-conference-extractor.yml"

@@ -1,0 +1,28 @@
+workflow:
+  name: press-conference-extractor
+  title: Press Conference Extractor
+  description: "Receives a transcript and returns extracted quotes, topics, and rankings."
+  inputs:
+    transcript:
+      type: string
+      description: "The full text transcript of the press conference."
+  tasks:
+    - type: prompt
+      name: press-conference-extractor-prompt # Must match the prompt name in the prompt YAML
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-1.5-flash # Using a powerful model for complex analysis
+        provider: vertex_ai
+        location: global
+      inputs:
+        transcript: "$.get('transcript', '')"
+      outputs:
+        topics: "$.get('topics', [])"
+        quotes: "$.get('quotes', [])"
+        top_5_quotes: "$.get('top_5_quotes', [])"
+  outputs:
+    topics: "$.get('topics', [])"
+    quotes: "$.get('quotes', [])"
+    top_5_quotes: "$.get('top_5_quotes', [])"
+    workflow-status: "$.get('quotes', []) and 'executed' or 'skipped'"
