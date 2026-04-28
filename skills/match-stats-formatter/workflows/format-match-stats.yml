@@ -1,0 +1,32 @@
+workflow:
+  name: "format-match-stats"
+  description: "A workflow that takes a raw match data object and formats it into a human-readable summary using an AI prompt."
+  version: "1.0"
+  inputs:
+    match_data:
+      type: object
+      description: "A JSON object containing the raw match data."
+      required: true
+      default: {}
+
+  tasks:
+    - name: "invoke-formatting-prompt"
+      type: "prompt"
+      description: "Invokes the LLM to format the match data."
+      # This connects the workflow task to the prompt definition.
+      # The name here must match the `prompt.name` in the prompt's YAML file.
+      connector:
+        name: "format-match-stats"
+      # The `inputs` for the prompt task map the workflow inputs to the prompt's expected inputs.
+      inputs:
+        match_data: "$.get('match_data', {})"
+      # The `outputs` of the prompt task capture the result from the LLM.
+      # The key 'result' is typically where the LLM's text response is found.
+      outputs:
+        formatted_stats: "$.get('result', '')"
+
+  outputs:
+    # This exposes the final formatted text as an output of the entire workflow.
+    formatted_stats: "$.get('invoke-formatting-prompt.formatted_stats', 'Error: Could not format stats.')"
+    # This provides a status indicating if the workflow ran successfully.
+    workflow-status: "$.get('invoke-formatting-prompt.formatted_stats', '') != '' and 'executed' or 'skipped'"

@@ -1,0 +1,28 @@
+skill:
+  name: "match-stats-formatter"
+  title: "Match Stats Formatter"
+  description: "Receives a raw match object and returns human-readable formatted text for use in chat."
+  version: "1.0.0"
+  category:
+    - "sports-data"
+    - "formatting"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "Match Stats Formatter Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "match-stats-formatter"
+
+  workflows:
+    - name: "format-match-stats"
+      description: "Formats raw match stats into human-readable text."
+      inputs:
+        match_data: "$.get('match_data', {})"
+      outputs:
+        formatted_stats: "$.get('formatted_stats', '')"
+        workflow-status: "$.get('workflow-status')"
