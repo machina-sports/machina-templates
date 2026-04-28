@@ -1,0 +1,34 @@
+prompt:
+  name: "format-match-stats"
+  title: "Format Match Stats"
+  description: "Formats raw match data into a human-readable summary."
+  version: "1.0.0"
+  type: "text" # or 'chat', depending on the model
+  connector:
+    name: "google-genai" # Example connector
+    command: "invoke_prompt"
+    model: "gemini-1.5-flash"
+    provider: "vertex_ai"
+    location: "global"
+
+  # Defines the input variables the prompt template will use.
+  inputs:
+    - name: "match_data"
+      type: "object"
+      description: "The raw JSON object of match statistics."
+      required: true
+
+  # The template for the prompt sent to the LLM.
+  template: |
+    Given the following JSON object representing a sports match, please format it into a clear and concise summary.
+    The summary should be friendly and easy to read for a casual fan in a chat conversation.
+
+    **Match Data:**
+    ```{match_data}```
+
+    **Formatting Instructions:**
+    - Start with the final score, mentioning both teams.
+    - Briefly list a few key stats for each team (like possession, shots on target).
+    - Mention the competition and venue.
+    - The tone should be engaging and conversational.
+    - The language of the summary must match the language of the team names (e.g., if names are in Portuguese, the summary should be in Portuguese).
