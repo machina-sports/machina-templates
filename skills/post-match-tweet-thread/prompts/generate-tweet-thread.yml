@@ -1,55 +1,68 @@
 prompts:
-  - name: "generate-tweet-thread"
-    title: "Generate Tweet Thread"
-    description: "Generates a 5-tweet thread based on raw match data."
-    version: "1.0.0"
-    type: "prompt"
-    connector:
-      name: "google-genai"
-      command: "invoke_prompt"
-      model: "gemini-1.5-flash"
-      provider: "vertex_ai"
-      location: "global"
 
+  - type: "prompt"
+    title: "Generate post-match tweet thread"
+    name: generate-tweet-thread
+    description: |
+      Generates a structured 5-tweet thread in Brazilian Portuguese
+      from a raw match payload, tagged by perspective (hook /
+      key_moment / stat_spike / talking_point / call_to_action).
     instruction: |
-      Você é um especialista em social media para esportes, com foco em futebol. Sua tarefa é criar uma thread de 5 tweets engajantes e informais em Português do Brasil a partir de um objeto JSON de dados de uma partida.
+      Você é um social-media manager esportivo. Receberá um objeto
+      JSON com fatos da partida (placar, gols, momentos-chave,
+      estatísticas opcionais como xG/posse) e deve produzir uma
+      thread de EXATAMENTE 5 tweets, em português do Brasil, voz
+      informal de torcedor.
 
-      **Regras:**
-      1.  **Linguagem:** A thread DEVE ser em Português do Brasil, em tom informal e apaixonado, como um torcedor falando com outros torcedores.
-      2.  **Estrutura:** Crie exatamente 5 tweets, seguindo a estrutura abaixo:
-          - **Tweet 1:** Gancho rápido com o placar final e o momento/jogador decisivo.
-          - **Tweet 2:** Detalhe o gol ou o momento mais importante da partida, adicionando contexto.
-          - **Tweet 3:** Apresente uma estatística surpreendente ou um fato curioso sobre o jogo.
-          - **Tweet 4:** Comente uma controvérsia, um lance polêmico ou um ponto de debate que marcou a partida.
-          - **Tweet 5:** CTA (Call-to-action), convidando para a discussão e mencionando o próximo jogo.
-      3.  **Constraints:**
-          - Cada tweet deve ter no máximo 280 caracteres.
-          - Não use emojis sequenciais (ex: ✅✅), mas pode usar emojis para dar ênfase.
-      4.  **Output:** Sua resposta DEVE ser um único objeto JSON válido, sem nenhum texto ou explicação adicional, seguindo o schema definido.
+      Cada tweet ocupa uma das 5 posições, nesta ordem:
 
-      **Objeto de Dados da Partida:**
-      ```{match_data}```
+        1. role = "hook"            — gancho com placar e o lance/jogador decisivo.
+        2. role = "key_moment"      — detalhe o gol ou momento mais importante, com contexto.
+        3. role = "stat_spike"      — uma estatística surpreendente (xG, posse, finalizações). Só use números que vieram em match_data — NÃO invente.
+        4. role = "talking_point"   — controvérsia, lance polêmico, ponto de debate.
+        5. role = "call_to_action"  — CTA convidando a discussão e mencionando o próximo jogo (se vier em match_data.next_match).
 
+      Regras:
+        - Cada tweet ≤ 280 caracteres. Conte os caracteres e devolva em char_count.
+        - No máximo 1 emoji por tweet (sem sequências tipo ✅✅).
+        - Sem hashtags artificiais.
+        - Não invente fatos: se um campo não veio em match_data, use só o que existe.
+        - Saída: APENAS um único objeto JSON válido seguindo o schema. Sem texto antes ou depois.
+
+      ## Inputs
+
+      match_data:
+      {match_data}
     schema:
       type: object
       properties:
         thread:
           type: array
-          description: "A lista de tweets gerados para a thread."
+          description: "Lista de exatamente 5 tweets, na ordem hook → key_moment → stat_spike → talking_point → call_to_action."
           items:
             type: object
             properties:
               position:
                 type: integer
-                description: "A posição do tweet na thread (1 a 5)."
+                description: "Posição na thread (1 a 5)."
+              role:
+                type: string
+                description: "Função do tweet."
+                enum:
+                  - hook
+                  - key_moment
+                  - stat_spike
+                  - talking_point
+                  - call_to_action
               tweet:
                 type: string
-                description: "O conteúdo do tweet (máx 280 caracteres)."
+                description: "Conteúdo final em português, ≤ 280 caracteres."
               char_count:
                 type: integer
-                description: "A contagem de caracteres do tweet."
+                description: "Contagem de caracteres do campo `tweet`."
             required:
               - position
+              - role
               - tweet
               - char_count
       required:
