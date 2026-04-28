@@ -1,0 +1,16 @@
+setup:
+  title: "Post-Match Tweet Thread Generator"
+  description: "Receives a raw match object and returns a 5-tweet thread in Brazilian Portuguese."
+  category:
+    - custom-templates
+  status: available
+  value: "skills/post-match-tweet-thread"
+  version: 1.0.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  - type: "prompt"
+    path: "prompts/generate-tweet-thread.yml"
+  - type: "workflow"
+    path: "workflows/generate-tweet-thread.yml"

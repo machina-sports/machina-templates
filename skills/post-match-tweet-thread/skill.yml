@@ -1,0 +1,29 @@
+skill:
+  name: "post-match-tweet-thread"
+  title: "Post-Match Tweet Thread Generator"
+  description: "Receives a raw match object and returns a 5-tweet thread in Brazilian Portuguese."
+  version: "1.0.0"
+  category:
+    - "sports-data"
+    - "social-media"
+    - "content-generation"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "Post-Match Tweet Thread Generator Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "post-match-tweet-thread"
+
+  workflows:
+    - name: "generate-tweet-thread"
+      description: "Generates a 5-tweet thread from a raw match object."
+      inputs:
+        match_data: "$.get('match_data', {})"
+      outputs:
+        tweet_thread: "$.get('tweet_thread', {})"
+        workflow-status: "$.get('workflow-status')"
