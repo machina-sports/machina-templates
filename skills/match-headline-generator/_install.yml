@@ -16,5 +16,8 @@ setup:
 datasets:
   - type: "workflow"
     path: "workflows/generate-headlines.yml"
-  - type: "prompt"
+  # `prompts` (plural) matches the file's root key. Singular `prompt`
+  # would trip the importer's import_prompt validator with "Invalid
+  # prompt dataset format" — see lesson install-yml-type-must-match-root-key.
+  - type: "prompts"
     path: "prompts/generate-headlines.yml"

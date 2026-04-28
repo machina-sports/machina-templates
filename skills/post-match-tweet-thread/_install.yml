@@ -10,7 +10,11 @@ setup:
 datasets:
   - type: "skill"
     path: "skill.yml"
-  - type: "prompt"
+  # `prompts` (plural) matches the prompts/*.yml root key — using
+  # `prompt` (singular) trips the importer's import_prompt validator
+  # with "Invalid prompt dataset format". See lesson
+  # install-yml-type-must-match-root-key.
+  - type: "prompts"
     path: "prompts/generate-tweet-thread.yml"
   - type: "workflow"
     path: "workflows/generate-tweet-thread.yml"
