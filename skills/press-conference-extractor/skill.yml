@@ -1,0 +1,12 @@
+skill:
+  name: press-conference-extractor
+  title: Press Conference Extractor
+  description: Analyzes a press conference transcript to extract key quotes, identify topics, and rank the most newsworthy statements.
+  version: 1.0.0
+  entry-point: press-conference-extractor # This will be the name of the workflow
+  references:
+    - name: skill-guide
+      filename: SKILL.md
+      filetype: markdown
+  integrations:
+    - google-genai
