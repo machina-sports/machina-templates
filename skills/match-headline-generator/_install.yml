@@ -1,0 +1,20 @@
+setup:
+  title: "Match Headline Generator"
+  description: "Takes match facts and returns 5 differentiated headlines for content teams."
+  category:
+    - skills
+  estimatedTime: 1 minute
+  features:
+    - "Generates 5 distinct headlines from match data"
+    - "Headlines cover neutral, analytical, fan, and clickbait perspectives"
+  integrations:
+    - google-genai
+  status: available
+  value: "skills/match-headline-generator"
+  version: 1.0.0
+
+datasets:
+  - type: "workflow"
+    path: "workflows/generate-headlines.yml"
+  - type: "prompt"
+    path: "prompts/generate-headlines.yml"
