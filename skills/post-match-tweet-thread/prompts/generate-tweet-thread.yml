@@ -1,0 +1,56 @@
+prompts:
+  - name: "generate-tweet-thread"
+    title: "Generate Tweet Thread"
+    description: "Generates a 5-tweet thread based on raw match data."
+    version: "1.0.0"
+    type: "prompt"
+    connector:
+      name: "google-genai"
+      command: "invoke_prompt"
+      model: "gemini-1.5-flash"
+      provider: "vertex_ai"
+      location: "global"
+
+    instruction: |
+      Você é um especialista em social media para esportes, com foco em futebol. Sua tarefa é criar uma thread de 5 tweets engajantes e informais em Português do Brasil a partir de um objeto JSON de dados de uma partida.
+
+      **Regras:**
+      1.  **Linguagem:** A thread DEVE ser em Português do Brasil, em tom informal e apaixonado, como um torcedor falando com outros torcedores.
+      2.  **Estrutura:** Crie exatamente 5 tweets, seguindo a estrutura abaixo:
+          - **Tweet 1:** Gancho rápido com o placar final e o momento/jogador decisivo.
+          - **Tweet 2:** Detalhe o gol ou o momento mais importante da partida, adicionando contexto.
+          - **Tweet 3:** Apresente uma estatística surpreendente ou um fato curioso sobre o jogo.
+          - **Tweet 4:** Comente uma controvérsia, um lance polêmico ou um ponto de debate que marcou a partida.
+          - **Tweet 5:** CTA (Call-to-action), convidando para a discussão e mencionando o próximo jogo.
+      3.  **Constraints:**
+          - Cada tweet deve ter no máximo 280 caracteres.
+          - Não use emojis sequenciais (ex: ✅✅), mas pode usar emojis para dar ênfase.
+      4.  **Output:** Sua resposta DEVE ser um único objeto JSON válido, sem nenhum texto ou explicação adicional, seguindo o schema definido.
+
+      **Objeto de Dados da Partida:**
+      ```{match_data}```
+
+    schema:
+      type: object
+      properties:
+        thread:
+          type: array
+          description: "A lista de tweets gerados para a thread."
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                description: "A posição do tweet na thread (1 a 5)."
+              tweet:
+                type: string
+                description: "O conteúdo do tweet (máx 280 caracteres)."
+              char_count:
+                type: integer
+                description: "A contagem de caracteres do tweet."
+            required:
+              - position
+              - tweet
+              - char_count
+      required:
+        - thread

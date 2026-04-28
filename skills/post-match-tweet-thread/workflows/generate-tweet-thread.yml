@@ -1,0 +1,26 @@
+workflow:
+  name: "generate-tweet-thread"
+  title: "Generate Tweet Thread"
+  description: "A workflow that takes a raw match data object and generates a 5-tweet thread using an AI prompt."
+  version: "1.0"
+  inputs:
+    match_data:
+      type: object
+      description: "A JSON object containing the raw match data."
+      required: true
+      default: {}
+
+  tasks:
+    - name: "invoke-tweet-thread-prompt"
+      type: "prompt"
+      description: "Invokes the LLM to generate the tweet thread."
+      connector:
+        name: "generate-tweet-thread" # This must match prompt.name
+      inputs:
+        match_data: "$.get('match_data', {})"
+      outputs:
+        tweet_thread: "$.get('result', {})"
+
+  outputs:
+    tweet_thread: "$.get('invoke-tweet-thread-prompt.tweet_thread', {})"
+    workflow-status: "$.get('invoke-tweet-thread-prompt.tweet_thread') and 'executed' or 'skipped'"
