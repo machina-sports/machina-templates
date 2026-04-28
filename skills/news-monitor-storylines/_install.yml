@@ -1,3 +1,20 @@
+setup:
+  title: "News Monitor: Storylines"
+  description: "Fetches recent news for a team or player and clusters articles into ongoing storylines (transfer rumor, injury, controversy, etc.) with timeline + recommended action for the editorial team."
+  category:
+    - skills
+  estimatedTime: 1 minute
+  features:
+    - "Polls a configurable news source for recent coverage"
+    - "Clusters articles into named storylines with status + timeline"
+    - "Surfaces a recommended_action per storyline for editorial triage"
+  integrations:
+    - news-api
+    - google-genai
+  status: available
+  value: "skills/news-monitor-storylines"
+  version: 1.0.0
+
 datasets:
   - type: "skill"
     path: "skill.yml"
