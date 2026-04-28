@@ -1,0 +1,40 @@
+prompt:
+  name: generate-headlines-prompt
+  description: "Generates 5 distinct headlines from match facts."
+  type: "structured"
+  inputs:
+    - name: "match_data"
+      type: "object"
+  instruction: |
+    You are a sports journalist expert at crafting headlines for different audiences.
+    Analyze the provided match data and generate exactly 5 distinct headlines, one for each of the following perspectives:
+    1.  **neutral_news**: Factual, balanced, news-wire style.
+    2.  **analytical**: Focus on statistics (xG, possession) or key tactical moments.
+    3.  **winning_team_fan**: Celebratory and partisan for the winning team.
+    4.  **losing_team_fan**: Sympathetic or looking forward for the losing team.
+    5.  **clickbait**: Create a dramatic or controversial hook (but keep it tasteful).
+
+    **Rules:**
+    -   Each headline must be 90 characters or less.
+    -   Do not add a trailing period.
+    -   Return the output in English.
+    -   Your output MUST be a single valid JSON object that strictly follows the provided schema.
+
+  schema:
+    type: object
+    properties:
+      headlines:
+        type: array
+        items:
+          type: object
+          properties:
+            perspective:
+              type: string
+              enum: ["neutral_news", "analytical", "winning_team_fan", "losing_team_fan", "clickbait"]
+            headline:
+              type: string
+          required:
+            - perspective
+            - headline
+    required:
+      - headlines

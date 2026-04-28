@@ -1,0 +1,19 @@
+workflow:
+  name: generate-headlines
+  description: Takes match facts and generates 5 headlines.
+  inputs:
+    match: $.get('match', {})
+  outputs:
+    headlines: $.get('generate-headlines-prompt.headlines.headlines', [])
+    workflow-status: "($.get('generate-headlines-prompt.headlines.headlines', []) and 'executed' or 'skipped')"
+  tasks:
+    - name: generate-headlines-prompt
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-1.5-flash
+      inputs:
+        match_data: "$.get('match', {})"
+      outputs:
+        headlines: "$.get('result', {})"

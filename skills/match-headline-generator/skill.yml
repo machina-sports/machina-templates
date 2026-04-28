@@ -1,0 +1,7 @@
+name: match-headline-generator
+title: Match Headline Generator
+description: Takes match facts and returns 5 differentiated headlines for content teams.
+version: 1.0.0
+workflows:
+  - name: generate-headlines
+agents: []
