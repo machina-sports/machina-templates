@@ -1,0 +1,47 @@
+connector:
+  name: news-api
+  title: "News API Connector"
+  description: "Fetches news articles from newsapi.org."
+  version: 1.0.0
+  scheme: https
+  host: newsapi.org
+  base_path: /v2
+  auth:
+    type: basicAuth
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_NEWS_API_KEY"
+  commands:
+    - name: get-everything
+      title: "Get Everything"
+      description: "Fetches all articles matching a query."
+      method: GET
+      path: /everything
+      parameters:
+        - name: q
+          in: query
+          description: "The query string to search for."
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: "The start date for the search (YYYY-MM-DD)."
+          required: false
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: "The order to sort the articles in."
+          required: false
+          schema:
+            type: string
+            enum: [relevancy, popularity, publishedAt]
+        - name: language
+          in: query
+          description: "The language of the articles."
+          required: false
+          schema:
+            type: string
+            enum: [ar, de, en, es, fr, he, it, nl, no, pt, ru, sv, ud, zh]
+      outputs:
+        articles: "$.get('articles', [])"

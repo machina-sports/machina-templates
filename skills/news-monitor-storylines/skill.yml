@@ -1,0 +1,18 @@
+skill:
+  name: news-monitor-storylines
+  title: "News Monitor: Storylines"
+  description: "Fetches news for an entity and clusters articles into storylines."
+  version: 1.0.0
+  entry_point: news-monitor-workflow
+  references:
+    - name: skill-guide
+      filename: SKILL.md
+      filetype: markdown
+  integrations:
+    - news-api
+    - google-genai
+  tags:
+    - news
+    - analysis
+    - storylines
+  owner: machina-dev-team

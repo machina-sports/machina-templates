@@ -1,0 +1,47 @@
+workflow:
+  name: news-monitor-workflow
+  title: "News Monitor Workflow"
+  description: "Fetches, clusters, and analyzes news articles to identify storylines."
+  inputs:
+    entity:
+      type: string
+      description: "The entity to search for (e.g., 'Kylian Mbappé')."
+    entity_type:
+      type: string
+      description: "The type of the entity (e.g., 'player', 'team')."
+    start_date:
+      type: string
+      description: "The start date for the news search, in YYYY-MM-DD format."
+  outputs:
+    storylines: "$.get('storylines', [])"
+    outliers: "$.get('outliers', [])"
+    workflow-status: "(len($.get('storylines', [])) > 0 or len($.get('outliers', [])) > 0) and 'executed' or 'skipped'"
+  tasks:
+    - name: fetch-news
+      type: connector
+      connector:
+        name: news-api
+        command: get-everything
+      inputs:
+        q: f"\"{$.get('entity')}\" AND \"{$.get('entity_type')}\""
+        from: "$.get('start_date', '')"
+        sortBy: "'popularity'"
+        language: "'en'"
+      outputs:
+        articles: "$.get('articles', [])"
+
+    - name: cluster-articles
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-1.5-flash-latest
+        provider: vertex_ai
+        location: global
+      prompt:
+        name: cluster-articles-prompt
+      inputs:
+        articles_json: "str($.get('articles', []))"
+      outputs:
+        storylines: "$.get('storylines', [])"
+        outliers: "$.get('outliers', [])"
