@@ -43,16 +43,16 @@ workflow:
     task: $.get('task', '')
 
   outputs:
-    mode: $.get('mode', 'build')
-    target_repo: $.get('target_repo', {'owner': '', 'name': ''})
-    reference_repos: $.get('reference_repos', [])
-    open_pr: $.get('open_pr', False)
-    required_credentials: $.get('required_credentials', [])
-    applicable_lessons: $.get('applicable_lessons', [])
-    reusable_components: $.get('reusable_components', [])
-    summary: $.get('summary', '')
-    warnings: $.get('warnings', [])
-    workflow-status: $.get('task') and 'executed' or 'skipped'
+    mode: "$.get('mode', 'build')"
+    target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
+    reference_repos: "$.get('reference_repos', [])"
+    open_pr: "$.get('open_pr', False)"
+    required_credentials: "$.get('required_credentials', [])"
+    applicable_lessons: "$.get('applicable_lessons', [])"
+    reusable_components: "$.get('reusable_components', [])"
+    summary: "$.get('summary', '')"
+    warnings: "$.get('warnings', [])"
+    workflow-status: "$.get('task') and 'executed' or 'skipped'"
 
   tasks:
 
@@ -159,12 +159,12 @@ workflow:
         active_lessons: $.get('active_lessons', [])
         similar_components: $.get('similar_components', [])
       outputs:
-        mode: $.get('mode', 'build')
-        target_repo: $.get('target_repo', {'owner': '', 'name': ''})
-        reference_repos: $.get('reference_repos', [])
-        open_pr: $.get('open_pr', False)
-        required_credentials: $.get('required_credentials', [])
-        applicable_lessons: $.get('applicable_lessons', [])
-        reusable_components: $.get('reusable_components', [])
-        summary: $.get('summary', '')
-        warnings: $.get('warnings', [])
+        mode: "$.get('mode', 'build')"
+        target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
+        reference_repos: "$.get('reference_repos', [])"
+        open_pr: "$.get('open_pr', False)"
+        required_credentials: "$.get('required_credentials', [])"
+        applicable_lessons: "$.get('applicable_lessons', [])"
+        reusable_components: "$.get('reusable_components', [])"
+        summary: "$.get('summary', '')"
+        warnings: "$.get('warnings', [])"
