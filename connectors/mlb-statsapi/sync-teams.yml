@@ -1,0 +1,93 @@
+workflow:
+  name: "mlb-statsapi-sync-teams"
+  title: "MLB - Sync Teams"
+  description: "Workflow to synchronize teams from MLB Stats API to Machina."
+  context-variables:
+    mlb-statsapi: {}
+  outputs:
+    teams: "$.get('teams')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the teams document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
+        value.status: "'active'"
+      inputs:
+        name: "'teams'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-load-teams
+    - type: "connector"
+      name: "task-load-teams"
+      description: "Get Teams from MLB Stats API"
+      connector:
+        name: "mlb-statsapi"
+        command: "get-v1-teams"
+      condition: "$.get('should_update') == True"
+      inputs:
+        sportId: "1"  # MLB
+      outputs:
+        teams: "$.get('teams')"
+
+    # task-update-teams
+    - type: "document"
+      name: "task-update-teams"
+      description: "Update the teams document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        teams: |
+          {
+            'data': $.get('teams'),
+            'title': 'All Teams',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-teams
+    - type: "document"
+      name: "task-bulk-save-teams"
+      description: "Bulk save the teams."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "team"
+      documents:
+        items: |
+          [
+            {
+              **t,
+              'title': t.get('name', ''),
+              'selected': False
+            }
+            for t in $.get('teams')
+          ]
+      metadata:
+        document_type: "'team'" 

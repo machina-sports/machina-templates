@@ -1,0 +1,56 @@
+workflow:
+
+  # statsperform-soccer-config-markets-workflow
+  name: statsperform-soccer-config-markets-workflow
+  title: StatsPerform - Soccer Config Markets Workflow
+  description: Workflow to load markets for coverage tools
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  outputs:
+    bwin-competition-ids: $.get('bwin-competition-ids')
+    opta-competition-ids: $.get('opta-competition-ids')
+    opta-season-ids: $.get('opta-season-ids')
+    coverage-markets-country: $.get('coverage-markets-country')
+    coverage-markets-sport-id: $.get('coverage-markets-sport-id')
+    coverage-markets-mapping: $.get('coverage-markets-mapping')
+    coverage-markets-ids: $.get('coverage-markets-ids')
+    workflow-status: "'executed'"
+  tasks:
+
+    # load dispatch configuration
+    - type: document
+      name: coverage-soccer-markets-config
+      description: Load dispatch configuration to control player article execution
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-soccer-markets-config'"
+      outputs:
+        coverage-markets-country: $.get('documents', [])[0].get('value', {}).get('coverage-markets-country', '') if len($.get('documents', [])) > 0 else ''
+        coverage-markets-sport-id: $.get('documents', [])[0].get('value', {}).get('coverage-markets-sport-id', '') if len($.get('documents', [])) > 0 else ''
+        coverage-markets-mapping: $.get('documents', [])[0].get('value', {}).get('coverage-markets-mapping', []) if len($.get('documents', [])) > 0 else []
+        bwin-competition-ids: |
+          [
+            competitionItem.get('bwin_competition_id', '')
+            for competitionItem in $.get('documents', [])[0].get('value', {}).get('coverage-markets-mapping', [])
+          ]
+        opta-competition-ids: |
+          [
+            competitionItem.get('opta_competition_id', '')
+            for competitionItem in $.get('documents', [])[0].get('value', {}).get('coverage-markets-mapping', [])
+          ]
+        opta-season-ids: |
+          [
+            competitionItem.get('opta_season_id', '')
+            for competitionItem in $.get('documents', [])[0].get('value', {}).get('coverage-markets-mapping', [])
+          ]

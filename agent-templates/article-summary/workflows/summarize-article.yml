@@ -1,0 +1,24 @@
+workflow:
+  name: summarize-article
+  title: "Summarize Article"
+  description: "Takes a pasted sports article and returns a 3-bullet summary."
+  inputs:
+    article_text: $.get('article_text', '')
+  tasks:
+    - name: summarize
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt:
+        name: summarize-article-prompt
+      inputs:
+        article_text: "$.get('article_text')"
+      outputs:
+        summary: "$.get('result')"
+  outputs:
+    result: "$.get('summary', '')"
+    workflow-status: "$.get('summary', '') and 'executed' or 'skipped'"

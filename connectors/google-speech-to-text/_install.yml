@@ -1,0 +1,18 @@
+setup:
+  title: "Google Speech-to-Text"
+  description: Google Cloud Speech-to-Text connector for audio transcription.
+  category:
+    - ai-services
+  estimatedTime: 1 minute
+  features:
+    - Audio transcription (mp3, wav, m4a, ogg)
+    - Support for multiple languages (BCP-47)
+  integrations:
+    - google-cloud
+  status: available
+  value: connectors/google-speech-to-text
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "google-speech-to-text.yml"

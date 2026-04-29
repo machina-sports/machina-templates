@@ -1,0 +1,60 @@
+workflow:
+  name: get-player-comparison
+  title: "Get Player Comparison"
+  description: "Compares two players side-by-side using their last 5 match stats."
+  inputs:
+    player1: "$.get('player1', '')"
+    player2: "$.get('player2', '')"
+  outputs:
+    result: "{'player1': $.get('player1_stats'), 'player2': $.get('player2_stats')}"
+    workflow-status: "($.get('player1_stats') is not None and $.get('player2_stats') is not None) and 'executed' or 'skipped'"
+  tasks:
+    - type: "connector"
+      name: "search_player1"
+      description: "Search for the first player."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_player'"
+        query: "$.get('player1')"
+      outputs:
+        player1_search: "$"
+
+    - type: "connector"
+      name: "get_player1_stats"
+      description: "Get last 5 match stats for player 1."
+      condition: "$.get('player1_search', {}).get('results', [])"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_player_season_stats'"
+        player_id: "$.get('player1_search', {}).get('results', [{}])[0].get('espn_athlete_id')"
+      outputs:
+        player1_stats: "{'meta': $.get('player1_search', {}).get('results', [{}])[0], 'stats': $}"
+
+    - type: "connector"
+      name: "search_player2"
+      description: "Search for the second player."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_player'"
+        query: "$.get('player2')"
+      outputs:
+        player2_search: "$"
+
+    - type: "connector"
+      name: "get_player2_stats"
+      description: "Get last 5 match stats for player 2."
+      condition: "$.get('player2_search', {}).get('results', [])"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_player_season_stats'"
+        player_id: "$.get('player2_search', {}).get('results', [{}])[0].get('espn_athlete_id')"
+      outputs:
+        player2_stats: "{'meta': $.get('player2_search', {}).get('results', [{}])[0], 'stats': $}"

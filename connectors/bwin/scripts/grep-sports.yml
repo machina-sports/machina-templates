@@ -1,0 +1,12 @@
+connector:
+
+  # bwin-grep-sports
+  name: bwin-grep-sports
+  title: BWIN - Grep Sports Connector
+  description: Connector to filter and extract NFL markets from Bwin API
+  filename: grep-sports.py
+  filetype: pyscript
+  commands:
+    
+    - name: Grep NFL Markets
+      value: grep_nfl_markets

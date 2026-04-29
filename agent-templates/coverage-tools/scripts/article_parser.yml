@@ -1,0 +1,8 @@
+connector:
+  name: coverage-article-body-parser
+  description: Coverage Article Body Parser
+  filename: article_parser.py
+  filetype: pyscript 
+  commands:
+    - name: Invoke Article Body Parser
+      value: invoke_article_body

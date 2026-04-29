@@ -1,0 +1,553 @@
+prompts:
+
+  # prompt-briefing-game
+  - type: "prompt"
+    title: "Prompt Briefing Game"
+    name: "prompt-briefing-game"
+    description: "This prompt crafts an engaging and dynamic pre-match briefing that not only covers all essential match details, competition context, and venue information, but also delivers actionable insights and lively commentary to energize fans before kickoff."
+    schema:
+      title: "MatchBriefingContent"
+      description: "Build a no-BS, in-your-face pre-match briefing that cuts straight to the facts. Each section should dish out hard stats, specific game details, and clever, edgy jabs—just like you're spilling insider info at a dive bar on game day. Ensure that all stats and player references are identifiable (e.g., say 'Mahomes' instead of 'Chiefs QB') when available to make the insights truly actionable."
+      type: "object"
+      properties:
+        sections:
+          type: "array"
+          description: "An array of sections that each serve up hard facts and bold, punchy commentary. Every section must deliver concrete details and actionable insights with a side of irreverent humor—clear stats and smart observations that actually help you understand the game. Include specific names and figures when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "A clear section title (e.g., 'Competition Context', 'Match Timing', 'Venue Information', 'Match Officials') that signals exactly what actionable info is coming."
+              content:
+                type: "string"
+                description: "A concise narrative that presents key match details—competition name, season, round, date, time, venue, teams, officials, weather, pitch conditions—using specific stats and pointed insights. Mention actual names and numbers (e.g., 'Mahomes' instead of 'Chiefs QB') when available. Deliver it like you're giving the inside scoop at halftime: direct, informative, and with a sharp edge."
+
+  # prompt-briefing-team
+  - type: "prompt"
+    title: "Prompt Briefing Team"
+    name: "prompt-briefing-team"
+    description: "This prompt generates a comprehensive team briefing that highlights historical context, current season dynamics, key personnel, and team statistics while offering actionable insights and fun predictions on team performance."
+    schema:
+      title: "TeamBriefingContent"
+      description: "Dissect the team’s profile into straightforward sections that hit you with the real numbers and stories. Each section should deliver hard facts on team history, season performance, key personnel, identity, and achievements—no generic praise. Use specific names and identifiable stats (e.g., 'Mahomes' instead of 'Chiefs QB') when available to ensure the insights are actionable and clear."
+      type: "object"
+      properties:
+        sections:
+          type: "array"
+          description: "An array of sections, each loaded with actionable insights and bold commentary on the team. Focus on concrete details like foundation year, historical milestones, colors, mascots, championship records, leadership, coaching highlights, season performance, home venue, and traditions—delivered with sharp, witty observations and including actual names and numbers when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "A straightforward section title (e.g., 'Team History', 'Current Season', 'Key Personnel', 'Team Identity', 'Achievements') that clearly signals the core info."
+              content:
+                type: "string"
+                description: "A narrative that cuts through the hype with specific, actionable details and pointed commentary. Include hard stats, key moments, and comparisons that paint a clear picture of the team's strengths and weaknesses—using identifiable names and figures when available (e.g., reference 'Mahomes' instead of a generic title)."
+            required: ["title", "content"]
+          minItems: 3
+          maxItems: 7
+
+  # prompt-chat-completion
+  - type: "prompt"
+    title: "Chat Completion"
+    name: "prompt-chat-completion" 
+    description: "This prompt generates an engaging, conversational response that mixes actionable match insights, fun predictions, and tailored betting suggestions to keep sports discussions lively and interactive."
+    schema:
+      title: "ThreadCompletion"
+      description: "Respond like you're chatting with your best sports buddy—quick, raw, and to the point. Your answer should blend actionable insights with a few witty jabs, offering clear head-to-head comparisons, specific stats, and bold predictions. Always use specific, identifiable names (e.g., 'Mahomes') instead of generic descriptors when available to keep it actionable. Keep it casual and conversational, just like a no-fluff rundown before the game."
+      type: "object"
+      properties:
+        question_answer:
+          type: "string"
+          description: "Craft a reply that's brief, punchy, and loaded with direct, actionable insights. Give clear head-to-head comparisons, specific stats, and bold predictions—all in a casual, irreverent tone, ensuring that any reference to players or stats is specific (e.g., 'Mahomes' instead of 'Chiefs QB') when available."
+        is_match_finished:
+          type: "boolean"
+          description: "A simple flag stating if the match is over—say it like you mean it."
+        related_betting_enabled:
+          type: "boolean"
+          description: "A flag to indicate if betting suggestions should be thrown in—keep them straightforward and useful."
+        related_bettings:
+          type: "array"
+          description: "An array of betting suggestions that are short, actionable, and to the point—odds, recommended bet size, and the bet target without any extra fluff. Include identifiable data when available."
+          items:
+            type: "object"
+            properties:
+              bet_title:
+                type: "string"
+                description: "A quick, catchy title for the bet."
+              bet_odd:
+                type: "string"
+                description: "The odds stated simply."
+              bet_size:
+                type: "string"
+                description: "A brief recommendation on bet size, based on clear risk evaluation."
+              runner_name:
+                type: "string"
+                description: "The target of the bet (team, player, or outcome) stated plainly and specifically when available."
+        related_questions:
+          type: "array"
+          description: "A list of follow-up questions that are short, engaging, and keep the conversation rolling—no unnecessary details."
+          items:
+            type: "string"
+            description: "A concise follow-up question prompting further discussion with a direct focus on actionable insights."
+        speech_to_avatar:
+          type: "string"
+          description: "A short, friendly speech output that sounds like you're chatting casually about the game—fun, direct, and free of markdown or extra formatting, with references that are specific and identifiable when available."
+
+  # prompt-chat-postmatch
+  - type: "prompt"
+    title: "Chat Postmatch"
+    name: "prompt-chat-postmatch" 
+    description: "This prompt generates engaging post-match responses that analyze game outcomes, key moments, and player performances while maintaining a lively, conversational tone."
+    schema:
+      title: "PostMatchCompletion"
+      description: "Break down the game like you're chatting with your best sports buddy at the bar right after the final whistle. Focus on the key plays, turning points, and standout performances, delivering clear, actionable insights with an edgy, no-BS tone. Make sure to name players and provide specific stats when available to back up your analysis."
+      type: "object"
+      properties:
+        question_answer:
+          type: "string"
+          description: "Deliver a sharp post-game take that focuses on what actually happened. Analyze key moments, final stats, and game-changing plays in a conversational, no-nonsense style—like bar-side banter with real, specific insight (mention names like 'Mahomes' instead of generic titles when available)."
+        related_questions:
+          type: "array"
+          description: "Post-game follow-up questions that dig deeper into game outcomes, performances, and future implications—short and focused."
+          items:
+            type: "string"
+            description: "A direct follow-up question about specific game outcomes or key moments."
+        speech_to_avatar:
+          type: "string"
+          description: "A casual post-game reaction capturing the emotion and key takeaways from the game—like sharing your immediate, unfiltered thoughts with a friend, with clear references and specific stats when available."
+
+  # prompt-game-predictions
+  - type: "prompt"
+    title: "Game Predictions"
+    name: "prompt-game-predictions"
+    description: "This prompt delivers expert game predictions with a blend of actionable insights and playful forecasts. Act as a seasoned sports analyst with deep NFL statistics, team dynamics, and Super Bowl history knowledge to highlight key factors that could sway the outcome."
+    schema:
+      title: "GamePredictionsContent"
+      description: "Lay out a series of predictions that combine hard data with edgy humor. Each prediction should break down the factors influencing the game—include specific numbers, key matchups, and tactical insights. Use actual player names (e.g., 'Mahomes' rather than 'Chiefs QB') when available to keep the insights actionable and clear."
+      type: "object"
+      properties:
+        HOME_WIN_PROBABILITY:
+          type: "number"
+          minimum: 0
+          maximum: 100
+          description: "A precise percentage representing the home team's win probability based on solid, specific analysis."
+        AWAY_WIN_PROBABILITY:
+          type: "number"
+          minimum: 0
+          maximum: 100
+          description: "A precise percentage representing the away team's win probability drawn from clear, hard data."
+        CONFIDENCE:
+          type: "integer"
+          minimum: 50
+          maximum: 100
+          description: "A confidence percentage that reflects the certainty of these predictions—backed by specific stats and blunt reasoning."
+        predictions:
+          type: "array"
+          description: "An array of prediction items that cut through the generic chatter. Each prediction must include a sharp title, detailed analysis with actionable insights, a concise forecast statement, and a clear confidence rating. Keep it real, bold, and data-driven with a healthy dose of irreverent humor, ensuring that all references use actual names and figures when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "A focused title for the prediction (e.g., 'Quarterback Duel', 'Defensive Breakdown', 'Weather Factor', 'Historical Trends') that zeroes in on the key factor."
+              content:
+                type: "string"
+                description: "A detailed breakdown of the factor at play, citing specific stats, historical data, and tactical insights. Explain its impact with clear, actionable takeaways and a touch of snark—include identifiable names and numbers when available."
+              prediction:
+                type: "string"
+                description: "A short, punchy prediction statement (e.g., 'Mahomes to exceed 320 passing yards', 'Defense to force 2+ turnovers') that’s bold and data-backed."
+              confidence:
+                type: "integer"
+                minimum: 50
+                maximum: 100
+                description: "A clear confidence score in this prediction—expressed as a percentage, reflecting the strength of the analysis."
+            required: ["title", "content", "prediction", "confidence"]
+          minItems: 5
+          maxItems: 7
+      required: ["HOME_WIN_PROBABILITY", "AWAY_WIN_PROBABILITY", "CONFIDENCE", "predictions"]
+
+  # prompt-head-to-head
+  - type: "prompt"
+    title: "Head-to-Head Analysis"
+    name: "prompt-head-to-head"
+    description: "This prompt analyzes and compares the statistical performance of both teams, highlighting key matchups, advantages, and potential mismatches across all phases of the game."
+    schema:
+      title: "HeadToHeadContent"
+      description: "Break down the statistical matchup with hard-hitting comparative analysis. As an irreverent NFL expert, pinpoint clear advantages, glaring mismatches, and key battlegrounds using concrete numbers. Use specific names and stats (e.g., 'Mahomes' instead of 'Chiefs QB') when available to ensure the analysis is actionable and clear."
+      type: "object"
+      properties:
+        sections:
+          type: "array"
+          description: "An array of sections comparing different aspects of team performance. Each section should directly contrast both teams' metrics using concrete numbers to highlight clear advantages, ensuring all references are specific and identifiable when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "Clear section title (e.g., 'Scoring Battle', 'Defensive Showdown', 'Third Down War', 'Trenches Matchup')."
+              content:
+                type: "string"
+                description: "A direct comparison of both teams' performance metrics, citing specific numbers and clear analysis to identify which team has the edge. Use actual player names and stats wherever relevant when available."
+              advantage:
+                type: "string"
+                enum: ["HOME", "AWAY", "EVEN"]
+                description: "Indicates which team has the statistical advantage in this area."
+              advantage_rating:
+                type: "integer"
+                minimum: 1
+                maximum: 5
+                description: "Rates the significance of the advantage from 1 (slight edge) to 5 (dominant advantage)."
+            required: ["title", "content", "advantage", "advantage_rating"]
+          minItems: 5
+          maxItems: 7
+        key_matchups:
+          type: "array"
+          description: "Critical statistical matchups that could decide the game. Each entry should highlight specific metrics for both teams and provide a brief, actionable analysis with clear, identifiable stats when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "Brief description of the key matchup (e.g., 'Red Zone Efficiency', 'Pass Rush vs Protection')."
+              home_stat:
+                type: "string"
+                description: "Key statistic for the home team in this matchup."
+              away_stat:
+                type: "string"
+                description: "Key statistic for the away team in this matchup."
+              analysis:
+                type: "string"
+                description: "Brief analysis of the statistical mismatch and its potential impact on the game, using specific names and numbers when available."
+            required: ["title", "home_stat", "away_stat", "analysis"]
+          minItems: 3
+          maxItems: 5
+        overall_advantage:
+          type: "object"
+          description: "A summary of the overall statistical comparison between the teams."
+          properties:
+            team:
+              type: "string"
+              enum: ["HOME", "AWAY", "EVEN"]
+              description: "The team with the overall statistical advantage."
+            confidence:
+              type: "integer"
+              minimum: 1
+              maximum: 5
+              description: "Confidence level in the overall advantage (1-5)."
+            key_factors:
+              type: "array"
+              items:
+                type: "string"
+                description: "Key statistical factors that support the overall advantage, including specific stats and player names when available."
+              minItems: 3
+              maxItems: 5
+          required: ["team", "confidence", "key_factors"]
+
+  # prompt-keyplayers-comparison-analysis
+  - type: "prompt"
+    title: "Key Players Comparison Analysis"
+    name: "prompt-keyplayers-comparison-analysis"
+    description: "This prompt analyzes the pre-selected player matchups, providing detailed statistical comparisons and performance analysis for each pair."
+    schema:
+      title: "KeyPlayersComparisonAnalysis"
+      description: "Break down the player matchups with hard-hitting statistical comparisons. As an irreverent NFL expert, analyze performance metrics, recent form, and head-to-head history with clear, data-driven commentary and biting humor. Use specific player names (e.g., 'Mahomes', 'Hurts') when available to ensure the analysis is actionable."
+      type: "object"
+      properties:
+        player_home:
+          type: "object"
+          description: "Detailed analysis of the home team player."
+          properties:
+            title:
+              type: "string"
+              description: "Player name and position."
+            content:
+              type: "string"
+              description: "A comprehensive review of the player's performance, including season stats, strengths, and recent form—be specific with names and numbers when available."
+          required: ["title", "content"]
+        player_away:
+          type: "object"
+          description: "Detailed analysis of the away team player."
+          properties:
+            title:
+              type: "string"
+              description: "Player name and position."
+            content:
+              type: "string"
+              description: "A comprehensive review of the player's performance, including season stats, strengths, and recent form—always mention the actual player's name when available."
+          required: ["title", "content"]
+        sections:
+          type: "object"
+          description: "A direct head-to-head analysis between the two players."
+          properties:
+            title:
+              type: "string"
+              description: "A clear matchup title based on the pre-selected player pair."
+            content:
+              type: "string"
+              description: "A head-to-head statistical comparison and analysis, including direct performance metrics, matchup history, and situational effectiveness—use identifiable names and figures when available."
+            advantage:
+              type: "string"
+              enum: ["HOME", "AWAY", "EVEN"]
+              description: "Indicates which player has the statistical edge in this matchup."
+            advantage_rating:
+              type: "integer"
+              minimum: 1
+              maximum: 5
+              description: "Rates the significance of the advantage (1: slight edge, 5: dominant advantage)."
+          required: ["title", "content", "advantage", "advantage_rating"]
+        impact_summary:
+          type: "object"
+          description: "Overall analysis of the impact these player matchups could have on the game."
+          properties:
+            overall_advantage:
+              type: "string"
+              enum: ["HOME", "AWAY", "EVEN"]
+              description: "The overall statistical advantage between the players."
+            key_findings:
+              type: "array"
+              items:
+                type: "string"
+              description: "3-5 crucial takeaways from analyzing these matchups, including specific names and stats when available."
+            game_impact:
+              type: "string"
+              description: "A concise explanation of how these player matchups might influence the game outcome, with identifiable details when available."
+          required: ["overall_advantage", "key_findings", "game_impact"]
+
+  # prompt-keyplayers-comparison-selection
+  - type: "prompt"
+    title: "Key Players Comparison Selection"
+    name: "prompt-keyplayers-comparison-selection"
+    description: "This prompt selects the key players from both teams, highlighting the strengths and weaknesses of each player."
+    schema:
+      title: "KeyPlayersComparisonSelection"
+      description: "Break down the key players from both teams with clear, concise comparisons. Highlight each player's strengths and weaknesses using specific details and direct commentary, ensuring that every player is identified by name when available."
+      type: "object"
+      properties:
+        sections:
+          type: "array"
+          description: "An array of sections comparing the key players from both teams. Each section should identify the player by their ID and deliver a punchy title that encapsulates their role—making it clear who is who when available."
+          items:
+            type: "object"
+            properties:
+              player_ids:
+                type: "array"
+                description: "The existing player ID(s) that match the ID from the player object in the database."
+                items:
+                  type: "string"
+              title:
+                type: "string"
+            required: ["player_ids", "title"]
+          minItems: 10
+          maxItems: 10
+
+  # prompt-team-statistics
+  - type: "prompt"
+    title: "Team Statistics Analysis"
+    name: "prompt-team-statistics"
+    description: "This prompt analyzes comprehensive team statistics across all phases of the game (offense, defense, special teams), delivering data-driven insights about team performance and tendencies."
+    schema:
+      title: "TeamStatisticsContent"
+      description: "Break down team performance with hard-hitting statistical analysis. As an irreverent NFL expert, deliver concrete numbers and unfiltered insights on efficiency, scoring trends, and key performance indicators. Include specific names and stats when available so the insights are identifiable and actionable."
+      type: "object"
+      properties:
+        sections:
+          type: "array"
+          description: "An array of sections that dive deep into different statistical aspects of team performance. Each section should focus on specific metrics with clear analysis and direct comparisons, using identifiable data (e.g., player names, exact figures) when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "A clear section title (e.g., 'Offensive Efficiency', 'Scoring Prowess', 'Defensive Metrics', 'Special Teams Impact', 'Critical Situations')."
+              content:
+                type: "string"
+                description: "Data-driven analysis of key performance metrics, breaking down complex stats into clear, actionable insights with no-nonsense commentary. Include specific names and figures when available to make the insights verifiable."
+              key_stat:
+                type: "string"
+                description: "The most telling statistical highlight from this section, presented as a punchy, quotable metric with specific data when available."
+            required: ["title", "content", "key_stat"]
+          minItems: 5
+          maxItems: 7
+        performance_summary:
+          type: "object"
+          description: "A summary of overall performance metrics that highlight the team's statistical strengths and weaknesses. Use specific, identifiable data to back up each metric when available."
+          properties:
+            offensive_rating:
+              type: "number"
+              description: "A rating (1-100) of offensive effectiveness based on available metrics."
+            defensive_rating:
+              type: "number"
+              description: "A rating (1-100) of defensive effectiveness based on available metrics."
+            special_teams_rating:
+              type: "number"
+              description: "A rating (1-100) of special teams effectiveness based on available metrics."
+            points_per_game:
+              type: "number"
+              description: "Average points scored per game."
+            points_allowed_per_game:
+              type: "number"
+              description: "Average points allowed per game."
+            turnover_differential:
+              type: "number"
+              description: "Total turnovers forced minus turnovers committed."
+            third_down_rate:
+              type: "number"
+              description: "Third down conversion percentage."
+            red_zone_efficiency:
+              type: "number"
+              description: "Percentage of red zone trips resulting in touchdowns."
+            yards_per_game:
+              type: "number"
+              description: "Average total yards gained per game."
+            yards_allowed_per_game:
+              type: "number"
+              description: "Average total yards allowed per game."
+            sacks_made:
+              type: "number"
+              description: "Total number of sacks by the defense."
+            sacks_allowed:
+              type: "number"
+              description: "Total number of sacks allowed by the offense."
+            penalties_per_game:
+              type: "number"
+              description: "Average number of penalties per game."
+            time_of_possession:
+              type: "string"
+              description: "Average time of possession per game (MM:SS format)."
+            standout_metrics:
+              type: "array"
+              items:
+                type: "string"
+                description: "Key statistical achievements that stand out from the data, with specific details when available."
+              minItems: 3
+              maxItems: 5
+          required: [
+            "offensive_rating", 
+            "defensive_rating", 
+            "special_teams_rating", 
+            "points_per_game",
+            "points_allowed_per_game",
+            "turnover_differential",
+            "third_down_rate",
+            "red_zone_efficiency",
+            "yards_per_game",
+            "yards_allowed_per_game",
+            "standout_metrics"
+          ]
+
+  # prompt-live-narration
+  - type: "prompt"
+    title: "Live Narration"
+    name: "prompt-live-narration"
+    description: "Generate Championship Manager style live commentary for NFL games"
+    schema:
+      title: "LiveNarration"
+      description: "Generate dynamic, play-by-play commentary that captures the excitement and drama of the game in real time. Deliver short, punchy lines that highlight key plays, strategic shifts, and crowd reactions—all with a raw, irreverent style. Use specific names and stats when available to make the commentary actionable."
+      type: "object"
+      properties:
+        commentary:
+          type: "array"
+          description: "Multiple diverse perspectives on the same play. Each entry should focus on one unique aspect: play description, strategy, player performance, game context, or crowd reaction, delivered in a quick and edgy manner with specific references when available."
+          items:
+            type: "object"
+            properties:
+              timestamp:
+                type: "string"
+                description: "Game time (quarter and clock)."
+              text:
+                type: "string"
+                description: "A brief, 15-30 word commentary focusing on one aspect of the play—direct, witty, and to the point, with specific details when available."
+              importance:
+                type: "string"
+                enum: ["routine", "notable", "highlight", "crucial"]
+                description: "How significant this play is in the context of the game."
+            required: ["timestamp", "text", "importance"]
+          minItems: 1
+          maxItems: 5
+
+  # prompt-live-predictions
+  - type: "prompt"
+    title: "Live Predictions"
+    name: "prompt-live-predictions"
+    description: "This prompt generates dynamic, real-time predictions of the game's current state, highlighting key developments, momentum shifts, and critical statistics."
+    schema:
+      title: "LivePredictions"
+      description: "Create a sharp, up-to-the-minute summary of the game’s current state. Focus on actionable insights regarding scoring, momentum shifts, key player performances, and tactical adjustments. Include specific names and stats when available to make the predictions actionable and clear."
+      type: "object"
+      properties:
+        HOME_WIN_PROBABILITY:
+          type: "number"
+          minimum: 0
+          maximum: 100
+          description: "A precise percentage representing the home team's win probability based on real-time, specific analysis."
+        AWAY_WIN_PROBABILITY:
+          type: "number"
+          minimum: 0
+          maximum: 100
+          description: "A precise percentage representing the away team's win probability drawn from real-time data."
+        CONFIDENCE:
+          type: "integer"
+          minimum: 50
+          maximum: 100
+          description: "A confidence percentage that reflects how sure you are about these live predictions, backed by hard stats and direct analysis."
+        predictions:
+          type: "array"
+          description: "An array of live prediction items that cut through the generic chatter. Each prediction should include a sharp title, detailed analysis with actionable insights, a concise forecast statement, and a clear confidence rating—all delivered with bold, irreverent humor and specific, identifiable data when available."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "A focused title for the prediction (e.g., 'Quarterback Duel', 'Defensive Breakdown', 'Weather Factor', 'Historical Trends')."
+              content:
+                type: "string"
+                description: "A detailed breakdown of the factor at play, citing real-time stats, historical data, and tactical insights. Explain its impact with clear, actionable takeaways and a touch of snark—include specific names and numbers when available."
+              prediction:
+                type: "string"
+                description: "A short, punchy prediction statement (e.g., 'Mahomes to hit 350 passing yards', 'Defense to force 3+ turnovers') that’s bold and data-backed."
+              confidence:
+                type: "integer"
+                minimum: 50
+                maximum: 100
+                description: "A clear confidence score for this live prediction, expressed as a percentage to reflect the strength of the analysis."
+            required: ["title", "content", "prediction", "confidence"]
+          minItems: 5
+          maxItems: 7
+      required: ["HOME_WIN_PROBABILITY", "AWAY_WIN_PROBABILITY", "CONFIDENCE", "predictions"]
+
+  # prompt-match-recap
+  - type: "prompt"
+    title: "Match Recap"
+    name: "prompt-match-recap"
+    description: "This prompt generates a comprehensive recap of the game, organized by key topics and highlighting crucial moments, strategic insights, and player performances."
+    schema:
+      title: "MatchRecap"
+      description: "Break down the game’s story into focused sections with no-nonsense analysis. Each section should deliver clear insights on scoring, key plays, tactical shifts, and standout performances. Ensure all references are specific and identifiable (e.g., 'Mahomes' rather than 'the QB') when available so that the insights are actionable and clear—no fluff allowed."
+      type: "object"
+      properties:
+        sections:
+          type: "array"
+          description: "An array of sections that analyze different aspects of the game. Each section should focus on a specific theme (e.g., scoring summary, game-changing moments, tactical battles, MVP performance) with direct, data-backed analysis and specific names and stats when available."
+          items:
+            type: "object"
+            properties:
+              subject:
+                type: "string"
+                description: "A clear section title (e.g., 'Scoring Summary', 'Game-Changing Moments', 'Tactical Battle', 'MVP Performance')."
+              title:
+                type: "string"
+                description: "A title describing the content of the section."
+              content:
+                type: "string"
+                description: "Sharp, focused analysis of this aspect of the game. Include specific details like scores, yard lines, player stats, or strategic adjustments that shaped this part of the game—using identifiable names and numbers when available."
+              confidence:
+                type: "integer"
+                minimum: 50
+                maximum: 100
+                description: "A confidence rating for the analysis provided in this section."
+            required: ["title", "content", "subject", "confidence"]
+          minItems: 5
+          maxItems: 10

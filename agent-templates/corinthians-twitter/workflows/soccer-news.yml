@@ -1,0 +1,122 @@
+workflow:
+  name: "soccer-news"
+  title: "Soccer News"
+  description: "Workflow to research and analyze the latest news and rumors for Corinthians."
+  context-variables:
+    debugger:
+      enabled: true
+    openai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+  
+  tasks:
+    
+    # 1 search-news
+    - type: "connector"
+      name: "search-news"
+      description: "Search Google for Corinthians news."
+      connector:
+        name: "google-genai"
+        command: "invoke_search"
+        model: "gemini-2.5-flash"
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: |
+          [
+            "Corinthians últimas notícias hoje",
+            "Corinthians mercado da bola rumores",
+            "Corinthians bastidores crise e polêmicas",
+            "Corinthians provável escalação novidades",
+            "Corinthians opinião torcida",
+            "Corinthians situação financeira e dívidas",
+            "Corinthians atualizações departamento médico",
+            "Corinthians declarações presidente e diretoria"
+          ]
+      inputs:
+        location: "Brazil"
+        search_query: $.get('search_query', '')
+      outputs:
+        news_search_response: |
+          [
+            $.get('answer', '')
+          ]
+        news_search_metadata: |
+          [
+            $.get('data', {}).get('grounding_metadata', {}) if $.get('data') else $.get('grounding_metadata', {})
+          ]
+
+    # 3 embedding-news
+    - type: "prompt"
+      name: "prompt-embedding-news"
+      description: "Generate viral-worthy Corinthians news analysis."
+      condition: "$.get('news_search_response') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        search_results: "$.get('news_search_response', [])"
+        search_metadata: "$.get('news_search_metadata', [])"
+        title: "'Corinthians Daily News'"
+      outputs:
+        research-news: "$"
+        research-news-bulk: |
+          [
+            {
+              'subject': 'Corinthians News',
+              'text': c.get('content', ''),
+              'title': c.get('title', ''),
+              'metadata': {
+                'type': 'team-news',
+                'team': 'Corinthians',
+                'language': 'pt',
+                'date': datetime.utcnow().isoformat()
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 4 update-documents
+    - type: "document"
+      name: "update-documents-news"
+      description: "Update Corinthians news analysis documents."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "corinthians-daily-news"
+      documents:
+        corinthians-daily-news: |
+          {
+            "name": "corinthians-daily-news",
+            "execution": datetime.utcnow(),
+            "content": $.get('research-news'),
+            "title": "Corinthians Daily News",
+            "status": 'active',
+            "type": "news-digest"
+          }
+    
+    # 5 update-snippets
+    - type: "document"
+      name: "update-snippets"
+      description: "Update Corinthians analysis snippets with viral-worthy stats."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('research-news-bulk', [])
+          ]

@@ -1,0 +1,55 @@
+workflow:
+  name: "sp-opta-sync-transfers"
+  title: "Stats Perform Opta - Transfers"
+  description: "Workflow to synchronize player transfers from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    contestant_id: "$.get('contestant_id')"
+    competition_id: "$.get('competition_id', None)"
+    strt_dt: "$.get('strt_dt', None)"
+    end_dt: "$.get('end_dt', None)"
+  outputs:
+    transfers: "$.get('transfers')"
+    transfers_raw: "$.get('transfers_raw')"
+    workflow-status: "'executed'"
+  tasks:
+
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('contestant_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        raw_data: "$"
+        access_token: "$.get('access_token')"
+
+    # load-transfers
+    - type: "connector"
+      name: "load-transfers"
+      description: "Get player transfers from Stats Perform Opta"
+      condition: "$.get('contestant_id') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_bearer: "$.get('access_token')"
+        endpoint: "'transfers'"
+        competition_id: "$.get('competition_id')"
+        query_params: |
+          {
+            **({'ctst': $.get('contestant_id')} if not $.get('strt_dt') else {}),
+            **({'strtDt': $.get('strt_dt')} if $.get('strt_dt') else {}),
+            **({'endDt': $.get('end_dt')} if $.get('end_dt') else {})
+          }
+      outputs:
+        transfers_raw: "$"
+        transfers: "$.get('data', {}).get('player', [])"
+

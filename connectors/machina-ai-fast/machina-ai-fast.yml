@@ -1,0 +1,11 @@
+connector:
+  name: "machina-ai-fast"
+  description: "This connector is the Machina AI Fast SDK connector."
+  filename: "machina-ai-fast.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Embedding"
+      value: "invoke_embedding"
+
+    - name: "Prompt"
+      value: "invoke_prompt" 

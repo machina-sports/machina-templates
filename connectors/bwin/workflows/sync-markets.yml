@@ -1,0 +1,83 @@
+workflow:
+  name: bwin-sync-markets
+  title: BWIN - Sync Markets
+  description: Workflow to synchronize a season schedules from Bwin API to Machina.
+  context-variables:
+    debugger:
+      enabled: false
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    country: $.get('country')
+    competitionIds: $.get('competitionIds') or $.get('competitionItem', {}).get('competitionIds')
+    competitionItem: $.get('competitionItem')
+    externalCompetitionId: $.get('externalCompetitionId') or $.get('competitionItem', {}).get('externalCompetitionId')
+    externalSeasonId: $.get('externalSeasonId') or $.get('competitionItem', {}).get('externalSeasonId')
+    fixtureIds: $.get('fixtureIds')
+    force-update: ($.get('force-update') == 'true')
+    sportId: $.get('sportId')
+  outputs:
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-fixtures
+    - type: connector
+      name: load-fixtures
+      description: Get a season fixtures from Bwin
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtureIndex
+        command_attribute:
+          country: $.get('country')
+          sportId: $.get('sportId')
+      inputs:
+        competitionIds: $.get('competitionIds') 
+        fixtureIds: $.get('fixtureIds')
+      outputs:
+        selected_events: |
+          [
+            {
+              **f,
+              'metadata': {
+                'externalCompetitionId': context.get('externalCompetitionId'),
+                'market_code': str(f.get('id', {}).get('entityId', '')),
+                'market_type': f.get('type', ''),
+              },
+              'title': f"{f.get('name', {}).get('text', '')}",
+            }
+            for f in $.get('items', [])
+          ]
+        workflow-status: "'executed'"
+
+    # bwin-market-event-mapping
+    - type: mapping
+      name: bwin-market-event-mapping
+      title: BWIN - Market Event Mapping
+      description: Mapping data from event documents
+      condition: $.get('selected_events') is not None
+      inputs:
+        events: $.get('selected_events', [])
+      outputs:
+        bulk-markets: $.get('mapped-event', [])
+
+    # 2 bulk-save-fixtures
+    - type: document
+      name: bulk-save-fixtures
+      description: Bulk save the fixtures.
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'game-market'"
+      documents:
+        items: $.get('parsedItems', [])
+      inputs:
+        parsedItems: $.get('bulk-markets', [])

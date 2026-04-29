@@ -1,0 +1,56 @@
+workflow:
+  name: kalshi-market-analysis-update
+  title: Kalshi - Market Analysis Update
+  description: Workflow to update a market analysis
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    document_id: $.get('document_id')
+    is_market_analysis_finished: $.get('is_market_analysis_finished', False)
+  outputs:
+    workflow-status: $.get('document-exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: kalshi-market-analysis-load-by-id
+      description: Load document by id
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        document-document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        document-exists: len($.get('documents', [])) > 0
+        document-selected: $.get('documents', [])[0] if len($.get('documents', [])) > 0 else None
+        document-value: $.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else None
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('document-exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('document-value', {}),
+            'version_control': {
+              **$.get('document-value', {}).get('version_control', {}),
+              'event-preview': $.get('is_market_analysis_finished'),
+              'processing': False
+            }
+          }
+      

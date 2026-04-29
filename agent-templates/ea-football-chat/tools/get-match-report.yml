@@ -1,0 +1,47 @@
+workflow:
+  name: get-match-report
+  title: "Get Match Report"
+  description: "Provides a detailed report for a specific match."
+  inputs:
+    event_id: "$.get('event_id')"
+    competition_id: "$.get('competition_id')"
+  outputs:
+    result: "{'summary': $.get('summary'), 'statistics': $.get('statistics'), 'xg': $.get('xg', 'N/A')}"
+    workflow-status: "($.get('summary') is not None) and 'executed' or 'skipped'"
+  tasks:
+    - type: "connector"
+      name: "get_summary"
+      description: "Get the match summary."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_event_summary'"
+        event_id: "$.get('event_id')"
+      outputs:
+        summary: "$"
+
+    - type: "connector"
+      name: "get_stats"
+      description: "Get the match statistics."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_event_statistics'"
+        event_id: "$.get('event_id')"
+      outputs:
+        statistics: "$"
+
+    - type: "connector"
+      name: "get_xg"
+      description: "Get the match expected goals (xG)."
+      condition: "$.get('competition_id') in ['premier-league', 'serie-a', 'la-liga', 'bundesliga', 'ligue-1']"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_event_xg'"
+        event_id: "$.get('event_id')"
+      outputs:
+        xg: "$"

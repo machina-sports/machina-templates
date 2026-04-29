@@ -1,0 +1,41 @@
+mappings:
+
+  - type: "mapping"
+    title: "Tennis - Competition Summary Mapping"
+    name: "mapping-tennis-competition-summary"
+    description: "Mapping data from sportradar tennis competition data"
+    outputs:
+      competition_code: "$.get('competition_selected', {}).get('id')"
+      competition_name: "$.get('competition_selected', {}).get('name')"
+      competition_alternative_name: "$.get('competition_selected', {}).get('alternative_name', '')"
+      competition_type: "$.get('competition_selected', {}).get('type', 'singles')"
+      competition_gender: "$.get('competition_selected', {}).get('gender', 'mixed')"
+      competition_level: "$.get('competition_selected', {}).get('level', 'unknown')"
+      category_name: "$.get('competition_selected', {}).get('category', {}).get('name', '')"
+      category_code: "$.get('competition_selected', {}).get('category', {}).get('id', '')"
+      category_country_code: "$.get('competition_selected', {}).get('category', {}).get('country_code', '')"
+      parent_competition_id: "$.get('competition_selected', {}).get('parent_id')"
+      has_parent: "$.get('competition_selected', {}).get('parent_id') is not None"
+      is_child_competition: "$.get('competition_selected', {}).get('parent_id') is not None"
+      competition_title: f"{$.get('competition_selected', {}).get('category', {}).get('name', '')} - {$.get('competition_selected', {}).get('name', '')}"
+
+  - type: "mapping"
+    title: "Tennis - Competition List Mapping"
+    name: "mapping-tennis-competition-list"
+    description: "Mapping data from sportradar tennis competitions list"
+    outputs:
+      competitions_mapped: |
+        [
+          {
+            **c,
+            'title': f"{c.get('category', {}).get('name', '')} - {c.get('name', '')}",
+            'selected': False,
+            'sport': 'tennis',
+            'competition_type': c.get('type'),
+            'gender_category': c.get('gender'),
+            'category_name': c.get('category', {}).get('name', ''),
+            'has_parent': c.get('parent_id') is not None,
+            'level': c.get('level', 'unknown')
+          }
+          for c in $.get('competitions', [])
+        ]

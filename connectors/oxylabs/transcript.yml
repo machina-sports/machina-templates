@@ -1,0 +1,104 @@
+workflow:
+
+  # oxylabs-video-transcript
+  name: "oxylabs-video-transcript"
+  title: "Oxylabs - Video Transcript"
+  description: "Workflow to transcribe a video."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    oxylabs:
+      username: "$TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD"
+  inputs:
+    language: "$.get('language', 'pt')"
+    query: "$.get('query')"
+    source: "$.get('source', 'youtube_transcript')"
+  outputs:
+    result: "$.get('result')"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "oxylabs-post-queries"
+      description: "Scrape a video transcript."
+      condition: "$.get('query') is not None"
+      connector:
+        name: "oxylabs"
+        command: "post-queries"
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "language_code",
+                "value": $.get('language')
+              }
+            ],
+            "query": $.get('query'),
+            "source": $.get('source')
+          }
+      outputs:
+        result: "$"
+
+    - type: "mapping"
+      name: "oxylabs-transcript-mapping"
+      description: "Mapping data from oxylabs transcript"
+      condition: "$.get('result') is not None"
+      inputs:
+        items: "$.get('result', {}).get('results', [])[0].get('content')"
+      outputs:
+        transcript-content: "$.get('transcript-content')"
+
+    - type: "prompt"
+      name: "prompt-transcript-subject-analysis"
+      description: "Prompt to analyze the transcript subject"
+      condition: "$.get('transcript-content') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4.1"
+      inputs:
+        input-content: |
+          [
+            f"{i}: {content}"
+            for i, content in enumerate($.get('transcript-content', []))
+          ]
+      outputs:
+        slices: "$.get('slices')"
+        slices-bulk: |
+          [
+            {
+              'subject': c.get('subject', ''),
+              'script_code': c.get('script_code', ''),
+              'start_index': c.get('start_index', ''),
+              'end_index': c.get('end_index', ''),
+              'content': c.get('content', ''),
+              'items': $.(transcript-content)[c.get('start_index', 0):c.get('end_index', 0)]
+            }
+            for c in $.get('slices', [])
+          ]
+
+    - type: "document"
+      name: "update-video-transcript"
+      description: "Update the document."
+      condition: "$.get('result') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        web-scraping: |
+          {
+            'content': $.get('slices-bulk'),
+            'execution': datetime.utcnow(),
+            'version_control': {
+              'processing': False,
+              'transcript_analysis': 'pending',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        video-code: "$.get('query')"

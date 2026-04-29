@@ -1,0 +1,40 @@
+agent:
+  name: sportradar-soccer-config-markets
+  title: Sportradar - Soccer Config Markets
+  description: Agent to config markets for coverage tools
+  context:
+    config-frequency: 10
+    status: inactive
+  workflows:
+
+    # sportradar-soccer-config-markets-workflow
+    - name: sportradar-soccer-config-markets-workflow
+      description: config-markets-workflow
+      outputs:
+        coverage-markets-country: $.get('coverage-markets-country')
+        coverage-markets-sport-id: $.get('coverage-markets-sport-id')
+        coverage-markets-mapping: $.get('coverage-markets-mapping')
+
+    # bwin-sync-markets
+    - name: bwin-sync-markets
+      description: sync-markets
+      foreach:
+        name: competitionItem
+        expr: $
+        value: $.get('coverage-markets-mapping')
+      inputs:
+        country: context.get('coverage-markets-country')
+        sportId: context.get('coverage-markets-sport-id')
+
+    # assistant-tools-event-matcher
+    - name: assistant-tools-event-matcher
+      description: Associate game-markets to sport:Event documents by similarity
+      foreach:
+        name: competitionItem
+        expr: $
+        value: $.get('coverage-markets-mapping')
+      inputs:
+        limit: "250"
+      outputs:
+        associate-markets-status: "$.get('workflow-status', 'skipped')"
+        markets_matched: "$.get('markets_matched', [])"

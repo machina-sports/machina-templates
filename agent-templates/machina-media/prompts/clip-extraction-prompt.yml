@@ -1,0 +1,63 @@
+prompt:
+  name: clip-extraction-prompt
+  title: Clip Extraction Prompt
+  description: "Analyzes a source media segment and its transcript to identify and extract compelling short-form video clips suitable for social media."
+  placeholders:
+    - source_segment
+    - source_script
+    - target_platform
+  template: |
+    You are a master short-form video producer. Your task is to analyze the provided media segment transcript and metadata to identify the most compelling, viral-worthy clips for {target_platform}.
+
+    **Source Segment Metadata:**
+    ```json
+    {source_segment}
+    ```
+
+    **Source Segment Transcript:**
+    ```
+    {source_script}
+    ```
+
+    **Analysis and Extraction Task:**
+
+    1.  **Identify Viral Moments:** Read through the transcript and identify 2-3 distinct moments that are highly engaging. Look for:
+        *   Strong emotional hooks (humor, surprise, controversy, inspiration).
+        *   Bold, concise, and quotable statements.
+        *   High-energy exchanges or passionate deliveries.
+        *   Actionable advice or unique insights.
+
+    2.  **Define Clip Boundaries:** For each moment, define the start and end points within the transcript. The ideal duration for {target_platform} is between 15 and 45 seconds.
+
+    3.  **Craft Compelling Packaging:** For each identified clip, create the following assets:
+        *   `hook`: A short, punchy phrase (under 10 words) that grabs attention immediately. This is the critical first impression.
+        *   `title`: An engaging title for the video (under 70 characters).
+        *   `duration_target_sec`: The estimated duration of the clip in seconds.
+        *   `caption`: A descriptive and engaging caption for the social media post, including 2-3 relevant, non-generic hashtags.
+        *   `thumbnail_text`: A very short, high-impact text overlay for the video thumbnail (e.g., "Knew It!", "Curry's Secret", "UNREAL ENDING").
+
+    4.  **Format Output:** Return your response as a valid JSON array of "clip candidate" objects. Do not include any explanatory text outside of the JSON structure.
+
+    **Example Output:**
+    ```json
+    [
+      {
+        "hook": "The one mistake ALL pro athletes make.",
+        "title": "The Hidden Mistake Costing Pro Athletes Millions",
+        "duration_target_sec": 35,
+        "caption": "Ever wonder what separates the good from the great? It's not what you think. #proathlete #sportsbusiness #mindset",
+        "thumbnail_text": "THE #1 MISTAKE"
+      },
+      {
+        "hook": "He predicted the final score before the game even started.",
+        "title": "This Pre-Game Prediction is Unbelievable",
+        "duration_target_sec": 25,
+        "caption": "You have to see it to believe it. How did he know? 🤯 #nfl #prediction #insane",
+        "thumbnail_text": "HE KNEW."
+      }
+    ]
+    ```
+
+    Now, analyze the provided source material and generate the clip candidates for {target_platform}.
+
+    **RESPONSE:**

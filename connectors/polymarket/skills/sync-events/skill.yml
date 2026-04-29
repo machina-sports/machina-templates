@@ -1,0 +1,42 @@
+skill:
+  name: "polymarket-sync-events"
+  title: "Polymarket - Sync Events"
+  description: "Sync sports events from Polymarket to Machina documents."
+  version: "1.0.0"
+  category:
+    - "data-acquisition"
+    - "prediction-markets"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+
+    - name: "skill-reference"
+      title: "Events API"
+      filename: "references/events-api.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "polymarket-sync-events"
+        reference_id: "events-api"
+
+    - name: "skill-reference"
+      title: "Search"
+      filename: "references/search.md"
+      filetype: "markdown"
+      metadata:
+        category: "reference"
+        skill: "polymarket-sync-events"
+        reference_id: "search"
+
+  workflows:
+
+    - name: "polymarket-sync-events"
+      description: "sync-sports-events"
+      inputs:
+        tag_id: "$.get('tag_id', 1)"
+        series_id: "$.get('series_id', '')"
+        limit: "$.get('limit', 100)"
+        offset: "$.get('offset', 0)"
+      outputs:
+        workflow-status: "$.get('workflow-status', 'skipped')"

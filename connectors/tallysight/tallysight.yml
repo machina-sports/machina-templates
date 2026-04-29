@@ -1,0 +1,5 @@
+connector:
+  name: "tallysight"
+  description: "Tallysight API - Access sports betting widgets, odds, and market data"
+  filename: "tallysight.json"
+  filetype: "restapi" 

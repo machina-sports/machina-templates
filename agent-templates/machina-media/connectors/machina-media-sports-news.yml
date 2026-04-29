@@ -1,0 +1,7 @@
+connector:
+  name: machina-media-sports-news
+  description: "Fetches sports news."
+  filetype: restapi
+  filename: machina-media-sports-news.json
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_SPORTS_NEWS_API_KEY"

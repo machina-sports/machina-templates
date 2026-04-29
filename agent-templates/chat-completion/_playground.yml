@@ -1,0 +1,28 @@
+workflow:
+  name: "configuration-playground-structure"
+  title: "Configuration - Playground Structure"
+  description: "Configuration - Playground Structure"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # documents-structure
+    - type: "document"
+      name: "install-playground-documents"
+      description: "Install playground documents."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-playground: |
+          [
+            {
+              "title": "Chat Completions",
+              "name": "chat-completions",
+            },
+            {
+              "title": "Chat Moderator",
+              "name": "chat-moderator",
+            }
+          ]

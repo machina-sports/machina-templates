@@ -1,0 +1,68 @@
+setup:
+  title: Superbowl LIX
+  description: Connect to the Superbowl LIX API to get live and historical data.
+  category:
+    - special-template
+  estimatedTime: 1 minute
+  features:
+    - AI News
+    - AI Analysis
+    - AI Predictions
+    - AI Insights
+    - AI Recommendations
+    - AI Summaries
+    - AI Highlights
+  integrations:
+    - sportradar
+    - machina-ai
+  status: available
+  value: agent-templates/template-superbowl-lix
+  version: 1.0.0
+
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../connectors/groq/groq.yml"
+  - type: "connector"
+    path: "../connectors/openai/openai.yml"
+  - type: "connector"
+    path: "../connectors/sportradar-nfl/sportradar-nfl.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "completion.yml"
+  - type: "workflow"
+    path: "exe-briefing.yml"
+  - type: "workflow"
+    path: "exe-comparison.yml"
+  - type: "workflow"
+    path: "exe-gamerecap.yml"
+  - type: "workflow"
+    path: "exe-insights.yml"
+  - type: "workflow"
+    path: "exe-keyplayers.yml"
+  - type: "workflow"
+    path: "exe-teamstats.yml"
+  - type: "workflow"
+    path: "live-updates.yml"
+  - type: "workflow"
+    path: "sync-games.yml"
+  - type: "workflow"
+    path: "sync-teams.yml"
+
+  # prompts
+  - type: "prompts"
+    path: "_prompts.yml"
+
+  # agents & documents setup
+  - type: "workflow"
+    path: "_folders.yml"
+
+  # agents & schedules
+  - type: "agent"
+    path: "_scheduler.yml"
+  - type: "agent"
+    path: "_populate.yml"
+
+

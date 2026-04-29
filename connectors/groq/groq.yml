@@ -1,0 +1,14 @@
+connector:
+  name: "groq"
+  description: "This connector is the Groq SDK connector."
+  filename: "groq.py"
+  filetype: "pyscript"
+  commands:
+    - name: "list_models"
+      value: "list_models"
+
+    - name: "Embedding"
+      value: "invoke_embedding"
+
+    - name: "Prompt"
+      value: "invoke_prompt" 

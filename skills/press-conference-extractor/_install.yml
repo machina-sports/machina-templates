@@ -1,0 +1,23 @@
+setup:
+  title: "Press Conference Extractor"
+  description: "Analyzes a press conference transcript to extract key quotes, identify topics, score sentiment, and rank the most newsworthy statements."
+  category:
+    - skills
+  estimatedTime: 1 minute
+  features:
+    - "Extracts attributed quotes with sentiment scoring"
+    - "Clusters statements into topics with summaries"
+    - "Ranks the top 5 newsworthy quotes by novelty + controversy + clarity"
+  integrations:
+    - google-genai
+  status: available
+  value: "skills/press-conference-extractor"
+  version: 1.0.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  - type: "prompts"
+    path: "prompts/press-conference-extractor.yml"
+  - type: "workflow"
+    path: "workflows/press-conference-extractor.yml"

@@ -1,0 +1,18 @@
+connector:
+  name: "fastf1"
+  description: "The FastF1 connector is a connector for the FastF1 library."
+  filename: "fastf1.py"
+  filetype: "pyscript"
+  commands:
+    - name: "get_session_data"
+      value: "get_session_data"
+    - name: "get_driver_info"
+      value: "get_driver_info"
+    - name: "get_team_info"
+      value: "get_team_info"
+    - name: "get_race_schedule"
+      value: "get_race_schedule"
+    - name: "get_lap_data"
+      value: "get_lap_data"
+    - name: "get_race_results"
+      value: "get_race_results"

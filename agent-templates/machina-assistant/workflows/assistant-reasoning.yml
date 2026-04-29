@@ -1,0 +1,119 @@
+workflow:
+
+  # machina-assistant-reasoning
+  name: machina-assistant-reasoning
+  title: Machina Assistant - Reasoning
+  description: Analyzes user questions to determine intent and search for relevant information
+  
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  
+  inputs:
+    thread_id: $.get('thread_id')
+    input_message: $.get('input_message')
+  
+  outputs:
+    reasoning: $.get('reasoning', {})
+    document_id: $.get('document_id', None)
+    workflow-status: $.get('document_id') is not None and 'executed' or 'skipped'
+  
+  tasks:
+
+    # Load thread document
+    - type: document
+      name: load-thread-document
+      description: Load conversation thread
+      condition: $.get('thread_id') is not None and $.get('thread_id') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'thread'"
+        document_id: $.get('thread_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages_loaded: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    # Create thread document if it doesn't exist
+    - type: document
+      name: create-thread-document
+      description: Create new conversation thread
+      condition: $.get('document_id') is None
+      config:
+        action: save
+        embed-vector: false
+        force-update: true
+      documents:
+        thread: |
+          {
+            'messages': [],
+            'status': 'created',
+            'status_message': 'Thread created',
+            'context': 'machina-assistant'
+          }
+      metadata:
+        agent_id: "'machina-assistant'"
+        created_at: datetime.now().isoformat()
+        source: "'machina-assistant'"
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages_loaded: $.get('empty_messages', [])
+
+    # Use existing messages from state (already loaded or empty from new thread)
+    # No need for separate task, just reference $.get('messages')
+
+    # Analyze user question and determine intent
+    - type: prompt
+      name: machina-assistant-reasoning-prompt
+      condition: $.get('document_id') is not None
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-conversation-history: $.get('messages_loaded', [])[-5:]
+        _2-user-messages: $.get('input_message')
+      outputs:
+        reasoning: $
+
+    # Update thread with reasoning status
+    - type: document
+      name: update-thread-reasoning
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      condition: $.get('document_id') is not None
+      documents:
+        thread: |
+          {
+            **$.get('document_value'),
+            'messages': [
+              *$.get('document_value').get('messages', []),
+              {
+                'role': 'user',
+                'content': $.get('input_message'),
+                'timestamp': datetime.now().isoformat()
+              }
+            ],
+            'status': 'reasoning',
+            'reasoning': $.get('reasoning', {}),
+            'status_message': $.get('reasoning', {}).get('short_message', 'Analyzing your question...')
+          }
+      filters:
+        document_id: $.get('document_id')
+

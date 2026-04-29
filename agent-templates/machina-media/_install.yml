@@ -1,0 +1,88 @@
+setup:
+  title: "Machina Media: AI Sports Desk"
+  description: "An always-on AI sports desk for generating YouTube-first content, including live hits, briefings, recaps, and breaking news."
+  category:
+    - custom-templates
+  estimatedTime: 15 minutes
+  features:
+    - "Automated content generation for NFL and NBA"
+    - "Scheduled briefings and event-triggered live updates"
+    - "Multi-platform output: YouTube Live, Shorts, X, TikTok, Instagram"
+    - "Editorial orchestration to identify and prioritize storylines"
+  integrations:
+    - sportradar
+    - google-genai
+  status: available
+  value: 'agent-templates/machina-media'
+  version: 1.0.0
+
+datasets:
+  # Connectors
+  - type: "connector"
+    path: "connectors/machina-media-football-data.yml"
+  - type: "connector"
+    path: "connectors/machina-media-nfl-data.yml"
+  - type: "connector"
+    path: "connectors/machina-media-nba-data.yml"
+  - type: "connector"
+    path: "connectors/machina-media-sports-news.yml"
+  - type: "connector"
+    path: "connectors/machina-media-kalshi.yml"
+  - type: "connector"
+    path: "connectors/machina-media-polymarket.yml"
+  - type: "connector"
+    path: "connectors/machina-media-metadata.yml"
+
+  # Mappings
+  - type: "mapping"
+    path: "mappings/map-normalize-event.yml"
+  - type: "mapping"
+    path: "mappings/map-normalize-news-item.yml"
+  - type: "mapping"
+    path: "mappings/map-normalize-market-signal.yml"
+
+  # Prompts
+  - type: "prompt"
+    path: "prompts/social-derivative-prompt.yml"
+  - type: "prompt"
+    path: "prompts/clip-extraction-prompt.yml"
+  - type: "prompt"
+    path: "prompts/storyline-ranking-prompt.yml"
+  - type: "prompt"
+    path: "prompts/storyline-detection-prompt.yml"
+  - type: "prompt"
+    path: "prompts/morning-briefing-prompt.yml"
+  - type: "prompt"
+    path: "prompts/live-desk-update-prompt.yml"
+  - type: "prompt"
+    path: "prompts/postgame-recap-prompt.yml"
+  - type: "prompt"
+    path: "prompts/breaking-news-alert-prompt.yml"
+
+  # Workflows
+  - type: "workflow"
+    path: "workflows/sync-sports-state.yml"
+  - type: "workflow"
+    path: "workflows/detect-storylines.yml"
+  - type: "workflow"
+    path: "workflows/rank-storylines.yml"
+  - type: "workflow"
+    path: "workflows/generate-social-derivatives.yml"
+  - type: "workflow"
+    path: "workflows/generate-clip-candidates.yml"
+  - type: "workflow"
+    path: "workflows/generate-morning-briefing.yml"
+  - type: "workflow"
+    path: "workflows/generate-live-desk-update.yml"
+  - type: "workflow"
+    path: "workflows/generate-postgame-recap.yml"
+  - type: "workflow"
+    path: "workflows/generate-breaking-news-alert.yml"
+
+  # Agents
+  - type: "agent"
+    path: "agents/desk-program-agent.yml"
+  - type: "agent"
+    path: "agents/desk-reactive-agent.yml"
+  - type: "agent"
+    path: "agents/desk-executor-agent.yml"

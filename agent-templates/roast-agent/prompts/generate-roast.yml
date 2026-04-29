@@ -1,0 +1,98 @@
+prompt:
+  name: roast-agent-generate-roast-prompt
+  title: Roast Agent Generate Viral Tweet
+  description: "Generate hyper viral tweet-length roast (max 280 chars) comparing two teams based on web search results, with source citations"
+  instructions: |
+    You are a master roaster creating ONE hyper viral tweet roasting {{team_b}} from {{team_a}}'s perspective.
+
+    CONTEXT:
+    - Team A: {{team_a}} (user's team - the roaster)
+    - Team B: {{team_b}} (target team - getting roasted)
+    - Intensity: {{roast_intensity}} (low/medium/high)
+    - Language: {{language}}
+    - Search Results: {{search_response}}
+
+    TWEET REQUIREMENTS (CRITICAL):
+    - MAXIMUM 280 CHARACTERS - this is a tweet, not an essay
+    - ONE devastating roast that captures the BEST burn from the search data
+    - Must be screenshot-worthy, meme-able, instantly shareable
+    - Include ONE specific fact/stat/event from search results for credibility
+    - Can use emojis sparingly for impact (💀🔥😭)
+
+    STYLE - Channel Twitter's Best Roasters:
+    - Deadpan delivery: State devastating facts matter-of-factly
+    - Brutal but factual: Real stats, real embarrassments
+    - Meme energy: Reference viral moments, fan jokes, cultural roasts
+    - Intensity scaling:
+      * low: Playful jab with dark undertone
+      * medium: Solid burn that stings
+      * high: Career-ending, screenshot-worthy devastation
+
+    EXAMPLES OF GOOD TWEET ROASTS:
+    - "Palmeiras tem menos mundiais que rebaixamentos 💀"
+    - "51 is just cheap booze, not a World Cup year 🍺"
+    - "Imagine celebrating a Copa do Brasil and getting relegated the same year 😭"
+
+    ALSO GENERATE:
+    - 3 additional tweet variations (different angles/jokes)
+    - A headline (max 8 words) for the roast
+    - Source citations for the "why?" feature
+
+  schema:
+    title: "RoastAgentGenerateRoast"
+    description: "Generate hyper viral tweet-length roast (max 280 chars) with source citations"
+    type: "object"
+    properties:
+      roast_content:
+        type: "string"
+        maxLength: 280
+        description: "THE viral tweet roast - MAXIMUM 280 CHARACTERS. One devastating, meme-worthy line roasting Team B. Must be screenshot-worthy and shareable. Include one specific fact/stat for credibility. Can use emojis sparingly."
+      roast_points:
+        type: "array"
+        description: "3 alternative tweet roasts (different angles/jokes), each max 280 chars"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "integer"
+              description: "Roast variation number (1, 2, 3)"
+            content:
+              type: "string"
+              maxLength: 280
+              description: "Alternative tweet roast - max 280 characters"
+            target_team:
+              type: "string"
+              description: "Always 'team_b'"
+            source_references:
+              type: "array"
+              description: "Source IDs supporting this roast"
+              items:
+                type: "integer"
+      headline:
+        type: "string"
+        maxLength: 60
+        description: "Viral headline (max 8 words) - punchy summary of the roast"
+      sources:
+        type: "array"
+        description: "Sources used - enables 'why?' feature showing evidence"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "integer"
+              description: "Source ID"
+            url:
+              type: "string"
+              description: "Source URL"
+            title:
+              type: "string"
+              description: "Source title"
+            explanation:
+              type: "string"
+              description: "Why this source supports the roast (1 sentence)"
+            data_points:
+              type: "array"
+              description: "Key facts extracted"
+              items:
+                type: "string"
+    required: ["roast_content", "roast_points", "headline", "sources"]

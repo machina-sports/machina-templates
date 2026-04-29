@@ -1,0 +1,246 @@
+workflow:
+  name: "workflow-sync-teams"
+  title: "Sync Teams"
+  description: "Workflow to synchronize teams from SportRadar NFL API to Machina."
+  context-variables:
+    sportradar-nfl:
+      sportradar_api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    openai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+    season_year: "$.get('season_year') or None"
+    season_type: "$.get('season_type') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search for events in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'game'"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        sync_teams_count: "$.get('documents')[0].get('value', {}).get('version_control', {}).get('sync_teams_count', 0) if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 1 load-event-scheduled
+    - type: "document"
+      name: "load-event-scheduled"
+      description: "Search for events in the database."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        value.status: "{'$in': ['scheduled']}"
+        value.start_time: "{'$lt': datetime.utcnow() + timedelta(hours=24)}"
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.sync_teams_status: "{'$exists': False}"
+      inputs:
+        name: "'game'"
+      outputs:
+        event_code: "$.get('documents')[0].get('metadata').get('event_code') if $.get('documents') else None"
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        sync_teams_count: "$.get('documents')[0].get('value', {}).get('version_control', {}).get('sync_teams_count', 0) if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 2 version-control-start
+    - type: "document"
+      name: "version-control-start"
+      description: "Update the events document preevent."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'sync_teams_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+    
+    # 3 fetch-home-team
+    - type: "connector"
+      name: "fetch-home-team"
+      description: "Get Sport_Events/Summary from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          data_type: "'profile.json'"
+          team_id: "$.get('event_selected').get('home', {}).get('id', '')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        home-team: "$"
+        home-team-players: |
+          [
+            {
+              **p,
+              'metadata': {
+                'player_id': p.get('id', ''),
+                'team_id': $.get('id', ''),
+              },
+              'title': f"{p.get('name', '')}",
+            }
+            for p in $.get('players', [])
+          ]
+    
+    # 4 fetch-away-team
+    - type: "connector"
+      name: "fetch-away-team"
+      description: "Get Sport_Events/Summary from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          data_type: "'profile.json'"
+          team_id: "$.get('event_selected').get('away', {}).get('id', '')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        away-team: "$"
+        away-team-players: |
+          [
+            {
+              **p,
+              'metadata': {
+                'player_id': p.get('id', ''),
+                'team_id': $.get('id', ''),
+              },
+              'title': f"{p.get('name', '')}",
+            }
+            for p in $.get('players', [])
+          ]
+    
+    # 5 fetch-home-team-stats
+    - type: "connector"
+      name: "fetch-home-team-stats"
+      description: "Get Sport_Events/Stats from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-seasons/{season_year}/{season_type}/teams/{team_id}/{data_type}"
+        command_attribute:
+          data_type: "'statistics.json'"
+          season_year: "$.get('season_year', '')"
+          season_type: "$.get('season_type', '')"
+          team_id: "$.get('event_selected').get('home', {}).get('id', '')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        home-team-stats: "$"
+
+    # 6 fetch-away-team-stats
+    - type: "connector"
+      name: "fetch-away-team-stats"
+      description: "Get Sport_Events/Stats from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-seasons/{season_year}/{season_type}/teams/{team_id}/{data_type}"
+        command_attribute:
+          data_type: "'statistics.json'"
+          season_year: "$.get('season_year', '')"
+          season_type: "$.get('season_type', '')"
+          team_id: "$.get('event_selected').get('away', {}).get('id', '')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        away-team-stats: "$"
+    
+    # 7 update event summary
+    - type: "document"
+      name: "update-event-summary"
+      description: "Update the events document."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        event-summary: |
+          {
+            "execution": datetime.utcnow(),
+            "home-team": $.get('home-team'),
+            "away-team": $.get('away-team'),
+            "home-team-stats": $.get('home-team-stats'),
+            "away-team-stats": $.get('away-team-stats'),
+            "title": f"{$.get('title')} - Teams",
+            "status": 'active'
+          }
+      metadata:
+        document_type: "'event-summary'"
+        event_code: "$.get('event_code')"
+        language: "'en'"
+    
+    # 8 bulk-save-players
+    - type: "document"
+      name: "bulk-save-players"
+      condition: "$.get('event_exists') is True"
+      description: "Bulk save the players."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "player-profile"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('home-team-players', []),
+            *$.get('away-team-players', []),
+          ]
+
+    # 9 version-control-end
+    - type: "document"
+      name: "version-control-end"
+      description: "Update the events document preevent."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'sync_teams_count': $.get('sync_teams_count', 0) + 1,
+              'sync_teams_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

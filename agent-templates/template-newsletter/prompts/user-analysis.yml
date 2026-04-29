@@ -1,0 +1,51 @@
+prompts:
+
+  # user-profile-analysis-prompt
+  - type: prompt
+    name: user-profile-analysis-prompt
+    title: "User Profile Analysis Prompt"
+    description: "Analyzes fan profile data and provides structured insights about engagement and preferences"
+    instruction: |
+      You will receive fan profile data in the input. Analyze this data and provide structured insights.
+
+      INSTRUCTIONS:
+      1. Extract the fan's full name from the input data
+      2. Create a brief bio (2-3 sentences) summarizing their profile, interests, and relationship with the brand
+      3. Calculate engagement metrics from their activity history (email opens, purchases, visits, etc.)
+      4. Determine engagement level: high (multiple activities), medium (some activities), low (minimal activities)
+      5. Identify interests and preferences based on purchase history and attendance patterns
+      6. Provide personalized recommendations for content and offers
+      7. Extract location/city if available in the data
+
+      The fan data will be provided in the input as a structured object. Use the data fields to derive insights rather than making assumptions.
+
+      Respond with a structured analysis covering all the required schema fields including the user's full name and mini bio.
+    schema:
+      title: "UserProfileAnalysis"
+      description: "Structured analysis of fan profile data"
+      type: "object"
+      required:
+        - "full_name"
+        - "mini_bio"
+        - "engagement_level"
+        - "interests_and_preferences"
+        - "content_recommendations"
+      properties:
+        full_name:
+          type: "string"
+          description: "The user's complete full name"
+        mini_bio:
+          type: "string"
+          description: "Brief bio (2-3 sentences) summarizing profile, interests, and relationship with brand"
+        location:
+          type: "string"
+          description: "User's location/city if available"
+        engagement_level:
+          type: "string"
+          description: "The engagement level of the fan (high/medium/low)"
+        interests_and_preferences:
+          type: "string"
+          description: "The interests and preferences of the fan"
+        content_recommendations:
+          type: "string"
+          description: "The content recommendations for the fan"

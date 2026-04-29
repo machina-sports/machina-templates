@@ -1,0 +1,154 @@
+workflow:
+  name: "mlb-statsapi-sync-stats"
+  title: "MLB - Sync Stats"
+  description: "Workflow to synchronize player and team stats from MLB Stats API to Machina."
+  context-variables:
+    mlb-statsapi: {}
+  outputs:
+    player_stats: "$.get('player_stats')"
+    team_stats: "$.get('team_stats')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the stats document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=1)}"
+        value.status: "'active'"
+      inputs:
+        name: "'stats'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-load-team-stats
+    - type: "connector"
+      name: "task-load-team-stats"
+      description: "Get Team Stats from MLB Stats API"
+      connector:
+        name: "mlb-statsapi"
+        command: "get-v1-stats"
+      condition: "$.get('should_update') == True"
+      inputs:
+        stats: "season"
+        group: "hitting,pitching,fielding"
+        sportId: "1"  # MLB
+        season: "2023"
+      outputs:
+        team_stats: "$.get('stats')"
+
+    # task-load-player-stats
+    - type: "connector"
+      name: "task-load-player-stats"
+      description: "Get Player Stats from MLB Stats API"
+      connector:
+        name: "mlb-statsapi"
+        command: "get-v1-stats-leaders"
+      condition: "$.get('should_update') == True"
+      inputs:
+        leaderCategories: "homeRuns,battingAverage,era,wins,strikeouts"
+        season: "2023"
+        sportId: "1"  # MLB
+      outputs:
+        player_stats: "$.get('leagueLeaders')"
+
+    # task-update-stats
+    - type: "document"
+      name: "task-update-stats"
+      description: "Update the stats document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        stats: |
+          {
+            'data': {
+              'team_stats': $.get('team_stats'),
+              'player_stats': $.get('player_stats')
+            },
+            'title': 'Current Stats',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-player-stats
+    - type: "document"
+      name: "task-bulk-save-player-stats"
+      description: "Bulk save the player stats."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "player_stat"
+      documents:
+        items: |
+          [
+            {
+              'category': category.get('leaderCategory', ''),
+              'season': category.get('season', ''),
+              'leaders': [
+                {
+                  'rank': leader.get('rank', ''),
+                  'value': leader.get('value', ''),
+                  'name': leader.get('person', {}).get('fullName', ''),
+                  'team': leader.get('team', {}).get('name', '')
+                }
+                for leader in category.get('leaders', [])[:10]  # Top 10 leaders
+              ],
+              'title': category.get('leaderCategory', '') + ' Leaders',
+              'selected': False
+            }
+            for category in $.get('player_stats')
+          ]
+      metadata:
+        document_type: "'player_stat'"
+
+    # task-bulk-save-team-stats
+    - type: "document"
+      name: "task-bulk-save-team-stats"
+      description: "Bulk save the team stats."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "team_stat"
+      documents:
+        items: |
+          [
+            {
+              'group': stat.get('group', {}).get('displayName', ''),
+              'type': stat.get('type', {}).get('displayName', ''),
+              'season': stat.get('season', ''),
+              'stats': stat.get('splits', []),
+              'title': stat.get('group', {}).get('displayName', '') + ' - ' + stat.get('type', {}).get('displayName', ''),
+              'selected': False
+            }
+            for stat in $.get('team_stats')
+          ]
+      metadata:
+        document_type: "'team_stat'" 

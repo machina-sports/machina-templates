@@ -1,0 +1,13 @@
+agent:
+  name: machina-football-data-event-live-update
+  title: Machina Football Data - Event Live Update
+  description: Agent to consume and update live football events.
+  status: inactive
+  config-frequency: 0.1
+  workflows:
+    - name: machina-football-data-event-consumer-live
+      title: Event Consumer (Live)
+    - name: machina-football-data-event-synchronize
+      title: Event Synchronize
+    - name: machina-football-data-event-update
+      title: Event Update

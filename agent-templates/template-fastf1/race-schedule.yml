@@ -1,0 +1,24 @@
+workflow:
+  name: "get-race-schedule"
+  title: "Get Race Schedule"
+  description: "Workflow to get the F1 race schedule for a specific year."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    year: "$.get('year') or None"
+  outputs:
+    race_schedule: "$.get('race_schedule')"
+    workflow-status: "$.get('race_schedule') is not None and 'executed' or 'skipped'"
+
+  tasks:
+    - type: "connector"
+      name: "get-race-schedule"
+      description: "Get the F1 race schedule for a specific year."
+      connector:
+        name: "fastf1"
+        command: "get_race_schedule"
+      inputs:
+        year: "$.get('year')"
+      outputs:
+        race_schedule: "$" 

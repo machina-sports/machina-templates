@@ -1,0 +1,32 @@
+workflow:
+  name: "sync-nhl-team"
+  title: "Sync NHL Team"
+  description: "Workflow to sync nhl team."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nhl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    team_id: "$.get('team_id') or None"
+  outputs:
+    events: "$.get('events')"
+    team-profile: "$.get('team-profile')"
+    workflow-status: "$.get('team-profile', []) is None and 'skipped' or 'executed'"
+  tasks:
+    
+    # task-load-team-events
+    - type: "connector"
+      name: "task-load-team-events"
+      description: "Get Team Events from SportRadar"
+      connector:
+        name: "sportradar-nhl"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          team_id: "$.get('team_id')"
+          data_type: "'profile.json'"
+      condition: "$.get('team_id') is not None"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        team-profile: "$"

@@ -1,0 +1,103 @@
+workflow:
+
+  # sportradar-soccer-sync-schedules
+  name: sportradar-soccer-sync-schedules
+  title: Sportradar Soccer - Schedules
+  description: Workflow to synchronize a season schedules from SportRadar API to Machina.
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    season_id: $.get('season_id')
+    start: $.get('start', '0')
+  outputs:
+    schedules: $.get('schedules')
+    workflow-status: len($.get('all_events_ids', [])) > len($.get('existing_events_ids', [])) and 'executed' or 'skipped'
+  tasks:
+
+    # load-schedules
+    - type: connector
+      name: load-schedules
+      description: Get a season schedules from SportRadar
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/{data_type}
+        command_attribute:
+          season_id: $.get('season_id')
+          data_type: "'schedules.json'"
+      condition: $.get('season_id') is not None
+      inputs:
+        api_key: $.get('api_key')
+        start: $.get('start')
+      outputs:
+        schedules: $.get('schedules')
+
+    # iptc-api-football-event-mapping
+    - type: mapping
+      name: iptc-sportradar-event-mapping
+      title: IPTC | Sportradar Event Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: $.get('season_id') is not None
+      inputs:
+        schedules: $.get('schedules', [])
+      outputs:
+        all_events: $.get('sport_schema_events')
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-events-by-ids
+    - type: document
+      name: load-events-by-ids
+      condition: $.get('season_id') is not None and $.get('all_events_ids') is not None
+      description: Load existing events by IDs.
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.get('all_events_ids', [])}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+
+    # task-bulk-save-events
+    - type: document
+      name: task-bulk-save-events
+      description: Bulk save the individual events.
+      condition: $.get('season_id') is not None and $.get('all_events_ids') is not None and len($.get('all_events_ids', [])) > len($.get('existing_events_ids', []))
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'sport:Event'"
+      documents:
+        items: $.get('new_events_list')
+      inputs:
+        new_events_list: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
+              },
+              'title': f"{f.get('sport:competition', {}).get('name', '')} - {f.get('name', '')}"
+            }
+            for f in $.get('all_events', [])
+            if str(f.get('@id', '')) not in $.get('existing_events_ids', [])
+          ]

@@ -1,0 +1,94 @@
+workflow:
+
+  name: sportradar-soccer-config-seasons-workflow
+  title: Sportradar Soccer - Config Seasons Workflow
+  description: Workflow to load seasons for coverage tools
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  outputs:
+    competition-ids: $.get('competition-ids')
+    current-seasons: $.get('current-seasons')
+    current-seasons-id: $.get('current-seasons-id')
+    workflow-status: "'executed'"
+  tasks:
+
+    # load dispatch configuration
+    - type: document
+      name: load-seasons-config
+      description: Load seasons configuration (supports sportradar-soccer-config or coverage-soccer-preview-config)
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "{'$in': ['sportradar-soccer-config', 'coverage-soccer-preview-config']}"
+      sorters:
+        - "name"
+        - -1
+      outputs:
+        coverage-soccer-preview-raw: $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', []) if len($.get('documents', [])) > 0 else []
+        # Support hybrid format: string (all teams) or object with competition + teams filter
+        competition-ids: |
+          [
+            (item if isinstance(item, str) else item.get('competition', '')).replace('urn:sportradar:competition:', 'sr:competition:')
+            for item in $.get('documents', [])[0].get('value', {}).get('coverage-soccer-preview', [])
+            if isinstance(item, str) or (isinstance(item, dict) and item.get('competition'))
+          ]
+
+    # task-load-seasons
+    - type: connector
+      name: task-load-seasons
+      description: Get Seasons from SportRadar
+      condition: $.get('competition-ids') is not None and len($.get('competition-ids', [])) > 0
+      connector:
+        name: sportradar-soccer
+        command: get-competitions/{competition_id}/seasons.json
+        command_attribute:
+          competition_id: $.get('competition-id')
+      foreach:
+        name: competition-id
+        expr: $
+        value: $.get('competition-ids')
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        competitions-seasons: |
+          [
+            $.get('seasons', [])
+          ]
+
+    # task-parse-season
+    - type: connector
+      name: task-parse-season
+      description: Parse Season
+      connector:
+        name: coverage-get-current-season
+        command: invoke_get_current_season
+      foreach:
+        name: seasons
+        expr: $
+        value: $.get('competitions-seasons', [])
+      inputs:
+        seasons: $.get('seasons')
+      outputs:
+        current-seasons: |
+          [
+            $.get('current-season')
+          ]
+        current-seasons-id: |
+          [
+            $.get('current-season', {}).get('id', '')
+          ]
+
+    # NOTE:
+    # Sync of `season:Schedule` documents is orchestrated by the agent
+    # (`connectors/sportradar-soccer/agents/config-seasons.yml`) to avoid
+    # nested `type: workflow` execution issues in this workflow.

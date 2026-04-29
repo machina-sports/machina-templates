@@ -1,0 +1,39 @@
+prompts:
+
+  # assistant-find-events-selector
+  - type: prompt
+    name: assistant-find-events-selector
+    title: Assistant Find Events Selector
+    description: Selects relevant events from search results based on user query and time context
+    instruction: |
+      Select events by index that MATCH or are RELEVANT to the user query. Use flexible matching to identify related events.
+
+      MATCHING RULES:
+      - COMPETITION MATCH: If user mentions competition name (e.g., "Brasileirão", "Premier League", "Champions League"), return ALL events from that competition
+      - TEAM MATCH: If user mentions specific team name, return events containing that team (fuzzy matching: "Flamengo" matches "CR Flamengo RJ")
+      - GENERIC QUERIES: "próximos jogos", "jogos de hoje", "next matches" → return ALL events found
+      - ROUND/RODADA: "próxima rodada", "round" → return ALL events from the same competition/timeframe
+      - Compare team and competition names case-insensitively and with partial matching
+      - If events share same competition in description, they are likely related
+      - Only return [] if truly NO events are relevant
+
+      QUANTITY:
+      - SPECIFIC TEAM ("Flamengo", "Chelsea"): Return events with that team (1-2 events)
+      - COMPETITION ("Brasileirão", "Premier League"): Return ALL events from that competition (up to 15)
+      - ROUND/GENERIC ("próxima rodada", "jogos de hoje"): Return ALL events (up to 15)
+      - SINGULAR ("the match", "o jogo"): Return ONLY index 0
+      
+      CRITICAL: Be GENEROUS with matching. If in doubt about relevance, INCLUDE the event.
+    schema:
+      title: AssistantFindEventsSelector
+      description: Selects events by array index based on user query
+      type: object
+      required: [
+        "selected_events"
+      ]
+      properties:
+        selected_events:
+          type: array
+          description: Array of event indices that match or are relevant to the user query. Be GENEROUS - for competition queries or rounds, return ALL related events (up to 15). For specific teams, return 1-2 events. Only return empty array if NO events are relevant.
+          items:
+            type: integer

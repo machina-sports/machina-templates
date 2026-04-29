@@ -1,0 +1,26 @@
+workflow:
+  name: "get-session-data"
+  title: "Get Session Data"
+  description: "Workflow to get session data."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    session_name: "$.get('session_name') or None"
+    session_year: "$.get('session_year') or None"
+  outputs:
+    session_data: "$.get('session_data')"
+    workflow-status: "$.get('session_data') is not None and 'executed' or 'skipped'"
+
+  tasks:
+    - type: "connector"
+      name: "get-session-data"
+      description: "Get session data."
+      connector:
+        name: "fastf1"
+        command: "get_session_data"
+      inputs:
+        session_name: "$.get('session_name')"
+        session_year: "$.get('session_year')"
+      outputs:
+        session_data: "$"

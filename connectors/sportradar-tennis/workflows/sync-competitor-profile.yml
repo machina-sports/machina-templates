@@ -1,0 +1,88 @@
+workflow:
+  name: "sportradar-tennis-sync-competitor-profile"
+  title: "Tennis - Competitor Profile"
+  description: "Workflow to synchronize detailed tennis competitor profile information from SportRadar API to Machina."
+  context-variables:
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    competitor_id: "$.get('competitor_id')"
+  outputs:
+    competitor_profile: "$.get('competitor_profile')"
+    competitor: "$.get('competitor')"
+    competitor_info: "$.get('competitor_info')"
+    competitor_rankings: "$.get('competitor_rankings')"
+    periods: "$.get('periods')"
+    competitions_played: "$.get('competitions_played')"
+    workflow-status: "$.get('competitor_profile') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-competitor-profile
+    - type: "connector"
+      name: "task-load-competitor-profile"
+      description: "Get Competitor Profile from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/competitors/{competitor_id}/profile.json"
+        command_attribute:
+          competitor_id: "$.get('competitor_id')"
+      inputs:
+        competitor_id: "$.get('competitor_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        competitor_profile_response: "$"
+        competitor_profile: "$"
+        competitor: "$.get('competitor', {})"
+        competitor_info: "$.get('info', {})"
+        competitor_rankings: "$.get('competitor_rankings', [])"
+        periods: "$.get('periods', [])"
+        competitions_played: "$.get('competitions_played', [])"
+
+    # task-save-competitor-profile
+    - type: "document"
+      name: "task-save-competitor-profile"
+      description: "Save the detailed competitor profile information."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        tennis-competitor-profile: |
+          {
+            **$.get('competitor', {}),
+            **$.get('competitor_info', {}),
+            'title': f"{$.get('competitor', {}).get('name', '')} - Tennis Profile",
+            'sport': 'tennis',
+            'execution': datetime.utcnow(),
+            'status': 'active',
+            'generated_at': $.get('competitor_profile_response', {}).get('generated_at'),
+            'age': (datetime.utcnow() - datetime.strptime($.get('competitor_info', {}).get('date_of_birth', '1990-01-01'), '%Y-%m-%d')).days // 365 if $.get('competitor_info', {}).get('date_of_birth') else None,
+            'current_singles_ranking': next((r.get('rank') for r in $.get('competitor_rankings', []) if r.get('type') == 'singles' and not r.get('race_ranking', False)), None),
+            'current_doubles_ranking': next((r.get('rank') for r in $.get('competitor_rankings', []) if r.get('type') == 'doubles' and not r.get('race_ranking', False)), None),
+            'current_singles_points': next((r.get('points') for r in $.get('competitor_rankings', []) if r.get('type') == 'singles' and not r.get('race_ranking', False)), None),
+            'current_doubles_points': next((r.get('points') for r in $.get('competitor_rankings', []) if r.get('type') == 'doubles' and not r.get('race_ranking', False)), None),
+            'total_competitions_played': sum(p.get('statistics', {}).get('competitions_played', 0) for p in $.get('periods', [])),
+            'total_competitions_won': sum(p.get('statistics', {}).get('competitions_won', 0) for p in $.get('periods', [])),
+            'total_matches_played': sum(p.get('statistics', {}).get('matches_played', 0) for p in $.get('periods', [])),
+            'total_matches_won': sum(p.get('statistics', {}).get('matches_won', 0) for p in $.get('periods', [])),
+            'win_percentage': round((sum(p.get('statistics', {}).get('matches_won', 0) for p in $.get('periods', [])) / sum(p.get('statistics', {}).get('matches_played', 0) for p in $.get('periods', [])) * 100), 2) if sum(p.get('statistics', {}).get('matches_played', 0) for p in $.get('periods', [])) > 0 else 0,
+            'years_active': len($.get('periods', [])),
+            'competitions_count': len($.get('competitions_played', [])),
+            'competitions_played': $.get('competitions_played', []),
+            'periods': $.get('periods', []),
+            'competitions_played': $.get('competitions_played', []),
+            'ranking_systems': list(set(r.get('name') for r in $.get('competitor_rankings', []))),
+            'competitor_rankings': $.get('competitor_rankings', []),
+            'surface_preferences': [s.get('type') for period in $.get('periods', []) for s in period.get('surfaces', []) if s.get('statistics', {}).get('matches_won', 0) / max(s.get('statistics', {}).get('matches_played', 1), 1) > 0.6][:3] if $.get('periods') else []
+          }
+      metadata:
+        document_type: "'competitor-profile'"
+        sport: "'tennis'"
+        competitor_id: "$.get('competitor_id')"
+        competitor_name: "$.get('competitor', {}).get('name', '')"
+        competitor_gender: "$.get('competitor', {}).get('gender', '')"
+        competitor_country: "$.get('competitor', {}).get('country', '')"

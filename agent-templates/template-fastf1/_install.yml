@@ -1,0 +1,42 @@
+setup:
+  title: "FastF1 Onboarding"
+  description: AI-powered onboarding for FastF1.
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to get session data.
+    - AI Reporter to generate session data.
+    - Access race results, driver information, and race schedules.
+    - Retrieve team information and detailed lap data.
+  integrations:
+    - fastf1
+  status: available
+  value: "agent-templates/template-fastf1"
+  version: 1.0.0
+
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../../connectors/fastf1/fastf1.yml"
+  - type: "connector"
+    path: "../../connectors/machina-ai/machina-ai.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "session-data.yml"
+  - type: "workflow"
+    path: "race-results.yml"
+  - type: "workflow"
+    path: "driver-info.yml"
+  - type: "workflow"
+    path: "race-schedule.yml"
+  - type: "workflow"
+    path: "team-info.yml"
+  - type: "workflow"
+    path: "lap-data.yml"
+
+  # prompts
+  - type: "prompts"
+    path: "_prompts.yml"

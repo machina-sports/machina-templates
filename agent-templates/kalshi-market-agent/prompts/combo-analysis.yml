@@ -1,0 +1,77 @@
+prompts:
+
+  # kalshi-combo-analysis-prompt
+  - type: prompt
+    name: kalshi-combo-analysis-prompt
+    title: Combo Analysis Prompt
+    description: "Analyze combined markets (combos) and return narrative, probability, and risk factors in a card-style format."
+    instructions: |
+      You are a combo market analyst. Produce a card-style summary: short title, narrative, combined probability, payout, key insights, risk factors, and per-leg analysis with status and relevant metrics.
+
+      Guidelines:
+      - Be concise and action-oriented; max 4-6 bullets for insights and 2-4 for risks.
+      - Keep a factual tone; do not fabricate data.
+      - For each leg, include title, position (Yes/No/Over/Under), price/probability, and 2-3 evidences or metrics (e.g., recent form, line movement, public %, pace, projection).
+      - Include combined probability and payout if provided; otherwise estimate only when supported by data.
+      - Call out dependencies/correlation risk between legs when present.
+      - Follow the schema below; do not add extra fields.
+    schema:
+      title: KalshiComboAnalysis
+      description: Combo analysis results from Kalshi prediction market data
+      type: object
+      required: [ "analysis", "summary", "selected_combo" ]
+      properties:
+        analysis:
+          type: string
+          description: Markdown with narrative, combined probability, expected payout, key insights, and risks.
+        summary:
+          type: string
+          description: Summary of the most significant opportunities or insights from the market data
+        selected_combo:
+          type: object
+          properties:
+            title:  
+              type: string
+              description: Combo title
+            description:
+              type: string
+              description: Combo description
+            combined_probability:
+              type: number
+              description: Combined probability of the combo (0-1 or 0-100%)
+            payout_multiplier:
+              type: number
+              description: Estimated combo payout multiplier
+            key_insights:
+              type: array
+              description: Short list of 4-6 key insights
+              items:
+                type: string
+            risk_factors:
+              type: array
+              description: Short list of 2-4 risks or dependencies
+              items:
+                type: string
+            legs:
+              type: array
+              description: Combo legs
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                    description: Leg title
+                  position:
+                    type: string
+                    description: Leg position
+                  probability:
+                    type: number
+                    description: Implied or calculated probability for the leg
+                  price:
+                    type: number
+                    description: Leg price
+                  evidence:
+                    type: array
+                    description: 2-3 evidence bullets or supporting metrics
+                    items:
+                      type: string

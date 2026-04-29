@@ -1,0 +1,58 @@
+agent:
+  # machina-assistant-executor
+  name: machina-assistant-executor
+  title: Machina Assistant - Chat Executor
+  description: AI-powered assistant for Machina platform questions and guidance
+
+  context:
+    status: "inactive"
+
+  context-agent:
+    thread_id: $.get('thread_id', None)
+    messages: $.get('messages', [])
+
+  workflows:
+    # Step 1: Analyze user question and determine intent
+    - name: machina-assistant-reasoning
+      description: Analyze user question and search for relevant information
+      condition: $.get('messages') is not None and len($.get('messages')) > 0
+      inputs:
+        thread_id: $.get('thread_id')
+        input_message: $.get('messages', [])
+      outputs:
+        reasoning: $.get('reasoning')
+        document_id: $.get('document_id')
+        reasoning_status: $.get('workflow-status') == 'executed'
+
+    # Step 2: Generate response using knowledge base and LLM
+    - name: machina-assistant-response
+      description: Generate helpful response with examples and guidance
+      condition: $.get('document_id') is not None and $.get('reasoning_status') is True
+      inputs:
+        document_id: $.get('document_id')
+        reasoning: $.get('reasoning')
+      outputs:
+        response_text: $.get('response_text')
+        suggestions: $.get('suggestions', [])
+        response_content: $.get('response_content')
+        response_status: $.get('workflow-status') == 'executed'
+
+    # Step 3: Update thread with final response
+    - name: machina-assistant-update
+      description: Update conversation thread
+      condition: $.get('document_id') is not None and $.get('response_status') is True
+      inputs:
+        document_id: $.get('document_id')
+        response_content: $.get('response_content')
+        response_text: $.get('response_text')
+        suggestions: $.get('suggestions', [])
+      outputs:
+        thread_id: $.get('document_id')
+        workflow-status: $.get('workflow-status')
+        # Include response text and suggestions in final agent output
+        # Use $.context.get to access agent state (not workflow response)
+        # response_text is needed for backend _extract_response function
+        response_text: $.context.get('response_text', '')
+        content: $.context.get('response_text', '')
+        objects: []
+        suggestions: $.context.get('suggestions', [])

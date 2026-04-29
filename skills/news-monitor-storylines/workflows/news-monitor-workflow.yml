@@ -1,0 +1,66 @@
+workflow:
+
+  name: news-monitor-workflow
+  title: News Monitor Storylines
+  description: |
+    Fetches recent news for an entity (player or team) via the
+    `news-api` connector and clusters the returned articles into named
+    storylines (transfer rumor, injury, controversy, etc.) with a
+    timeline + recommended action for the editorial team.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    entity: "$.get('entity', '')"
+    entity_type: "$.get('entity_type', '')"
+    start_date: "$.get('start_date', '')"
+
+  outputs:
+    storylines: "$.get('storylines', [])"
+    outliers: "$.get('outliers', [])"
+    workflow-status: "($.get('storylines') or $.get('outliers')) and 'executed' or 'skipped'"
+
+  tasks:
+
+    # 1. Hit news-api for articles mentioning the entity. The query
+    #    string is built with plain string concatenation — Truth
+    #    Point's expression engine doesn't support Python f-strings.
+    - type: connector
+      name: fetch-news
+      description: Fetch articles mentioning the entity
+      condition: "$.get('entity') is not None and $.get('entity') != ''"
+      connector:
+        name: news-api
+        command: get-everything
+      inputs:
+        q: "'\"' + $.get('entity', '') + '\"'"
+        from: "$.get('start_date', '')"
+        sortBy: "'popularity'"
+        language: "'en'"
+      outputs:
+        articles: "$.get('articles', [])"
+
+    # 2. Cluster the articles into storylines. task.name MUST equal
+    #    the prompt's `name` (cluster-articles-prompt) — that's how
+    #    the runner picks the right prompt to invoke. task.connector
+    #    is the LLM PROVIDER, not the prompt.
+    - type: prompt
+      name: cluster-articles-prompt
+      description: Cluster articles into storylines via Gemini
+      condition: "$.get('articles') is not None and len($.get('articles', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        articles_json: "str($.get('articles', []))"
+      outputs:
+        storylines: "$.get('storylines', [])"
+        outliers: "$.get('outliers', [])"

@@ -1,0 +1,39 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Metadata API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.metadata.com/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "paths": {
+    "/teams/{id}": {
+      "get": {
+        "summary": "Get team",
+        "operationId": "get-team"
+      }
+    },
+    "/players/{id}": {
+      "get": {
+        "summary": "Get player",
+        "operationId": "get-player"
+      }
+    }
+  }
+}

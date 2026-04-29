@@ -1,0 +1,88 @@
+workflow:
+  name: psg-podcast-generator-event-analyzer
+  title: "PSG Podcast Generator Event Analyzer"
+  description: "Workflow to analyze a PSG event."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code', [])"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Load event details
+    - type: "document"
+      name: "load-event-details"
+      description: "Load event details"
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'soccer-game'"
+      outputs:
+        event_details: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else None"
+        event_exists: "len($.get('documents', [])) > 0"
+
+    # 6 psg-event-details-prompt
+    - type: prompt
+      name: psg-event-details-prompt
+      description: Embed event details.
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        title: "$.get('title')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        event-statistics: "$.get('event_details')"
+      outputs:
+        research-event-details: "$"
+        research-event-details-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 7 update-snippets
+    - type: "document"
+      name: "update-snippets"
+      condition: "$.get('event_exists') is True"
+      description: "Update the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('research-event-details-bulk', [])
+          ]

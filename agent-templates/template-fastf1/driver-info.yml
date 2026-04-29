@@ -1,0 +1,26 @@
+workflow:
+  name: "get-driver-info"
+  title: "Get Driver Information"
+  description: "Workflow to get information about F1 drivers."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    driver: "$.get('driver') or None"
+    year: "$.get('year') or None"
+  outputs:
+    driver_info: "$.get('driver_info')"
+    workflow-status: "$.get('driver_info') is not None and 'executed' or 'skipped'"
+
+  tasks:
+    - type: "connector"
+      name: "get-driver-info"
+      description: "Get information about F1 drivers."
+      connector:
+        name: "fastf1"
+        command: "get_driver_info"
+      inputs:
+        driver: "$.get('driver')"
+        year: "$.get('year')"
+      outputs:
+        driver_info: "$" 

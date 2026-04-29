@@ -1,0 +1,267 @@
+workflow:
+  name: "workflow-reporter-gamerecap"
+  title: "Reporter Game Recap"
+  description: "Workflow to produce game recap."
+  context-variables:
+    sportradar-nfl:
+      sportradar_api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    openai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    debugger:
+      enabled: true
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search for events in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'game'"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        gamerecap_count: "$.get('documents')[0].get('value', {}).get('version_control', {}).get('gamerecap_count', 0) if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 1 load-event-scheduled
+    - type: "document"
+      name: "load-event-scheduled"
+      description: "Search for events in the database."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        value.status: "{'$in': ['closed']}"
+        value.version_control.gamerecap_status: "{'$exists': False}"
+        value.version_control.processing: "{'$ne': True}"
+      inputs:
+        name: "'game'"
+      outputs:
+        event_code: "$.get('documents')[0].get('metadata').get('event_code') if $.get('documents') else None"
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        gamerecap_count: "$.get('documents')[0].get('value', {}).get('version_control', {}).get('gamerecap_count', 0) if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 2 version-control-start
+    - type: "document"
+      name: "version-control-start"
+      description: "Update the events document preevent."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'gamerecap_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+    
+    # 3 load-event-summary
+    - type: "document"
+      name: "load-event-summary"
+      description: "Load the events document summary."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata: |
+          {
+            'document_type': 'event-summary',
+            'event_code': $.get('event_code'),
+            'language': 'en'
+          }
+      inputs:
+        name: "'event-summary'"
+      outputs:
+        event-summary: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event-summary_exists: "len($.get('documents')) > 0"
+    
+    # 4 fetch-event-boxscore
+    - type: "connector"
+      name: "fetch-event-boxscore"
+      description: "Get Sport_Events/boxscore from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{game_id}/{data_type}"
+        command_attribute:
+          data_type: "'boxscore.json'"
+          game_id: "$.get('event_code')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        event-boxscore: "$"
+    
+    # 5 fetch-event-play-by-play
+    - type: "connector"
+      name: "fetch-event-play-by-play"
+      description: "Get Sport_Events/play_by_play from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{game_id}/{data_type}"
+        command_attribute:
+          data_type: "'pbp.json'"
+          game_id: "$.get('event_code')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        event-play-by-play: "$"
+
+    # 6 fetch-event-statistics
+    - type: "connector"
+      name: "fetch-event-statistics"
+      description: "Get Sport_Events/Statistics from SportRadar"
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{game_id}/{data_type}"
+        command_attribute:
+          data_type: "'statistics.json'"
+          game_id: "$.get('event_code')"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        event-statistics: "$"
+
+    # 7 prompt-match-recap
+    - type: "prompt"
+      name: "prompt-match-recap"
+      description: "Generate a recap of the game, highlighting the key moments and insights."
+      condition: "$.get('event_exists') is True and $.get('event-boxscore', {}).get('status', '') is not 'inprogress'"
+      connector:
+        name: "openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        # data-event-boxscore: "$.get('event-boxscore', {})"
+        data-summary-home: "$.get('event-statistics', {}).get('summary', {}).get('home', {})"
+        data-summary-away: "$.get('event-statistics', {}).get('summary', {}).get('away', {})"
+      outputs:
+        bulk-recap: |
+          [
+            {
+              'subject': c.get('subject', ''),
+              'text': f"{c.get('content', '')}",
+              'confidence': c.get('confidence', 0),
+              'title': f"$.(title) - {c.get('title')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('sections')
+          ]
+        content-recap: "$"
+
+    # 8 document-update
+    - type: "document"
+      name: "document-update"
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        content-insights: |
+          {
+            **$.get('content-recap'),
+            'title': f"$.(title) - Recap"
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+        language: "'en'"
+    
+    # 9 bulk-save-snippets
+    - type: "document"
+      name: "bulk-save-snippets"
+      condition: "$.get('event_exists') is True"
+      description: "Bulk save the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('bulk-recap', []),
+          ]
+    
+    # 10 bulk-save-insights
+    - type: "document"
+      name: "bulk-save-insights"
+      condition: "$.get('event_exists') is True"
+      description: "Bulk save the insights."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-insights"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('bulk-recap', []),
+          ]
+
+    # 11 version-control-end
+    - type: "document"
+      name: "version-control-end"
+      description: "Update the events document end."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'gamerecap_count': $.get('gamerecap_count', 0) + 1,
+              'gamerecap_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

@@ -1,0 +1,20 @@
+setup:
+  title: "Article Summary"
+  description: "Summarizes a pasted sports article into 3 concise bullet points using Google Gemini."
+  category:
+    - custom-templates
+  estimatedTime: 2 minutes
+  features:
+    - "Accepts arbitrary sports article text as input."
+    - "Produces a focused 3-bullet summary highlighting the key facts."
+  integrations:
+    - google-genai
+  status: available
+  value: "agent-templates/article-summary"
+  version: 1.0.0
+
+datasets:
+  - type: "prompt"
+    path: "prompts/summarize-article.yml"
+  - type: "workflow"
+    path: "workflows/summarize-article.yml"

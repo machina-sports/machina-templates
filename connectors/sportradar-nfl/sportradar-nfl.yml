@@ -1,0 +1,5 @@
+connector:
+  name: "sportradar-nfl"
+  description: "Sportradar NFL API v7"
+  filename: "sportradar-nfl.json"
+  filetype: "restapi" 

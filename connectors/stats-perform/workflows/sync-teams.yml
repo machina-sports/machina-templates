@@ -1,0 +1,113 @@
+workflow:
+  name: "sp-opta-sync-teams"
+  title: "Stats Perform Opta - Teams (Brasil)"
+  description: "Workflow to synchronize teams from Stats Perform Opta API for Brazil"
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    teams: "$.get('iptc_teams')"
+    workflow-status: "len($.get('all_teams_ids', [])) > len($.get('existing_teams_ids', [])) and 'executed' or 'skipped'"
+  tasks:
+    # Get access token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('season_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # Load teams from tournament calendar (season)
+    - type: "connector"
+      name: "load-teams-by-season"
+      description: "Get teams from Stats Perform Opta API filtered by tournament calendar (season)"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      condition: "$.get('access_token') is not None and $.get('season_id') is not None"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'team'"
+        query_params: |
+          {
+            'tmcl': str($.get('season_id')),
+            'detailed': 'yes'
+          }
+      outputs:
+        teams_raw: "$.get('contestant', [])"
+
+    # IPTC mapping
+    - type: "mapping"
+      name: "iptc-opta-team-mapping"
+      description: "Convert teams to IPTC Sport Schema format"
+      condition: "$.get('teams_raw') is not None"
+      inputs:
+        teams_raw: "$.get('teams_raw')"
+      outputs:
+        iptc_teams: "$.get('sport_schema_teams')"
+        all_teams_ids: |
+          [str(t.get('@id', '')) for t in $.get('sport_schema_teams', [])]
+
+    # load-teams-by-ids
+    - type: "document"
+      name: "load-teams-by-ids"
+      condition: "$.get('all_teams_ids') is not None"
+      description: "Load existing teams by IDs."
+      config:
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.team_code: |
+          {'$in': $.(all_teams_ids)}
+      inputs:
+        name: "'sport:Team'"
+      outputs:
+        existing_teams_ids: |
+          [
+            team.get('metadata', {}).get('team_code', '')
+            for team in $.get('documents', [])
+          ]
+
+    # Bulk save individual teams
+    - type: "document"
+      name: "bulk-save-teams"
+      description: "Bulk save the individual teams."
+      condition: "$.get('all_teams_ids') is not None and len($.get('all_teams_ids', [])) > len($.get('existing_teams_ids', []))"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Team'"
+      documents:
+        items: "$.get('new_teams_list')"
+      inputs:
+        new_teams_list: |
+          [
+            {
+              **t,
+              'metadata': {
+                'team_code': str(t.get('@id', '')),
+                'sport_name': str(t.get('schema:sportName', ''))
+              },
+              'title': t.get('name', '')
+            }
+            for t in $.get('iptc_teams', [])
+            if str(t.get('@id', '')) not in $.(existing_teams_ids)
+          ]
+      metadata:
+        document_type: "'sp-team'"
+

@@ -1,0 +1,26 @@
+prompt:
+  type: "prompt"
+  title: "Embedding Standings"
+  name: "prompt-embedding-standings"
+  description: "This schema defines the structure to generate a detailed standings analysis comparing Corinthians' position and performance in their competition."
+  schema:
+    title: "EmbeddingStandings"
+    description: "This schema defines the structure to generate a comparative standings analysis for Corinthians and their opponents in a soccer match."
+    type: "object"
+    properties:
+      snippets:
+        type: "array"
+        description: "An array of snippets analyzing Corinthians' standings and recent performance with the raw intensity of a die-hard fan."
+        items:
+          type: "object"
+          properties:
+            title:
+              type: "string"
+              description: "The category of standings analysis (e.g., league positions comparison, form analysis, points gap, etc)."
+            content:
+              type: "string"
+              description: "Deliver hard-hitting, stats-driven analysis about Corinthians' standing with precise numbers only. For example: 'Corinthians sit 5th with 42 points, just 3 points behind leaders Palmeiras' or 'Corinthians have won 7 of their last 10 matches (70% win rate), scoring 18 goals and conceding only 6.' Include specific point gaps, win percentages, goal differentials with exact numbers. Convert all vague statements like 'good home form' to numerical facts like 'Corinthians have won 8 of 10 home games (80%), scoring 2.3 goals per home match.' Every single claim must be supported by an actual number, percentage, or quantifiable metric."
+          required: ["title", "content"]
+        minItems: 3
+        maxItems: 5
+

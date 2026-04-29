@@ -1,0 +1,51 @@
+workflow:
+  name: "sportradar-nfl-sync-weekly"
+  title: "Sportradar NFL Sync Weekly"
+  description: "Workflow to sync NFL weekly data."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    data_type: "$.get('data_type', 'schedule.json')"
+  outputs:
+    week_sequence: "$.get('week_sequence')"
+    season_type: "$.get('season_type')"
+    season_year: "$.get('season_year')"
+    pst_week: "$.get('pst_week')"
+    workflow-status: "$.get('week_sequence', '') is None and 'skipped' or 'executed'"
+  tasks:
+
+    # task-load-weekly
+    - type: "connector"
+      name: "task-load-weekly"
+      description: "Get weekly data from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/current_week/{data_type}"
+        command_attribute:
+          data_type: "$.get('data_type')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        weekly: "$"
+        week_sequence: "$.get('week', {}).get('sequence', '')"
+        api_season_type: "$.get('season', {}).get('type', 'REG')"
+
+    # task-detect-season-type
+    - type: "connector"
+      name: "task-detect-season-type"
+      description: "Detect correct season type based on week sequence"
+      connector:
+        name: "sportradar-nfl-detect-season-type"
+        command: "detect_season_type"
+      inputs:
+        week_sequence: "$.get('week_sequence')"
+        api_season_type: "$.get('api_season_type')"
+      outputs:
+        season_type: "$.get('season_type')"
+        season_year: "$.get('season_year')"
+        pst_week: "$.get('pst_week')"

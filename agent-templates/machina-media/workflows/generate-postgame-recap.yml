@@ -1,0 +1,36 @@
+workflow:
+  name: generate-postgame-recap
+  description: "Generates a postgame recap script and assets."
+  inputs:
+    final_event:
+      type: object
+      description: "The final event data."
+      required: true
+    key_moments:
+      type: array
+      description: "A list of key moments from the event."
+      required: true
+    storylines:
+      type: array
+      description: "A list of resulting storylines."
+      required: true
+  tasks:
+    - name: generate_recap
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt: postgame-recap-prompt
+      inputs:
+        final_event: "$.get('final_event')"
+        key_moments: "$.get('key_moments')"
+        storylines: "$.get('storylines')"
+  outputs:
+    recap_script: "$.get('generate_recap', {}).get('recap_script', '')"
+    summary_draft: "$.get('generate_recap', {}).get('summary_draft', '')"
+    clip_candidates: "$.get('generate_recap', {}).get('clip_candidates', [])"
+    headline_options: "$.get('generate_recap', {}).get('headline_options', [])"
+    workflow-status: "$.get('generate_recap', {}).get('recap_script', '') and 'executed' or 'skipped'"

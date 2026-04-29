@@ -1,0 +1,78 @@
+workflow:
+  name: "bwin-sync-odds"
+  title: "BWIN - Sync Odds"
+  description: "Workflow to synchronize a season odds from Bwin API to Machina."
+  context-variables:
+    debugger:
+      enabled: false
+    bwin:
+      Bwin-AccessId: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID"
+      Bwin-AccessIdToken: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    country: "$.get('country', 'en')"
+    competitionIds: "$.get('competitionIds')"
+    fixtureIds: "$.get('fixtureIds')"
+    sportId: "$.get('sportId', '4')"
+  outputs:
+    fixtures: "$.get('fixtures')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 load-fixtures
+    - type: "connector"
+      name: "load-fixtures"
+      description: "Get a season fixtures from Bwin"
+      condition: "$.get('competitionIds') is not None"
+      connector:
+        name: "bwin"
+        command: "get-offer/api/{sportId}/{country}/fixtures"
+        command_attribute:
+          country: "$.get('country')"
+          sportId: "$.get('sportId')"
+      inputs:
+        competitionIds: "$.get('competitionIds')" 
+        fixtureIds: "$.get('fixtureIds')"
+        marketsFilterCriteria: "$.get('marketsFilterCriteria', 'All')"
+        onlyMainMarkets: "$.get('onlyMainMarkets', 'false')"
+        isInPlay: "$.get('isInPlay', 'false')"
+      outputs:
+        payload: "$"
+        bulk-odds: |
+          [
+            {
+              **m,
+              'metadata': {
+                'market_code': str($.(fixtureIds)),
+                'market_id': str(m.get('id', {}))
+              },
+              'competition_name': f.get('competition', {}).get('name', {}).get('text', ''),
+              'title': f"{f.get('name', {}).get('text', '')} | {m.get('name', {}).get('text', '')} {m.get('value', '')}" ,
+            }
+            for f in $.get('items', [])
+            for m in $.get('items', [])[0].get('markets', [])
+          ]
+        workflow-status: "'executed'"
+
+    # 2 bulk-save-fixtures
+    - type: "document"
+      name: "bulk-save-fixtures"
+      description: "Bulk save the fixtures."
+      condition: "$.get('competitionIds') is not None"
+      config:
+        action: "bulk-update"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'market-odds'"
+      documents:
+        items: "$.get('parsedItems')"
+      inputs:
+        parsedItems: |
+          [
+            *$.get('bulk-odds', [])
+          ]

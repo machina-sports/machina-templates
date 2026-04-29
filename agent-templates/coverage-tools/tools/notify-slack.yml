@@ -1,0 +1,53 @@
+workflow:
+  name: coverage-tools-notify-slack
+  title: Coverage - Notify Slack
+  description: Notify Slack
+  context-variables:
+    debugger:
+      enabled: true
+    sdk-slack-sender:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SLACK_BOT_TOKEN"
+  inputs:
+    external-id: "$.get('external-id', None)"
+    wp-post-link: "$.get('wp-post-link', None)"
+  outputs:
+    thread-id: "$.get('thread-id')"
+    workflow-status: "$.get('thread-id') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # load-article-by-external-id
+    - type: document
+      name: load-article-by-external-id
+      description: "Load individual article by external ID"
+      condition: "$.get('external-id') is not None"
+      config:
+        action: "search"
+        search-vector: false
+      filters:
+        metadata.external-id: "$.get('external-id')"
+      inputs:
+        name: "'content-article'"
+      outputs:
+        article: "$.get('documents', [])[0].get('value', {}) if $.get('documents', []) else {}"
+        article-author: "$.get('documents', [])[0].get('metadata', {}).get('article-author', '')"
+        article-categories: "$.get('documents', [])[0].get('metadata', {}).get('article-categories', '')"
+        article-document: "$.get('documents', [])[0] if $.get('documents', []) else None"
+        article-document-id: "$.get('documents', [])[0].get('_id', None) if $.get('documents', []) else None"
+        article-stats: "$.get('documents', [])[0].get('metadata', {}).get('article-stats', '')"
+        article-tags: "$.get('documents', [])[0].get('metadata', {}).get('article-tags', '')"
+        article-type: "$.get('documents', [])[0].get('metadata', {}).get('article-type', '')"
+
+    # notify slack channel
+    - type: "connector"
+      name: "notify slack channel"
+      connector:
+        name: "sdk-slack-sender"
+        command: "send_slack_message"
+      inputs:
+        channel_id: "'C06MPJJJR7Z'"
+        message: |
+          f"*{$.get('article', {}).get('title', 'N/A')}*\n\n*Type*: {$.get('article-type', 'N/A')} | *Categories*: {$.get('article-categories', 'N/A')} | *Tags*: {$.get('article-tags', 'N/A')} | *Stats*: {$.get('article-stats', 'N/A')}\n\n<{$.get('wp-post-link', 'N/A')}>"
+        slack_emoji: "':sportingbet:'"
+        slack_username: "'Sportingbet'"
+      outputs:
+        thread-id: "$"

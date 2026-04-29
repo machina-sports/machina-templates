@@ -1,0 +1,99 @@
+workflow:
+  name: sportradar-soccer-sync-competitors
+  title: Sportradar Soccer - Competitors
+  description: Workflow to synchronize a season competitors from SportRadar API to Machina.
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    season_id: $.get('season_id')
+  outputs:
+    teams: $.get('iptc_teams')
+    workflow-status: $.get('teams_parsed') is not None and 'executed' or 'skipped'
+  tasks:
+
+    # load-competitors
+    - type: connector
+      name: load-competitors
+      description: Get a season competitors from SportRadar
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/{data_type}
+        command_attribute:
+          season_id: $.get('season_id')
+          data_type: "'competitors.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        teams_raw: $.get('season_competitors')
+
+    # IPTC mapping
+    - type: mapping
+      name: iptc-sportradar-team-mapping
+      description: Convert teams to IPTC Sport Schema format
+      condition: $.get('teams_raw') is not None
+      inputs:
+        teams_raw: $.get('teams_raw')
+      outputs:
+        iptc_teams: $.get('sport_schema_teams')
+        teams_parsed: |
+          [
+            {
+              **t,
+              'metadata': {
+                'team_code': str(t.get('@id', ''))
+              },
+              'version_control': {
+                'updated': datetime.utcnow()
+              },
+              'title': t.get('name', ''),
+              'selected': False
+            }
+            for t in $.get('sport_schema_teams', [])
+          ]
+
+    # update-competitors
+    - type: document
+      name: update-competitors
+      description: Update the competitors document.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      documents:
+        competitors: |
+          {
+            'data': $.get('iptc_teams'),
+            'title': f"{$.get('season_id', '')} - All Competitors",
+            'season_id': $.get('season_id'),
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: $.get('season_id')
+
+    # bulk-save-schedules
+    - type: document
+      name: bulk-save-competitors
+      description: Bulk save the competitors.
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: 'sport:Team'
+      documents:
+        items: $.get('teams_parsed')
+      inputs:
+        teams_parsed: $.get('teams_parsed')

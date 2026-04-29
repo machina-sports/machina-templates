@@ -1,0 +1,154 @@
+workflow:
+  name: "sync-nba-team"
+  title: "Sync NBA Team"
+  description: "Workflow to sync nba team."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    team_id: "$.get('team_id') or None"
+  outputs:
+    events: "$.get('events')"
+    games_parsed: "$.get('games_parsed')"
+    team-profile: "$.get('team-profile')"
+    team-summary: "$.get('team-summary')"
+    workflow-status: "$.get('team-profile', []) is None and 'skipped' or 'executed'"
+  tasks:
+    
+    # task-load-team-events
+    - type: "connector"
+      name: "task-load-team-events"
+      description: "Get Team Events from SportRadar"
+      connector:
+        name: "sportradar-nba"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          team_id: "$.get('team_id')"
+          data_type: "'profile.json'"
+      condition: "$.get('team_id') is not None"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        team-profile: "$"
+        
+    # task-nba-team-mapping
+    - type: "mapping"
+      name: "sportradar-nba-team-mapping"
+      description: "Transform the SportRadar NBA team data"
+      condition: "$.get('team-profile') is not None"
+      inputs:
+        team_profile: "$.get('team-profile')"
+      outputs:
+        team_id: "$.get('team_id')"
+        team_sr_id: "$.get('team_sr_id')"
+        team_reference: "$.get('team_reference')"
+        team_name: "$.get('team_name')"
+        team_alias: "$.get('team_alias')"
+        team_market: "$.get('team_market')"
+        team_full_name: "$.get('team_full_name')"
+        championships_won: "$.get('championships_won')"
+        championship_seasons: "$.get('championship_seasons')"
+        conference_titles: "$.get('conference_titles')"
+        division_titles: "$.get('division_titles')"
+        playoff_appearances: "$.get('playoff_appearances')"
+        owner: "$.get('owner')"
+
+    # load games
+    - type: "document"
+      name: "load-games"
+      condition: "$.get('team_id') is not None"
+      description: "Load the games."
+      config:
+        action: "search"
+        search-limit: 3
+      filters:
+        metadata.team_ids: |
+          {
+            '$in': [$.get('team_id')]
+          }
+      inputs:
+        name: "'nba-game'"
+      outputs:
+        games: "$.get('documents')[:3]"
+        games_parsed: |
+          [
+            {
+              **c.get('value', {}),
+              'metadata': {
+                'event_code': c.get('value', {}).get('id', ''),
+              },
+              'processed': 'idle'
+            }
+            for c in $.get('documents', [])[:3]
+          ]
+
+    # bulk-save-games
+    - type: "document"
+      name: "bulk-save-games"
+      condition: "$.get('games_parsed') is not None"
+      description: "Bulk save the games."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "sync-nba-game"
+      documents:
+        items: "$.get('games_parsed')"
+      inputs:
+        games_parsed: "$.get('games_parsed')"
+      metadata:
+        event_code: "$.get('event_code')"
+
+    # task-nba-team-summary
+    - type: "prompt"
+      name: "nba-team-summary-prompt"
+      description: "Generate comprehensive NBA team summary with championship history"
+      condition: "$.get('team-profile') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        team_name: "$.get('team_name')"
+        team_market: "$.get('team_market')"
+        team_full_name: "$.get('team_market') + ' ' + $.get('team_name')"
+        founded: "$.get('founded')"
+        championships_won: "$.get('championships_won')"
+        championship_seasons: "$.get('championship_seasons')"
+        conference_titles: "$.get('conference_titles')"
+        division_titles: "$.get('division_titles')"
+        playoff_appearances: "$.get('playoff_appearances')"
+      outputs:
+        team-summary: "$"
+        snippets: |
+          [
+            {
+              'subject': '$.(team_full_name)', 
+              'text': c.get('content', ''),
+              'title': f"$.(team_full_name) - {c.get('title', '')}"
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # task-save-snippets
+    - type: "document"
+      name: "task-save-snippets"
+      condition: "$.get('team-summary') is not None"
+      description: "Save the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('snippets_list')"
+      inputs:
+        snippets_list: "$.get('snippets')"

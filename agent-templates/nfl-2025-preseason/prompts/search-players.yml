@@ -1,0 +1,97 @@
+prompts:
+
+  # draft-nfl-search-players
+  - type: "prompt"
+    name: "draft-nfl-search-players-prompt" 
+    title: "Draft NFL Search Players"
+    description: "This prompt generates contextual responses to user questions about NFL players."
+    schema:
+      title: "DraftNFLPlayers"
+      description: "This schema defines the structure for generating comprehensive responses about NFL players."
+      type: "object"
+      properties:
+        position:
+          type: "array"
+          description: "The positions of the NFL player."
+          minItems: 2
+          maxItems: 3
+          items:
+            type: "string"
+            description: "The position of the NFL player. The positions are QB, RB, WR, TE, OL, DL, LB, DB."
+            enum:
+              - "QB"
+              - "RB"
+              - "WR"
+              - "TE"
+              - "OL"
+              - "DL"
+              - "LB"
+              - "DB"
+        teams:
+          type: "array"
+          description: "The teams of the NFL players."
+          items:
+            type: "string"
+            description: "The team of the NFL player. The teams are 49ers, Bears, Bengals, Bills, Broncos, Browns, Buccaneers, Cardinals, Chargers, Chiefs, Colts, Commanders, Cowboys, Dolphins, Eagles, Falcons, Giants, Jaguars, Jets, Lions, Packers, Panthers, Patriots, Raiders, Rams, Ravens, Saints, Seahawks, Steelers, Texans, Titans, Vikings."
+            enum:
+              - "49ers"
+              - "Bears"
+              - "Bengals"
+              - "Bills"
+              - "Broncos"
+              - "Browns"  
+              - "Buccaneers"
+              - "Cardinals"
+              - "Chargers"
+              - "Chiefs"
+              - "Colts"
+              - "Commanders"
+              - "Cowboys"
+              - "Dolphins"
+              - "Eagles"
+              - "Falcons"
+              - "Giants"
+              - "Jaguars"
+              - "Jets"
+              - "Lions"
+              - "Packers"
+              - "Panthers"
+              - "Patriots"
+              - "Raiders"
+              - "Rams"
+              - "Ravens"
+              - "Saints"
+              - "Seahawks"
+              - "Steelers"
+              - "Texans"
+              - "Titans"
+              - "Vikings"
+        max_salary:
+          type: "number"
+          description: "The maximum salary of the NFL players. The salary is in dollars per year. The salary is in the range of 100000 to 100000000. The default value is 100000000."
+        use_statistics:
+          type: "boolean"
+          description: "Whether to use statistical filtering. Set to true if the user asks for any performance statistics (games played, yards, penalties, etc.), false otherwise. Default is false."
+          default: false
+        min_games_played:
+          type: "number"
+          description: "The minimum number of games played by the NFL players. The default value is 0."
+          minimum: 0
+          maximum: 17
+        min_games_started:
+          type: "number"
+          description: "The minimum number of games started by the NFL players. The default value is 0."
+          minimum: 0
+          maximum: 17
+        max_penalties:
+          type: "number"
+          description: "The maximum number of penalties by the NFL players. The default value is 100."
+          minimum: 0
+        min_first_downs:
+          type: "number"
+          description: "The minimum number of first downs by the NFL players. The default value is 0."
+          minimum: 0
+        min_yards:
+          type: "number"
+          description: "The minimum number of yards by the NFL players. The default value is 0."
+          minimum: 0

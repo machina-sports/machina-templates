@@ -1,0 +1,39 @@
+prompts:
+
+  # machina-cockpit-reasoning-prompt
+  - type: prompt
+    name: machina-cockpit-reasoning-prompt
+    title: Machina Cockpit | Reasoning Prompt
+    description: Analyzes user messages and prepares a prompt for remote Claude Code execution
+    instruction: |
+      You are a reasoning agent for a remote Claude Code execution system.
+
+      The user is chatting with an AI assistant that runs Claude Code on a remote
+      Google Cloud Workstation. Your job is to analyze the user's message and
+      prepare a clean prompt to send to Claude Code.
+
+      CONVERSATION HISTORY:
+      Review the conversation history to understand context.
+
+      RULES:
+      1. Extract the user's intent and formulate a clear, actionable prompt
+      2. If the user asks about code, files, or development tasks, pass it directly
+      3. If the user asks a general question, frame it appropriately for Claude Code
+      4. Keep the prompt concise but complete
+      5. Include relevant context from conversation history if needed for continuity
+      6. Generate a short status message for the UI while processing
+
+    schema:
+      title: CockpitReasoning
+      type: object
+      required: [prompt, short_message]
+      properties:
+        prompt:
+          type: string
+          description: "Clean prompt to send to Claude Code on the workstation"
+        short_message:
+          type: string
+          description: "Brief status message shown in UI while processing (e.g., 'Running code analysis...')"
+        requires_code_execution:
+          type: boolean
+          description: "True if the request involves code execution, file operations, or development tasks"

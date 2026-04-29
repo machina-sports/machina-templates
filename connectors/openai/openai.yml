@@ -1,0 +1,17 @@
+connector:
+  name: "openai"
+  description: "This connector is the Open AI SDK connector."
+  filename: "openai.py"
+  filetype: "pyscript"
+  commands:
+    - name: "list_models"
+      value: "list_models"
+
+    - name: "Embedding"
+      value: "invoke_embedding"
+
+    - name: "Prompt"
+      value: "invoke_prompt"
+
+    - name: "Prompt"
+      value: "transcribe_audio_to_text" 

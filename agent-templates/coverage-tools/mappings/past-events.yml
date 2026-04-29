@@ -1,0 +1,17 @@
+mappings:
+
+  # coverage-mapping-past-events
+  - type: mapping
+    title: Coverage - Mapping Past Events
+    name: coverage-mapping-past-events
+    description: Mapping data from past events to create past events summary
+    outputs:
+      past_events_summary: |
+        [
+          {
+            **event,
+            "timeline:scores": $.get('event-scores')[index],
+            "timeline:statistics": $.get('event-statistics')[index]
+          }
+          for index, event in enumerate($.get('event_list_parsed'))
+        ]

@@ -1,0 +1,141 @@
+workflow:
+  name: "sp-opta-sync-seasons"
+  title: "Stats Perform Opta - Seasons"
+  description: "Workflow to synchronize seasons from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    competition_id: "$.get('competition_id')"
+  outputs:
+    seasons: "$.get('seasons')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "check-document-timedelta"
+      description: "Check if the seasons document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.competition_id: "$.get('competition_id')"
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
+        value.status: "'active'"
+      inputs:
+        name: "'sp-seasons'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-get-competition
+    - type: "document"
+      name: "get-competition"
+      description: "Get the competition document."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      condition: "$.get('should_update') == True"
+      filters:
+        value.id: "$.get('competition_id')"
+      inputs:
+        name: "'sp-competition'"
+      outputs:
+        competition: "$.get('documents')[0] if $.get('documents') else None"
+
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('competition') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # task-load-seasons
+    - type: "connector"
+      name: "task-load-seasons"
+      description: "Get Tournament Calendar (Seasons) from Stats Perform Opta"
+      condition: "$.get('competition') is not None and $.get('access_token') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'tournamentcalendar'"
+        competition_id: "$.get('competition_id')"
+        query_params: "{}"
+      outputs:
+        seasons_raw: "$"
+        seasons: "$.get('tournament', {}).get('calendar', {}).get('season', [])"
+        seasons_parsed: |
+          [
+            {
+              **s,
+              'title': f"{$.get('competition').get('name', '')} - {s.get('name', '')}",
+              'competition_id': $.get('competition_id'),
+              'selected': False
+            }
+            for s in $.get('tournament', {}).get('calendar', {}).get('season', [])
+          ]
+
+    # task-update-seasons
+    - type: "document"
+      name: "task-update-seasons"
+      description: "Update the seasons document."
+      condition: "$.get('competition') is not None and $.get('seasons') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        sp-seasons: |
+          {
+            'competition_id': $.get('competition_id'),
+            'data': $.get('seasons'),
+            'title': f"{$.get('competition').get('name', '')} - All Seasons",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        competition_id: "$.get('competition_id')"
+        document_type: "'synchronization'"
+
+    # task-bulk-save-seasons
+    - type: "document"
+      name: "task-bulk-save-seasons"
+      description: "Bulk save the seasons."
+      condition: "$.get('competition') is not None and $.get('seasons') is not None"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-season'"
+      documents:
+        items: "$.get('seasons_parsed')"
+      metadata:
+        document_type: "'sp-season'"
+

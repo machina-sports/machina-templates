@@ -1,0 +1,47 @@
+agent:
+  name: competitions-markets-football-uefa
+  title: Competitions Markets - Football - UEFA
+  description: Agent to update Football Markets
+  context:
+    config-frequency: 10
+    status: "inactive"
+  workflows:
+
+    # # bwin-sync uefa europa league (102856)
+    # - name: bwin-sync-markets
+    #   description: sync-markets
+    #   inputs:
+    #     country: "'br'"
+    #     competitionIds: "'102856'"
+    #     sportId: "'4'"
+    #   outputs:
+    #     sync-markets-odds-status: "$.get('workflow-status', False)"
+
+    # # bwin-sync uefa conference league (102919)
+    # - name: bwin-sync-markets
+    #   description: sync-markets
+    #   inputs:
+    #     country: "'br'"
+    #     competitionIds: "'102919'"
+    #     sportId: "'4'"
+    #   outputs:
+    #     sync-markets-odds-status: "$.get('workflow-status', False)"
+
+    # bwin-sync uefa champions league (102855)
+    - name: bwin-sync-markets
+      description: sync-markets
+      inputs:
+        country: "'br'"
+        competitionIds: "'102855'"
+        sportId: "'4'"
+      outputs:
+        sync-markets-odds-status: "$.get('workflow-status', False)"
+
+    # assistant-tools-event-matcher
+    - name: assistant-tools-event-matcher
+      description: Associate game-markets to sport:Event documents by similarity
+      inputs:
+        limit: "250"
+      outputs:
+        associate-markets-status: "$.get('workflow-status', 'skipped')"
+        markets_matched: "$.get('markets_matched', [])"

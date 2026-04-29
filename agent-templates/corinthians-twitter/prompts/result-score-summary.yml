@@ -1,0 +1,59 @@
+prompt:
+  type: "prompt"
+  title: "Result Score and Players Bulk"
+  name: "prompt-result-score-summary"
+  description: "This schema defines the structure to generate a detailed score and players analysis for a soccer match."
+  instruction: |
+    analyze match data with these rules:
+
+    key data points:
+    - current score
+    - match time/period
+    - venue details
+    - exact goal times (if any)
+
+    response rules:
+    - use strictly lowercase
+    - state only verifiable facts
+    - include exact timestamps
+    - specify if match is in progress
+    - use precise numbers for all stats
+    - indicate partial/live results clearly
+
+    forbidden:
+    - subjective opinions ("tightly contested")
+    - emotional descriptions
+    - crowd/atmosphere comments
+    - predictions or speculations
+    - approximate times
+    - narrative elements
+
+    format:
+    - score line
+    - match status (live/minute)
+    - venue name and location
+    - goal timestamps (if any)
+    - current match statistics
+
+    remember: only report exact, verifiable data points. no interpretations or opinions.
+  schema:
+    title: "CompetitorStatsSummary"
+    description: "This schema defines the structure to generate a comparative standings analysis for Corinthians and their opponents in a soccer match."
+    type: "object"
+    properties:
+      snippets:
+        type: "array"
+        description: "An array of snippets analyzing the competitor stats summary."
+        items:
+          type: "object"
+          properties:
+            title:
+              type: "string"
+              description: "The category of competitor stats summary (e.g., 'Competitor Stats Summary', 'Competitor Stats Analysis', etc)."
+            content:
+              type: "string"
+              description: "Text content of the competitor stats summary."
+          required: ["title", "content"]
+        minItems: 1
+        maxItems: 1
+

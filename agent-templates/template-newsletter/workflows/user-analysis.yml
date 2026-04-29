@@ -1,0 +1,43 @@
+workflow:
+  name: template-newsletter-user-analysis
+  title: "Template Newsletter | User Analysis"
+  description: "Workflow to analyze user profile data from content-custom-fan-data."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY"
+  inputs:
+    document_id: "$.get('document_id')"
+  outputs:
+    profile-analysis: "$.get('profile-analysis')"
+    workflow-status: "'executed'"
+  tasks:
+
+    # select-content-custom-fan-data-by-id
+    - type: document
+      name: select-content-custom-fan-data-by-id
+      description: "Select content-custom-fan-data by document_id."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: "$.get('document_id')"
+      inputs:
+        name: "'content-custom-fan-data'"
+      outputs:
+        selected-fan-data: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else None"
+
+    # analyze-user-profile
+    - type: prompt
+      name: user-profile-analysis-prompt
+      condition: "$.get('selected-fan-data') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        fan-data: "str($.get('selected-fan-data'))"
+      outputs:
+        profile-analysis: "$"

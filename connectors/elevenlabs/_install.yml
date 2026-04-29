@@ -1,0 +1,26 @@
+setup:
+  title: ElevenLabs
+  description: Connect to the ElevenLabs API to get AI speech responses.
+  category:
+    - special-templates
+  estimatedTime: 1 minute
+  features:
+    - Real-time speech generation
+    - Real-time text to speech
+  integrations:
+    - elevenlabs
+  status: available
+  value: connectors/elevenlabs
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: elevenlabs.yml
+
+  # test credentials
+
+  - type: workflow
+    path: test-credentials.yml
+
+  - type: workflow
+    path: workflow_test.yml

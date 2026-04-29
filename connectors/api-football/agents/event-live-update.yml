@@ -1,0 +1,47 @@
+agent:
+  name: api-football-event-live-update
+  title: API Football - Live
+  description: Agent to consume and update live API Football events (1H, HT, 2H, ET, BT, P, SUSP, INT, LIVE).
+  context:
+    config-frequency: 0.1
+    status: "inactive"
+  context-agent:
+    event_code: $.get('event_code')
+  workflows:
+
+    # Workflow Event Consumer - Live
+    - name: api-football-event-consumer-live
+      description: API Football Event Consumer (Live)
+      inputs:
+        event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('event_document_id')
+        event_exists: $.get('event_exists')
+        event-consumer-status: $.get('workflow-status', False)
+
+    # Workflow Event Synchronize
+    - name: api-football-event-synchronize
+      description: API Football Event Synchronize
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-synchronize-status: $.get('workflow-status', False)
+
+    # Workflow Event Sync Markets
+    - name: api-football-event-sync-markets
+      description: API Football Event Sync Markets
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-sync-markets-status: $.get('workflow-status', False)
+
+    # Workflow Event Update
+    - name: api-football-event-update
+      description: API Football Event Update
+      condition: $.get('event_exists') is True
+      inputs:
+        event_document_id: $.get('event_document_id')
+      outputs:
+        event-update-status: $.get('workflow-status', False)
+
+

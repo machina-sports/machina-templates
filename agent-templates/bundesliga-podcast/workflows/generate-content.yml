@@ -1,0 +1,154 @@
+workflow:
+  name: bundesliga-podcast-generate-content
+  title: Bundesliga Podcast Generate Content
+  description: Workflow to generate Bundesliga podcast content based on user profile stored in documents
+  context-variables:
+    api-mailgun:
+      username: "api"
+      password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+  inputs:
+    document_id: "$.get('document_id')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Load user profile from documents
+    - type: document
+      name: load-user-profile
+      description: "Load user profile from documents by email address"
+      condition: "$.get('document_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        document_id: $.get('document_id')
+      inputs:
+        name: "'user-profile'"
+      outputs:
+        document-exists: len($.get('documents', [])) > 0
+        document-value: "$.get('documents', [])[0].get('value', {}) if len($.get('documents', [])) > 0 else {}"
+        favorite_sport: "$.get('documents', [])[0].get('value', {}).get('favorite_sport') if len($.get('documents', [])) > 0 else None"
+        favorite_team: "$.get('documents', [])[0].get('value', {}).get('favorite_team') if len($.get('documents', [])) > 0 else None"
+  
+    # bundesliga-podcast-generate-search-queries
+    - type: prompt
+      name: bundesliga-podcast-generate-search-queries
+      description: Generate search queries based on user's favorite sport and team
+      condition: "$.get('favorite_sport') is not None and $.get('favorite_team') is not None"
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        favorite_sport: $.get('favorite_sport')
+        favorite_team: $.get('favorite_team')    
+      outputs:
+        search_queries: "$.get('search_queries', [])"
+
+    # search Google
+    - type: connector
+      name: search-google
+      description: Search the Google Gemini using Google Search grounding.
+      condition: "$.get('search_queries') is not None and len($.get('search_queries', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-2.5-pro
+      foreach:
+        concurrent: true
+        name: search_query
+        expr: $
+        value: $.get('search_queries')
+      inputs:
+        location: $.get('location', 'global')
+        search_query: $.get('search_query', '')
+      outputs:
+        search_response: |
+          [
+            $.get('answer', '')
+          ]
+
+    # bundesliga-podcast-generate-prompt
+    - type: prompt
+      name: bundesliga-podcast-generate-prompt
+      description: "Generate personalized podcast script from web search results about user's favorite team."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        duration: "$.get('document-value', {}).get('duration')"
+        favorite_sport: "$.get('document-value', {}).get('favorite_sport')"
+        favorite_team: "$.get('document-value', {}).get('favorite_team')"
+        personality: "$.get('document-value', {}).get('podcast_mood_tone')"
+        search_response: "$.get('search_response', [])"
+      outputs:
+        audio_content: "$.get('content')"
+        podcast_headline: "$.get('headline')"
+        podcast_summary: "$.get('summary')"
+        newsletter_markdown: "$.get('newsletter-markdown')"
+
+    # bundesliga-podcast-translate-prompt
+    - type: prompt
+      name: bundesliga-podcast-translate-prompt
+      description: "Translate personalized podcast script to the target language."
+      condition: "$.get('document-value', {}).get('language') is not None and $.get('document-value', {}).get('language') != 'en'"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        content: "$.get('audio_content')"
+        headline: "$.get('podcast_headline')"
+        summary: "$.get('podcast_summary')"
+        newsletter-markdown: "$.get('newsletter_markdown')"
+        language: "$.get('document-value', {}).get('language', 'en')"
+        user_name: "$.get('document-value', {}).get('name')"
+      outputs:
+        audio_content: "$.get('content')"
+        podcast_headline: "$.get('headline')"
+        podcast_summary: "$.get('summary')"
+        newsletter_markdown: "$.get('newsletter-markdown')"
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the user profile document version control.
+      condition: $.get('document-exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('document_id')
+      documents:
+        user-profile: |
+          {
+            **$.get('document-value', {}),
+            "audio_content": $.get('audio_content'),
+            "podcast_headline": $.get('podcast_headline'),
+            "podcast_summary": $.get('podcast_summary'),
+            "newsletter_markdown": $.get('newsletter_markdown'),
+          }
+      

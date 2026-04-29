@@ -1,0 +1,103 @@
+setup:
+  title: "Machina Studio Onboarding"
+  description: AI-powered onboarding for Machina Studio.
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - AI Agent to onboard new developers.
+    - AI Reporter to generate onboarding materials.
+  integrations:
+    - sportradar
+  status: available
+  value: "agent-templates/onboarding"
+  version: 1.0.0
+
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../../connectors/machina-ai/machina-ai.yml"
+  - type: "connector"
+    path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-soccer/sportradar-soccer.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-mlb/sportradar-mlb.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-nba/sportradar-nba.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-nfl/sportradar-nfl.yml"
+  - type: "connector"
+    path: "../../connectors/sportradar-nhl/sportradar-nhl.yml"
+
+  # workflow to sync soccer team
+  - type: "workflow"
+    path: "sync-soccer-team.yml"
+
+  # workflow to sync nba team
+  - type: "workflow"
+    path: "sync-nba-embeds.yml"
+  - type: "workflow"
+    path: "sync-nba-games.yml"
+  - type: "workflow"
+    path: "sync-nba-team.yml"
+
+  # workflow to sync nfl team
+  - type: "workflow"
+    path: "sync-nfl-embeds.yml"
+  - type: "workflow"
+    path: "sync-nfl-games.yml"
+  - type: "workflow"
+    path: "sync-nfl-team.yml"
+
+  # workflow to sync mlb team 
+  - type: "workflow"
+    path: "sync-mlb-games.yml"
+  - type: "workflow"
+    path: "sync-mlb-team.yml"
+
+  # workflow to sync nhl team
+  - type: "workflow"
+    path: "sync-nhl-games.yml"
+  - type: "workflow"
+    path: "sync-nhl-team.yml"
+    
+  # workflow to generate embeddings
+  - type: "workflow"
+    path: "soccer-embeddings.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "chat-completions.yml"
+
+  # workflows
+  - type: "workflow"
+    path: "thread-executor.yml"
+
+  # mappings
+  - type: "mappings"
+    path: "_mappings.yml"
+  
+  # prompts
+  - type: "prompts"
+    path: "_prompts.yml"
+
+  # scheduler-sync
+  - type: "agent"
+    path: "scheduler-sync.yml"
+  
+  # scheduler-thread
+  - type: "agent"
+    path: "scheduler-thread.yml"
+
+  # populate-folders
+  - type: "workflow"
+    path: "_folders.yml"
+
+  # agents & schedules
+  - type: "agent"
+    path: "_setup.yml"
+
+  - type: "agent"
+    path: "agent-onboarding.yml"

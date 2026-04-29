@@ -1,0 +1,123 @@
+prompt:
+  name: content_context_extractor
+  title: Content Context Extractor
+  description: Extracts trending topics, highlights, and engaging angles from team data and news
+  inputs:
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Liverpool")
+    - name: home_team_stats
+      type: object
+      description: Home team statistics from API Football
+    - name: away_team_stats
+      type: object
+      description: Away team statistics from API Football
+    - name: fixture_data
+      type: object
+      description: Fixture/event data
+    - name: search_results
+      type: array
+      description: News search results
+  outputs:
+    - name: trending_topics
+      type: array
+      description: Trending topics with unhinged angles
+    - name: key_stats
+      type: array
+      description: Array of exact statistical comparisons with real numbers (minimum 8-10 stats)
+    - name: viral_moments
+      type: array
+      description: Recent chaos, drama, and shareable moments
+    - name: content_angles
+      type: object
+      description: Image-first content ideas for each type (memes, stats, quiz)
+  schema:
+    title: "ContentContextExtractor"
+    description: "Extracts trending topics, exact stats, and viral content angles from matchup data"
+    type: "object"
+    properties:
+      trending_topics:
+        type: "array"
+        description: "Trending topics with unhinged angles (3-5 topics)"
+        items:
+          type: "string"
+      key_stats:
+        type: "array"
+        description: "Array of exact statistical comparisons with real numbers (8-10 stats minimum)"
+        items:
+          type: "object"
+          properties:
+            stat_name:
+              type: "string"
+            home_value:
+              type: "number"
+            away_value:
+              type: "number"
+            home_label:
+              type: "string"
+            away_label:
+              type: "string"
+      viral_moments:
+        type: "array"
+        description: "Recent chaos, drama, and shareable moments"
+        items:
+          type: "string"
+      content_angles:
+        type: "object"
+        description: "Image-first content ideas for each content type"
+        properties:
+          meme_ideas:
+            type: "array"
+          stats_ideas:
+            type: "array"
+          quiz_ideas:
+            type: "array"
+    required: ["trending_topics", "key_stats", "viral_moments", "content_angles"]
+  template: |
+    You are a Gen Z viral sports content analyst specializing in creating unhinged, screenshot-worthy content.
+    Analyze this matchup: {{ matchup }} and extract the EXACT stats and angles that will break the internet.
+    
+    ## Matchup
+    {{ matchup }}
+    
+    ## Fixture Data
+    {{ fixture_data }}
+    
+    ## Home Team Statistics
+    {{ home_team_stats }}
+    
+    ## Away Team Statistics
+    {{ away_team_stats }}
+    
+    ## News & Search Results
+    {{ search_results }}
+    
+    EXTRACT THE FOLLOWING (Be EXTREMELY specific with numbers and stats):
+    
+    1. **Trending Topics** (3-5 unhinged angles):
+       - What storylines are absolutely UNHINGED right now?
+       - Any beef, drama, or chaos?
+       - Redemption arcs or villain energy?
+       - Main character moments?
+    
+    2. **Key Stats** (EXACT NUMBERS - these will appear in images):
+       - Pull EXACT stat comparisons with real numbers (goals, assists, xG, win rates, etc.)
+       - Find the most UNBELIEVABLE or EMBARRASSING stats
+       - Look for patterns that tell a story (dominance, choking, streaks)
+       - Include head-to-head historical stats with PRECISE numbers
+       - Format ready for tables with stat_name, home_value, and away_value fields
+       - MINIMUM 8-10 different statistical comparisons with exact values
+    
+    3. **Viral Moments** (Recent chaos):
+       - Goals, mistakes, celebrations that could be memed
+       - Player beefs or touchline drama
+       - Post-match quotes that are unhinged
+       - Any "aged like milk" predictions
+    
+    4. **Content Angles** (Image-first ideas):
+       - **For Stats**: Which exact stats should go in a comparison table? (be specific with numbers)
+       - **For Memes**: What visual concepts would be absolutely UNHINGED?
+       - **For Quiz**: What visual puzzles can be created? (player silhouettes, team logo sequences, etc.)
+       
+    CRITICAL: For stats, provide the EXACT numerical values. Don't say "high scoring" - say "2.8 goals per game".
+    Think like you're making content that will get 100K+ engagements. Be specific, be unhinged, be accurate.

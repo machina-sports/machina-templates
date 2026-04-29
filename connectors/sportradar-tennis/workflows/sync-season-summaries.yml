@@ -1,0 +1,70 @@
+workflow:
+  name: "sportradar-tennis-sync-season-summaries"
+  title: "Tennis - Season Summaries"
+  description: "Workflow to synchronize tennis season match summaries from SportRadar API to Machina."
+  context-variables:
+    debugger: 
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    sportradar-tennis:
+      x-api-key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    workflow-status: "$.get('summaries_response') is not None and 'executed' or 'failed'"
+  tasks:
+    
+    # task-load-season-summaries
+    - type: "connector"
+      name: "task-load-season-summaries"
+      description: "Get Season Summaries from SportRadar"
+      connector:
+        name: "sportradar-tennis"
+        command: "get-en/seasons/{season_id}/summaries.json"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        season_id: "$.get('season_id')"
+        x-api-key: "$.get('x-api-key')"
+      outputs:
+        summaries_response: "$.get('summaries', [])"
+
+    # iptc-sportradar-tennis-event-mapping
+    - type: mapping
+      name: iptc-sportradar-tennis-event-mapping
+      title: "IPTC | Sportradar Tennis Event Mapping"
+      description: "Mapping data from sportradar tennis season summaries to IPTC events"
+      inputs:
+        summaries: "$.get('summaries_response', [])"
+      outputs:
+        iptc-events: "$.get('sport_schema_events')"
+
+    # task-bulk-save-season-summaries
+    - type: "document"
+      name: "task-bulk-save-season-summaries"
+      description: "Bulk save the tennis season summaries."
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: |
+          [
+            {
+              **e,
+              'metadata': {
+                'event_code': str(e.get('@id', '')),
+                'sport': 'tennis'
+              },
+              'title': e.get('name', '')
+            }
+            for e in $.get('iptc-events', [])
+          ]
+        

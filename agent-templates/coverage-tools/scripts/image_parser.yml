@@ -1,0 +1,8 @@
+connector:
+  name: coverage-update-article-image
+  description: Coverage Article Image Updater
+  filename: image_parser.py
+  filetype: pyscript 
+  commands:
+    - name: Invoke Update Article Image
+      value: invoke_update_article_image

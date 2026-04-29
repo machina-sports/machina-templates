@@ -1,0 +1,30 @@
+setup:
+  title: API American Football
+  description: Connect to the API American Football API to get American Football data.
+  category:
+    - data-acquisition
+    - american-football
+  estimatedTime: 1 minute
+  features:
+    - Real-time American Football data
+    - Get games, teams, and players data
+    - Get game statistics and events
+    - Get league information
+    - Get player statistics
+
+  integrations:
+    - american-football
+  status: available
+  value: connectors/american-football
+  version: 1.0.0
+
+
+datasets:
+  - type: "connector" 
+    path: "american-football.yml"
+
+  - type: "mappings"
+    path: "mappings/iptc-american-football-event-mapping.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-games.yml"

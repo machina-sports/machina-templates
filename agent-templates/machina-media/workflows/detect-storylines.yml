@@ -1,0 +1,32 @@
+workflow:
+  name: detect-storylines
+  title: Detect Storylines
+  description: "Analyzes normalized data streams to detect newsworthy storylines."
+
+  inputs:
+    normalized_events: "$.get('normalized_events', [])"
+    normalized_news: "$.get('normalized_news', [])"
+    normalized_market_signals: "$.get('normalized_market_signals', [])"
+    coverage_scope: "$.get('coverage_scope', '[\"football\",\"NFL\",\"NBA\"]')"
+
+  outputs:
+    candidate_storylines: "$.get('candidate_storylines', [])"
+    workflow-status: "len($.get('candidate_storylines', [])) >= 0"
+
+  tasks:
+    - type: "prompt"
+      name: "storyline-detection-prompt"
+      description: "Invokes the storyline detection prompt to extract storylines from data."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        provider: "vertex_ai"
+        location: "global"
+      inputs:
+        normalized_events: "$.get('normalized_events')"
+        normalized_news: "$.get('normalized_news')"
+        normalized_market_signals: "$.get('normalized_market_signals')"
+        coverage_scope: "$.get('coverage_scope')"
+      outputs:
+        candidate_storylines: "$.get('candidate_storylines', [])"

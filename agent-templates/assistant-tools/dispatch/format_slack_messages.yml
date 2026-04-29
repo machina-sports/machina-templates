@@ -1,0 +1,9 @@
+connector:
+  name: assistant-tools-slack-formatter
+  description: Format chat conversation data into structured Slack messages for BotAndWin
+  filename: format_slack_messages.py
+  filetype: pyscript
+  commands:
+    - name: format_chat_slack_messages
+      value: format_chat_slack_messages
+

@@ -1,0 +1,20 @@
+setup:
+  title: "Post-Match Tweet Thread Generator"
+  description: "Receives a raw match object and returns a 5-tweet thread in Brazilian Portuguese."
+  category:
+    - custom-templates
+  status: available
+  value: "skills/post-match-tweet-thread"
+  version: 1.0.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  # `prompts` (plural) matches the prompts/*.yml root key — using
+  # `prompt` (singular) trips the importer's import_prompt validator
+  # with "Invalid prompt dataset format". See lesson
+  # install-yml-type-must-match-root-key.
+  - type: "prompts"
+    path: "prompts/generate-tweet-thread.yml"
+  - type: "workflow"
+    path: "workflows/generate-tweet-thread.yml"

@@ -1,0 +1,104 @@
+workflow:
+  name: "draft-nfl-teams-update"
+  title: "Draft NFL Teams Update"
+  description: "Workflow to update nfl teams."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    team_id: "$.get('team_id')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # load-selected-team
+    - type: "document"
+      name: "load-selected-team"
+      description: "Load selected team"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        value.version-control.status: "'pending'"
+      inputs:
+        name: "'nfl-team'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id', '') if $.get('documents', []) is not None else ''"
+        team: "$.get('documents', [])[0].get('value', {}) if $.get('documents', []) is not None else {}"
+        team_id: "$.get('documents', [])[0].get('metadata', {}).get('team_id', '') if $.get('documents', []) is not None else ''"
+        team_name: "$.get('documents', [])[0].get('value', {}).get('title', '') if $.get('documents', []) is not None else ''"
+
+    # task-load-players
+    - type: "connector"
+      name: "task-load-players"
+      description: "Get a season players from SportRadar"
+      condition: "$.get('team_id') is not None and $.get('document_id') is not None"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          team_id: "$.get('team_id')"
+          data_type: "'profile.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        players: "$"
+        players_parsed: |
+          [
+            {
+              **player,
+              'metadata': {
+                'player_id': player.get('id', ''),
+                'team_name': '$.(team_name)'
+              },
+              'team_id': '$.(team_id)',
+              'team_name': '$.(team_name)',
+              'title': f"{player.get('name', '')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for player in $.get('players', [])
+          ]
+
+    # bulk-save-teams
+    - type: "document"
+      name: "bulk-save-players"
+      condition: "$.get('players_parsed') is not None and $.get('document_id') is not None"
+      description: "Bulk save the players."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "nfl-player"
+      documents:
+        items: "$.get('players_parsed')"
+      inputs:
+        players_parsed: "$.get('players_parsed')"
+
+    # version-control-success
+    - type: "document"
+      name: "version-control-success"
+      description: "Update the team document version control."
+      condition: "$.get('document_id') is not None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('document_id')"
+      documents:
+        team: |
+          {
+            **$.get('team', {}),
+            'version-control': {
+              'status': 'success'
+            }
+          }

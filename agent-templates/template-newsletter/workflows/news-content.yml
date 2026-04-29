@@ -1,0 +1,63 @@
+workflow:
+  name: template-newsletter-news-content
+  title: "Template Newsletter | News Content"
+  description: "Workflow to analyze user profile data from content-custom-fan-data."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY"
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    document_id: "$.get('document_id')"
+    footer_image: "$.get('footer_image')"
+    header_image: "$.get('header_image')"
+    moment-analysis: "$.get('moment-analysis')"
+    profile-analysis: "$.get('profile-analysis')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # generate-news-content
+    - type: prompt
+      name: generate-news-content-prompt
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+      inputs:
+        moment-analysis: "str($.get('moment-analysis'))"
+        profile-analysis: "str($.get('profile-analysis'))"
+      outputs:
+        newsletter-content: "$"
+
+    # template-newsletter-compose
+    - type: connector
+      name: template-newsletter-compose
+      description: "Compose newsletter content"
+      connector:
+        name: "template-newsletter-compose"
+        command: "invoke_compose"
+      inputs:
+        footer_image: "$.get('footer_image')"
+        header_image: "$.get('header_image')"
+        newsletter-content: "$.get('newsletter-content')"
+        template_path: "'/app/machina-templates/agent-templates/template-newsletter/data/template-default.html'"
+      outputs:
+        template-newsletter-html: "$.get('output_path')"
+
+    # send-newsletter
+    - type: "connector"
+      name: "save-image"
+      description: "Save the image to the Google Storage."
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('template-newsletter-html')"
+      outputs:
+        data: "$"
+        template-newsletter-html-final-filename: "$.get('url')"

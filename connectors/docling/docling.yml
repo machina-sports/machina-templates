@@ -1,0 +1,11 @@
+connector:
+  name: "docling"
+  description: "This connector is the Docling document processing connector."
+  filename: "docling.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Initialize Loader"
+      value: "invoke_loader"
+
+    - name: "Load Documents"
+      value: "load_documents" 

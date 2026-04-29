@@ -1,0 +1,175 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Perplexity API",
+    "description": "API for use Perplixity",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.perplexity.ai",
+      "description": "Perplixity API Server"
+    }
+  ],
+  "paths": {
+    "/chat/completions": {
+      "post": {
+        "summary": "Generate a chat completion",
+        "description": "Send a message to the Perplexity API model to generate a response based on the input.",
+        "operationId": "createChatCompletion",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "Model to use for completion",
+                    "example": "sonar"
+                  },
+                  "messages": {
+                    "type": "array",
+                    "description": "List of messages to send to the model",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "description": "Role of the message sender (system, user, or assistant)",
+                          "example": "user"
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "Message content",
+                          "example": "Felix Baumgartner last results"
+                        }
+                      },
+                      "required": ["role", "content"]
+                    }
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "description": "Maximum number of tokens to generate",
+                    "example": 100
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "description": "Sampling temperature for generation",
+                    "example": 0.2
+                  },
+                  "top_p": {
+                    "type": "number",
+                    "description": "Nucleus sampling probability for the most probable tokens",
+                    "example": 0.9
+                  },
+                  "return_citations": {
+                    "type": "boolean",
+                    "description": "Whether to return citations for generated content",
+                    "example": true
+                  },
+                  "search_domain_filter": {
+                    "type": "array",
+                    "description": "List of domains to filter search results",
+                    "items": {
+                      "type": "string",
+                      "example": "perplexity.ai"
+                    }
+                  },
+                  "return_images": {
+                    "type": "boolean",
+                    "description": "Whether to return images in the response",
+                    "example": false
+                  },
+                  "return_related_questions": {
+                    "type": "boolean",
+                    "description": "Whether to return related questions in the response",
+                    "example": true
+                  },
+                  "search_recency_filter": {
+                    "type": "string",
+                    "description": "Recency filter for search results (e.g., 'month', 'year')",
+                    "example": "month"
+                  },
+                  "top_k": {
+                    "type": "integer",
+                    "description": "Number of top completions to return",
+                    "example": 0
+                  },
+                  "stream": {
+                    "type": "boolean",
+                    "description": "Whether to stream the response",
+                    "example": false
+                  },
+                  "presence_penalty": {
+                    "type": "number",
+                    "description": "Penalty for new token presence",
+                    "example": 0
+                  },
+                  "frequency_penalty": {
+                    "type": "number",
+                    "description": "Penalty for frequency of token occurrence",
+                    "example": 1
+                  }
+                },
+                "required": ["model", "messages"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "completion": {
+                      "type": "string",
+                      "description": "Generated completion based on the input"
+                    },
+                    "citations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "description": "List of citations related to the generated content"
+                      }
+                    },
+                    "related_questions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "description": "List of related questions"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request, invalid input"
+          }
+        },
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "in": "header",
+        "name": "Authorization",
+        "scheme": "Bearer"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+connector:
+  name: "social-media-stats-filter"
+  description: "Filter API-Football stats to extract only social media-relevant data"
+  filename: "filter_stats.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Filter Team Stats"
+      value: "filter_team_stats"
+

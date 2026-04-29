@@ -1,0 +1,29 @@
+prompt:
+  type: "prompt"
+  title: "Embedding Players to Watch"
+  name: "prompt-embedding-players-to-watch"
+  description: "This schema defines the structure to generate a detailed players to watch analysis between Corinthians and their opponents."
+  schema:
+    title: "EmbeddingPlayersToWatch"
+    description: "This schema defines the structure to generate a detailed players to watch analysis between Corinthians and their opponents."
+    type: "object"
+    properties:
+      snippets:
+        type: "array"
+        description: "An array of snippets analyzing the players to watch from a stats-obsessed Corinthians fan perspective."
+        items:
+          type: "object"
+          properties:
+            title:
+              type: "string"
+              description: "The category of players to watch analysis (e.g., 'Players to Watch', 'Key Players', etc)."
+            content:
+              type: "string"
+              description: "Raw, unfiltered analysis of key players backed by specific numerical data. For example: 'Our striker has scored 8 goals in 12 appearances against São Paulo, converting 23% of his shots' or 'Our goalkeeper has made 7 crucial saves per game, with a league-leading 81% save percentage.' For opponents, include exact stats like 'Their forward has 0 goals in 3 matches vs Corinthians despite averaging 4.2 shots per game.' Every claim must be backed by a specific number, percentage, or quantifiable metric. Avoid vague statements like 'good form' - replace with 'scoring in 5 consecutive matches' or '3 assists in last 2 games'."
+            confidence:
+              type: "number"
+              description: "The confidence score for the accuracy of the players to watch analysis (0.0 to 1.0)."
+          required: ["title", "content", "confidence"]
+        minItems: 3
+        maxItems: 10
+

@@ -1,0 +1,103 @@
+workflow:
+
+  # api-football-event-consumer-prelive
+  name: api-football-event-consumer-prelive
+  title: API Football - Event Consumer (Pre-Live)
+  description: Workflow to consume pre-live soccer games from API Football by event code. Handles not_started events.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_code: $.get('event_code')
+  outputs:
+    event_document_id: $.get('event_document_id')
+    event_exists: $.get('event_exists')
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (api-football) by code.
+      condition: $.get('event_code') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.event_code: $.get('event_code')
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+    
+    # load soccer preview configuration
+    - type: document
+      name: coverage-soccer-preview-config
+      description: Load soccer preview configuration to control soccer preview execution
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'coverage-soccer-preview-config'"
+      outputs:
+        coverage-config-exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        coverage-events-prelive: $.get('documents', [])[0].get('value', {}).get('coverage-events-prelive', []) if len($.get('documents', [])) > 0 else []
+
+    # load event filtering by prelive events (not started)
+    - type: document
+      name: load-event-by-schedule
+      description: Search for pre-live schedule events (api-football).
+      condition: $.get('event_exists') is not True
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.version_control.consumer-update-timestamp", 1, "value.schema:startDate", 1]
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        value.schema:startDate: "{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}"
+        value.sport:status: "{'$in': ['NS', 'TBD', 'not_started']}"
+        value.version_control.finished: "{'$ne': True}"
+        value.version_control.processing: "{'$ne': True}"
+        '$or': "[{'value.version_control.consumer-update-timestamp': {'$lt': (datetime.utcnow() - timedelta(seconds=15)).isoformat()}}, {'value.version_control.consumer-update-timestamp': {'$exists': False}}]"
+        value.sport:competition.@id: |
+          $.get('coverage-config-exists') and {'$in': $.get('coverage-events-prelive')} or None
+      outputs:
+        event_document_id: $.get('documents')[0].get('_id', '') if $.get('documents') else None
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents')[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents')[0].get('value', {}) if $.get('documents') else None
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {}),
+              'counter': $.get('event_value', {}).get('version_control', {}).get('counter', 0) + 1,
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }
+

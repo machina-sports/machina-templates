@@ -1,0 +1,23 @@
+setup:
+  title: "Match Headline Generator"
+  description: "Takes match facts and returns 5 differentiated headlines for content teams."
+  category:
+    - skills
+  estimatedTime: 1 minute
+  features:
+    - "Generates 5 distinct headlines from match data"
+    - "Headlines cover neutral, analytical, fan, and clickbait perspectives"
+  integrations:
+    - google-genai
+  status: available
+  value: "skills/match-headline-generator"
+  version: 1.0.0
+
+datasets:
+  - type: "workflow"
+    path: "workflows/generate-headlines.yml"
+  # `prompts` (plural) matches the file's root key. Singular `prompt`
+  # would trip the importer's import_prompt validator with "Invalid
+  # prompt dataset format" — see lesson install-yml-type-must-match-root-key.
+  - type: "prompts"
+    path: "prompts/generate-headlines.yml"

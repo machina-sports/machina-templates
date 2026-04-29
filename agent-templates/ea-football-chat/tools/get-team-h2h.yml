@@ -1,0 +1,88 @@
+workflow:
+  name: get-team-h2h
+  title: "Get Team Head-to-Head"
+  description: "Compares two teams: recent form, top player from each squad (FPL data), and shared recent history."
+  inputs:
+    team1: "$.get('team1', '')"
+    team2: "$.get('team2', '')"
+  outputs:
+    result: "{'team1': {'search': $.get('team1_search'), 'profile': $.get('team1_profile'), 'schedule': $.get('team1_schedule')}, 'team2': {'search': $.get('team2_search'), 'profile': $.get('team2_profile'), 'schedule': $.get('team2_schedule')}}"
+    workflow-status: "($.get('team1_profile') is not None and $.get('team2_profile') is not None) and 'executed' or 'skipped'"
+  tasks:
+    - type: "connector"
+      name: "search_team1"
+      description: "Search for team 1."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_team'"
+        query: "$.get('team1')"
+      outputs:
+        team1_search: "$"
+
+    - type: "connector"
+      name: "search_team2"
+      description: "Search for team 2."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_team'"
+        query: "$.get('team2')"
+      outputs:
+        team2_search: "$"
+
+    - type: "connector"
+      name: "get_team1_profile"
+      description: "Get team 1 full squad with FPL stats to identify key player."
+      condition: "$.get('team1_search', {}).get('results', [])"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_team_profile'"
+        team_id: "$.get('team1_search', {}).get('results', [{}])[0].get('team', {}).get('id')"
+      outputs:
+        team1_profile: "$"
+
+    - type: "connector"
+      name: "get_team2_profile"
+      description: "Get team 2 full squad with FPL stats to identify key player."
+      condition: "$.get('team2_search', {}).get('results', [])"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_team_profile'"
+        team_id: "$.get('team2_search', {}).get('results', [{}])[0].get('team', {}).get('id')"
+      outputs:
+        team2_profile: "$"
+
+    - type: "connector"
+      name: "get_team1_schedule"
+      description: "Get team 1 recent results and upcoming fixtures."
+      condition: "$.get('team1_profile') is not None"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_team_schedule'"
+        team_id: "$.get('team1_search', {}).get('results', [{}])[0].get('team', {}).get('id')"
+        limit: 10
+      outputs:
+        team1_schedule: "$.get('events')"
+
+    - type: "connector"
+      name: "get_team2_schedule"
+      description: "Get team 2 recent results and upcoming fixtures."
+      condition: "$.get('team2_profile') is not None"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_team_schedule'"
+        team_id: "$.get('team2_search', {}).get('results', [{}])[0].get('team', {}).get('id')"
+        limit: 10
+      outputs:
+        team2_schedule: "$.get('events')"

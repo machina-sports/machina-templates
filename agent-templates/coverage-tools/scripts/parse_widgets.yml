@@ -1,0 +1,10 @@
+connector:
+  name: coverage-parse-widgets
+  title: Coverage - Parse Widgets
+  description: Parse and extract specific widgets from Tallysight response
+  filename: parse_widgets.py
+  filetype: pyscript
+  commands:
+    - name: invoke_parse_widgets
+      value: invoke_parse_widgets
+

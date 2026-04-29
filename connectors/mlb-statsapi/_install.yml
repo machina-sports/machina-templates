@@ -1,0 +1,27 @@
+setup:
+  title: MLB Stats API
+  description: Connect to the MLB Stats API to get live and historical baseball data.
+  category:
+    - data-acquisition
+    - baseball
+  estimatedTime: 1 minute
+  features:
+    - Real-time game updates
+    - Comprehensive baseball statistics
+    - Player and team data
+    - Game schedules and results
+    - Standings and league information
+    - Detailed game events and play-by-play data
+    - Player statistics and performance metrics
+    - Team rosters and personnel information
+    - Historical data and records
+    - Venue and ballpark information
+  integrations:
+    - mlb
+  status: available
+  value: agent-templates/mlb-statsapi
+  version: 2.0.0
+
+datasets:
+  - type: "connector"
+    path: "mlb-statsapi.yml" 

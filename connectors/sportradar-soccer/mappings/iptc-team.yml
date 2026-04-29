@@ -1,0 +1,32 @@
+mappings:
+
+  # iptc-sportradar-team-mapping
+  - type: mapping
+    title: "IPTC | SportRadar Soccer Team Mapping"
+    name: "iptc-sportradar-team-mapping"
+    description: "Mapping data from SportRadar Soccer to IPTC Sport Schema team format"
+    outputs:
+      sport_schema_teams: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:sportradar:team:{team.get('id')}",
+            "@type": ["sport:Team", "schema:SportsTeam"],
+            "name": team.get('name', ''),
+            "schema:name": team.get('name', ''),
+            "sport:officialName": team.get('name', ''),
+            "sport:shortName": team.get('short_name', team.get('name', '')),
+            "sport:code": team.get('abbreviation', ''),
+            "sport:abbreviation": team.get('abbreviation', ''),
+            "sport:country": team.get('country', ''),
+            "sport:countryCode": team.get('country_code', ''),
+            "sport:status": "active",
+            "title": team.get('name', '')
+          }
+          for team in $.get('teams_raw', [])
+        ]
+
+

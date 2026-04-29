@@ -1,0 +1,5 @@
+connector:
+  name: "sportradar-rugby"
+  description: "SportRadar Rugby API v3"
+  filename: "sportradar-rugby.json"
+  filetype: "restapi" 

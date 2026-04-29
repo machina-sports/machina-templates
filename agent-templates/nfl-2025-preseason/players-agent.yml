@@ -1,0 +1,16 @@
+agent:
+  name: "draft-nfl-players-agent"
+  title: "Draft NFL Players Agent"
+  description: "Draft NFL Players Agent."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    # draft-nfl-players-update
+    - name: draft-nfl-players-update
+      description: "Draft NFL Players Update"
+      inputs:
+        input_status: "'waiting'"
+        output_status: "'idle'"
+      outputs:
+        workflow-status: "$.get('workflow-status')"

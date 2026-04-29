@@ -1,0 +1,94 @@
+workflow:
+  name: coverage-tools-send-wp
+  title: Coverage - Send to Wordpress
+  description: Send Article to Wordpress
+  context-variables:
+    debugger:
+      enabled: true
+    sportingbet-blog-br-wordpress:
+      Authorization: $SPORTINGBET_BLOG_BR_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN
+      basicAuth: $SPORTINGBET_BLOG_BR_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN
+    wordpress:
+      site_id: wpmachinatest.wordpress.com
+      Authorization: $TEMP_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN
+  inputs:
+    document_id: $.get('document_id', None)
+    skip-sender: $.get('skip-sender', False)
+  outputs:
+    document_id: $.get('document_id')
+    wp-post-link: $.get('wordpress_post_link')
+    workflow-status: $.get('document_id') is not None and 'executed' or 'skipped'
+  tasks:
+
+    # load-article-by-document_id
+    - type: document
+      name: load-article-by-document_id
+      description: Load individual article by external ID
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+      inputs:
+        name: "'content-article'"
+      outputs:
+        article: $.get('documents', [])[0].get('value', {}) if $.get('documents', []) else {}
+        article-author: $.get('documents', [])[0].get('metadata', {}).get('article-author', '')
+        article-categories: $.get('documents', [])[0].get('metadata', {}).get('article-categories', '')
+        article-document: $.get('documents', [])[0] if $.get('documents', []) else None
+        article-document-id: $.get('documents', [])[0].get('_id', None) if $.get('documents', []) else None
+        article-stats: $.get('documents', [])[0].get('metadata', {}).get('article-stats', '')
+        article-tags: $.get('documents', [])[0].get('metadata', {}).get('article-tags', '')
+        article-type: $.get('documents', [])[0].get('metadata', {}).get('article-type', '')
+
+    # post-article-to-wp-sportingbet-blog-br
+    - type: connector
+      name: post-article-to-wp-sportingbet-blog-br
+      description: Post the article to WordPress
+      condition: $.get('article-document-id') is not None and $.get('skip-sender') is False
+      continue_on_error: true
+      connector:
+        name: sportingbet-blog-br-wordpress
+        command: post-wp-json/wp/v2/{data_type}
+        command_attribute:
+          data_type: $.get('article-type')
+      inputs:
+        body: |
+          {
+            "type": $.get('article-type'),
+            "slug": $.get('article', {}).get('slug', ''),
+            "link": f"https:\/\/www.sportingbet.bet.br\/pt-br\/blog\/{$.get('article-type')}\/{$.get('article', {}).get('slug', '')}",
+            "title": $.get('article', {}).get('title', ''),
+            "content": $.get('article', {}).get('content', ''),
+            "excerpt": $.get('article', {}).get('summary', ''),
+            "author": $.get('article-author'),
+            "categories": $.get('article-categories'),
+            "stats": $.get('article-stats'),
+            "tags": $.get('article-tags')
+          }
+      outputs:
+        sa_wp_post: "$"
+    
+    # post-article-to-machina-wordpress
+    - type: connector
+      name: post-article-to-machina-wordpress
+      description: Post the article to WordPress
+      condition: $.get('article-document-id') is not None
+      continue_on_error: true
+      connector:
+        name: wordpress
+        command: post-wp/v2/sites/{site_id}/posts
+        command_attribute:
+          site_id: $.get('site_id')
+      inputs:
+        body: |
+          {
+            "title": $.get('article', {}).get('title', ''),
+            "content": $.get('article', {}).get('content', ''),
+            "excerpt": $.get('article', {}).get('summary', ''),
+            "status": "publish"
+          }
+      outputs:
+        wordpress_post: $
+        wordpress_post_link: $.get('link')

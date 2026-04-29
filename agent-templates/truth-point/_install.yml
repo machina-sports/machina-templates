@@ -1,0 +1,92 @@
+setup:
+  title: Truth Point
+  description: Single source of truth for the Machina platform — receives component manifests from machina-templates (ingest), serves semantic retrieval to consumers like the Factory (query), and absorbs verdicts from job runs to keep itself current (feedback).
+  category:
+    - special-templates
+    - platform
+  estimatedTime: 5 minutes
+  features:
+    - Ingest endpoint (POST /workflow/schedule/<id>) — accepts a component payload and upserts it into machina-knowledge with a Vertex text-embedding-004 vector
+    - Query endpoint — vector search over indexed components, returns top-K with scores
+    - Fetch endpoint — precise lookup of a single component by component_id, returns full manifest + files + verdict_history
+    - Feedback endpoint — appends a structured verdict to a component's verdict_history without re-embedding
+    - Stable component identity via metadata.component_id (kind:name)
+  status: available
+  integrations:
+    - google-vertex
+  value: agent-templates/truth-point
+  version: 1.0.0
+
+datasets:
+
+  # Workflows
+  - type: workflow
+    path: workflows/truth-point-ingest.yml
+
+  - type: workflow
+    path: workflows/truth-point-query.yml
+
+  - type: workflow
+    path: workflows/truth-point-fetch.yml
+
+  - type: workflow
+    path: workflows/truth-point-feedback.yml
+
+  # Incident system: marks connectors / components as DOWN / DEGRADED so the
+  # Factory stops generating new workflows against them until resolved.
+  - type: workflow
+    path: workflows/truth-point-incident-open.yml
+
+  - type: workflow
+    path: workflows/truth-point-incident-resolve.yml
+
+  - type: workflow
+    path: workflows/truth-point-active-incidents.yml
+
+  # Lessons-learned system: stores DO / DON'T patterns surfaced from
+  # historical regressions so the Factory's agent stops repeating them.
+  - type: workflow
+    path: workflows/truth-point-lesson-add.yml
+
+  - type: workflow
+    path: workflows/truth-point-lessons-active.yml
+
+  # Tier 3 — auto-extraction: given a failed run + broken artifacts,
+  # ask Gemini to derive a generalizable lesson and append it.
+  - type: prompts
+    path: prompts/lesson-from-failure.yml
+
+  - type: workflow
+    path: workflows/truth-point-lesson-from-failure.yml
+
+  # PR-review pipeline: takes a unified diff + title, pulls the relevant
+  # slice of lessons / incidents / similar components, and asks Gemini for
+  # a structured review keyed to specific files/lines. The reusable
+  # GitHub Action in machina-sports/.github wraps this workflow.
+  - type: prompts
+    path: prompts/review-pr.yml
+
+  - type: workflow
+    path: workflows/truth-point-review-pr.yml
+
+  # Deploy conventions: stores per-repo deploy knowledge (target branch,
+  # deploy workflow files, tag prefix, semantic-release flag) so Factory's
+  # deploy mode knows which post-merge GitHub Actions workflow to watch
+  # instead of guessing the first run on the merge SHA.
+  - type: workflow
+    path: workflows/truth-point-deploy-convention-add.yml
+
+  - type: workflow
+    path: workflows/truth-point-deploy-convention-get.yml
+
+  # Pre-flight: read a free-form task description and emit a structured
+  # intent (mode, target/reference repos, required credentials,
+  # applicable lessons) the Factory dashboard uses to auto-fill its
+  # form. Same RAG shape as the review-pr pipeline — pulls deploy
+  # conventions / lessons / similar components and asks Gemini for a
+  # schema-guided plan.
+  - type: prompts
+    path: prompts/pre-flight-task.yml
+
+  - type: workflow
+    path: workflows/truth-point-pre-flight-task.yml

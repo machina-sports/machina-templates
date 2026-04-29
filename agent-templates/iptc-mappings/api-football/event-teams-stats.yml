@@ -1,0 +1,47 @@
+mappings:
+
+  # iptc-api-football-event-teams-stats
+  - type: mapping
+    title: "IPTC | API Football Event Teams Statistics Mapping"
+    name: "iptc-api-football-event-teams-stats"
+    description: "Maps API Football match statistics to IPTC Soccer Statistics schema format"
+    outputs:
+      iptc_teams_statistics: |
+        {
+          "@context": {
+            "sport": "https://sportschema.org/ontologies/main/",
+            "spsocstat": "https://sportschema.org/ontologies/soccer/",
+            "spstat": "https://sportschema.org/ontologies/corestatistics/"
+          },
+          "@id": f"urn:apifootball:sport_event:{$.get('fixture', '')}",
+          "@type": "sport:Event",
+          "rdfs:label": f"{$.get('fixture_team_home_name', 'Home')} vs {$.get('fixture_team_away_name', 'Away')}",
+          "sport:participation": [
+            {
+              "@id": f"urn:apifootball:team-participation:{team.get('team', {}).get('id', '')}",
+              "@type": "sport:TeamParticipation",
+              "rdfs:label": f"{team.get('team', {}).get('name', '')} participation",
+              "sport:participationBy": {
+                "@id": f"urn:apifootball:team:{team.get('team', {}).get('id', '')}",
+                "@type": "sport:Team",
+                "rdfs:label": team.get('team', {}).get('name', ''),
+                "schema:logo": team.get('team', {}).get('logo', '')
+              },
+              "sport:alignment": "home" if i == 0 else "away",
+              "spstat:timeOfPossessionPercentage": str(next((stat.get('value', '0') for stat in team.get('statistics', []) if stat.get('type') == 'Ball Possession'), '0')).replace('%', ''),
+              "spsocstat:shotsTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Total Shots'), 0) or 0),
+              "spsocstat:shotsOnGoalTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Shots on Goal'), 0) or 0),
+              "spsocstat:shotsBlocked": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Blocked Shots'), 0) or 0),
+              "spsocstat:cornerKicks": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Corner Kicks'), 0) or 0),
+              "spsocstat:foulsCommited": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Fouls'), 0) or 0),
+              "spsocstat:offsides": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Offsides'), 0) or 0),
+              "spsocstat:cautionsTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Yellow Cards'), 0) or 0),
+              "spsocstat:ejectionsTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Red Cards'), 0) or 0),
+              "spsocstat:saves": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Goalkeeper Saves'), 0) or 0),
+              "spsocstat:passesTotal": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Total passes'), 0) or 0),
+              "spsocstat:passesComplete": int(next((stat.get('value', 0) for stat in team.get('statistics', []) if stat.get('type') == 'Passes accurate'), 0) or 0),
+              "spsocstat:passesCompletePercentage": str(next((stat.get('value', '0%') for stat in team.get('statistics', []) if stat.get('type') == 'Passes %'), '0%')).replace('%', '')
+            }
+            for i, team in enumerate($.get('fixtures_statistics', []))
+          ]
+        }

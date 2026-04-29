@@ -1,0 +1,25 @@
+agent:
+  name: "agent-chat-completion"
+  title: "Chat Completion"
+  description: "Agent responsible for chat completion."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    # Workflow Chat Completion
+    - name: "workflow-chat-completion"
+      description: "Workflow Chat Completion"
+      outputs:
+        chat-completion-status: "$.get('workflow-status', False)"
+
+    # # Workflow Reporter Comparisons
+    # - name: "workflow-reporter-comparisons"
+    #   description: "Workflow Reporter Comparisons"
+    #   outputs:
+    #     comparisons-status: "$.get('workflow-status', False)"
+
+    # # Workflow Live Updates
+    # - name: "workflow-live-updates"
+    #   description: "Workflow Live Updates"
+    #   outputs:
+    #     live-updates-status: "$.get('workflow-status', False)"

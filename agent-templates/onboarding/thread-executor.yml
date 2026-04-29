@@ -1,0 +1,164 @@
+workflow:
+  name: "thread-executor"
+  title: "Thread Executor"
+  description: "Workflow to execute a thread."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    machina-ai-fast:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
+  inputs:
+    event_type: "$.get('event_type', 'content-snippet')"
+    input_status: "$.get('input_status', 'waiting')"
+    output_status: "$.get('output_status', 'idle')"
+  outputs:
+    content: "$.get('content')"
+    documents: "$.get('documents')"
+    document_id: "$.get('document_id')"
+    document_data: "$.get('document_data')"
+    messages: "$.get('messages')"
+    workflow-status: "$.get('document_id') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # Load pending thread
+    - type: "document"
+      name: "load-pending-thread"
+      description: "Load pending thread"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        name: "'thread'"
+        value.status: "$.get('input_status')"
+      outputs:
+        document_id: "$.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None"
+        document_data: "$.get('documents')[0] if len($.get('documents', [])) > 0 else None"
+        event_code: "$.get('documents')[0].get('metadata', {}).get('event_code', '') if len($.get('documents', [])) > 0 else None"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else None"
+        question: "$.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else None"
+
+    # Update thread status
+    - type: "document"
+      name: "update-thread-status"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data', {}).get('value', {}),
+            'status': 'processing'
+          }
+      filters:
+        document_id: "$.get('document_id')"
+
+    # Load similar documents
+    - type: "document"
+      name: "load-similar-documents"
+      description: "Load similar documents"
+      config:
+        action: "search"
+        # threshold-docs: 5
+        # threshold-similarity: 0.01
+        # search-limit: 162
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'content-snippet'"
+        search-limit: "'50'"
+        # search-query: "$.get('question')"
+      outputs:
+        documents: "$.get('documents')"
+
+    # thread-executor-prompt
+    - type: "prompt"
+      name: "thread-executor-prompt"
+      description: "Thread Executor."
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai-fast"
+        command: "invoke_prompt"
+        model: "llama-3.3-70b-versatile"
+        # model: "deepseek-r1-distill-qwen-32b"
+        # model: "llama-3.1-8b-instant"
+        # model: "llama-3.3-70b-versatile"
+        # model: "deepseek-r1-distill-llama-70b"
+        # model: "deepseek-r1-distill-llama-70b-specdec"
+        #  name: "machina-ai"
+        #  command: "invoke_prompt"
+        #  model: "gpt-4o"
+      inputs:
+        documents: "$.get('documents')"
+        messages: "$.get('messages')"
+        question: "$.get('question')"
+      outputs:
+        content: "$"
+
+    # Load thread document
+    - type: "document"
+      name: "load-thread-document"
+      description: "Load thread document"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        _id: "$.get('document_id')"
+      inputs:
+        name: "'thread'"
+      outputs:
+        document_data: "$.get('documents')[0]"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', [])"
+
+    # Update thread document
+    - type: "document"
+      name: "update-thread-document"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data').get('value', {}),
+            'messages': [
+              *$.get('messages'),
+              {
+                'role': 'assistant',
+                'content': $.get('content'),
+                'date': datetime.now().isoformat()
+              }
+            ],
+            'status': $.get('output_status')
+          }
+      filters:
+        document_id: "$.get('document_id')"

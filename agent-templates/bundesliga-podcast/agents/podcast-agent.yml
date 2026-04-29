@@ -1,0 +1,74 @@
+agent:
+  name: bundesliga-podcast-agent
+  title: Bundesliga Podcast Agent
+  description: "Agent to manage user profile workflows: store profile, generate Bundesliga podcast content, and send email"
+  context-agent:
+    name: $.get('name')
+    favorite_sport: $.get('favorite_sport')
+    favorite_team: $.get('favorite_team')
+    podcast_mood_tone: $.get('podcast_mood_tone')
+    sports_knowledge: $.get('sports_knowledge')
+    email_address: $.get('email_address')
+    country: $.get('country')
+    language: $.get('language')
+    from_email: $.get('from_email')
+    mailgun_domain: $.get('mailgun_domain')
+  workflows:
+
+    # bundesliga-podcast-store-user-profile
+    - name: bundesliga-podcast-store-user-profile
+      description: Store user profile information from frontend application
+      inputs:
+        country: "$.get('country')"
+        email_address: "$.get('email_address')"
+        favorite_sport: "$.get('favorite_sport')"
+        favorite_team: "$.get('favorite_team')"
+        language: "$.get('language')"
+        name: "$.get('name')"
+        podcast_mood_tone: "$.get('podcast_mood_tone')"
+        sports_knowledge: "$.get('sports_knowledge')"
+      outputs:
+        document_id: "$.get('document_id')"
+        workflow-status: "$.get('workflow-status')"
+
+    # bundesliga-podcast-generate-content
+    - name: bundesliga-podcast-generate-content
+      description: Generate Bundesliga podcast content based on user profile
+      condition: "$.get('document_id') is not None"
+      inputs:
+        document_id: "$.get('document_id')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    # bundesliga-podcast-generate-audio
+    - name: bundesliga-podcast-generate-audio
+      description: Generate Bundesliga podcast audio based on user profile with user's language
+      condition: "$.get('document_id') is not None"
+      inputs:
+        document_id: "$.get('document_id')"
+        duration: "$.get('duration', 120)"
+        language: "$.get('language', 'en')"  # User's preferred language for TTS
+        model_id: "$.get('model_id', 'eleven_flash_v2_5')"
+        voice_id: "$.get('voice_id')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    # bundesliga-podcast-generate-image
+    - name: bundesliga-podcast-generate-image
+      description: Generate Bundesliga podcast image based on user profile and web search results
+      condition: "$.get('document_id') is not None"
+      inputs:
+        document_id: "$.get('document_id')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    # bundesliga-podcast-compose-template
+    - name: bundesliga-podcast-compose-template
+      description: Compose Bundesliga podcast template based on user profile
+      condition: "$.get('document_id') is not None"
+      inputs:
+        document_id: "$.get('document_id')"
+        from_email: "$.get('from_email')"
+        mailgun_domain: "$.get('mailgun_domain')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"

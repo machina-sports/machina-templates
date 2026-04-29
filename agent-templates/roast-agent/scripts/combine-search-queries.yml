@@ -1,0 +1,9 @@
+connector:
+  name: "roast-agent-combine-search-queries"
+  description: "Combines search queries from Team B and Team A prompts into a single list"
+  filename: "combine-search-queries.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Combine"
+      value: "invoke_combine"
+

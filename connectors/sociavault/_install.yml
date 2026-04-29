@@ -1,0 +1,26 @@
+setup:
+  title: SociaVault
+  description: Social media data API - Instagram profiles, posts, reels, comments, highlights, and transcripts.
+  category:
+    - data-acquisition
+    - social-media
+  estimatedTime: 1 minute
+  features:
+    - Instagram profile data with follower/following counts
+    - Paginated posts and reels with engagement metrics
+    - Post detail lookups, comment threads, story highlights
+    - AI-generated video transcripts
+    - Credit balance monitoring
+  integrations:
+    - sociavault
+  requirements:
+    - SociaVault-API-Key
+  status: available
+  value: connectors/sociavault
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: sociavault.yml
+  - type: workflow
+    path: test-credentials.yml

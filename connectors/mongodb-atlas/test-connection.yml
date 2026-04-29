@@ -1,0 +1,98 @@
+workflow:
+  name: mongodb-atlas-test-connection
+  title: MongoDB Atlas Test Connection
+  description: Test MongoDB Atlas connectivity, write, read, lookup, and search_cache operations.
+  context-variables:
+    debugger:
+      enabled: true
+    mongodb-atlas:
+      connection_string: $TEMP_CONTEXT_VARIABLE_MONGODB_ATLAS_URI
+      database: $TEMP_CONTEXT_VARIABLE_MONGODB_ATLAS_DATABASE
+  inputs:
+    test_collection: "'test_connection'"
+  outputs:
+    write_result: $.get('write_result', {})
+    read_result: $.get('read_result', {})
+    lookup_result: $.get('lookup_result', {})
+    cache_result: $.get('cache_result', {})
+    workflow-status: "'executed'"
+  tasks:
+
+    # Step 1: Write a test document
+    - type: connector
+      name: write-test-doc
+      description: Write a test document to verify connectivity.
+      connector:
+        name: mongodb-atlas
+        command: write_document
+      inputs:
+        collection: $.get('test_collection')
+        document:
+          _id: "'test-doc-001'"
+          category: "'test'"
+          entity_id: "'test-entity'"
+          search_query: "'test search query'"
+          answer: "'This is a test cached answer.'"
+          search_results:
+            - url: "'https://example.com'"
+              title: "'Example Result'"
+          source_provider: "'test'"
+        ttl_hours: 1
+      outputs:
+        write_result: $
+
+    # Step 2: Read the document back
+    - type: connector
+      name: read-test-doc
+      description: Read the test document back by ID.
+      connector:
+        name: mongodb-atlas
+        command: read_document
+      inputs:
+        collection: $.get('test_collection')
+        document_id: "'test-doc-001'"
+      outputs:
+        read_result: $
+
+    # Step 3: Lookup with filter
+    - type: connector
+      name: lookup-test
+      description: Lookup documents with a category filter.
+      connector:
+        name: mongodb-atlas
+        command: lookup
+      inputs:
+        collection: $.get('test_collection')
+        filter:
+          category: "'test'"
+        limit: 10
+      outputs:
+        lookup_result: $
+
+    # Step 4: Search cache (google-genai compatible output)
+    - type: connector
+      name: search-cache-test
+      description: Test search_cache to verify drop-in compatibility with google-genai output.
+      connector:
+        name: mongodb-atlas
+        command: search_cache
+      inputs:
+        collection: $.get('test_collection')
+        entity_id: "'test-entity'"
+        category: "'test'"
+        max_age_hours: 1
+      outputs:
+        cache_result: $
+
+    # Step 5: Clean up test document
+    - type: connector
+      name: cleanup-test-doc
+      description: Delete the test document.
+      connector:
+        name: mongodb-atlas
+        command: delete_document
+      inputs:
+        collection: $.get('test_collection')
+        document_id: "'test-doc-001'"
+      outputs:
+        cleanup_result: $

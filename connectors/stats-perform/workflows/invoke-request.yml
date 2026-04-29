@@ -1,0 +1,42 @@
+workflow:
+  name: sp-opta-invoke-request
+  title: Stats Perform Opta Invoke Request
+  description: Workflow to invoke the Stats Perform Opta API request.
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    competition_id: $.get('competition_id', '2kwbbcootiqqgmrzs6o5inle5')
+    endpoint: $.get('endpoint', 'tournamentcalendar')
+    query_params: $.get('query_params', {})
+  outputs:
+    workflow-status: $.get('data') is not None and 'executed' or 'skipped'
+  tasks:
+    
+    - type: connector
+      name: opta-request
+      description: Invoke the Stats Perform Opta API request.
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        data: $
+        access_token: "$.get('access_token')"
+    
+    - type: connector
+      name: opta-request
+      description: Invoke the Stats Perform Opta API request.
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+          access_token: "$.get('access_token')"
+          endpoint: $.get('endpoint')
+          competition_id: $.get('competition_id')
+          query_params: $.get('query_params')
+      outputs:
+        data: $
+    

@@ -1,0 +1,59 @@
+prompts:
+
+  # chat-completion-event-selector
+  - type: prompt
+    name: chat-completion-event-selector
+    title: "Chat Completion | Event Selector"
+    description: "Chat Completion Event Selector"
+    instruction: |
+      Select events from the provided list based on the instruction.
+
+      RULES:
+      - If instruction mentions team names: find events containing those team names
+      - If instruction mentions time (yesterday, today, tomorrow): match events by date
+      - Return matched events in the events array
+      - Put unmatched events in other_events array
+      - Set has_found_event to true if any matches found
+
+      HOW TO MATCH:
+      1. Team names: Search for team names in event titles (case-insensitive)
+      2. Time-based: Compare event startDate with current date
+        - "yesterday" = events from day before current date
+        - "today" = events from current date  
+        - "tomorrow" = events from day after current date
+
+      OUTPUT:
+      - events: Array of matched events with id and title
+      - other_events: Array of unmatched event titles
+      - has_found_event: true if matches found, false if no matches
+    schema:
+      title: "ChatCompletionEventSelector"
+      description: "Selects events based on instruction criteria"
+      type: "object"
+      required: [
+        "events",
+        "other_events",
+        "has_found_event"
+      ]
+      properties:
+        events:
+          type: "array"
+          description: "Array of matched events with id and title"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+                description: "ID of the matched event"
+              title:
+                type: "string"
+                description: "Title of the matched event"
+            required: ["id", "title"]
+        other_events:
+          type: "array"
+          description: "List of unselected event titles"
+          items:
+            type: "string"
+        has_found_event:
+          type: "boolean"
+          description: "True if at least one match was found"

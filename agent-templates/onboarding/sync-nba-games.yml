@@ -1,0 +1,64 @@
+workflow:
+  name: "sync-nba-games"
+  title: "Sync NBA Games"
+  description: "Workflow to sync nba games."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nba:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', '2024')"
+    season_type: "$.get('season_type', 'REG')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # task-load-games
+    - type: "connector"
+      name: "task-load-games"
+      description: "Get a season games from SportRadar"
+      connector:
+        name: "sportradar-nba"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          data_type: "'schedule.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        games: "$.get('games')"
+        games_parsed: |
+          [
+            {
+              **c,
+              'metadata': {
+                'event_code': c.get('id', ''),
+                'team_ids': [c.get('home', {}).get('id', ''), c.get('away', {}).get('id', '')],
+              },
+              'start_time': datetime.strptime(c.get('scheduled'), '%Y-%m-%dT%H:%M:%SZ'),
+              'title': f"{c.get('home', {}).get('name', '')} v {c.get('away', {}).get('name', '')}",
+              'selected': False
+            }
+            for c in $.get('games')
+            if c.get('status') == 'closed'
+          ]
+
+    # bulk-save-games
+    - type: "document"
+      name: "bulk-save-games"
+      condition: "$.get('games_parsed') is not None"
+      description: "Bulk save the games."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "nba-game"
+      documents:
+        items: "$.get('games_parsed')"
+      inputs:
+        games_parsed: "$.get('games_parsed')"

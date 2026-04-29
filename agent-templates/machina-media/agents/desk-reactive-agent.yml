@@ -1,0 +1,68 @@
+agent:
+  name: desk-reactive-agent
+  title: Desk Reactive Agent (Event-Driven)
+  description: "Triggers on high-urgency events (e.g., breaking news) to generate and publish content rapidly."
+  context-variables:
+    - name: coverage_scope
+      type: object
+      description: "Defines the scope of sports/leagues/teams to monitor."
+      default: "{'leagues': ['nba', 'nfl', 'epl']}"
+    - name: time_window_minutes
+      type: integer
+      description: "The lookback window for the sports state sync in minutes."
+      default: 5
+  workflows:
+    - name: sync-sports-state
+      description: "Ingest the latest sports data from a very recent time window."
+      inputs:
+        coverage_scope: "$.get('coverage_scope')"
+        time_window: "$.get('time_window_minutes')"
+      outputs:
+        sports_state: "$.get('sports_state')"
+
+    - name: detect-storylines
+      description: "Analyze the current sports state to identify potential storylines."
+      inputs:
+        sports_state: "$.get('sports_state')"
+      outputs:
+        storylines: "$.get('storylines')"
+
+    - name: rank-storylines
+      description: "Rank storylines for a breaking news context."
+      inputs:
+        storylines: "$.get('storylines')"
+        current_slot: "'breaking_alert'"
+      outputs:
+        ranked_storylines: "$.get('ranked_storylines')"
+
+    - name: filter-breaking-storylines
+      description: "Filter for storylines with the highest urgency."
+      type: mapping
+      gate: "len($.get('ranked_storylines', [])) > 0"
+      config:
+        action: filter
+        inputs:
+          - "$.get('ranked_storylines')"
+        condition: "storyline['urgency'] == 'breaking'"
+      outputs:
+        breaking_storylines: "$.get('result')"
+
+    - name: generate-breaking-news-alert
+      description: "Generate a script for the breaking news alert."
+      gate: "len($.get('breaking_storylines', [])) > 0"
+      inputs:
+        # Process the top breaking storyline
+        storyline: "$.get('breaking_storylines')[0]"
+      outputs:
+        alert_script: "$.get('alert_script')"
+        alert_segment: "$.get('alert_segment')"
+
+    - name: generate-social-derivatives
+      description: "Create social media posts for the breaking news alert."
+      gate: "$.get('alert_script') is not None"
+      inputs:
+        source_ref: "{'type': 'breaking_alert', 'storyline_id': $.get('breaking_storylines')[0].get('id')}"
+        source_script_or_segment: "$.get('alert_script')"
+        platforms: "['x']" # Start with X/Twitter for speed
+      outputs:
+        social_posts: "$.get('x_draft')"

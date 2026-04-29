@@ -1,0 +1,8 @@
+connector:
+  name: "stability"
+  description: "This connector is the Stability SDK"
+  filename: "stability.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Generate Image"
+      value: "generate_image" 

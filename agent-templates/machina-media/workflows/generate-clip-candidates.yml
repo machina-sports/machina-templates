@@ -1,0 +1,28 @@
+workflow:
+  name: generate-clip-candidates
+  title: Generate Clip Candidates
+  description: "Analyzes a source media segment to identify potential short-form
+    video clips."
+  inputs:
+    source_segment: $.get('source_segment', '')
+    source_script: $.get('source_script', '')
+    target_platform: $.get('target_platform', '')
+  tasks:
+    - name: extract-clips
+      type: prompt
+      description: "Use an LLM to identify compelling clips from the source material."
+      connector:
+        name: machina-gcp-ai
+        command: invoke_prompt
+        model: gemini-1.5-flash
+      prompt:
+        name: clip-extraction-prompt
+      inputs:
+        source_segment: "$.get('source_segment')"
+        source_script: "$.get('source_script')"
+        target_platform: "$.get('target_platform')"
+      outputs:
+        clip_candidates: "$.get('result', [])"
+  outputs:
+    clip_candidates: "$.get('clip_candidates', [])"
+    workflow-status: "len($.get('clip_candidates', [])) > 0"

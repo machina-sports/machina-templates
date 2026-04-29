@@ -1,0 +1,33 @@
+workflow:
+  name: chat-response
+  title: "EA Football Chat Response"
+  description: "Composes the final football answer from reasoning context and tool result."
+  inputs:
+    messages: "$.get('messages', [])"
+    league: "$.get('league', 'premier-league')"
+    reasoning: "$.get('reasoning', {})"
+    tool_result: "$.get('tool_result')"
+  outputs:
+    message: "$.get('message', '')"
+    card_data: "$.get('card_data')"
+    follow_up_chips: "$.get('follow_up_chips', [])"
+    workflow-status: "'executed'"
+  tasks:
+    - type: prompt
+      name: ea-football-chat-response
+      description: "Compose answer grounded in tool result data."
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-league: "$.get('league', 'premier-league')"
+        _2-messages: "$.get('messages', [])"
+        _3-reasoning: "$.get('reasoning', {})"
+        _4-tool_result: "$.get('tool_result')"
+      outputs:
+        message: "$.get('message', '')"
+        card_data: "$.get('card_data')"
+        follow_up_chips: "$.get('follow_up_chips', [])"

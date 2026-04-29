@@ -1,0 +1,132 @@
+workflow:
+  name: "sp-opta-sync-competitions"
+  title: "Stats Perform Opta - Competitions"
+  description: "Workflow to synchronize tournament calendars from Stats Perform Opta API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  outputs:
+    competitions: "$.get('competitions')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-get-access-token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # task-load-competitions-page-1
+    - type: "connector"
+      name: "task-load-competitions-page-1"
+      description: "Get Tournament Calendars page 1 from Stats Perform Opta"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      condition: "$.get('access_token') is not None"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'tournamentcalendar'"
+        query_params: "{'_pgSz': '400', '_pgNm': '1'}"
+      outputs:
+        competitions_page_1: "$.get('competition', [])"
+
+    # task-load-competitions-page-2
+    - type: "connector"
+      name: "task-load-competitions-page-2"
+      description: "Get Tournament Calendars page 2 from Stats Perform Opta"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      condition: "$.get('access_token') is not None"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'tournamentcalendar'"
+        query_params: "{'_pgSz': '400', '_pgNm': '2'}"
+      outputs:
+        competitions_page_2: "$.get('competition', [])"
+
+    # task-load-competitions-page-3
+    - type: "connector"
+      name: "task-load-competitions-page-3"
+      description: "Get Tournament Calendars page 3 from Stats Perform Opta"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      condition: "$.get('access_token') is not None"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'tournamentcalendar'"
+        query_params: "{'_pgSz': '400', '_pgNm': '3'}"
+      outputs:
+        competitions_page_3: "$.get('competition', [])"
+
+    # task-combine-pages
+    - type: "mapping"
+      name: "sp-combine-competition-pages"
+      description: "Combine all competition pages"
+      condition: "$.get('access_token') is not None"
+      inputs:
+        competitions_page_1: "$.get('competitions_page_1', [])"
+        competitions_page_2: "$.get('competitions_page_2', [])"
+        competitions_page_3: "$.get('competitions_page_3', [])"
+      outputs:
+        competitions: "$.get('competitions')"
+
+    # task-update-competitions
+    - type: "document"
+      name: "task-update-competitions"
+      description: "Update the competitions document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('competitions') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        sp-competitions: |
+          {
+            'data': $.get('competitions'),
+            'title': 'Stats Perform - All Competitions',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-competitions
+    - type: "document"
+      name: "task-bulk-save-competitions"
+      description: "Bulk save the competitions."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('competitions') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sp-competition'"
+      documents:
+        items: |
+          [
+            {
+              **c,
+              'title': f"{c.get('country', '')} - {c.get('name', '')}",
+              'selected': False
+            }
+            for c in $.get('competitions', [])
+          ]
+      metadata:
+        document_type: "'sp-competition'"
+

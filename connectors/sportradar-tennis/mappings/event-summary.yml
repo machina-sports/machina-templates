@@ -1,0 +1,50 @@
+mappings:
+
+  - type: "mapping"
+    title: "Tennis - Event Summary Mapping"
+    name: "mapping-tennis-event-summary"
+    description: "Mapping data from sportradar tennis event data"
+    outputs:
+      event_code: "$.get('event_selected', {}).get('sport_event', {}).get('id')"
+      event_date: "$.get('event_selected', {}).get('sport_event', {}).get('start_time')"
+      event_confirmed: "$.get('event_selected', {}).get('sport_event', {}).get('start_time_confirmed', False)"
+      match_status: "$.get('event_selected', {}).get('sport_event_status', {}).get('match_status')"
+      event_status: "$.get('event_selected', {}).get('sport_event_status', {}).get('status')"
+      home_score: "$.get('event_selected', {}).get('sport_event_status', {}).get('home_score', 0)"
+      away_score: "$.get('event_selected', {}).get('sport_event_status', {}).get('away_score', 0)"
+      winner_id: "$.get('event_selected', {}).get('sport_event_status', {}).get('winner_id')"
+      period_scores: "$.get('event_selected', {}).get('sport_event_status', {}).get('period_scores', [])"
+      competitors: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])"
+      competitor_home_name: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('name') if len($.get('event_selected', {}).get('sport_event', {}).get('competitors', [])) > 0 else ''"
+      competitor_away_name: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('name') if len($.get('event_selected', {}).get('sport_event', {}).get('competitors', [])) > 1 else ''"
+      competitor_home_id: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('id') if len($.get('event_selected', {}).get('sport_event', {}).get('competitors', [])) > 0 else ''"
+      competitor_away_id: "$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('id') if len($.get('event_selected', {}).get('sport_event', {}).get('competitors', [])) > 1 else ''"
+      event_context: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {})"
+      season: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('id')"
+      season_title: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('season', {}).get('name')"
+      competition: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('id')"
+      competition_title: "$.get('event_selected', {}).get('sport_event', {}).get('sport_event_context', {}).get('competition', {}).get('name')"
+      venue: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {})"
+      venue_title: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('name')"
+      surface_type: "$.get('event_selected', {}).get('sport_event', {}).get('venue', {}).get('surface', 'unknown')"
+      event_title: f"{$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[0].get('name', 'TBD') if len($.get('event_selected', {}).get('sport_event', {}).get('competitors', [])) > 0 else 'TBD'} vs {$.get('event_selected', {}).get('sport_event', {}).get('competitors', [])[1].get('name', 'TBD') if len($.get('event_selected', {}).get('sport_event', {}).get('competitors', [])) > 1 else 'TBD'}"
+
+  - type: "mapping"
+    title: "Tennis - Match Score Summary"
+    name: "mapping-tennis-match-score"
+    description: "Mapping tennis match score data"
+    outputs:
+      home_score: "$.get('item').get('home_score')"
+      away_score: "$.get('item').get('away_score')"
+      match_status: "$.get('item').get('match_status')"
+      period_scores: "$.get('item').get('period_scores')"
+      status: "$.get('item').get('status')"
+      winner_id: "$.get('item').get('winner_id')"
+      match_status_summary: |
+        " | ".join([
+          f"Score: {$.get('item').get('home_score')} x {$.get('item').get('away_score')}",
+          f"Match Status: {$.get('item').get('match_status')}",
+          f"Status: {$.get('item').get('status')}",
+          f"Sets: {len($.get('item').get('period_scores', []))}",
+          f"Winner: {$.get('item').get('winner_id', 'TBD')}"
+        ])

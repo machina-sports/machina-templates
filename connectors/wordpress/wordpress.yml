@@ -1,0 +1,5 @@
+connector:
+  name: "wordpress"
+  description: "WordPress REST API"
+  filename: "wordpress.json"
+  filetype: "restapi"

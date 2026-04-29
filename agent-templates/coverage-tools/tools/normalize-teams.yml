@@ -1,0 +1,10 @@
+connector:
+  name: coverage-tools-normalize-teams
+  title: Coverage - Normalize Team Names and League
+  description: Normalize team names and map competition IDs to league codes for widget placement
+  filename: normalize-teams.py
+  filetype: pyscript
+  commands:
+    - name: invoke_normalize_teams
+      value: invoke_normalize_teams
+

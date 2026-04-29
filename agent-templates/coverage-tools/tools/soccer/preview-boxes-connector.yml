@@ -1,0 +1,8 @@
+connector:
+  name: coverage-tools-soccer-preview-boxes-connector
+  description: Process markets for article boxes in one step
+  filename: preview-boxes-script.py
+  filetype: pyscript
+  commands:
+    - name: process_markets_for_boxes
+      value: process_markets_for_boxes

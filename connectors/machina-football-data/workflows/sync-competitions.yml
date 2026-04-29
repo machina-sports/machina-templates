@@ -1,0 +1,86 @@
+workflow:
+  name: "machina-football-data-sync-competitions"
+  title: "Machina Football Data - Competitions"
+  description: "Workflow to synchronize competitions from Machina Football Data to Machina."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-football-data:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"
+  outputs:
+    competitions: "$.get('competitions')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # check if competitions were synced recently (7-day cache)
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the competitions document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
+        value.status: "'active'"
+      inputs:
+        name: "'machina-football-competitions'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # fetch competitions from API
+    - type: "connector"
+      name: "task-load-competitions"
+      description: "Get Competitions from Machina Football Data"
+      connector:
+        name: "machina-football-data"
+        command: "get_competitions"
+      condition: "$.get('should_update') == True"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        competitions: "$.get('competitions', [])"
+
+    # save synchronization document
+    - type: "document"
+      name: "task-update-competitions"
+      description: "Update the competitions synchronization document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      documents:
+        machina-football-competitions: |
+          {
+            'data': $.get('competitions'),
+            'title': 'All Competitions',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # bulk save individual competition documents
+    - type: "document"
+      name: "task-bulk-save-competitions"
+      description: "Bulk save the competitions."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      document_name: "'competition'"
+      documents:
+        items: |
+          [
+            {
+              **c,
+              'title': f"{c.get('category', {}).get('name', '')} {c.get('name', '')}",
+              'selected': False
+            }
+            for c in $.get('competitions', [])
+          ]
+      metadata:
+        document_type: "'competition'"

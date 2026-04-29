@@ -1,0 +1,30 @@
+workflow:
+  name: "get-lap-data"
+  title: "Get Lap Data"
+  description: "Workflow to get lap data for a specific session."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    event: "$.get('event') or None"
+    year: "$.get('year') or None"
+    session_type: "$.get('session_type') or None"
+    driver: "$.get('driver') or None"
+  outputs:
+    lap_data: "$.get('lap_data')"
+    workflow-status: "$.get('lap_data') is not None and 'executed' or 'skipped'"
+
+  tasks:
+    - type: "connector"
+      name: "get-lap-data"
+      description: "Get lap data for a specific session."
+      connector:
+        name: "fastf1"
+        command: "get_lap_data"
+      inputs:
+        event: "$.get('event')"
+        year: "$.get('year')"
+        session_type: "$.get('session_type')"
+        driver: "$.get('driver')"
+      outputs:
+        lap_data: "$" 

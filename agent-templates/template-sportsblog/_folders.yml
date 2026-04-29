@@ -1,0 +1,165 @@
+workflow:
+  name: "template-sportsblog-folders"
+  title: "Setup Folders"
+  description: "Setup Folders"
+  outputs:
+    setup-register: "$.get('setup-register')"
+    workflow-status: "$.get('setup-register') is True and 'skipped' or 'executed'"
+  tasks:
+
+    # load-setup-register
+    - type: "document"
+      name: "load-setup-register"
+      description: "Search for setup-register"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'setup-register'"
+      outputs:
+        setup-register: "$.get('documents')[0].get('value').get('setup', False) if $.get('documents') else False"
+
+    # documents-structure
+    - type: "document"
+      name: "install-documents"
+      description: "Install documents."
+      condition: "$.get('setup-register') is not True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        setup-register: |
+          {
+            "setup": True
+          }
+        site-structure: |
+          []
+        doc-structure: |
+          [
+            {
+              "title": "Catalogue",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "competitions",
+                  "title": "Competitions",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["competitions","competition"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "seasons",
+                  "title": "Seasons",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["seasons","season"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "schedules",
+                  "title": "Schedules",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["schedules","schedule"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "standings",
+                  "title": "Standings",
+                  "category": "Catalogue",
+                  "metadata": {
+                    "name": ["standings","standing"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            },
+            {
+              "title": "Content",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "content-briefing",
+                  "title": "Briefing",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-briefing"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-news",
+                  "title": "News",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-news", "websearch-result"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-polls",
+                  "title": "Polls",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-poll"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-quizzes",
+                  "title": "Quizzes",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-quiz"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-snippets",
+                  "title": "Snippets",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["content-snippet"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "content-standings",
+                  "title": "Standings",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["blog-standings", "content-standings"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "event-summary",
+                  "title": "Summary",
+                  "category": "Content",
+                  "metadata": {
+                    "name": ["event-summary"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]

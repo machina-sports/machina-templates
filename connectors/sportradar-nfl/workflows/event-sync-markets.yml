@@ -1,0 +1,100 @@
+workflow:
+
+  # sportradar-nfl-event-sync-markets
+  name: sportradar-nfl-event-sync-markets
+  title: Sportradar NFL - Event Sync Markets
+  description: Workflow to sync event markets from SportRadar API by event code.
+  context-variables:
+    debugger:
+      enabled: true
+    bwin:
+      Bwin-AccessId: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID"
+      Bwin-AccessIdToken: "$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN"
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-nfl:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    event_document_id: $.get('event_document_id')
+  outputs:
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (sportradar) by code.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_code: $.get('documents', [])[0].get('metadata', {}).get('event_code') if $.get('documents') else None
+        event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
+
+    # 5 load-game-market
+    - type: document
+      name: load-game-market
+      description: Search for game-market related to the event.
+      condition: $.get('event_code') is not None and $.get('event_exists') is True and ($.get('event_value', {}).get('market_data') is None or not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False))
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", -1]
+      filters:
+        value.event_code: $.get('event_code')
+      inputs:
+        name: "'game-market'"
+      outputs:
+        market_exists: len($.get('documents', [])) > 0
+        market_code: str($.get('documents', [])[0].get('metadata', {}).get('market_code', '')) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('metadata', {}).get('market_code') else None
+        market_fixture_id: int($.get('documents', [])[0].get('value', {}).get('id', 0)) if $.get('documents') and len($.get('documents', [])) > 0 and $.get('documents', [])[0].get('value', {}).get('id') else None
+        market_document_id: $.get('documents', [])[0].get('_id') if $.get('documents') and len($.get('documents', [])) > 0 else None
+
+    # 5.1 fetch-market-from-bwin
+    - type: connector
+      name: fetch-market-from-bwin
+      description: Get market from Bwin API for the event using fixture ID from game-market.
+      condition: $.get('event_code') is not None and $.get('market_fixture_id') is not None and $.get('market_exists') is True and ($.get('event_value', {}).get('market_data') is None or not $.get('event_value', {}).get('version_control', {}).get('hasMarketCode', False))
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          country: "'en'"
+          sportId: "'11'"
+      inputs:
+        fixtureIds: "[$.get('market_fixture_id')]"
+        onlyMainMarkets: "'true'"
+      outputs:
+        market_data: $
+        market_code: str($.get('items', [{}])[0].get('id', {}).get('entityId', '')) if $.get('items') and len($.get('items', [])) > 0 and $.get('items', [{}])[0].get('id', {}).get('entityId') else None
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            **$.get('event_updated', {}),
+            'market_code': $.get('market_code'),
+            'market_data': $.get('market_data', []),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {})
+            }
+          }
+      

@@ -1,0 +1,5 @@
+connector:
+  name: "api-mailgun"
+  description: "This API allows you to connect mailgun."
+  filename: "api-mailgun.json"
+  filetype: "restapi"

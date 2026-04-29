@@ -1,0 +1,75 @@
+workflow:
+  name: "get-race-results"
+  title: "Get Race Results"
+  description: "Workflow to get race results for a specific event."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event: "$.get('event') or None"
+    year: "$.get('year') or None"
+  outputs:
+    race_results: "$.get('race_results')"
+    workflow-status: "$.get('race_results') is not None and 'executed' or 'skipped'"
+
+  tasks:
+    - type: "connector"
+      name: "get-race-results"
+      description: "Get race results for a specific event."
+      connector:
+        name: "fastf1"
+        command: "get_race_results"
+      inputs:
+        event: "$.get('event')"
+        year: "$.get('year')"
+      outputs:
+        race_results: "$" 
+
+    - type: "prompt"
+      name: "prompt-race-result-analysis"
+      description: "Prompt to analyze race results."
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        race_results: "$.get('race_results')"
+      outputs:
+        snippets: "$"
+        snippets-bulk: |
+          [
+            {
+              'subject': c.get('subject', ''),
+              'text': c.get('content', ''),
+              'title': f"$.(year) $.(event) - {c.get('title', '')}",
+              'metadata': {
+                'event': '$.(event)',
+                'year': '$.(year)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    - type: "document"
+      name: "update-snippets"
+      condition: "len($.get('snippets-bulk', [])) > 0"
+      description: "Update the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('snippets-bulk', [])
+          ]

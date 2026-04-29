@@ -1,0 +1,11 @@
+mapping:
+  name: map-normalize-market-signal
+  title: "Normalize Market Signal"
+  description: "Maps a raw market data row to the canonical 'market_signal' data model."
+  outputs:
+    market_id: "$.get('raw_market_signal', {}).get('id')"
+    question: "$.get('raw_market_signal', {}).get('question')"
+    yes_price: "$.get('raw_market_signal', {}).get('yes_price')"
+    delta_24h: "$.get('raw_market_signal', {}).get('delta_24h')"
+    sport: "$.get('raw_market_signal', {}).get('sport', 'unknown')"
+    entities: "$.get('raw_market_signal', {}).get('entities', [])"

@@ -1,0 +1,82 @@
+prompts:
+  - type: "prompt"
+    name: press-conference-extractor-prompt
+    title: Press Conference Extractor Prompt
+    description: "Extracts topics, quotes, and rankings from a press conference transcript."
+    instruction: |
+      You are an expert sports journalist assistant. Your task is to analyze the following press conference transcript and extract structured information.
+
+      Follow these steps carefully:
+      1.  Read the entire transcript to understand the main themes.
+      2.  Identify the distinct topics discussed. A topic is a specific subject, like "Player Injury", "Next Opponent", or "Team Strategy".
+      3.  Extract direct quotes from the transcript. For each quote, identify who said it (the speaker).
+      4.  Assign each quote to one of the topics you identified.
+      5.  Analyze the sentiment of each quote (e.g., 'positive', 'negative', 'neutral', 'controversial').
+      6.  Calculate a 'newsworthiness_score' for each quote from 1 to 100. This score is a combination of:
+          - Novelty: Is the information new or surprising?
+          - Controversy: Is the statement likely to generate debate or strong reactions?
+          - Clarity: Is the quote concise and easy to understand?
+      7.  After analyzing all quotes, identify the top 5 most newsworthy quotes.
+      8.  For each of the top 5, provide a brief justification ('why') for its high ranking.
+      9.  Return the final output as a single, valid JSON object that strictly adheres to the provided schema.
+
+      Language: match the language of the input transcript. If the user provides a transcript in Portuguese, reply in Portuguese.
+
+      Transcript:
+      {transcript}
+
+    schema:
+      type: object
+      properties:
+        topics:
+          type: array
+          description: "A list of topics discussed in the press conference."
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "The name of the topic."
+              summary:
+                type: string
+                description: "A brief summary of what was discussed regarding this topic."
+            required: ["name", "summary"]
+        quotes:
+          type: array
+          description: "A list of all relevant quotes extracted from the transcript."
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: "A unique identifier for the quote (e.g., quote-1)."
+              speaker:
+                type: string
+                description: "The person who made the statement."
+              topic:
+                type: string
+                description: "The topic this quote belongs to."
+              text:
+                type: string
+                description: "The verbatim text of the quote."
+              sentiment:
+                type: string
+                description: "The sentiment of the quote (e.g., 'positive', 'negative', 'neutral')."
+              newsworthiness_score:
+                type: number
+                description: "A score from 1-100 indicating how newsworthy the quote is."
+            required: ["id", "speaker", "topic", "text", "sentiment", "newsworthiness_score"]
+        top_5_quotes:
+          type: array
+          description: "The top 5 most newsworthy quotes, ranked."
+          items:
+            type: object
+            properties:
+              quote_id:
+                type: string
+                description: "The ID of the quote, matching one from the quotes list."
+              why:
+                type: string
+                description: "A brief justification for why this quote is ranked highly."
+            required: ["quote_id", "why"]
+      required: ["topics", "quotes", "top_5_quotes"]

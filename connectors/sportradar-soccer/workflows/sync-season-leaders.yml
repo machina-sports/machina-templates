@@ -1,0 +1,56 @@
+workflow:
+  name: "sportradar-soccer-sync-season-leaders"
+  title: "Sportradar Soccer - Season Leaders"
+  description: "Workflow to synchronize season leaders (top scorers, assists, cards) from SportRadar API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    leaders_data: "$.get('leaders_data')"
+    workflow-status: "$.get('leaders_data') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-season-leaders
+    - type: "connector"
+      name: "task-load-season-leaders"
+      description: "Get season leaders from SportRadar"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('season_id')"
+          data_type: "'leaders.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        leaders_data: "$"
+
+    # task-update-season-leaders
+    - type: "document"
+      name: "task-update-season-leaders"
+      description: "Update the season leaders document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        season-leaders: |
+          {
+            'data': $.get('leaders_data'),
+            'season_id': $.get('season_id'),
+            'title': f"{$.get('season_id', '')} - Season Leaders",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: "$.get('season_id')"
+        document_type: "'season-leaders'"
+

@@ -1,0 +1,29 @@
+workflow:
+  name: recap-transfer-rumors
+  title: "Recap Transfer Rumors"
+  description: "Takes a JSON array of football transfer rumors and returns a one-paragraph recap plus a per-rumor confidence score."
+  inputs:
+    rumors:
+      type: array
+      description: "Array of rumor objects. Each item: {player, from_club, to_club, source_url}."
+  outputs:
+    summary: $.get('summary', '')
+    scored_rumors: $.get('scored_rumors', [])
+    workflow-status: ($.get('summary', '') != '' and len($.get('scored_rumors', [])) > 0) and 'executed' or 'skipped'
+  tasks:
+
+    - name: recap
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt:
+        name: recap-transfer-rumors-prompt
+      inputs:
+        rumors_json: str($.get('rumors', []))
+      outputs:
+        summary: $.get('summary', '')
+        scored_rumors: $.get('scored_rumors', [])

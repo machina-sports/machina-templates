@@ -1,0 +1,19 @@
+setup:
+  title: Google Workstation
+  description: Manage GCW lifecycle and execute Claude Code sessions remotely.
+  category:
+    - cloud-infrastructure
+    - google-cloud
+  integrations:
+    - google-cloud
+  requirements:
+    - GCP Service Account (roles/workstations.admin)
+  status: available
+  value: connectors/google-workstation
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: google-workstation.yml
+  - type: workflow
+    path: test-credentials.yml

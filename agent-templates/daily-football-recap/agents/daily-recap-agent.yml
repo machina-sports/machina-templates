@@ -1,0 +1,35 @@
+agent:
+  name: daily-recap-agent
+  title: Daily Football Recap Agent
+  description: "Agent that generates and sends a daily recap email covering yesterday's Bundesliga, Premier League, and Italian Serie A matches."
+  context-agent:
+    recap_date: "$.get('recap_date')"
+    season: "$.get('season')"
+    bundesliga_league_id: "$.get('bundesliga_league_id')"
+    premier_league_id: "$.get('premier_league_id')"
+    serie_a_league_id: "$.get('serie_a_league_id')"
+    timezone: "$.get('timezone')"
+    email_address: "$.get('email_address')"
+    from_email: "$.get('from_email')"
+    mailgun_domain: "$.get('mailgun_domain')"
+  workflows:
+
+    # daily-football-recap-generate-daily-recap
+    - name: daily-football-recap-generate-daily-recap
+      description: Fetch yesterday's matches from the Bundesliga, Premier League, and Serie A, generate the recap, and email it.
+      inputs:
+        recap_date: "$.get('recap_date')"
+        season: "$.get('season', 2024)"
+        bundesliga_league_id: "$.get('bundesliga_league_id', 78)"
+        premier_league_id: "$.get('premier_league_id', 39)"
+        serie_a_league_id: "$.get('serie_a_league_id', 135)"
+        timezone: "$.get('timezone', 'Europe/London')"
+        email_address: "$.get('email_address')"
+        from_email: "$.get('from_email', 'noreply@mg.machina.gg')"
+        mailgun_domain: "$.get('mailgun_domain', 'mg.machina.gg')"
+      outputs:
+        recap_subject: "$.get('recap_subject')"
+        recap_html: "$.get('recap_html')"
+        recap_text: "$.get('recap_text')"
+        email-sent: "$.get('email-sent')"
+        workflow-status: "$.get('workflow-status')"

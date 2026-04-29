@@ -1,0 +1,54 @@
+workflow:
+  name: sportradar-soccer-sync-standings
+  title: Sportradar Soccer - Standings
+  description: Workflow to synchronize a season standings from SportRadar API to Machina.
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    standings: "$.get('standings')"
+    workflow-status: "len($.get('standings', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # task-load-standings
+    - type: "connector"
+      name: "task-load-standings"
+      description: "Get a season standings from SportRadar"
+      connector:
+        name: "sportradar-soccer"
+        command: "get-seasons/{season_id}/{data_type}"
+        command_attribute:
+          season_id: "$.get('season_id')"
+          data_type: "'standings.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        standings: "$.get('standings', [])"
+
+    # task-update-standings
+    - type: "document"
+      name: "task-update-standings"
+      description: "Update the standings document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        standings: |
+          {
+            'data': $.get('standings', []),
+            'season_id': $.get('season_id'),
+            'title': f"{$.get('season_id', '')} - All Standings",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_id: "$.get('season_id')"

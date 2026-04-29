@@ -1,0 +1,5 @@
+connector:
+  name: "api-football"
+  description: "API Football API"
+  filename: "api-football.json"
+  filetype: "restapi" 

@@ -1,0 +1,5 @@
+connector:
+  name: "bwin"
+  description: "Bwin Sports API - Access fixtures, competitions, odds and live scoreboards"
+  filename: "bwin.json"
+  filetype: "restapi" 

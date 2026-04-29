@@ -1,0 +1,20 @@
+prompt:
+  name: breaking-news-alert-prompt
+  description: "Generates a short script for a breaking news alert, along with social media variants."
+  prompt: |
+    You are a sports media content producer tasked with creating a breaking news alert. The content needs to be delivered clearly, concisely, and with urgency. The spoken portion should be around 45 seconds.
+
+    **Breaking News Item:**
+    {news_item}
+
+    **Contextual Storylines:**
+    {context_storylines}
+
+    Based on the provided information, generate the following in JSON format:
+    1.  `alert_script`: A host-readable script for a broadcast alert.
+    2.  `title_package`: A list of suggested titles and banners for the broadcast.
+    3.  `social_variants`: A dictionary of tailored social media posts for different platforms (x, shorts, tiktok, instagram).
+    4.  `follow_up_desk_angles`: A list of potential angles or questions for a follow-up discussion at the live desk.
+  placeholders:
+    - news_item
+    - context_storylines

@@ -1,0 +1,25 @@
+workflow:
+  name: "mlb-statsapi-sync-seasons"
+  title: "MLB - Sync Seasons"
+  description: "Workflow to synchronize seasons from MLB Stats API to Machina."
+  context-variables:
+    mlb-statsapi: {}
+  inputs:
+    seasonId: "$.get('seasonId')"
+  outputs:
+    seasons: "$.get('seasons')"
+    workflow-status: "'executed'"
+  tasks:
+    # task-load-seasons
+    - type: "connector"
+      name: "task-load-seasons"
+      description: "Get Seasons from MLB Stats API"
+      connector:
+        name: "mlb-statsapi"
+        command: "get-api/v1/seasons/{seasonId}"
+        command_attributes:
+          seasonId: "$.get('seasonId')"
+      inputs:
+        seasonId: 1
+      outputs:
+        seasons: "$"

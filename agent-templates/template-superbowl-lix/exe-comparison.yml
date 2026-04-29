@@ -1,0 +1,305 @@
+workflow:
+  name: "workflow-reporter-comparisons"
+  title: "Reporter Comparisons"
+  description: "Workflow to produce comparisons."
+  context-variables:
+    sportradar-nfl:
+      sportradar_api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    openai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('item_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    
+    # 0 load-player-comparison-by-event-code
+    - type: "document"
+      name: "load-player-comparison-by-event-code"
+      description: "Search for player comparisons in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.statistics_loaded: "{'$exists': False}"
+      inputs:
+        name: "'player-comparison'"
+      outputs:
+        item_exists: "len($.get('documents', [])) > 0"
+        item_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        player_ids: "$.get('documents')[0].get('value').get('player_ids') if $.get('documents') else None"
+        player1_id: "$.get('documents')[0].get('value').get('player_ids')[0] if $.get('documents') else None"
+        player2_id: "$.get('documents')[0].get('value').get('player_ids')[1] if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 1 load-event-scheduled
+    - type: "document"
+      name: "load-event-scheduled"
+      description: "Search for events in the database."
+      condition: "$.get('item_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.statistics_loaded: "{'$exists': False}"
+      inputs:
+        name: "'player-comparison'"
+      outputs:
+        event_code: "$.get('documents')[0].get('metadata').get('event_code') if $.get('documents') else None"
+        item_exists: "len($.get('documents', [])) > 0"
+        item_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        player_ids: "$.get('documents')[0].get('value').get('player_ids') if $.get('documents') else None"
+        player1_id: "$.get('documents')[0].get('value').get('player_ids')[0] if $.get('documents') else None"
+        player2_id: "$.get('documents')[0].get('value').get('player_ids')[1] if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 3 load-event-summary
+    - type: "document"
+      name: "load-event-summary"
+      description: "Load the events document summary."
+      condition: "$.get('item_exists') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata: |
+          {
+            'document_type': 'event-summary',
+            'event_code': $.get('event_code'),
+            'language': 'en'
+          }
+      inputs:
+        name: "'event-summary'"
+      outputs:
+        event-summary: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event-summary_exists: "len($.get('documents')) > 0"
+    
+    # 4 load-event-briefing
+    - type: "document"
+      name: "load-event-briefing"
+      description: "Load the events document briefing."
+      condition: "$.get('item_exists') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata: |
+          {
+            'event_code': $.get('event_code'),
+            'language': 'en'
+          }
+        name: "'content-briefing'"
+      outputs:
+        event-briefing: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+    
+    # 5 fetch player 1
+    - type: "connector"
+      name: "fetch-player-1"
+      description: "Get a player 1 from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-players/{player_id}/{data_type}"
+        command_attribute:
+          player_id: "$.get('player1_id')"
+          data_type: "'profile.json'"
+      condition: "$.get('player1_id') is not None"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        player1-data: "$"
+        player1-name: "$.get('name')"
+        player1-last-season: "$.get('seasons', [])[-1].get('teams', [])[-1].get('statistics', {})"
+    
+    # 6 update player 1
+    - type: "document"
+      name: "update-player-1"
+      description: "Update the events document."
+      condition: "$.get('player1_id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        player-statistics: |
+          {
+            "execution": datetime.utcnow(),
+            "player-data": $.get('player1-data'),
+            "last-season": $.get('player1-last-season'),
+            "title": f"{$.get('player1-name')} - Statistics",
+            "status": 'active'
+          }
+      metadata:
+        document_type: "'player-statistics'"
+        player_id: "$.get('player1_id')"
+    
+    # 7 fetch player 2
+    - type: "connector"
+      name: "fetch-player-2"
+      description: "Get a player 2 from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-players/{player_id}/{data_type}"
+        command_attribute:
+          player_id: "$.get('player2_id')"
+          data_type: "'profile.json'"
+      condition: "$.get('player2_id') is not None"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        player2-data: "$"
+        player2-name: "$.get('name')"
+        player2-last-season: "$.get('seasons', [])[-1].get('teams', [])[-1].get('statistics', {})"
+    
+    # 8 update player 2
+    - type: "document"
+      name: "update-player-2"
+      description: "Update the events document."
+      condition: "$.get('player2_id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        player-statistics: |
+          {
+            "execution": datetime.utcnow(),
+            "player-data": $.get('player2-data'),
+            "last-season": $.get('player2-last-season'),
+            "title": f"{$.get('player2-name')} - Statistics",
+            "status": 'active'
+          }
+      metadata:
+        document_type: "'player-statistics'"
+        player_id: "$.get('player2_id')"
+
+    # 9 prompt-keyplayers-comparison-analysis
+    - type: "prompt"
+      name: "prompt-keyplayers-comparison-analysis"
+      description: "Analyze the key players from both teams, highlighting the strengths and weaknesses of each player."
+      condition: "$.get('item_exists') is True and $.get('player1_id') is not None and $.get('player2_id') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        event-title: "$.get('title')"
+        player1-name: "$.get('player1-name')"
+        player1-team: "$.get('player1-data').get('team').get('name')"
+        player1-bio: |
+          {
+            'position': '$.get('player1-data').get('position')',
+            'experience': '$.get('player1-data').get('experience')',
+            'position': '$.get('player1-data').get('position')',
+            'rookie-year': '$.get('player1-data').get('rookie_year')',
+            'height': '$.get('player1-data').get('height')',
+            'weight': '$.get('player1-data').get('weight')'
+          }
+        player1-stats: "$.get('player1-last-season')"
+        player2-name: "$.get('player2-name')"
+        player2-team: "$.get('player2-data').get('team').get('name')"
+        player2-bio: |
+          {
+            'position': '$.get('player2-data').get('position')',
+            'experience': '$.get('player2-data').get('experience')',
+            'position': '$.get('player2-data').get('position')',
+            'rookie-year': '$.get('player2-data').get('rookie_year')',
+            'height': '$.get('player2-data').get('height')',
+            'weight': '$.get('player2-data').get('weight')'
+          }
+        player2-stats: "$.get('player2-last-season')"
+      outputs:
+        comparison-analysis-bulk: |
+          [
+            {
+              'subject': $.get('sections', {}).get('title', ''),
+              'text': $.get('sections', {}).get('content', ''),
+              'title': f"$.(title) - {$.get('sections', {}).get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+          ]
+        comparison-analysis-data: "$"
+    
+    # 10 bulk-save-snippets
+    - type: "document"
+      name: "bulk-save-snippets"
+      condition: "$.get('item_exists') is True and $.get('player1_id') is not None and $.get('player2_id') is not None"
+      description: "Bulk save the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('comparison-analysis-bulk', []),
+          ]
+    
+    # 11 version-control-end
+    - type: "document"
+      name: "version-control-end"
+      description: "Update the events document end."
+      condition: "$.get('item_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        player-comparison: |
+          {
+            **$.get('item_selected'),
+            'comparison-analysis': $.get('comparison-analysis-data'),
+            'player1-data': {
+              'name': $.get('player1-name'),
+              'jersey': $.get('player1-data').get('jersey'),
+              'birth-date': $.get('player1-data').get('birth_date'),
+              'team': $.get('player1-data').get('team').get('name'),
+              'position': $.get('player1-data').get('position'),
+              'experience': $.get('player1-data').get('experience'),
+              'rookie-year': $.get('player1-data').get('rookie_year'),
+              'height': $.get('player1-data').get('height'),
+              'weight': $.get('player1-data').get('weight')
+            },
+            'player2-data': {
+              'name': $.get('player2-name'),
+              'jersey': $.get('player2-data').get('jersey'),
+              'birth-date': $.get('player2-data').get('birth_date'),
+              'team': $.get('player2-data').get('team').get('name'),
+              'position': $.get('player2-data').get('position'),
+              'experience': $.get('player2-data').get('experience'),
+              'rookie-year': $.get('player2-data').get('rookie_year'),
+              'height': $.get('player2-data').get('height'),
+              'weight': $.get('player2-data').get('weight')
+            },
+            'player1-last-season': $.get('player1-last-season'),
+            'player2-last-season': $.get('player2-last-season'),
+            'version_control': {
+              **$.get('item_selected').get('version_control', {}),
+              'processing': False,
+              'statistics_loaded': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+        player_ids: "$.get('player_ids')"

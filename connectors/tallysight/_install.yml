@@ -1,0 +1,39 @@
+setup:
+  title: Tallysight API
+  description: Connect to the Tallysight API to access sports betting widgets, odds, and market data across multiple leagues, teams, and players.
+  category:
+    - data-acquisition
+    - sports-betting
+    - odds-widgets
+    - betting-education
+  estimatedTime: 1 minute
+  features:
+    - Bet Finder Widgets
+    - Odds Text Widgets
+    - Futures Tiles
+    - Gamelines Tiles
+    - Props Tiles
+    - League Data
+    - Team & Player Props
+    - Workspace Management
+  integrations:
+    - tallysight
+  requirements:
+    - Tallysight-ApiKey
+  status: available
+  value: "connectors/tallysight"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "tallysight.yml"
+
+  - type: "workflow"
+    path: "load-leagues.yml"
+
+  - type: "workflow"
+    path: "test-connection.yml"
+
+  - type: "workflow"
+    path: "test-player-bets.yml"
+

@@ -1,0 +1,33 @@
+workflow:
+  name: search-entity
+  title: "Search Entity"
+  description: "Searches for a team or player by name."
+  inputs:
+    query: "$.get('query')"
+  outputs:
+    result: "{'teams': $.get('teams', {}), 'players': $.get('players', {})}"
+    workflow-status: "'executed'"
+  tasks:
+    - type: "connector"
+      name: "search_teams"
+      description: "Search for teams by name."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_team'"
+        query: "$.get('query')"
+      outputs:
+        teams: "$"
+
+    - type: "connector"
+      name: "search_players"
+      description: "Search for players by name."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_player'"
+        query: "$.get('query')"
+      outputs:
+        players: "$"

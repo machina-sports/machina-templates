@@ -1,0 +1,76 @@
+mappings:
+
+  # kalshi-markets-summary
+  - type: mapping
+    name: kalshi-markets-summary
+    title: Kalshi | Markets Summary
+    description: "Seleciona campos principais dos markets e gera um resumo legível."
+    inputs:
+      markets: $.get('markets', [])
+    outputs:
+      markets_count: len($.get('markets', []))
+      markets_tickers: |
+        [
+          market.get('ticker')
+          for market in $.get('markets', [])
+        ]
+      markets_selected: |
+        [
+          {
+            "ticker": market.get('ticker'),
+            "event_ticker": market.get('event_ticker'),
+            "title": market.get('title'),
+            "subtitle": market.get('subtitle'),
+            "yes_sub_title": market.get('yes_sub_title'),
+            "no_sub_title": market.get('no_sub_title'),
+            "category": market.get('category'),
+            "market_type": market.get('market_type'),
+            "status": market.get('status'),
+            "open_time": market.get('open_time'),
+            "close_time": market.get('close_time'),
+            "expiration_time": market.get('expiration_time'),
+            "expected_expiration_time": market.get('expected_expiration_time'),
+            "latest_expiration_time": market.get('latest_expiration_time'),
+            "can_close_early": market.get('can_close_early'),
+            "early_close_condition": market.get('early_close_condition'),
+            "yes_bid": market.get('yes_bid'),
+            "yes_ask": market.get('yes_ask'),
+            "no_bid": market.get('no_bid'),
+            "no_ask": market.get('no_ask'),
+            "yes_bid_dollars": market.get('yes_bid_dollars'),
+            "yes_ask_dollars": market.get('yes_ask_dollars'),
+            "no_bid_dollars": market.get('no_bid_dollars'),
+            "no_ask_dollars": market.get('no_ask_dollars'),
+            "last_price": market.get('last_price'),
+            "last_price_dollars": market.get('last_price_dollars'),
+            "previous_price": market.get('previous_price'),
+            "previous_price_dollars": market.get('previous_price_dollars'),
+            "liquidity": market.get('liquidity'),
+            "liquidity_dollars": market.get('liquidity_dollars'),
+            "open_interest": market.get('open_interest'),
+            "volume": market.get('volume'),
+            "volume_24h": market.get('volume_24h'),
+            "settlement_timer_seconds": market.get('settlement_timer_seconds'),
+            "price_level_structure": market.get('price_level_structure'),
+            "strike_type": market.get('strike_type'),
+            "rules_primary": market.get('rules_primary'),
+            "rules_secondary": market.get('rules_secondary')
+          }
+          for market in $.get('markets', [])
+        ]
+      markets_summary: |
+        [
+          " | ".join(filter(None, [
+            market.get('ticker'),
+            market.get('title'),
+            f"status: {market.get('status')}" if market.get('status') else None,
+            f"yes {market.get('yes_bid_dollars', market.get('yes_bid'))} / {market.get('yes_ask_dollars', market.get('yes_ask'))}",
+            f"no {market.get('no_bid_dollars', market.get('no_bid'))} / {market.get('no_ask_dollars', market.get('no_ask'))}",
+            f"liq: {market.get('liquidity_dollars', market.get('liquidity'))}",
+            f"vol24h: {market.get('volume_24h')}" if market.get('volume_24h') is not None else None,
+            f"exp: {market.get('expiration_time')}" if market.get('expiration_time') else None
+          ]))
+          for market in $.get('markets', [])
+        ]
+
+

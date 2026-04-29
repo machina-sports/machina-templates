@@ -1,0 +1,124 @@
+agent:
+
+  # ea-football-chat
+  name: ea-football-chat
+  title: "EA Sports Hub Football Chat"
+  description: "Football chat agent covering Premier League, Serie A, La Liga, Bundesliga, Ligue 1, Champions League."
+
+  context:
+    status: "inactive"
+
+  context-agent:
+    messages: $.get('messages', [])
+    league: $.get('league', 'premier-league')
+
+  workflows:
+
+    # Step 1: Classify intent and extract parameters
+    - name: chat-reasoning
+      description: Classifying your football question
+      inputs:
+        messages: $.get('messages', [])
+        league: $.get('league', 'premier-league')
+      outputs:
+        reasoning: $.get('reasoning', {})
+
+    # Step 2a: League standings
+    - name: get-league-standings
+      description: Fetching league standings
+      condition: $.get('reasoning', {}).get('action') == 'standings'
+      inputs:
+        competition_id: $.get('reasoning', {}).get('parameters', {}).get('competition_id', $.get('league', 'premier-league'))
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2b: Today's fixtures (all leagues)
+    - name: get-daily-fixtures
+      description: Fetching today's fixtures
+      condition: $.get('reasoning', {}).get('action') == 'daily-fixtures'
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2c: Upcoming fixtures for a league
+    - name: get-upcoming-fixtures
+      description: Fetching upcoming fixtures
+      condition: $.get('reasoning', {}).get('action') == 'upcoming-fixtures'
+      inputs:
+        competition_id: $.get('reasoning', {}).get('parameters', {}).get('competition_id', $.get('league', 'premier-league'))
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2d: Team recent form (results)
+    - name: get-team-form
+      description: Fetching team form
+      condition: $.get('reasoning', {}).get('action') == 'team-form'
+      inputs:
+        query: $.get('reasoning', {}).get('parameters', {}).get('query', '')
+        competition_id: $.get('reasoning', {}).get('parameters', {}).get('competition_id', $.get('league', 'premier-league'))
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2e: Team schedule / next fixture
+    - name: get-team-schedule
+      description: Fetching team schedule
+      condition: $.get('reasoning', {}).get('action') == 'team-schedule'
+      inputs:
+        query: $.get('reasoning', {}).get('parameters', {}).get('query', '')
+        competition_id: $.get('reasoning', {}).get('parameters', {}).get('competition_id', $.get('league', 'premier-league'))
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2f: Top scorers
+    - name: get-top-scorers
+      description: Fetching top scorers
+      condition: $.get('reasoning', {}).get('action') == 'top-scorers'
+      inputs:
+        competition_id: $.get('reasoning', {}).get('parameters', {}).get('competition_id', $.get('league', 'premier-league'))
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2g: Search team or player
+    - name: search-entity
+      description: Searching for team or player
+      condition: $.get('reasoning', {}).get('action') == 'search-entity'
+      inputs:
+        query: $.get('reasoning', {}).get('parameters', {}).get('query', '')
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2h: Player vs Player comparison
+    - name: get-player-comparison
+      description: Comparing two players head-to-head
+      condition: $.get('reasoning', {}).get('action') == 'player-comparison'
+      inputs:
+        player1: $.get('reasoning', {}).get('parameters', {}).get('player1', '')
+        player2: $.get('reasoning', {}).get('parameters', {}).get('player2', '')
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 2i: Team vs Team head-to-head
+    - name: get-team-h2h
+      description: Fetching team head-to-head data
+      condition: $.get('reasoning', {}).get('action') == 'team-h2h'
+      inputs:
+        team1: $.get('reasoning', {}).get('parameters', {}).get('team1', '')
+        team2: $.get('reasoning', {}).get('parameters', {}).get('team2', '')
+      outputs:
+        tool_result: $.get('result')
+
+    # Step 3: Generate response
+    - name: chat-response
+      description: Generating response
+      inputs:
+        messages: $.get('messages', [])
+        league: $.get('league', 'premier-league')
+        reasoning: $.get('reasoning', {})
+        tool_result: $.get('tool_result')
+      outputs:
+        message: $.get('message', '')
+        content: $.get('message', '')
+        response_text: $.get('message', '')
+        result: $.get('message', '')
+        card_data: $.get('card_data')
+        follow_up_chips: $.get('follow_up_chips', [])
+        workflow-status: "'executed'"

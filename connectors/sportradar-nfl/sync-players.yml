@@ -1,0 +1,79 @@
+workflow:
+  name: "sportradar-nfl-sync-players"
+  title: "Sportradar NFL Sync Players"
+  description: "Workflow to sync NFL players."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    team_id: "$.get('team_id')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    - type: "document"
+      name: "load-selected-team"
+      description: "Load selected team"
+      config:
+        action: "search"
+        search-vector: false
+      filters:
+        metadata.team_id: "$.get('team_id')"
+      inputs:
+        name: "'nfl-team'"
+        search-limit: "'100'"
+      outputs:
+        team-object: "$"
+        team-name: "$.get('documents', [])[0].get('value', {}).get('title', '') if $.get('documents', []) is not None else ''"
+
+    # task-load-players
+    - type: "connector"
+      name: "task-load-players"
+      description: "Get a season players from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          team_id: "$.get('team_id')"
+          data_type: "'profile.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        players: "$"
+        players_parsed: |
+          [
+            {
+              **player,
+              'metadata': {
+                'player_id': player.get('id', '')
+              },
+              'team_id': '$.(team_id)',
+              'team_name': '$.(team-name)',
+              'title': f"{player.get('name', '')}",
+              'selected': False,
+              'version-control': {
+                'status': 'pending'
+              }
+            }
+            for player in $.get('players', [])
+          ]
+
+    # bulk-save-teams
+    - type: "document"
+      name: "bulk-save-players"
+      condition: "$.get('players_parsed') is not None"
+      description: "Bulk save the players."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "'nfl-player'"
+      documents:
+        items: "$.get('players_parsed')"
+      inputs:
+        players_parsed: "$.get('players_parsed')"

@@ -1,0 +1,1273 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Machina Sports Data API",
+    "description": "Soccer data API by Machina",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.machina.gg/v1/soccer"
+    }
+  ],
+  "paths": {
+    "/competitions": {
+      "get": {
+        "operationId": "get-competitions",
+        "summary": "List all available competitions",
+        "description": "Returns all soccer competitions/leagues.",
+        "parameters": [
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by category/country (e.g. 'england', 'germany')",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by type: 'league' or 'cup'",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "description": "Filter by currently active competitions",
+            "schema": { "type": "boolean" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of competitions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "competitions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Competition" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/competitions/{competition_id}/seasons": {
+      "get": {
+        "operationId": "get-competition-seasons",
+        "summary": "Get seasons for a competition",
+        "description": "Returns all seasons for a specific competition.",
+        "parameters": [
+          {
+            "name": "competition_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "msd:competition:premier-league"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of seasons",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "competition": { "$ref": "#/components/schemas/Competition" },
+                    "seasons": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Season" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/competitions/{competition_id}/info": {
+      "get": {
+        "operationId": "get-competition-info",
+        "summary": "Get competition details",
+        "description": "Returns detailed competition information.",
+        "parameters": [
+          {
+            "name": "competition_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Competition details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Competition" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/schedule": {
+      "get": {
+        "operationId": "get-season-schedule",
+        "summary": "Get all fixtures for a season",
+        "description": "Returns all matches in a season with pagination.",
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "msd:season:premier-league-2025-26"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Pagination offset",
+            "schema": { "type": "integer", "default": 0 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max results per page",
+            "schema": { "type": "integer", "default": 50 }
+          },
+          {
+            "name": "round",
+            "in": "query",
+            "description": "Filter by round number",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status: not_started, live, closed, postponed",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Season schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "season": { "$ref": "#/components/schemas/Season" },
+                    "schedules": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SportEvent" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/standings": {
+      "get": {
+        "operationId": "get-season-standings",
+        "summary": "Get league standings",
+        "description": "Returns league table for a season.",
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "round",
+            "in": "query",
+            "description": "Standings as of a specific round",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "League standings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "standings": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/StandingsGroup" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/leaders": {
+      "get": {
+        "operationId": "get-season-leaders",
+        "summary": "Get statistical leaders",
+        "description": "Returns top scorers, assists, cards for a season.",
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by category: goals, assists, yellow_cards, red_cards",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistical leaders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "leaders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/LeaderCategory" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/teams": {
+      "get": {
+        "operationId": "get-season-teams",
+        "summary": "Get teams in a season",
+        "description": "Returns all teams participating in a season.",
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teams list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "teams": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Team" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/missing-players": {
+      "get": {
+        "operationId": "get-missing-players",
+        "summary": "Get injured/suspended players",
+        "description": "Returns unavailable players for a season.",
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Missing players by team",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "teams": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "team": { "$ref": "#/components/schemas/Team" },
+                          "missing_players": {
+                            "type": "array",
+                            "items": { "$ref": "#/components/schemas/MissingPlayer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/transfers": {
+      "get": {
+        "operationId": "get-season-transfers",
+        "summary": "Get player transfers",
+        "description": "Returns all player transfers for a season.",
+        "parameters": [
+          {
+            "name": "season_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "team_id",
+            "in": "query",
+            "description": "Filter by team",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transfer list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transfers": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Transfer" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schedule/{date}": {
+      "get": {
+        "operationId": "get-daily-schedule",
+        "summary": "Get all matches on a date",
+        "description": "Returns all matches across all competitions for a specific date.",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "date" },
+            "example": "2026-01-22"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "competition_id",
+            "in": "query",
+            "description": "Filter by competition",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by status",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "date": { "type": "string" },
+                    "events": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SportEvent" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/summary": {
+      "get": {
+        "operationId": "get-event-summary",
+        "summary": "Get match summary",
+        "description": "Returns match summary with scores, teams, venue.",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "msd:event:12345"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Match summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventSummary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/lineups": {
+      "get": {
+        "operationId": "get-event-lineups",
+        "summary": "Get match lineups and formations",
+        "description": "Returns starting lineups, substitutes, and formations.",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Match lineups",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventLineups" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/statistics": {
+      "get": {
+        "operationId": "get-event-statistics",
+        "summary": "Get match statistics",
+        "description": "Returns detailed match statistics (possession, shots, passes, etc).",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Match statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventStatistics" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/timeline": {
+      "get": {
+        "operationId": "get-event-timeline",
+        "summary": "Get match timeline/events",
+        "description": "Returns all match events (goals, cards, subs, VAR).",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Match timeline",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventTimeline" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/players-statistics": {
+      "get": {
+        "operationId": "get-event-players-statistics",
+        "summary": "Get player-level match statistics",
+        "description": "Returns individual player statistics for a match.",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event_id": { "type": "string" },
+                    "teams": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/TeamPlayerStats" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/events/{event_id}/xg": {
+      "get": {
+        "operationId": "get-event-xg",
+        "summary": "Get expected goals (xG) data",
+        "description": "Returns expected goals data for a match.",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expected goals data",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EventXG" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/profile": {
+      "get": {
+        "operationId": "get-team-profile",
+        "summary": "Get team profile with roster",
+        "description": "Returns team details, squad list, manager, venue.",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "msd:team:arsenal"
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TeamProfile" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/schedule": {
+      "get": {
+        "operationId": "get-team-schedule",
+        "summary": "Get team schedule and recent results",
+        "description": "Returns upcoming matches and recent results for a team.",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max results",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "team": { "$ref": "#/components/schemas/Team" },
+                    "events": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SportEvent" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/teams/{team_id}/versus/{opponent_id}": {
+      "get": {
+        "operationId": "get-head-to-head",
+        "summary": "Get head-to-head between two teams",
+        "description": "Returns match history between two teams.",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "opponent_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max results",
+            "schema": { "type": "integer", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Head-to-head data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "teams": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Team" },
+                      "maxItems": 2
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SportEvent" }
+                    },
+                    "summary": { "$ref": "#/components/schemas/H2HSummary" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/players/{player_id}/profile": {
+      "get": {
+        "operationId": "get-player-profile",
+        "summary": "Get player profile and career stats",
+        "description": "Returns player biography, career stats.",
+        "parameters": [
+          {
+            "name": "player_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "x-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlayerProfile" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Competition": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "msd:competition:premier-league" },
+          "name": { "type": "string", "example": "Premier League" },
+          "category": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "example": "msd:category:england" },
+              "name": { "type": "string", "example": "England" },
+              "country_code": { "type": "string", "example": "ENG" }
+            }
+          },
+          "type": { "type": "string", "enum": ["league", "cup"] },
+          "gender": { "type": "string", "enum": ["men", "women"] }
+        }
+      },
+      "Season": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "msd:season:premier-league-2025-26" },
+          "name": { "type": "string", "example": "Premier League 25/26" },
+          "competition_id": { "type": "string" },
+          "year": { "type": "string", "example": "25/26" },
+          "start_date": { "type": "string", "format": "date" },
+          "end_date": { "type": "string", "format": "date" },
+          "current": { "type": "boolean" }
+        }
+      },
+      "Team": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "msd:team:arsenal" },
+          "name": { "type": "string", "example": "Arsenal" },
+          "short_name": { "type": "string", "example": "Arsenal" },
+          "abbreviation": { "type": "string", "example": "ARS" },
+          "country": { "type": "string", "example": "England" },
+          "country_code": { "type": "string", "example": "ENG" }
+        }
+      },
+      "Player": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "msd:player:12345" },
+          "name": { "type": "string" },
+          "first_name": { "type": "string" },
+          "last_name": { "type": "string" },
+          "nationality": { "type": "string" },
+          "position": { "type": "string", "enum": ["goalkeeper", "defender", "midfielder", "forward"] },
+          "jersey_number": { "type": "integer" },
+          "date_of_birth": { "type": "string", "format": "date" }
+        }
+      },
+      "Venue": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "city": { "type": "string" },
+          "country": { "type": "string" },
+          "capacity": { "type": "integer" }
+        }
+      },
+      "SportEvent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "msd:event:12345" },
+          "status": { "type": "string", "enum": ["not_started", "live", "halftime", "ended", "closed", "postponed", "cancelled", "suspended"] },
+          "start_time": { "type": "string", "format": "date-time" },
+          "competition": { "$ref": "#/components/schemas/Competition" },
+          "season": { "$ref": "#/components/schemas/Season" },
+          "round": { "type": "integer" },
+          "round_name": { "type": "string" },
+          "venue": { "$ref": "#/components/schemas/Venue" },
+          "competitors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "team": { "$ref": "#/components/schemas/Team" },
+                "qualifier": { "type": "string", "enum": ["home", "away"] },
+                "score": { "type": "integer" }
+              }
+            },
+            "maxItems": 2
+          },
+          "scores": {
+            "type": "object",
+            "properties": {
+              "home": { "type": "integer" },
+              "away": { "type": "integer" },
+              "half_time": {
+                "type": "object",
+                "properties": { "home": { "type": "integer" }, "away": { "type": "integer" } }
+              },
+              "extra_time": {
+                "type": "object",
+                "properties": { "home": { "type": "integer" }, "away": { "type": "integer" } }
+              },
+              "penalties": {
+                "type": "object",
+                "properties": { "home": { "type": "integer" }, "away": { "type": "integer" } }
+              },
+              "aggregate": {
+                "type": "object",
+                "properties": { "home": { "type": "integer" }, "away": { "type": "integer" } }
+              }
+            }
+          },
+          "clock": {
+            "type": "object",
+            "properties": {
+              "played": { "type": "string", "example": "45:00" },
+              "stoppage_time": { "type": "string" }
+            }
+          }
+        }
+      },
+      "EventSummary": {
+        "type": "object",
+        "properties": {
+          "event": { "$ref": "#/components/schemas/SportEvent" },
+          "statistics": {
+            "type": "object",
+            "properties": {
+              "totals": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/TeamStatistics" }
+              }
+            }
+          }
+        }
+      },
+      "EventLineups": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string" },
+          "lineups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "team": { "$ref": "#/components/schemas/Team" },
+                "qualifier": { "type": "string" },
+                "formation": { "type": "string", "example": "4-3-3" },
+                "starting": { "type": "array", "items": { "$ref": "#/components/schemas/Player" } },
+                "substitutes": { "type": "array", "items": { "$ref": "#/components/schemas/Player" } },
+                "manager": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "nationality": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "EventStatistics": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string" },
+          "teams": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TeamStatistics" }
+          }
+        }
+      },
+      "TeamStatistics": {
+        "type": "object",
+        "properties": {
+          "team": { "$ref": "#/components/schemas/Team" },
+          "qualifier": { "type": "string" },
+          "statistics": {
+            "type": "object",
+            "properties": {
+              "ball_possession": { "type": "number" },
+              "shots_total": { "type": "integer" },
+              "shots_on_target": { "type": "integer" },
+              "shots_off_target": { "type": "integer" },
+              "shots_blocked": { "type": "integer" },
+              "corner_kicks": { "type": "integer" },
+              "free_kicks": { "type": "integer" },
+              "fouls": { "type": "integer" },
+              "offsides": { "type": "integer" },
+              "yellow_cards": { "type": "integer" },
+              "red_cards": { "type": "integer" },
+              "passes_total": { "type": "integer" },
+              "passes_accurate": { "type": "integer" },
+              "passes_accuracy": { "type": "number" },
+              "tackles": { "type": "integer" },
+              "crosses": { "type": "integer" },
+              "goalkeeper_saves": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "EventTimeline": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string" },
+          "timeline": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TimelineEvent" }
+          }
+        }
+      },
+      "TimelineEvent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["goal", "own_goal", "penalty_goal", "penalty_miss", "yellow_card", "yellow_red_card", "red_card", "substitution", "var", "period_start", "period_end"] },
+          "minute": { "type": "integer" },
+          "stoppage_minute": { "type": "integer" },
+          "period": { "type": "string" },
+          "team": { "$ref": "#/components/schemas/Team" },
+          "player": { "$ref": "#/components/schemas/Player" },
+          "assist": { "$ref": "#/components/schemas/Player" },
+          "player_in": { "$ref": "#/components/schemas/Player" },
+          "player_out": { "$ref": "#/components/schemas/Player" },
+          "home_score": { "type": "integer" },
+          "away_score": { "type": "integer" },
+          "coordinates": {
+            "type": "object",
+            "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+          }
+        }
+      },
+      "EventXG": {
+        "type": "object",
+        "properties": {
+          "event_id": { "type": "string" },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "team": { "$ref": "#/components/schemas/Team" },
+                "xg": { "type": "number" },
+                "xg_on_target": { "type": "number" },
+                "xg_non_penalty": { "type": "number" }
+              }
+            }
+          },
+          "shots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "minute": { "type": "integer" },
+                "player": { "$ref": "#/components/schemas/Player" },
+                "team": { "$ref": "#/components/schemas/Team" },
+                "xg": { "type": "number" },
+                "result": { "type": "string", "enum": ["goal", "saved", "blocked", "off_target", "post"] },
+                "coordinates": {
+                  "type": "object",
+                  "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TeamPlayerStats": {
+        "type": "object",
+        "properties": {
+          "team": { "$ref": "#/components/schemas/Team" },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "player": { "$ref": "#/components/schemas/Player" },
+                "statistics": {
+                  "type": "object",
+                  "properties": {
+                    "minutes_played": { "type": "integer" },
+                    "rating": { "type": "number" },
+                    "goals": { "type": "integer" },
+                    "assists": { "type": "integer" },
+                    "shots_total": { "type": "integer" },
+                    "shots_on_target": { "type": "integer" },
+                    "passes_total": { "type": "integer" },
+                    "passes_accurate": { "type": "integer" },
+                    "tackles": { "type": "integer" },
+                    "interceptions": { "type": "integer" },
+                    "fouls_committed": { "type": "integer" },
+                    "fouls_drawn": { "type": "integer" },
+                    "yellow_cards": { "type": "integer" },
+                    "red_cards": { "type": "integer" },
+                    "dribbles_attempted": { "type": "integer" },
+                    "dribbles_successful": { "type": "integer" },
+                    "duels_total": { "type": "integer" },
+                    "duels_won": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TeamProfile": {
+        "type": "object",
+        "properties": {
+          "team": { "$ref": "#/components/schemas/Team" },
+          "venue": { "$ref": "#/components/schemas/Venue" },
+          "manager": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "nationality": { "type": "string" }
+            }
+          },
+          "players": { "type": "array", "items": { "$ref": "#/components/schemas/Player" } },
+          "founded": { "type": "integer" }
+        }
+      },
+      "PlayerProfile": {
+        "type": "object",
+        "properties": {
+          "player": { "$ref": "#/components/schemas/Player" },
+          "team": { "$ref": "#/components/schemas/Team" },
+          "height": { "type": "integer", "description": "Height in cm" },
+          "weight": { "type": "integer", "description": "Weight in kg" },
+          "preferred_foot": { "type": "string", "enum": ["left", "right", "both"] },
+          "career": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "team": { "$ref": "#/components/schemas/Team" },
+                "competition": { "$ref": "#/components/schemas/Competition" },
+                "season": { "type": "string" },
+                "appearances": { "type": "integer" },
+                "goals": { "type": "integer" },
+                "assists": { "type": "integer" }
+              }
+            }
+          }
+        }
+      },
+      "StandingsGroup": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["total", "home", "away"] },
+          "name": { "type": "string" },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": { "type": "integer" },
+                "team": { "$ref": "#/components/schemas/Team" },
+                "played": { "type": "integer" },
+                "wins": { "type": "integer" },
+                "draws": { "type": "integer" },
+                "losses": { "type": "integer" },
+                "goals_for": { "type": "integer" },
+                "goals_against": { "type": "integer" },
+                "goal_difference": { "type": "integer" },
+                "points": { "type": "integer" },
+                "form": { "type": "string", "example": "WWDLW" }
+              }
+            }
+          }
+        }
+      },
+      "LeaderCategory": {
+        "type": "object",
+        "properties": {
+          "category": { "type": "string", "enum": ["goals", "assists", "yellow_cards", "red_cards"] },
+          "leaders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": { "type": "integer" },
+                "player": { "$ref": "#/components/schemas/Player" },
+                "team": { "$ref": "#/components/schemas/Team" },
+                "value": { "type": "integer" }
+              }
+            }
+          }
+        }
+      },
+      "MissingPlayer": {
+        "type": "object",
+        "properties": {
+          "player": { "$ref": "#/components/schemas/Player" },
+          "reason": { "type": "string", "enum": ["injured", "suspended", "international_duty", "personal", "unknown"] },
+          "status": { "type": "string", "enum": ["out", "doubtful", "questionable"] },
+          "injury_type": { "type": "string" },
+          "start_date": { "type": "string", "format": "date" },
+          "expected_return": { "type": "string", "format": "date" }
+        }
+      },
+      "Transfer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "player": { "$ref": "#/components/schemas/Player" },
+          "from_team": { "$ref": "#/components/schemas/Team" },
+          "to_team": { "$ref": "#/components/schemas/Team" },
+          "type": { "type": "string", "enum": ["transfer", "loan", "free", "end_of_loan", "retirement"] },
+          "fee": { "type": "string" },
+          "date": { "type": "string", "format": "date" }
+        }
+      },
+      "H2HSummary": {
+        "type": "object",
+        "properties": {
+          "total_matches": { "type": "integer" },
+          "team1_wins": { "type": "integer" },
+          "team2_wins": { "type": "integer" },
+          "draws": { "type": "integer" }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "offset": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

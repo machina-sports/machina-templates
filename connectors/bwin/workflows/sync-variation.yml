@@ -1,0 +1,113 @@
+workflow:
+  name: bwin-sync-variation
+  title: BWIN - Sync Variation (NFL)
+  description: Workflow to synchronize NFL odds from Bwin API to Machina.
+  context-variables:
+    debugger:
+      enabled: true
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    country: $.get('country', 'en')
+    competitionIds: $.get('competitionIds')
+    fixtureIds: $.get('fixtureIds')
+    sportId: $.get('sportId', '4')
+  outputs:
+    fixtures: $.get('fixtures')
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-fixtures
+    - type: connector
+      name: load-fixtures
+      description: Get a season fixtures from Bwin
+      condition: $.get('competitionIds') is not None
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          country: $.get('country')
+          sportId: $.get('sportId')
+      inputs:
+        competitionIds: $.get('competitionIds') 
+        fixtureIds: $.get('fixtureIds')
+        marketsFilterCriteria: $.get('marketsFilterCriteria', 'All')
+        onlyMainMarkets: $.get('onlyMainMarkets', 'false')
+        isInPlay: $.get('isInPlay', 'false')
+      outputs:
+        payload: $
+        fixtures: $.get('items', [])
+        workflow-status: "'executed'"
+    
+    # 2 filter-markets
+    - type: connector
+      name: filter-markets
+      description: Filter NFL markets - extracts Moneyline, Spread, Total
+      condition: $.get('fixtures') is not None and len($.get('fixtures', [])) > 0
+      connector:
+        name: bwin-grep-sports
+        command: grep_nfl_markets
+      inputs:
+        fixtures: $.get('fixtures', [])
+      outputs:
+        bulk-ids: $.get('market_ids', [])
+        bulk-odds: $.get('market_odds', [])
+        total_markets: $.get('total_markets', 0)
+        category_counts: $.get('category_counts', {})
+
+    # 3 load-existing-markets
+    - type: document
+      name: load-existing-markets
+      description: Load existing market documents to compare odds history
+      condition: $.get('bulk-ids') is not None and len($.get('bulk-ids', [])) > 0
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.market_id: |
+          {'$in': $.get('bulk-ids', [])}
+      inputs:
+        name: "'market-odds'"
+      outputs:
+        existing_documents: $.get('documents', [])
+
+    # 4 calculate-odds-delta
+    - type: connector
+      name: calculate-odds-delta
+      description: Calculate odds delta and maintain history
+      condition: $.get('bulk-odds') is not None
+      connector:
+        name: bwin-odds-delta
+        command: calculate_odds_delta
+      inputs:
+        current_markets: $.get('bulk-odds', [])
+        existing_documents: $.get('existing_documents', [])
+      outputs:
+        markets_with_history: $.get('markets', [])
+        processed_count: $.get('processed_count', 0)
+
+    # 5 bulk-save-fixtures
+    - type: document
+      name: bulk-save-fixtures
+      description: Bulk save the fixtures with history.
+      condition: $.get('competitionIds') is not None
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'market-odds'"
+      documents:
+        items: $.get('parsedItems')
+      inputs:
+        parsedItems: |
+          [
+            *$.get('markets_with_history', [])
+          ]

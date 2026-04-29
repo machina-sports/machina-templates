@@ -1,0 +1,340 @@
+workflow:
+  
+  # assistant-tools-find-markets 
+  name: assistant-tools-find-markets
+  title: Assistant - Tools Find Markets
+  description: Workflow to execute a chat completion for events.
+  context-variables:
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    machina-ai-fast:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
+  inputs:
+    country: $.get('country', 'br')
+    document_id: $.get('document_id')
+    is_build_parlay: $.get('is_build_parlay', False)
+    market-query: $.get('market-query')
+    runner-query: $.get('runner_query')
+    onlyMainMarkets: $.get('onlyMainMarkets', 'true')
+    search_date_interval: $.get('search_date_interval', {})
+    search_query: $.get('search_query')
+    sport_id: $.get('sport_id', '4')
+    target_odd: $.get('target_odd')
+    vector_query: $.get('vector_query')
+  outputs:
+    step_find_markets_docs: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
+    step_find_markets_objects: $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
+    workflow-status: len($.get('selected-runners-parsed', [])) > 0 and 'executed' or 'skipped'
+    country: $.get('country')
+    sport_id: $.get('sport_id')
+    selected_events_ids: $.get('selected_events_ids', [])
+    mapped-runners: $.get('mapped-runners', [])
+  tasks:
+
+    # Load chat history (thread document)
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+        name: "'thread'"
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    # assistant-prepare-message-history
+    - type: mapping
+      name: assistant-prepare-message-history
+      condition: $.get('document_id') is not None
+      inputs:
+        message-history: $.get('messages')[-3:]
+      outputs:
+        message-history: $.get('message-history')
+
+    # assistant-prepare-reasoning
+    - type: mapping
+      name: assistant-prepare-reasoning
+      condition: $.get('document_id') is not None
+      inputs:
+        document_value: $.get('document_value')
+      outputs:
+        analysis_mode: $.get('analysis_mode', 'single')
+        is_build_parlay: $.get('is_build_parlay', False)
+        market-query: $.get('market_query')
+        runner-query: $.get('runner_query')
+        search_date_interval: $.get('search_date_interval')
+        search_query: $.get('search_query')
+        search_sort: $.get('search_sort')
+        sport_id: $.get('sport_id')
+        target_odd: $.get('target_odd')
+        vector_query: $.get('vector_query')
+        vector_search: $.get('vector_search')
+        odd_from: $.get('odd_from')
+        odd_to: $.get('odd_to')
+
+    # EVENT SEARCH
+
+    # load-similar-documents
+    - type: document
+      name: load-similar-documents
+      description: Load similar documents
+      condition: $.get('search_query') is not None
+      config:
+        action: search
+        threshold-docs: "15 if $.get('analysis_mode') in ['round', 'multiple'] else 3"
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-sorters: ["value.startDate", 1]
+        search-vector: true
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      filters:
+        '$or': "[{'value.startDate':{'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}, {'value.startDateUtc': {'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}]"
+        value.isOpenForBetting: "{'$eq': True}"
+        value.type: "{'$ne': 'Tournament'} if $.get('analysis_mode') in ['round', 'multiple'] else None"
+      inputs:
+        name: "'game-market'"
+        search-query: |
+          f"{$.get('search_query')}"
+      outputs:
+        events-parsed: |
+          [
+            f.get('value', {}).get('title', '')
+            for f in $.get('documents', [])
+          ]
+        output_documents: |
+          [
+            {
+              **f.get('value', {}),
+              'parsed_id': f.get('value', {}).get('id', {}).get('entityId') if isinstance(f.get('value', {}).get('id', {}), dict) else f.get('value', {}).get('id', '')
+            }
+            for f in $.get('documents', [])
+          ]
+    
+    # assistant-grade-first-selection
+    - type: prompt
+      name: assistant-grade-first-selection
+      condition: $.get('events-parsed') is not None and len($.get('events-parsed', [])) > 0 and $.get('analysis_mode') == 'single'
+      continue_on_error: true
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-selected-event: $.get('events-parsed')[0]
+        _2-searched-event: $.get('vector_query') or $.get('search_query')
+      outputs:
+        events_index: "[0]"
+        grade_selected_event: $.get('grade_selected_event', False)
+        has_events: $.get('grade_selected_event', False)
+
+    # assistant-find-markets-events (multiple events selection)
+    - type: prompt
+      name: assistant-find-markets-events
+      condition: $.get('events-parsed') is not None and ($.get('grade_selected_event') is not True or $.get('analysis_mode') in ['round', 'multiple'])
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-selected-events: $.get('events-parsed')
+        _2-searched-event: $.get('vector_query') or $.get('search_query')
+      outputs:
+        events_index: |
+          [
+            index
+            for index in $.get('selected_events', [])
+          ]
+        has_events: len($.get('selected_events', [])) > 0
+        selected_events: $.get('selected_events', [])
+    
+    # assistant-prepare-market-finder-verification
+    - type: mapping
+      name: assistant-prepare-market-finder-verification
+      condition: $.get('has_events') is True
+      inputs:
+        events_docs: $.get('output_documents')
+        selected_events: $.get('events_index', [])
+      outputs:
+        selected_events_ids: $.get('selected_events_ids', [])
+        selected_events_parsed: $.get('selected_events_parsed', [])
+
+    # load-fixtures
+    - type: connector
+      name: load-fixtures
+      description: Load fixtures from Bwin
+      condition: $.get('has_events') is True and len($.get('selected_events_ids', [])) > 0
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          country: $.get('country')
+          sportId: $.get('sport_id')
+      inputs:
+        competitionIds: $.get('competitionIds') 
+        fixtureIds: |
+          [
+            event_id
+            for event_id in $.get('selected_events_ids', [])
+          ]
+        # marketsFilterCriteria: $.get('marketsFilterCriteria', 'Visible')
+        onlyMainMarkets: $.get('onlyMainMarkets', 'false')
+        isInPlay: $.get('isInPlay', 'false')
+      outputs:
+        payload: "$"
+        bulk-odds: |
+          [
+            {
+              **m,
+              'id': m.get('id'),
+              'name': m.get('name', {}).get('text', ''),
+              'metadata': {
+                'market_code': str(f.get('id', {}).get('full', '')),
+                'market_id': str(m.get('id', {}))
+              },
+              'competition_name': f.get('competition', {}).get('name', {}).get('text', ''),
+              'title': f"{f.get('name', {}).get('text', '')} | {m.get('name', {}).get('text', '')}"
+            }
+            for f in $.get('items', [])
+            for m in f.get('markets', [])
+          ]
+        bulk-odds-parsed: |
+          [
+            {
+              **m,
+              'id': m.get('id'),
+              'name': m.get('name', {}).get('text', ''),
+              'metadata': {
+                'market_code': str(m.get('id', {}).get('full', '')),
+                'market_id': str(m.get('id', {}))
+              },
+              'title': f"{m.get('name', {}).get('text', '')}"
+            }
+            for m in $.get('items', [])
+          ]
+
+    # assistant-find-markets-odds-mapping
+    - type: mapping
+      name: assistant-find-markets-odds-mapping
+      description: Mapping market-odds
+      condition: len($.get('bulk-odds', [])) > 0
+      inputs:
+        market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
+        market-query: $.get('market-query')
+      outputs:
+        mapped-odds: $.get('mapped-odds')
+        mapped-runners: $.get('mapped-runners')
+        market-types: $.get('market-types')
+
+    # assistant-find-markets-map-markets (connector/mapping)
+    - type: connector
+      name: assistant-find-markets-map-markets
+      condition: len($.get('bulk-odds', [])) > 0
+      connector:
+        name: assistant-tools-map-markets
+        command: invoke_map_markets
+      inputs:
+        mapped-runners: $.get('mapped-runners')
+        # market-odds: $.get('bulk-odds', []) or $.get('bulk-odds-parsed', [])
+        market-query: $.get('market-query')
+        sport-id: $.get('sport_id')
+        is-build-parlay: $.get('is_build_parlay', False)
+        odd-from: $.get('odd_from')
+        odd-to: $.get('odd_to')
+      outputs:
+        selected-market-runners-names: $.get('selected-market-runners-names', [])
+        selected-runners-parsed: $.get('selected-market-runners', [])
+    
+    # assistant-build-parlay
+    - type: connector
+      name: assistant-build-parlay
+      description: Build parlay combinations to reach target odd
+      condition: $.get('is_build_parlay') == True and len($.get('selected-runners-parsed', [])) > 0
+      connector:
+        name: assistant-tools-build-parlay
+        command: invoke_build_parlay
+      inputs:
+        available-runners: $.get('selected-runners-parsed')
+        target-odd: $.get('target_odd', 10.0)
+        max-legs: "5"
+        tolerance: "0.20"
+      outputs:
+        parlay-combinations: $.get('parlay-combinations', [])
+        parlay-best: $.get('best-combination')
+        parlay-found-count: $.get('combinations-found', 0)
+
+    # assistant-find-markets-selection
+    - type: prompt
+      name: assistant-find-markets-selection
+      condition: $.get('market-types') is not None and len($.get('selected-runners-parsed', [])) == 0
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-market-types-parsed: $.get('market-types')
+        _2-sport-id: $.get('sport_id')
+        _3-user_query: |
+          f"Select the most relevant market type from the user query: {$.get('market-query')}"
+      outputs:
+        selected-market-raw: $.get('selected_markets')
+        selected-market-types: "[context.get('market-types')[int(i)] for i in $.get('selected_markets',[])]"
+        selected-market-runners: "[runner for runner in context.get('mapped-runners') if runner.get('marketType') in [context.get('market-types')[int(i)] for i in $.get('selected_markets',[])]]"
+        selected-market-runners-names: "[runner.get('title') for runner in context.get('mapped-runners') if runner.get('marketType') in [context.get('market-types')[int(i)] for i in $.get('selected_markets',[])]]"
+
+    # assistant-find-markets-runners
+    - type: prompt
+      name: assistant-find-markets-runners
+      condition: $.get('selected-market-runners-names') is not None and len($.get('selected-runners-parsed', [])) == 0
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-events-parsed: $.get('selected-market-runners-names')
+        _2-user_query: |
+          f"Select the most relevant runners from the runner query: {$.get('runner-query')}"
+      outputs:
+        selected-runners-ids: $.get('selected_runners')
+        selected-runners-parsed: "[context.get('selected-market-runners')[int(i)] if int(i) < len(context.get('selected-market-runners')) else None for i in $.get('selected_runners',[])]"
+
+    # update-thread-with-markets-docs
+    - type: document
+      name: update-thread-with-markets-docs
+      description: Update thread document with markets docs
+      condition: $.get('document_id') is not None and len($.get('selected-runners-parsed', [])) > 0
+      config:
+        action: update
+      documents:
+        thread: |
+          {
+            **$.get('document_value'),
+            'markets-docs': $.get('parlay-best') if $.get('is_build_parlay') == True else $.get('selected-runners-parsed', [])
+          }
+      filters:
+        document_id: $.get('document_id')

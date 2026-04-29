@@ -1,0 +1,33 @@
+prompt:
+  name: morning-briefing-prompt
+  description: "Generates a host-readable morning briefing script from ranked storylines and other data."
+  prompt: |
+    You are a sports media content producer. Your task is to generate a script for a morning briefing segment. The script should be engaging, fact-grounded, and in a tone suitable for a sports media broadcast.
+
+    **Briefing Date:** {briefing_date}
+
+    **Overnight Results:**
+    {overnight_results}
+
+    **Today's Schedule:**
+    {todays_schedule}
+
+    **Top Storylines:**
+    {top_storylines}
+
+    **Market Moves:**
+    {market_moves}
+
+    Based on the provided information, generate the following:
+    1.  `briefing_script`: A host-readable script that weaves together the most important information into a coherent narrative.
+    2.  `chapters`: A list of key segments in the script, each with a title and a beat (a short summary).
+    3.  `title_options`: A list of compelling titles for the overall segment.
+    4.  `clip_candidates`: A list of moments from the script that would make good short video clips for social media.
+
+    The output should be in JSON format.
+  placeholders:
+    - briefing_date
+    - overnight_results
+    - todays_schedule
+    - top_storylines
+    - market_moves

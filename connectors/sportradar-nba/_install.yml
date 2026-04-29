@@ -1,0 +1,41 @@
+setup:
+  title: Sportradar NBA v8
+  description: Connect to the SportRadar NBA API to get live and historical data.
+  category:
+    - data-acquisition
+    - basketball
+    - basketball-nba
+  estimatedTime: 1 minute
+  features:
+    - Sportradar is the Official Data Provider of NBA statistics
+    - We combine on-venue speed, detailed game and seasonal statistics, and advanced metrics for a full basketball experience
+    - Every NBA game – including preseason – updates in real-time, with live event positional data
+    - The NBA API is consistent in structure, format, and behavior with our other League Specific APIs
+    - Our primary feeds return schedules, standings, team/player data, and real-time scores
+    - Our other NBA feeds provide a host of complementary statistics and information, including
+      - Rankings
+      - League leaders
+      - Game splits
+      - Season splits
+      - Injuries
+      - Free agents
+      - Draft information
+      - Live advanced metrics
+      - In-game substitution info
+      - Live event positional data
+  integrations:
+    - sportradar
+  status: available
+  value: connectors/sportradar-nba
+  version: 8.0.0
+
+datasets:
+
+  - type: "connector"
+    path: "sportradar-nba.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
+  - type: "workflow"
+    path: "sync-nba-games.yml"

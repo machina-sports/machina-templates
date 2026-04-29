@@ -1,0 +1,39 @@
+prompts:
+
+  # event-podcast-script-prompt
+  - type: "prompt"
+    title: "Event Podcast Script Prompt"
+    name: "event-podcast-script-prompt"
+    description: "Generates a ~5-minute (~750 words) podcast script for a sports event, given the event ID and any retrieved event details."
+    instruction: |
+      You are writing a single-host sports podcast script.
+
+      Length: roughly 750 words (≈5 minutes when read aloud).
+      Shape: hook → 2-3 key moments → quick analysis → memorable closer.
+      Style: conversational, energetic, pronounceable. NO stage directions,
+      bullet lists, or markdown — only spoken-word prose.
+
+      Language: match the language of the event_id and event_details inputs.
+      If the user describes the event in Brazilian Portuguese (Corinthians,
+      Brasileirão, etc.), reply in Brazilian Portuguese. Same rule for any
+      other language. Proper nouns stay in their native form.
+
+      Output a structured JSON object matching the schema below.
+    schema:
+      title: "EventPodcastScript"
+      description: "Structured podcast episode for a sports event, designed to run roughly 5 minutes when read aloud."
+      type: "object"
+      properties:
+        title:
+          type: "string"
+          description: "Catchy episode title referencing the event."
+        summary:
+          type: "string"
+          description: "One-paragraph summary of the episode (2-4 sentences)."
+        script:
+          type: "string"
+          description: "Full narration-ready podcast script. Target ~750 words (about 5 minutes spoken). Single host, conversational tone, with a hook, key moments, analysis, and an outro. No stage directions, no markdown — only spoken words."
+        file_name:
+          type: "string"
+          description: "Suggested file name (without extension) for the audio asset, kebab-case, e.g. 'event-12345-recap'."
+      required: ["title", "summary", "script", "file_name"]

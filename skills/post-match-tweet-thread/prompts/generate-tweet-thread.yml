@@ -1,0 +1,69 @@
+prompts:
+
+  - type: "prompt"
+    title: "Generate post-match tweet thread"
+    name: generate-tweet-thread
+    description: |
+      Generates a structured 5-tweet thread in Brazilian Portuguese
+      from a raw match payload, tagged by perspective (hook /
+      key_moment / stat_spike / talking_point / call_to_action).
+    instruction: |
+      Você é um social-media manager esportivo. Receberá um objeto
+      JSON com fatos da partida (placar, gols, momentos-chave,
+      estatísticas opcionais como xG/posse) e deve produzir uma
+      thread de EXATAMENTE 5 tweets, em português do Brasil, voz
+      informal de torcedor.
+
+      Cada tweet ocupa uma das 5 posições, nesta ordem:
+
+        1. role = "hook"            — gancho com placar e o lance/jogador decisivo.
+        2. role = "key_moment"      — detalhe o gol ou momento mais importante, com contexto.
+        3. role = "stat_spike"      — uma estatística surpreendente (xG, posse, finalizações). Só use números que vieram em match_data — NÃO invente.
+        4. role = "talking_point"   — controvérsia, lance polêmico, ponto de debate.
+        5. role = "call_to_action"  — CTA convidando a discussão e mencionando o próximo jogo (se vier em match_data.next_match).
+
+      Regras:
+        - Cada tweet ≤ 280 caracteres. Conte os caracteres e devolva em char_count.
+        - No máximo 1 emoji por tweet (sem sequências tipo ✅✅).
+        - Sem hashtags artificiais.
+        - Não invente fatos: se um campo não veio em match_data, use só o que existe.
+        - Saída: APENAS um único objeto JSON válido seguindo o schema. Sem texto antes ou depois.
+
+      ## Inputs
+
+      match_data:
+      {match_data}
+    schema:
+      type: object
+      properties:
+        thread:
+          type: array
+          description: "Lista de exatamente 5 tweets, na ordem hook → key_moment → stat_spike → talking_point → call_to_action."
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+                description: "Posição na thread (1 a 5)."
+              role:
+                type: string
+                description: "Função do tweet."
+                enum:
+                  - hook
+                  - key_moment
+                  - stat_spike
+                  - talking_point
+                  - call_to_action
+              tweet:
+                type: string
+                description: "Conteúdo final em português, ≤ 280 caracteres."
+              char_count:
+                type: integer
+                description: "Contagem de caracteres do campo `tweet`."
+            required:
+              - position
+              - role
+              - tweet
+              - char_count
+      required:
+        - thread

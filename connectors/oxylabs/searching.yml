@@ -1,0 +1,216 @@
+workflow:
+
+  # oxylabs-web-search
+  name: "oxylabs-web-search"
+  title: "Oxylabs - Web Search"
+  description: "Workflow to search a web page."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
+    oxylabs:
+      username: "$TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD"
+  inputs:
+    limit: "$.get('limit', 10)"
+    geo_location: "$.get('geo_location', 'Brazil')"
+    parser: "($.get('parser', 'true') == 'true') and True or False"
+    query: $.get('query')
+    query2: $.get('query2')
+    document-id: "$.get('document-id')"
+    image-name: "$.get('image-name')"
+    source: "$.get('source', 'google_search')"
+    udm: "int($.get('udm', 12))"
+  outputs:
+    parsed-content: "$.get('parsed-content')"
+    parsed-links: "$.get('parsed-links')"
+    workflow-status: "'executed'"
+  tasks:
+
+    # post-queries (1)
+    - type: connector
+      name: oxylabs-post-queries
+      description: "Search a web page."
+      condition: |
+        (
+          $.get('query') is not None
+        )
+      connector:
+        name: oxylabs
+        command: "post-queries"
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": $.get('udm', 12)
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": $.get('limit')
+                  }
+                ]
+              }
+            ],
+            "geo_location": $.get('geo_location'),
+            "parse": $.get('parser'),
+            "query": $.get('query'),
+            "source": $.get('source'),
+          }
+      outputs:
+        search-results: "$.get('results', [])[0].get('content')"
+        organic-results: "$.get('results', [])[0].get('content').get('results', {}).get('organic', []) if $.get('results', [])[0].get('content') else []"
+        organic-results-2: "[]"
+        original-response: "$"
+        top-stories: "$.get('results', [])[0].get('content').get('results', {}).get('top_stories', []) if $.get('results', [])[0].get('content') else []"
+    
+    # post-queries (2)
+    - type: connector
+      name: oxylabs-post-queries
+      description: "Search a web page."
+      condition: |
+        (
+          $.get('query2') is not None
+        )
+      connector:
+        name: oxylabs
+        command: "post-queries"
+      inputs:
+        body: |
+          {
+            "context": [
+              {
+                "key": "udm",
+                "value": $.get('udm', 12)
+              },
+              {
+                "key": "limit_per_page",
+                "value": [
+                  {
+                    "page": 1,
+                    "limit": $.get('limit')
+                  }
+                ]
+              }
+            ],
+            "parse": $.get('parser'),
+            "query": $.get('query2'),
+            "source": $.get('source'),
+          }
+      outputs:
+        search-results-2: "$.get('results', [])[0].get('content')"
+        organic-results-2: "$.get('results', [])[0].get('content').get('results', {}).get('organic', []) if $.get('results', [])[0].get('content') else []"
+
+    # - type: "mapping"
+    #   name: "oxylabs-searching-images-mapping"
+    #   description: "Mapping data from oxylabs searching"
+    #   condition: |
+    #     (
+    #       len($.get('organic-results')) > 0
+    #       and $.get('udm') == 2
+    #     )
+    #   inputs:
+    #     input-searching-content: "$.get('organic-results')"
+    #   outputs:
+    #     parsed-content: "$.get('parsed-content')"
+    #     parsed-links: "$.get('parsed-links')"
+
+    # generate image
+    - type: connector
+      name: generate-image
+      description: "Generate an image for a player card."
+      condition: |
+        (
+          len($.get('organic-results')) > 0
+          and $.get('udm') == 2
+        )
+      connector:
+        name: machina-ai
+        command: "edit_image"
+      inputs:
+        image_id: f"id-{$.get('document-id')}-{$.get('image-name')}"
+        instruction: f"{$.get('query')}"
+        images_base64: |
+          [
+            *[
+              d.get('image')
+              for d in $.get('organic-results')[:6]
+            ],
+            *[
+              d.get('image')
+              for d in $.get('organic-results-2')[:6]
+            ]
+          ]
+        model: "'gpt-image-1'"
+      outputs:
+        final_filename: f"article-image-{$.get('final_filename')}"
+        full_filepath: "$.get('full_filepath')"
+
+    # store image
+    - type: connector
+      name: store-player-card-image
+      condition: |
+        (
+          len($.get('organic-results')) > 0
+          and $.get('udm') == 2
+        )
+      connector:
+        name: storage
+        command: "store_image"
+      inputs:
+        final_filename: "$.get('final_filename')"
+        full_filepath: "$.get('full_filepath')"
+      outputs:
+        image_path: "$.get('data')"
+
+    # mapping organic results
+    - type: mapping
+      name: oxylabs-searching-mapping-organic
+      description: "Mapping data from oxylabs searching"
+      condition: |
+        (
+          $.get('udm') == 1
+        )
+      inputs:
+        input-searching-content: "$.get('organic-results')"
+        input-searching-limit: "$.get('limit')"
+      outputs:
+        parsed-content: "$.get('parsed-content')"
+        parsed-links: "$.get('parsed-links')"
+
+    # mapping top stories results
+    - type: mapping
+      name: oxylabs-searching-mapping-top-stories
+      description: "Mapping data from oxylabs searching"
+      condition: |
+        (
+          $.get('udm') == 0
+        )
+      inputs:
+        input-searching-content: "$.get('top-stories')"
+        input-searching-limit: "$.get('limit')"
+      outputs:
+        parsed-content: "$.get('parsed-content')"
+        parsed-links: "$.get('parsed-links')"
+
+    # mapping news results
+    - type: mapping
+      name: oxylabs-searching-mapping-news
+      description: "Mapping data from oxylabs searching"
+      condition: |
+        (
+          $.get('udm') == 12
+        )
+      inputs:
+        input-searching-content: "$.get('search-results')"
+        input-searching-limit: "$.get('limit')"
+      outputs:
+        parsed-content: "$.get('parsed-content')"
+        parsed-links: "$.get('parsed-links')"

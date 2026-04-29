@@ -1,0 +1,120 @@
+workflow:
+
+  # sportradar-nfl-event-sync-timeline
+  name: sportradar-nfl-event-sync-timeline
+  title: Sportradar NFL - Event Sync Timeline
+  description: Workflow to synchronize a NFL game timeline from SportRadar API by event code.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    sportradar-nfl:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    event_document_id: $.get('event_document_id')
+  outputs:
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-code
+    - type: document
+      name: load-event-by-code
+      description: Search event (sportradar) by code.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.start_time", 1]
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
+
+    # iptc-sportradar-id-conversion-mapping
+    - type: mapping
+      name: iptc-sportradar-id-conversion-mapping
+      description: Convert IPTC URN IDs to original Sportradar IDs and preserve URN
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_schema_events: |
+          [
+            $.get('event_value')
+          ]
+      outputs:
+        original_event_id: $.get('original_ids', [''])[0]
+    
+    # task-load-games-statistics
+    - type: connector
+      name: task-load-games-statistics
+      description: Get a game statistics from SportRadar
+      condition: $.get('event_exists') is True
+      connector:
+        name: sportradar-nfl
+        command: get-games/{game_id}/{data_type}
+        command_attribute:
+          game_id: $.get('original_event_id')
+          data_type: "'statistics.json'"
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        game-statistics: $
+
+    # iptc-sportradar-event-update-mapping
+    - type: mapping
+      name: iptc-sportradar-event-update-mapping
+      title: IPTC | Sportradar Event Update Mapping
+      description: Update main event information from game statistics
+      condition: $.get('event_exists') is True
+      inputs:
+        game-statistics: $.get('game-statistics', {})
+      outputs:
+        event_updated: $.get('event_updated', {})
+
+    # iptc-sportradar-game-statistics-mapping
+    - type: mapping
+      name: iptc-sportradar-game-statistics-mapping
+      title: IPTC | Sportradar Game Statistics Mapping
+      description: Convert Sportradar game statistics to IPTC Sports Schema format
+      condition: $.get('event_exists') is True
+      inputs:
+        game-statistics: $.get('game-statistics', {})
+      outputs:
+        iptc_game_statistics: $.get('iptc_game_statistics', {})
+
+    # iptc-sportradar-player-statistics-mapping
+    - type: mapping
+      name: iptc-sportradar-player-statistics-mapping
+      title: IPTC | Sportradar Player Statistics Mapping
+      description: Convert Sportradar player statistics to IPTC Sports Schema format
+      condition: $.get('event_exists') is True
+      inputs:
+        game-statistics: $.get('game-statistics', {})
+      outputs:
+        iptc_player_statistics: $.get('iptc_player_statistics', [])
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document version control.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            **$.get('event_updated', {}),
+            'sport:gameStatistics': $.get('iptc_game_statistics', {}),
+            'sport:playerStatistics': $.get('iptc_player_statistics', []),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {})
+            }
+          }
+      

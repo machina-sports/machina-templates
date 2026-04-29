@@ -1,0 +1,90 @@
+workflow:
+
+  # truth-point-ingest
+  name: truth-point-ingest
+  title: Truth Point — Ingest Component
+  description: Receives a component payload and upserts it into machina-knowledge with a Vertex embedding. Idempotent on metadata.component_id. Preserves verdict_history across re-ingests so the Factory's feedback signal is not lost when a template is pushed.
+
+  context-variables:
+    debugger:
+      enabled: false
+    vertex-embedding:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    kind: $.get('kind', '')
+    name: $.get('name', '')
+    title: $.get('title', '')
+    description: $.get('description', '')
+    categories: $.get('categories', [])
+    integrations: $.get('integrations', [])
+    version: $.get('version', '')
+    source_repo: $.get('source_repo', '')
+    source_path: $.get('source_path', '')
+    source_ref: $.get('source_ref', '')
+    manifest: $.get('manifest', '')
+    files: $.get('files', [])
+
+  outputs:
+    component_id: $.get('kind') + ':' + $.get('name')
+    workflow-status: $.get('kind') and 'executed' or 'skipped'
+
+  tasks:
+
+    # Step 1 — read the existing doc (if any) so we can preserve fields the
+    # ingest payload doesn't carry (notably verdict_history, which the
+    # Factory writes asynchronously and which would otherwise be wiped on
+    # every re-ingest by force-update).
+    - type: document
+      name: lookup-existing
+      description: Lookup existing doc to preserve verdict_history
+      condition: $.get('kind') is not None and $.get('kind') != '' and $.get('name') is not None and $.get('name') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'machina-knowledge'"
+        metadata.component_id: $.get('kind') + ':' + $.get('name')
+      outputs:
+        existing_verdict_history: $.get('documents')[0].get('value', {}).get('verdict_history', []) if len($.get('documents', [])) > 0 else []
+        existing_last_verdict: $.get('documents')[0].get('value', {}).get('last_verdict', None) if len($.get('documents', [])) > 0 else None
+        existing_last_verdict_at: $.get('documents')[0].get('value', {}).get('last_verdict_at', None) if len($.get('documents', [])) > 0 else None
+
+    # Step 2 — upsert with the new payload + carried-over verdict_history.
+    - type: document
+      name: upsert-component
+      description: Upsert (create-or-replace) the component doc with a Vertex embedding
+      condition: $.get('kind') is not None and $.get('kind') != '' and $.get('name') is not None and $.get('name') != ''
+      config:
+        action: update
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "vertex-embedding"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
+      documents:
+        machina-knowledge: |
+          {
+            'kind': $.get('kind', ''),
+            'name': $.get('name', ''),
+            'component_id': $.get('kind') + ':' + $.get('name'),
+            'title': $.get('title', '') or $.get('name', ''),
+            'description': $.get('description', ''),
+            'categories': $.get('categories', []),
+            'integrations': $.get('integrations', []),
+            'version': $.get('version', ''),
+            'source_repo': $.get('source_repo', ''),
+            'source_path': $.get('source_path', ''),
+            'source_ref': $.get('source_ref', ''),
+            'manifest': $.get('manifest', ''),
+            'files': $.get('files', []),
+            'verdict_history': $.get('existing_verdict_history', []),
+            'last_verdict': $.get('existing_last_verdict'),
+            'last_verdict_at': $.get('existing_last_verdict_at'),
+            'ingested_at': datetime.now().isoformat()
+          }
+      metadata:
+        component_id: $.get('kind') + ':' + $.get('name')

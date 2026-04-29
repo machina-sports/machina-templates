@@ -1,0 +1,36 @@
+workflow:
+  name: get-team-form
+  title: "Get Team Form"
+  description: "Retrieves the recent form (last 5 matches) for a specific team."
+  inputs:
+    query: "$.get('query')"
+    competition_id: "$.get('competition_id')"
+  outputs:
+    result: "$.get('schedule')"
+    workflow-status: "($.get('schedule') is not None) and 'executed' or 'skipped'"
+  tasks:
+    - type: "connector"
+      name: "search_for_team"
+      description: "Search for the team by name."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'search_team'"
+        query: "$.get('query')"
+      outputs:
+        search_result: "$"
+
+    - type: "connector"
+      name: "get_team_schedule"
+      description: "Get the team's recent schedule."
+      condition: "$.get('search_result', {}).get('results', [])"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_team_schedule'"
+        team_id: "$.get('search_result', {}).get('results', [{}])[0].get('team', {}).get('id')"
+        limit: 5
+      outputs:
+        schedule: "$.get('events')"

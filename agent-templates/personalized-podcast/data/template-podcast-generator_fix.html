@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:v="urn:schemas-microsoft-com:vml"
+      xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <!-- Force IE/Outlook to use latest rendering engine -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{subject_line}}</title>
+
+  <!--[if gte mso 9]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+
+  <style type="text/css">
+    /* CLIENT RESETS */
+    #outlook a { padding:0; }
+    body { margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img { border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+    p { margin:0; padding:0; }
+    a { text-decoration:none; }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px 0;
+      line-height: 1.6;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .top-logo-bar {
+      background-color: #000000;
+      padding: 30px 35px;
+      text-align: center;
+      border-bottom: 3px solid #dc2626;
+    }
+    .top-logo-bar img {
+      max-width: 180px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      transition: opacity 0.3s ease;
+      filter: brightness(1.1) contrast(1.1);
+    }
+    .top-logo-bar img:hover {
+      opacity: 0.9;
+    }
+
+    /* HEADER – flex/aspect-ratio removed for Outlook sanity, kept same look */
+    .header {
+      background: #000000;
+      background-image: url('{{header_background_image}}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      text-align: center;
+      color: #ffffff;
+      border-bottom: 3px solid #dc2626;
+      position: relative;
+      /* fallback fixed height to mimic your previous aspect-ratio/min-height */
+      height: 343px;
+    }
+    .header-overlay {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+    }
+
+    .content {
+      padding: 40px 35px;
+    }
+    .greeting {
+      font-size: 18px;
+      font-weight: 500;
+      color: #1a1a1a;
+      margin-bottom: 20px;
+    }
+    .headline {
+      font-size: 32px;
+      font-weight: 700;
+      color: #dc2626;
+      margin-bottom: 30px;
+      line-height: 1.2;
+      text-align: center;
+      letter-spacing: -0.5px;
+    }
+
+    /* Podcast Link Container */
+    .podcast-link-container {
+      background: #ffffff;
+      border: 3px solid #dc2626;
+      border-radius: 12px;
+      padding: 30px;
+      margin: 30px 0;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);
+    }
+    .podcast-link-button {
+      display: inline-block;
+      background: #dc2626;
+      color: #ffffff;
+      padding: 16px 40px;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 50px;
+      transition: all 0.2s ease;
+      margin-bottom: 12px;
+    }
+    .podcast-link-button:hover {
+      background: #991b1b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    .podcast-link-subtitle {
+      color: #6b7280;
+      font-size: 15px;
+      margin: 12px 0 0 0;
+      line-height: 1.5;
+    }
+
+    /* Podcast Info Card */
+    .podcast-info {
+      background: #ffffff; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #dc2626;
+      padding: 28px 24px;
+      margin: 30px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .podcast-info-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .info-grid {
+      /* grid is ignored by Outlook but degrades fine */
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    /* Outlook fallback - use table layout */
+    table.info-grid-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table.info-grid-table td {
+      padding: 7px 0;
+      vertical-align: top;
+    }
+    .info-item {
+      display: flex;
+      align-items: flex-start;
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.6;
+    }
+    /* Outlook fallback - use table cells */
+    .info-item-table {
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.6;
+    }
+    .info-label {
+      font-weight: 600;
+      color: #1f2937;
+      min-width: 140px;
+      margin-right: 12px;
+    }
+    .info-value {
+      color: #4b5563;
+      flex: 1;
+    }
+    .podcast-info p {
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .podcast-info strong {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    /* Description Section */
+    .description {
+      font-size: 16px;
+      color: #4b5563;
+      line-height: 1.8;
+      margin: 30px 0;
+      text-align: left;
+    }
+    .description p {
+      margin-bottom: 16px;
+    }
+    .description p:last-child {
+      margin-bottom: 0;
+    }
+    /* Markdown HTML Elements */
+    .description h1,
+    .description h2,
+    .description h3,
+    .description h4,
+    .description h5,
+    .description h6 {
+      color: #1a1a1a;
+      font-weight: 700;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+    .description h1 {
+      font-size: 28px;
+      color: #dc2626;
+    }
+    .description h2 {
+      font-size: 24px;
+      color: #dc2626;
+    }
+    .description h3 {
+      font-size: 20px;
+    }
+    .description h4 {
+      font-size: 18px;
+    }
+    .description h5,
+    .description h6 {
+      font-size: 16px;
+    }
+    .description ul,
+    .description ol {
+      margin: 16px 0;
+      padding-left: 24px;
+    }
+    .description li {
+      margin-bottom: 8px;
+    }
+    .description ul {
+      list-style-type: disc;
+    }
+    .description ol {
+      list-style-type: decimal;
+    }
+    .description a {
+      color: #dc2626;
+      text-decoration: underline;
+      font-weight: 500;
+    }
+    .description a:hover {
+      color: #991b1b;
+    }
+    .description strong,
+    .description b {
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .description em,
+    .description i {
+      font-style: italic;
+    }
+    .description code {
+      background-color: #f3f4f6;
+      color: #dc2626;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    .description pre {
+      background-color: #1a1a1a;
+      color: #f3f4f6;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .description pre code {
+      background-color: transparent;
+      color: inherit;
+      padding: 0;
+      border-radius: 0;
+    }
+    .description blockquote {
+      border-left: 4px solid #dc2626;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #6b7280;
+      font-style: italic;
+    }
+    .description hr {
+      border: none;
+      border-top: 2px solid #e5e7eb;
+      margin: 24px 0;
+    }
+    .description img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 16px 0;
+    }
+    .description table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+    .description th,
+    .description td {
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      text-align: left;
+    }
+    .description th {
+      background-color: #f9fafb;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    .description tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+
+    .download-button {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .download-button a {
+      display: inline-block;
+      background: #ffffff;
+      color: #dc2626;
+      padding: 14px 36px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 50px;
+      border: 2px solid #dc2626;
+      transition: all 0.2s ease;
+    }
+    .download-button a:hover {
+      background: #dc2626;
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+    }
+    .footer-image {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .footer-image img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .contact-info {
+      background: #f3f4f6; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      padding: 24px;
+      margin-top: 35px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #e5e7eb;
+    }
+    .contact-info p {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0;
+      line-height: 1.6;
+    }
+    .footer {
+      background-color: #000000;
+      color: #9ca3af;
+      padding: 35px 25px;
+      text-align: center;
+      font-size: 13px;
+      border-top: 3px solid #dc2626;
+    }
+    .footer-logo {
+      margin-bottom: 20px;
+      opacity: 0.6;
+      transition: opacity 0.3s ease;
+    }
+    .footer-logo:hover {
+      opacity: 0.9;
+    }
+    .footer-logo a {
+      display: inline-block;
+      text-decoration: none;
+    }
+    .footer-logo img {
+      max-width: 180px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    .footer p {
+      margin: 10px 0;
+      line-height: 1.7;
+    }
+    .footer a {
+      color: #dc2626;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+      color: #f87171;
+    }
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, #e5e7eb 50%, transparent 100%);
+      margin: 25px 0;
+    }
+    .footer-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, #dc2626 50%, transparent 100%);
+      margin: 20px 40px;
+      opacity: 0.3;
+    }
+
+    /* CTA Buttons Section */
+    .cta-section {
+      padding: 40px 35px;
+      background-color: #ffffff;
+    }
+    .cta-grid-3 {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .cta-grid-3 table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 16px;
+    }
+    .cta-grid-3 td {
+      width: 33.33%;
+      vertical-align: top;
+    }
+    .cta-grid-2 {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .cta-grid-2 table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 16px;
+    }
+    .cta-grid-2 td {
+      width: 50%;
+      vertical-align: top;
+    }
+    .cta-card {
+      background: #ffffff; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+      border-radius: 12px;
+      padding: 24px;
+      border: 2px solid #e5e7eb;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+    .cta-card:hover {
+      border-color: rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .cta-card-linkedin {
+      background: #f9fafb; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #eff6ff 0%, #f9fafb 100%);
+      border-color: #bfdbfe;
+    }
+    .cta-card-linkedin:hover {
+      border-color: #2563eb;
+    }
+    .cta-card-twitter {
+      background: #f9fafb; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #f9fafb 0%, rgba(0, 0, 0, 0.05) 100%);
+      border-color: #e5e7eb;
+    }
+    .cta-card-twitter:hover {
+      border-color: rgba(0, 0, 0, 0.5);
+    }
+    .cta-card-discord {
+      background: #faf5ff; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+      border-color: #c7d2fe;
+    }
+    .cta-card-discord:hover {
+      border-color: #6366f1;
+    }
+    .cta-card-demo {
+      background: #f9fafb; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #fef2f2 0%, #f9fafb 100%);
+      border-color: #fecaca;
+    }
+    .cta-card-demo:hover {
+      border-color: #dc2626;
+    }
+    .cta-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      margin: 0 auto 12px;
+      display: inline-block;
+      line-height: 48px;
+      text-align: center;
+      font-size: 28px;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+    }
+    .cta-icon-linkedin {
+      background: #2563eb; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+    .cta-icon-twitter {
+      background: #000000; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #111827 0%, #000000 100%);
+      border-color: rgba(17, 24, 39, 0.3);
+    }
+    .cta-icon-discord {
+      background: #6366f1; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #6366f1 0%, #9333ea 100%);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .cta-icon-demo {
+      background: #dc2626; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #dc2626 0%, #000000 100%);
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+    .cta-title {
+      font-weight: 900;
+      color: #111827;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: -0.5px;
+      font-size: 14px;
+    }
+    .cta-description {
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 500;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .cta-button-primary {
+      width: 100%;
+      padding: 16px;
+      background: #dc2626; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #000000 100%);
+      color: #ffffff;
+      border: 2px solid rgba(220, 38, 38, 0.5);
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: block;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    }
+    .cta-button-primary:hover {
+      background: #991b1b; /* Fallback for Outlook */
+      background: linear-gradient(135deg, #991b1b 0%, #7f1d1d 50%, #000000 100%);
+      box-shadow: 0 6px 24px rgba(220, 38, 38, 0.3);
+    }
+
+    @media only screen and (max-width: 600px) {
+      body {
+        padding: 0;
+      }
+      .email-container {
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .top-logo-bar {
+        padding: 20px 15px;
+      }
+      .top-logo-bar img {
+        max-width: 100px;
+      }
+      .header {
+        height: 214px;
+      }
+      .content {
+        padding: 30px 20px;
+      }
+      .greeting {
+        font-size: 17px;
+        margin-bottom: 18px;
+      }
+      .headline {
+        font-size: 26px;
+        margin-bottom: 25px;
+      }
+      .podcast-link-container {
+        padding: 24px 20px;
+        margin: 25px 0;
+      }
+      .podcast-link-button {
+        font-size: 16px;
+        padding: 14px 32px;
+      }
+      .podcast-link-subtitle {
+        font-size: 14px;
+      }
+      .podcast-info {
+        padding: 24px 20px;
+        margin: 25px 0;
+      }
+      .info-item {
+        font-size: 14px;
+        flex-direction: column;
+      }
+      .info-label {
+        min-width: auto;
+        margin-bottom: 4px;
+        margin-right: 0;
+      }
+      .podcast-info p {
+        font-size: 14px;
+      }
+      .description {
+        font-size: 15px;
+        margin: 25px 0;
+      }
+      .description h1 {
+        font-size: 24px;
+      }
+      .description h2 {
+        font-size: 20px;
+      }
+      .description h3 {
+        font-size: 18px;
+      }
+      .description h4 {
+        font-size: 16px;
+      }
+      .description ul,
+      .description ol {
+        padding-left: 20px;
+      }
+      .description pre {
+        padding: 12px;
+        font-size: 12px;
+      }
+      .description table {
+        font-size: 14px;
+      }
+      .description th,
+      .description td {
+        padding: 8px;
+      }
+      .contact-info {
+        padding: 20px;
+        margin-top: 30px;
+      }
+      .footer {
+        padding: 30px 20px;
+      }
+      .footer-logo {
+        margin-bottom: 18px;
+      }
+      .footer-logo img {
+        max-width: 100px;
+      }
+      .footer-divider {
+        margin: 15px 20px;
+      }
+      .cta-section {
+        padding: 30px 20px;
+      }
+      .cta-grid-3 table,
+      .cta-grid-2 table {
+        border-spacing: 12px;
+      }
+      .cta-grid-3 td,
+      .cta-grid-2 td {
+        display: block;
+        width: 100% !important;
+      }
+      .cta-card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin:0; padding:0;">
+
+  <!-- FULL-WIDTH WRAPPER TABLE -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" align="center" style="background-color:#f5f5f5;">
+    <tr>
+      <td align="center" style="padding:20px 0;">
+
+        <!-- MAIN CONTAINER TABLE -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="email-container" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+
+          <!-- TOP LOGO BAR -->
+          <tr>
+            <td class="top-logo-bar" style="background-color:#000000; padding:30px 35px; text-align:center; border-bottom:3px solid #dc2626;">
+              <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png" alt="Machina Sports" style="max-width:180px; height:auto; display:block; margin:0 auto; filter:brightness(1.1) contrast(1.1);" />
+            </td>
+          </tr>
+
+          <!-- HEADER WITH VML BACKGROUND FOR OUTLOOK -->
+          <tr>
+            <td align="center" valign="top" style="padding:0; background-color:#000000;">
+
+              <!--[if gte mso 9]>
+              <v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" 
+                      fill="true" stroke="false" style="width:600px; height:343px; position:absolute;">
+                <v:fill type="frame" src="{{header_background_image}}" color="#000000" />
+                <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true">
+                  <div style="text-align:center;">
+                    <font size="1" color="#ffffff">&nbsp;</font>
+                  </div>
+                </v:textbox>
+              </v:rect>
+              <table cellpadding="0" cellspacing="0" border="0" style="position:relative; z-index:1;">
+                <tr>
+                  <td width="600" height="343" style="padding:0;">
+              <![endif]-->
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#000000; background-image:url('{{header_background_image}}'); background-size:cover; background-position:center; background-repeat:no-repeat; border-bottom:3px solid #dc2626; height:343px;">
+                <tr>
+                  <td style="padding:0; background:linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);">
+                    <!-- Header content can go here if needed -->
+                  </td>
+                </tr>
+              </table>
+
+              <!--[if gte mso 9]>
+                  </td>
+                </tr>
+              </table>
+              <![endif]-->
+
+            </td>
+          </tr>
+
+          <!-- CONTENT -->
+          <tr>
+            <td class="content" style="padding:40px 35px;">
+
+              <!-- Greeting (kept empty as in your original) -->
+              <div class="greeting" style="font-size:18px; font-weight:500; color:#1a1a1a; margin-bottom:20px;">
+              </div>
+
+              <!-- Headline -->
+              <h2 class="headline" style="font-size:32px; font-weight:700; color:#dc2626; margin-bottom:30px; line-height:1.2; text-align:center; letter-spacing:-0.5px;">
+                Hey {{user_name}}!
+                {{podcast_headline}}
+              </h2>
+
+              <!-- Podcast Link -->
+              <div class="podcast-link-container" style="background:#ffffff; border:3px solid #dc2626; border-radius:12px; padding:30px; margin:30px 0; text-align:center; box-shadow:0 4px 12px rgba(220,38,38,0.15);">
+                <a href="{{podcast_url}}" target="_blank" class="podcast-link-button"
+                   style="display:inline-block; background:#dc2626; color:#ffffff; padding:16px 40px; text-decoration:none; font-size:18px; font-weight:700; border-radius:50px; margin-bottom:12px;">
+                  🎧 Listen to Your {{favorite_team}} Podcast Now
+                </a>
+              </div>
+
+              <!-- Description -->
+              <div class="description" style="font-size:16px; color:#4b5563; line-height:1.8; margin:30px 0; text-align:left;">
+                {{podcast_summary}}
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- CTA SECTION -->
+          <tr>
+            <td class="cta-section" style="padding:40px 35px; background-color:#ffffff;">
+
+              <!-- Book a Demo - Full Width -->
+              <a href="https://machina.gg/schedule?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=book_demo"
+                 target="_blank"
+                 class="cta-card cta-card-demo"
+                 style="display:block; text-decoration:none; color:inherit; background-color:#f9fafb; background:linear-gradient(135deg, #fef2f2 0%, #f9fafb 100%); border-radius:12px; padding:24px; border:2px solid #fecaca; text-align:center; margin-bottom:16px;">
+                <div class="cta-icon cta-icon-demo"
+                     style="width:48px; height:48px; border-radius:8px; margin:0 auto 12px; display:inline-block; line-height:48px; text-align:center; font-size:28px; border:2px solid rgba(0,0,0,0.1); background-color:#dc2626; background:linear-gradient(135deg, #dc2626 0%, #000000 100%); border-color:rgba(220,38,38,0.3);">
+                  📅
+                </div>
+                <h4 class="cta-title"
+                    style="font-weight:900; color:#111827; margin-bottom:8px; text-transform:uppercase; letter-spacing:-0.5px; font-size:14px;">
+                  Book a Demo
+                </h4>
+                <p class="cta-description"
+                   style="font-size:13px; color:#6b7280; font-weight:500; margin:0; line-height:1.5;">
+                  See how Machina can transform your organization
+                </p>
+              </a>
+
+              <!-- LinkedIn, X, and Discord - Side by Side -->
+              <div class="cta-grid-3" style="width:100%; margin-bottom:16px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate; border-spacing:16px;">
+                  <tr>
+                    <td width="33.33%" valign="top">
+                      <a href="https://www.linkedin.com/company/machina-sports?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=linkedin_follow"
+                         target="_blank"
+                         class="cta-card cta-card-linkedin"
+                         style="display:block; text-decoration:none; color:inherit; background-color:#f9fafb; background:linear-gradient(135deg, #eff6ff 0%, #f9fafb 100%); border-radius:12px; padding:24px; border:2px solid #bfdbfe; text-align:center;">
+                        <div class="cta-icon cta-icon-linkedin"
+                             style="width:48px; height:48px; border-radius:8px; margin:0 auto 12px; display:inline-block; line-height:48px; text-align:center; font-size:28px; border:2px solid rgba(0,0,0,0.1); background-color:#2563eb; background:linear-gradient(135deg, #2563eb 0%, #1e40af 100%); border-color:rgba(37,99,235,0.3);">
+                          💼
+                        </div>
+                        <h4 class="cta-title"
+                            style="font-weight:900; color:#111827; margin-bottom:8px; text-transform:uppercase; letter-spacing:-0.5px; font-size:14px;">
+                          Follow on LinkedIn
+                        </h4>
+                      </a>
+                    </td>
+                    <td width="33.33%" valign="top">
+                      <a href="https://x.com/machinasports_?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=x_follow"
+                         target="_blank"
+                         class="cta-card cta-card-twitter"
+                         style="display:block; text-decoration:none; color:inherit; background-color:#f9fafb; background:linear-gradient(135deg, #f9fafb 0%, rgba(0,0,0,0.05) 100%); border-radius:12px; padding:24px; border:2px solid #e5e7eb; text-align:center;">
+                        <div class="cta-icon cta-icon-twitter"
+                             style="width:48px; height:48px; border-radius:8px; margin:0 auto 12px; display:inline-block; line-height:48px; text-align:center; font-size:28px; border:2px solid rgba(0,0,0,0.1); background-color:#000000; background:linear-gradient(135deg, #111827 0%, #000000 100%); border-color:rgba(17,24,39,0.3);">
+                          𝕏
+                        </div>
+                        <h4 class="cta-title"
+                            style="font-weight:900; color:#111827; margin-bottom:8px; text-transform:uppercase; letter-spacing:-0.5px; font-size:14px;">
+                          Follow on X
+                        </h4>
+                      </a>
+                    </td>
+                    <td width="33.33%" valign="top">
+                      <a href="https://discord.gg/PBYd6FbBSK?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=discord_join"
+                         target="_blank"
+                         class="cta-card cta-card-discord"
+                         style="display:block; text-decoration:none; color:inherit; background-color:#faf5ff; background:linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%); border-radius:12px; padding:24px; border:2px solid #c7d2fe; text-align:center;">
+                        <div class="cta-icon cta-icon-discord"
+                             style="width:48px; height:48px; border-radius:8px; margin:0 auto 12px; display:inline-block; line-height:48px; text-align:center; font-size:28px; border:2px solid rgba(0,0,0,0.1); background-color:#6366f1; background:linear-gradient(135deg, #6366f1 0%, #9333ea 100%); border-color:rgba(99,102,241,0.3);">
+                          💬
+                        </div>
+                        <h4 class="cta-title"
+                            style="font-weight:900; color:#111827; margin-bottom:8px; text-transform:uppercase; letter-spacing:-0.5px; font-size:14px;">
+                          Join Discord
+                        </h4>
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Generate New Button -->
+              <a href="http://podcast.machina.gg/?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=create_another"
+                 target="_blank"
+                 class="cta-button-primary"
+                 style="width:100%; padding:16px; background-color:#dc2626; background:linear-gradient(135deg, #dc2626 0%, #991b1b 50%, #000000 100%); color:#ffffff; border:2px solid rgba(220,38,38,0.5); border-radius:8px; font-size:16px; font-weight:900; text-transform:uppercase; letter-spacing:0.5px; display:block; text-align:center; box-shadow:0 4px 20px rgba(220,38,38,0.2);">
+                🔄 Create Another Podcast
+              </a>
+
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td class="footer" style="background-color:#000000; color:#9ca3af; padding:35px 25px; text-align:center; font-size:13px; border-top:3px solid #dc2626;">
+              <div class="footer-logo" style="margin-bottom:20px; opacity:0.6;">
+                <a href="https://machina.gg/?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=footer_logo"
+                   target="_blank"
+                   style="display:inline-block; text-decoration:none;">
+                  <img src="https://storage.googleapis.com/machina-templates-bucket-default/static/newsletters-templates/machina-logo.png"
+                       alt="Machina Sports"
+                       style="max-width:180px; height:auto; display:block; margin:0 auto;" />
+                </a>
+              </div>
+              <p style="margin:10px 0; line-height:1.7;">
+                © 2025 All rights reserved.
+              </p>
+              <div class="footer-divider" style="height:1px; background:linear-gradient(90deg, transparent 0%, #dc2626 50%, transparent 100%); margin:20px 40px; opacity:0.3;"></div>
+              <p style="margin:10px 0; line-height:1.7;">
+                You are receiving this email because you generated a personalized podcast at
+                <a href="http://podcast.machina.gg/?utm_source=podcast_email&utm_medium=email&utm_campaign=personalized_podcast&utm_content=footer_text"
+                   target="_blank"
+                   style="color:#dc2626; text-decoration:none; font-weight:500;">
+                  podcast.machina.gg
+                </a>
+              </p>
+              <p style="margin-top:15px; font-size:11px; color:#6b7280; line-height:1.7;">
+                This is an automated email. Please do not reply directly to this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!-- END MAIN CONTAINER -->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

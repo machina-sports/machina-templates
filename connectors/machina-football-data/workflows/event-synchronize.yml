@@ -1,0 +1,166 @@
+workflow:
+
+  # machina-football-data-event-synchronize
+  name: machina-football-data-event-synchronize
+  title: Machina Football Data - Event Synchronize
+  description: Synchronize event data (summary, lineups, statistics, timeline) from Machina Football Data.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-football-data:
+      api_key: $TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY
+  inputs:
+    event_code: $.get('event_code')
+    event_document_id: $.get('event_document_id')
+    event_value: $.get('event_value')
+  outputs:
+    event_value: $.get('event_value')
+    workflow-status: $.get('event_code') is not None and 'executed' or 'skipped'
+  tasks:
+
+    # load version control to determine what needs updating
+    - type: mapping
+      name: check-version-control
+      description: Check version control flags.
+      mapping:
+        name: machina-football-version-control
+      inputs:
+        event_value: $.get('event_value')
+      outputs:
+        have_lineups: $.get('have_lineups')
+        have_timeline: $.get('have_timeline')
+        update_event_summary_count: $.get('update_event_summary_count')
+        update_event_lineups_count: $.get('update_event_lineups_count')
+        update_event_statistics_count: $.get('update_event_statistics_count')
+        update_event_timeline_count: $.get('update_event_timeline_count')
+        version_control: $.get('version_control')
+
+    # fetch event summary from API
+    - type: connector
+      name: task-load-event-summary
+      description: Get event summary from Machina Football Data
+      connector:
+        name: machina-football-data
+        command: get_event_summary
+        command_attribute:
+          event_id: $.get('event_code')
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        event_summary: $.get('event', {})
+        summary_statistics: $.get('statistics', {})
+
+    # fetch event lineups from API
+    - type: connector
+      name: task-load-event-lineups
+      description: Get event lineups from Machina Football Data
+      condition: $.get('update_event_lineups_count', 0) < 5
+      connector:
+        name: machina-football-data
+        command: get_event_lineups
+        command_attribute:
+          event_id: $.get('event_code')
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        event_lineups: $.get('lineups', [])
+
+    # fetch event statistics from API
+    - type: connector
+      name: task-load-event-statistics
+      description: Get event statistics from Machina Football Data
+      connector:
+        name: machina-football-data
+        command: get_event_statistics
+        command_attribute:
+          event_id: $.get('event_code')
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        event_statistics_raw: "{'teams': $.get('teams', [])}"
+
+    # map statistics to IPTC format
+    - type: mapping
+      name: task-map-statistics
+      description: Map statistics to IPTC format.
+      mapping:
+        name: machina-football-statistics-mapping
+      inputs:
+        statistics: $.get('event_statistics_raw', {})
+      outputs:
+        event_statistics: $.get('statistics_mapped', [])
+
+    # fetch event timeline from API
+    - type: connector
+      name: task-load-event-timeline
+      description: Get event timeline from Machina Football Data
+      connector:
+        name: machina-football-data
+        command: get_event_timeline
+        command_attribute:
+          event_id: $.get('event_code')
+      inputs:
+        api_key: $.get('api_key')
+      outputs:
+        event_timeline_raw: "{'timeline': $.get('timeline', [])}"
+
+    # map timeline to IPTC format
+    - type: mapping
+      name: task-map-timeline
+      description: Map timeline events to IPTC format.
+      mapping:
+        name: machina-football-timeline-mapping
+      inputs:
+        timeline: $.get('event_timeline_raw', {})
+      outputs:
+        event_timeline: $.get('timeline_mapped', [])
+
+    # update event document with all fetched data
+    - type: document
+      name: task-update-event
+      description: Update the event document with summary, lineups, statistics, timeline.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            'sport:status': $.get('event_summary', {}).get('status', $.get('event_value', {}).get('sport:status', 'not_started')),
+            'sport:score': {
+              'sport:homeScore': $.get('event_summary', {}).get('scores', {}).get('home', 0),
+              'sport:awayScore': $.get('event_summary', {}).get('scores', {}).get('away', 0),
+              **({'sport:halfTime': {
+                'sport:homeScore': $.get('event_summary', {}).get('scores', {}).get('half_time', {}).get('home'),
+                'sport:awayScore': $.get('event_summary', {}).get('scores', {}).get('half_time', {}).get('away')
+              }} if $.get('event_summary', {}).get('scores', {}).get('half_time', {}).get('home') is not None else {}),
+              **({'sport:penalties': {
+                'sport:homeScore': $.get('event_summary', {}).get('scores', {}).get('penalties', {}).get('home'),
+                'sport:awayScore': $.get('event_summary', {}).get('scores', {}).get('penalties', {}).get('away')
+              }} if $.get('event_summary', {}).get('scores', {}).get('penalties', {}).get('home') is not None else {})
+            },
+            'sport:competitors': [
+              {
+                **c_existing,
+                'score': next((c.get('score', 0) for c in $.get('event_summary', {}).get('competitors', []) if c.get('qualifier') == c_existing.get('qualifier')), c_existing.get('score', 0))
+              }
+              for c_existing in $.get('event_value', {}).get('sport:competitors', [])
+            ],
+            'sport:lineups': $.get('event_lineups', []) if $.get('event_lineups') else $.get('event_value', {}).get('sport:lineups', []),
+            'sport:statistics': $.get('event_statistics', []) if $.get('event_statistics') else $.get('event_value', {}).get('sport:statistics', []),
+            'sport:timeline': $.get('event_timeline', []) if $.get('event_timeline') else $.get('event_value', {}).get('sport:timeline', []),
+            'version_control': {
+              **$.get('version_control', {}),
+              'update_event_summary_count': $.get('update_event_summary_count', 0) + 1,
+              'update_event_lineups_count': $.get('update_event_lineups_count', 0) + (1 if $.get('event_lineups') else 0),
+              'update_event_statistics_count': $.get('update_event_statistics_count', 0) + (1 if $.get('event_statistics') else 0),
+              'update_event_timeline_count': $.get('update_event_timeline_count', 0) + (1 if $.get('event_timeline') else 0),
+              'have_lineups': len($.get('event_lineups', [])) > 0 or $.get('have_lineups', False),
+              'have_timeline': len($.get('event_timeline', [])) > 0 or $.get('have_timeline', False),
+              'processing': True,
+              'consumer-update-timestamp': datetime.utcnow().isoformat()
+            }
+          }

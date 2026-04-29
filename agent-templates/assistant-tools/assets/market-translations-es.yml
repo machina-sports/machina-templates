@@ -1,0 +1,88 @@
+workflow:
+  name: assistant-market-translations-es
+  title: Assistant - Market Translations (Spanish)
+  description: Assistant - Market Translations (Spanish)
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: document
+      name: create-translation-document
+      description: Create or update market translation policy document for Spanish
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        market-translations-es: |
+          {
+            "name": "market-translations-es",
+            "language": "es-ES",
+            "version": "1.0",
+            "description": "Translation mappings for betting markets, types, and options to Spanish",
+            "translations": {
+              "market_types": {
+                "3way": "Resultado 1X2",
+                "over/under": "Más/Menos",
+                "total": "Total de Goles",
+                "handicap": "Hándicap",
+                "draw_no_bet": "Empate Anula",
+                "both_teams_to_score": "Ambos Marcan",
+                "double_chance": "Doble Oportunidad",
+                "correct_score": "Resultado Exacto",
+                "asian_handicap": "Hándicap Asiático",
+                "first_half": "Primera Parte",
+                "second_half": "Segunda Parte",
+                "corners": "Córners",
+                "cards": "Tarjetas",
+                "winner": "Ganador",
+                "to_qualify": "Clasificación",
+                "anytime_goalscorer": "Marcar en Cualquier Momento",
+                "first_goalscorer": "Primer Goleador"
+              },
+              "market_names": {
+                "match result": "Resultado del Partido",
+                "full time result": "Resultado Final",
+                "total goals": "Total de Goles",
+                "both teams to score": "Ambos Equipos Marcan",
+                "draw no bet": "Empate Anula Apuesta",
+                "double chance": "Doble Oportunidad",
+                "correct score": "Resultado Exacto",
+                "first half": "Primera Parte",
+                "second half": "Segunda Parte",
+                "corners": "Córners",
+                "winner": "Ganador del Partido",
+                "handicap": "Hándicap"
+              },
+              "option_names": {
+                "x": "Empate",
+                "draw": "Empate",
+                "tie": "Empate",
+                "over": "Más",
+                "under": "Menos",
+                "over 0.5": "Más de 0,5",
+                "over 1.5": "Más de 1,5",
+                "over 2.5": "Más de 2,5",
+                "over 3.5": "Más de 3,5",
+                "over 4.5": "Más de 4,5",
+                "under 0.5": "Menos de 0,5",
+                "under 1.5": "Menos de 1,5",
+                "under 2.5": "Menos de 2,5",
+                "under 3.5": "Menos de 3,5",
+                "under 4.5": "Menos de 4,5",
+                "yes": "Sí",
+                "no": "No",
+                "home": "Local",
+                "away": "Visitante",
+                "home team": "Equipo Local",
+                "away team": "Equipo Visitante",
+                "both teams to score": "Ambos Marcan",
+                "btts yes": "Sí",
+                "btts no": "No"
+              }
+            }
+          }
+

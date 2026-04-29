@@ -1,0 +1,49 @@
+workflow:
+  name: "sportradar-nfl-sync-profile"
+  title: "Sportradar NFL Sync Profile"
+  description: "Workflow to sync NFL profile by ID."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    player_id: "$.get('player_id')"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('events', []) is None and 'skipped' or 'executed'"
+  tasks:
+
+    # task-load-profile
+    - type: "connector"
+      name: "task-load-profile"
+      description: "Get profile from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-players/{player_id}/{data_type}"
+        command_attribute:
+          player_id: "$.get('player_id')"
+          data_type: "'profile.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        player: "$"
+
+    # save-profile
+    - type: "document"
+      name: "save-profile"
+      condition: "$.get('player') is not None"
+      description: "Save the profile."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        nfl-player-profile: |
+          {
+            **$.get('player'),
+            'title': $.get('player', {}).get('name', ''),
+            'selected': False
+          }

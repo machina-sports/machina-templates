@@ -1,0 +1,56 @@
+workflow:
+
+  # coverage-tools-soccer-preview-boxes
+  name: coverage-tools-soccer-preview-boxes
+  title: Coverage Tools - Soccer Preview Boxes
+  description: Workflow to generate formatted markets for frontend boxes
+  inputs:
+    country: $.get('country', 'es')
+    document_id: $.get('document_id')
+    event_code: $.get('event_code')
+  outputs:
+    formatted_markets_3way: $.get('markets_3way', [])
+    formatted_markets_over_under: $.get('markets_over_under', [])
+    workflow-status: "'executed'"
+  tasks:
+
+    # Load translations
+    - type: document
+      name: load-translations
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'market-translations-br'"
+      outputs:
+        translations: $.get('documents')[0].get('value', {}).get('translations', {}) if len($.get('documents', [])) > 0 else {}
+
+    # Load fixture event
+    - type: document
+      name: load-fixture-event
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'sport:Event'"
+        _id: $.get('document_id')
+      outputs:
+        fixture_events: |
+          [event.get('value', {}) for event in $.get('documents', [])]
+
+    # coverage-tools-soccer-preview-boxes-connector
+    - type: connector
+      name: coverage-tools-soccer-preview-boxes-connector
+      condition: len($.get('fixture_events', [])) > 0
+      connector:
+        name: coverage-tools-soccer-preview-boxes-connector
+        command: process_markets_for_boxes
+      inputs:
+        fixture_events: $.get('fixture_events', [])
+        translations: $.get('translations', {})
+      outputs:
+        markets_3way: $.get('markets_3way', [])
+        markets_over_under: $.get('markets_over_under', [])

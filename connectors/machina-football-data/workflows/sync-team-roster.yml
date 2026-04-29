@@ -1,0 +1,58 @@
+workflow:
+  name: "machina-football-data-sync-team-roster"
+  title: "Machina Football Data - Team Roster"
+  description: "Workflow to synchronize a team roster/profile from Machina Football Data."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-football-data:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"
+  inputs:
+    team_id: "$.get('team_id')"
+  outputs:
+    team: "$.get('team_data', {})"
+    players: "$.get('players', [])"
+    manager: "$.get('manager_data', {})"
+    venue: "$.get('venue_data', {})"
+    workflow-status: "$.get('team_data') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # fetch team profile from API
+    - type: "connector"
+      name: "task-load-team-profile"
+      description: "Get team profile from Machina Football Data"
+      connector:
+        name: "machina-football-data"
+        command: "get_team_profile"
+        command_attribute:
+          team_id: "$.get('team_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        team_data: "$.get('team', {})"
+        players: "$.get('players', [])"
+        manager_data: "$.get('manager', {})"
+        venue_data: "$.get('venue', {})"
+
+    # save team profile document
+    - type: "document"
+      name: "task-update-team-profile"
+      description: "Update the team profile document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        machina-football-team-profile: |
+          {
+            'team': $.get('team_data', {}),
+            'players': $.get('players', []),
+            'manager': $.get('manager_data', {}),
+            'venue': $.get('venue_data', {}),
+            'title': $.get('team_data', {}).get('name', ''),
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        team_id: "$.get('team_id')"
+        document_type: "'team-profile'"

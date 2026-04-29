@@ -1,0 +1,28 @@
+agent:
+  name: roast-agent
+  title: Roast Agent
+  description: "Agent to generate hyper viral roasts from Team A's perspective roasting Team B using real sports data, with source citations accessible via 'why?' feature. Team A is the user's team (roaster), Team B is the target being roasted."
+  context-agent:
+    team_a: $.get('team_a')
+    team_b: $.get('team_b')
+    roast_intensity: $.get('roast_intensity', 'medium')
+    language: $.get('language', 'en')
+  workflows:
+
+    # roast-agent-generate-roast
+    - name: roast-agent-generate-roast
+      description: "Generate hyper viral roast comparing two teams using real sports data and context"
+      inputs:
+        team_a: "$.get('team_a')"
+        team_b: "$.get('team_b')"
+        roast_intensity: "$.get('roast_intensity', 'medium')"
+        language: "$.get('language', 'en')"
+        max_queries: "$.get('max_queries', 8)"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+        roast_content: "$.get('roast_content')"
+        roast_points: "$.get('roast_points')"
+        headline: "$.get('headline')"
+        sources: "$.get('sources')"
+        metadata: "$.get('metadata')"
+

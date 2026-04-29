@@ -1,0 +1,83 @@
+workflow:
+  name: "sync-nfl-team"
+  title: "Sync NFL Team"
+  description: "Workflow to sync nfl team."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    team_id: "$.get('team_id') or None"
+  outputs:
+    events: "$.get('events')"
+    games_parsed: "$.get('games_parsed')"
+    team-profile: "$.get('team-profile')"
+    team-summary: "$.get('team-summary')"
+    workflow-status: "$.get('team-profile', []) is None and 'skipped' or 'executed'"
+  tasks:
+    
+    # task-load-team-events
+    - type: "connector"
+      name: "task-load-team-events"
+      description: "Get Team Events from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-teams/{team_id}/{data_type}"
+        command_attribute:
+          team_id: "$.get('team_id')"
+          data_type: "'profile.json'"
+      condition: "$.get('team_id') is not None"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        team-profile: "$"
+        match-id: "$.get('id')"
+      
+    # load games
+    - type: "document"
+      name: "load-games"
+      condition: "$.get('team_id') is not None"
+      description: "Load the games."
+      config:
+        action: "search"
+        search-limit: 3
+      filters:
+        metadata.team_ids: |
+          {
+            '$in': [$.get('match-id')]
+          }
+      inputs:
+        name: "'nfl-game'"
+      outputs:
+        games: "$.get('documents')[:1]"
+        games_parsed: |
+          [
+            {
+              **c.get('value', {}),
+              'metadata': {
+                'event_code': c.get('value', {}).get('id', ''),
+              },
+              'processed': 'idle'
+            }
+            for c in $.get('documents', [])[:1]
+          ]
+
+    # bulk-save-games
+    - type: "document"
+      name: "bulk-save-games"
+      condition: "$.get('games_parsed') is not None"
+      description: "Bulk save the games."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "sync-nfl-game"
+      documents:
+        items: "$.get('games_parsed')"
+      inputs:
+        games_parsed: "$.get('games_parsed')"
+      metadata:
+        event_code: "$.get('event_code')"

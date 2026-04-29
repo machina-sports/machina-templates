@@ -1,0 +1,20 @@
+connector:
+  name: mongodb-atlas
+  description: MongoDB Atlas connector for shared document cache with TTL support. Provides write, read, lookup, and search operations for multi-tenant data sharing.
+  filename: mongodb-atlas.py
+  filetype: pyscript
+  commands:
+    - name: Write
+      value: write_document
+    - name: Write Many
+      value: write_many
+    - name: Read
+      value: read_document
+    - name: Lookup
+      value: lookup
+    - name: Search
+      value: search_cache
+    - name: Delete
+      value: delete_document
+    - name: Delete Many
+      value: delete_many

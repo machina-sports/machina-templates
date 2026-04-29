@@ -1,0 +1,5 @@
+connector:
+  name: "mlb-statsapi"
+  description: "MLB Stats API"
+  filename: "mlb-statsapi.json"
+  filetype: "restapi" 

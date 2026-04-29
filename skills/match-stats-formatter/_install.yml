@@ -1,0 +1,16 @@
+setup:
+  title: "Match Stats Formatter"
+  description: "Receives a raw match object and returns human-readable formatted text for use in chat."
+  category:
+    - custom-templates
+  status: available
+  value: "skills/match-stats-formatter"
+  version: 1.0.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  - type: "prompt"
+    path: "prompts/format-match-stats.yml"
+  - type: "workflow"
+    path: "workflows/format-match-stats.yml"

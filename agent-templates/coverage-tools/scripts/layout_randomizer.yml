@@ -1,0 +1,8 @@
+connector:
+  name: coverage-layout-randomizer
+  description: This connector is to randomize the layout for the article
+  filename: layout_randomizer.py
+  filetype: pyscript
+  commands:
+    - name: Randomize Layout
+      value: randomize_layout

@@ -1,0 +1,46 @@
+workflow:
+  name: generate-morning-briefing
+  description: "Generates a morning briefing script from ranked storylines and other data."
+  inputs:
+    briefing_date:
+      type: string
+      description: "The date of the briefing in ISO format."
+      required: true
+    ranked_queue:
+      type: object
+      description: "Ranked storylines for the day."
+      required: true
+    overnight_results:
+      type: object
+      description: "Results from games that concluded overnight."
+      required: true
+    todays_schedule:
+      type: object
+      description: "The schedule of events for the current day."
+      required: true
+    market_moves:
+      type: object
+      description: "Significant market moves or betting odds shifts."
+      required: true
+  tasks:
+    - name: generate_briefing
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt: morning-briefing-prompt
+      inputs:
+        briefing_date: "$.get('briefing_date')"
+        top_storylines: "$.get('ranked_queue')"
+        overnight_results: "$.get('overnight_results')"
+        todays_schedule: "$.get('todays_schedule')"
+        market_moves: "$.get('market_moves')"
+  outputs:
+    briefing_script: "$.get('generate_briefing', {}).get('briefing_script', '')"
+    chapters: "$.get('generate_briefing', {}).get('chapters', [])"
+    title_options: "$.get('generate_briefing', {}).get('title_options', [])"
+    clip_candidates: "$.get('generate_briefing', {}).get('clip_candidates', [])"
+    workflow-status: "$.get('generate_briefing', {}).get('briefing_script', '') and 'executed' or 'skipped'"

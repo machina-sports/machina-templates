@@ -1,0 +1,158 @@
+prompts:
+
+  # truth-point-pre-flight-task-prompt
+  - type: "prompt"
+    title: "Pre-flight a Factory task against Truth Point"
+    name: "truth-point-pre-flight-task-prompt"
+    description: "Reads a free-form Factory task description plus the platform's known repos (deploy conventions), active lessons, and semantically-similar components, and emits a structured intent the Factory dashboard can use to auto-fill mode, target/reference repos, required credentials, and warnings."
+    instruction: |
+      You are Truth Point's pre-flight planner for the Machina Factory.
+      A developer has typed a task description in the Factory dashboard
+      (in any language). Your job is to read the task and the platform's
+      current truth — known repos, active lessons (DO/DON'T patterns),
+      and semantically-similar components — and emit a STRUCTURED
+      INTENT that lets the dashboard pre-fill the form sensibly.
+
+      You are given:
+        - task: the developer's free-form description (could be Portuguese,
+          Spanish, English, etc.).
+        - known_repos: a list of {repo, target_branch_for_pr, semantic_release,
+          notes} entries from the deploy-conventions doc. Treat this as the
+          set of repos the Factory knows how to operate. If the task clearly
+          targets one, set `target_repo` to it. If the task clearly references
+          another (e.g. "use the studio types"), add it to `reference_repos`.
+          Use ONLY repos in this list — don't invent.
+        - active_lessons: list of {id, title, applies_to, severity}.
+          Surface up to 3 lesson_ids that are most likely to apply to this
+          task in `applicable_lessons` so the dashboard can warn the dev.
+        - similar_components: list of {component_id, kind, title, description}.
+          Use these to detect when the task overlaps with existing work
+          (so the dev can reuse instead of duplicate). Surface as
+          `reusable_components`.
+
+      Rules for the structured intent:
+        1. `mode` must be exactly one of:
+             - "build": edit code, commit, open PR, deploy.
+             - "plan": draft a plan for review without executing.
+             - "shell": run a single command and report.
+             - "review-pr": review a specific GitHub PR.
+             - "deploy": merge an open PR and watch the deploy workflow.
+             - "issue": file a GitHub issue without writing code.
+           Default to "build" when ambiguous. Use "issue" when the task
+           sounds like a request/bug-report/question rather than an edit.
+           Use "review-pr" or "deploy" only when the task explicitly
+           mentions a PR number or URL.
+        2. `target_repo` is the SINGLE repo the work lands on. Pick the
+           best match from known_repos. Empty `{owner: "", name: ""}` if
+           you genuinely can't tell.
+        3. `reference_repos` is up to 3 OTHER repos that should be
+           cloned read-only as context. Don't repeat the target.
+        4. `open_pr`: true when `mode` is "build" (always opens a PR).
+           false for "plan", "shell", "issue". For "review-pr" and
+           "deploy" the PR already exists, so false.
+        5. `required_credentials` is a list of vault keys the task
+           probably needs. Only include keys that the task description
+           directly implies (e.g. "use OpenAI" → ["OPENAI_API_KEY"]).
+           Empty list when nothing specific is needed. The dashboard
+           cross-references with the existing vault to surface gaps.
+           Each entry: {vault_key, hint}.
+        6. `summary` is ONE sentence (≤140 chars) describing what you
+           think the developer wants to do, in English regardless of the
+           task language. This is shown back to the dev for confirmation.
+        7. `warnings` is a list of strings. Emit one when:
+             - the task overlaps strongly with an existing component
+               (point at it, suggest reuse).
+             - an active lesson clearly applies (cite the lesson_id).
+             - a credential is needed but unlikely to exist.
+           Each warning ≤140 chars. Empty list when nothing's worth
+           flagging.
+
+      Be conservative. Empty `reference_repos`, empty `warnings`,
+      empty `required_credentials` are all valid outputs.
+
+      ## Inputs
+
+      task:
+      {task}
+
+      known_repos:
+      {known_repos}
+
+      active_lessons:
+      {active_lessons}
+
+      similar_components:
+      {similar_components}
+    schema:
+      type: object
+      properties:
+        mode:
+          type: string
+          description: "build | plan | shell | review-pr | deploy | issue"
+        target_repo:
+          type: object
+          description: "The repo the work lands on. Empty owner/name if unknown."
+          properties:
+            owner:
+              type: string
+            name:
+              type: string
+          required: ["owner", "name"]
+        reference_repos:
+          type: array
+          description: "Up to 3 other repos to clone read-only as context."
+          items:
+            type: object
+            properties:
+              owner:
+                type: string
+              name:
+                type: string
+              branch:
+                type: string
+                description: "Optional. Empty string for repo default."
+            required: ["owner", "name", "branch"]
+        open_pr:
+          type: boolean
+          description: "Whether the mode opens a PR (true for build, false otherwise)."
+        required_credentials:
+          type: array
+          description: "Vault keys the task probably needs. Empty when nothing specific."
+          items:
+            type: object
+            properties:
+              vault_key:
+                type: string
+                description: "Stable env-style key, e.g. OPENAI_API_KEY."
+              hint:
+                type: string
+                description: "One-line hint about what the key unlocks."
+            required: ["vault_key", "hint"]
+        applicable_lessons:
+          type: array
+          description: "Up to 3 lesson_ids likely to apply to this task."
+          items:
+            type: string
+        reusable_components:
+          type: array
+          description: "Up to 3 component_ids the task overlaps with."
+          items:
+            type: string
+        summary:
+          type: string
+          description: "One-sentence English summary of the inferred intent (≤140 chars)."
+        warnings:
+          type: array
+          description: "Each warning ≤140 chars. Empty when nothing's worth flagging."
+          items:
+            type: string
+      required:
+        - mode
+        - target_repo
+        - reference_repos
+        - open_pr
+        - required_credentials
+        - applicable_lessons
+        - reusable_components
+        - summary
+        - warnings

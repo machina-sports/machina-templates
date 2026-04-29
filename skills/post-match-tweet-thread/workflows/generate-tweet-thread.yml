@@ -1,0 +1,46 @@
+workflow:
+
+  name: generate-tweet-thread
+  title: Generate Tweet Thread
+  description: |
+    Takes a raw match object (`match_data`) and asks Gemini for a 5-tweet
+    thread in Brazilian Portuguese, structured by perspective (hook /
+    key moment / stat spike / talking point / CTA). Used by content
+    teams to draft post-match social copy without re-formatting the
+    match payload by hand.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    match_data: "$.get('match_data', {})"
+
+  outputs:
+    thread: "$.get('thread', [])"
+    workflow-status: "$.get('thread') and 'executed' or 'skipped'"
+
+  tasks:
+
+    # task.name MUST equal the `prompt.name` declared in
+    # prompts/generate-tweet-thread.yml — that's how the runner picks
+    # the right prompt to invoke. task.connector.name is the LLM
+    # PROVIDER (google-genai), NOT the prompt name. See lesson
+    # workflow-prompt-task-name-vs-connector-name.
+    - type: prompt
+      name: generate-tweet-thread
+      description: Run the tweet-thread prompt and capture the structured array
+      condition: "$.get('match_data') is not None and $.get('match_data') != {}"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        match_data: "$.get('match_data', {})"
+      outputs:
+        thread: "$.get('thread', [])"

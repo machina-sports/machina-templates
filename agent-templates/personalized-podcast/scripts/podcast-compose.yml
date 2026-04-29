@@ -1,0 +1,9 @@
+connector:
+  name: "user-profile-podcast-compose"
+  description: "This connector composes HTML email template for personalized podcast content"
+  filename: "podcast-compose.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Compose"
+      value: "invoke_compose"
+

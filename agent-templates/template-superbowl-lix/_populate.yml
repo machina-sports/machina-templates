@@ -1,0 +1,66 @@
+agent:
+  name: auto-populate-superbowl-lix
+  title: "Auto Populate Superbowl LIX"
+  description: "Auto Populate Superbowl LIX"
+  context:
+    config-frequency: 99999999
+    event_code: "ca9d8f84-8e7b-4ee7-a310-54c2e3ca4edc"
+    season_year: "2024"
+  workflows:
+
+    - name: "_folders"
+      description: "Setup Folders"
+      condition: "$.get('setup-register') is not True"
+      outputs:
+        setup-populate-status: "$.get('workflow-status', False)"
+
+    # - name: "workflow-sync-games"
+    #   description: "Sync Games"
+    #   condition: "$.get('setup-register') is not True"
+    #   inputs:
+    #     season_year: "$.get('season_year')"
+    #     season_type: "'PST'"
+    #   outputs:
+    #     sync-games-status: "$.get('workflow-status', False)"
+
+    # - name: "workflow-sync-teams"
+    #   description: "Sync Teams"
+    #   condition: "$.get('setup-register') is not True"
+    #   inputs:
+    #     event_code: "$.get('event_code')"
+    #     season_year: "$.get('season_year')"
+    #     season_type: "'REG'"
+    #   outputs:
+    #     sync-teams-status: "$.get('workflow-status', False)"
+
+    # - name: "workflow-reporter-briefing"
+    #   description: "Reporter Briefing"
+    #   condition: "$.get('setup-register') is not True"
+    #   inputs:
+    #     event_code: "$.get('event_code')"
+    #   outputs:
+    #     reporter-briefing-status: "$.get('workflow-status', False)"
+
+    # - name: "workflow-reporter-insights"
+    #   description: "Reporter Insights"
+    #   condition: "$.get('setup-register') is not True"
+    #   inputs:
+    #     event_code: "$.get('event_code')"
+    #   outputs:
+    #     reporter-insights-status: "$.get('workflow-status', False)"
+
+    # - name: "workflow-reporter-keyplayers"
+    #   description: "Reporter Key Players"
+    #   condition: "$.get('setup-register') is not True"
+    #   inputs:
+    #     event_code: "$.get('event_code')"
+    #   outputs:
+    #     reporter-keyplayers-status: "$.get('workflow-status', False)"
+
+    # - name: "workflow-reporter-teamstats"
+    #   description: "Reporter Team Statistics"
+    #   condition: "$.get('setup-register') is not True"
+    #   inputs:
+    #     event_code: "$.get('event_code')"
+    #   outputs:
+    #     reporter-teamstats-status: "$.get('workflow-status', False)"

@@ -1,0 +1,149 @@
+workflow:
+
+  # truth-point-review-pr
+  name: truth-point-review-pr
+  title: Truth Point — Review PR
+  description: |
+    Reads a pull request (title + unified diff), pulls the relevant slice
+    of platform truth (active lessons, active incidents, semantically-
+    similar components), and asks Gemini for a structured review with
+    findings keyed to specific files/lines. Each finding can cite the
+    lesson_id or incident_id that motivated it. Designed to be the analyzer
+    behind reusable-review-pr.yml in machina-sports/.github — the GH Action
+    fetches the diff, posts the review as PR comments, and emits verdicts
+    back to Truth Point so the rubric keeps improving.
+
+    Inputs:
+      - pr_title: short title of the PR (used to seed the semantic query).
+      - pr_diff: full unified diff (`gh pr diff <num>` style).
+      - applies_to: optional kind filter for lessons (e.g. "agent-template",
+        "workflow", "studio"). Empty string → all lessons.
+
+    Outputs:
+      - verdict: approve | approve-with-nits | request-changes | scope-mismatch
+      - summary: one-line overall verdict
+      - findings: structured array of review comments
+      - meta_observation: optional rubric-coverage note
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    vertex-embedding:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    pr_title: $.get('pr_title', '')
+    pr_diff: $.get('pr_diff', '')
+    applies_to: $.get('applies_to', '')
+
+  outputs:
+    verdict: $.get('verdict', 'approve')
+    summary: $.get('summary', '')
+    findings: $.get('findings', [])
+    meta_observation: $.get('meta_observation', '')
+    workflow-status: $.get('pr_diff') and 'executed' or 'skipped'
+
+  tasks:
+
+    # 1. Pull active lessons, optionally filtered by applies_to.
+    - type: document
+      name: lookup-lessons
+      description: Fetch lessons-learned, project to (optionally filtered) list
+      condition: $.get('pr_diff') is not None and $.get('pr_diff') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'lessons-learned'"
+      outputs:
+        active_lessons: |
+          [
+            l for l in (
+              $.get('documents', [])[0].get('value', {}).get('lessons', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+            if not $.get('applies_to') or $.get('applies_to') in (l.get('applies_to') or [])
+          ]
+
+    # 2. Pull active (un-resolved) incidents.
+    - type: document
+      name: lookup-incidents
+      description: Fetch platform-incidents and project to active-only
+      condition: $.get('pr_diff') is not None and $.get('pr_diff') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'platform-incidents'"
+      outputs:
+        active_incidents: |
+          [
+            i for i in (
+              $.get('documents', [])[0].get('value', {}).get('incidents', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+            if i.get('ended_at') is None
+          ]
+
+    # 3. Semantic search over indexed components, seeded by the PR title.
+    #    This surfaces components the PR is likely related to so the analyzer
+    #    can spot duplication or suggest mirroring an established convention.
+    - type: document
+      name: similar-components
+      description: Vector search machina-knowledge for components related to the PR title
+      condition: $.get('pr_title') is not None and $.get('pr_title') != ''
+      config:
+        action: search
+        search-vector: true
+        search-limit: 100
+        threshold-docs: 5
+        threshold-similarity: 0.3
+      connector:
+        name: "vertex-embedding"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
+      inputs:
+        name: "'machina-knowledge'"
+        search-query: $.get('pr_title')
+      outputs:
+        similar_components: |
+          [
+            {
+              'component_id': d.get('value', {}).get('component_id', ''),
+              'kind': d.get('value', {}).get('kind', ''),
+              'title': d.get('value', {}).get('title', ''),
+              'description': d.get('value', {}).get('description', '')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # 4. Run the analyzer prompt. The runner resolves the prompt by
+    # `task.name`, so this MUST match the prompt declared in
+    # prompts/review-pr.yml.
+    - type: prompt
+      name: truth-point-review-pr-prompt
+      description: Run the PR-review prompt to produce a structured review
+      condition: $.get('pr_diff') is not None and $.get('pr_diff') != ''
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        pr_title: $.get('pr_title', '')
+        pr_diff: $.get('pr_diff', '')
+        active_lessons: $.get('active_lessons', [])
+        active_incidents: $.get('active_incidents', [])
+        similar_components: $.get('similar_components', [])
+      outputs:
+        verdict: $.get('verdict', 'approve')
+        summary: $.get('summary', '')
+        findings: $.get('findings', [])
+        meta_observation: $.get('meta_observation', '')

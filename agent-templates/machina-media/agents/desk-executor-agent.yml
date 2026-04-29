@@ -1,0 +1,39 @@
+agent:
+  name: desk-executor
+  title: Desk Executor (Operator/HITL)
+  description: "Accepts manual commands from an operator to generate specific content on demand."
+  context-variables:
+    - name: operator_instruction
+      type: string
+      description: "A free-form instruction from the human operator (e.g., 'Generate a preview for the Laker's game')."
+      required: true
+    - name: target_storyline_or_event
+      type: object
+      description: "A specific storyline or event object to focus on. Can be an empty object if not applicable."
+      default: "{}"
+    - name: target_slot
+      type: string
+      description: "The generation slot to use (e.g., 'morning_briefing', 'postgame_recap', 'breaking_alert')."
+      required: true
+
+  workflows:
+      # This agent is designed to be more flexible. Instead of a fixed chain,
+      # an operator would manually trigger a specific workflow run from a list
+      # of available generation workflows, using the context variables as inputs.
+      # The list below is representative of the workflows an operator could trigger.
+    - name: generate-morning-briefing
+      description: "Generate a morning briefing on demand."
+      gate: "$.get('target_slot') == 'morning_briefing'"
+    - name: generate-postgame-recap
+      description: "Generate a postgame recap on demand."
+      gate: "$.get('target_slot') == 'postgame_recap'"
+    - name: generate-live-desk-update
+      description: "Generate a live desk update on demand."
+      gate: "$.get('target_slot') == 'live_desk'"
+    - name: generate-breaking-news-alert
+      description: "Generate a breaking news alert on demand."
+      gate: "$.get('target_slot') == 'breaking_alert'"
+    - name: generate-clip-candidates
+      description: "Generate clip candidates for a given script/segment on demand."
+    - name: generate-social-derivatives
+      description: "Generate social derivatives for a given script/segment on demand."

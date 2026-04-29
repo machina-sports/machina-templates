@@ -1,0 +1,68 @@
+workflow:
+
+  # truth-point-feedback
+  name: truth-point-feedback
+  title: Truth Point — Record Verdict
+  description: Append a structured verdict for a component to its verdict_history. Used by the Factory and CI hooks to keep Truth Point aligned with reality. Does not re-embed.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    component_id: $.get('component_id', '')
+    verdict: $.get('verdict', '')
+    summary: $.get('summary', '')
+    artifacts: $.get('artifacts', {})
+    actor: $.get('actor', '')
+
+  outputs:
+    component_id: $.get('component_id', '')
+    document_id: $.get('document_id', None)
+    workflow-status: $.get('document_id') is not None and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: lookup-component
+      description: Resolve the component doc by component_id
+      condition: $.get('component_id') is not None and $.get('component_id') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'machina-knowledge'"
+        metadata.component_id: $.get('component_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        existing_history: $.get('documents')[0].get('value', {}).get('verdict_history', []) if len($.get('documents', [])) > 0 else []
+
+    - type: document
+      name: append-verdict
+      description: Append the new verdict (no re-embedding)
+      condition: $.get('document_id') is not None and $.get('verdict') in ['success', 'partial', 'fail']
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        machina-knowledge: |
+          {
+            **$.get('document_value'),
+            'verdict_history': [
+              *$.get('existing_history', []),
+              {
+                'verdict': $.get('verdict', ''),
+                'summary': $.get('summary', ''),
+                'artifacts': $.get('artifacts', {}),
+                'actor': $.get('actor', ''),
+                'recorded_at': datetime.now().isoformat()
+              }
+            ],
+            'last_verdict': $.get('verdict', ''),
+            'last_verdict_at': datetime.now().isoformat()
+          }
+      filters:
+        document_id: $.get('document_id')

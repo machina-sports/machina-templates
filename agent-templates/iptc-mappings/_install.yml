@@ -1,0 +1,54 @@
+setup:
+  title: "IPTC - Mappings"
+  description: AI-powered agents for IPTC.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agents to map events from API Football and Sportradar to IPTC.
+  integrations:
+    - iptc
+    - api-football
+    - sportradar
+  status: available
+  value: "agent-templates/iptc-mappings"
+  version: 1.0.0
+
+datasets:
+
+  - type: "mappings"
+    path: "any-selector/event-selector.yml"
+
+  - type: "mappings"
+    path: "any-selector/events-selector.yml"
+  
+  - type: "mappings"
+    path: "any-selector/events-summary.yml"
+
+  - type: "mappings"
+    path: "any-source/custom-event-mapping.yml"
+
+  - type: "prompts"
+    path: "any-source/custom-event-prompt.yml"
+
+  # api-football
+  - type: "mappings"
+    path: "api-football/event-mapping.yml"
+
+  - type: "mappings"
+    path: "api-football/event-players-stats.yml"
+
+  - type: "mappings"
+    path: "api-football/event-teams-stats.yml"
+
+  # sportradar
+  - type: "mappings"
+    path: "sportradar/event-players-stats.yml"
+
+  - type: "mappings"
+    path: "sportradar/event-teams-stats.yml"
+
+  # sportradar-tennis
+
+  - type: "mappings"
+    path: "sportradar-tennis/event-mapping.yml"

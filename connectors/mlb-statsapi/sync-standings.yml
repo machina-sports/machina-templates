@@ -1,0 +1,108 @@
+workflow:
+  name: "mlb-statsapi-sync-standings"
+  title: "MLB - Sync Standings"
+  description: "Workflow to synchronize standings from MLB Stats API to Machina."
+  context-variables:
+    mlb-statsapi: {}
+  outputs:
+    standings: "$.get('standings')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the standings document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=6)}"
+        value.status: "'active'"
+      inputs:
+        name: "'standings'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-load-standings
+    - type: "connector"
+      name: "task-load-standings"
+      description: "Get Standings from MLB Stats API"
+      connector:
+        name: "mlb-statsapi"
+        command: "get-v1-standings"
+      condition: "$.get('should_update') == True"
+      inputs:
+        leagueId: "103,104"  # American League and National League
+        season: "2023"
+      outputs:
+        standings: "$.get('records')"
+
+    # task-update-standings
+    - type: "document"
+      name: "task-update-standings"
+      description: "Update the standings document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        standings: |
+          {
+            'data': $.get('standings'),
+            'title': 'Current Standings',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-standings
+    - type: "document"
+      name: "task-bulk-save-standings"
+      description: "Bulk save the standings."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "standing"
+      documents:
+        items: |
+          [
+            {
+              'division': division.get('division', {}).get('name', ''),
+              'league': division.get('league', {}).get('name', ''),
+              'teams': [
+                {
+                  'name': team.get('team', {}).get('name', ''),
+                  'wins': team.get('wins', 0),
+                  'losses': team.get('losses', 0),
+                  'pct': team.get('winningPercentage', '0'),
+                  'gb': team.get('gamesBack', '0'),
+                  'streak': team.get('streak', {}).get('streakCode', ''),
+                  'divisionRank': team.get('divisionRank', ''),
+                  'leagueRank': team.get('leagueRank', '')
+                }
+                for team in division.get('teamRecords', [])
+              ],
+              'title': division.get('division', {}).get('name', '') + ' Standings',
+              'selected': False
+            }
+            for division in $.get('standings')
+          ]
+      metadata:
+        document_type: "'standing'" 

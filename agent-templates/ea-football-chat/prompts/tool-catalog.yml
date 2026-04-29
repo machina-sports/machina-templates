@@ -1,0 +1,14 @@
+prompts:
+  - type: prompt
+    name: tool-catalog
+    title: "EA Football Tool Catalog"
+    description: "Reference catalog of football-data tools available to the agent."
+    instruction: |
+      Tool catalog for the EA Sports Hub football chat router.
+      Allowed tool names (exact match):
+      - get-league-standings({competition_id})
+      - get-daily-fixtures({})
+      - get-team-form({query, competition_id})
+      - get-match-report({event_id})
+      - get-top-scorers({competition_id})   # Premier League only
+      - search-entity({query})

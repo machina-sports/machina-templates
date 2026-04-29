@@ -1,0 +1,8 @@
+connector:
+  name: assistant-tools-map-stories
+  description: Assistant Tools Map Stories
+  filename: map_stories.py
+  filetype: pyscript 
+  commands:
+    - name: Invoke Map Stories
+      value: invoke_map_stories

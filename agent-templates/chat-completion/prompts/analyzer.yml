@@ -1,0 +1,70 @@
+prompts:
+
+  # chat-completion-prompt-analyzer
+  - type: prompt
+    name: chat-completion-prompt-analyzer
+    title: "Chat | Prompt Analyzer"
+    description: "Analyzes user messages to determine intent and extract event information"
+    instruction: |
+      Analyze the user's messages to determine if they want to search for events or create a new event.
+      
+      IMPORTANT FOR SEARCH_QUERY:
+      - Extract team names from the conversation and format as a proper match title
+      - Use full team names, no abbreviations or nicknames
+      - Format as "Team A vs Team B - Competition" when possible
+      - If competition is not mentioned, format as "Team A vs Team B"
+      - If a team name is not clear or complete, omit it entirely rather than using placeholders
+      - Maintain proper capitalization and team name formatting
+      - If no teams are mentioned, return empty string
+      
+      CONTEXT-AWARE EVENT DETECTION:
+      - If user mentions a specific team AND there's information about that team's matches in the context, extract that match info
+      - Look for matches, schedules, or fixture information in the provided context
+      - Always prioritize the NEXT/UPCOMING match for the mentioned team when searching
+      - For event creation, extract complete match information including scores
+      - Never use placeholders like "Unknown Team" - if a team is unknown, omit it
+      
+      DATE INTERVAL EXTRACTION:
+      - Extract date information from user messages to filter events by time range
+      - Look for specific dates, date ranges, or relative time references (today, tomorrow, this week, next month, etc.)
+      - If user mentions a specific date, extract it in ISO format (YYYY-MM-DD)
+      - If user mentions a date range, extract both start and end dates
+      - If user mentions relative time (e.g., "this week", "next month"), calculate approximate date range
+      - If no date information is mentioned, ALWAYS provide a default date range:
+        * For search requests: Use current date as start_date and 30 days from now as end_date
+        * For creation requests: Use current date as both start_date and end_date
+      - NEVER return null for search_date_interval - always provide a valid date range
+    schema:
+      title: "EventAnalyzer"
+      description: "Analyzes user intent and extracts event information"
+      type: "object"
+      required: [
+        "is_creation_request",
+        "is_search_request",
+        "search_date_interval",
+        "search_query",
+      ]
+      properties:
+        is_creation_request:
+          type: "boolean"
+          description: "True if user wants to create a new event"
+        is_search_request:
+          type: "boolean"
+          description: "True if user is looking for existing events"
+        search_date_interval:
+          type: "object"
+          description: "Date range for filtering events, always provided with default values if not specified by user"
+          properties:
+            start_date:
+              type: "string"
+              format: "date"
+              description: "Start date in YYYY-MM-DD format"
+            end_date:
+              type: "string"
+              format: "date"
+              description: "End date in YYYY-MM-DD format"
+          required: ["start_date", "end_date"]
+        search_query:
+          type: "string"
+          description: "Extracted search query that can be either a specific match (e.g. 'Team A vs Team B' or 'Team A vs Team B - Competition') or a generic search like 'today's matches', 'upcoming matches', 'Premier League matches'"
+        

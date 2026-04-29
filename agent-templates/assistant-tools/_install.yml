@@ -1,0 +1,150 @@
+setup:
+  title: Assistant Tools
+  description: AI-powered assistant for Chat Tools.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agent to assist moderators to create content for Chat Tools.
+  status: available
+  integrations:
+    - machina-ai
+  value: agent-templates/assistant-tools
+  version: 1.0.0
+
+datasets:
+
+  # agents
+
+  - type: agent
+    path: agents/chat-executor.yml
+
+  # connectors
+
+  - type: connector
+    path: dispatch/format_slack_messages.yml
+
+  - type: workflow
+    path: dispatch/notify-slack.yml
+
+  - type: connector
+    path: dispatch/send-slack.yml
+
+  # mappings
+
+  - type: mappings
+    path: mappings/chat-documents.yml
+
+  - type: mappings
+    path: mappings/find-markets-odds.yml
+
+  # prompts
+
+  - type: prompts
+    path: prompts/chat-reasoning.yml
+
+  - type: prompts
+    path: prompts/chat-response.yml
+
+  - type: prompts
+    path: prompts/find-events-analyzer.yml
+
+  - type: prompts
+    path: prompts/find-events-selector.yml
+
+  - type: prompts
+    path: prompts/find-markets-analyzer.yml
+
+  - type: prompts
+    path: prompts/find-markets-events.yml
+
+  - type: prompts
+    path: prompts/find-markets-runners.yml
+
+  - type: prompts
+    path: prompts/find-markets-selection.yml
+
+  - type: prompts
+    path: prompts/grade-first-selection.yml
+
+  # scripts
+  
+  - type: connector
+    path: scripts/build_parlay.yml
+
+  - type: connector
+    path: scripts/map_markets.yml
+
+  - type: connector
+    path: scripts/map_stories.yml
+
+  - type: connector
+    path: scripts/persona-randomizer.yml
+
+  - type: connector
+    path: scripts/team-matcher.yml
+
+  - type: connector
+    path: scripts/event-processor.yml
+
+  - type: connector
+    path: scripts/event-summarizer.yml
+
+  - type: connector
+    path: scripts/market-extractor.yml
+
+  - type: connector
+    path: scripts/message-data-transformer.yml
+
+  - type: connector
+    path: scripts/market-event-matcher.yml
+
+  # tools
+
+  - type: connector
+    path: tools/event-id-collector.yml
+  
+  - type: workflow
+    path: tools/event-matcher.yml
+
+  - type: workflow
+    path: tools/find-faq.yml
+
+  - type: workflow
+    path: tools/find-historical.yml
+
+  - type: workflow
+    path: tools/find-insights.yml
+
+  - type: workflow
+    path: tools/find-markets.yml
+
+  - type: workflow
+    path: tools/find-upcoming.yml
+
+  - type: workflow
+    path: tools/find-odds.yml
+
+  # workflows
+
+  - type: workflow
+    path: workflows/chat-reasoning.yml
+
+  - type: workflow
+    path: workflows/chat-response.yml
+
+  - type: workflow
+    path: workflows/chat-update.yml
+
+  # config folders
+
+  - type: workflow
+    path: _folders.yml
+
+  # assets (translation policies, etc)
+
+  - type: workflow
+    path: assets/market-translations-pt-br.yml
+
+  - type: workflow
+    path: assets/market-translations-es.yml

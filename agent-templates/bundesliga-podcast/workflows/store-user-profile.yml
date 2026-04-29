@@ -1,0 +1,51 @@
+workflow:
+  name: bundesliga-podcast-store-user-profile
+  title: Bundesliga Podcast Store User Profile
+  description: Workflow to receive user profile inputs and store them as documents in the database
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    name: "$.get('name')"
+    favorite_sport: "$.get('favorite_sport')"
+    favorite_team: "$.get('favorite_team')"
+    podcast_mood_tone: "$.get('podcast_mood_tone')"
+    sports_knowledge: "$.get('sports_knowledge')"
+    email_address: "$.get('email_address')"
+    country: "$.get('country')"
+    language: "$.get('language')"
+  outputs:
+    document_id: "$.get('document_id')"
+    workflow-status: "'executed'"
+  tasks:
+    
+    # Store user profile as document
+    - type: document
+      name: task-save-user-profile
+      description: "Save user profile."
+      config:
+        action: save
+      document_name: "'user-profile'"
+      documents:
+        user-profile: |
+          {
+            **{
+              'name': $.get('name'),
+              'favorite_sport': $.get('favorite_sport'),
+              'favorite_team': $.get('favorite_team'),
+              'podcast_mood_tone': $.get('podcast_mood_tone'),
+              'sports_knowledge': $.get('sports_knowledge'),
+              'email_address': $.get('email_address'),
+              'country': $.get('country'),
+              'language': $.get('language'),
+              'created_at': datetime.now().isoformat()
+            },
+            'title': $.get('name')
+          }
+      metadata:
+        document_type: "'user-profile'"
+        source: "'user-input'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if len($.get('documents', [])) > 0 else None"

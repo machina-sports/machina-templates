@@ -1,0 +1,2582 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Tallysight API",
+        "version": "v2.0"
+    },
+    "servers": [
+      {
+        "url": "https://tallysight.com"
+      }
+    ],
+    "components": {
+        "schemas": {
+            "Workspace": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    }
+                }
+            },
+            "League": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Brand": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Topic": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "game",
+                            "future"
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "startTime": {
+                        "type": "Date"
+                    },
+                    "event": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "participants": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Market": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "participants": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "team",
+                                        "player"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "embed": {
+                        "type": "string"
+                    }
+                }
+            },
+            "BetFinderWidget": {
+                "type": "object",
+                "properties": {
+                    "entity": {
+                        "type": "string"
+                    },
+                    "embed": {
+                        "type": "string"
+                    }
+                }
+            },
+            "OddsTextWidget": {
+                "type": "object",
+                "properties": {
+                    "market": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    },
+                    "embed": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "key"
+            }
+        },
+        "headers": {
+            "Content-Type": {
+                "type": "string",
+                "in": "header",
+                "name": "Content-Type"
+            }
+        }
+    },
+    "security": [
+        {
+            "ApiKeyAuth": []
+        }
+    ],
+    "paths": {
+        "/api/v2/brands": {
+            "get": {
+                "tags": [
+                    "Core"
+                ],
+                "description": "Returns a list of your brands.",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "$ref": "#/components/schemas/Brand"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/leagues": {
+            "get": {
+                "tags": [
+                    "Core"
+                ],
+                "description": "Returns a list of your leagues.",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "$ref": "#/components/schemas/League"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/bet-finder/leagues/{league}/players/{player}": {
+            "get": {
+                "tags": [
+                    "Bet Finder"
+                ],
+                "description": "Returns a Bet Finder widget for a given player.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "player",
+                        "required": true,
+                        "description": "Player name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "team",
+                        "description": "Team name for the player.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbooks",
+                        "required": true,
+                        "description": "Sportsbook slugs.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "bestodds",
+                        "description": "When enabled, the best odds will display by default among the sportsbooks selected.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "average",
+                        "description": "When enabled, Average Lines will show for all bets if not available amount the sportsbooks selected.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "bettypes",
+                        "description": "Select the bet types you want to display on the widget. Bet types will display based upon the entity selected.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "gamelines",
+                                    "props",
+                                    "futures"
+                                ],
+                                "example": [
+                                    "gamelines",
+                                    "props"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "The embed format you want to return. Default type is HTML (recommended) and requires installation of our injector script.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "html",
+                                "wordpress"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "locale",
+                        "description": "Locale for localization (e.g., 'pt' for Portuguese, 'en' for English).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "wm",
+                        "description": "Tracking link / affiliate ID for Sports Interaction.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/BetFinderWidget"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": {
+                                    "player": "Chicago White Sox",
+                                    "embed": "..."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/bet-finder/leagues/{league}/teams/{team}": {
+            "get": {
+                "tags": [
+                    "Bet Finder"
+                ],
+                "description": "Returns a Bet Finder widget for a given team.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbooks",
+                        "required": true,
+                        "description": "Sportsbook slugs.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "bestodds",
+                        "description": "When enabled, the best odds will display by default among the sportsbooks selected.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "average",
+                        "description": "When enabled, Average Lines will show for all bets if not available amount the sportsbooks selected.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "bettypes",
+                        "description": "Select the bet types you want to display on the widget. Bet types will display based upon the entity selected.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "gamelines",
+                                    "props",
+                                    "futures"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "The embed format you want to return. Default type is HTML (recommended) and requires installation of our injector script.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "html",
+                                "wordpress"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "locale",
+                        "description": "Locale for localization (e.g., 'pt' for Portuguese, 'en' for English).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/BetFinderWidget"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": {
+                                    "team": "Chicago White Sox",
+                                    "embed": "..."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/odds-text/gamelines/leagues/{league}/matchup/{team1}/{team2}/{date}": {
+            "get": {
+                "tags": [
+                    "Odds Text"
+                ],
+                "description": "Returns a gamelines Odds Text widget for the specified teams and date.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team1",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team2",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "date",
+                        "required": true,
+                        "description": "Matchup date (EST) in the format YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbooks",
+                        "required": true,
+                        "description": "Sportsbook slugs.",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "bestodds",
+                        "description": "When enabled, the best available odds will display by default among the sportsbooks selected.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inlineodds",
+                        "description": "When enabled, the odds will display inline.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inlineline",
+                        "description": "When enabled, the line will display inline.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inlinelogo",
+                        "description": "Display player or team logos inline with text.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inlineoutcome",
+                        "description": "Display the outcome label or entity name in front of line/odds.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inlinebrand",
+                        "description": "Display sportsbook logos inline with text.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "textonly",
+                        "description": "When enabled, the popover, call-to-actions, and links will be disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "The embed format you want to return. Default type is HTML (recommended) and requires installation of our injector script.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "html",
+                                "wordpress"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "locale",
+                        "description": "Locale for localization (e.g., 'pt' for Portuguese, 'en' for English).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "widgets": {
+                                                "type": "array"
+                                            },
+                                            "items": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/OddsTextWidget"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "type": "game",
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "widgets": "..."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/tiles/futures/leagues/{league}/players/{player}": {
+            "get": {
+                "tags": [
+                    "Futures"
+                ],
+                "description": "Returns a list of futures tile widgets for the specified player.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "player",
+                        "required": true,
+                        "description": "Player name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inprogress",
+                        "required": false,
+                        "default": false,
+                        "description": "Include topics that are in progress.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "Super Bowl MVP",
+                                            "event": {
+                                                "name": "2023-24 Futures",
+                                                "slug": "2023-24-futures"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Lamar Jackson"
+                                                },
+                                                {
+                                                    "name": "Brock Purdy"
+                                                },
+                                                {
+                                                    "name": "Josh Allen"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    },
+                                    {
+                                        "topic": {
+                                            "name": "AP Offensive Rookie of the Year",
+                                            "event": {
+                                                "name": "2023-24 Futures",
+                                                "slug": "2023-24-futures"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Justin Jefferson"
+                                                },
+                                                {
+                                                    "name": "Ja'Marr Chase"
+                                                },
+                                                {
+                                                    "name": "Christian McCaffrey"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/tiles/futures/leagues/{league}/teams/{team}": {
+            "get": {
+                "tags": [
+                    "Futures"
+                ],
+                "description": "Returns a list of futures tile widgets for the specified team.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "Super Bowl Winner",
+                                            "event": {
+                                                "name": "2023-24 Futures",
+                                                "slug": "2023-24-futures"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    },
+                                    {
+                                        "topic": {
+                                            "name": "2023-24 NFC North Division Winner",
+                                            "event": {
+                                                "name": "2023-24 Futures",
+                                                "slug": "2023-24-futures"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/tiles/gamelines/leagues/{league}/matchup/{team1}/{team2}/{date}": {
+            "get": {
+                "tags": [
+                    "Gamelines"
+                ],
+                "description": "Returns a gamelines tile widget for the specified teams and date.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team1",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team2",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "date",
+                        "required": true,
+                        "description": "Matchup date (EST) in the format YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "type": "game",
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/odds-tile/gamelines/leagues/{league}/matchup/{team1}/{team2}/{date}": {
+            "get": {
+                "tags": [
+                    "Gamelines"
+                ],
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "description": "Returns a gamelines odds tile widget for the specified teams and date.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team1",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team2",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "date",
+                        "required": true,
+                        "description": "Matchup date (EST) in the format YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "oddsby",
+                        "description": "Odds by. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "hideBrandLogo",
+                        "description": "When enabled, the brand logo will be hidden.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "Format. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "locale",
+                        "description": "Locale for localization (e.g., 'pt' for Portuguese, 'en' for English).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "type": "game",
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/odds-tile/props/leagues/{league}/matchup/{team1}/{team2}/{date}": {
+            "get": {
+                "tags": [
+                    "Gamelines"
+                ],
+                "headers": {
+                  "Content-Type": "application/json"
+                },
+                "description": "Returns a gamelines tile widget for the specified teams and date.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team1",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team2",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "date",
+                        "required": true,
+                        "description": "Matchup date (EST) in the format YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "oddsby",
+                        "description": "Odds by. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "hideBrandLogo",
+                        "description": "When enabled, the brand logo will be hidden.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "Format. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "locale",
+                        "description": "Locale for localization (e.g., 'pt' for Portuguese, 'en' for English).",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "embed": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "type": "game",
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "embed": "..."
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/tiles/props/leagues/{league}/matchup/{team1}/{team2}/{date}": {
+            "get": {
+                "tags": [
+                    "Props"
+                ],
+                "description": "Returns a list of props tile widgets for the specified teams and date.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team1",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team2",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "date",
+                        "required": true,
+                        "description": "Matchup date (EST) in the format YYYY-MM-DD.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "markets": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "$ref": "#/components/schemas/Market"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "type": "game",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            }
+                                        },
+                                        "participants": [
+                                            {
+                                                "name": "Kansas City Chiefs"
+                                            },
+                                            {
+                                                "name": "San Francisco 49ers"
+                                            }
+                                        ],
+                                        "markets": [
+                                            {
+                                                "name": "Kansas City Chiefs to score the first points and win the game?",
+                                                "participants": [
+                                                    {
+                                                        "name": "Kansas City Chiefs",
+                                                        "type": "team"
+                                                    }
+                                                ],
+                                                "embed": "..."
+                                            },
+                                            {
+                                                "name": "Patrick Mahomes (KC): Total passing and rushing yards",
+                                                "participants": [
+                                                    {
+                                                        "name": "Patrick Mahomes",
+                                                        "type": "player"
+                                                    }
+                                                ],
+                                                "embed": "..."
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/tiles/props/leagues/{league}/players/{player}": {
+            "get": {
+                "tags": [
+                    "Props"
+                ],
+                "description": "Returns a list of props tile widgets for the specified player.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "player",
+                        "required": true,
+                        "description": "Player name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inprogress",
+                        "required": false,
+                        "default": false,
+                        "description": "Include topics that are in progress.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "markets": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "$ref": "#/components/schemas/Market"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "type": "game",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "markets": [
+                                            {
+                                                "name": "Patrick Mahomes (KC): Total passing and rushing yards",
+                                                "participants": [
+                                                    {
+                                                        "name": "Patrick Mahomes",
+                                                        "type": "player"
+                                                    }
+                                                ],
+                                                "embed": "..."
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/odds-tile/props/leagues/{league}/players/{player}": {
+            "get": {
+                "tags": [
+                    "Odds"
+                ],
+                "description": "Returns a list of odds tile widgets for the specified player.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "player",
+                        "required": true,
+                        "description": "Player name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inprogress",
+                        "required": false,
+                        "default": false,
+                        "description": "Include topics that are in progress.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "markets": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "$ref": "#/components/schemas/Market"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "type": "game",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "markets": [
+                                            {
+                                                "name": "Patrick Mahomes (KC): Total passing and rushing yards",
+                                                "participants": [
+                                                    {
+                                                        "name": "Patrick Mahomes",
+                                                        "type": "player"
+                                                    }
+                                                ],
+                                                "embed": "..."
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/odds-tile/props/leagues/{league}/teams/{team}": {
+            "get": {
+                "tags": [
+                    "Odds"
+                ],
+                "description": "Returns a list of odds tile widgets for the specified team.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inprogress",
+                        "required": false,
+                        "default": false,
+                        "description": "Include topics that are in progress.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "markets": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "$ref": "#/components/schemas/Market"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "type": "game",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "markets": [
+                                            {
+                                                "name": "Kansas City Chiefs: Total touchdowns",
+                                                "participants": [
+                                                    {
+                                                        "name": "Kansas City Chiefs",
+                                                        "type": "team"
+                                                    }
+                                                ],
+                                                "embed": "..."
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/widgets/tiles/props/leagues/{league}/teams/{team}": {
+            "get": {
+                "tags": [
+                    "Props"
+                ],
+                "description": "Returns a list of props tile widgets for the specified team.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "league",
+                        "required": true,
+                        "description": "League slug.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "path",
+                        "name": "team",
+                        "required": true,
+                        "description": "Team name.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "workspace",
+                        "description": "Workspace id. If not provided, the main workspace will be used.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "inprogress",
+                        "required": false,
+                        "default": false,
+                        "description": "Include topics that are in progress.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "variant",
+                        "description": "Desired display variant: \n- sportsbook: Display odds for a single sportsbook. \n- best-odds: Display the best available odds for each market.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "sportsbook",
+                                "best-odds"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "sportsbook",
+                        "description": "Sportsbook slug. Required if variant is sportsbook.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "education",
+                        "description": "When enabled, educational text will display under each market.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "noodds",
+                        "description": "When enabled, odds will be hidden from the display.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "deeplinks",
+                        "description": "When enabled, all buttons will use deeplinking when available.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "nolinks",
+                        "description": "When enabled, all link clicks are disabled.",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "description": "When enabled, the widget will display in a vertical format when displaying betting education and/or filtering on specific gamelines.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "vertical"
+                            ]
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "embed",
+                        "description": "This will return either an iframe or WordPress shortcode embed format as the output. By default, it will return iframe.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "iframe",
+                                "wordpress"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "topic": {
+                                                "type": "object",
+                                                "$ref": "#/components/schemas/Topic"
+                                            },
+                                            "markets": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "$ref": "#/components/schemas/Market"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "example": [
+                                    {
+                                        "topic": {
+                                            "name": "San Francisco 49ers @ Kansas City Chiefs",
+                                            "type": "game",
+                                            "startTime": "2024-02-11T23:30:00.000+00:00",
+                                            "event": {
+                                                "name": "2023-24 Super Bowl",
+                                                "slug": "2023-24-super-bowl"
+                                            },
+                                            "participants": [
+                                                {
+                                                    "name": "Kansas City Chiefs"
+                                                },
+                                                {
+                                                    "name": "San Francisco 49ers"
+                                                }
+                                            ]
+                                        },
+                                        "markets": [
+                                            {
+                                                "name": "Kansas City Chiefs to score the first points and win the game?",
+                                                "participants": [
+                                                    {
+                                                        "name": "Kansas City Chiefs",
+                                                        "type": "team"
+                                                    }
+                                                ],
+                                                "embed": "..."
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/workspaces": {
+            "get": {
+                "tags": [
+                    "Core"
+                ],
+                "description": "Returns a list of your workspaces.",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "$ref": "#/components/schemas/Workspace"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "tags": []
+  }

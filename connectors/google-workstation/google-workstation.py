@@ -1,0 +1,1074 @@
+###############################################
+# Create a new workstation under a given config
+###############################################
+def invoke_create_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation_id = request_data.get("workstation_id")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation_id:
+        return {"status": False, "message": "workstation_id is required."}
+
+    display_name = request_data.get("display_name", workstation_id)
+    labels = request_data.get("labels") or {}
+    wait = request_data.get("wait", True)
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}"
+
+        operation = client.create_workstation(
+            request=workstations_v1.CreateWorkstationRequest(
+                parent=parent,
+                workstation_id=workstation_id,
+                workstation=workstations_v1.Workstation(display_name=display_name, labels=labels),
+            )
+        )
+
+        if wait:
+            result = operation.result()
+            return {
+                "status": True,
+                "data": {
+                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
+                    "state": result.state.name if result.state else None,
+                    "host": result.host, "reconciling": result.reconciling,
+                },
+                "message": f"Workstation '{workstation_id}' created successfully.",
+            }
+        return {
+            "status": True,
+            "data": {"operation_name": operation.operation.name},
+            "message": f"Workstation '{workstation_id}' creation started.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error creating workstation: {e}"}
+
+
+###############################################
+# Delete an existing workstation permanently
+###############################################
+def invoke_delete_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    wait = request_data.get("wait", True)
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        operation = client.delete_workstation(request=workstations_v1.DeleteWorkstationRequest(name=name))
+
+        if wait:
+            operation.result()
+            return {"status": True, "data": {"deleted": name}, "message": "Workstation deleted successfully."}
+        return {
+            "status": True,
+            "data": {"operation_name": operation.operation.name},
+            "message": "Workstation deletion initiated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error deleting workstation: {e}"}
+
+
+###############################################
+# Execute a Claude prompt on a workstation via the exec API
+###############################################
+def invoke_execute_claude(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+    import requests
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    prompt = request_data.get("prompt")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+    if not prompt:
+        return {"status": False, "message": "prompt is required."}
+
+    output_format = request_data.get("output_format", "json")
+    timeout = int(request_data.get("timeout", 300))
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+        if (ws.state.name if ws.state else "UNKNOWN") != "STATE_RUNNING":
+            client.start_workstation(request=workstations_v1.StartWorkstationRequest(name=name)).result()
+
+        access_token = client.generate_access_token(
+            request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+        ).access_token
+
+        exec_url = f"https://80-{workstation}.{cluster}.{location}.cloudworkstations.dev"
+        response = requests.post(
+            f"{exec_url}/api/exec",
+            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            json={"command": f'claude -p "{prompt}" --output-format {output_format}'},
+            timeout=timeout,
+        )
+
+        if response.status_code != 200:
+            return {"status": False, "message": f"Exec failed (HTTP {response.status_code}): {response.text}"}
+
+        result = response.json() if response.headers.get("content-type", "").startswith("application/json") else {"output": response.text}
+        return {
+            "status": True,
+            "data": {"result": result, "workstation_url": exec_url, "output_format": output_format},
+            "message": "Claude execution completed.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error executing Claude: {e}"}
+
+
+###############################################
+# Generate a short-lived access token for a workstation
+###############################################
+def invoke_generate_access_token(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        response = client.generate_access_token(request=workstations_v1.GenerateAccessTokenRequest(workstation=name))
+        return {
+            "status": True,
+            "data": {
+                "access_token": response.access_token,
+                "expire_time": response.expire_time.isoformat() if response.expire_time else None,
+            },
+            "message": "Access token generated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error generating access token: {e}"}
+
+
+###############################################
+# Get details and state of a single workstation
+###############################################
+def invoke_get_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+        return {
+            "status": True,
+            "data": {
+                "name": ws.name, "display_name": ws.display_name, "uid": ws.uid,
+                "state": ws.state.name if ws.state else None,
+                "host": ws.host, "reconciling": ws.reconciling,
+            },
+            "message": f"Workstation state: {ws.state.name if ws.state else 'UNKNOWN'}",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error getting workstation: {e}"}
+
+
+###############################################
+# Kill a Claude session on a workstation by session_id or pid
+###############################################
+def invoke_kill_session(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+    import requests
+    import os
+    import time
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    session_id = request_data.get("session_id")
+    pid = request_data.get("pid")
+    if not session_id and not pid:
+        return {"status": False, "message": "session_id or pid is required."}
+
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
+    try:
+        # Try cached token + relay_url first
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
+
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot kill session."}
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
+
+        payload = {}
+        if session_id:
+            payload["session_id"] = session_id
+        if pid:
+            payload["pid"] = pid
+
+        response = requests.post(
+            f"{relay_url}/api/sessions/kill",
+            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            json=payload, timeout=30,
+        )
+
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
+
+        result = response.json()
+        if response.status_code != 200:
+            return {"status": False, "message": result.get("message", f"Relay error (HTTP {response.status_code})")}
+
+        return {
+            "status": True,
+            "data": {"result": result, "relay_url": relay_url, "workstation_state": "STATE_RUNNING"},
+            "message": result.get("message", "Session killed."),
+        }
+    except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
+        return {"status": False, "message": f"Error killing session: {e}"}
+
+
+###############################################
+# List all workstation clusters in a project and location
+###############################################
+def invoke_list_clusters(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}"
+
+        clusters = list(client.list_workstation_clusters(
+            request=workstations_v1.ListWorkstationClustersRequest(parent=parent)
+        ))
+        return {
+            "status": True,
+            "data": [{
+                "name": c.name, "display_name": c.display_name, "uid": c.uid,
+                "reconciling": c.reconciling, "network": c.network,
+                "subnetwork": c.subnetwork, "control_plane_ip": c.control_plane_ip,
+                "degraded": c.degraded,
+            } for c in clusters],
+            "message": f"Found {len(clusters)} cluster(s).",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error listing clusters: {e}"}
+
+
+###############################################
+# List all workstation configs within a cluster
+###############################################
+def invoke_list_configs(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}"
+
+        configs = list(client.list_workstation_configs(
+            request=workstations_v1.ListWorkstationConfigsRequest(parent=parent)
+        ))
+
+        data = []
+        for cfg in configs:
+            item = {
+                "name": cfg.name, "display_name": cfg.display_name, "uid": cfg.uid,
+                "reconciling": cfg.reconciling,
+                "idle_timeout": str(cfg.idle_timeout) if cfg.idle_timeout else None,
+                "running_timeout": str(cfg.running_timeout) if cfg.running_timeout else None,
+                "replica_zones": list(cfg.replica_zones) if cfg.replica_zones else [],
+            }
+            if cfg.host and cfg.host.gce_instance:
+                item["host"] = {"gce_instance": {
+                    "machine_type": cfg.host.gce_instance.machine_type,
+                    "pool_size": cfg.host.gce_instance.pool_size,
+                    "disable_public_ip_addresses": cfg.host.gce_instance.disable_public_ip_addresses,
+                }}
+            if cfg.container:
+                item["container"] = {
+                    "image": cfg.container.image,
+                    "command": list(cfg.container.command) if cfg.container.command else [],
+                    "args": list(cfg.container.args) if cfg.container.args else [],
+                    "run_as_user": cfg.container.run_as_user,
+                }
+            data.append(item)
+
+        return {"status": True, "data": data, "message": f"Found {len(configs)} config(s)."}
+    except Exception as e:
+        return {"status": False, "message": f"Error listing configs: {e}"}
+
+
+###############################################
+# List active Claude sessions on a workstation via the relay API
+###############################################
+def invoke_list_sessions(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+    import requests
+    import os
+    import time
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
+    try:
+        # Try cached token + relay_url first (skip get_workstation + generate_access_token)
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
+
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {
+                    "status": True,
+                    "data": {"sessions": [], "session_count": 0, "workstation_state": state},
+                    "message": f"Workstation is {state} — no sessions running.",
+                }
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
+
+        response = requests.get(
+            f"{relay_url}/api/sessions",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=15,
+        )
+
+        # Auth failed — invalidate cache so next call re-authenticates
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
+
+        if response.status_code != 200:
+            return {"status": False, "message": f"Relay error (HTTP {response.status_code}): {response.text}"}
+
+        result = response.json()
+        return {
+            "status": True,
+            "data": {
+                "sessions": result.get("sessions", []),
+                "session_count": result.get("session_count", 0),
+                "workstation_state": "STATE_RUNNING", "relay_url": relay_url,
+            },
+            "message": f"Found {result.get('session_count', 0)} Claude session(s) running.",
+        }
+    except requests.exceptions.ConnectionError:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
+        return {"status": True, "data": {"sessions": [], "session_count": 0, "workstation_state": "STATE_STOPPED"}, "message": "Workstation unreachable — likely stopped."}
+    except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
+        return {"status": False, "message": f"Error listing sessions: {e}"}
+
+
+###############################################
+# List all workstations under a given config
+###############################################
+def invoke_list_workstations(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        parent = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}"
+
+        workstations = list(client.list_workstations(
+            request=workstations_v1.ListWorkstationsRequest(parent=parent)
+        ))
+        return {
+            "status": True,
+            "data": [{
+                "name": ws.name, "display_name": ws.display_name, "uid": ws.uid,
+                "state": ws.state.name if ws.state else None,
+                "host": ws.host, "reconciling": ws.reconciling,
+            } for ws in workstations],
+            "message": f"Found {len(workstations)} workstation(s).",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error listing workstations: {e}"}
+
+
+###############################################
+# Send a prompt to Claude on a workstation with real-time streaming via Redis pub/sub
+###############################################
+def invoke_send_message(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+    import requests
+    import redis as redis_lib
+    import os
+    import time
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    prompt = request_data.get("prompt")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+    if not prompt:
+        return {"status": False, "message": "prompt is required."}
+
+    session_id = request_data.get("session_id")
+    thread_id = request_data.get("thread_id")
+    cwd = request_data.get("cwd")
+    output_format = request_data.get("output_format", "stream-json")
+    timeout = int(request_data.get("timeout", 300))
+
+    name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+    cache_file = f"/tmp/gcw_relay_cache_{workstation}.json"
+
+    try:
+        # Try cached token + relay_url first
+        access_token = None
+        relay_url = None
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                if cache.get('expires_at', 0) > time.time() + 60:
+                    access_token = cache.get('access_token')
+                    relay_url = cache.get('relay_url')
+            except Exception:
+                pass
+
+        # Cache miss — authenticate and cache
+        if not access_token or not relay_url:
+            creds = service_account.Credentials.from_service_account_info(credential)
+            client = workstations_v1.WorkstationsClient(credentials=creds)
+            ws = client.get_workstation(request=workstations_v1.GetWorkstationRequest(name=name))
+            state = ws.state.name if ws.state else "UNKNOWN"
+            if state != "STATE_RUNNING":
+                return {"status": False, "data": {"workstation_state": state}, "message": f"Workstation is {state} — cannot send message."}
+            token_response = client.generate_access_token(
+                request=workstations_v1.GenerateAccessTokenRequest(workstation=name)
+            )
+            access_token = token_response.access_token
+            relay_url = f"https://8080-{ws.host}"
+            expires_at = token_response.expire_time.timestamp() if token_response.expire_time else time.time() + 3600
+            try:
+                with open(cache_file, 'w') as f:
+                    json.dump({"access_token": access_token, "relay_url": relay_url, "expires_at": expires_at}, f)
+            except Exception:
+                pass
+
+        # Redis pub/sub for real-time streaming
+        # Use injected stream channel from agent streaming pipeline if available,
+        # otherwise fall back to thread-based channel
+        redis_client = None
+        redis_channel = request_data.get("_stream_channel", "")
+        if not redis_channel and thread_id:
+            redis_channel = f"thread:{thread_id}:stream"
+        if redis_channel:
+            try:
+                redis_url = request_data.get("redis_url", "redis://redis:6379/0")
+                redis_client = redis_lib.from_url(redis_url, decode_responses=True)
+            except Exception:
+                redis_client = None
+
+        payload = {"prompt": prompt, "output_format": output_format}
+        if session_id:
+            payload["session_id"] = session_id
+        if cwd:
+            payload["cwd"] = cwd
+
+        response = requests.post(
+            f"{relay_url}/api/sessions/message",
+            headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+            json=payload, stream=True, timeout=timeout,
+        )
+
+        if response.status_code == 401:
+            try:
+                os.remove(cache_file)
+            except Exception:
+                pass
+            return {"status": False, "message": "Token expired — cache cleared, retry."}
+
+        if response.status_code != 200:
+            return {"status": False, "message": f"Relay error (HTTP {response.status_code}): {response.text}"}
+
+        full_content = []
+        result_session_id = None
+
+        for line in response.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            try:
+                chunk = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            chunk_type = chunk.get("type", "")
+
+            if chunk_type == "system" and chunk.get("subtype") == "init":
+                result_session_id = chunk.get("session_id", session_id)
+
+            elif chunk_type == "assistant":
+                # stream-json: content is in message.content[].text or tool_use
+                msg = chunk.get("message", {})
+                content_blocks = msg.get("content", [])
+                for block in content_blocks:
+                    block_type = block.get("type", "")
+                    if block_type == "text":
+                        text = block.get("text", "")
+                        if text:
+                            full_content.append(text)
+                            if redis_client and redis_channel:
+                                try:
+                                    redis_client.publish(redis_channel, json.dumps({
+                                        "type": "content", "content": text,
+                                        "metadata": {"session_id": result_session_id or session_id},
+                                    }))
+                                except Exception:
+                                    pass
+                    elif block_type == "tool_use" and redis_client and redis_channel:
+                        tool_name = block.get("name", "unknown")
+                        tool_input = block.get("input", {})
+                        # Build a human-readable status from the tool call
+                        tool_labels = {
+                            "Read": f"Reading {tool_input.get('file_path', '')}",
+                            "Write": f"Writing {tool_input.get('file_path', '')}",
+                            "Edit": f"Editing {tool_input.get('file_path', '')}",
+                            "Bash": f"Running command",
+                            "Glob": f"Searching files",
+                            "Grep": f"Searching code",
+                            "WebFetch": f"Fetching URL",
+                            "WebSearch": f"Searching web",
+                        }
+                        status_text = tool_labels.get(tool_name, f"Using {tool_name}")
+                        try:
+                            redis_client.publish(redis_channel, json.dumps({
+                                "type": "tool_call",
+                                "content": status_text,
+                                "metadata": {
+                                    "tool": tool_name,
+                                    "input": tool_input,
+                                    "session_id": result_session_id or session_id,
+                                },
+                            }))
+                        except Exception:
+                            pass
+
+            elif chunk_type == "result":
+                result_session_id = chunk.get("session_id", result_session_id or session_id)
+                # result.result contains the full text as fallback
+                if not full_content and chunk.get("result"):
+                    full_content.append(chunk["result"])
+                if chunk.get("subtype") == "error" and redis_client and redis_channel:
+                    try:
+                        redis_client.publish(redis_channel, json.dumps({
+                            "type": "error", "content": chunk.get("error", "Unknown error"),
+                            "metadata": {"session_id": result_session_id},
+                        }))
+                    except Exception:
+                        pass
+
+            elif chunk_type == "error" and redis_client and redis_channel:
+                try:
+                    redis_client.publish(redis_channel, json.dumps({
+                        "type": "error", "content": chunk.get("error", "Unknown relay error"),
+                        "metadata": {"session_id": result_session_id or session_id},
+                    }))
+                except Exception:
+                    pass
+
+        full_text = "".join(full_content)
+
+        # Extract JSON objects from code blocks (e.g., athlete cards)
+        import re
+        objects = []
+        display_text = full_text
+        json_block_pattern = re.compile(r'```json\s*\n([\s\S]*?)```')
+        matches = json_block_pattern.findall(full_text)
+        for match in matches:
+            try:
+                parsed = json.loads(match)
+                if isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], dict):
+                    objects = parsed
+                    display_text = json_block_pattern.sub('', display_text).strip()
+                    break
+            except (json.JSONDecodeError, IndexError):
+                continue
+        if objects:
+            full_text = display_text
+
+        if redis_client and redis_channel:
+            try:
+                redis_client.publish(redis_channel, json.dumps({
+                    "type": "done", "content": full_text,
+                    "metadata": {"session_id": result_session_id or session_id},
+                }))
+            except Exception:
+                pass
+
+        if redis_client:
+            try:
+                redis_client.close()
+            except Exception:
+                pass
+
+        return {
+            "status": True,
+            "data": {
+                "response": full_text,
+                "objects": objects,
+                "session_id": result_session_id or session_id,
+                "relay_url": relay_url, "workstation_state": "STATE_RUNNING",
+            },
+            "message": "Claude response received.",
+        }
+    except requests.exceptions.Timeout:
+        return {"status": False, "message": f"Request timed out after {timeout}s."}
+    except Exception as e:
+        try:
+            os.remove(cache_file)
+        except Exception:
+            pass
+        return {"status": False, "message": f"Error sending message: {e}"}
+
+
+###############################################
+# Start a stopped workstation
+###############################################
+def invoke_start_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    wait = request_data.get("wait", True)
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        operation = client.start_workstation(request=workstations_v1.StartWorkstationRequest(name=name))
+
+        if wait:
+            result = operation.result()
+            return {
+                "status": True,
+                "data": {
+                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
+                    "state": result.state.name if result.state else None,
+                    "host": result.host, "reconciling": result.reconciling,
+                },
+                "message": "Workstation started successfully.",
+            }
+        return {
+            "status": True,
+            "data": {"operation_name": operation.operation.name},
+            "message": "Workstation start initiated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error starting workstation: {e}"}
+
+
+###############################################
+# Stop a running workstation
+###############################################
+def invoke_stop_workstation(request_data):
+    from google.cloud import workstations_v1
+    from google.oauth2 import service_account
+    import json
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    credential = request_data.get("credential")
+    if not credential:
+        return {"status": False, "message": "credential is required (service account JSON)."}
+    if isinstance(credential, str):
+        credential = json.loads(credential)
+
+    project_id = request_data.get("project_id")
+    location = request_data.get("location", "us-central1")
+    cluster = request_data.get("cluster")
+    config = request_data.get("config")
+    workstation = request_data.get("workstation")
+    if not project_id:
+        return {"status": False, "message": "project_id is required."}
+    if not cluster:
+        return {"status": False, "message": "cluster is required."}
+    if not config:
+        return {"status": False, "message": "config is required."}
+    if not workstation:
+        return {"status": False, "message": "workstation is required."}
+
+    wait = request_data.get("wait", True)
+
+    try:
+        creds = service_account.Credentials.from_service_account_info(credential)
+        client = workstations_v1.WorkstationsClient(credentials=creds)
+        name = f"projects/{project_id}/locations/{location}/workstationClusters/{cluster}/workstationConfigs/{config}/workstations/{workstation}"
+
+        operation = client.stop_workstation(request=workstations_v1.StopWorkstationRequest(name=name))
+
+        if wait:
+            result = operation.result()
+            return {
+                "status": True,
+                "data": {
+                    "name": result.name, "display_name": result.display_name, "uid": result.uid,
+                    "state": result.state.name if result.state else None,
+                    "host": result.host, "reconciling": result.reconciling,
+                },
+                "message": "Workstation stopped successfully.",
+            }
+        return {
+            "status": True,
+            "data": {"operation_name": operation.operation.name},
+            "message": "Workstation stop initiated.",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error stopping workstation: {e}"}
+
+
+###############################################
+# Publish a stream update to a Redis pub/sub channel for real-time UI updates
+###############################################
+def invoke_stream_update(request_data):
+    import json
+    import os
+    import redis as redis_lib
+
+    request_data = {**request_data, **request_data.get('params', {})}
+    document_id = request_data.get("document_id")
+    content = request_data.get("content", "")
+    update_type = request_data.get("type", "content")
+    metadata = request_data.get("metadata") or {}
+
+    if not document_id:
+        return {"status": False, "message": "document_id is required."}
+
+    valid_types = ("content", "tool_call", "terminal", "status", "error", "done")
+    if update_type not in valid_types:
+        return {"status": False, "message": f"type must be one of: {', '.join(valid_types)}"}
+
+    redis_channel = f"thread:{document_id}:stream"
+
+    try:
+        redis_url = request_data.get("redis_url") or os.environ.get("REDIS_URL", "redis://redis:6379/0")
+        redis_client = redis_lib.from_url(redis_url, decode_responses=True)
+
+        message = json.dumps({
+            "type": update_type,
+            "content": content,
+            "metadata": metadata,
+        })
+
+        subscribers = redis_client.publish(redis_channel, message)
+        redis_client.close()
+
+        return {
+            "status": True,
+            "data": {
+                "published": True,
+                "channel": redis_channel,
+                "type": update_type,
+                "subscribers": subscribers,
+            },
+            "message": f"Published {update_type} update to {redis_channel} ({subscribers} subscriber(s)).",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Error publishing stream update: {e}"}

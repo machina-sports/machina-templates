@@ -1,0 +1,1227 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Bwin SportsApi",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "https://sportsapi.sportingbet.bet.br"
+    }
+  ],
+  "paths": {
+    "/offer/api/{sportId}/{country}/fixtures": {
+      "get": {
+        "tags": [
+          "SportsApi"
+        ],
+        "summary": "The endpoint `fixtures` allows you to retrieve active fixtures in one sport from one country. Active fixtures are all fixtures in a state before and up to 2 hours after their cut-off date. Mandatory input parameters are the Sport ID and the Country. The fixtures are returned together with their markets, options, and prices. The refresh interval for this endpoint is 2 seconds.",
+        "operationId": "GetFixtures",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "path",
+            "description": "The unique ID of the sport. Mandatory.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 4
+            }
+          },
+          {
+            "name": "country",
+            "in": "path",
+            "description": "The country's Alpha-2 code, as defined in ISO 3166. Mandatory. See https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes for details.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "at"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "The Language Code as defined in the list of supported language codes. If not specified, \"en\" is assumed.",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          },
+          {
+            "name": "competitionIds",
+            "in": "query",
+            "description": "A list of Competition IDs. Make sure that the competitions are defined for the specified sport.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          },
+          {
+            "name": "fixtureIds",
+            "in": "query",
+            "description": "A list of fixture IDs, provided in full format.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "isInPlay",
+            "in": "query",
+            "description": "A filter for including only fixtures in pre-match (`false`) or in-play (`true`) state. If not specified, both are included.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "onlyMainMarkets",
+            "in": "query",
+            "description": "A filter to include only markets previously defined as main markets, including the balanced line markets.",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "description": "A timestamp in UTC time. Data is retrieved from this point up to now. Format: `yyyyMMddHHmmss`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixtureResultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offer/api/{sportId}/{country}/fixtureIndex": {
+      "get": {
+        "tags": [
+          "SportsApi"
+        ],
+        "summary": "The endpoint `fixtureIndex` allows you to retrieve an overview of the active fixtures in one sport from one country. \"Active\" fixtures are all fixtures in a state before and up to 2 hours after their cut-off date. Mandatory input parameters are the Sport ID and the Country Code. The fixtures are returned without markets, options, and prices. The refresh interval for this endpoint is 2 seconds.",
+        "operationId": "GetFixtureIndex",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "path",
+            "description": "The unique ID of the sport. Mandatory.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 4
+            }
+          },
+          {
+            "name": "country",
+            "in": "path",
+            "description": "The country's Alpha-2 code, as defined in ISO 3166. Mandatory. See https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes for details.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "at"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "The Language Code as defined in the list of supported language codes. If not specified, \"en\" is assumed.",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          },
+          {
+            "name": "competitionIds",
+            "in": "query",
+            "description": "A list of Competition IDs. Make sure that the competitions are defined for the specified sport.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          },
+          {
+            "name": "fixtureIds",
+            "in": "query",
+            "description": "A list of fixture IDs, provided in full format.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "isInPlay",
+            "in": "query",
+            "description": "A filter for including only fixtures in pre-match (`false`) or in-play (`true`) state. If not specified, both are included.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "description": "A timestamp in UTC time. Data is retrieved from this point up to now. Format: `yyyyMMddHHmmss`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FixtureIndexResultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offer/api/{sportId}/{country}/competitions": {
+      "get": {
+        "tags": [
+          "SportsApi"
+        ],
+        "summary": "The endpoint `competitions` allows you to retrieve the available competitions in one sport from one country. Mandatory input parameters are the Sport ID and the Country Code. The refresh interval for this endpoint is 1 second.",
+        "operationId": "GetCompetitions",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "path",
+            "description": "The unique ID of the sport. Mandatory.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "country",
+            "in": "path",
+            "description": "The country's Alpha-2 code, as defined in ISO 3166. Mandatory. <br />See https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes for details.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "at"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "The Language Code as defined in the list of supported language codes. If not specified, \"en\" is assumed.",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          },
+          {
+            "name": "participants",
+            "in": "query",
+            "description": "List of teams/participants within the competition. Included if {true}",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetitionResultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offer/api/{country}/sports": {
+      "get": {
+        "tags": [
+          "SportsApi"
+        ],
+        "summary": "The endpoint `sports` allows you to retrieve available sports in one country. Mandatory input parameter is the Country Code. The refresh interval for this endpoint is 1 second.",
+        "operationId": "GetSports",
+        "parameters": [
+          {
+            "name": "country",
+            "in": "path",
+            "description": "The country's Alpha-2 code, as defined in ISO 3166. <br />Mandatory. See https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes for details.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "at"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "description": "The Language Code as defined in the list of supported language codes. If not specified, \"en\" is assumed.",
+            "schema": {
+              "type": "string",
+              "default": "en"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SportResultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offer/api/languageCodes": {
+      "get": {
+        "tags": [
+          "SportsApi"
+        ],
+        "summary": "The endpoint `languageCodes` allows you to retrieve the complete list of supported language codes.",
+        "operationId": "GetSupportedLanguageCodes",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/offer/api/{sportId}/{country}/scoreboards": {
+      "get": {
+        "tags": [
+          "SportsApi"
+        ],
+        "summary": "The endpoint `scoreboards` allows you to retrieve the basic scoreboard information for fixtures: the current state of a fixture,\r\nthe period the event is in and the current score (if applicable for this type of fixture), and the elapsed minutes and seconds.\r\nMandatory input parameters are the Sport ID, and the Country. The refresh interval for this endpoint is 2 seconds.",
+        "operationId": "GetScoreboards",
+        "parameters": [
+          {
+            "name": "sportId",
+            "in": "path",
+            "description": "The unique ID of the sport. Mandatory.",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 4
+            }
+          },
+          {
+            "name": "country",
+            "in": "path",
+            "description": "The country's Alpha-2 code, as defined in ISO 3166. Mandatory. See https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes for details.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "at"
+            }
+          },
+          {
+            "name": "competitionIds",
+            "in": "query",
+            "description": "A list of Competition IDs. Make sure that the competitions are defined for the specified sport.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          },
+          {
+            "name": "fixtureIds",
+            "in": "query",
+            "description": "A list of fixture IDs, provided in full format.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "description": "A timestamp in UTC time. Data is retrieved from this point up to now. Format: `yyyyMMddHHmmss`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoreboardResultEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Competition": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "version": {
+            "$ref": "#/components/schemas/TradingVersion"
+          },
+          "region": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Translation"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "competitionGroupId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompetitionResultEnvelope": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Competition"
+            },
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/ResponseType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompoundIdentifier": {
+        "type": "object",
+        "properties": {
+          "full": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Fixture": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/CompoundIdentifier"
+          },
+          "name": {
+            "$ref": "#/components/schemas/SignedTranslation"
+          },
+          "version": {
+            "$ref": "#/components/schemas/TradingVersion"
+          },
+          "startDateUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cutOffDateUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isInPlay": {
+            "type": "boolean"
+          },
+          "isDisplayed": {
+            "type": "boolean"
+          },
+          "isOpenForBetting": {
+            "type": "boolean"
+          },
+          "isPlannedInPlay": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "fixtureGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "competition": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "region": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "group": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "participantType": {
+            "type": "string",
+            "nullable": true
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Participant"
+            },
+            "nullable": true
+          },
+          "rule4Expected": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "rule4Applicable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "bestOddsGuarantee": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "distance": {
+            "type": "string",
+            "nullable": true
+          },
+          "courseType": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "handicap": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "pricingState": {
+            "type": "string",
+            "nullable": true
+          },
+          "markets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Market"
+            },
+            "nullable": true
+          },
+          "linkedTV1EventIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "externalMappings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "liveType": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FixtureIndex": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/CompoundIdentifier"
+          },
+          "name": {
+            "$ref": "#/components/schemas/SignedTranslation"
+          },
+          "version": {
+            "$ref": "#/components/schemas/TradingVersion"
+          },
+          "startDateUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cutOffDateUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isInPlay": {
+            "type": "boolean"
+          },
+          "isDisplayed": {
+            "type": "boolean"
+          },
+          "isOpenForBetting": {
+            "type": "boolean"
+          },
+          "isPlannedInPlay": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "fixtureGroupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "competition": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "region": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "group": {
+            "$ref": "#/components/schemas/Tag"
+          },
+          "participantType": {
+            "type": "string",
+            "nullable": true
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Participant"
+            },
+            "nullable": true
+          },
+          "liveType": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FixtureIndexResultEnvelope": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FixtureIndex"
+            },
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/ResponseType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FixtureResultEnvelope": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Fixture"
+            },
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/ResponseType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Fraction": {
+        "type": "object",
+        "properties": {
+          "numerator": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "denominator": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Happening": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          },
+          "timer": {
+            "$ref": "#/components/schemas/HappeningTimer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "HappeningTimer": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Market": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "$ref": "#/components/schemas/SignedTranslation"
+          },
+          "marketTemplateId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "marketType": {
+            "type": "string",
+            "nullable": true
+          },
+          "placeTerms": {
+            "$ref": "#/components/schemas/PlaceTerms"
+          },
+          "happening": {
+            "type": "string",
+            "nullable": true
+          },
+          "period": {
+            "type": "string",
+            "nullable": true
+          },
+          "subPeriod": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "isDisplayed": {
+            "type": "boolean"
+          },
+          "isOpenForBetting": {
+            "type": "boolean"
+          },
+          "isBalancedLine": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isEachWay": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "spStatus": {
+            "type": "string",
+            "nullable": true
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Option"
+            },
+            "nullable": true
+          },
+          "marketSubType": {
+            "type": "string",
+            "nullable": true
+          },
+          "team": {
+            "type": "string",
+            "nullable": true
+          },
+          "isEachwayEnabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "terms": {
+            "type": "string",
+            "nullable": true
+          },
+          "places": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Option": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participantId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "name": {
+            "$ref": "#/components/schemas/SignedTranslation"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Price"
+          },
+          "priceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDisplayed": {
+            "type": "boolean"
+          },
+          "isOpenForBetting": {
+            "type": "boolean"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "boostedPrice": {
+            "$ref": "#/components/schemas/Price"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Participant": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Translation"
+          },
+          "participantTag": {
+            "type": "string",
+            "nullable": true
+          },
+          "participantType": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "raceCardNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "drawNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "jockey": {
+            "type": "string",
+            "nullable": true
+          },
+          "trainer": {
+            "type": "string",
+            "nullable": true
+          },
+          "weight": {
+            "type": "string",
+            "nullable": true
+          },
+          "silk": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PlaceTerms": {
+        "type": "object",
+        "properties": {
+          "numerator": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "denominator": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "places": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Price": {
+        "type": "object",
+        "properties": {
+          "fraction": {
+            "$ref": "#/components/schemas/Fraction"
+          },
+          "odds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "usOdds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResponseType": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "Scoreboard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/CompoundIdentifier"
+          },
+          "version": {
+            "$ref": "#/components/schemas/TradingVersion"
+          },
+          "period": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "string",
+            "nullable": true
+          },
+          "time": {
+            "$ref": "#/components/schemas/ScoreboardTime"
+          },
+          "happenings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Happening"
+            },
+            "nullable": true
+          },
+          "currentGameScore": {
+            "type": "string",
+            "nullable": true
+          },
+          "currentPointScore": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScoreboardResultEnvelope": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Scoreboard"
+            },
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/ResponseType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScoreboardTime": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isRunning": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SignedTranslation": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "sign": {
+            "type": "string",
+            "nullable": true
+          },
+          "shortText": {
+            "type": "string",
+            "nullable": true
+          },
+          "shortTextSign": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Sport": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Translation"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SportResultEnvelope": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sport"
+            },
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/ResponseType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "$ref": "#/components/schemas/Translation"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TradingVersion": {
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "Translation": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "shortText": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bwin-AccessId": {
+        "type": "apiKey",
+        "description": "AccessId",
+        "name": "Bwin-AccessId",
+        "in": "header"
+      },
+      "Bwin-AccessIdToken": {
+        "type": "apiKey",
+        "description": "Token",
+        "name": "Bwin-AccessIdToken",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bwin-AccessId": [],
+      "Bwin-AccessIdToken": []
+    }
+  ]
+}

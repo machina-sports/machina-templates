@@ -1,0 +1,7 @@
+connector:
+  name: machina-media-metadata
+  description: "Fetches team/player metadata."
+  filetype: restapi
+  filename: machina-media-metadata.json
+  context-variables:
+    basicAuth: "$TEMP_CONTEXT_VARIABLE_METADATA_API_KEY"

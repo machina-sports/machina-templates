@@ -1,0 +1,74 @@
+prompts:
+
+  # iptc-custom-event-prompt
+  - type: prompt
+    name: iptc-custom-event-prompt
+    title: "IPTC | Custom Event Prompt"
+    description: "IPTC Custom Event Prompt"
+    instruction: |
+        OBJECTIVE: Create a simple sports event data structure from natural language input.
+
+        GUIDELINES:
+        - Extract competition, teams, date, time, scores from the text
+        - Format date and time in ISO format with timezone: YYYY-MM-DDTHH:mm:ss+00:00
+        - Use normal team names, not nicknames or abbreviations
+        - Include both final and half-time scores
+        - Use standardized status values:
+          * "finished" for completed matches
+          * "not_started" for upcoming matches
+          * "canceled" for canceled matches
+          * "postponed" for postponed matches
+    schema:
+      title: "SimpleEventData"
+      description: "Basic sports event data extracted from text."
+      type: "object"
+      properties:
+        competition:
+          type: "object"
+          properties:
+            country:
+              type: "string"
+              description: "Country name"
+            name:
+              type: "string"
+              description: "Competition name"
+            season:
+              type: "string"
+              description: "Season year"
+        teams:
+          type: "object"
+          properties:
+            home:
+              type: "string"
+              description: "Home team name"
+            away:
+              type: "string"
+              description: "Away team name"
+        datetime:
+          type: "string"
+          description: "Event date and time in format: YYYY-MM-DDTHH:mm:ss+00:00"
+        status:
+          type: "string"
+          enum: ["finished", "not_started", "canceled", "postponed"]
+          description: "Match status: 'finished' for completed matches, 'not_started' for upcoming matches, 'canceled' for canceled matches, 'postponed' for postponed matches"
+        score:
+          type: "object"
+          properties:
+            fulltime:
+              type: "object"
+              properties:
+                home:
+                  type: "integer"
+                  description: "Home team final score"
+                away:
+                  type: "integer"
+                  description: "Away team final score"
+            halftime:
+              type: "object"
+              properties:
+                home:
+                  type: "integer"
+                  description: "Home team half-time score"
+                away:
+                  type: "integer"
+                  description: "Away team half-time score"

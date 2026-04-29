@@ -1,0 +1,66 @@
+workflow:
+  name: polymarket-sync-events
+  title: Polymarket - Sync Events
+  description: Workflow to synchronize sports event data from Polymarket to Machina.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    tag_id: $.get('tag_id', 1)
+    series_id: $.get('series_id', '')
+    limit: $.get('limit', 100)
+    offset: $.get('offset', 0)
+  outputs:
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-events
+    - type: connector
+      name: load-events
+      description: Get sports events from Polymarket
+      connector:
+        name: polymarket
+        command: get_sports_events
+      inputs:
+        tag_id: $.get('tag_id', 1)
+        series_id: $.get('series_id', '')
+        limit: $.get('limit', 100)
+        offset: $.get('offset', 0)
+        active: true
+        closed: false
+      outputs:
+        events: $.get('events', [])
+        workflow-status: "'executed'"
+
+    # polymarket-event-mapping
+    - type: mapping
+      name: polymarket-event-mapping
+      title: Polymarket - Event Data Mapping
+      description: Mapping data from Polymarket event API responses
+      condition: $.get('events') is not None and len($.get('events', [])) > 0
+      inputs:
+        events: $.get('events', [])
+      outputs:
+        bulk-events: $.get('mapped-events', [])
+
+    # 2 bulk-save-events
+    - type: document
+      name: bulk-save-events
+      description: Bulk save the event data.
+      condition: $.get('bulk-events') is not None and len($.get('bulk-events', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: $.get('force-update')
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'polymarket-events'"
+      documents:
+        items: $.get('bulk-events', [])
+      inputs:
+        bulk-events: $.get('bulk-events', [])

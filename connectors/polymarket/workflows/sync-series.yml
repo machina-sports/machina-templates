@@ -1,0 +1,60 @@
+workflow:
+  name: polymarket-sync-series
+  title: Polymarket - Sync Series
+  description: Workflow to synchronize series (leagues) data from Polymarket to Machina.
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+  inputs:
+    limit: $.get('limit', 200)
+    offset: $.get('offset', 0)
+  outputs:
+    workflow-status: $.get('workflow-status', 'skipped')
+  tasks:
+
+    # 1 load-series
+    - type: connector
+      name: load-series
+      description: Get series from Polymarket
+      connector:
+        name: polymarket
+        command: get_series
+      inputs:
+        limit: $.get('limit', 200)
+        offset: $.get('offset', 0)
+      outputs:
+        series: $.get('series', [])
+        workflow-status: "'executed'"
+
+    # polymarket-series-mapping
+    - type: mapping
+      name: polymarket-series-mapping
+      title: Polymarket - Series Data Mapping
+      description: Mapping data from Polymarket series API responses
+      condition: $.get('series') is not None and len($.get('series', [])) > 0
+      inputs:
+        series: $.get('series', [])
+      outputs:
+        bulk-series: $.get('mapped-series', [])
+
+    # 2 bulk-save-series
+    - type: document
+      name: bulk-save-series
+      description: Bulk save the series data.
+      condition: $.get('bulk-series') is not None and len($.get('bulk-series', [])) > 0
+      config:
+        action: bulk-update
+        embed-selector: $.get('title')
+        embed-vector: true
+        force-update: $.get('force-update')
+      connector:
+        name: machina-ai
+        command: invoke_embedding
+        model: text-embedding-3-small
+      document_name: "'polymarket-series'"
+      documents:
+        items: $.get('bulk-series', [])
+      inputs:
+        bulk-series: $.get('bulk-series', [])

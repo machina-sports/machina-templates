@@ -1,0 +1,18 @@
+mapping:
+  name: map-normalize-event
+  title: "Normalize Sports Event"
+  description: "Maps a raw event from a sports data connector to the canonical 'event' data model."
+  outputs:
+    sport: "$.get('raw_event', {}).get('sport', 'unknown')"
+    league: "$.get('raw_event', {}).get('league', 'unknown')"
+    home_team:
+      name: "$.get('raw_event', {}).get('home_team', {}).get('name')"
+      score: "$.get('raw_event', {}).get('home_team', {}).get('score')"
+    away_team:
+      name: "$.get('raw_event', {}).get('away_team', {}).get('name')"
+      score: "$.get('raw_event', {}).get('away_team', {}).get('score')"
+    score: "str($.get('raw_event', {}).get('home_team', {}).get('score', 0)) + '-' + str($.get('raw_event', {}).get('away_team', {}).get('score', 0))"
+    clock: "$.get('raw_event', {}).get('clock', 'TBD')"
+    status: "$.get('raw_event', {}).get('status', 'scheduled')"
+    start_time: "$.get('raw_event', {}).get('start_time')"
+    external_ids: "$.get('raw_event', {}).get('external_ids', {})"

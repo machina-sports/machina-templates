@@ -1,0 +1,36 @@
+workflow:
+  name: google-genai-test-search
+  title: Google Gemini Test Search
+  description: Workflow to test the Google Gemini search processing
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    location: $.get('location', 'global')
+    search_query: $.get('search_query')
+  outputs:
+    answer: $.get('answer', '')
+    grounding_metadata: $.get('grounding_metadata', {})
+    workflow-status: "'executed'"
+  tasks:
+    
+    # test search
+    - type: connector
+      name: test-search
+      description: Test the Google Gemini search processing.
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-2.5-flash
+      inputs:
+        location: $.get('location', 'global')
+        search_query: $.get('search_query')
+      outputs:
+        answer: $.get('answer', '')
+        grounding_metadata: $.get('grounding_metadata', {})
+        response: $
+    
+    

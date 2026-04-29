@@ -1,0 +1,19 @@
+workflow:
+  name: get-nba-data
+  title: "Get NBA Data"
+  description: "Fetches NBA news for a given team from Sportradar."
+  inputs:
+    team_name: $.get('team_name', '')
+  tasks:
+    - name: fetch_news
+      type: connector
+      connector:
+        name: "Sportradar NBA v8"
+        command: "get-team-news" # NOTE: This is an assumed command.
+        inputs:
+          team: "$.get('team_name')"
+      outputs:
+        news_articles: "$.get('articles', [])"
+  outputs:
+    result: "$.get('news_articles')"
+    workflow-status: "$.get('news_articles') and 'executed' or 'skipped'"

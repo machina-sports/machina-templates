@@ -1,0 +1,170 @@
+workflow:
+
+  # truth-point-pre-flight-task
+  name: truth-point-pre-flight-task
+  title: Truth Point — Pre-flight a Factory task
+  description: |
+    Reads a free-form Factory task description (any language) plus the
+    platform's current truth — known repos, active lessons, similar
+    components — and asks Gemini for a STRUCTURED INTENT the Factory
+    dashboard can use to auto-fill mode, target/reference repos,
+    required credentials, and warnings.
+
+    Designed to live behind a "✨ Analyze task" button on /factory/new.
+    The dashboard's role is to render the suggestion and let the
+    operator accept or override; this workflow's only job is to turn
+    a sentence into structured fields the form already understands.
+
+    Inputs:
+      - task: developer's free-form description (any language).
+
+    Outputs:
+      - mode: one of build|plan|shell|review-pr|deploy|issue.
+      - target_repo: { owner, name } — best match from known_repos.
+      - reference_repos: up to 3 read-only repos for context.
+      - open_pr: true for build, false otherwise.
+      - required_credentials: vault keys the task probably needs.
+      - applicable_lessons: up to 3 lesson_ids most relevant.
+      - reusable_components: up to 3 component_ids the task overlaps with.
+      - summary: one-sentence English description of the inferred intent.
+      - warnings: human-readable nudges (lesson hits, missing credentials).
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    vertex-embedding:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    task: $.get('task', '')
+
+  outputs:
+    mode: "$.get('mode', 'build')"
+    target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
+    reference_repos: "$.get('reference_repos', [])"
+    open_pr: "$.get('open_pr', False)"
+    required_credentials: "$.get('required_credentials', [])"
+    applicable_lessons: "$.get('applicable_lessons', [])"
+    reusable_components: "$.get('reusable_components', [])"
+    summary: "$.get('summary', '')"
+    warnings: "$.get('warnings', [])"
+    workflow-status: "$.get('task') and 'executed' or 'skipped'"
+
+  tasks:
+
+    # 1. Pull the deploy-conventions doc — the canonical list of repos
+    #    Factory knows how to operate. Project to the slim shape the
+    #    prompt actually needs (owner+name+target branch+notes).
+    - type: document
+      name: lookup-known-repos
+      description: Read deploy-conventions and project to a known-repos list
+      condition: $.get('task') is not None and $.get('task') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'deploy-conventions'"
+      outputs:
+        known_repos: |
+          [
+            {
+              'repo': c.get('repo', ''),
+              'target_branch_for_pr': c.get('target_branch_for_pr', 'main'),
+              'semantic_release': c.get('semantic_release', True),
+              'notes': c.get('notes', '')
+            }
+            for c in (
+              $.get('documents', [])[0].get('value', {}).get('conventions', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+          ]
+
+    # 2. Pull active lessons (no kind filter — pre-flight applies broadly).
+    - type: document
+      name: lookup-lessons
+      description: Read lessons-learned, project to {id, title, applies_to, severity}
+      condition: $.get('task') is not None and $.get('task') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'lessons-learned'"
+      outputs:
+        active_lessons: |
+          [
+            {
+              'id': l.get('id', ''),
+              'title': l.get('title', ''),
+              'applies_to': l.get('applies_to', []),
+              'severity': l.get('severity', 'medium')
+            }
+            for l in (
+              $.get('documents', [])[0].get('value', {}).get('lessons', [])
+              if len($.get('documents', [])) > 0 else []
+            )
+          ]
+
+    # 3. Vector-search machina-knowledge by the task description so the
+    #    prompt can spot duplication / suggest reusable components.
+    - type: document
+      name: similar-components
+      description: Vector search for components related to the task description
+      condition: $.get('task') is not None and $.get('task') != ''
+      config:
+        action: search
+        search-vector: true
+        search-limit: 100
+        threshold-docs: 5
+        threshold-similarity: 0.3
+      connector:
+        name: "vertex-embedding"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
+      inputs:
+        name: "'machina-knowledge'"
+        search-query: $.get('task')
+      outputs:
+        similar_components: |
+          [
+            {
+              'component_id': d.get('value', {}).get('component_id', ''),
+              'kind': d.get('value', {}).get('kind', ''),
+              'title': d.get('value', {}).get('title', ''),
+              'description': d.get('value', {}).get('description', '')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # 4. Run the planner prompt. Schema-guided so the dashboard can
+    #    consume the fields directly without parsing free-form text.
+    - type: prompt
+      name: truth-point-pre-flight-task-prompt
+      description: Infer Factory intent from task + known repos + lessons + similar components
+      condition: $.get('task') is not None and $.get('task') != ''
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        task: $.get('task', '')
+        known_repos: $.get('known_repos', [])
+        active_lessons: $.get('active_lessons', [])
+        similar_components: $.get('similar_components', [])
+      outputs:
+        mode: "$.get('mode', 'build')"
+        target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
+        reference_repos: "$.get('reference_repos', [])"
+        open_pr: "$.get('open_pr', False)"
+        required_credentials: "$.get('required_credentials', [])"
+        applicable_lessons: "$.get('applicable_lessons', [])"
+        reusable_components: "$.get('reusable_components', [])"
+        summary: "$.get('summary', '')"
+        warnings: "$.get('warnings', [])"

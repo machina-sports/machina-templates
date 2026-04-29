@@ -1,0 +1,61 @@
+workflow:
+
+  # truth-point-query
+  name: truth-point-query
+  title: Truth Point — Query Components
+  description: Vector search over indexed components. Given a natural-language query, returns the top-K most relevant components with similarity scores.
+
+  context-variables:
+    debugger:
+      enabled: false
+    vertex-embedding:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    query: $.get('query', '')
+    limit: $.get('limit', 5)
+    threshold: $.get('threshold', 0.3)
+
+  outputs:
+    query: $.get('query', '')
+    components: $.get('components', [])
+    workflow-status: $.get('query') and 'executed' or 'skipped'
+
+  tasks:
+
+    - type: document
+      name: vector-search
+      description: Embed the query and run cosine similarity over machina-knowledge
+      condition: $.get('query') is not None and $.get('query') != ''
+      config:
+        action: search
+        search-vector: true
+        search-limit: 100
+        threshold-docs: $.get('limit', 5)
+        threshold-similarity: $.get('threshold', 0.3)
+      connector:
+        name: "vertex-embedding"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
+      inputs:
+        name: "'machina-knowledge'"
+        search-query: $.get('query')
+      outputs:
+        components: |
+          [
+            {
+              'component_id': d.get('value', {}).get('component_id', ''),
+              'kind': d.get('value', {}).get('kind', ''),
+              'name': d.get('value', {}).get('name', ''),
+              'title': d.get('value', {}).get('title', ''),
+              'description': d.get('value', {}).get('description', ''),
+              'source_path': d.get('value', {}).get('source_path', ''),
+              'source_ref': d.get('value', {}).get('source_ref', ''),
+              'version': d.get('value', {}).get('version', ''),
+              'integrations': d.get('value', {}).get('integrations', []),
+              'categories': d.get('value', {}).get('categories', []),
+              'similarity': d.get('similarity', d.get('similarity_score', 0))
+            }
+            for d in $.get('documents', [])
+          ]

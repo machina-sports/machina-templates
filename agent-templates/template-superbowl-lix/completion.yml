@@ -1,0 +1,232 @@
+workflow:
+  name: "workflow-chat-completion"
+  title: "Workflow Chat Completion"
+  description: "Workflow to chat completion"
+  context-variables:
+    groq:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GROQ_API_KEY"
+    openai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+  inputs:
+    event_code: "'ca9d8f84-8e7b-4ee7-a310-54c2e3ca4edc'"
+    event_type: "$.get('event_type', 'content-snippet')"
+    prompt_name: "$.get('prompt_name', 'prompt-chat-postmatch')"
+    input_status: "$.get('input_status', 'waiting')"
+    output_status: "$.get('output_status', 'idle')"
+  outputs:
+    content: "$.get('content')"
+    documents: "$.get('documents')"
+    document_id: "$.get('document_id')"
+    document_data: "$.get('document_data')"
+    messages: "$.get('messages')"
+    workflow-status: "$.get('document_id') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # 0 Load pending thread
+    - type: "document"
+      name: "load-pending-thread"
+      description: "Load pending thread"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        name: "'thread'"
+        value.status: "$.get('input_status')"
+      outputs:
+        document_id: "$.get('documents')[0]['_id'] if len($.get('documents', [])) > 0 else None"
+        document_data: "$.get('documents')[0] if len($.get('documents', [])) > 0 else None"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else None"
+        question: "$.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else None"
+
+    # 1 Update thread status
+    - type: "document"
+      name: "update-thread-status"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data', {}).get('value', {}),
+            'status': 'processing'
+          }
+      filters:
+        document_id: "$.get('document_id')"
+
+    # 2 Load last 5 snippets
+    - type: "document"
+      name: "load-last-snippets"
+      description: "Load last 5 snippets"
+      config:
+        action: "search"
+        threshold-docs: 5
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "$.get('event_type')"
+        search-limit: "'5'"
+        search-query: "$.get('question')"
+      outputs:
+        last-documents: "$.get('documents')"
+
+    # 3 Load similar documents
+    - type: "document"
+      name: "load-similar-documents"
+      description: "Load similar documents"
+      config:
+        action: "search"
+        threshold-docs: 3
+        threshold-similarity: 0.01
+        search-limit: 1000
+        search-vector: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      inputs:
+        name: "$.get('event_type')"
+        search-limit: "'1000'"
+        search-query: "$.get('question')"
+      outputs:
+        similar-documents: "$.get('documents')"
+
+    # 4 load-event-statistics
+    - type: "document"
+      name: "load-event-statistics"
+      description: "Load the events document statistics."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata: |
+          {
+            'document_type': 'event-statistics',
+            'event_code': $.get('event_code')
+          }
+      inputs:
+        name: "'event-statistics'"
+      outputs:
+        data-statistics: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        data-statistics-home: "$.get('documents')[0].get('value', {}).get('event-statistics', {}).get('summary', {}).get('home', {}) if $.get('documents') else None"
+        data-statistics-away: "$.get('documents')[0].get('value', {}).get('event-statistics', {}).get('summary', {}).get('away', {}) if $.get('documents') else None"
+        data-statistics_exists: "len($.get('documents')) > 0"
+
+    # 5 Prompt chat completion
+    - type: "prompt"
+      name: "prompt-chat-completion"
+      description: "Chat Completion."
+      condition: "$.get('document_id') is not None and $.get('prompt_name') == 'prompt-thread-completion'"
+      connector:
+        name: "groq"
+        # model: "llama-3.1-8b-instant"
+        # model: "llama-3.3-70b-versatile"
+        model: "deepseek-r1-distill-llama-70b"
+        #name: "openai"
+        command: "invoke_prompt"
+        #model: "gpt-4o-mini"
+      inputs:
+        documents: |
+          [
+            *$.get('last-documents', []),
+            *$.get('similar-documents', []),
+          ]
+        messages: "$.get('messages')"
+        question: "$.get('question')"
+      outputs:
+        content: "$"
+
+    # 6 Prompt chat postmatch
+    - type: "prompt"
+      name: "prompt-chat-postmatch"
+      description: "Chat Postmatch."
+      condition: "$.get('document_id') is not None and $.get('prompt_name') == 'prompt-chat-postmatch'"
+      connector:
+        name: "groq"
+        model: "deepseek-r1-distill-llama-70b"
+        command: "invoke_prompt"
+      inputs:
+        documents: |
+          [
+            *$.get('last-documents', []),
+            *$.get('similar-documents', []),
+          ]
+        data-info: |
+          {
+            'home-team-name': $.get('data-statistics-home', {}).get('name', ''),
+            'home-team-points': $.get('data-statistics-home', {}).get('points', ''),
+            'home-statistics': $.get('data-statistics', {}).get('event-statistics', {}).get('statistics', {}).get('home', {}).get('summary', {}),
+            'away-team-name': $.get('data-statistics-away', {}).get('name', ''),
+            'away-team-points': $.get('data-statistics-away', {}).get('points', ''),
+            'away-statistics': $.get('data-statistics', {}).get('event-statistics', {}).get('statistics', {}).get('away', {}).get('summary', {}),
+          }
+        messages: "$.get('messages')"
+        question: "$.get('question')"
+      outputs:
+        content: "$"
+
+    # 7 Load thread document
+    - type: "document"
+      name: "load-thread-document"
+      description: "Load thread document"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        _id: "$.get('document_id')"
+      inputs:
+        name: "'thread'"
+      outputs:
+        document_data: "$.get('documents')[0]"
+        messages: "$.get('documents')[0].get('value', {}).get('messages', [])"
+
+    # 8 Update thread document
+    - type: "document"
+      name: "update-thread-document"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('document_id') is not None"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        thread: |
+          {
+            **$.get('document_data').get('value', {}),
+            'messages': [
+              *$.get('messages'),
+              {
+                'role': 'assistant',
+                'content': $.get('content'),
+                'date': datetime.now().isoformat()
+              }
+            ],
+            'status': $.get('output_status')
+          }
+      filters:
+        document_id: "$.get('document_id')"

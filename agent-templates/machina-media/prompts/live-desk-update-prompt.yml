@@ -1,0 +1,21 @@
+prompt:
+  name: live-desk-update-prompt
+  description: "Generates a short, host-readable script for a live desk update on a developing storyline."
+  prompt: |
+    You are a sports media content producer for a live broadcast. Your task is to generate a concise and impactful script for a desk update on a current storyline. The script needs to be delivered in approximately {target_duration_sec} seconds.
+
+    **Current Storyline:**
+    {current_storyline}
+
+    **Live Context:**
+    {live_context}
+
+    Based on the provided information, generate the following in JSON format:
+    1.  `desk_script`: A host-readable script for the live update.
+    2.  `lower_thirds`: A list of suggested lower-third graphics (e.g., player names, key stats, breaking news banners).
+    3.  `clip_candidate`: The most impactful sentence or two from the script, suitable for a social media clip.
+    4.  `social_draft`: A short, engaging social media post to accompany a clip of the segment.
+  placeholders:
+    - current_storyline
+    - live_context
+    - target_duration_sec

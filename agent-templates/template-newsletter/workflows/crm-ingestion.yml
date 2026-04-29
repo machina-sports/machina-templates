@@ -1,0 +1,442 @@
+workflow:
+  name: template-newsletter-crm-ingestion
+  title: "Template Newsletter | CRM Ingestion"
+  description: "Workflow to ingest data from the CRM."
+  context-variables:
+    debugger:
+      enabled: true
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # install-crm-custom-fan-data
+    - type: document
+      name: install-crm-custom-fan-data
+      description: "Install CRM custom fan data."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        crm-custom-fan-data: |
+          {
+            "title": "CRM Custom Fan Data",
+            "items": [
+              {
+                "fan_id": "fan_001",
+                "supporter_profile": {
+                  "partner_id": "FTC_001",
+                  "partner_email": "kovacs.istvan@email.com",
+                  "name": "Kovács István",
+                  "card_number": "FTC001",
+                  "birth_date": "1985-03-15T00:00:00Z",
+                  "zip_code": "1052",
+                  "city": "Budapest",
+                  "address": "Váci utca 23",
+                  "maiden_name": "",
+                  "country_of_birth": "Hungary",
+                  "place_of_birth": "Budapest",
+                  "mobile_phone": "+36123456789",
+                  "created_at": "2018-06-10T00:00:00Z",
+                  "gender": "male",
+                  "optin": "true",
+                  "iscardreg": "true"
+                },
+                "webshop_customer": {
+                  "userid": 1001,
+                  "surname": "Kovács",
+                  "givenname": "István",
+                  "email": "kovacs.istvan@email.com",
+                  "fancard_id": "FTC001",
+                  "newsletter": "true",
+                  "opt_in": "true",
+                  "created_at": "2018-06-10T00:00:00Z",
+                  "address": [
+                    {
+                      "street": "Váci utca 23",
+                      "city": "Budapest",
+                      "zip": "1052",
+                      "country": "Hungary"
+                    }
+                  ],
+                  "is_guest": "false"
+                },
+                "stadium_visits": [
+                  {
+                    "partner_email": "kovacs.istvan@email.com",
+                    "entrance_datetime": "2024-09-15T18:30:00Z",
+                    "turnstile": "A1",
+                    "event_name": "FTC vs Újpest",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-09-15T19:00:00Z",
+                    "vip_or_away_supporter": "home",
+                    "partner_id": "FTC_001",
+                    "transaction_id": "ST_001_20240915",
+                    "event_id": "FTC_UJP_20240915"
+                  },
+                  {
+                    "partner_email": "kovacs.istvan@email.com",
+                    "entrance_datetime": "2024-08-20T17:45:00Z",
+                    "turnstile": "B3",
+                    "event_name": "FTC vs Debrecen",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-08-20T18:00:00Z",
+                    "vip_or_away_supporter": "home",
+                    "partner_id": "FTC_001",
+                    "transaction_id": "ST_001_20240820",
+                    "event_id": "FTC_DEB_20240820"
+                  }
+                ],
+                "ticket_purchases": [
+                  {
+                    "partner_email": "kovacs.istvan@email.com",
+                    "event_id": "FTC_UJP_20240915",
+                    "event_name": "FTC vs Újpest",
+                    "season_id": 2024,
+                    "season_name": "2024/2025",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-09-15T19:00:00Z",
+                    "ticket_holder_id": "FTC001",
+                    "section_name": "B Közép",
+                    "seat_row": 15,
+                    "seat_number": 8,
+                    "ticket_category": "adult",
+                    "ticket_type": "season_ticket",
+                    "price": 15000,
+                    "purchase_source": "online",
+                    "purchase_datetime": "2024-07-01T10:30:00Z",
+                    "ticket_id": "TKT_001_20240915",
+                    "purchase_id": "PUR_001_20240701",
+                    "buyer_partner_id": "FTC_001",
+                    "transaction_id": "TRX_001_20240701"
+                  }
+                ],
+                "merchandise_purchases": [
+                  {
+                    "order_id": "ORD_001",
+                    "shop": "FTC Official Store",
+                    "cart_id": 1001,
+                    "userid": 1001,
+                    "fancard_id": "FTC001",
+                    "status": "delivered",
+                    "payment_method": "card",
+                    "shipping_method": "standard",
+                    "total_net_value": 25000,
+                    "total_gross_value": 28750,
+                    "order_time": "2024-08-15T14:20:00Z",
+                    "preparing_time": "2024-08-15T15:00:00Z",
+                    "delivering_time": "2024-08-18T11:30:00Z",
+                    "shipping_fee": 2500,
+                    "products": [
+                      {
+                        "product_id": "JER_001",
+                        "name": "Home Jersey 2024/25",
+                        "size": "L",
+                        "quantity": 1,
+                        "price": 20000
+                      },
+                      {
+                        "product_id": "SCF_001",
+                        "name": "Green Scarf",
+                        "quantity": 1,
+                        "price": 5000
+                      }
+                    ]
+                  }
+                ],
+                "email_engagement": [
+                  {
+                    "id": "EML_001_001",
+                    "name": "Monthly Newsletter August",
+                    "subject": "Get Ready for the New Season!",
+                    "date": "2024-08-01T09:00:00Z",
+                    "sent": "true",
+                    "dateSent": "2024-08-01T09:05:00Z",
+                    "opened": "true",
+                    "dateOpened": "2024-08-01T19:30:00Z",
+                    "clicked": "true",
+                    "emailConversation": 1,
+                    "deliveryStatus": "delivered",
+                    "dateClicked": "2024-08-01T19:35:00Z",
+                    "intId": 1001,
+                    "profile_id": "FTC_001"
+                  }
+                ],
+                "stadium_purchases": [
+                  {
+                    "transaction_id": "ST_PUR_001",
+                    "partner_email": "kovacs.istvan@email.com",
+                    "type": "food",
+                    "partner_id": "FTC_001",
+                    "amount": 4500,
+                    "order_time": "2024-09-15T19:45:00Z",
+                    "fulfillment_time": "2024-09-15T19:50:00Z",
+                    "pos_id": "POS_A1_03",
+                    "location": "Section B Buffet",
+                    "item": "Kolbász Hot Dog",
+                    "qty": "1",
+                    "price": "4500"
+                  }
+                ]
+              },
+              {
+                "fan_id": "fan_002",
+                "supporter_profile": {
+                  "partner_id": "FTC_002",
+                  "partner_email": "nagy.anna@email.com",
+                  "name": "Nagy Anna",
+                  "card_number": "FTC002",
+                  "birth_date": "1992-11-22T00:00:00Z",
+                  "zip_code": "1024",
+                  "city": "Budapest",
+                  "address": "Margit körút 15",
+                  "maiden_name": "Szabó",
+                  "country_of_birth": "Hungary",
+                  "place_of_birth": "Debrecen",
+                  "mobile_phone": "+36129876543",
+                  "created_at": "2019-03-15T00:00:00Z",
+                  "gender": "female",
+                  "optin": "true",
+                  "iscardreg": "true"
+                },
+                "webshop_customer": {
+                  "userid": 1002,
+                  "surname": "Nagy",
+                  "givenname": "Anna",
+                  "email": "nagy.anna@email.com",
+                  "fancard_id": "FTC002",
+                  "newsletter": "true",
+                  "opt_in": "true",
+                  "created_at": "2019-03-15T00:00:00Z",
+                  "address": [
+                    {
+                      "street": "Margit körút 15",
+                      "city": "Budapest",
+                      "zip": "1024",
+                      "country": "Hungary"
+                    }
+                  ],
+                  "is_guest": "false"
+                },
+                "stadium_visits": [
+                  {
+                    "partner_email": "nagy.anna@email.com",
+                    "entrance_datetime": "2024-09-15T18:15:00Z",
+                    "turnstile": "C2",
+                    "event_name": "FTC vs Újpest",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-09-15T19:00:00Z",
+                    "vip_or_away_supporter": "home",
+                    "partner_id": "FTC_002",
+                    "transaction_id": "ST_002_20240915",
+                    "event_id": "FTC_UJP_20240915"
+                  }
+                ],
+                "ticket_purchases": [
+                  {
+                    "partner_email": "nagy.anna@email.com",
+                    "event_id": "FTC_UJP_20240915",
+                    "event_name": "FTC vs Újpest",
+                    "season_id": 2024,
+                    "season_name": "2024/2025",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-09-15T19:00:00Z",
+                    "ticket_holder_id": "FTC002",
+                    "section_name": "VIP",
+                    "seat_row": 1,
+                    "seat_number": 5,
+                    "ticket_category": "vip",
+                    "ticket_type": "single_match",
+                    "price": 35000,
+                    "purchase_source": "online",
+                    "purchase_datetime": "2024-09-10T16:45:00Z",
+                    "ticket_id": "TKT_002_20240915",
+                    "purchase_id": "PUR_002_20240910",
+                    "buyer_partner_id": "FTC_002",
+                    "transaction_id": "TRX_002_20240910"
+                  }
+                ],
+                "merchandise_purchases": [
+                  {
+                    "order_id": "ORD_002",
+                    "shop": "FTC Official Store",
+                    "cart_id": 1002,
+                    "userid": 1002,
+                    "fancard_id": "FTC002",
+                    "status": "delivered",
+                    "payment_method": "card",
+                    "shipping_method": "express",
+                    "total_net_value": 45000,
+                    "total_gross_value": 51750,
+                    "order_time": "2024-07-20T11:15:00Z",
+                    "preparing_time": "2024-07-20T12:00:00Z",
+                    "delivering_time": "2024-07-22T10:30:00Z",
+                    "shipping_fee": 1500,
+                    "products": [
+                      {
+                        "product_id": "VIP_001",
+                        "name": "VIP Season Box",
+                        "quantity": 1,
+                        "price": 45000
+                      }
+                    ]
+                  }
+                ],
+                "email_engagement": [
+                  {
+                    "id": "EML_002_001",
+                    "name": "VIP Newsletter",
+                    "subject": "Exclusive VIP Offers Inside",
+                    "date": "2024-09-01T10:00:00Z",
+                    "sent": "true",
+                    "dateSent": "2024-09-01T10:02:00Z",
+                    "opened": "true",
+                    "dateOpened": "2024-09-01T20:15:00Z",
+                    "clicked": "false",
+                    "emailConversation": 1,
+                    "deliveryStatus": "delivered",
+                    "dateClicked": null,
+                    "intId": 1002,
+                    "profile_id": "FTC_002"
+                  }
+                ],
+                "stadium_purchases": [
+                  {
+                    "transaction_id": "ST_PUR_002",
+                    "partner_email": "nagy.anna@email.com",
+                    "type": "food",
+                    "partner_id": "FTC_002",
+                    "amount": 3200,
+                    "order_time": "2024-09-15T19:30:00Z",
+                    "fulfillment_time": "2024-09-15T19:35:00Z",
+                    "pos_id": "POS_VIP_01",
+                    "location": "VIP Lounge",
+                    "item": "Champagne",
+                    "qty": "1",
+                    "price": "3200"
+                  }
+                ]
+              },
+              {
+                "fan_id": "fan_003",
+                "supporter_profile": {
+                  "partner_id": "FTC_003",
+                  "partner_email": "szabo.peter@email.com",
+                  "name": "Szabó Péter",
+                  "card_number": "FTC003",
+                  "birth_date": "1978-05-08T00:00:00Z",
+                  "zip_code": "1132",
+                  "city": "Budapest",
+                  "address": "Pozsonyi út 12",
+                  "maiden_name": "",
+                  "country_of_birth": "Hungary",
+                  "place_of_birth": "Miskolc",
+                  "mobile_phone": "+36134567890",
+                  "created_at": "2015-09-20T00:00:00Z",
+                  "gender": "male",
+                  "optin": "false",
+                  "iscardreg": "true"
+                },
+                "webshop_customer": {
+                  "userid": 1003,
+                  "surname": "Szabó",
+                  "givenname": "Péter",
+                  "email": "szabo.peter@email.com",
+                  "fancard_id": "FTC003",
+                  "newsletter": "false",
+                  "opt_in": "false",
+                  "created_at": "2015-09-20T00:00:00Z",
+                  "address": [
+                    {
+                      "street": "Pozsonyi út 12",
+                      "city": "Budapest",
+                      "zip": "1132",
+                      "country": "Hungary"
+                    }
+                  ],
+                  "is_guest": "false"
+                },
+                "stadium_visits": [
+                  {
+                    "partner_email": "szabo.peter@email.com",
+                    "entrance_datetime": "2024-09-15T18:45:00Z",
+                    "turnstile": "D4",
+                    "event_name": "FTC vs Újpest",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-09-15T19:00:00Z",
+                    "vip_or_away_supporter": "home",
+                    "partner_id": "FTC_003",
+                    "transaction_id": "ST_003_20240915",
+                    "event_id": "FTC_UJP_20240915"
+                  },
+                  {
+                    "partner_email": "szabo.peter@email.com",
+                    "entrance_datetime": "2024-08-20T18:00:00Z",
+                    "turnstile": "D4",
+                    "event_name": "FTC vs Debrecen",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-08-20T18:00:00Z",
+                    "vip_or_away_supporter": "home",
+                    "partner_id": "FTC_003",
+                    "transaction_id": "ST_003_20240820",
+                    "event_id": "FTC_DEB_20240820"
+                  }
+                ],
+                "ticket_purchases": [
+                  {
+                    "partner_email": "szabo.peter@email.com",
+                    "event_id": "FTC_UJP_20240915",
+                    "event_name": "FTC vs Újpest",
+                    "season_id": 2024,
+                    "season_name": "2024/2025",
+                    "event_competition": "OTP Bank Liga",
+                    "event_datetime": "2024-09-15T19:00:00Z",
+                    "ticket_holder_id": "FTC003",
+                    "section_name": "C szektor",
+                    "seat_row": 25,
+                    "seat_number": 12,
+                    "ticket_category": "adult",
+                    "ticket_type": "single_match",
+                    "price": 8000,
+                    "purchase_source": "stadium",
+                    "purchase_datetime": "2024-09-15T18:30:00Z",
+                    "ticket_id": "TKT_003_20240915",
+                    "purchase_id": "PUR_003_20240915",
+                    "buyer_partner_id": "FTC_003",
+                    "transaction_id": "TRX_003_20240915"
+                  }
+                ],
+                "merchandise_purchases": [],
+                "email_engagement": [],
+                "stadium_purchases": [
+                  {
+                    "transaction_id": "ST_PUR_003",
+                    "partner_email": "szabo.peter@email.com",
+                    "type": "food",
+                    "partner_id": "FTC_003",
+                    "amount": 2800,
+                    "order_time": "2024-09-15T19:15:00Z",
+                    "fulfillment_time": "2024-09-15T19:20:00Z",
+                    "pos_id": "POS_D4_02",
+                    "location": "Section D Buffet",
+                    "item": "Sör és Perec",
+                    "qty": "2",
+                    "price": "2800"
+                  }
+                ]
+              }
+            ]
+          }
+
+    # load-crm-custom-fan-data
+    - type: document
+      name: load-crm-custom-fan-data
+      description: "Load CRM custom fan data."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'crm-custom-fan-data'"
+      outputs:
+        crm-custom-fan-data: "$.get('documents')[0].get('value')"

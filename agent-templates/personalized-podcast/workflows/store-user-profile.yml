@@ -1,0 +1,53 @@
+workflow:
+  name: personalized-podcast-store-user-profile
+  title: Personalized Podcast Store User Profile
+  description: "Workflow to receive user profile inputs and store them as documents in the database"
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    name: "$.get('name')"
+    favorite_sport: "$.get('favorite_sport')"
+    favorite_team: "$.get('favorite_team')"
+    podcast_mood_tone: "$.get('podcast_mood_tone')"
+    sports_knowledge: "$.get('sports_knowledge')"
+    email_address: "$.get('email_address')"
+    allow_machina_outreach: "$.get('allow_machina_outreach')"
+  outputs:
+    workflow-status: "'executed'"
+    document_id: "$.get('document_id')"
+    profile_id: "$.get('profile_id')"
+    user_data: "$.get('user_data')"
+    debug_logs: "$.get('debug_logs')"
+  tasks:
+    # Store user profile as document
+    - type: "document"
+      name: "task-bulk-save-user-profile"
+      description: "Bulk save user profile."
+      config:
+        action: save
+      document_name: "'user-profile'"
+      documents:
+        user-profile: |
+          {
+            **{
+              'name': $.get('name'),
+              'favorite_sport': $.get('favorite_sport'),
+              'favorite_team': $.get('favorite_team'),
+              'podcast_mood_tone': $.get('podcast_mood_tone'),
+              'sports_knowledge': $.get('sports_knowledge'),
+              'email_address': $.get('email_address'),
+              'country': $.get('country'),
+              'language': $.get('language'),
+              'allow_machina_outreach': $.get('allow_machina_outreach'),
+              'created_at': datetime.now().isoformat()
+            },
+            'title': $.get('name')
+          }
+      metadata:
+        document_type: "'user-profile'"
+        source: "'user-input'"
+      outputs:
+        document_id: "$.get('documents', [])[0].get('_id') if len($.get('documents', [])) > 0 else None"

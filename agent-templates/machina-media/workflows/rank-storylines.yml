@@ -1,0 +1,43 @@
+workflow:
+  name: rank-storylines
+  title: Rank Storylines
+  description: "Ranks candidate storylines based on editorial rules and programming slot."
+
+  inputs:
+    candidate_storylines: "$.get('candidate_storylines', [])"
+    current_slot: "$.get('current_slot', 'live_desk')"
+    editorial_rules: >-
+      $.get('editorial_rules', 'Prioritize game-changing moments.
+      Highlight player milestones.
+      Cover injuries to key players.
+      Track betting market movements.
+      Identify potential upsets.
+      Ignore minor stats.
+      Deprioritize non-essential news.')
+
+  outputs:
+    ranked_queue: "$.get('ranked_queue', [])"
+    live_desk_picks: "[s for s in $.get('ranked_queue', []) if s.get('routing') == 'live_desk']"
+    social_only_picks: "[s for s in $.get('ranked_queue', []) if s.get('routing') == 'social_only']"
+    ignored: "[s for s in $.get('ranked_queue', []) if s.get('routing') == 'ignored']"
+    workflow-status: "len($.get('ranked_queue', [])) >= 0"
+
+  tasks:
+    - type: "prompt"
+      name: "storyline-ranking-prompt"
+      description: "Invokes the storyline ranking prompt to prioritize and route storylines."
+      # The connector details will be inherited from the agent if not specified,
+      # but we can be explicit if needed. Assuming agent-level configuration.
+      # For consistency with the other workflow, let's be explicit.
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        provider: "vertex_ai"
+        location: "global"
+      inputs:
+        candidate_storylines: "$.get('candidate_storylines')"
+        current_slot: "$.get('current_slot')"
+        editorial_rules: "$.get('editorial_rules')"
+      outputs:
+        ranked_queue: "$.get('ranked_queue', [])"

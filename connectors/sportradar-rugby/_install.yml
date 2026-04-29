@@ -1,0 +1,26 @@
+setup:
+  title: Sportradar Rugby v3
+  description: Connect to the SportRadar Rugby API to get live and historical data.
+  category:
+    - data-acquisition
+    - rugby
+  estimatedTime: 1 minute
+  features:
+    - Real-time scoring
+    - In-depth match statistics
+    - Supplementary data
+    - Consistent structure, format, and behavior with the other General Sport APIs
+    - Primary feeds will return seasons, competitions, team and player data, and real-time scores
+    - All major competitions are covered and available in three packages
+    - Rugby Union, Rugby League, and Rugby Sevens
+  integrations:
+    - sportradar
+  status: available
+  value: sportradar-rugby
+  version: 3.0.0
+
+datasets:
+  - type: "connector"
+    path: "sportradar-rugby.yml"
+
+

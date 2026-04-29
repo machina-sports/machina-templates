@@ -1,0 +1,50 @@
+workflow:
+
+  # oxylabs-web-scraping
+  name: "oxylabs-web-scraping"
+  title: "Oxylabs - Web Scraping"
+  description: "Workflow to scrape a web page."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    oxylabs:
+      username: "$TEMP_CONTEXT_VARIABLE_OXYLABS_USERNAME"
+      password: "$TEMP_CONTEXT_VARIABLE_OXYLABS_PASSWORD"
+  inputs:
+    parse: "($.get('parse', 'false') == 'true') and True or False"
+    render: "$.get('render')"
+    source: "$.get('source', 'universal')"
+    url: "$.get('url')"
+  outputs:
+    parsed-content: "$.get('parsed-content')"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "oxylabs-post-queries"
+      description: "Scrape a web page."
+      condition: "$.get('url') is not None"
+      connector:
+        name: "oxylabs"
+        command: "post-queries"
+      inputs:
+        body: |
+          {
+            "parse": $.get('parse'),
+            "render": $.get('render'),
+            "source": $.get('source'),
+            "url": $.get('url'),
+          }
+      outputs:
+        scraping-content: "$.get('results', [])[0].get('content')"
+
+    - type: "mapping"
+      name: "oxylabs-scraping-mapping"
+      description: "Mapping data from oxylabs scraping"
+      condition: "$.get('scraping-content') is not None"
+      inputs:
+        input-scraping-content: "$.get('scraping-content')"
+      outputs:
+        parsed-content: "$.get('parsed-content')"

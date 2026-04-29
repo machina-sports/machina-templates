@@ -1,0 +1,50 @@
+agent:
+  name: "template-sportsblog-scheduler"
+  title: "Agent Scheduler"
+  description: "Agent responsible for scheduling workflows."
+  context:
+    config-frequency: 1
+  workflows:
+
+    # Reporter Websearch
+    - name: "workflow-reporter-websearch"
+      description: "Reporter Websearch"
+      outputs:
+        agent-templates/reporter-websearch: "$.get('events')"
+
+    # Reporter Summary
+    - name: "workflow-reporter-summary"
+      description: "Reporter Summary"
+      outputs:
+        agent-templates/reporter-summary: "$.get('events')"
+
+    # Reporter Briefing
+    - name: "workflow-reporter-briefing-en"
+      description: "Reporter Briefing English"
+      outputs:
+        agent-templates/reporter-briefing-en: "$.get('events')"
+
+    # Reporter Image Preview
+    - name: "workflow-reporter-image-preview"
+      description: "Reporter Image Preview"
+      outputs:
+        reporter-image-preview: "$.get('events')"
+
+    # Reporter Preview Brazilian Portuguese
+    - name: "workflow-reporter-preview-br"
+      description: "Reporter Preview Brazilian Portuguese"
+      outputs:
+        agent-templates/reporter-preview-br: "$.get('events')"
+
+    # Reporter Polls English
+    - name: "workflow-reporter-polls-en"
+      description: "Reporter Polls English"
+      outputs:
+        agent-templates/reporter-polls-en: "$.get('events')"
+
+    # Reporter Quizzes English
+    - name: "workflow-reporter-quizzes-en"
+      description: "Reporter Quizzes English"
+      outputs:
+        agent-templates/reporter-quizzes-en: "$.get('events')"
+

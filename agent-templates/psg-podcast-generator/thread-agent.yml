@@ -1,0 +1,16 @@
+agent:
+  name: "psg-podcast-generator"
+  title: "PSG Podcast Generator"
+  description: "PSG Podcast Generator."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    # PSG Podcast Generator Thread Executor
+    - name: psg-podcast-generator-thread-executor
+      description: "PSG Podcast Generator Thread Executor"
+      inputs:
+        input_status: "'waiting'"
+        output_status: "'idle'"
+      outputs:
+        workflow-status: "$.get('workflow-status')"

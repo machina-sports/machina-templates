@@ -1,0 +1,8 @@
+connector:
+  name: assistant-tools-map-markets
+  description: Assistant Tools Map Markets
+  filename: map_markets.py
+  filetype: pyscript 
+  commands:
+    - name: Invoke Map Markets
+      value: invoke_map_markets

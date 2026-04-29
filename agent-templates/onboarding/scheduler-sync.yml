@@ -1,0 +1,14 @@
+agent:
+  name: "scheduler-sync"
+  title: "Sync Executor Schedule"
+  description: "Agent responsible for scheduling workflows."
+  context:
+    config-frequency: 0.5
+  workflows:
+        
+    # Reporter Stats
+    - name: "soccer-embeddings"
+      description: "Generate soccer embeddings"
+      outputs:
+        research-stats-soccer: "$.get('workflow-status', False)"
+        research-odds: "$.get('workflow-status', False)"

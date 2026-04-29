@@ -1,0 +1,62 @@
+setup:
+  title: Social Media Content Generator
+  description: |
+    AI-powered social media content generator that creates engaging memes, stats graphics, 
+    and interactive quizzes for soccer matchups using real-time team statistics, news insights, 
+    and AI image generation.
+  category:
+    - sports
+    - social-media
+    - soccer
+    - content-creation
+  estimatedTime: 5 minutes
+  features:
+    - Automated content suggestions for soccer matchups (memes, stats, quizzes)
+    - Real-time team statistics from API Football
+    - News intelligence with trending topics extraction
+    - AI-powered content generation tailored to matchup context
+    - Custom AI image generation with Gemini
+    - Multiple aspect ratios support (1:1, 16:9, 9:16)
+    - User customization via custom prompts
+    - Cloud storage integration for image hosting
+    - Document-based suggestion workflow
+    - Content suitable for Twitter/Instagram sharing
+  integrations:
+    - api-football
+    - google-genai
+    - google-storage
+    - machina-ai
+  status: available
+  value: agent-templates/social-media-generator
+  version: 1.0.0
+
+datasets:
+
+  # Agent
+  - type: agent
+    path: agents/social-media-generator.yml
+
+  # Prompts
+  - type: prompt
+    path: prompts/news_query_generator.yml
+
+  - type: prompt
+    path: prompts/content_context_extractor.yml
+
+  - type: prompt
+    path: prompts/generate_content_suggestion.yml
+
+  - type: prompt
+    path: prompts/generate_image_prompt.yml
+
+  # Workflows
+  - type: workflow
+    path: workflows/generate-content.yml
+
+  - type: workflow
+    path: workflows/generate-image.yml
+
+  # Connectors
+  - type: connector
+    path: scripts/filter_stats.yml
+

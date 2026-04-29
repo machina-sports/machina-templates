@@ -1,0 +1,5 @@
+connector:
+  name: "sportradar-nhl"
+  description: "Sportradar NHL API v7"
+  filename: "sportradar-nhl.json"
+  filetype: "restapi" 

@@ -1,0 +1,43 @@
+workflow:
+
+  # iptc-sportradar-event-mapping-test
+  name: iptc-sportradar-event-mapping-test
+  title: "IPTC | Sportradar Event Mapping Test"
+  description: "Workflow to map event from Sportradar to Sportschema."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    event_code: "$.get('event_code')"
+  outputs:
+    workflow-status: "$.get('has-event') is True and 'executed' or 'skipped'"
+    sport-schema-event: "$.get('sport-schema-event')"
+  tasks:
+
+    # sportradar-search-event
+    - type: document
+      name: sportradar-search-event
+      description: "Sportradar Search Event"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'soccer-game'"
+      outputs:
+        data-event: "$.get('documents', [])"
+        has-event: "len($.get('documents', [])) > 0"
+        selected-event: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+
+    # iptc-sportradar-event-mapping
+    - type: mapping
+      name: iptc-sportradar-event-mapping
+      title: "IPTC | Sportradar Event Mapping"
+      description: "Mapping data from sportradar to sportschema event"
+      condition: "$.get('has-event') is True"
+      inputs:
+        event: "$.get('selected-event', {}).get('value', {})"
+      outputs:
+        sport-schema-event: "$.get('sport_schema_event')"

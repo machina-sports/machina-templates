@@ -1,0 +1,92 @@
+workflow:
+  name: "machina-football-data-sync-schedules"
+  title: "Machina Football Data - Season Schedules"
+  description: "Workflow to synchronize season schedules from Machina Football Data to Machina."
+  context-variables:
+    debugger:
+      enabled: false
+    machina-football-data:
+      api_key: "$TEMP_CONTEXT_VARIABLE_FOOTBALL_DATA_API_KEY"
+  inputs:
+    season_id: "$.get('season_id')"
+  outputs:
+    events: "$.get('events_mapped', [])"
+    workflow-status: "len($.get('events_mapped', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # fetch season schedule from API
+    - type: "connector"
+      name: "task-load-schedules"
+      description: "Get season schedule from Machina Football Data"
+      connector:
+        name: "machina-football-data"
+        command: "get_season_schedule"
+        command_attribute:
+          season_id: "$.get('season_id')"
+      inputs:
+        api_key: "$.get('api_key')"
+        offset: "$.get('offset', '0')"
+      outputs:
+        schedules: "$.get('schedules', [])"
+
+    # map to IPTC Sport Schema
+    - type: "mapping"
+      name: "task-map-events"
+      description: "Map schedule events to IPTC Sport Schema format."
+      mapping:
+        name: "machina-football-event-mapping"
+      inputs:
+        events: "$.get('schedules', [])"
+      outputs:
+        events_mapped: "$.get('events', [])"
+
+    # check for existing events to avoid duplicates
+    - type: "document"
+      name: "task-check-existing-events"
+      description: "Check for existing events in the database."
+      config:
+        action: "search"
+        search-limit: 1000
+        search-vector: false
+      filters:
+        name: "{'$in': ['sport:Event']}"
+        metadata.season_id: "$.get('season_id')"
+      outputs:
+        existing_event_ids: "[d.get('value', {}).get('@id', '') for d in $.get('documents', [])]"
+
+    # filter out existing events
+    - type: "mapping"
+      name: "task-filter-new-events"
+      description: "Filter out already existing events."
+      condition: "len($.get('events_mapped', [])) > 0"
+      mapping:
+        name: "machina-football-id-conversion-mapping"
+      inputs:
+        events: |
+          [
+            e for e in $.get('events_mapped', [])
+            if e.get('@id') not in $.get('existing_event_ids', [])
+          ]
+      outputs:
+        new_events: "$.get('events', [])"
+
+    # bulk save new events
+    - type: "document"
+      name: "task-bulk-save-events"
+      description: "Bulk save new events as sport:Event documents."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      condition: "len($.get('events_mapped', [])) > 0"
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "'sport:Event'"
+      documents:
+        items: "$.get('events_mapped', [])"
+      metadata:
+        document_type: "'sport:Event'"
+        season_id: "$.get('season_id')"
+        event_code: "item.get('@id', '').replace('urn:machina:sport_event:', '')"

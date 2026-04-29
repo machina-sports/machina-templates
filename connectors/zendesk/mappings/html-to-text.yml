@@ -1,0 +1,18 @@
+mappings:
+
+  - type: mapping
+    title: Zendesk Articles - HTML to Text Mapping
+    name: zendesk-articles-html-to-text-mapping
+    description: Convert HTML content to clean text using bs4
+    outputs:
+      articles_parsed: |
+        [
+          {
+            'title': article.get('title', ''),
+            'body': bs4(article.get('body_html', ''), 'html.parser').get_text().strip(),
+            'metadata': article.get('metadata', {})
+          }
+          for article in $.get('articles_raw', [])
+          if article.get('body_html')
+        ]
+

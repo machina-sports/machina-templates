@@ -1,0 +1,56 @@
+prompt:
+  name: roast-agent-generate-search-queries-team-a
+  title: Roast Agent Generate Search Queries - Team A Wins & Trash Talk
+  description: "Generate search queries to find Team A's recent wins, victories, and trash talk points against Team B"
+  instructions: |
+    Generate 3-4 Google search queries finding Team A's wins, victories, and trash talk against [team_b].
+
+    PARAMETERS:
+    - team_a: Actual team name (e.g., "warriors") - use exact value, never "Team A" or "[team_a]"
+    - team_b: Actual opposing team name (e.g., "lakers") - use exact value, never "Team B" or "[team_b]"
+    - language: Query language
+    - roast_intensity: low/medium/high (scales dominance focus)
+
+    REQUIRED QUERY TYPES (generate exactly 3-4):
+    1. [team_a] recent wins and victories against [team_b]
+    2. [team_a] vs [team_b] head-to-head record (showing dominance)
+    3. [team_a] best performances against [team_b]
+    4. [team_a] trash talk, celebrations, dominant moments vs [team_b]
+
+    QUERY REQUIREMENTS:
+    - Start with actual team_a name
+    - Include actual team_b name in every query
+    - Include positive keywords: wins, victories, beat, defeated, dominated, record, best, trash talk, celebrations
+    - Include recency: recent, latest, this season, 2024, today
+
+    EXAMPLES (team_a="warriors", team_b="lakers"):
+    - "warriors vs lakers recent wins victories"
+    - "warriors beat lakers head-to-head record"
+    - "warriors best performances against lakers this season"
+    - "warriors trash talk lakers celebrations recent"
+
+    INTENSITY SCALING:
+    - low: General head-to-head records
+    - medium: Include recent wins and victories
+    - high: Emphasize dominant performances, trash talk, celebrations, viral moments
+
+    CONSTRAINTS:
+    - EVERY query must include both actual team names
+    - Focus on Team A's successes and victories
+    - Show Team A dominating/beating Team B
+    - Generate in specified language
+  schema:
+    title: RoastAgentGenerateSearchQueriesTeamA
+    description: Search queries focused on finding Team A's wins, victories, and trash talk points against Team B
+    type: object
+    required: [ "search_queries" ]
+    properties:
+      search_queries:
+        type: array
+        description: Array of 3-4 search queries focused on Team A's wins, victories, and trash talk against Team B
+        minItems: 3
+        maxItems: 4
+        items:
+          type: string
+          description: Search query focused on finding Team A's positive content and victories against Team B
+

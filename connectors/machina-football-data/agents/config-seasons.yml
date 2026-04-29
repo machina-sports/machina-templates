@@ -1,0 +1,15 @@
+agent:
+  name: machina-football-data-config-seasons
+  title: Machina Football Data - Configure Seasons
+  description: Agent to configure active seasons for Machina Football Data connector.
+  status: inactive
+  config-frequency: 1440
+  workflows:
+    - name: machina-football-data-sync-competitions
+      title: Sync Competitions
+    - name: machina-football-data-sync-schedules
+      title: Sync Schedules
+    - name: machina-football-data-sync-standings
+      title: Sync Standings
+    - name: machina-football-data-sync-season-leaders
+      title: Sync Season Leaders

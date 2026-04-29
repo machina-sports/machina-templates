@@ -1,0 +1,105 @@
+workflow:
+  name: "workflow-sync-games"
+  title: "Sync Games"
+  description: "Workflow to synchronize a season games from Superbowl LIX API to Machina."
+  context-variables:
+    sportradar-nfl:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    season_year: "$.get('season_year', '2024')"
+    season_type: "$.get('season_type', 'REG')"
+  outputs:
+    games: "$.get('games')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    
+    # 0 check-document-timedelta
+    - type: "document"
+      name: "check-document-timedelta"
+      description: "Check if the games document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.document_type: "'synchronization'"
+        metadata.season_year: "$.get('season_year')"
+        metadata.season_type: "$.get('season_type')"
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
+      inputs:
+        name: "'games'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # 1 load-games
+    - type: "connector"
+      name: "load-games"
+      description: "Get a season games from SportRadar"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{season_year}/{season_type}/{data_type}"
+        command_attribute:
+          season_year: "$.get('season_year')"
+          season_type: "$.get('season_type')"
+          data_type: "'schedule.json'"
+      condition: "$.get('should_update') == True"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        games: "$.get('games')"
+        games_parsed: |
+          [
+            {
+              **game,
+              'metadata': {
+                'event_code': game.get('id', ''),
+              },
+              'version_control': {
+                'processing': False,
+                'updated': datetime.utcnow()
+              },
+              'start_time': datetime.strptime(game.get('scheduled').replace('+00:00', 'Z'), '%Y-%m-%dT%H:%M:%SZ'),
+              'title': f"{game.get('home', {}).get('name', '')} v {game.get('away', {}).get('name', '')}",
+              'selected': False
+            }
+            for week in $.get('weeks', [])
+            for game in week.get('games', [])
+          ]
+
+    # 2 update-games
+    - type: "document"
+      name: "update-games"
+      description: "Update the games document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      documents:
+        games: |
+          {
+            'data': $.get('games_parsed'),
+            'title': f"{$.get('season_year')} - {$.get('season_type')} - All Games ({len($.get('games_parsed', []))})",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        season_year: "$.get('season_year')"
+        season_type: "$.get('season_type')"
+        document_type: "'synchronization'"
+
+    # 3 bulk-save-games
+    - type: "document"
+      name: "bulk-save-games"
+      condition: "$.get('should_update') == True"
+      description: "Bulk save the games."
+      config:
+        action: "bulk-update"
+        embed-vector: false
+        force-update: true
+      document_name: "game"
+      documents:
+        items: "$.get('games_parsed')"
+      inputs:
+        games_parsed: "$.get('games_parsed')"

@@ -1,0 +1,31 @@
+workflow:
+  name: generate-breaking-news-alert
+  description: "Generates a breaking news alert script and social assets."
+  inputs:
+    news_item:
+      type: object
+      description: "The breaking news item."
+      required: true
+    context_storylines:
+      type: array
+      description: "A list of storylines for context."
+      required: true
+  tasks:
+    - name: generate_alert
+      type: prompt
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        provider: vertex_ai
+        location: global
+      prompt: breaking-news-alert-prompt
+      inputs:
+        news_item: "$.get('news_item')"
+        context_storylines: "$.get('context_storylines')"
+  outputs:
+    alert_script: "$.get('generate_alert', {}).get('alert_script', '')"
+    title_package: "$.get('generate_alert', {}).get('title_package', [])"
+    social_variants: "$.get('generate_alert', {}).get('social_variants', {})"
+    follow_up_desk_angles: "$.get('generate_alert', {}).get('follow_up_desk_angles', [])"
+    workflow-status: "$.get('generate_alert', {}).get('alert_script', '') and 'executed' or 'skipped'"

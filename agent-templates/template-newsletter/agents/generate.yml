@@ -1,0 +1,37 @@
+agent:
+  name: template-newsletter-agent
+  title: Template Newsletter - Agent
+  description: "Template Newsletter Agent."
+  context-agent:
+    document_id: "$.get('document_id')"
+    footer_image: "$.get('footer_image')"
+    header_image: "$.get('header_image')"
+  workflows:
+
+    # template-newsletter-xai-search
+    - name: template-newsletter-xai-search
+      description: "Template Newsletter XAI Search"
+      inputs:
+        profile-analysis: "$.get('profile-analysis')"
+      outputs:
+        moment-analysis: "$.get('output-response')"
+
+    # template-newsletter-user-analysis
+    - name: template-newsletter-user-analysis
+      description: "Template Newsletter User Analysis"
+      inputs:
+        document_id: "$.get('document_id')"
+      outputs:
+        profile-analysis: "$.get('profile-analysis')"
+
+    # template-newsletter-news-content
+    - name: template-newsletter-news-content
+      description: "Template Newsletter News Content"
+      inputs:
+        document_id: "$.get('document_id')"
+        footer_image: "$.get('footer_image')"
+        header_image: "$.get('header_image')"
+        moment-analysis: "$.get('moment-analysis')"
+        profile-analysis: "$.get('profile-analysis')"
+      outputs:
+        newsletter-content: "$.get('newsletter-content')"

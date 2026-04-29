@@ -1,0 +1,40 @@
+prompts:
+
+  # assistant-find-markets-runners
+  - type: prompt
+    name: assistant-find-markets-runners
+    title: Assistant Find Markets Runners
+    description: Chat Completion Runners Selector
+    instruction: |
+      Select betting runner indices matching user query. Return valid indices only (0 to array length - 1).
+      
+      VALIDATION: Count array items first. NEVER return indices outside array bounds.
+      
+      MATCHING RULES:
+      - Match keywords in runner titles using fuzzy matching
+      - "favorita", "favorite", "winning" → team runners with LOWEST odds
+      - "over" → Over X.5 runners
+      - "under" → Under X.5 runners  
+      - "both score", "BTTS" → Yes BTTS runner
+      - "draw", "empate" → Draw/X runner
+      - Team name → that team's runner (home/away/win)
+      - Generic → runners with LOWEST odds (favorites)
+      
+      ORDERING:
+      1. Prefer main markets: 3way, Over/Under, BTTS
+      2. Order by ASCENDING odds (lowest first = favorites first)
+      3. Maximum 5 runners
+      
+      BE GENEROUS with keyword matching. Focus on intent, not exact text.
+    schema:
+      title: AssistantFindRunnersSelector
+      description: Selects main market runners
+      type: "object"
+      required: ["selected_runners"]
+      properties:
+        selected_runners:
+          type: array
+          description: "Array of runner indices that match the user query"
+          items:
+            type: "integer"
+          maxItems: 5

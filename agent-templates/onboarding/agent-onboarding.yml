@@ -1,0 +1,23 @@
+agent:
+  name: "agent-onboarding"
+  title: "Agent Onboarding"
+  description: "Agent responsible for onboarding."
+  context:
+    config-frequency: 0.04
+  workflows:
+        
+    # sync-nba-embeds
+    - name: "sync-nba-embeds"
+      description: "sync-nba-embeds"
+      inputs:
+        event_code: "$.get('event_code') or None"
+      outputs:
+        sync-nba-embeds-status: "$.get('workflow-status', False)"
+        
+    # sync-nfl-embeds
+    - name: "sync-nfl-embeds"
+      description: "sync-nfl-embeds"
+      inputs:
+        event_code: "$.get('event_code') or None"
+      outputs:
+        sync-nfl-embeds-status: "$.get('workflow-status', False)"

@@ -1,0 +1,43 @@
+agent:
+  name: template-sportsblog-setup  
+  title: "Setup Sportsblog"
+  description: "Setup Sportsblog"
+  context:
+    config-frequency: 99999999
+  workflows:
+
+    - name: "template-sportsblog-folders"
+      description: "Setup Folders"
+      condition: "$.get('setup-register') is not True"
+      outputs:
+        setup-register: "$.get('setup-register')"
+
+    - name: "workflow-sync-competitions"
+      description: "sync-competitions"
+      condition: "$.get('setup-register') is not True"
+      outputs:
+        sync-competitions-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-seasons"
+      description: "sync-seasons"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        competition_id: "'sr:competition:92'"
+      outputs:
+        sync-seasons-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-standings"
+      description: "sync-standings"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        season_id: "'sr:season:126801'"
+      outputs:
+        sync-standings-status: "$.get('workflow-status', False)"
+
+    - name: "workflow-sync-schedules"
+      description: "sync-schedules"
+      condition: "$.get('setup-register') is not True"
+      inputs:
+        season_id: "'sr:season:126801'"
+      outputs:
+        sync-schedules-status: "$.get('workflow-status', False)"

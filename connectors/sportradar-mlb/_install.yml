@@ -1,0 +1,29 @@
+setup:
+  title: Sportradar MLB v8
+  description: Connect to the SportRadar MLB API to get live and historical data.
+  category:
+    - data-acquisition
+    - baseball
+    - baseball-mlb
+  estimatedTime: 1 minute
+  features:
+    - Comprehensive suite of game and seasonal stats
+    - Fastest gameday updates
+    - Favorite players season stats
+    - In-depth subjective statistics
+    - All game data feeds update in real-time as games are played
+    - All NFL games - including preseason - feature full play-by-play coverage
+  integrations:
+    - sportradar
+  status: available
+  value: sportradar-mlb
+  version: 8.0.0
+
+datasets:
+  - type: "connector"
+    path: "sportradar-mlb.yml"
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
+

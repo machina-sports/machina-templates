@@ -1,0 +1,47 @@
+agent:
+  name: social-media-generator
+  title: Social Media Content Generator
+  description: |
+    An intelligent agent that generates engaging social media content (memes, stats graphics, quizzes)
+    for soccer teams using real-time statistics and news insights
+  context:
+    config-frequency: 10
+    status: "inactive"
+  context-agent:
+    event_id: "$.get('event_id')"
+  workflows:
+  
+    # 1. Generate Content Suggestions: Create suggestions for an event
+    - name: social-media-generate-content
+      description: |
+        Generate content suggestions for a selected event/fixture:
+        - Load event and team data from API Football
+        - Fetch recent news and trending topics
+        - Generate suggestions for meme, stats, and quiz content
+        - Store suggestions as documents (without images)
+      inputs:
+        event_id: $.get('event_id')
+        content_types: $.get('content_types', ['meme', 'stats', 'quiz'])
+      outputs:
+        suggestion_ids: $.get('suggestions', [])
+        suggestions_generated: $.get('workflow-status', 'skipped') == 'executed'
+
+    # 2. Generate Image: Create AI image for a selected suggestion
+    - name: social-media-generate-image
+      description: |
+        Generate AI image for a selected content suggestion:
+        - Load suggestion document
+        - Apply custom user prompt (if provided)
+        - Generate image with specified aspect ratio
+        - Upload to cloud storage
+        - Update suggestion with image URL
+      condition: $.get('suggestion_id') is not None
+      inputs:
+        suggestion_id: $.get('suggestion_id')
+        custom_prompt: $.get('custom_prompt', '')
+        aspect_ratio: $.get('aspect_ratio', '1:1')
+      outputs:
+        image_url: $.get('image_url')
+        suggestion_id: $.get('suggestion_id')
+        image_generated: $.get('workflow-status', 'skipped') == 'executed'
+

@@ -1,0 +1,275 @@
+workflow:
+  name: "workflow-reporter-teamstats"
+  title: "Reporter Team Statistics"
+  description: "Workflow to produce team statistics."
+  context-variables:
+    openai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search for events in the database."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["updated", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "'game'"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        exe_teamstats_count: "$.get('documents')[0].get('value', {}).get('version_control', {}).get('exe_teamstats_count', 0) if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 1 load-event-scheduled
+    - type: "document"
+      name: "load-event-scheduled"
+      description: "Search for events in the database."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        value.status: "{'$in': ['scheduled']}"
+        value.start_time: "{'$lt': datetime.utcnow() + timedelta(hours=24)}"
+        value.version_control.processing: "{'$ne': True}"
+        value.version_control.exe_teamstats_status: "{'$exists': False}"
+        value.version_control.exe_briefing_status: "'processed'"
+        value.version_control.sync_teams_status: "'processed'"
+      inputs:
+        name: "'game'"
+      outputs:
+        event_code: "$.get('documents')[0].get('metadata').get('event_code') if $.get('documents') else None"
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        exe_teamstats_count: "$.get('documents')[0].get('value', {}).get('version_control', {}).get('exe_teamstats_count', 0) if $.get('documents') else None"
+        title: "$.get('documents')[0].get('value').get('title') if $.get('documents') else None"
+    
+    # 2 version-control-start
+    - type: "document"
+      name: "version-control-start"
+      description: "Update the events document preevent."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': True,
+              'exe_teamstats_status': 'processing'
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+    
+    # 3 load-event-summary
+    - type: "document"
+      name: "load-event-summary"
+      description: "Load the events document summary."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata: |
+          {
+            'document_type': 'event-summary',
+            'event_code': $.get('event_code'),
+            'language': 'en'
+          }
+      inputs:
+        name: "'event-summary'"
+      outputs:
+        event-summary: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event-summary_exists: "len($.get('documents')) > 0"
+    
+    # 4 load-event-briefing
+    - type: "document"
+      name: "load-event-briefing"
+      description: "Load the events document briefing."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata: |
+          {
+            'event_code': $.get('event_code'),
+            'language': 'en'
+          }
+        name: "'content-briefing'"
+      outputs:
+        event-briefing: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+    
+    # 5 prompt-team-statistics (home)
+    - type: "prompt"
+      name: "prompt-team-statistics"
+      description: "comprehensive team statistics across all phases of the game"
+      condition: "$.get('event_exists') is True and $.get('event-summary_exists') is True"
+      connector:
+        name: "openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        event-briefing: "$.get('event-briefing')"
+        home-team-stats: "$.get('event-summary').get('home-team-stats').get('record')"
+      outputs:
+        home-statistics-bulk: |
+          [
+            {
+              'subject': c.get('title', ''),
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('sections')
+          ]
+        home-statistics: "$"
+    
+    # 6 prompt-team-statistics (away)
+    - type: "prompt"
+      name: "prompt-team-statistics"
+      description: "comprehensive team statistics across all phases of the game"
+      condition: "$.get('event_exists') is True and $.get('event-summary_exists') is True"
+      connector:
+        name: "openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        event-briefing: "$.get('event-briefing')"
+        away-team-stats: "$.get('event-summary').get('away-team-stats').get('record')"
+      outputs:
+        away-statistics-bulk: |
+          [
+            {
+              'subject': c.get('title', ''),
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('sections')
+          ]
+        away-statistics: "$"
+
+    # 7 prompt-head-to-head
+    - type: "prompt"
+      name: "prompt-head-to-head"
+      description: "head-to-head performance between the two teams"
+      condition: "$.get('event_exists') is True and $.get('event-summary_exists') is True"
+      connector:
+        name: "openai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        event-briefing: "$.get('event-briefing')"
+        home-team-stats: "$.get('event-summary').get('home-team-stats').get('record')"
+        away-team-stats: "$.get('event-summary').get('away-team-stats').get('record')"
+      outputs:
+        head-to-head-bulk: |
+          [
+            {
+              'subject': c.get('title', ''),
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('sections')
+          ]
+        head-to-head-report: "$"
+    
+    # 8 performance-report-update
+    - type: "document"
+      name: "performance-report-update"
+      description: "Update the performance report document."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        performance-report: |
+          {
+            'away-performance': $.get('away-statistics', {}).get('performance_summary', {}),
+            'home-performance': $.get('home-statistics', {}).get('performance_summary', {}),
+            'head-to-head-report': $.get('head-to-head-report', {}),
+            'title': f"$.(title) - Performance Report"
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+        language: "'en'"
+
+    # 9 bulk-save-snippets
+    - type: "document"
+      name: "bulk-save-snippets"
+      condition: "$.get('event_exists') is True"
+      description: "Bulk save the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('home-statistics-bulk', []),
+            *$.get('away-statistics-bulk', []),
+            *$.get('head-to-head-bulk', []),
+          ]
+    
+    # 10 version-control-end
+    - type: "document"
+      name: "version-control-end"
+      description: "Update the events document end."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        game: |
+          {
+            **$.get('event_selected'),
+            'version_control': {
+              **$.get('event_selected').get('version_control', {}),
+              'processing': False,
+              'exe_teamstats_count': $.get('exe_teamstats_count', 0) + 1,
+              'exe_teamstats_status': 'processed',
+              'updated': datetime.utcnow()
+            }
+          }
+      metadata:
+        event_code: "$.get('event_code')"

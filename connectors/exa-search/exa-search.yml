@@ -1,0 +1,5 @@
+connector:
+  name: "exa-search"
+  description: "A comprehensive API for internet-scale search, allowing users to perform queries and retrieve results from a wide variety of sources using embeddings-based and traditional search."
+  filename: "exa-search.json"
+  filetype: "restapi" 

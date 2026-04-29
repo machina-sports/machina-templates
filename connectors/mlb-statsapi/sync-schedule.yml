@@ -1,0 +1,106 @@
+workflow:
+  name: "mlb-statsapi-sync-schedule"
+  title: "MLB - Sync Schedule"
+  description: "Workflow to synchronize schedule from MLB Stats API to Machina."
+  context-variables:
+    mlb-statsapi: {}
+  outputs:
+    schedule: "$.get('schedule')"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+    # task-check-document-timedelta
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the schedule document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=12)}"
+        value.status: "'active'"
+      inputs:
+        name: "'schedule'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-load-schedule
+    - type: "connector"
+      name: "task-load-schedule"
+      description: "Get Schedule from MLB Stats API"
+      connector:
+        name: "mlb-statsapi"
+        command: "get-v1-schedule"
+      condition: "$.get('should_update') == True"
+      inputs:
+        sportId: "1"  # MLB
+        startDate: "(datetime.utcnow() - timedelta(days=7)).strftime('%Y-%m-%d')"
+        endDate: "(datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d')"
+        hydrate: "team,linescore,game(content(media(epg))),broadcasts"
+      outputs:
+        schedule: "$.get('dates')"
+
+    # task-update-schedule
+    - type: "document"
+      name: "task-update-schedule"
+      description: "Update the schedule document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        schedule: |
+          {
+            'data': $.get('schedule'),
+            'title': 'Current Schedule',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-games
+    - type: "document"
+      name: "task-bulk-save-games"
+      description: "Bulk save the games."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "game"
+      documents:
+        items: |
+          [
+            {
+              'gameId': game.get('gamePk', ''),
+              'date': date.get('date', ''),
+              'status': game.get('status', {}).get('detailedState', ''),
+              'homeTeam': game.get('teams', {}).get('home', {}).get('team', {}).get('name', ''),
+              'awayTeam': game.get('teams', {}).get('away', {}).get('team', {}).get('name', ''),
+              'homeScore': game.get('teams', {}).get('home', {}).get('score', 0),
+              'awayScore': game.get('teams', {}).get('away', {}).get('score', 0),
+              'venue': game.get('venue', {}).get('name', ''),
+              'gameTime': game.get('gameDate', ''),
+              'broadcasts': [broadcast.get('name', '') for broadcast in game.get('broadcasts', [])],
+              'title': game.get('teams', {}).get('away', {}).get('team', {}).get('name', '') + ' @ ' + game.get('teams', {}).get('home', {}).get('team', {}).get('name', ''),
+              'selected': False
+            }
+            for date in $.get('schedule')
+            for game in date.get('games', [])
+          ]
+      metadata:
+        document_type: "'game'" 

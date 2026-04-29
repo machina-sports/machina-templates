@@ -1,0 +1,34 @@
+prompts:
+
+  # race-result-analysis
+  - type: "prompt"
+    title: "Race Result Analysis"
+    name: "prompt-race-result-analysis"
+    description: "This schema defines the structure to generate a detailed analysis of a Formula 1 driver's race performance."
+    schema:
+      title: "RaceResultAnalysis"
+      description: "This schema defines the structure to generate comprehensive analysis of a Formula 1 driver's race performance."
+      type: "object"
+      properties:
+        snippets:
+          type: "array"
+          description: "An array of snippets analyzing different aspects of the race performance."
+          items:
+            type: "object"
+            properties:
+              title:
+                type: "string"
+                description: "The category of race analysis (e.g., 'Race Overview', 'Position Changes', 'Performance Analysis')."
+              content:
+                type: "string"
+                description: "Detailed analysis of the race performance aspect, including position changes, points scored, and relevant performance metrics."
+              subject:
+                type: "string"
+                description: "The subject of the race analysis (e.g., 'Lewis Hamilton', 'Max Verstappen', 'Mercedes', 'Red Bull')."
+              confidence:
+                type: "number"
+                description: "The confidence score for the accuracy of the race analysis (0.0 to 1.0)."
+            required: ["title", "content", "confidence"]
+          minItems: 20
+          maxItems: 20
+      required: ["snippets"]

@@ -1,0 +1,97 @@
+workflow:
+  name: "quizzes-by-topic"
+  title: "Quizzes by Topic"
+  description: "Workflow to generate quizzes by topic."
+  context-variables:
+    debugger:
+      enabled: true
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    topic: "$.get('topic') or None"
+  outputs:
+    topic: "$.get('topic')"
+    questions: "$.get('content-quizzes')"
+    workflow-status: "$.get('topic') is None and 'skipped' or 'executed'"
+  tasks:
+    
+    # 1 prompt-briefing-topic
+    - type: "prompt"
+      name: "prompt-briefing-topic"
+      description: "Generate a briefing by topic."
+      condition: "$.get('topic') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        topic: "$.get('topic')"
+      outputs:
+        bulk-briefing: |
+          [
+            {
+              'text': f"{c.get('content', '')}",
+              'title': f"$.(topic) - {c.get('title')}",
+              'metadata': {}
+            }
+            for c in $.get('sections')
+          ]
+        content-briefing: "$"
+    
+    # 2 save-content-snippets
+    - type: "document"
+      name: "save-content-snippets"
+      condition: "$.get('topic') is not None"
+      description: "Bulk save the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed_items')"
+      inputs:
+        parsed_items: |
+          [
+            *$.get('bulk-briefing', [])
+          ]
+      
+    # 3 prompt-quizzes-by-topic
+    - type: "prompt"
+      name: "prompt-quizzes"
+      description: "Generate a quiz by topic."
+      condition: "$.get('topic') is not None"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        data-briefing: "$.get('content-briefing')"
+        data-topic: "$.get('topic')"
+      outputs:
+        content-quizzes: "$.get('questions', [])"
+    
+    # 4 save-content-quizzes
+    - type: "document"
+      name: "save-content-quizzes"
+      condition: "$.get('topic') is not None"
+      description: "Bulk save the quizzes."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-quiz"
+      documents:
+        items: "$.get('parsed_items')"
+      inputs:
+        parsed_items: |
+          [
+            *$.get('content-quizzes', [])
+          ]
+      

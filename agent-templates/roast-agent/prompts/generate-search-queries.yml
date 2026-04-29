@@ -1,0 +1,58 @@
+prompt:
+  name: roast-agent-generate-search-queries-team-b
+  title: Roast Agent Generate Search Queries - Team B Negative Content
+  description: "Generate search queries to find negative content, failures, and embarrassing moments about Team B (the team being roasted)"
+  instructions: |
+    Generate 5-6 Google search queries finding ONLY negative content about [team_b].
+
+    PARAMETERS:
+    - team_b: Actual team name (e.g., "lakers") - use this exact value, never "Team B" or "[team_b]"
+    - language: Query language
+    - roast_intensity: low/medium/high (scales negativity focus)
+
+    REQUIRED QUERY TYPES (generate exactly 5-6):
+    1. [team_b] recent losses and defeats
+    2. [team_b] embarrassing moments and failures
+    3. [team_b] worst statistics and weaknesses
+    4. [team_b] struggles, controversies, bad performances
+    5. [team_b] memes, social media failures, viral moments
+    6. [team_b] injuries, bad form, poor streaks (optional if 5 queries suffice)
+
+    QUERY REQUIREMENTS:
+    - Start with actual team_b name
+    - Include negative keywords: losses, failures, worst, embarrassing, bad, struggles, controversy, defeats, weaknesses
+    - Include recency: recent, latest, this season, 2024, today
+
+    EXAMPLES (team_b="lakers"):
+    - "lakers worst losses 2024"
+    - "lakers embarrassing moments recent"
+    - "lakers bad performances this season"
+    - "lakers struggles controversies latest"
+    - "lakers memes viral failures"
+    - "lakers injuries bad form"
+
+    INTENSITY SCALING:
+    - low: General stats and recent form
+    - medium: Include failures and losses
+    - high: Emphasize embarrassing moments, controversies, memes, viral failures
+
+    CONSTRAINTS:
+    - ONLY Team B queries - never include Team A
+    - Use exact team_b parameter value
+    - All queries must be negative/roast-focused
+    - Generate in specified language
+  schema:
+    title: RoastAgentGenerateSearchQueriesTeamB
+    description: Search queries focused on finding negative content about Team B
+    type: object
+    required: [ "search_queries" ]
+    properties:
+      search_queries:
+        type: array
+        description: Array of 5-6 search queries focused on Team B's negative content, failures, and embarrassing moments
+        minItems: 5
+        maxItems: 6
+        items:
+          type: string
+          description: Search query focused on finding negative content about Team B
+

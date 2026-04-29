@@ -1,0 +1,36 @@
+setup:
+  title: "Quizzes Generator"
+  description: AI-powered quizzes with personalized recommendations based on betting history.
+  category:
+    - content-creation
+  estimatedTime: 15 minutes
+  features:
+    - Quizzes
+  integrations:
+    - machina-ai
+  status: available
+  value: agent-templates/template-quizzes
+  version: 1.1.0
+
+datasets:
+
+  # connectors
+  - type: "connector"
+    path: "../../connectors/machina-ai/machina-ai.yml"
+  - type: "connector"
+    path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
+
+  - type: "workflow"
+    path: "chat-completions.yml"
+
+  # quizzes-by-topic
+  - type: "workflow"
+    path: "quizzes-by-topic.yml"
+
+  # folders setup
+  - type: "workflow"
+    path: "_folders.yml"
+
+  # documents setup
+  - type: "prompts"
+    path: "_prompts.yml"

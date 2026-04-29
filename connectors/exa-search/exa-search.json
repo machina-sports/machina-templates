@@ -1,0 +1,330 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+      "version": "1.1.6",
+      "title": "Exa Search API",
+      "description": "A comprehensive API for internet-scale search, allowing users to perform queries and retrieve results from a wide variety of sources using embeddings-based and traditional search."
+    },
+    "servers": [
+      {
+        "url": "https://api.exa.ai"
+      }
+    ],
+    "security": [
+      {
+        "bearer": []
+      }
+    ],
+    "paths": {
+      "/search": {
+        "post": {
+          "operationId": "search",
+          "summary": "Search",
+          "description": "Perform a search with an Exa prompt-engineered query and retrieve a list of relevant results.",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "query": {
+                          "type": "string",
+                          "example": "Latest developments in LLM capabilities",
+                          "description": "The query string for the search."
+                        }
+                      },
+                      "required": ["query"]
+                    },
+                    { "$ref": "#/components/schemas/CommonRequest" }
+                  ]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "$ref": "#/components/responses/SearchResponse"
+            }
+          }
+        }
+      },
+      "/findSimilar": {
+        "post": {
+          "operationId": "findSimilar",
+          "summary": "Find similar links",
+          "description": "Find similar links to the provided URL.",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "example": "https://arxiv.org/abs/2307.06435",
+                          "description": "The URL for which you want to find similar links."
+                        }
+                      },
+                      "required": ["url"]
+                    },
+                    { "$ref": "#/components/schemas/CommonRequest" }
+                  ]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "$ref": "#/components/responses/FindSimilarResponse"
+            }
+          }
+        }
+      },
+      "/contents": {
+        "post": {
+          "operationId": "getContents",
+          "summary": "Get Contents",
+          "description": "Retrieve full-text content and metadata from specified URLs.",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "urls": {
+                          "type": "array",
+                          "items": { "type": "string" },
+                          "example": ["https://arxiv.org/pdf/2307.06435"],
+                          "description": "Array of URLs to retrieve contents from."
+                        }
+                      },
+                      "required": ["urls"]
+                    },
+                    { "$ref": "#/components/schemas/ContentsRequest" }
+                  ]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "$ref": "#/components/responses/ContentsResponse"
+            }
+          }
+        }
+      },
+      "/answer": {
+        "post": {
+          "operationId": "answer",
+          "summary": "Generate an answer from search results",
+          "description": "Perform a search and generate an AI-powered answer with citations.",
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "query": {
+                          "type": "string",
+                          "example": "What is the latest valuation of SpaceX?",
+                          "description": "The question to answer."
+                        }
+                      },
+                      "required": ["query"]
+                    },
+                    { "$ref": "#/components/schemas/CommonRequest" }
+                  ]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "$ref": "#/components/responses/AnswerResponse"
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "securitySchemes": {
+        "bearer": {
+          "type": "http",
+          "scheme": "bearer",
+          "description": "API key provided via Authorization header with Bearer scheme"
+        }
+      },
+      "schemas": {
+        "CommonRequest": {
+          "type": "object",
+          "properties": {
+            "numResults": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 10,
+              "description": "Number of results to return."
+            }
+          }
+        },
+        "ContentsRequest": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "boolean",
+              "default": false,
+              "description": "If true, returns full page text."
+            }
+          }
+        }
+      },
+      "responses": {
+        "SearchResponse": {
+          "description": "Successful search response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Unique request identifier."
+                  },
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": { "type": "string", "description": "Title of the result." },
+                        "url": { "type": "string", "description": "URL of the result." }
+                      }
+                    }
+                  },
+                  "costDollars": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "number",
+                        "description": "Total cost in dollars."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "FindSimilarResponse": {
+          "description": "Successful findSimilar response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Unique request identifier."
+                  },
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": { "type": "string", "description": "Title of the result." },
+                        "url": { "type": "string", "description": "URL of the result." }
+                      }
+                    }
+                  },
+                  "costDollars": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "number",
+                        "description": "Total cost in dollars."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ContentsResponse": {
+          "description": "Successful contents retrieval response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "description": "Unique request identifier."
+                  },
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "url": { "type": "string", "description": "URL of the content." },
+                        "text": { "type": "string", "description": "Full text content if requested." }
+                      }
+                    }
+                  },
+                  "costDollars": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "number",
+                        "description": "Total cost in dollars."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "AnswerResponse": {
+          "description": "Successful answer response",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answer": {
+                    "type": "string",
+                    "description": "Generated answer."
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "description": "Unique request identifier."
+                  },
+                  "costDollars": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "number",
+                        "description": "Total cost in dollars."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  

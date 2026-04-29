@@ -1,0 +1,20 @@
+setup:
+  title: RSS Feed
+  description: Connector to fetch and parse RSS/Atom feeds.
+  category:
+    - data-acquisition
+    - news
+  estimatedTime: 1 minute
+  features:
+    - Fetch RSS/Atom feeds
+    - Parse feed metadata and items
+    - Filter items by limit
+  integrations:
+    - rss
+  status: available
+  value: connectors/rss-feed
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "rss-feed.yml"

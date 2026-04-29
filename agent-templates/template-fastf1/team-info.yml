@@ -1,0 +1,26 @@
+workflow:
+  name: "get-team-info"
+  title: "Get Team Information"
+  description: "Workflow to get information about F1 teams."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    team: "$.get('team') or None"
+    year: "$.get('year') or None"
+  outputs:
+    team_info: "$.get('team_info')"
+    workflow-status: "$.get('team_info') is not None and 'executed' or 'skipped'"
+
+  tasks:
+    - type: "connector"
+      name: "get-team-info"
+      description: "Get information about F1 teams."
+      connector:
+        name: "fastf1"
+        command: "get_team_info"
+      inputs:
+        team: "$.get('team')"
+        year: "$.get('year')"
+      outputs:
+        team_info: "$" 

@@ -1,0 +1,27 @@
+setup:
+  title: "xAI Grok"
+  description: "Connect to the xAI Grok API to access advanced language models for chat completions and embeddings."
+  category:
+    - ai-services
+    - language-models
+  estimatedTime: 1 minute
+  features:
+    - Chat completions with Grok models
+    - Support for grok-4-latest, grok-beta, and grok-vision-beta models
+    - Streaming and non-streaming responses
+    - Configurable temperature and token limits
+    - System, user, and assistant message roles
+    - Advanced parameters like top_p, frequency_penalty, and presence_penalty
+  integrations:
+    - xai
+    - grok
+  status: available
+  value: "connectors/grok"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "grok.yml"
+
+  - type: "workflow"
+    path: "test.yml"

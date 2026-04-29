@@ -1,0 +1,192 @@
+workflow:
+  name: "sync-nfl-embeds"
+  title: "Sync NFL Embeds"
+  description: "Workflow to sync NFL embeds."
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-nfl:
+      sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+    machina-ai:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+  inputs:
+    event_code: "$.get('event_code') or None"
+  outputs:
+    events: "$.get('events')"
+    workflow-status: "$.get('event_exists') is not True and 'skipped' or 'executed'"
+  
+  tasks:
+    
+    # 0 load-event-by-code
+    - type: "document"
+      name: "load-event-by-code"
+      description: "Search event (sportradar) by code."
+      condition: "$.get('event_code') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        metadata.event_code: "$.get('event_code')"
+      inputs:
+        name: "{'$in': ['sync-nfl-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 1 load-event-by-schedule
+    - type: "document"
+      name: "load-event-by-schedule"
+      description: "Search for schedule events (sportradar)."
+      condition: "$.get('event_exists') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["start_time", 1]
+      filters:
+        value.processed: "'idle'"
+      inputs:
+        name: "{'$in': ['sync-nfl-game']}"
+      outputs:
+        event_exists: "len($.get('documents', [])) > 0"
+        event_selected: "$.get('documents')[0].get('value', {}) if $.get('documents') else None"
+        event_type: "$.get('documents')[0].get('name') if $.get('documents') else None"
+
+    # 2 sportradar-nfl-mapping
+    - type: "mapping"
+      name: "sportradar-nfl-event-mapping"
+      description: "Transform the sportradar nfl data"
+      condition: "$.get('event_exists') is True"
+      inputs:
+        item: "$.get('event_selected')"
+      outputs:
+        event_code: "$.get('event_code')"
+        stats_count: "$.get('research_stats_count')"
+        season_type: "$.get('season_type')"
+        season_year: "$.get('season_year')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        team_home_id: "$.get('team_home_id')"
+        team_away_id: "$.get('team_away_id')"
+        title: "$.get('title')"
+
+    # 3 version-control-update-nfl-game
+    - type: "document"
+      name: "version-control-update-nfl-game"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        sync-nfl-game: |
+          {
+            **$.get('event_selected'),
+            'processed': 'processing'
+          }
+      metadata:
+        event_code: "$.get('event_code')"
+    
+    # 4 fetch-event-details
+    - type: "connector"
+      name: "fetch-event-details"
+      description: "Get a event details from SportRadar" 
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "sportradar-nfl"
+        command: "get-games/{game_id}/{data_type}"
+        command_attribute:
+          game_id: "$.get('event_code')"
+          data_type: "'statistics.json'"
+      inputs:
+        api_key: "$.get('sportradar_api_key')"
+      outputs:
+        event_details: "$"
+
+    # 5 sportradar-nfl-event-mapping
+    - type: "mapping"
+      name: "sportradar-nfl-event-details-mapping"
+      description: "Transform the sportradar nfl data"
+      condition: "$.get('event_exists') is True"
+      inputs:
+        item: "$.get('event_details')"
+      outputs:
+        event-statistics: "$"
+        away_stats: "$.get('away_stats')"
+        away_scoring: "$.get('away_scoring')"
+        home_stats: "$.get('home_stats')"
+        home_scoring: "$.get('home_scoring')"
+
+    # 6 prompt-embed-nfl-game-details
+    - type: "prompt"
+      name: "nfl-event-details-prompt"
+      description: "Embed event details."
+      condition: "$.get('event_exists') is True"
+      connector:
+        name: "machina-ai"
+        command: "invoke_prompt"
+        model: "gpt-4o"
+      inputs:
+        title: "$.get('title')"
+        team_home_name: "$.get('team_home_name')"
+        team_away_name: "$.get('team_away_name')"
+        event-statistics: "$.get('event_details')"
+      outputs:
+        research-event-details: "$"
+        research-event-details-bulk: |
+          [
+            {
+              'subject': '$.(title)',
+              'text': c.get('content', ''),
+              'title': f"$.(title) - {c.get('title', '')}",
+              'metadata': {
+                'event_code': '$.(event_code)',
+                'language': 'en'
+              }
+            }
+            for c in $.get('snippets', [])
+          ]
+
+    # 7 update-snippets
+    - type: "document"
+      name: "update-snippets"
+      condition: "$.get('event_exists') is True"
+      description: "Update the snippets."
+      config:
+        action: "bulk-save"
+        embed-vector: true
+        force-update: true
+      connector:
+        name: "machina-ai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "content-snippet"
+      documents:
+        items: "$.get('parsed-items')"
+      inputs:
+        parsed-items: |
+          [
+            *$.get('research-event-details-bulk', [])
+          ]
+
+    # 8 version-control-success-nfl-game
+    - type: "document"
+      name: "version-control-success-nfl-game"
+      description: "Update the events document version control."
+      condition: "$.get('event_exists') is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        sync-nfl-game: |
+          {
+            **$.get('event_selected'),
+            'processed': 'processed'
+          }
+      metadata:
+        event_code: "$.get('event_code')"

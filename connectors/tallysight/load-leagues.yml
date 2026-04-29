@@ -1,0 +1,56 @@
+workflow:
+  name: "tallysight-load-leagues"
+  title: "Tallysight - Load Leagues"
+  description: "Workflow to load leagues from Tallysight API to Machina."
+  context-variables:
+    debugger:
+      enabled: true
+    tallysight:
+      key: "$TEMP_CONTEXT_VARIABLE_TALLYSIGHT_API_KEY"
+  inputs:
+    league: "$.get('league')"
+    player: "$.get('player')"
+    team: "$.get('team')"
+  outputs:
+    leagues: "$.get('leagues')"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # 1 load-leagues
+    - type: "connector"
+      name: "load-leagues"
+      description: "Get a season fixtures from Bwin"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/leagues"
+      outputs:
+        leagues: "$"
+        workflow-status: "'executed'"
+
+    # 2 load-players
+    - type: "connector"
+      name: "load-players"
+      description: "Get a season fixtures from Bwin"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/widgets/bet-finder/leagues/{league}/players/{player}"
+        command_attribute:
+          league: "$.get('league')"
+          player: "$.get('player')"
+      outputs:
+        widget: "$"
+        workflow-status: "'executed'"
+
+    # 3 load-teams
+    - type: "connector"
+      name: "load-teams"
+      description: "Get a season fixtures from Bwin"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/widgets/bet-finder/leagues/{league}/teams/{team}"
+        command_attribute:
+          league: "$.get('league')"
+          team: "$.get('team')"
+      outputs:
+        widget: "$"
+        workflow-status: "'executed'"

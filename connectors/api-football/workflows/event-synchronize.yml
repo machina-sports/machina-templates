@@ -1,0 +1,99 @@
+workflow:
+
+  # api-football-event-synchronize
+  name: api-football-event-synchronize
+  title: API Football - Event Synchronize
+  description: Workflow to synchronize a soccer game from API Football by event code.
+  context-variables:
+    debugger:
+      enabled: false
+    machina-ai:
+      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_document_id: $.get('event_document_id')
+  outputs:
+    workflow-status: $.get('event_exists') is not True and 'skipped' or 'executed'
+  tasks:
+
+    # load-event-by-id
+    - type: document
+      name: load-event-by-id
+      description: Search event (api-football) by document id.
+      condition: $.get('event_document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+        search-sorters: ["value.schema:startDate", 1]
+      filters:
+        document_id: $.get('event_document_id')
+      outputs:
+        event_exists: len($.get('documents', [])) > 0
+        event_value: $.get('documents', [])[0].get('value', {}) if $.get('documents') else None
+
+    # iptc-api-football-id-conversion-mapping
+    - type: mapping
+      name: iptc-api-football-id-conversion-mapping
+      description: Convert IPTC URN IDs to original API Football IDs and preserve URN
+      condition: $.get('event_exists') is True
+      inputs:
+        iptc_schema_events: |
+          [
+            $.get('event_value')
+          ]
+      outputs:
+        original_fixture_id: $.get('original_ids', [''])[0]
+
+    # fetch-fixture-details
+    - type: connector
+      name: fetch-fixture-details
+      description: Get fixture details from API Football
+      condition: $.get('event_exists') is True
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        id: $.get('original_fixture_id')
+      outputs:
+        fixture_data: $.get('response', [{}])[0] if $.get('response') else {}
+        fixture_exists: len($.get('response', [])) > 0
+
+    # iptc-api-football-event-mapping
+    - type: mapping
+      name: iptc-api-football-event-mapping
+      title: IPTC | API Football Event Mapping
+      description: Mapping data from api-football to IPTC events
+      condition: $.get('fixture_exists') is True
+      inputs:
+        fixtures: |
+          [
+            $.get('fixture_data', {})
+          ]
+      outputs:
+        event_updated: $.get('sport_schema_events', [])[0] if $.get('sport_schema_events', []) else None
+        event_updated_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # version-control-update
+    - type: document
+      name: version-control-update
+      description: Update the events document with synchronized data.
+      condition: $.get('event_exists') is True
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: $.get('event_document_id')
+      documents:
+        sport:Event: |
+          {
+            **$.get('event_value', {}),
+            **$.get('event_updated', {}),
+            'version_control': {
+              **$.get('event_value', {}).get('version_control', {})
+            }
+          }
+

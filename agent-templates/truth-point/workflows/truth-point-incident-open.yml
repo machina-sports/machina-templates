@@ -1,0 +1,69 @@
+workflow:
+
+  # truth-point-incident-open
+  name: truth-point-incident-open
+  title: Truth Point — Open Incident
+  description: Mark a component (typically a connector) as DOWN or DEGRADED. Appends an incident to the singleton platform-incidents doc. The Factory consumes this list before each agent run and warns the agent off any matching components — so a known outage upstream stops new workflows from being generated against the broken connector until incident-resolve runs.
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    component_id: $.get('component_id', '')
+    level: $.get('level', 'down')
+    summary: $.get('summary', '')
+    external_url: $.get('external_url', '')
+    actor: $.get('actor', 'ops')
+
+  outputs:
+    component_id: $.get('component_id', '')
+    workflow-status: $.get('component_id') and 'executed' or 'skipped'
+
+  tasks:
+
+    # Read the singleton platform-incidents doc; we'll append to its incidents.
+    - type: document
+      name: lookup-incidents
+      description: Pull existing platform-incidents.incidents
+      condition: $.get('component_id') is not None and $.get('component_id') != '' and $.get('level') in ['down', 'degraded']
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'platform-incidents'"
+      outputs:
+        existing_incidents: $.get('documents', [])[0].get('value', {}).get('incidents', []) if len($.get('documents', [])) > 0 else []
+
+    # Upsert by name=platform-incidents. The new incident is computed inline
+    # in the documents block (which evaluates against the workflow state, so
+    # $.get('component_id') resolves correctly here — unlike expression
+    # task outputs, which evaluate against an empty response object).
+    - type: document
+      name: append-incident
+      description: Write an updated platform-incidents.incidents with the new entry appended
+      condition: $.get('component_id') is not None and $.get('component_id') != ''
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        platform-incidents: |
+          {
+            'incidents': [
+              *$.get('existing_incidents', []),
+              {
+                'id': ($.get('component_id') or '') + '-' + datetime.now().strftime('%Y%m%d-%H%M%S'),
+                'component_id': $.get('component_id', ''),
+                'level': $.get('level', 'down'),
+                'summary': $.get('summary', ''),
+                'external_url': $.get('external_url', ''),
+                'actor': $.get('actor', 'ops'),
+                'started_at': datetime.now().isoformat(),
+                'ended_at': None
+              }
+            ]
+          }
+      metadata:
+        kind: "'platform-status'"

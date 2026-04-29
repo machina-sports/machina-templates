@@ -1,0 +1,8 @@
+connector:
+  name: coverage-past-events-parser
+  description: Coverage Past Events Parser
+  filename: past_events.py
+  filetype: pyscript 
+  commands:
+    - name: Invoke Past Events Parser
+      value: invoke_past_events

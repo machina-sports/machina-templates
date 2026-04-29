@@ -1,0 +1,113 @@
+prompt:
+  name: generate_image_prompt
+  title: Generate AI Image Prompt for Social Media
+  description: Creates a detailed image generation prompt based on content type and context
+  inputs:
+    - name: content_type
+      type: string
+      description: Type of content (meme, stats, quiz)
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Newcastle")
+    - name: caption
+      type: string
+      description: The social media caption
+    - name: aspect_ratio
+      type: string
+      description: Image aspect ratio (1:1, 16:9, 9:16)
+    - name: custom_prompt
+      type: string
+      description: Optional custom user prompt
+  outputs:
+    - name: image_prompt
+      type: string
+      description: Generated image prompt
+  schema:
+    title: "ImagePrompt"
+    description: "Generates a detailed image prompt for AI image generation"
+    type: "object"
+    properties:
+      image_prompt:
+        type: "string"
+        description: "Detailed prompt for image generation"
+    required: ["image_prompt"]
+  instructions: |
+    You are an expert at creating prompts for AI image generation for social media content.
+    
+    ## CONTENT DETAILS
+    - Content Type: {{ content_type }}
+    - Matchup: {{ matchup }}
+    - Caption: {{ caption }}
+    - Aspect Ratio: {{ aspect_ratio }}
+    
+    ## YOUR TASK
+    Create a detailed, specific prompt for generating a {{ aspect_ratio }} social media image for {{ matchup }}.
+    The content type is: {{ content_type }}
+    
+    ### Content Type Guidelines:
+    
+    **FOR MEME CONTENT - USE FAMOUS MEME TEMPLATES:**
+    
+    If the content type is "meme", identify the most relevant famous meme template that fits the joke in the caption. Choose from these popular formats:
+    
+    - Distracted Boyfriend: Person looking at something else while ignoring what's in front of them (perfect for comparing two options, betrayal, ignoring the obvious)
+    - Drake Hotline Bling: Two-panel showing rejection then approval (perfect for "no to X, yes to Y" scenarios)
+    - Two Buttons: Person sweating while choosing between two options (perfect for difficult choices, dilemmas)
+    - Batman Slapping Robin: Batman slapping Robin mid-sentence (perfect for shutting down bad takes or obvious statements)
+    - Disaster Girl: Little girl smiling while house burns behind her (perfect for chaos, enjoying disaster)
+    - This Is Fine: Dog sitting in burning room (perfect for accepting disaster, denial)
+    - Expanding Brain: 4-panel showing brain expanding with increasingly "enlightened" ideas (perfect for escalating levels of thinking)
+    - Woman Yelling at Cat: Woman pointing/yelling at confused cat at dinner table (perfect for arguments, confrontations)
+    - Hide the Pain Harold: Man smiling but clearly in pain/distress (perfect for forced positivity, hidden suffering)
+    - Surprised Pikachu: Pikachu with shocked expression (perfect for obvious consequences, fake surprise)
+    - Monkey Puppet Looking Away: Puppet looking away awkwardly (perfect for avoiding uncomfortable truth, awkwardness)
+    - Change My Mind: Person at table with sign (perfect for controversial opinions)
+    - Is This a Butterfly: Person pointing at butterfly asking "is this X?" (perfect for misidentifying things)
+    
+    For meme content:
+    1. Choose the meme template that best fits the joke/context in the caption
+    2. Describe the EXACT visual composition of that famous meme template
+    3. Adapt the subjects/setting to soccer context (replace generic people with soccer-related visual metaphors)
+    4. Keep the iconic layout and visual structure of the original meme
+    5. Use stadium atmosphere, soccer balls, goal posts, team colors as contextual elements
+    6. The meme should be INSTANTLY recognizable as that format, just adapted to soccer context
+    
+    Example for meme: "Split composition showing a figure in team colors looking away from a pristine soccer ball toward a deflated ball. Stadium setting. The iconic three-figure arrangement of the Distracted Boyfriend meme, but with soccer equipment replacing the original subjects."
+    
+    **FOR STATS CONTENT - DATA VISUALIZATION:**
+    
+    If the content type is "stats", create a visual that emphasizes data comparison:
+    - Clean, professional infographic style
+    - Bold numbers and comparison graphics implied through visual composition
+    - Split-screen or side-by-side comparison layout
+    - Use team colors to distinguish sides
+    - Visual data representation (bars, charts implied through composition and scale)
+    - Emphasize the numerical contrast through visual scale and prominence
+    
+    **FOR QUIZ CONTENT - INTERACTIVE VISUAL:**
+    
+    If the content type is "quiz", create an engaging visual puzzle:
+    - Engaging, inviting, interactive feel
+    - Create visual intrigue and curiosity
+    - Mysterious or revealing composition
+    - Stadium atmosphere with question-like framing
+    - Use lighting and composition to suggest there's a question to answer
+    
+    ### General Style Requirements:
+    - High-quality sports photography aesthetic
+    - Cinematic lighting and composition
+    - Professional color grading
+    - Sharp, engaging visuals optimized for social media
+    - Team colors for {{ matchup }} incorporated tastefully
+    
+    ### CRITICAL REQUIREMENTS (MUST INCLUDE):
+    - ABSOLUTELY NO text, words, letters, numbers, or typography in the image
+    - NO player names or individual athlete depictions
+    - NO team logos or emblems
+    - NO jerseys with visible text or numbers
+    - The image should convey the concept through visual storytelling only
+    
+    The caption "{{ caption }}" will be added separately as text overlay.
+    
+    Generate a detailed, actionable prompt (3-4 sentences) that describes the exact visual scene to create, including the meme template structure if applicable.
+

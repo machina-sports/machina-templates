@@ -1,0 +1,9 @@
+connector:
+  name: "sdk-slack-sender"
+  description: "This connector is to send message to slack for BotAndWin"
+  filename: "send-slack.py"
+  filetype: "pyscript"
+  commands:
+    - name: "send_slack_message"
+      value: "send_slack_message"
+

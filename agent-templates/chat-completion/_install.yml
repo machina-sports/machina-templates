@@ -1,0 +1,39 @@
+setup:
+  title: "Chat Completions"
+  description: AI-powered chat completion.
+  category:
+    - special-templates
+  estimatedTime: 15 minutes
+  features:
+    - AI Agent to generate chat completions.
+  integrations:
+    - machina-ai
+  status: available
+  value: agent-templates/chat-completion
+  version: 1.0.0
+
+datasets:
+  
+  - type: "prompts"
+    path: "prompts/analyzer.yml"
+  
+  - type: "prompts"
+    path: "prompts/completions.yml"
+
+  - type: "prompts"
+    path: "prompts/event-selector.yml"
+
+  - type: "prompts"
+    path: "prompts/moderator.yml"
+
+  - type: "workflow"
+    path: "workflows/chat-completions.yml"
+
+  - type: "workflow"
+    path: "workflows/chat-moderator.yml"
+
+  - type: "workflow"
+    path: "workflows/event-search.yml"
+
+  - type: "workflow"
+    path: "_playground.yml"

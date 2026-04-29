@@ -1,0 +1,38 @@
+workflow:
+
+  # machina-cockpit-list-sessions
+  name: machina-cockpit-list-sessions
+  title: Machina Cockpit - List Sessions
+  description: List active Claude Code sessions running on the GCW workstation
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-workstation:
+      credential: $TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID
+
+  inputs: {}
+
+  outputs:
+    sessions: "$.get('sessions_data', {})"
+    workflow-status: "'executed'"
+
+  tasks:
+
+    # List active Claude Code sessions via relay
+    - type: connector
+      name: list-sessions
+      description: List active Claude Code sessions on GCW workstation
+      connector:
+        name: google-workstation
+        command: invoke_list_sessions
+      inputs:
+        credential: "$.get('credential')"
+        project_id: "$.get('project_id')"
+        location: "'us-central1'"
+        cluster: "'machina-cluster'"
+        config: "'machina-config'"
+        workstation: "'machina-ws-01'"
+      outputs:
+        sessions_data: "$"

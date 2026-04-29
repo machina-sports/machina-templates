@@ -1,0 +1,34 @@
+workflow:
+  name: get-league-standings
+  title: "Get League Standings"
+  description: "Fetches the current league table/standings for a given football competition."
+  inputs:
+    competition_id: "$.get('competition_id')"
+  outputs:
+    result: "$.get('standings')"
+    workflow-status: "($.get('standings') is not None) and 'executed' or 'skipped'"
+  tasks:
+    - type: "connector"
+      name: "get_current_season"
+      description: "Get the current season ID for the competition."
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_current_season'"
+        competition_id: "$.get('competition_id')"
+      outputs:
+        season_id: "$.get('season', {}).get('id')"
+
+    - type: "connector"
+      name: "get_season_standings"
+      description: "Get the standings for the season."
+      condition: "$.get('season_id') is not None"
+      connector:
+        name: "sports-skills"
+        command: "football"
+      inputs:
+        command: "'get_season_standings'"
+        season_id: "$.get('season_id')"
+      outputs:
+        standings: "$"

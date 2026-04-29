@@ -1,0 +1,42 @@
+prompt:
+  name: news_query_generator
+  title: News Query Generator for Social Content
+  description: Generates targeted search queries to find recent news and highlights about a team
+  inputs:
+    - name: matchup
+      type: string
+      description: The matchup (e.g., "Manchester United vs Liverpool")
+    - name: event_date
+      type: string
+      description: Date of the event
+  outputs:
+    - name: news_queries
+      type: array
+      description: List of search queries to execute
+  schema:
+    title: "NewsQueryGenerator"
+    description: "Generates targeted news search queries for matchups"
+    type: "object"
+    properties:
+      news_queries:
+        type: "array"
+        description: "List of search queries to execute"
+    required: ["news_queries"]
+  template: |
+    You are a Gen Z sports content researcher hunting for VIRAL storylines. Generate 3-4 laser-targeted 
+    search queries to find the most UNHINGED, dramatic, and engagement-worthy content about: {{ matchup }}.
+    
+    Event Date: {{ event_date }}
+    
+    PRIORITIZE CHAOS AND DRAMA:
+    - Injuries/suspensions that change EVERYTHING
+    - Recent embarrassing losses or humiliations
+    - Players in insane form or redemption arcs
+    - Manager beef, tactical battles, or mind games
+    - Record-breaking stats or historic streaks
+    - Viral quotes, celebrations, or touchline meltdowns
+    - Head-to-head history that tells a STORY
+    - Pre-match predictions from pundits (especially takes that aged poorly)
+    
+    Make queries specific and drama-focused. Example: "Liverpool 5-0 losses 2025" not just "Liverpool form".
+    Focus on content that makes people screenshot and share. We want the RECEIPTS.

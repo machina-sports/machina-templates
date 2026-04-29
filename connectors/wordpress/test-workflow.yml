@@ -1,0 +1,60 @@
+workflow:
+  name: "wordpress-test"
+  title: "WordPress Test"
+  description: "Test WordPress media upload and post creation"
+  context-variables:
+    debugger:
+      enabled: true
+    wordpress:
+      site_id: "wpmachinatest.wordpress.com"
+      Authorization: "$TEMP_CONTEXT_VARIABLE_WORDPRESS_BEARER_TOKEN"
+  inputs:
+    image_filepath: "$.get('image_filepath')"
+  outputs:
+    wordpress_media: "$.get('wordpress_media')"
+    wordpress_post: "$.get('wordpress_post')"
+    workflow-status: "'executed'"
+  tasks:
+    # upload-image-to-wordpress
+    - type: "connector"
+      name: "upload-image"
+      description: "Upload test image to WordPress"
+      connector:
+        name: "wordpress"
+        command: "post-rest/v1.1/sites/{site_id}/media/new"
+        command_attribute:
+          site_id: "$.get('site_id')"
+      inputs:
+        body: |
+          {
+            "media[]": f"@{$.get('image_filepath')}",
+            "title": "Test Image Upload",
+            "alt_text": "Test image alt text",
+            "caption": "<p>Test image caption</p>",
+            "description": "Test image description"
+          }
+      outputs:
+        wordpress_media: "$"
+        wordpress_media_id: "$.get('media', [])[0].get('ID') if $.get('media', []) else None"
+
+    # post-article-to-wordpress
+    - type: "connector"
+      name: "post-article"
+      condition: "$.get('wordpress_media_id') is not None"
+      description: "Create test post with uploaded image"
+      connector:
+        name: "wordpress"
+        command: "post-wp/v2/sites/{site_id}/posts"
+        command_attribute:
+          site_id: "$.get('site_id')"
+      inputs:
+        body: |
+          {
+            "title": "Test Post with Image",
+            "content": "This is a test post with an uploaded image.",
+            "featured_media": $.(wordpress_media_id),
+            "excerpt": "Test post excerpt",
+            "status": "publish"
+          }
+      outputs:
+        wordpress_post: "$"

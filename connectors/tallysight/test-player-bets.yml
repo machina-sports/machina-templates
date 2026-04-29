@@ -1,0 +1,35 @@
+workflow:
+  name: "tallysight-test-player-bets"
+  title: "Tallysight - Test Player Bet Finder"
+  description: "Test workflow to validate player bet finder with correct sportsbooks parameter"
+  context-variables:
+    debugger:
+      enabled: true
+    tallysight:
+      key: "$TEMP_CONTEXT_VARIABLE_TALLYSIGHT_API_KEY"
+  inputs:
+    league: "$.get('league', 'nfl')"
+    player: "$.get('player', 'josh-allen')"
+  outputs:
+    widget: "$.get('widget')"
+    workflow-status: "$.get('workflow-status', 'error')"
+
+  tasks:
+    # Test Player Bet Finder with correct sportsbooks parameter
+    - type: "connector"
+      name: "get-player-bets"
+      description: "Get bet finder widget for a player with sports-interaction sportsbook"
+      connector:
+        name: "tallysight"
+        command: "get-api/v2/widgets/bet-finder/leagues/{league}/players/{player}"
+        command_attribute:
+          league: "$.get('league')"
+          player: "$.get('player')"
+      inputs:
+        sportsbooks: "'sports-interaction'"  # ✅ Correct format: query parameter passed as string
+        embed: "'wordpress'"
+        format: "'decimal'"
+        locale: "'en'"
+      outputs:
+        widget: "$"
+        workflow-status: "'success'"

@@ -1,0 +1,54 @@
+prompts:
+
+  - type: "prompt"
+    title: "Generate match headlines"
+    name: generate-headlines-prompt
+    description: "Generates exactly 5 perspective-tagged headlines from match facts (neutral_news, analytical, winning_team_fan, losing_team_fan, clickbait)."
+    instruction: |
+      You are a sports journalist expert at crafting headlines for different
+      audiences. Analyze the provided match data and generate EXACTLY 5
+      distinct headlines, one for each of the following perspectives:
+
+      1. **neutral_news**:      factual, balanced, news-wire style.
+      2. **analytical**:        focus on statistics (xG, possession) or key tactical moments.
+      3. **winning_team_fan**:  celebratory and partisan for the winning team.
+      4. **losing_team_fan**:   sympathetic or looking forward for the losing team.
+      5. **clickbait**:         dramatic or controversial hook, kept tasteful (no slurs, no fake stats).
+
+      Rules:
+        - Each headline ≤ 90 characters.
+        - No trailing period.
+        - English only.
+        - Output MUST be a single valid JSON object that strictly follows the schema.
+        - Order the array by the perspective list above.
+
+      ## Inputs
+
+      match_data:
+      {match_data}
+    schema:
+      type: object
+      properties:
+        headlines:
+          type: array
+          description: "Exactly 5 entries, one per perspective in the order above."
+          items:
+            type: object
+            properties:
+              perspective:
+                type: string
+                description: "neutral_news | analytical | winning_team_fan | losing_team_fan | clickbait"
+                enum:
+                  - neutral_news
+                  - analytical
+                  - winning_team_fan
+                  - losing_team_fan
+                  - clickbait
+              headline:
+                type: string
+                description: "≤ 90 characters, no trailing period, English."
+            required:
+              - perspective
+              - headline
+      required:
+        - headlines

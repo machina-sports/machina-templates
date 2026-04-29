@@ -1,0 +1,65 @@
+workflow:
+
+  # machina-cockpit-update
+  name: machina-cockpit-update
+  title: Machina Cockpit - Update Thread
+  description: Save Claude Code response to conversation thread
+
+  context-variables:
+    debugger:
+      enabled: false
+
+  inputs:
+    document_id: $.get('document_id')
+    response_text: $.get('response_text', '')
+    session_id: $.get('session_id')
+
+  outputs:
+    thread_id: $.get('document_id')
+    workflow-status: $.get('update_success') is True and 'executed' or 'skipped'
+
+  tasks:
+
+    # Load current thread
+    - type: document
+      name: load-thread
+      description: Load current thread state
+      condition: $.get('document_id') is not None
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        thread_data: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+
+    # Update thread with response + session_id
+    - type: document
+      name: update-thread-final
+      description: Update thread with assistant response
+      condition: $.get('document_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        thread: |
+          {
+            **$.get('thread_data'),
+            'messages': [
+              *$.get('thread_data').get('messages', []),
+              {
+                'role': 'assistant',
+                'content': $.get('response_text', ''),
+                'timestamp': datetime.now().isoformat()
+              }
+            ],
+            'session_id': $.get('session_id'),
+            'status': 'idle',
+            'status_message': 'Ready'
+          }
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        update_success: len($.get('documents', [])) > 0
