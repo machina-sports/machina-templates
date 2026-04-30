@@ -16,13 +16,6 @@
         "summary": "Get information about games from a season",
         "parameters": [
           {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "in": "path",
             "name": "game_id",
             "schema": {
@@ -91,7 +84,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -100,13 +93,6 @@
       "get": {
         "summary": "Get information about games from a season",
         "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "in": "path",
             "name": "season_year",
@@ -183,7 +169,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -192,13 +178,6 @@
       "get": {
         "summary": "Get information about players",
         "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "in": "path",
             "name": "player_id",
@@ -270,7 +249,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -279,13 +258,6 @@
       "get": {
         "summary": "Get information about teams",
         "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "in": "path",
             "name": "season_year",
@@ -373,7 +345,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -382,13 +354,6 @@
       "get": {
         "summary": "Get information about teams",
         "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "in": "path",
             "name": "team_id",
@@ -460,7 +425,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -469,15 +434,7 @@
       "get": {
         "summary": "MLB League Injuries",
         "description": "Returns active league-wide injuries.",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "OK",
@@ -492,7 +449,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -502,13 +459,6 @@
         "summary": "MLB Team Injuries",
         "description": "Returns active injuries for a single team.",
         "parameters": [
-          {
-            "in": "query",
-            "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "in": "path",
             "name": "team_id",
@@ -532,7 +482,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "x-api-key": []
           }
         ]
       }
@@ -540,10 +490,11 @@
   },
   "components": {
     "securitySchemes": {
-      "apiKey": {
-        "type": "params",
-        "in": "query",
-        "name": "api_key"
+      "x-api-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Sportradar MLB API Key"
       }
     }
   }
