@@ -1,0 +1,30 @@
+skill:
+  name: "brasileirao-2026-dashboard"
+  title: "Brasileirão 2026 Dashboard"
+  description: "Static, self-contained HTML dashboard with 4 Chart.js charts visualizing mock data of the 2026 Brazilian football league."
+  version: "1.0.0"
+  category:
+    - "sports-data"
+    - "visualization"
+    - "static-html"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  output_kind: "html"
+  entry: "index.html"
+
+  references:
+    - name: "skill-guide"
+      title: "Brasileirão 2026 Dashboard Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "brasileirao-2026-dashboard"
+    - name: "dashboard"
+      title: "Brasileirão 2026 Dashboard (HTML)"
+      filename: "index.html"
+      filetype: "html"
+      metadata:
+        category: "static-page"
+        skill: "brasileirao-2026-dashboard"

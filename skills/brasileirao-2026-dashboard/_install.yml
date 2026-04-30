@@ -1,0 +1,18 @@
+setup:
+  title: "Brasileirão 2026 Dashboard"
+  description: "Static, self-contained HTML dashboard with 4 Chart.js charts visualizing mock data of the 2026 Brazilian football league. Dark theme with #fe591f accent."
+  category:
+    - custom-templates
+  status: available
+  value: "skills/brasileirao-2026-dashboard"
+  version: 1.0.0
+  features:
+    - "Top 10 scorers (bar chart)"
+    - "Win efficiency per team (horizontal bar chart)"
+    - "Goals scored vs. conceded (scatter chart)"
+    - "Total goals per round (line chart)"
+    - "Self-contained: Chart.js via CDN, mock data inline, no build step"
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"

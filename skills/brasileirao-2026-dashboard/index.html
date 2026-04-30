@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brasileirão 2026 — Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c0d10;
+      --panel: #15171c;
+      --panel-2: #1c1f26;
+      --border: #262a33;
+      --text: #e6e8ee;
+      --muted: #8b93a7;
+      --accent: #fe591f;
+      --accent-soft: rgba(254, 89, 31, 0.18);
+      --grid: rgba(255, 255, 255, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    header.hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+
+    .hero-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hero-mark {
+      width: 10px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 2px;
+      box-shadow: 0 0 24px var(--accent-soft);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .hero .subtitle {
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pill strong { color: var(--text); }
+    .pill .dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px 22px;
+      display: flex;
+      flex-direction: column;
+      min-height: 360px;
+    }
+
+    .card.col-6 { grid-column: span 6; }
+    .card.col-12 { grid-column: span 12; }
+
+    .card header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+    .card .desc {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 0;
+    }
+    .card .accent-tag {
+      font-size: 11px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .chart-wrap {
+      flex: 1;
+      position: relative;
+      min-height: 280px;
+    }
+
+    footer.foot {
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .card.col-6 { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div>
+        <div class="hero-title">
+          <div class="hero-mark" aria-hidden="true"></div>
+          <div>
+            <h1>Brasileirão 2026 — Dashboard</h1>
+            <div class="subtitle">Visão geral da temporada · dados ilustrativos (mock)</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <span class="pill"><span class="dot"></span>Temporada <strong>2026</strong></span>
+        <span class="pill">10 clubes monitorados</span>
+        <span class="pill">Atualizado por rodada</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="card col-6" aria-labelledby="chart1-title">
+        <header>
+          <div>
+            <h2 id="chart1-title">Top 10 artilheiros</h2>
+            <p class="desc">Gols marcados na temporada</p>
+          </div>
+          <span class="accent-tag">Artilharia</span>
+        </header>
+        <div class="chart-wrap"><canvas id="chartScorers"></canvas></div>
+      </article>
+
+      <article class="card col-6" aria-labelledby="chart2-title">
+        <header>
+          <div>
+            <h2 id="chart2-title">Aproveitamento por time</h2>
+            <p class="desc">% de pontos conquistados sobre os disputados</p>
+          </div>
+          <span class="accent-tag">Eficiência</span>
+        </header>
+        <div class="chart-wrap"><canvas id="chartEfficiency"></canvas></div>
+      </article>
+
+      <article class="card col-6" aria-labelledby="chart3-title">
+        <header>
+          <div>
+            <h2 id="chart3-title">Gols pró × sofridos</h2>
+            <p class="desc">Cada ponto representa um clube</p>
+          </div>
+          <span class="accent-tag">Saldo</span>
+        </header>
+        <div class="chart-wrap"><canvas id="chartGoals"></canvas></div>
+      </article>
+
+      <article class="card col-6" aria-labelledby="chart4-title">
+        <header>
+          <div>
+            <h2 id="chart4-title">Total de gols por rodada</h2>
+            <p class="desc">Soma de gols marcados em todos os jogos</p>
+          </div>
+          <span class="accent-tag">Tendência</span>
+        </header>
+        <div class="chart-wrap"><canvas id="chartRounds"></canvas></div>
+      </article>
+    </section>
+
+    <footer class="foot">
+      Brasileirão 2026 · dashboard estático · dados fictícios para fins de demonstração.
+    </footer>
+  </div>
+
+  <script>
+    // ---------- Mock data ----------
+    const TEAMS = [
+      "Flamengo", "Palmeiras", "Corinthians", "Botafogo", "São Paulo",
+      "Fluminense", "Internacional", "Grêmio", "Atlético-MG", "Cruzeiro"
+    ];
+
+    // Top 10 scorers (mock)
+    const SCORERS = [
+      { player: "Pedro",       team: "Flamengo",      goals: 22 },
+      { player: "Endrick",     team: "Palmeiras",     goals: 19 },
+      { player: "Yuri Alberto",team: "Corinthians",   goals: 17 },
+      { player: "Tiquinho",    team: "Botafogo",      goals: 16 },
+      { player: "Calleri",     team: "São Paulo",     goals: 15 },
+      { player: "Cano",        team: "Fluminense",    goals: 14 },
+      { player: "Wanderson",   team: "Internacional", goals: 13 },
+      { player: "Suárez",      team: "Grêmio",        goals: 12 },
+      { player: "Hulk",        team: "Atlético-MG",   goals: 12 },
+      { player: "Arthur Gomes",team: "Cruzeiro",      goals: 11 }
+    ];
+
+    // Standings: points / matches → efficiency %, plus goals for/against
+    const STANDINGS = [
+      { team: "Flamengo",      played: 38, points: 76, gf: 68, ga: 33 },
+      { team: "Palmeiras",     played: 38, points: 73, gf: 62, ga: 31 },
+      { team: "Botafogo",      played: 38, points: 68, gf: 59, ga: 36 },
+      { team: "Atlético-MG",   played: 38, points: 64, gf: 57, ga: 41 },
+      { team: "São Paulo",     played: 38, points: 61, gf: 52, ga: 42 },
+      { team: "Fluminense",    played: 38, points: 57, gf: 50, ga: 47 },
+      { team: "Internacional", played: 38, points: 55, gf: 48, ga: 45 },
+      { team: "Corinthians",   played: 38, points: 52, gf: 46, ga: 49 },
+      { team: "Grêmio",        played: 38, points: 49, gf: 44, ga: 50 },
+      { team: "Cruzeiro",      played: 38, points: 46, gf: 41, ga: 52 }
+    ];
+
+    // Total goals per round (1..38)
+    const GOALS_PER_ROUND = [
+      24, 21, 27, 19, 23, 26, 22, 28, 25, 20,
+      24, 29, 23, 21, 26, 22, 27, 25, 24, 23,
+      28, 22, 26, 24, 21, 25, 27, 23, 22, 26,
+      24, 28, 21, 25, 23, 27, 22, 26
+    ];
+
+    // ---------- Chart.js global theme ----------
+    const ACCENT = "#fe591f";
+    const TEXT = "#e6e8ee";
+    const MUTED = "#8b93a7";
+    const GRID = "rgba(255,255,255,0.06)";
+
+    Chart.defaults.color = MUTED;
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.borderColor = GRID;
+    Chart.defaults.plugins.legend.labels.color = TEXT;
+    Chart.defaults.plugins.tooltip.backgroundColor = "#1c1f26";
+    Chart.defaults.plugins.tooltip.borderColor = "#262a33";
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.titleColor = TEXT;
+    Chart.defaults.plugins.tooltip.bodyColor = TEXT;
+    Chart.defaults.plugins.tooltip.padding = 10;
+
+    function gridAxis(extra = {}) {
+      return Object.assign(
+        {
+          grid: { color: GRID, drawBorder: false },
+          ticks: { color: MUTED },
+          border: { color: "transparent" }
+        },
+        extra
+      );
+    }
+
+    // ---------- 1. Top 10 scorers (vertical bar) ----------
+    new Chart(document.getElementById("chartScorers"), {
+      type: "bar",
+      data: {
+        labels: SCORERS.map(s => `${s.player}`),
+        datasets: [{
+          label: "Gols",
+          data: SCORERS.map(s => s.goals),
+          backgroundColor: ACCENT,
+          hoverBackgroundColor: "#ff7a4a",
+          borderRadius: 6,
+          maxBarThickness: 36
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              afterLabel: (ctx) => `Clube: ${SCORERS[ctx.dataIndex].team}`
+            }
+          }
+        },
+        scales: {
+          x: gridAxis({ grid: { display: false } }),
+          y: gridAxis({ beginAtZero: true, ticks: { color: MUTED, stepSize: 5 } })
+        }
+      }
+    });
+
+    // ---------- 2. Efficiency by team (horizontal bar) ----------
+    const eff = STANDINGS
+      .map(s => ({ team: s.team, pct: +(s.points / (s.played * 3) * 100).toFixed(1) }))
+      .sort((a, b) => b.pct - a.pct);
+
+    new Chart(document.getElementById("chartEfficiency"), {
+      type: "bar",
+      data: {
+        labels: eff.map(e => e.team),
+        datasets: [{
+          label: "Aproveitamento (%)",
+          data: eff.map(e => e.pct),
+          backgroundColor: ACCENT,
+          hoverBackgroundColor: "#ff7a4a",
+          borderRadius: 6,
+          maxBarThickness: 22
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.parsed.x}%` }
+          }
+        },
+        scales: {
+          x: gridAxis({
+            beginAtZero: true,
+            max: 100,
+            ticks: { color: MUTED, callback: (v) => v + "%" }
+          }),
+          y: gridAxis({ grid: { display: false } })
+        }
+      }
+    });
+
+    // ---------- 3. Goals for vs against (scatter) ----------
+    new Chart(document.getElementById("chartGoals"), {
+      type: "scatter",
+      data: {
+        datasets: [{
+          label: "Clubes",
+          data: STANDINGS.map(s => ({ x: s.gf, y: s.ga, team: s.team })),
+          backgroundColor: ACCENT,
+          borderColor: "#0c0d10",
+          borderWidth: 2,
+          pointRadius: 8,
+          pointHoverRadius: 11
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const p = ctx.raw;
+                return `${p.team}: ${p.x} pró · ${p.y} sofridos`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: gridAxis({
+            title: { display: true, text: "Gols pró", color: MUTED },
+            beginAtZero: true
+          }),
+          y: gridAxis({
+            title: { display: true, text: "Gols sofridos", color: MUTED },
+            beginAtZero: true
+          })
+        }
+      }
+    });
+
+    // ---------- 4. Goals per round (line) ----------
+    new Chart(document.getElementById("chartRounds"), {
+      type: "line",
+      data: {
+        labels: GOALS_PER_ROUND.map((_, i) => `R${i + 1}`),
+        datasets: [{
+          label: "Gols na rodada",
+          data: GOALS_PER_ROUND,
+          borderColor: ACCENT,
+          backgroundColor: "rgba(254,89,31,0.15)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: ACCENT,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: gridAxis({ grid: { display: false } }),
+          y: gridAxis({ beginAtZero: true })
+        }
+      }
+    });
+  </script>
+</body>
+</html>
