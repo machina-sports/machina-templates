@@ -48,7 +48,7 @@ workflow:
 
   outputs:
     mode: "$.get('mode', 'build')"
-    artifact_kind: "$.get('artifact_kind', '')"
+    artifact_kind: "$.get('artifact_kind', 'agent')"
     target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
     reference_repos: "$.get('reference_repos', [])"
     open_pr: "$.get('open_pr', False)"
@@ -165,7 +165,7 @@ workflow:
         similar_components: $.get('similar_components', [])
       outputs:
         mode: "$.get('mode', 'build')"
-        artifact_kind: "$.get('artifact_kind', '')"
+        artifact_kind: "$.get('artifact_kind', 'agent')"
         target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
         reference_repos: "$.get('reference_repos', [])"
         open_pr: "$.get('open_pr', False)"
