@@ -20,6 +20,10 @@ workflow:
 
     Outputs:
       - mode: one of build|plan|shell|review-pr|deploy|issue.
+      - artifact_kind: one of skill|connector|workflow|agent|template|page|data-pipeline.
+        Concrete artifact the prompt is asking us to ship — orthogonal
+        to mode (which is execution shape). Lets the customer-facing
+        Factory pick the right scaffold without keyword guessing.
       - target_repo: { owner, name } — best match from known_repos.
       - reference_repos: up to 3 read-only repos for context.
       - open_pr: true for build, false otherwise.
@@ -44,6 +48,7 @@ workflow:
 
   outputs:
     mode: "$.get('mode', 'build')"
+    artifact_kind: "$.get('artifact_kind', '')"
     target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
     reference_repos: "$.get('reference_repos', [])"
     open_pr: "$.get('open_pr', False)"
@@ -160,6 +165,7 @@ workflow:
         similar_components: $.get('similar_components', [])
       outputs:
         mode: "$.get('mode', 'build')"
+        artifact_kind: "$.get('artifact_kind', '')"
         target_repo: "$.get('target_repo', {'owner': '', 'name': ''})"
         reference_repos: "$.get('reference_repos', [])"
         open_pr: "$.get('open_pr', False)"
