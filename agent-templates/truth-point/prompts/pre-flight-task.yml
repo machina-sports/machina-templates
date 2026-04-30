@@ -42,24 +42,53 @@ prompts:
            sounds like a request/bug-report/question rather than an edit.
            Use "review-pr" or "deploy" only when the task explicitly
            mentions a PR number or URL.
-        2. `target_repo` is the SINGLE repo the work lands on. Pick the
+        2. `artifact_kind` is the CONCRETE artifact the prompt asks
+           us to ship. Orthogonal to `mode` (which is execution shape).
+           Must be exactly one of:
+             - "skill": a single tool surface the agent can call (one
+               verb, narrow scope). Examples: "summarize a match",
+               "extract player stats from an HTML page".
+             - "connector": integration with an external API / data
+               source. Examples: "polymarket odds feed", "kalshi
+               market puller", "webhook receiver for FotMob".
+             - "workflow": multi-step pipeline orchestrating other
+               components on a trigger (cron, webhook). Examples:
+               "daily fixture digest", "ingest matches every hour".
+             - "agent": a hosted application or chat surface — full
+               UI with pages, often with a backend. Examples:
+               "Brasileirão dashboard", "fan-engagement chatbot",
+               "match-day live stats page". Pick this for any prompt
+               mentioning "dashboard", "page", "site", "app", "UI",
+               or "front-end" UNLESS the prompt explicitly rules out
+               any backend / data-fetch (then "page" — see below).
+             - "template": a reusable scaffold meant to seed future
+               builds.
+             - "page": pure-static HTML/JS with NO dynamic data fetch
+               at all. If the task implies any backend call, runtime
+               data load, or personalization, pick "agent" instead.
+               Use "page" only for hand-written-content artifacts
+               (landing pages, wikis, single-file demos).
+             - "data-pipeline": ETL / batch processing that isn't
+               surfaced as a workflow.
+           Default to "agent" when ambiguous — it's the broadest catch.
+        3. `target_repo` is the SINGLE repo the work lands on. Pick the
            best match from known_repos. Empty `{owner: "", name: ""}` if
            you genuinely can't tell.
-        3. `reference_repos` is up to 3 OTHER repos that should be
+        4. `reference_repos` is up to 3 OTHER repos that should be
            cloned read-only as context. Don't repeat the target.
-        4. `open_pr`: true when `mode` is "build" (always opens a PR).
+        5. `open_pr`: true when `mode` is "build" (always opens a PR).
            false for "plan", "shell", "issue". For "review-pr" and
            "deploy" the PR already exists, so false.
-        5. `required_credentials` is a list of vault keys the task
+        6. `required_credentials` is a list of vault keys the task
            probably needs. Only include keys that the task description
            directly implies (e.g. "use OpenAI" → ["OPENAI_API_KEY"]).
            Empty list when nothing specific is needed. The dashboard
            cross-references with the existing vault to surface gaps.
            Each entry: {vault_key, hint}.
-        6. `summary` is ONE sentence (≤140 chars) describing what you
+        7. `summary` is ONE sentence (≤140 chars) describing what you
            think the developer wants to do, in English regardless of the
            task language. This is shown back to the dev for confirmation.
-        7. `warnings` is a list of strings. Emit one when:
+        8. `warnings` is a list of strings. Emit one when:
              - the task overlaps strongly with an existing component
                (point at it, suggest reuse).
              - an active lesson clearly applies (cite the lesson_id).
@@ -88,7 +117,19 @@ prompts:
       properties:
         mode:
           type: string
-          description: "build | plan | shell | review-pr | deploy | issue"
+          enum: ["build", "plan", "shell", "review-pr", "deploy", "issue"]
+          description: "Execution shape — what the worker should DO with the task."
+        artifact_kind:
+          type: string
+          enum:
+            - "skill"
+            - "connector"
+            - "workflow"
+            - "agent"
+            - "template"
+            - "page"
+            - "data-pipeline"
+          description: "Concrete artifact the prompt asks us to ship — orthogonal to mode."
         target_repo:
           type: object
           description: "The repo the work lands on. Empty owner/name if unknown."
@@ -148,6 +189,7 @@ prompts:
             type: string
       required:
         - mode
+        - artifact_kind
         - target_repo
         - reference_repos
         - open_pr
