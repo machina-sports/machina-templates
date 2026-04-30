@@ -465,7 +465,7 @@
         ]
       }
     },
-    "/league/injuries.{data_type}": {
+    "/league/injuries.json": {
       "get": {
         "summary": "MLB League Injuries",
         "description": "Returns active league-wide injuries.",
@@ -473,14 +473,6 @@
           {
             "in": "query",
             "name": "api_key",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "data_type",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -500,7 +492,7 @@
         }
       }
     },
-    "/teams/{team_id}/injuries.{data_type}": {
+    "/teams/{team_id}/injuries.json": {
       "get": {
         "summary": "MLB Team Injuries",
         "description": "Returns active injuries for a single team.",
@@ -515,14 +507,6 @@
           {
             "in": "path",
             "name": "team_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "data_type",
             "required": true,
             "schema": {
               "type": "string"
