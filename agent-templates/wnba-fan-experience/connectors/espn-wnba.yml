@@ -1,0 +1,62 @@
+connector:
+  name: "espn-wnba"
+  description: "Free, key-less connector to ESPN's public WNBA endpoints (mirrors the sports-skills `wnba-data` skill — same upstream source, no Sportradar dependency)."
+  filetype: "restapi"
+  apiSpec:
+    openapi: "3.0.0"
+    info:
+      title: "ESPN WNBA Public API"
+      version: "v2"
+    servers:
+      - url: "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba"
+    paths:
+      /news:
+        get:
+          summary: "League-wide WNBA news articles"
+          operationId: "get-news"
+          parameters:
+            - name: "limit"
+              in: "query"
+              required: false
+              schema:
+                type: "integer"
+            - name: "team"
+              in: "query"
+              required: false
+              description: "Optional ESPN team id to scope the news feed."
+              schema:
+                type: "string"
+          responses:
+            '200':
+              description: "WNBA news articles"
+              content:
+                application/json: {}
+      /teams:
+        get:
+          summary: "List all WNBA teams (use to resolve team_id from a team name)"
+          operationId: "get-teams"
+          responses:
+            '200':
+              description: "Teams"
+              content:
+                application/json: {}
+      /teams/{team_id}/news:
+        get:
+          summary: "WNBA news for a specific team (path parameter not substituted at runtime; prefer the `team` query param on /news)"
+          operationId: "get-team-news"
+          parameters:
+            - name: "team_id"
+              in: "path"
+              required: true
+              schema:
+                type: "string"
+          responses:
+            '200':
+              description: "Team news articles"
+              content:
+                application/json: {}
+  commands:
+    - name: "Get League News"
+      value: "get-news"
+    - name: "Get Teams"
+      value: "get-teams"

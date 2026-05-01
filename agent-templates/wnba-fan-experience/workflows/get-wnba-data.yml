@@ -1,0 +1,41 @@
+workflow:
+  name: get-wnba-data
+  title: "Get WNBA News"
+  description: "Fetches WNBA news from ESPN's free public endpoints. No Sportradar / no API key required."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    team_name: "$.get('team_name', '')"
+    limit: "$.get('limit', 10)"
+  tasks:
+    - name: fetch_news
+      type: connector
+      connector:
+        name: "espn-wnba"
+        command: "get-news"
+      inputs:
+        limit: "$.get('limit')"
+      outputs:
+        articles: "$.get('articles', [])"
+    - name: shape_articles
+      type: connector
+      connector:
+        name: "espn-wnba"
+        command: "get-news"
+      inputs:
+        limit: "$.get('limit')"
+      outputs:
+        normalized: >-
+          [
+            {
+              'title': a.get('headline', ''),
+              'description': a.get('description', ''),
+              'published': a.get('published', ''),
+              'link': (a.get('links', {}).get('web', {}) or {}).get('href', '')
+            }
+            for a in $.get('articles', [])
+          ]
+  outputs:
+    result: "$.get('normalized', [])"
+    workflow-status: "len($.get('normalized', [])) > 0 and 'executed' or 'skipped'"

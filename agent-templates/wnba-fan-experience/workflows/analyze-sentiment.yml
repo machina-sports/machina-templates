@@ -1,0 +1,32 @@
+workflow:
+  name: analyze-sentiment
+  title: "Analyze Sentiment"
+  description: "Classifies the sentiment of a string via xAI Grok."
+  context-variables:
+    debugger:
+      enabled: true
+    grok-llm:
+      authorization: "$MACHINA_CONTEXT_VARIABLE_GROK_API_KEY"
+  inputs:
+    text_to_analyze: "$.get('text_to_analyze', '')"
+  tasks:
+    - name: analyze
+      type: connector
+      connector:
+        name: "grok-llm"
+        command: "post-chat/completions"
+      inputs:
+        body: |
+          {
+            "model": "grok-4-fast",
+            "temperature": 0,
+            "messages": [
+              {"role": "system", "content": "You are a sentiment classifier. Reply with one of: positive, negative, neutral — followed by a one-sentence justification."},
+              {"role": "user", "content": "Text: $.get('text_to_analyze')"}
+            ]
+          }
+      outputs:
+        sentiment_result: "$.get('choices', [{}])[0].get('message', {}).get('content', '')"
+  outputs:
+    result: "$.get('sentiment_result', '')"
+    workflow-status: "$.get('sentiment_result') and 'executed' or 'skipped'"

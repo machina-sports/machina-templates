@@ -1,0 +1,49 @@
+connector:
+  name: "grok-llm"
+  description: "xAI Grok chat-completions connector used for sentiment analysis."
+  filetype: "restapi"
+  apiSpec:
+    openapi: "3.0.0"
+    info:
+      title: "Grok LLM API"
+      version: "v1"
+    servers:
+      - url: "https://api.x.ai/v1"
+    security:
+      - bearerAuth: []
+    components:
+      securitySchemes:
+        bearerAuth:
+          type: http
+          scheme: Bearer
+    paths:
+      /chat/completions:
+        post:
+          summary: "Create a chat completion"
+          operationId: "post-chat/completions"
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    model:
+                      type: string
+                    messages:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          role:
+                            type: string
+                          content:
+                            type: string
+          responses:
+            '200':
+              description: "Successful response"
+              content:
+                application/json: {}
+  commands:
+    - name: "Post Chat Completions"
+      value: "post-chat/completions"

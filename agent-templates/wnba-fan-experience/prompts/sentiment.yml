@@ -1,0 +1,8 @@
+prompt:
+  name: sentiment-analysis-prompt
+  title: "Sentiment Analysis Prompt"
+  description: "Reference prompt for classifying sentiment. Kept for documentation; the workflow inlines the system message."
+  tags:
+    - sentiment
+    - classification
+  content: "Analyze the sentiment of the following text and classify it as positive, negative, or neutral. Provide a one-sentence justification.\n\nText: {text_input}\n\nSentiment:"

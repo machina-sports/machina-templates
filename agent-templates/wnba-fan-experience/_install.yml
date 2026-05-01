@@ -1,0 +1,30 @@
+setup:
+  title: "WNBA Fan Experience"
+  description: "WNBA news + fan-sentiment analysis. Uses ESPN's free public API (the same source the sports-skills `wnba-data` skill wraps) — no Sportradar, no paid API key. xAI Grok is used for sentiment."
+  category:
+    - custom-templates
+  estimatedTime: 5 minutes
+  features:
+    - "Fetches WNBA news via ESPN's free public endpoints (decoupled from Sportradar)."
+    - "Classifies sentiment of each headline using xAI Grok."
+    - "Self-contained: bundles its own connectors so it deploys standalone."
+  integrations:
+    - espn
+    - xai
+  status: available
+  value: "agent-templates/wnba-fan-experience"
+  version: 1.1.0
+
+datasets:
+  - type: "connector"
+    path: "connectors/espn-wnba.yml"
+  - type: "connector"
+    path: "connectors/grok.yml"
+  - type: "workflow"
+    path: "workflows/get-wnba-data.yml"
+  - type: "workflow"
+    path: "workflows/analyze-sentiment.yml"
+  - type: "prompt"
+    path: "prompts/sentiment.yml"
+  - type: "agent"
+    path: "agent.yml"

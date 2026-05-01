@@ -1,0 +1,42 @@
+agent:
+  name: wnba-fan-experience-agent
+  title: "WNBA Fan Experience Agent"
+  description: "Fetches WNBA news from ESPN (free) and runs sentiment analysis on each headline."
+  inputs:
+    - name: team
+      type: string
+      description: "Optional team name (informational; current implementation pulls league-wide news)."
+      default: "Las Vegas Aces"
+    - name: limit
+      type: integer
+      description: "Max number of articles to analyze."
+      default: 5
+  tasks:
+    - name: get_news
+      type: workflow
+      workflow:
+        name: get-wnba-data
+      inputs:
+        team_name: "$.get('team')"
+        limit: "$.get('limit')"
+      outputs:
+        news: "$.get('result')"
+    - name: sentiment_analysis
+      type: map
+      map:
+        variable: "news"
+        iterator: "article"
+        tasks:
+          - name: analyze_article_sentiment
+            type: workflow
+            workflow:
+              name: analyze-sentiment
+            inputs:
+              text_to_analyze: "$.get('article').get('title')"
+            outputs:
+              sentiment: "$.get('result')"
+      outputs:
+        analyzed_articles: "$.map(lambda item: {**item.get('article'), 'sentiment': item.get('sentiment')})"
+  outputs:
+    result: "$.get('analyzed_articles')"
+    workflow-status: "True"
