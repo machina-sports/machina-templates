@@ -1,0 +1,58 @@
+workflow:
+  name: "google-genai-test-image-vertex"
+  title: "Google Gemini Test Image (Vertex AI)"
+  description: "Workflow to test Google Gemini image generation via Vertex AI (service-account credentials, no api_key)."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$MACHINA_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$MACHINA_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+    google-storage:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    model_name: "$.get('model_name', 'gemini-3-pro-image-preview')"
+    prompt: "$.get('prompt', 'A close-up portrait of a determined athlete in studio lighting, three-stripes visible on the shoulder, deep black background')"
+    aspect_ratio: "$.get('aspect_ratio', '1:1')"
+    location: "$.get('location', 'us-central1')"
+    image_path: "$.get('image_path')"
+    image_paths: "$.get('image_paths', [])"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+    image_path: "$.get('image_path')"
+    uploaded_image_url: "$.get('uploaded_image_url')"
+  tasks:
+
+    # 1 test-image-vertex
+    - type: "connector"
+      name: "test-image-vertex"
+      description: "Generate an image via Vertex AI service-account credentials."
+      connector:
+        name: "google-genai"
+        command: "invoke_image"
+        provider: "vertex_ai"
+      inputs:
+        model_name: "$.get('model_name')"
+        prompt: "$.get('prompt')"
+        aspect_ratio: "$.get('aspect_ratio')"
+        location: "$.get('location')"
+        image_path: "$.get('image_path')"
+        image_paths: "$.get('image_paths')"
+      outputs:
+        data: "$"
+        image_path: "$.get('image_path')"
+
+    # 2 save-image
+    - type: "connector"
+      name: "save-image"
+      description: "Save the generated image to Google Storage."
+      condition: "bool($.get('image_path'))"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        image_path: "$.get('image_path')"
+      outputs:
+        uploaded_image_url: "$.get('url')"
+        workflow-status: "'executed'"
