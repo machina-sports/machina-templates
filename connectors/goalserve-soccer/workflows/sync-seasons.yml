@@ -1,0 +1,141 @@
+workflow:
+  name: "goalserve-soccer-sync-seasons"
+  title: "Goalserve Soccer - Sync Seasons"
+  description: "Workflow to synchronize available seasons for all leagues from Goalserve API."
+  context-variables:
+    debugger:
+      enabled: true
+    goalserve-soccer-pyscript:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOALSERVE_API_KEY"
+  outputs:
+    seasons: "$.get('seasons')"
+    total_leagues: "$.get('total_leagues', 0)"
+    workflow-status: "$.get('should_update') is not True and 'skipped' or 'executed'"
+  tasks:
+
+    # task-check-document-timedelta
+    - type: "document"
+      name: "task-check-document-timedelta"
+      description: "Check if the seasons document has expired."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      filters:
+        value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=24)}"
+        value.status: "'active'"
+      inputs:
+        name: "'goalserve-seasons'"
+      outputs:
+        documents: "$.get('documents')"
+        should_update: "len($.get('documents')) == 0"
+
+    # task-load-seasons
+    - type: "connector"
+      name: "task-load-seasons"
+      description: "Get seasons list from Goalserve"
+      connector:
+        name: "goalserve-soccer-pyscript"
+        command: "get_seasons"
+      condition: "$.get('should_update') == True"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        leagues_raw: "$.get('seasons', {}).get('league', [])"
+        seasons: |
+          [
+            {
+              'league_id': l.get('@id'),
+              'league_name': l.get('@name'),
+              'country': l.get('@country'),
+              'is_cup': l.get('@iscup', '') == 'True',
+              'results_seasons': [
+                s.get('@name')
+                for s in (
+                  l.get('results', {}).get('season', [])
+                  if isinstance(l.get('results', {}).get('season'), list)
+                  else [l.get('results', {}).get('season', {})]
+                  if l.get('results', {}).get('season')
+                  else []
+                )
+              ],
+              'standings_seasons': [
+                s.get('@name')
+                for s in (
+                  l.get('standings', {}).get('season', [])
+                  if isinstance(l.get('standings', {}).get('season'), list)
+                  else [l.get('standings', {}).get('season', {})]
+                  if l.get('standings', {}).get('season')
+                  else []
+                )
+              ]
+            }
+            for l in (
+              $.get('seasons', {}).get('league', [])
+              if isinstance($.get('seasons', {}).get('league'), list)
+              else [$.get('seasons', {}).get('league', {})]
+              if $.get('seasons', {}).get('league')
+              else []
+            )
+          ]
+        total_leagues: "len($.get('seasons', []))"
+
+    # task-update-seasons
+    - type: "document"
+      name: "task-update-seasons"
+      description: "Update the seasons document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        goalserve-seasons: |
+          {
+            'data': $.get('seasons'),
+            'total_leagues': $.get('total_leagues', 0),
+            'title': 'Goalserve Soccer Seasons',
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'synchronization'"
+
+    # task-bulk-save-league-seasons
+    - type: "document"
+      name: "task-bulk-save-league-seasons"
+      description: "Bulk save league seasons."
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      condition: "$.get('should_update') == True and len($.get('seasons', [])) > 0"
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "goalserve-league-season"
+      documents:
+        items: |
+          [
+            {
+              'league_id': l.get('league_id'),
+              'league_name': l.get('league_name'),
+              'country': l.get('country'),
+              'is_cup': l.get('is_cup'),
+              'results_seasons': l.get('results_seasons', []),
+              'standings_seasons': l.get('standings_seasons', []),
+              'title': f"Seasons - {l.get('league_name', l.get('league_id'))}"
+            }
+            for l in $.get('seasons', [])
+          ]
+      metadata:
+        document_type: "'league-season'"
