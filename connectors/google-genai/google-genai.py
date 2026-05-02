@@ -197,7 +197,12 @@ def invoke_image(request_data):
                     credential = json.loads(credential)
                 except json.JSONDecodeError:
                     return {"status": False, "message": "credential must be valid JSON"}
-            credentials = service_account.Credentials.from_service_account_info(credential)
+            # genai.Client (unlike ChatVertexAI) doesn't apply default scopes to
+            # raw service-account credentials, so calls fail with `invalid_scope`.
+            credentials = service_account.Credentials.from_service_account_info(
+                credential,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
     else:
         return {
             "status": False,
