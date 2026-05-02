@@ -1,0 +1,125 @@
+workflow:
+  name: "goalserve-soccer-sync-fixtures"
+  title: "Goalserve Soccer - Sync Fixtures"
+  description: "Workflow to synchronize full season fixtures from Goalserve API."
+  context-variables:
+    debugger:
+      enabled: true
+    goalserve-soccer-pyscript:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOALSERVE_API_KEY"
+  inputs:
+    league_id: "$.get('league_id', '1204')"
+  outputs:
+    fixtures: "$.get('fixtures')"
+    league_name: "$.get('league_name')"
+    total_matches: "$.get('total_matches', 0)"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+
+    # task-load-fixtures
+    - type: "connector"
+      name: "task-load-fixtures"
+      description: "Get full season fixtures from Goalserve"
+      connector:
+        name: "goalserve-soccer-pyscript"
+        command: "get_fixtures"
+      inputs:
+        api_key: "$.get('api_key')"
+        league_id: "$.get('league_id', '1204')"
+      outputs:
+        tournament: "$.get('results', {}).get('tournament', {})"
+        league_name: "$.get('results', {}).get('tournament', {}).get('@league', '')"
+        season: "$.get('results', {}).get('tournament', {}).get('@season', '')"
+        fixtures: |
+          [
+            {
+              'match_id': m.get('@id'),
+              'static_id': m.get('@static_id'),
+              'date': m.get('@date'),
+              'time': m.get('@time'),
+              'status': m.get('@status'),
+              'round': w.get('@number', ''),
+              'home_team': m.get('localteam', {}).get('@name') if isinstance(m.get('localteam'), dict) else '',
+              'home_id': m.get('localteam', {}).get('@id') if isinstance(m.get('localteam'), dict) else '',
+              'home_score': m.get('localteam', {}).get('@score') if isinstance(m.get('localteam'), dict) else '',
+              'away_team': m.get('visitorteam', {}).get('@name') if isinstance(m.get('visitorteam'), dict) else '',
+              'away_id': m.get('visitorteam', {}).get('@id') if isinstance(m.get('visitorteam'), dict) else '',
+              'away_score': m.get('visitorteam', {}).get('@score') if isinstance(m.get('visitorteam'), dict) else '',
+              'venue': m.get('@venue', ''),
+              'venue_city': m.get('@venue_city', '')
+            }
+            for w in (
+              $.get('results', {}).get('tournament', {}).get('week', [])
+              if isinstance($.get('results', {}).get('tournament', {}).get('week'), list)
+              else [$.get('results', {}).get('tournament', {}).get('week', {})]
+              if $.get('results', {}).get('tournament', {}).get('week')
+              else []
+            )
+            for m in (
+              w.get('match', [])
+              if isinstance(w.get('match'), list)
+              else [w.get('match', {})]
+              if w.get('match')
+              else []
+            )
+          ]
+        total_matches: "len($.get('fixtures', []))"
+        workflow-status: "'executed'"
+
+    # task-save-fixtures
+    - type: "document"
+      name: "task-save-fixtures"
+      description: "Save fixtures to document."
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      documents:
+        goalserve-fixtures: |
+          {
+            'data': $.get('fixtures'),
+            'league_id': $.get('league_id'),
+            'league_name': $.get('league_name'),
+            'season': $.get('season'),
+            'total_matches': $.get('total_matches', 0),
+            'title': f"Fixtures - {$.get('league_name', $.get('league_id'))} {$.get('season', '')}",
+            'execution': datetime.utcnow(),
+            'status': 'active'
+          }
+      metadata:
+        document_type: "'fixtures'"
+        league_id: "$.get('league_id')"
+
+    # task-bulk-save-fixtures
+    - type: "document"
+      name: "task-bulk-save-fixtures"
+      description: "Bulk save individual fixtures."
+      condition: "len($.get('fixtures', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      connector:
+        name: "openai"
+        command: "invoke_embedding"
+        model: "text-embedding-3-small"
+      document_name: "goalserve-fixture"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'league_id': $.get('league_id'),
+              'league_name': $.get('league_name'),
+              'season': $.get('season'),
+              'title': f"{f.get('home_team', '')} vs {f.get('away_team', '')} - {f.get('date', '')}"
+            }
+            for f in $.get('fixtures', [])
+          ]
+      metadata:
+        document_type: "'fixture'"
+        league_id: "$.get('league_id')"
