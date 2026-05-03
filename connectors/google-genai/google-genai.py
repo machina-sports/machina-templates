@@ -183,60 +183,80 @@ def invoke_prompt(params):
 def invoke_image(request_data):
     """Generate images using Google's Gemini model with optional input image.
 
-    Supports both AI Studio (default) and Vertex AI providers.
+    Supports AI Studio (API key) and Vertex AI (OAuth service account).
 
-    Provider selection:
-    - provider: "ai_studio" (default) or "vertex_ai" — read from params first, then headers.
+    Provider ``ai_studio`` (default) or ``vertex_ai``: from ``params.provider`` or
+    ``headers.provider``. Quoted strings from YAML are normalized.
 
-    AI Studio auth (provider="ai_studio"):
-    - api_key: Required — get from https://aistudio.google.com/apikey
+    AI Studio: ``api_key`` in headers or params.
+    Vertex AI: ``credential`` and ``project_id`` in headers or params; optional
+    ``location`` in params or headers (default ``us-central1``).
 
-    Vertex AI auth (provider="vertex_ai"):
-    - project_id: Required — your GCP Project ID
-    - credential: Required — service account JSON (string or dict)
-    - location: Optional — defaults to "us-central1"
-
-    NOTE: Vertex AI does NOT support API keys; OAuth2 service account credentials only.
+    Matches Adidas/Nevobo workflows using ``context-variables.google-genai``.
     """
 
-    params = request_data.get("params")
-    headers = request_data.get("headers")
+    params = request_data.get("params") or {}
+    headers = request_data.get("headers") or {}
 
-    provider = (params.get("provider") or headers.get("provider") or "ai_studio").lower()
+    raw_provider = params.get("provider") or headers.get("provider") or "ai_studio"
+    provider = (
+        raw_provider.strip().strip('\'"')
+        if isinstance(raw_provider, str)
+        else str(raw_provider)
+    ).lower()
 
-    if provider == "ai_studio":
-        api_key = headers.get("api_key") or params.get("api_key")
-        if not api_key:
-            return {"status": False, "message": "API key is required for AI Studio."}
-    elif provider == "vertex_ai":
-        project_id = headers.get("project_id") or params.get("project_id")
-        if not project_id:
-            return {"status": False, "message": "project_id is required for Vertex AI."}
+    raw_location = params.get("location") or headers.get("location") or "us-central1"
+    location = (
+        raw_location.strip().strip('\'"')
+        if isinstance(raw_location, str)
+        else str(raw_location)
+    )
 
-        credential = headers.get("credential") or params.get("credential")
-        location = params.get("location") or headers.get("location") or "us-central1"
-
-        credentials = None
-        if credential:
-            if isinstance(credential, str):
+    try:
+        if provider == "vertex_ai":
+            credential = headers.get("credential") or params.get("credential")
+            project_id = headers.get("project_id") or params.get("project_id")
+            if not credential or not project_id:
+                return {
+                    "status": False,
+                    "message": "Vertex AI image generation requires credential and project_id "
+                    "(configure google-genai context-variables).",
+                }
+            cred = credential
+            if isinstance(cred, str):
                 try:
-                    credential = json.loads(credential)
+                    cred = json.loads(cred)
                 except json.JSONDecodeError:
                     return {"status": False, "message": "credential must be valid JSON"}
-            # genai.Client (unlike ChatVertexAI) doesn't apply default scopes to
-            # raw service-account credentials, so calls fail with `invalid_scope`.
+            scopes = [
+                "https://www.googleapis.com/auth/cloud-platform",
+                "https://www.googleapis.com/auth/generative-language",
+            ]
             credentials = service_account.Credentials.from_service_account_info(
-                credential,
-                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+                cred, scopes=scopes
             )
-    else:
-        return {
-            "status": False,
-            "message": f"Invalid provider: {provider}. Must be 'ai_studio' or 'vertex_ai'.",
-        }
+            client = genai.Client(
+                vertexai=True,
+                project=project_id,
+                location=location,
+                credentials=credentials,
+            )
+        elif provider == "ai_studio":
+            api_key = headers.get("api_key") or params.get("api_key")
+            if not api_key:
+                return {"status": False, "message": "API key is required for AI Studio."}
+            client = genai.Client(api_key=api_key)
+        else:
+            return {
+                "status": False,
+                "message": f"Invalid provider: {provider}. Must be 'ai_studio' or 'vertex_ai'.",
+            }
+    except Exception as e:
+        return {"status": False, "message": f"Failed to initialize GenAI client: {e}"}
+
 
     # Get parameters
-    image_paths = params.get("image_paths", [])  # Accept array of image paths
+    image_paths = list(params.get("image_paths") or [])  # Accept array of image paths
     image_path = params.get("image_path")  # Keep backward compatibility
 
     # Collect individual image_path_N fields and add to array
@@ -277,16 +297,6 @@ def invoke_image(request_data):
             prompt = prompt.replace("{{away_animal}}", str(away_animal))
 
     try:
-        if provider == "ai_studio":
-            client = genai.Client(api_key=api_key)
-        else:  # vertex_ai
-            client = genai.Client(
-                vertexai=True,
-                project=project_id,
-                location=location,
-                credentials=credentials,
-            )
-
         # Prepare image parts if image_paths are provided
         image_parts = []
         if image_paths:
