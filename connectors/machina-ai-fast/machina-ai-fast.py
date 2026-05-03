@@ -29,11 +29,24 @@ def invoke_prompt(params):
     if not api_key:
         return {"status": "error", "message": "API key is required."}
 
+    # Optional per-call timeout (seconds). Values larger than 600 are
+    # interpreted as milliseconds for backwards compatibility with workflows
+    # that already set e.g. `timeout: 20000`.
+    timeout_param = params.get("timeout")
+    timeout_seconds = None
+    if timeout_param is not None:
+        try:
+            timeout_seconds = float(timeout_param)
+            if timeout_seconds > 600:
+                timeout_seconds = timeout_seconds / 1000.0
+        except (TypeError, ValueError):
+            timeout_seconds = None
+
     try:
-        llm = ChatGroq(
-            api_key=api_key,
-            model_name=model_name
-        )
+        llm_kwargs = {"api_key": api_key, "model_name": model_name}
+        if timeout_seconds is not None:
+            llm_kwargs["timeout"] = timeout_seconds
+        llm = ChatGroq(**llm_kwargs)
     except Exception as e:
         return {"status": "error", "message": f"Exception when creating model: {e}"}
 

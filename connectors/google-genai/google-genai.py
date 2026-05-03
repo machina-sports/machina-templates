@@ -64,6 +64,19 @@ def invoke_prompt(params):
     if not model_name:
         return {"status": False, "message": "Model name is required."}
 
+    # Optional per-call timeout (seconds). Values larger than 600 are
+    # interpreted as milliseconds for backwards compatibility with workflows
+    # that already set e.g. `timeout: 20000`.
+    timeout_param = params.get("timeout")
+    timeout_seconds = None
+    if timeout_param is not None:
+        try:
+            timeout_seconds = float(timeout_param)
+            if timeout_seconds > 600:
+                timeout_seconds = timeout_seconds / 1000.0
+        except (TypeError, ValueError):
+            timeout_seconds = None
+
     # AI Studio Implementation (default)
     if provider == "ai_studio":
         api_key = params.get("api_key")
@@ -72,7 +85,10 @@ def invoke_prompt(params):
             return {"status": False, "message": "API key is required for AI Studio."}
 
         try:
-            llm = ChatGoogleGenerativeAI(model=model_name, api_key=api_key)
+            llm_kwargs = {"model": model_name, "api_key": api_key}
+            if timeout_seconds is not None:
+                llm_kwargs["timeout"] = timeout_seconds
+            llm = ChatGoogleGenerativeAI(**llm_kwargs)
             return {
                 "status": True,
                 "data": llm,
@@ -122,13 +138,23 @@ def invoke_prompt(params):
             if priority_mode:
                 additional_headers["x-vertex-ai-llm-shared-request-type"] = "priority"
 
-            llm = ChatVertexAI(
-                model_name=model_name,
-                project=project_id,
-                location=location,
-                credentials=credentials,
-                additional_headers=additional_headers if additional_headers else None,
-            )
+            vertex_kwargs = {
+                "model_name": model_name,
+                "project": project_id,
+                "location": location,
+                "credentials": credentials,
+                "additional_headers": additional_headers if additional_headers else None,
+            }
+            if timeout_seconds is not None:
+                # ChatVertexAI accepts both `timeout` (modern langchain) and
+                # `request_timeout` (legacy). Pass `timeout`; fall back if the
+                # installed version rejects it.
+                try:
+                    llm = ChatVertexAI(timeout=timeout_seconds, **vertex_kwargs)
+                except TypeError:
+                    llm = ChatVertexAI(request_timeout=timeout_seconds, **vertex_kwargs)
+            else:
+                llm = ChatVertexAI(**vertex_kwargs)
 
             endpoint_info = (
                 "Global Endpoint"
