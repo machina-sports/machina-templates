@@ -6,7 +6,7 @@ prompt:
     - summary
     - sports
     - article
-  content: |
+  instruction: |
     You are a sports editor. Read the article below and write a concise summary
     as EXACTLY 3 bullet points. Each bullet should be a single sentence covering
     the most important facts (who, what, when, score/result, why it matters).
