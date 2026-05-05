@@ -16,7 +16,11 @@ workflow:
       inputs:
         text_input: "$.get('text_to_analyze')"
       outputs:
-        sentiment_result: "$.get('result')"
+        # The prompt connector returns plain text (a string), not a
+        # dict; `$` is the entire response. The earlier
+        # `$.get('result')` raised "'str' object has no attribute
+        # 'get'" at runtime.
+        sentiment_result: "$"
   outputs:
     result: "$.get('sentiment_result')"
     workflow-status: "$.get('sentiment_result') and 'executed' or 'skipped'"
