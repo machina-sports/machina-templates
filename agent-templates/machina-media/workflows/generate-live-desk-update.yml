@@ -23,7 +23,8 @@ workflow:
         model: gemini-2.5-flash
         provider: vertex_ai
         location: global
-      prompt: live-desk-update-prompt
+      prompt:
+        name: live-desk-update-prompt
       inputs:
         current_storyline: "$.get('storyline')"
         live_context: "$.get('live_context')"
