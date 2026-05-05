@@ -23,7 +23,8 @@ workflow:
         model: gemini-2.5-flash
         provider: vertex_ai
         location: global
-      prompt: postgame-recap-prompt
+      prompt:
+        name: postgame-recap-prompt
       inputs:
         final_event: "$.get('final_event')"
         key_moments: "$.get('key_moments')"

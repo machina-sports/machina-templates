@@ -48,7 +48,8 @@ workflow:
         name: "grok-llm"
         command: "post-chat/completions"
         model: "grok-1.5-flash" # Placeholder model
-      prompt: "betting-copilot-prompt"
+      prompt:
+        name: "betting-copilot-prompt"
       inputs:
         user_query: "$.get('user_query')"
         kalshi_data: "$.get('kalshi_markets')"
