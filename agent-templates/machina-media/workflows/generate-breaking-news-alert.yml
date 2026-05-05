@@ -19,7 +19,8 @@ workflow:
         model: gemini-2.5-flash
         provider: vertex_ai
         location: global
-      prompt: breaking-news-alert-prompt
+      prompt:
+        name: breaking-news-alert-prompt
       inputs:
         news_item: "$.get('news_item')"
         context_storylines: "$.get('context_storylines')"

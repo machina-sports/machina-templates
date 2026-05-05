@@ -31,7 +31,8 @@ workflow:
         model: gemini-2.5-flash
         provider: vertex_ai
         location: global
-      prompt: morning-briefing-prompt
+      prompt:
+        name: morning-briefing-prompt
       inputs:
         briefing_date: "$.get('briefing_date')"
         top_storylines: "$.get('ranked_queue')"

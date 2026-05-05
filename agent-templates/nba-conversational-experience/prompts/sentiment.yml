@@ -5,4 +5,4 @@ prompt:
     tags:
         - sentiment
         - classification
-    content: "Analyze the sentiment of the following text and classify it as positive, negative, or neutral. Provide a one-sentence justification for your classification.\n\nText: {text_input}\n\nSentiment:"
+    instruction: "Analyze the sentiment of the user message and classify it as positive, negative, or neutral. Provide a one-sentence justification for your classification. Output two lines: line 1 = the classification (Positive | Negative | Neutral), line 2 = your one-sentence justification. No preamble."

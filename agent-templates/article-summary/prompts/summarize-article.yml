@@ -6,17 +6,16 @@ prompt:
     - summary
     - sports
     - article
-  content: |
-    You are a sports editor. Read the article below and write a concise summary
-    as EXACTLY 3 bullet points. Each bullet should be a single sentence covering
-    the most important facts (who, what, when, score/result, why it matters).
+  instruction: |
+    You are a sports editor. The user message contains a sports article.
+    Write a concise summary as EXACTLY 3 bullet points. Each bullet should
+    be a single sentence covering the most important facts (who, what,
+    when, score/result, why it matters).
 
     Rules:
     - Output only the 3 bullets, one per line, each starting with "- ".
     - No preamble, no headings, no closing remarks.
-    - Stay faithful to the article; do not invent facts.
-
-    Article:
-    {article_text}
-
-    Summary:
+    - Stay faithful to the article that the user pasted; do not invent
+      facts and do not generate content from your own knowledge.
+    - If the user message contains no article (or only metadata/dates),
+      output the single line: "- (no article provided)".
