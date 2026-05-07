@@ -1,0 +1,38 @@
+agent:
+  name: "pdf-generator"
+  title: "PDF Generator"
+  description: "Render a structured payload as a multi-page PDF (brand assets, rate card, contact sheet) and host it on Google Cloud Storage."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    - name: pdf-generator
+      description: "Generate a PDF from a structured payload and upload it to GCS."
+      inputs:
+        template: "$.get('template', 'brand-assets')"
+        content: "$.get('content', {})"
+        filename: "$.get('filename', '')"
+        page_size: "$.get('page_size', 'Letter')"
+        brand_color: "$.get('brand_color', '#111111')"
+        remote_path: "$.get('remote_path', 'pdfs/')"
+      outputs:
+        pdf_url: "$.get('pdf_url')"
+        pdf_path: "$.get('pdf_path')"
+        pdf_filename: "$.get('pdf_filename')"
+        size_bytes: "$.get('size_bytes')"
+        page_count: "$.get('page_count')"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: pdf-generator-from-brief
+      description: "Draft brand-asset content from a freeform brief, then render and upload the PDF."
+      inputs:
+        brief: "$.get('brief', '')"
+        brand_name: "$.get('brand_name', '')"
+        brand_color: "$.get('brand_color', '#111111')"
+        page_size: "$.get('page_size', 'Letter')"
+        remote_path: "$.get('remote_path', 'pdfs/')"
+      outputs:
+        pdf_url: "$.get('pdf_url')"
+        pdf_path: "$.get('pdf_path')"
+        pdf_filename: "$.get('pdf_filename')"
+        workflow-status: "$.get('workflow-status')"

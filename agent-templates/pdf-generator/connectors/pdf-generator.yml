@@ -1,0 +1,8 @@
+connector:
+  name: "pdf-generator"
+  description: "Render structured payloads as multi-page PDFs (brand assets, rate cards, contact sheets) and return them as base64."
+  filename: "pdf-generator.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Generate PDF"
+      value: "invoke_generate"

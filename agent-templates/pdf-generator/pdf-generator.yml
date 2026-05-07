@@ -1,0 +1,71 @@
+workflow:
+  name: "pdf-generator"
+  title: "PDF Generator"
+  description: "Render a structured payload as a multi-page PDF (brand assets, rate card, contact sheet, …) and upload it to Google Cloud Storage. Returns the public URL."
+  context-variables:
+    debugger:
+      enabled: true
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    # One of: "brand-assets", "rate-card", "contact-sheet"
+    template: "$.get('template', 'brand-assets')"
+    # Structured payload — see prompts.yml / README for per-template schema.
+    # May be passed as a dict OR a JSON string (the connector coerces both).
+    content: "$.get('content', {})"
+    # Optional output filename. Defaults to <template>-<timestamp>.pdf
+    filename: "$.get('filename', '')"
+    # "A4" or "Letter" (default Letter)
+    page_size: "$.get('page_size', 'Letter')"
+    # Hex accent color used for headings, table headers, etc.
+    brand_color: "$.get('brand_color', '#111111')"
+    # Folder inside the GCS bucket. Default "pdfs/"
+    remote_path: "$.get('remote_path', 'pdfs/')"
+  outputs:
+    pdf_url: "$.get('pdf_url')"
+    pdf_path: "$.get('pdf_path')"
+    pdf_filename: "$.get('pdf_filename')"
+    size_bytes: "$.get('size_bytes')"
+    page_count: "$.get('page_count')"
+    workflow-status: "$.get('pdf_url') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # 1. Render the PDF locally and return it as base64 / Data URI.
+    - type: "connector"
+      name: "render-pdf"
+      description: "Render the PDF using the local pdf-generator pyscript connector."
+      connector:
+        name: "pdf-generator"
+        command: "invoke_generate"
+      inputs:
+        template: "$.get('template')"
+        content: "$.get('content')"
+        filename: "$.get('filename')"
+        page_size: "$.get('page_size')"
+        brand_color: "$.get('brand_color')"
+      outputs:
+        pdf_data_uri: "$.get('data', {}).get('data_uri')"
+        pdf_filename: "$.get('data', {}).get('filename')"
+        size_bytes: "$.get('data', {}).get('size_bytes')"
+        page_count: "$.get('data', {}).get('page_count_estimate')"
+
+    # 2. Upload the rendered PDF to Google Cloud Storage.
+    #    google-storage's invoke_upload accepts Data URIs natively.
+    - type: "connector"
+      name: "upload-pdf"
+      description: "Upload the rendered PDF to Google Cloud Storage."
+      condition: "$.get('pdf_data_uri') is not None and len($.get('pdf_data_uri', '')) > 0"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        api_key: "$.get('api_key')"
+        bucket_name: "$.get('bucket_name')"
+        file_path: "$.get('pdf_data_uri')"
+        filename: "$.get('pdf_filename')"
+        remote_path: "$.get('remote_path')"
+        cache_control: "'public, max-age=300'"
+      outputs:
+        pdf_url: "$.get('data', {}).get('url')"
+        pdf_path: "$.get('data', {}).get('path')"
