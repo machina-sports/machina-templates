@@ -1,0 +1,56 @@
+agent:
+  name: "voice-tts-studio"
+  title: "Voice TTS Studio"
+  description: "Agent that orchestrates the full custom-voice lifecycle: write a consent script, capture a sample, clone an instant voice, optionally train a pro voice, and synthesize new audio."
+  context:
+    config-frequency: 0.1
+  workflows:
+
+    - name: generate-training-script
+      description: "Draft a consent + training script for the speaker to read."
+      inputs:
+        speaker_description: "$.get('speaker_description', '')"
+        language_code: "$.get('language_code', 'en-US')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    - name: capture-voice-sample
+      description: "Upload a base64 or local audio sample of the consented voice and store it in GCS."
+      inputs:
+        speaker_label: "$.get('speaker_label', '')"
+        audio_base64: "$.get('audio_base64')"
+        audio_path: "$.get('audio_path')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    - name: clone-instant-voice
+      description: "Create an Instant Custom Voice clone from a previously captured sample."
+      inputs:
+        reference_audio_path: "$.get('reference_audio_path', '')"
+        consent_script: "$.get('consent_script', '')"
+        language_code: "$.get('language_code', 'en-US')"
+        speaker_label: "$.get('speaker_label', '')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    - name: train-pro-custom-voice
+      description: "Start a Professional Custom Voice training job from a GCS manifest."
+      inputs:
+        voice_name: "$.get('voice_name', '')"
+        dataset_uri: "$.get('dataset_uri', '')"
+        consent_audio_uri: "$.get('consent_audio_uri', '')"
+        language_code: "$.get('language_code', 'en-US')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"
+
+    - name: synthesize-with-custom-voice
+      description: "Synthesize a line of text using either an instant clone or a trained pro voice."
+      inputs:
+        text: "$.get('text', '')"
+        speaker_label: "$.get('speaker_label', '')"
+        voice_clone_key: "$.get('voice_clone_key')"
+        custom_voice_model: "$.get('custom_voice_model')"
+        language_code: "$.get('language_code', 'en-US')"
+        audio_encoding: "$.get('audio_encoding', 'LINEAR16')"
+      outputs:
+        workflow-status: "$.get('workflow-status')"

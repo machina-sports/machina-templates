@@ -1,0 +1,61 @@
+workflow:
+  name: "train-pro-custom-voice"
+  title: "Train Pro Custom Voice"
+  description: "Kick off a Google Professional Custom Voice training job from a GCS dataset manifest. Returns the long-running operation name; training itself runs server-side and may take hours."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    voice_name: "$.get('voice_name', '')"
+    dataset_uri: "$.get('dataset_uri', '')"
+    consent_audio_uri: "$.get('consent_audio_uri', '')"
+    language_code: "$.get('language_code', 'en-US')"
+    speaker_label: "$.get('speaker_label', '')"
+  outputs:
+    voice_name: "$.get('voice_name')"
+    operation_name: "$.get('operation_name')"
+    workflow-status: "$.get('operation_name') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # 1. Submit the training job to Cloud TTS Custom Voices.
+    - type: "connector"
+      name: "start-pro-voice-training"
+      description: "Start the Professional Custom Voice training operation."
+      condition: "$.get('voice_name', '') != '' and $.get('dataset_uri', '') != '' and $.get('consent_audio_uri', '') != ''"
+      connector:
+        name: "google-genai"
+        command: "invoke_train_pro_voice"
+      inputs:
+        voice_name: "$.get('voice_name')"
+        dataset_uri: "$.get('dataset_uri')"
+        consent_audio_uri: "$.get('consent_audio_uri')"
+        language_code: "$.get('language_code', 'en-US')"
+      outputs:
+        operation_name: "$.get('data', {}).get('operation_name') or $.get('operation_name')"
+        location: "$.get('data', {}).get('location', 'global')"
+
+    # 2. Persist a training-job record so synthesis runs can resolve the
+    #    final pro voice model name once the operation finishes.
+    - type: "document"
+      name: "save-pro-voice-training-record"
+      description: "Store the pro voice training job + operation name."
+      condition: "$.get('operation_name') is not None"
+      config:
+        action: "save"
+      inputs:
+        name: "'voice-tts-studio-pro-voice'"
+        item_id: f"voice-tts-studio-pro-{$.get('voice_name')}"
+        value:
+          voice_name: "$.get('voice_name')"
+          operation_name: "$.get('operation_name')"
+          location: "$.get('location', 'global')"
+          language_code: "$.get('language_code', 'en-US')"
+          speaker_label: "$.get('speaker_label', '')"
+          status: "'training'"
+          mode: "'pro'"
+        metadata:
+          voice_name: "$.get('voice_name')"
+          mode: "'pro'"

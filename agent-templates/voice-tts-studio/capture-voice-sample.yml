@@ -1,0 +1,34 @@
+workflow:
+  name: "capture-voice-sample"
+  title: "Capture Voice Sample"
+  description: "Persist a consented voice sample (base64 blob, local path, or URL) to Google Cloud Storage so it can be reused for cloning."
+  context-variables:
+    debugger:
+      enabled: true
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    speaker_label: "$.get('speaker_label', 'speaker')"
+    audio_base64: "$.get('audio_base64')"
+    audio_path: "$.get('audio_path')"
+  outputs:
+    speaker_label: "$.get('speaker_label')"
+    sample_url: "$.get('sample_url')"
+    workflow-status: "$.get('sample_url') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # 1. Upload the consented sample to GCS. invoke_upload accepts either
+    #    a base64 string, a local path, or an https URL via `file_path`.
+    - type: "connector"
+      name: "upload-voice-sample"
+      description: "Upload the voice sample to Google Cloud Storage."
+      condition: "$.get('audio_base64') is not None or $.get('audio_path') is not None"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        file_path: "$.get('audio_base64') or $.get('audio_path')"
+        remote_path: f"voice-tts-studio/samples/{$.get('speaker_label', 'speaker')}/sample.wav"
+      outputs:
+        sample_url: "$.get('data', {}).get('url') or $.get('url')"

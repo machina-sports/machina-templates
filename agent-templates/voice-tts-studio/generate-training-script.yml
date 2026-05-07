@@ -1,0 +1,38 @@
+workflow:
+  name: "generate-training-script"
+  title: "Generate Training Script"
+  description: "Drafts a consent phrase + a 60-90s training script that the voice talent can read out loud to record a Custom Voice sample."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    speaker_description: "$.get('speaker_description', '')"
+    language_code: "$.get('language_code', 'en-US')"
+  outputs:
+    consent_script: "$.get('consent_script')"
+    training_script: "$.get('training_script')"
+    language_code: "$.get('language_code')"
+    speaker_notes: "$.get('speaker_notes')"
+    workflow-status: "$.get('consent_script') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    - type: "prompt"
+      name: "voice-tts-studio-training-script-prompt"
+      description: "Generate a consent phrase and a recordable training script for the speaker."
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      inputs:
+        speaker_description: "$.get('speaker_description', '')"
+        language_code: "$.get('language_code', 'en-US')"
+      outputs:
+        consent_script: "$.get('consent_script')"
+        training_script: "$.get('training_script')"
+        language_code: "$.get('language_code')"
+        speaker_notes: "$.get('speaker_notes', '')"

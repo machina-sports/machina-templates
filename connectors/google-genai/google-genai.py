@@ -1284,3 +1284,423 @@ def invoke_tts(request_data):
     except Exception as e:
         print(f"TTS Error: {e}")
         return {"status": False, "message": f"Error generating speech: {str(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# Custom Voice (Cloud Text-to-Speech) — Instant + Professional
+#
+# These three commands wrap the Google Cloud Text-to-Speech Custom Voice
+# REST API. They share the same auth path as `invoke_tts` (Vertex
+# service-account credential + project_id) and rely only on `requests` so
+# we don't add new heavy dependencies to the connector image.
+#
+# - invoke_clone_instant_voice:    upload a 10-30s consented audio sample
+#                                  and get back a `voice_clone_key` that
+#                                  can be passed straight to synthesis.
+#
+# - invoke_train_pro_voice:        kick off a Professional Custom Voice
+#                                  training job from a CSV manifest of
+#                                  (transcript, audio_uri) pairs in GCS.
+#                                  Returns the long-running operation
+#                                  name; callers poll it themselves.
+#
+# - invoke_synthesize_custom_voice: synthesize text using either a
+#                                  voice_clone_key (instant) or a
+#                                  custom_voice.model name (pro). Saves
+#                                  the resulting LINEAR16 audio as a WAV
+#                                  next to the connector's tempdir.
+# ---------------------------------------------------------------------------
+
+
+def _gcp_access_token(credential):
+    """Refresh a service-account credential and return its access token."""
+    from google.auth.transport.requests import Request as AuthRequest
+
+    cred = credential
+    if isinstance(cred, str):
+        try:
+            cred = json.loads(cred)
+        except json.JSONDecodeError:
+            raise ValueError("credential must be valid JSON")
+
+    credentials = service_account.Credentials.from_service_account_info(
+        cred,
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    )
+    credentials.refresh(AuthRequest())
+    return credentials.token
+
+
+def invoke_clone_instant_voice(request_data):
+    """
+    Create an Instant Custom Voice clone from a short consented sample.
+
+    Parameters (params):
+    - reference_audio_path: Required - Local path OR https/gs URL to a
+      10-30 second WAV/LINEAR16 mono 24kHz sample of the speaker.
+    - reference_audio_base64: Optional - alternative to reference_audio_path,
+      a base64-encoded WAV blob.
+    - consent_script: Required - The exact spoken-consent phrase the
+      speaker recorded (Google requires this to verify consent).
+    - language_code: BCP-47 language code (default: "en-US").
+
+    Auth (headers, same as invoke_tts):
+    - credential + project_id: Vertex AI service account.
+
+    Returns:
+    - data.voice_clone_key: opaque string to pass into
+      invoke_synthesize_custom_voice as `voice_clone_key`.
+    - data.consent_script: echo of the consent phrase used.
+    """
+    params = request_data.get("params", {})
+    headers = request_data.get("headers", {})
+
+    credential = headers.get("credential")
+    project_id = headers.get("project_id")
+
+    reference_audio_path = params.get("reference_audio_path")
+    reference_audio_base64 = params.get("reference_audio_base64")
+    consent_script = params.get("consent_script")
+    language_code = params.get("language_code") or "en-US"
+
+    if not credential or not project_id:
+        return {"status": False, "message": "Missing Vertex AI credentials (credential + project_id required)."}
+    if not consent_script:
+        return {"status": False, "message": "consent_script is required (the exact phrase the speaker recorded)."}
+    if not reference_audio_path and not reference_audio_base64:
+        return {"status": False, "message": "Provide reference_audio_path (URL or local path) or reference_audio_base64."}
+
+    try:
+        # Resolve audio bytes
+        audio_bytes = None
+        if reference_audio_base64:
+            audio_bytes = base64.b64decode(reference_audio_base64)
+        elif reference_audio_path.startswith(("http://", "https://")):
+            print(f"Downloading reference audio: {reference_audio_path}")
+            resp = requests.get(reference_audio_path, timeout=60)
+            resp.raise_for_status()
+            audio_bytes = resp.content
+        elif reference_audio_path.startswith("gs://"):
+            return {
+                "status": False,
+                "message": "gs:// references not supported here — pre-fetch and pass an https URL or local path.",
+            }
+        elif os.path.exists(reference_audio_path):
+            with open(reference_audio_path, "rb") as fh:
+                audio_bytes = fh.read()
+        else:
+            return {"status": False, "message": f"Reference audio not found: {reference_audio_path}"}
+
+        print(f"Instant voice clone: {len(audio_bytes)} bytes of reference audio, lang={language_code}")
+
+        token = _gcp_access_token(credential)
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+        url = "https://texttospeech.googleapis.com/v1beta1/voices:generateVoiceCloningKey"
+        payload = {
+            "reference_audio": {
+                "audio_config": {
+                    "audio_encoding": "LINEAR16",
+                    "sample_rate_hertz": 24000,
+                },
+                "content": audio_b64,
+            },
+            "voice_talent_consent": {
+                "script": consent_script,
+            },
+            "consent_script": consent_script,
+            "language_code": language_code,
+        }
+
+        response = requests.post(
+            url,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Goog-User-Project": project_id,
+                "Content-Type": "application/json",
+            },
+            timeout=120,
+        )
+
+        if response.status_code != 200:
+            return {
+                "status": False,
+                "message": f"voiceCloningKey API error {response.status_code}: {response.text[:500]}",
+            }
+
+        result = response.json()
+        voice_clone_key = result.get("voiceCloningKey") or result.get("voice_cloning_key")
+
+        if not voice_clone_key:
+            return {
+                "status": False,
+                "message": f"No voiceCloningKey returned: {json.dumps(result)[:500]}",
+            }
+
+        print(f"Instant voice clone key created (len={len(voice_clone_key)})")
+        return {
+            "status": True,
+            "data": {
+                "voice_clone_key": voice_clone_key,
+                "consent_script": consent_script,
+                "language_code": language_code,
+            },
+            "message": "Instant custom voice clone key created.",
+        }
+
+    except ValueError as ve:
+        return {"status": False, "message": str(ve)}
+    except Exception as e:
+        print(f"Instant voice clone error: {e}")
+        return {"status": False, "message": f"Error creating instant voice clone: {e}"}
+
+
+def invoke_train_pro_voice(request_data):
+    """
+    Kick off a Professional Custom Voice training job.
+
+    Pro voices require a curated multi-utterance dataset hosted in GCS
+    plus a CSV manifest (transcript|gs://uri pairs). This function only
+    starts the long-running training operation; you poll it yourself
+    via the returned operation name.
+
+    Parameters (params):
+    - voice_name: Required - human-readable name for the resulting voice
+      model (e.g. "anchor-en-male-01"). Must be unique within the project.
+    - dataset_uri: Required - gs:// URI to the CSV manifest with one row
+      per training utterance, formatted `<transcript>|<gs://audio.wav>`.
+    - consent_audio_uri: Required - gs:// URI to a single WAV recording of
+      the voice talent reading Google's standard consent script.
+    - language_code: BCP-47 (default: "en-US").
+    - location: GCP region for the training job (default: "global").
+
+    Auth (headers): credential + project_id (same as invoke_tts).
+
+    Returns:
+    - data.operation_name: long-running operation; poll with the standard
+      Google AI Platform `operations.get` endpoint.
+    - data.voice_name: echo for downstream synthesis.
+    """
+    params = request_data.get("params", {})
+    headers = request_data.get("headers", {})
+
+    credential = headers.get("credential")
+    project_id = headers.get("project_id")
+
+    voice_name = params.get("voice_name")
+    dataset_uri = params.get("dataset_uri")
+    consent_audio_uri = params.get("consent_audio_uri")
+    language_code = params.get("language_code") or "en-US"
+    location = params.get("location") or "global"
+
+    if not credential or not project_id:
+        return {"status": False, "message": "Missing Vertex AI credentials (credential + project_id required)."}
+    if not voice_name:
+        return {"status": False, "message": "voice_name is required."}
+    if not dataset_uri or not dataset_uri.startswith("gs://"):
+        return {"status": False, "message": "dataset_uri must be a gs:// URI to the training manifest CSV."}
+    if not consent_audio_uri or not consent_audio_uri.startswith("gs://"):
+        return {"status": False, "message": "consent_audio_uri must be a gs:// URI to the consent WAV."}
+
+    try:
+        token = _gcp_access_token(credential)
+
+        url = (
+            f"https://texttospeech.googleapis.com/v1beta1"
+            f"/projects/{project_id}/locations/{location}/customVoices"
+        )
+        payload = {
+            "displayName": voice_name,
+            "languageCode": language_code,
+            "trainingConfig": {
+                "datasetUri": dataset_uri,
+                "consentAudioUri": consent_audio_uri,
+            },
+        }
+
+        print(f"Starting Pro voice training: {voice_name} (dataset={dataset_uri})")
+        response = requests.post(
+            url,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Goog-User-Project": project_id,
+                "Content-Type": "application/json",
+            },
+            timeout=120,
+        )
+
+        if response.status_code not in (200, 201):
+            return {
+                "status": False,
+                "message": f"customVoices.create error {response.status_code}: {response.text[:500]}",
+            }
+
+        result = response.json()
+        operation_name = result.get("name")
+        if not operation_name:
+            return {
+                "status": False,
+                "message": f"No operation name returned: {json.dumps(result)[:500]}",
+            }
+
+        print(f"Pro voice training started: {operation_name}")
+        return {
+            "status": True,
+            "data": {
+                "operation_name": operation_name,
+                "voice_name": voice_name,
+                "language_code": language_code,
+                "location": location,
+            },
+            "message": "Professional custom voice training job started.",
+        }
+
+    except ValueError as ve:
+        return {"status": False, "message": str(ve)}
+    except Exception as e:
+        print(f"Pro voice training error: {e}")
+        return {"status": False, "message": f"Error starting pro voice training: {e}"}
+
+
+def invoke_synthesize_custom_voice(request_data):
+    """
+    Synthesize text with either an Instant clone key OR a trained Pro voice.
+
+    Parameters (params):
+    - text: Required - text to synthesize.
+    - voice_clone_key: Optional - returned by invoke_clone_instant_voice.
+    - custom_voice_model: Optional - the Pro custom voice model name,
+      e.g. "projects/<id>/locations/global/customVoices/anchor-en-male-01".
+    - language_code: BCP-47 (default: "en-US").
+    - speaking_rate: Optional float (default 1.0).
+    - pitch: Optional float (default 0.0).
+    - audio_encoding: "LINEAR16" (default) or "MP3".
+    - sample_rate_hertz: Optional int (default 24000 for LINEAR16).
+
+    Exactly one of voice_clone_key / custom_voice_model is required.
+
+    Auth (headers): credential + project_id.
+
+    Returns:
+    - data.file_path: local path to the synthesized audio file.
+    """
+    params = request_data.get("params", {})
+    headers = request_data.get("headers", {})
+
+    credential = headers.get("credential")
+    project_id = headers.get("project_id")
+
+    text = params.get("text")
+    voice_clone_key = params.get("voice_clone_key")
+    custom_voice_model = params.get("custom_voice_model")
+    language_code = params.get("language_code") or "en-US"
+    speaking_rate = params.get("speaking_rate", 1.0)
+    pitch = params.get("pitch", 0.0)
+    audio_encoding = (params.get("audio_encoding") or "LINEAR16").upper()
+    sample_rate_hertz = int(params.get("sample_rate_hertz") or 24000)
+
+    if not credential or not project_id:
+        return {"status": False, "message": "Missing Vertex AI credentials (credential + project_id required)."}
+    if not text:
+        return {"status": False, "message": "text is required."}
+    if bool(voice_clone_key) == bool(custom_voice_model):
+        return {
+            "status": False,
+            "message": "Provide exactly one of voice_clone_key (instant) or custom_voice_model (pro).",
+        }
+
+    try:
+        token = _gcp_access_token(credential)
+
+        voice_block = {"languageCode": language_code}
+        if voice_clone_key:
+            voice_block["voiceClone"] = {"voiceCloningKey": voice_clone_key}
+        else:
+            voice_block["customVoice"] = {"model": custom_voice_model}
+
+        audio_config = {
+            "audioEncoding": audio_encoding,
+            "speakingRate": speaking_rate,
+            "pitch": pitch,
+        }
+        if audio_encoding == "LINEAR16":
+            audio_config["sampleRateHertz"] = sample_rate_hertz
+
+        payload = {
+            "input": {"text": text},
+            "voice": voice_block,
+            "audioConfig": audio_config,
+        }
+
+        url = "https://texttospeech.googleapis.com/v1beta1/text:synthesize"
+        print(
+            f"Custom voice synth: encoding={audio_encoding}, "
+            f"mode={'instant' if voice_clone_key else 'pro'}, text_len={len(text)}"
+        )
+
+        response = requests.post(
+            url,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Goog-User-Project": project_id,
+                "Content-Type": "application/json",
+            },
+            timeout=180,
+        )
+
+        if response.status_code != 200:
+            return {
+                "status": False,
+                "message": f"text:synthesize error {response.status_code}: {response.text[:500]}",
+            }
+
+        result = response.json()
+        audio_b64 = result.get("audioContent")
+        if not audio_b64:
+            return {"status": False, "message": f"No audioContent in response: {json.dumps(result)[:300]}"}
+
+        audio_bytes = base64.b64decode(audio_b64)
+
+        # Save to a temp file matching the requested encoding.
+        temp_dir = tempfile.mkdtemp()
+        if audio_encoding == "MP3":
+            save_path = os.path.join(temp_dir, f"{uuid.uuid4()}.mp3")
+            with open(save_path, "wb") as fh:
+                fh.write(audio_bytes)
+        else:
+            save_path = os.path.join(temp_dir, f"{uuid.uuid4()}.wav")
+            with wave.open(save_path, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(sample_rate_hertz)
+                wf.writeframes(audio_bytes)
+
+        approx_duration = (
+            len(audio_bytes) / (sample_rate_hertz * 2) if audio_encoding == "LINEAR16" else None
+        )
+        print(
+            f"Custom voice audio saved: {save_path} "
+            f"({len(audio_bytes)} bytes"
+            + (f", ~{approx_duration:.1f}s" if approx_duration else "")
+            + ")"
+        )
+
+        return {
+            "status": True,
+            "data": {
+                "file_path": save_path,
+                "audio_encoding": audio_encoding,
+                "sample_rate_hertz": sample_rate_hertz if audio_encoding == "LINEAR16" else None,
+                "voice_mode": "instant" if voice_clone_key else "pro",
+            },
+            "message": "Custom voice synthesis completed.",
+        }
+
+    except ValueError as ve:
+        return {"status": False, "message": str(ve)}
+    except Exception as e:
+        print(f"Custom voice synth error: {e}")
+        return {"status": False, "message": f"Error synthesizing custom voice: {e}"}

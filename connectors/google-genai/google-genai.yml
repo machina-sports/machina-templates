@@ -18,3 +18,12 @@ connector:
 
     - name: TTS
       value: invoke_tts
+
+    - name: Clone Instant Voice
+      value: invoke_clone_instant_voice
+
+    - name: Train Pro Voice
+      value: invoke_train_pro_voice
+
+    - name: Synthesize Custom Voice
+      value: invoke_synthesize_custom_voice

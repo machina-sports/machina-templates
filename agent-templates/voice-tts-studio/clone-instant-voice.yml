@@ -1,0 +1,56 @@
+workflow:
+  name: "clone-instant-voice"
+  title: "Clone Instant Voice"
+  description: "Create a Google Instant Custom Voice clone from a previously captured sample and persist the resulting voice clone key as a project document for later synthesis."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    reference_audio_path: "$.get('reference_audio_path', '')"
+    consent_script: "$.get('consent_script', '')"
+    language_code: "$.get('language_code', 'en-US')"
+    speaker_label: "$.get('speaker_label', 'speaker')"
+  outputs:
+    speaker_label: "$.get('speaker_label')"
+    voice_clone_key: "$.get('voice_clone_key')"
+    language_code: "$.get('language_code')"
+    workflow-status: "$.get('voice_clone_key') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # 1. Call the Cloud TTS instant-clone endpoint via the connector helper.
+    - type: "connector"
+      name: "create-instant-voice-clone"
+      description: "Generate the instant voice cloning key from the reference sample."
+      condition: "$.get('reference_audio_path', '') != '' and $.get('consent_script', '') != ''"
+      connector:
+        name: "google-genai"
+        command: "invoke_clone_instant_voice"
+      inputs:
+        reference_audio_path: "$.get('reference_audio_path')"
+        consent_script: "$.get('consent_script')"
+        language_code: "$.get('language_code', 'en-US')"
+      outputs:
+        voice_clone_key: "$.get('data', {}).get('voice_clone_key') or $.get('voice_clone_key')"
+
+    # 2. Persist the clone key so synthesis runs can look it up by speaker_label.
+    - type: "document"
+      name: "save-instant-clone-key"
+      description: "Store the instant voice clone key as a project document."
+      condition: "$.get('voice_clone_key') is not None"
+      config:
+        action: "save"
+      inputs:
+        name: "'voice-tts-studio-instant-voice'"
+        item_id: f"voice-tts-studio-instant-{$.get('speaker_label', 'speaker')}"
+        value:
+          speaker_label: "$.get('speaker_label')"
+          voice_clone_key: "$.get('voice_clone_key')"
+          language_code: "$.get('language_code', 'en-US')"
+          consent_script: "$.get('consent_script', '')"
+          mode: "'instant'"
+        metadata:
+          speaker_label: "$.get('speaker_label')"
+          mode: "'instant'"
