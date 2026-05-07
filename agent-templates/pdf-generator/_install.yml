@@ -1,0 +1,34 @@
+setup:
+  title: "PDF Generator (GCS-hosted)"
+  description: "Render a structured payload as a multi-page PDF (brand assets, rate card, contact sheet) and host it on Google Cloud Storage. Returns a public URL."
+  category:
+    - custom-templates
+  estimatedTime: 5 minutes
+  features:
+    - "Three built-in layouts: brand-assets (~14pp), rate-card, contact-sheet"
+    - "Bring your own structured payload OR draft one from a freeform brief via Gemini"
+    - "Renders with reportlab, returns base64, uploads via the existing google-storage connector"
+    - "Returns the public GCS URL ready to share"
+  integrations:
+    - google
+    - google-vertex
+  status: available
+  value: "agent-templates/pdf-generator"
+  version: 1.0.0
+
+datasets:
+
+  - type: "connector"
+    path: "connectors/pdf-generator.yml"
+
+  - type: "prompts"
+    path: "prompts.yml"
+
+  - type: "workflow"
+    path: "pdf-generator.yml"
+
+  - type: "workflow"
+    path: "pdf-generator-from-brief.yml"
+
+  - type: "agent"
+    path: "agent.yml"

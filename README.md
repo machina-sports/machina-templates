@@ -73,6 +73,7 @@ The repository includes a wide range of templates for various sports content wor
 ### General Templates
 - `chat-completion`: Generic chat completion workflows
 - `template-quizzes`: Generic sports quiz templates
+- `pdf-generator`: Render multi-page PDFs (brand assets, rate cards, contact sheets) and host them on Google Cloud Storage
 
 ## Available Connectors
 

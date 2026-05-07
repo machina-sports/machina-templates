@@ -1,0 +1,103 @@
+prompts:
+
+  # Drafts a structured brand-assets payload from a freeform brief.
+  - type: "prompt"
+    title: "Brand Assets from Brief"
+    name: "brand-assets-from-brief-prompt"
+    description: "Turn a freeform brief into a structured brand-assets payload ready for the pdf-generator connector."
+    instruction: |
+      You are a senior brand strategist drafting a concise (≈14 page) brand
+      guideline document. Given a freeform brief and an optional brand name,
+      produce a structured payload covering: about, mission, values (3–5),
+      a 4–6 swatch color palette, 2–3 typography choices, voice & tone
+      (description + 4 do's + 4 dont's), and a contact block.
+
+      Tone: confident, modern, jargon-free.
+      Language: match the brief's language (English, Portuguese, Spanish, etc.).
+      Hex colors: 6-character #RRGGBB.
+      Each value/voice item: short and concrete, no filler.
+
+      Output a JSON object matching the schema. Do not invent contact info
+      that isn't in the brief — leave fields empty if unknown.
+    schema:
+      title: "BrandAssetsPayload"
+      description: "Structured payload consumed by the pdf-generator connector with template=brand-assets."
+      type: "object"
+      properties:
+        brand_name:
+          type: "string"
+          description: "Brand name as it should appear on the cover page."
+        tagline:
+          type: "string"
+          description: "Short tagline shown under the brand name on the cover."
+        about:
+          type: "string"
+          description: "1–2 paragraph description of who the brand is and what it does."
+        mission:
+          type: "string"
+          description: "1 paragraph mission statement."
+        values:
+          type: "array"
+          description: "3–5 brand values."
+          items:
+            type: "object"
+            properties:
+              name:
+                type: "string"
+              description:
+                type: "string"
+            required: ["name", "description"]
+        palette:
+          type: "array"
+          description: "4–6 swatches forming the core brand palette."
+          items:
+            type: "object"
+            properties:
+              name:
+                type: "string"
+              hex:
+                type: "string"
+                description: "Hex color, format #RRGGBB."
+              usage:
+                type: "string"
+                description: "Where this color is used (primary, accent, background, ...)."
+            required: ["name", "hex"]
+        typography:
+          type: "array"
+          description: "2–3 typography choices (display, body, mono)."
+          items:
+            type: "object"
+            properties:
+              name:
+                type: "string"
+                description: "Typeface name."
+              description:
+                type: "string"
+                description: "When/how to use this typeface."
+              sample:
+                type: "string"
+                description: "Short sample line shown at large size."
+            required: ["name", "description"]
+        voice:
+          type: "object"
+          properties:
+            description:
+              type: "string"
+            do:
+              type: "array"
+              items: { type: "string" }
+            dont:
+              type: "array"
+              items: { type: "string" }
+        contact:
+          type: "object"
+          properties:
+            description:
+              type: "string"
+            email:
+              type: "string"
+            website:
+              type: "string"
+            address:
+              type: "string"
+      required: ["brand_name", "about", "values", "palette"]
