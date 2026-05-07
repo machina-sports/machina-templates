@@ -1,0 +1,80 @@
+workflow:
+  name: "synthesize-with-custom-voice"
+  title: "Synthesize With Custom Voice"
+  description: "Synthesize a line of text using either an Instant Custom Voice (voice_clone_key, optionally resolved by speaker_label) or a Professional Custom Voice (custom_voice_model). Uploads the audio to GCS and returns the public URL."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    text: "$.get('text', '')"
+    speaker_label: "$.get('speaker_label', '')"
+    voice_clone_key: "$.get('voice_clone_key')"
+    custom_voice_model: "$.get('custom_voice_model')"
+    language_code: "$.get('language_code', 'en-US')"
+    audio_encoding: "$.get('audio_encoding', 'LINEAR16')"
+    speaking_rate: "$.get('speaking_rate', 1.0)"
+    pitch: "$.get('pitch', 0.0)"
+  outputs:
+    audio_url: "$.get('audio_url')"
+    voice_mode: "$.get('voice_mode')"
+    workflow-status: "$.get('audio_url') is not None and 'executed' or 'skipped'"
+  tasks:
+
+    # 1. If the caller passed a speaker_label but no voice_clone_key, look
+    #    up the saved instant clone document.
+    - type: "document"
+      name: "load-instant-clone-by-label"
+      description: "Resolve the stored voice_clone_key for this speaker_label, if any."
+      condition: "$.get('voice_clone_key') is None and $.get('custom_voice_model') is None and $.get('speaker_label', '') != ''"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        metadata.speaker_label: "$.get('speaker_label')"
+        metadata.mode: "'instant'"
+      inputs:
+        name: "'voice-tts-studio-instant-voice'"
+      outputs:
+        voice_clone_key: "$.get('documents', [])[0].get('value', {}).get('voice_clone_key') if len($.get('documents', [])) > 0 else $.get('voice_clone_key')"
+
+    # 2. Synthesize the text. The connector accepts exactly one of
+    #    voice_clone_key (instant) or custom_voice_model (pro).
+    - type: "connector"
+      name: "synthesize-custom-voice"
+      description: "Generate audio with the resolved custom voice."
+      condition: "$.get('text', '') != '' and ($.get('voice_clone_key') is not None or $.get('custom_voice_model') is not None)"
+      connector:
+        name: "google-genai"
+        command: "invoke_synthesize_custom_voice"
+      inputs:
+        text: "$.get('text')"
+        voice_clone_key: "$.get('voice_clone_key')"
+        custom_voice_model: "$.get('custom_voice_model')"
+        language_code: "$.get('language_code', 'en-US')"
+        audio_encoding: "$.get('audio_encoding', 'LINEAR16')"
+        speaking_rate: "$.get('speaking_rate', 1.0)"
+        pitch: "$.get('pitch', 0.0)"
+      outputs:
+        full_filepath: "$.get('data', {}).get('file_path') or $.get('file_path')"
+        voice_mode: "$.get('data', {}).get('voice_mode') or $.get('voice_mode', 'instant')"
+
+    # 3. Upload the audio to Google Cloud Storage and return its URL.
+    - type: "connector"
+      name: "upload-synthesized-audio"
+      description: "Upload the synthesized audio to GCS."
+      condition: "$.get('full_filepath') is not None"
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        file_path: "$.get('full_filepath')"
+        remote_path: f"voice-tts-studio/synth/{$.get('speaker_label', 'speaker')}/{datetime.now().strftime('%Y%m%d-%H%M%S')}.wav"
+      outputs:
+        audio_url: "$.get('data', {}).get('url') or $.get('url')"

@@ -1,0 +1,41 @@
+setup:
+  title: "Voice TTS Studio"
+  description: "End-to-end studio for cloning a voice with Google Custom Voice (Instant + Professional) and synthesizing new lines from text."
+  category:
+    - custom-templates
+  estimatedTime: 10 minutes
+  features:
+    - "Capture a consented 10-30s voice sample and store it in Google Cloud Storage."
+    - "Create an Instant Custom Voice clone in seconds and reuse it for synthesis."
+    - "Kick off a Professional Custom Voice training job from a GCS dataset manifest."
+    - "Generate a fresh consent / training script per language via Gemini."
+    - "Synthesize new lines using either the instant clone or a trained pro voice."
+  integrations:
+    - google-genai
+    - google-storage
+  status: available
+  value: "agent-templates/voice-tts-studio"
+  version: 1.0.0
+
+datasets:
+
+  - type: "prompts"
+    path: "prompts.yml"
+
+  - type: "workflow"
+    path: "generate-training-script.yml"
+
+  - type: "workflow"
+    path: "capture-voice-sample.yml"
+
+  - type: "workflow"
+    path: "clone-instant-voice.yml"
+
+  - type: "workflow"
+    path: "train-pro-custom-voice.yml"
+
+  - type: "workflow"
+    path: "synthesize-with-custom-voice.yml"
+
+  - type: "agent"
+    path: "agent.yml"

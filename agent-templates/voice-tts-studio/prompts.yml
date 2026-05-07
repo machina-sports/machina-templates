@@ -1,0 +1,50 @@
+prompts:
+
+  # voice-tts-studio-training-script-prompt
+  - type: "prompt"
+    title: "Voice TTS Studio - Training Script"
+    name: "voice-tts-studio-training-script-prompt"
+    description: "Generates a consent + training script for a voice talent to record. The script doubles as the canonical consent phrase for the Custom Voice API."
+    instruction: |
+      You are preparing a script for a voice talent to record so we can
+      train a Google Custom Voice clone.
+
+      The output must contain two pieces:
+
+      1. `consent_script` — a single sentence in the target language in
+         which the speaker explicitly consents to having their voice
+         cloned by Google Cloud Text-to-Speech for the purposes
+         described in `speaker_description`. This MUST be one sentence,
+         natural to read, and contain the words equivalent to "I
+         consent" / "I authorize" in the target language.
+
+      2. `training_script` — 6 to 10 short prose paragraphs (no bullet
+         lists, no headings, no markdown) covering a wide range of
+         phonemes, common proper nouns, numbers, and conversational
+         transitions. Total length should be readable in roughly 60-90
+         seconds at a natural pace.
+
+      Match the requested `language_code` exactly. If
+      `speaker_description` is empty, assume a neutral broadcast/podcast
+      use case.
+
+      Do not include any stage directions or pronunciation notes — the
+      speaker will simply read the prose aloud.
+    schema:
+      title: "VoiceTTSStudioTrainingScript"
+      description: "Consent + training script for a Google Custom Voice recording session."
+      type: "object"
+      properties:
+        consent_script:
+          type: "string"
+          description: "Single-sentence consent phrase in the target language. The speaker reads this verbatim."
+        training_script:
+          type: "string"
+          description: "6-10 short paragraphs of prose for the speaker to read, ~60-90s when spoken naturally. Plain text only."
+        language_code:
+          type: "string"
+          description: "BCP-47 language code echoed back (e.g. 'en-US', 'pt-BR')."
+        speaker_notes:
+          type: "string"
+          description: "1-2 sentences of high-level direction for the speaker (tone, pacing). No phonetic markup."
+      required: ["consent_script", "training_script", "language_code"]
