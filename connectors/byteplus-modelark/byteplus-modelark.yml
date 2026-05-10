@@ -1,0 +1,5 @@
+connector:
+  name: "byteplus-modelark"
+  description: "BytePlus ModelArk Video Generation API connector. Async text-to-video, image-to-video, first-and-last-frame, multimodal-reference, and audio-driven video generation via the Seedance model family (Seedance 2.0, 1.5 Pro, 1.0 Pro, 1.0 Pro Fast, 1.0 Lite)."
+  filename: "byteplus-modelark.json"
+  filetype: "restapi"
