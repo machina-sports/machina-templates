@@ -17,15 +17,16 @@
   ],
   "security": [
     {
-      "bearerAuth": []
+      "Authorization": []
     }
   ],
   "components": {
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Long-term API Key issued from the ModelArk console. Sent as Authorization: Bearer <ARK_API_KEY>."
+      "Authorization": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "Long-term API Key issued from the ModelArk console. Pass the full header value including the Bearer prefix, e.g. 'Bearer <ARK_API_KEY>'."
       }
     },
     "schemas": {
@@ -359,7 +360,7 @@
         "operationId": "post-contents/generations/tasks",
         "summary": "Create a video generation task",
         "description": "Asynchronously create a Seedance video generation task. Returns a task id; poll GET /contents/generations/tasks/{id} for status and the output video_url when status is succeeded.",
-        "security": [{"bearerAuth": []}],
+        "security": [{"Authorization": []}],
         "requestBody": {
           "required": true,
           "content": {
@@ -383,7 +384,7 @@
         "operationId": "get-contents/generations/tasks",
         "summary": "List video generation tasks",
         "description": "List the caller's recent video generation tasks. Only the last 7 days of history are queryable (UTC, [T-7d, T)).",
-        "security": [{"bearerAuth": []}],
+        "security": [{"Authorization": []}],
         "parameters": [
           {
             "name": "page_num",
@@ -450,7 +451,7 @@
         "operationId": "get-contents/generations/tasks/{id}",
         "summary": "Retrieve a video generation task",
         "description": "Fetch the current status and (when succeeded) output URLs of a task.",
-        "security": [{"bearerAuth": []}],
+        "security": [{"Authorization": []}],
         "parameters": [
           {
             "name": "id",
@@ -475,7 +476,7 @@
         "operationId": "delete-contents/generations/tasks/{id}",
         "summary": "Cancel or delete a video generation task",
         "description": "Behaviour by current state: queued => cancel (status -> cancelled); running => not allowed; succeeded / failed / expired => delete record (no longer queryable); cancelled => not allowed.",
-        "security": [{"bearerAuth": []}],
+        "security": [{"Authorization": []}],
         "parameters": [
           {
             "name": "id",

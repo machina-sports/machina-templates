@@ -19,7 +19,13 @@ setup:
     - seedance
   status: available
   value: "connectors/byteplus-modelark"
-  version: 1.0.0
+  version: 1.0.1
+  notes: |
+    Authentication uses an apiKey scheme on the Authorization header. Store the API Key in
+    a context variable WITH the Bearer prefix already in the value (e.g.
+    'Bearer abcd1234...'). The connector inserts the value verbatim - it does not add the
+    Bearer prefix on your behalf. The bearerAuth (HTTP scheme) shape was not honoured by
+    the engine that runs this connector; the apiKey shape is the verified-working pattern.
 
 datasets:
   - type: "connector"
