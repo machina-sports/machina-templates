@@ -1,0 +1,497 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BytePlus ModelArk - Video Generation API",
+    "description": "Asynchronous video generation through the Seedance model family on BytePlus ModelArk.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "BytePlus ModelArk",
+      "url": "https://docs.byteplus.com/en/docs/ModelArk/Video_Generation_API"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://ark.ap-southeast.bytepluses.com/api/v3",
+      "description": "BytePlus ModelArk - AP Southeast"
+    }
+  ],
+  "security": [
+    {
+      "Authorization": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "Authorization": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "Long-term API Key issued from the ModelArk console. Pass the full header value including the Bearer prefix, e.g. 'Bearer <ARK_API_KEY>'."
+      }
+    },
+    "schemas": {
+      "TextContent": {
+        "type": "object",
+        "required": ["type", "text"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["text"]
+          },
+          "text": {
+            "type": "string",
+            "description": "Text prompt describing the desired video. English supported by all models; Seedance 2.0 / 2.0 Fast also accept Japanese, Indonesian, Spanish, and Portuguese. Recommended length under 1000 words."
+          }
+        }
+      },
+      "ImageUrlContent": {
+        "type": "object",
+        "required": ["type", "image_url"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["image_url"]
+          },
+          "image_url": {
+            "type": "object",
+            "required": ["url"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Public image URL, data: base64 string (data:image/<fmt>;base64,...), or asset:// URI."
+              }
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": ["first_frame", "last_frame", "reference_image"],
+            "description": "Position or purpose of the image. Required for first-and-last-frame and multimodal-reference scenarios."
+          }
+        }
+      },
+      "VideoUrlContent": {
+        "type": "object",
+        "required": ["type", "video_url"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["video_url"]
+          },
+          "video_url": {
+            "type": "object",
+            "required": ["url"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Public video URL or asset:// URI. Only Seedance 2.0 series accepts video input."
+              }
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": ["reference_video"],
+            "description": "Currently the only supported role is reference_video."
+          }
+        }
+      },
+      "AudioUrlContent": {
+        "type": "object",
+        "required": ["type", "audio_url"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["audio_url"]
+          },
+          "audio_url": {
+            "type": "object",
+            "required": ["url"],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Public audio URL, data: base64 string (data:audio/<fmt>;base64,...), or asset:// URI. Audio cannot be input alone - at least one image or video must accompany it."
+              }
+            }
+          },
+          "role": {
+            "type": "string",
+            "enum": ["reference_audio"],
+            "description": "Currently the only supported role is reference_audio."
+          }
+        }
+      },
+      "DraftTaskContent": {
+        "type": "object",
+        "required": ["type", "draft_task"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["draft_task"]
+          },
+          "draft_task": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Draft task ID. ModelArk reuses the original draft inputs (model, content.text, content.image_url, generate_audio, seed, ratio, duration, camera_fixed) when promoting to a final video. Seedance 1.5 Pro only."
+              }
+            }
+          }
+        }
+      },
+      "ContentItem": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/TextContent"},
+          {"$ref": "#/components/schemas/ImageUrlContent"},
+          {"$ref": "#/components/schemas/VideoUrlContent"},
+          {"$ref": "#/components/schemas/AudioUrlContent"},
+          {"$ref": "#/components/schemas/DraftTaskContent"}
+        ],
+        "discriminator": {
+          "propertyName": "type"
+        }
+      },
+      "CreateVideoTaskRequest": {
+        "type": "object",
+        "required": ["model", "content"],
+        "properties": {
+          "model": {
+            "type": "string",
+            "description": "Model ID or endpoint ID. Examples: seedance-2-0-260128, seedance-2-0-fast-260128, seedance-1-5-pro-251215, seedance-1-0-pro-250528, seedance-1-0-pro-fast-251015, seedance-1-0-lite-t2v-250428, seedance-1-0-lite-i2v-250428.",
+            "example": "seedance-1-5-pro-251215"
+          },
+          "content": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Reference content for video generation. See ContentItem for accepted shapes (text, image_url, video_url, audio_url, draft_task).",
+            "items": {"$ref": "#/components/schemas/ContentItem"}
+          },
+          "callback_url": {
+            "type": "string",
+            "description": "POST callback URL invoked by ModelArk on every status change. Payload mirrors the retrieve-task response."
+          },
+          "return_last_frame": {
+            "type": "boolean",
+            "default": false,
+            "description": "Return the last frame of the generated video as a PNG via last_frame_url on retrieve."
+          },
+          "service_tier": {
+            "type": "string",
+            "enum": ["default", "flex"],
+            "default": "default",
+            "description": "default = online inference (lower RPM, lower latency). flex = offline inference (higher TPD, ~50% price). Seedance 2.0 series does not support flex."
+          },
+          "execution_expires_after": {
+            "type": "integer",
+            "minimum": 3600,
+            "maximum": 259200,
+            "default": 172800,
+            "description": "Task auto-expiry threshold in seconds, calculated from created_at."
+          },
+          "generate_audio": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether the model should produce a video with synchronized audio. Only Seedance 2.0 series and Seedance 1.5 Pro honour this flag. All audio output is mono."
+          },
+          "draft": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable draft mode (Seedance 1.5 Pro only). Generates a 480p preview at lower cost. Disables last-frame return and offline inference."
+          },
+          "safety_identifier": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Stable, non-PII end-user identifier. Recommended to be a hash of the username/user-id/email."
+          },
+          "resolution": {
+            "type": "string",
+            "enum": ["480p", "720p", "1080p"],
+            "description": "Output resolution. Default 720p for Seedance 2.0 series, 1.5 Pro, 1.0 Lite. Default 1080p for 1.0 Pro and Pro Fast. 1080p is not supported by Seedance 1.0 Lite (reference-to-image) or Seedance 2.0 Fast."
+          },
+          "ratio": {
+            "type": "string",
+            "enum": ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9", "adaptive"],
+            "description": "Aspect ratio. adaptive lets the model pick based on inputs (Seedance 2.0 series and 1.5 Pro; image-to-video for other models)."
+          },
+          "duration": {
+            "type": "integer",
+            "default": 5,
+            "description": "Generated video length in seconds. Range varies by model. Set to -1 (Seedance 2.0 series and 1.5 Pro) to let the model pick. duration is mutually exclusive with frames; if both supplied, frames wins."
+          },
+          "frames": {
+            "type": "integer",
+            "minimum": 29,
+            "maximum": 289,
+            "description": "Frame count. Must satisfy 25 + 4n. Use frames for fractional-second durations. Not supported by Seedance 2.0 series or 1.5 Pro."
+          },
+          "seed": {
+            "type": "integer",
+            "default": -1,
+            "description": "Seed integer for randomness. -1 = engine-picked random seed. Same seed => similar results, not guaranteed identical."
+          },
+          "camera_fixed": {
+            "type": "boolean",
+            "default": false,
+            "description": "Append fixed-camera instruction to the prompt. Not supported in reference-to-image scenarios or by Seedance 2.0 series."
+          },
+          "watermark": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to embed a watermark in the output."
+          }
+        }
+      },
+      "CreateVideoTaskResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Task ID. Stored for 7 days from created_at. Use it with GET /contents/generations/tasks/{id} to poll status."
+          }
+        }
+      },
+      "TaskError": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Error code (see ModelArk error code reference)."
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "TaskUsage": {
+        "type": "object",
+        "properties": {
+          "completion_tokens": {
+            "type": "integer",
+            "description": "Tokens consumed for the video output."
+          },
+          "total_tokens": {
+            "type": "integer",
+            "description": "Total tokens for the request. For video models input_tokens is always 0, so total_tokens == completion_tokens."
+          }
+        }
+      },
+      "TaskContentOutput": {
+        "type": "object",
+        "properties": {
+          "video_url": {
+            "type": "string",
+            "description": "Generated video URL. Cleared 24 hours after completion - persist promptly."
+          },
+          "last_frame_url": {
+            "type": "string",
+            "description": "PNG of the last frame. Returned only when return_last_frame: true was set on create. Cleared after 24 hours."
+          }
+        }
+      },
+      "VideoTask": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "model": {
+            "type": "string",
+            "description": "Model name and version (Model name-Version)."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "running", "cancelled", "succeeded", "failed", "expired"],
+            "description": "Lifecycle state. cancelled is reachable only from queued; running tasks cannot be cancelled."
+          },
+          "error": {"$ref": "#/components/schemas/TaskError"},
+          "created_at": {
+            "type": "integer",
+            "description": "Unix timestamp (seconds) of task creation."
+          },
+          "updated_at": {
+            "type": "integer",
+            "description": "Unix timestamp (seconds) of last status update."
+          },
+          "content": {"$ref": "#/components/schemas/TaskContentOutput"},
+          "seed": {"type": "integer"},
+          "resolution": {"type": "string"},
+          "ratio": {"type": "string"},
+          "duration": {
+            "type": "integer",
+            "description": "Returned when frames was not specified on create."
+          },
+          "frames": {
+            "type": "integer",
+            "description": "Returned when frames was specified on create."
+          },
+          "framespersecond": {"type": "integer"},
+          "generate_audio": {"type": "boolean"},
+          "safety_identifier": {"type": "string"},
+          "draft": {
+            "type": "boolean",
+            "description": "Seedance 1.5 Pro only."
+          },
+          "draft_task_id": {
+            "type": "string",
+            "description": "Returned when promoting a draft to a final video."
+          },
+          "service_tier": {"type": "string"},
+          "execution_expires_after": {"type": "integer"},
+          "usage": {"$ref": "#/components/schemas/TaskUsage"}
+        }
+      },
+      "ListVideoTasksResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/VideoTask"}
+          },
+          "total": {
+            "type": "integer",
+            "description": "Number of tasks matching the filter. Note: only the last 7 days of history are queryable (UTC, [T-7d, T))."
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/contents/generations/tasks": {
+      "post": {
+        "operationId": "post-contents/generations/tasks",
+        "summary": "Create a video generation task",
+        "description": "Asynchronously create a Seedance video generation task. Returns a task id; poll GET /contents/generations/tasks/{id} for status and the output video_url when status is succeeded.",
+        "security": [{"Authorization": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/CreateVideoTaskRequest"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task accepted.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/CreateVideoTaskResponse"}
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get-contents/generations/tasks",
+        "summary": "List video generation tasks",
+        "description": "List the caller's recent video generation tasks. Only the last 7 days of history are queryable (UTC, [T-7d, T)).",
+        "security": [{"Authorization": []}],
+        "parameters": [
+          {
+            "name": "page_num",
+            "in": "query",
+            "description": "Page number, range [1, 500].",
+            "schema": {"type": "integer", "minimum": 1, "maximum": 500}
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Page size, range [1, 500].",
+            "schema": {"type": "integer", "minimum": 1, "maximum": 500}
+          },
+          {
+            "name": "filter.status",
+            "in": "query",
+            "description": "Filter by task status.",
+            "schema": {
+              "type": "string",
+              "enum": ["queued", "running", "cancelled", "succeeded", "failed"]
+            }
+          },
+          {
+            "name": "filter.task_ids",
+            "in": "query",
+            "description": "Filter by one or more task IDs. Repeat the parameter for each ID (e.g. filter.task_ids=id1&filter.task_ids=id2).",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          },
+          {
+            "name": "filter.model",
+            "in": "query",
+            "description": "Exact-match filter on the inference endpoint ID (different from the model field returned in items).",
+            "schema": {"type": "string"}
+          },
+          {
+            "name": "filter.service_tier",
+            "in": "query",
+            "description": "Filter by service tier (default = online inference, flex = offline inference).",
+            "schema": {
+              "type": "string",
+              "enum": ["default", "flex"],
+              "default": "default"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered list of tasks.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/ListVideoTasksResponse"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contents/generations/tasks/{id}": {
+      "get": {
+        "operationId": "get-contents/generations/tasks/{id}",
+        "summary": "Retrieve a video generation task",
+        "description": "Fetch the current status and (when succeeded) output URLs of a task.",
+        "security": [{"Authorization": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID returned by the create endpoint.",
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Task record.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/VideoTask"}
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete-contents/generations/tasks/{id}",
+        "summary": "Cancel or delete a video generation task",
+        "description": "Behaviour by current state: queued => cancel (status -> cancelled); running => not allowed; succeeded / failed / expired => delete record (no longer queryable); cancelled => not allowed.",
+        "security": [{"Authorization": []}],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Task ID to cancel or delete.",
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Task cancelled or record deleted. No response body."
+          }
+        }
+      }
+    }
+  }
+}
