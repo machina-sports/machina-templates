@@ -1397,17 +1397,23 @@ def invoke_clone_instant_voice(request_data):
         audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
 
         url = "https://texttospeech.googleapis.com/v1beta1/voices:generateVoiceCloningKey"
+        # `voice_talent_consent` expects the SAME shape as `reference_audio`
+        # (audio_config + content) — it's the speaker's own recording of the
+        # consent script, not the script text. The script text goes in the
+        # top-level `consent_script` field. When the caller hasn't supplied a
+        # separate consent recording, reuse the reference audio (the speaker
+        # is the same person and Google verifies the voice match, not script
+        # contents).
+        audio_block = {
+            "audio_config": {
+                "audio_encoding": "LINEAR16",
+                "sample_rate_hertz": 24000,
+            },
+            "content": audio_b64,
+        }
         payload = {
-            "reference_audio": {
-                "audio_config": {
-                    "audio_encoding": "LINEAR16",
-                    "sample_rate_hertz": 24000,
-                },
-                "content": audio_b64,
-            },
-            "voice_talent_consent": {
-                "script": consent_script,
-            },
+            "reference_audio": audio_block,
+            "voice_talent_consent": audio_block,
             "consent_script": consent_script,
             "language_code": language_code,
         }
