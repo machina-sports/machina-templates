@@ -3,7 +3,12 @@ agent:
   title: "PDF Generator"
   description: "Render a structured payload as a multi-page PDF (brand assets, rate card, contact sheet) and host it on Google Cloud Storage."
   context:
-    config-frequency: 0.1
+    # On-demand tool: workflows are triggered by user requests / other
+    # agents, never by a clock. `0` disables the scheduler so this agent
+    # stays idle until explicitly invoked (the previous `0.1` ran it
+    # every 6s, burning ~14k Gemini calls/day in pdf-generator-from-brief
+    # against empty inputs).
+    config-frequency: 0
   workflows:
 
     - name: pdf-generator
