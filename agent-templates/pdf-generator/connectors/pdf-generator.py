@@ -4,13 +4,15 @@ Renders a structured payload as a multi-page PDF and returns the result as
 base64 so it can be handed straight to the `google-storage` connector
 (which accepts Data URI / raw base64 inputs).
 
-Three layouts are bundled out of the box — they're meant as starting
-points for brand teams, sales, and producers:
+Four layouts are bundled out of the box — they're meant as starting
+points for brand teams, sales, producers, and ops/analytics:
 
-  * brand-assets   — a multi-page brand guide (cover, palette, logos,
-                     typography, voice/tone, imagery do/don't)
-  * rate-card      — a tabular rate card with tier pricing + notes
-  * contact-sheet  — thumbnail grid of images (16-up, 4 cols x 4 rows)
+  * brand-assets    — a multi-page brand guide (cover, palette, logos,
+                      typography, voice/tone, imagery do/don't)
+  * rate-card       — a tabular rate card with tier pricing + notes
+  * contact-sheet   — thumbnail grid of images (16-up, 4 cols x 4 rows)
+  * metrics-report  — KPI summary cards + sectioned tables / stats lists
+                      (analytics, observability, cost / usage reports)
 
 Pages are deliberately capped around ~14pp for brand-assets to match the
 canonical "PDF · 14pp · brand assets" deliverable shape.
@@ -370,6 +372,157 @@ def _build_rate_card(content, pagesize, brand_color):
 
 
 # ---------------------------------------------------------------------------
+# Layout: metrics-report (KPI summary cards + sectioned tables)
+# ---------------------------------------------------------------------------
+
+
+def _build_metrics_report(content, pagesize, brand_color):
+    """Tabular metrics report — summary KPI cards, sectioned tables/stats, notes.
+
+    Schema (all keys optional except title):
+      title:           str
+      period:          str — e.g. "Last 24h" / "2026-05-11"
+      intro:           str — paragraph of insights (markdown-light: paragraphs)
+      summary_cards:   [{label, value, delta?}]                       — 2-col grid
+      sections:        [
+        {
+          title: str,
+          table: { headers: [str], rows: [[str|number]] }              — tabular
+            OR
+          stats: [{label, value}]                                      — list
+            OR
+          bullets: [str]                                               — list
+        }
+      ]
+      notes:           [str]
+      footer:          str
+    """
+    s = _styles(brand_color)
+    story = []
+
+    title = content.get("title") or "Metrics Report"
+    period = content.get("period") or datetime.utcnow().strftime("%Y-%m-%d")
+
+    story.append(Paragraph(title, s["title"]))
+    story.append(Paragraph(period, s["h2"]))
+
+    intro = content.get("intro")
+    if intro:
+        # Split paragraphs on blank lines so reportlab wraps each cleanly
+        for para in str(intro).split("\n\n"):
+            para = para.strip()
+            if para:
+                story.append(Paragraph(para.replace("\n", "<br/>"), s["body"]))
+        story.append(Spacer(1, 6 * mm))
+
+    # Summary cards — 2-column grid (label · value · optional delta)
+    cards = content.get("summary_cards") or []
+    if cards:
+        # Group cards into rows of 2
+        card_rows = []
+        for i in range(0, len(cards), 2):
+            pair = cards[i:i + 2]
+            row = []
+            for c in pair:
+                value = str(c.get("value", ""))
+                label = str(c.get("label", ""))
+                delta = c.get("delta")
+                cell_html = (
+                    f'<font size="9" color="#666666">{label}</font><br/>'
+                    f'<font size="20"><b>{value}</b></font>'
+                )
+                if delta:
+                    cell_html += f'<br/><font size="8" color="#888888">{delta}</font>'
+                row.append(Paragraph(cell_html, s["body"]))
+            # Pad if odd number
+            while len(row) < 2:
+                row.append(Paragraph("", s["body"]))
+            card_rows.append(row)
+        card_table = Table(card_rows, colWidths=[8 * cm, 8 * cm])
+        card_table.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8F8F8")),
+            ("LINEBELOW", (0, 0), (-1, -1), 1, colors.white),
+        ]))
+        story.append(card_table)
+        story.append(Spacer(1, 8 * mm))
+
+    # Sections — each can be table | stats | bullets
+    for section in content.get("sections") or []:
+        sec_title = section.get("title")
+        if sec_title:
+            story.append(Paragraph(sec_title, s["h2"]))
+
+        table = section.get("table")
+        stats = section.get("stats")
+        bullets = section.get("bullets")
+
+        if table and table.get("headers") and table.get("rows"):
+            headers = [str(h) for h in table["headers"]]
+            n_cols = len(headers)
+            data = [[Paragraph(f"<b>{h}</b>", s["body"]) for h in headers]]
+            for row in table["rows"]:
+                cells = [Paragraph(str(cell), s["body"]) for cell in row]
+                # Pad/truncate to header width so the Table doesn't blow up
+                cells = cells[:n_cols] + [Paragraph("", s["body"])] * max(0, n_cols - len(cells))
+                data.append(cells)
+            # Even column widths within available width (16cm content area)
+            col_widths = [16.0 / n_cols * cm] * n_cols
+            t = Table(data, colWidths=col_widths, repeatRows=1)
+            t.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), brand_color),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F8F8")]),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#DDDDDD")),
+            ]))
+            story.append(t)
+        elif stats:
+            # Two-column label/value list
+            data = [
+                [Paragraph(str(item.get("label", "")), s["body"]),
+                 Paragraph(f"<b>{item.get('value', '')}</b>", s["body"])]
+                for item in stats
+            ]
+            t = Table(data, colWidths=[10 * cm, 6 * cm])
+            t.setStyle(TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.25, colors.HexColor("#EEEEEE")),
+            ]))
+            story.append(t)
+        elif bullets:
+            for b in bullets:
+                story.append(Paragraph(f"• {b}", s["body"]))
+
+        story.append(Spacer(1, 5 * mm))
+
+    if content.get("notes"):
+        story.append(Paragraph("Notes", s["h2"]))
+        for note in content["notes"]:
+            story.append(Paragraph(f"• {note}", s["body"]))
+        story.append(Spacer(1, 5 * mm))
+
+    footer = content.get("footer")
+    if footer:
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph(str(footer), s["small"]))
+
+    return story
+
+
+# ---------------------------------------------------------------------------
 # Layout: contact-sheet (image grid)
 # ---------------------------------------------------------------------------
 
@@ -534,6 +687,8 @@ def invoke_generate(request_data):
             )
             if template == "rate-card":
                 story = _build_rate_card(content, pagesize, brand_color)
+            elif template == "metrics-report":
+                story = _build_metrics_report(content, pagesize, brand_color)
             else:
                 story = _build_brand_assets(content, pagesize, brand_color)
             doc.build(story)
