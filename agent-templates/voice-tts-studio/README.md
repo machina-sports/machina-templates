@@ -14,6 +14,22 @@ The same `synthesize-with-custom-voice` workflow handles both modes —
 just pass either `voice_clone_key` (instant) or `custom_voice_model`
 (pro), or a `speaker_label` we previously persisted.
 
+## Prerequisites
+
+Custom Voice runs on the **Cloud Text-to-Speech API**, which is a
+distinct API from Vertex AI on the same GCP project. Before installing
+this template, enable it on the project that owns
+`TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID`:
+
+```
+https://console.developers.google.com/apis/api/texttospeech.googleapis.com/overview?project=<your-project-id>
+```
+
+If TTS is disabled, every Custom Voice call fails with
+`403 PERMISSION_DENIED` and the workflow returns
+`workflow-status: failed` even though the HTTP envelope is `200`.
+Enabling Vertex AI alone is **not** sufficient — Custom Voice uses TTS.
+
 ## What's in this template
 
 | File | Purpose |

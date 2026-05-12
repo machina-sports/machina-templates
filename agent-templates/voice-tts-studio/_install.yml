@@ -1,6 +1,6 @@
 setup:
   title: "Voice TTS Studio"
-  description: "End-to-end studio for cloning a voice with Google Custom Voice (Instant + Professional) and synthesizing new lines from text."
+  description: "End-to-end studio for cloning a voice with Google Custom Voice (Instant + Professional) and synthesizing new lines from text. Requires the Cloud Text-to-Speech API to be enabled on the same GCP project as your Vertex AI credentials — Vertex AI alone is not enough for Custom Voice."
   category:
     - custom-templates
   estimatedTime: 10 minutes
