@@ -24,6 +24,7 @@ Runtime requirement:
 """
 
 import importlib
+import inspect
 import subprocess
 import sys
 
@@ -38,24 +39,58 @@ def _ensure_sports_skills():
     so a fresh pod can use this connector immediately after template
     install, without operator action. Long-term the package should be
     baked into the pod base image — this branch is a graceful degrade.
+
+    Uses `--user` so the install lands in the running container user's
+    `~/.local` (the pod runs as a non-root user that can't write to the
+    system site-packages). After install, the `~/.local/lib/...`
+    site-packages dir is added to `sys.path` so the in-process import
+    sees the newly installed package without a restart.
     """
     try:
         importlib.import_module("sports_skills")
         return True, None
     except ImportError:
         pass
-    try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--no-cache-dir", _PIP_PACKAGE],
-            timeout=120,
-        )
-    except Exception as e:  # noqa: BLE001 — surface any pip failure verbatim
-        return False, f"pip install {_PIP_PACKAGE} failed: {e}"
+
+    # First-call pip install. Capture stdout+stderr so failures surface a
+    # real error in the workflow output instead of a cryptic exit code.
+    proc = subprocess.run(  # noqa: S603 — args are constants, no shell
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--user",
+            "--no-cache-dir",
+            _PIP_PACKAGE,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    if proc.returncode != 0:
+        # pip prints the actionable bit to stderr; include both for safety.
+        tail = (proc.stderr or proc.stdout or "")[-1500:]
+        return False, f"pip install {_PIP_PACKAGE} failed (rc={proc.returncode}): {tail}"
+
+    # `--user` writes to a path Python doesn't know about yet in this
+    # process. Re-resolve and inject into sys.path so the import below
+    # finds it.
+    import site
+
+    user_site = site.getusersitepackages()
+    if user_site and user_site not in sys.path:
+        sys.path.insert(0, user_site)
+    importlib.invalidate_caches()
+
     try:
         importlib.import_module("sports_skills")
         return True, None
     except ImportError as e:
-        return False, f"sports_skills still not importable after pip install: {e}"
+        return False, (
+            f"sports_skills installed but not importable from {user_site}: {e}. "
+            f"pip stdout tail: {(proc.stdout or '')[-500:]}"
+        )
 
 
 def _dispatch(module_name, request_data):
@@ -98,6 +133,24 @@ def _dispatch(module_name, request_data):
                 f"Available: {', '.join(available)}"
             ),
         }
+
+    # The workflow runtime injects framework-level keys (model_name,
+    # debugger, api_key, headers, etc.) into every connector params dict.
+    # sports_skills functions have narrow signatures and reject unknown
+    # kwargs with TypeError. Filter `params` down to what the function
+    # actually accepts so the agent never has to know which keys are
+    # framework noise vs. real call args.
+    try:
+        sig = inspect.signature(fn)
+        accepts_kwargs = any(
+            p.kind is inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+        if not accepts_kwargs:
+            allowed = set(sig.parameters.keys())
+            params = {k: v for k, v in params.items() if k in allowed}
+    except (TypeError, ValueError):
+        # Builtins / C-extensions don't expose signatures — pass through.
+        pass
 
     try:
         result = fn(**params)
