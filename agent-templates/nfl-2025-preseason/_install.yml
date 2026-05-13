@@ -25,7 +25,7 @@ datasets:
     
   # connectors
   - type: "connector"
-    path: "../../connectors/machina-ai/machina-ai.yml"
+    path: "../../connectors/vertex-embedding/vertex-embedding.yml"
 
   - type: "connector"
     path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"

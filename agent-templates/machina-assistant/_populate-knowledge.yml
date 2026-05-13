@@ -6,8 +6,9 @@ workflow:
   context-variables:
     debugger:
       enabled: false
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
   
   outputs:
     workflow-status: "'executed'"
@@ -23,9 +24,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -47,9 +48,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -71,9 +72,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -95,9 +96,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -119,9 +120,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -143,15 +144,15 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
             'title': 'Document Database and Vector Search',
             'category': 'database',
-            'content': 'Document Database: Document Structure includes _id (unique identifier), name (document type like sport:Event, content-snippet, thread, etc.), value (content as JSON object), metadata (additional filterable fields), and embedding (vector for semantic search). Operations: save (create new documents), search (find with filters), update (modify existing), bulk-update (update multiple documents). Vector Search: Use embeddings for semantic search by setting search-vector to true, providing connector for embeddings (text-embedding-3-small), and configuring thresholds for similarity. Common Document Types: sport:Event (sports matches/events), sport:Team (team information), content-snippet (knowledge articles), thread (conversation threads), game-market (betting markets). Best Practices: Use meaningful document names, add comprehensive metadata, enable embeddings for semantic search, batch operations when possible.',
+            'content': 'Document Database: Document Structure includes _id (unique identifier), name (document type like sport:Event, content-snippet, thread, etc.), value (content as JSON object), metadata (additional filterable fields), and embedding (vector for semantic search). Operations: save (create new documents), search (find with filters), update (modify existing), bulk-update (update multiple documents). Vector Search: Use embeddings for semantic search by setting search-vector to true, providing connector for embeddings (text-embedding-004), and configuring thresholds for similarity. Common Document Types: sport:Event (sports matches/events), sport:Team (team information), content-snippet (knowledge articles), thread (conversation threads), game-market (betting markets). Best Practices: Use meaningful document names, add comprehensive metadata, enable embeddings for semantic search, batch operations when possible.',
             'tags': ['database', 'mongodb', 'vector-search', 'embeddings', 'documents']
           }
       metadata:
@@ -167,9 +168,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -191,9 +192,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -215,9 +216,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {
@@ -239,9 +240,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         machina-knowledge: |
           {

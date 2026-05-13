@@ -5,8 +5,13 @@ workflow:
   context-variables:
     sportradar-nfl:
       sportradar_api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
     debugger:
       enabled: true
   inputs:
@@ -156,9 +161,11 @@ workflow:
       description: "Generate a recap of the game, highlighting the key moments and insights."
       condition: "$.get('event_exists') is True and $.get('event-boxscore', {}).get('status', '') is not 'inprogress'"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         # data-event-boxscore: "$.get('event-boxscore', {})"
         data-summary-home: "$.get('event-statistics', {}).get('summary', {}).get('home', {})"
@@ -208,9 +215,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       document_name: "content-snippet"
       documents:
         items: "$.get('parsed-items')"
@@ -230,9 +237,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       document_name: "content-insights"
       documents:
         items: "$.get('parsed-items')"

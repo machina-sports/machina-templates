@@ -3,8 +3,13 @@ workflow:
   title: "Reporter Insights"
   description: "Workflow to produce insights."
   context-variables:
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -125,9 +130,11 @@ workflow:
       description: "Generate a comprehensive game predictions, covering different aspects that could influence the game outcome."
       condition: "$.get('event_exists') is True and $.get('event-summary_exists') is True"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         event-briefing: "$.get('event-briefing')"
       outputs:
@@ -174,9 +181,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       document_name: "content-snippet"
       documents:
         items: "$.get('parsed-items')"

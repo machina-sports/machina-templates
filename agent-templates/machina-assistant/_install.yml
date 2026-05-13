@@ -13,8 +13,8 @@ setup:
     - Context-aware conversation threads
   status: available
   integrations:
-    - machina-ai
-    - google-vertex
+    - google-genai
+    - vertex-embedding
   value: agent-templates/machina-assistant
   version: 1.0.0
 

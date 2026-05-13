@@ -8,8 +8,8 @@ setup:
     - AI Agent to generate personalized podcast content based on user profile.
     - AI Reporter to generate personalized podcast content based on user profile.
   integrations:
-    - machina-ai
     - google-genai
+    - vertex-embedding
     - google-storage
     - api-mailgun
     - oxylabs

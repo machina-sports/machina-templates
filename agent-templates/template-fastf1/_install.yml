@@ -21,7 +21,9 @@ datasets:
   - type: "connector"
     path: "../../connectors/fastf1/fastf1.yml"
   - type: "connector"
-    path: "../../connectors/machina-ai/machina-ai.yml"
+    path: "../../connectors/google-genai/google-genai.yml"
+  - type: "connector"
+    path: "../../connectors/vertex-embedding/vertex-embedding.yml"
 
   # workflows
   - type: "workflow"

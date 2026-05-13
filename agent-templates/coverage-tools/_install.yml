@@ -8,7 +8,7 @@ setup:
     - AI Agent to assist moderators to create content for Coverage Tools.
   status: available
   integrations:
-    - machina-ai
+    - google-genai
   value: agent-templates/coverage-tools
   version: 1.0.0
 

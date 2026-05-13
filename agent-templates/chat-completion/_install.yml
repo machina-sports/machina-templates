@@ -7,7 +7,8 @@ setup:
   features:
     - AI Agent to generate chat completions.
   integrations:
-    - machina-ai
+    - google-genai
+    - vertex-embedding
   status: available
   value: agent-templates/chat-completion
   version: 1.0.0

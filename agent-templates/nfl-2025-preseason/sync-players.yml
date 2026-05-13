@@ -7,8 +7,6 @@ workflow:
       enabled: true
     sportradar-nfl:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
   inputs:
     team_id: "$.get('team_id')"
   outputs:

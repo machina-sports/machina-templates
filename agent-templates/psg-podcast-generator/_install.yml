@@ -9,7 +9,7 @@ setup:
     - AI Reporter to generate PSG podcasts.
   integrations:
     - google-genai
-    - machina-ai
+    - vertex-embedding
     - machina-ai-fast
     - storage
   status: available
