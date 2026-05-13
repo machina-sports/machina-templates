@@ -5,8 +5,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
@@ -31,9 +32,9 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       filters:
         name: "'thread'"
         value.status: "$.get('input_status')"
@@ -53,9 +54,9 @@ workflow:
         force-update: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         thread: |
           {
@@ -77,9 +78,9 @@ workflow:
         search-vector: false
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       filters:
         metadata.event_code: "$.get('event_code')"
       inputs:
@@ -103,9 +104,6 @@ workflow:
         # model: "llama-3.3-70b-versatile"
         # model: "deepseek-r1-distill-llama-70b"
         # model: "deepseek-r1-distill-llama-70b-specdec"
-        #  name: "machina-ai"
-        #  command: "invoke_prompt"
-        #  model: "gpt-4o"
       inputs:
         documents: "$.get('documents')"
         messages: "$.get('messages')"
@@ -123,9 +121,9 @@ workflow:
         search-vector: false
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       filters:
         _id: "$.get('document_id')"
       inputs:
@@ -143,9 +141,9 @@ workflow:
         force-update: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         thread: |
           {

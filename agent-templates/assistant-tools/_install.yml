@@ -8,7 +8,8 @@ setup:
     - AI Agent to assist moderators to create content for Chat Tools.
   status: available
   integrations:
-    - machina-ai
+    - google-genai
+    - vertex-embedding
   value: agent-templates/assistant-tools
   version: 1.0.0
 

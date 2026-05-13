@@ -6,9 +6,12 @@ workflow:
     debugger:
       enabled: true
     google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
     storage:
@@ -35,9 +38,9 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       filters:
         name: "'thread'"
         value.status: "$.get('input_status')"
@@ -57,9 +60,9 @@ workflow:
         force-update: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         thread: |
           {
@@ -75,13 +78,11 @@ workflow:
       description: "Draft NFL Search Players."
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4.1"
-        # name: "google-genai"
-        # command: "invoke_prompt"
-        # model: "gemini-2.5-pro"
-        # model: "gemini-2.5-flash"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         question: "$.get('question')"
       outputs:
@@ -153,13 +154,11 @@ workflow:
       description: "Draft NFL Select Players."
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4.1"
-        # name: "google-genai"
-        # command: "invoke_prompt"
-        # model: "gemini-2.5-pro"
-        # model: "gemini-2.5-flash"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         players: "$.get('players', [])"
       outputs:
@@ -205,9 +204,9 @@ workflow:
         search-vector: false
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       filters:
         _id: "$.get('document_id')"
       inputs:
@@ -225,9 +224,9 @@ workflow:
         force-update: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       documents:
         thread: |
           {

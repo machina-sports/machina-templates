@@ -11,7 +11,7 @@ setup:
     - Analyze market trends and identify high-volume opportunities
   integrations:
     - kalshi
-    - machina-ai
+    - google-genai
   status: available
   value: agent-templates/kalshi-market-agent
   version: 1.0.0

@@ -25,7 +25,6 @@ setup:
     - api-football
     - google-genai
     - google-storage
-    - machina-ai
   status: available
   value: agent-templates/social-media-generator
   version: 1.0.0

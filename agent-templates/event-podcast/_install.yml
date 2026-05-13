@@ -10,7 +10,6 @@ setup:
     - "Uploads the resulting audio file to cloud storage and returns its path."
   integrations:
     - google-genai
-    - machina-ai
     - storage
   status: available
   value: "agent-templates/event-podcast"

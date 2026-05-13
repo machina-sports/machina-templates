@@ -7,8 +7,13 @@ workflow:
       enabled: true
     sportradar-nba:
       sportradar_api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -118,9 +123,11 @@ workflow:
       description: "Embedding standings."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         title: "$.get('title')"
         standings: "$.get('result-standings')"
@@ -209,9 +216,11 @@ workflow:
       description: "Embedding h2h comparison."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         title: "$.get('title')"
         home-competitor: "$.get('result-home-competitor')"
@@ -271,9 +280,11 @@ workflow:
       description: "Embedding players to watch."
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         title: "$.get('title')"
         home-competitor-profile: "$.get('result-home-competitor-profile')"
@@ -338,9 +349,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       document_name: "content-snippet"
       documents:
         items: "$.get('parsed-items')"

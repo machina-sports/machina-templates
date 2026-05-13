@@ -8,8 +8,8 @@ setup:
     - AI Agent to generate Bundesliga podcast content based on user profile.
     - AI Reporter to generate Bundesliga podcast content based on user profile.
   integrations:
-    - machina-ai
     - google-genai
+    - vertex-embedding
     - storage
     - api-mailgun
   status: available

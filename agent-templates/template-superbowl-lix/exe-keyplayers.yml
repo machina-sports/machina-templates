@@ -3,8 +3,13 @@ workflow:
   title: "Reporter Key Players"
   description: "Workflow to produce key players."
   context-variables:
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -126,9 +131,11 @@ workflow:
       description: "Select the key players from both teams, highlighting the strengths and weaknesses of each player."
       condition: "$.get('event_exists') is True and $.get('event-summary_exists') is True"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         event-briefing: "$.get('event-briefing')"
         home-players-data: "$.get('event-summary').get('home-team').get('players')"
@@ -162,9 +169,9 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "openai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       document_name: "player-comparison"
       documents:
         items: "$.get('parsed-items')"

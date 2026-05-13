@@ -21,15 +21,13 @@ setup:
   integrations:
     - sportradar
     - machina-db
-    - machina-ai
+    - google-genai
     - hubspot
   status: available
   version: 1.0.0
   datasets:
 
   # connectors
-  - type: "connector"
-    path: "../connectors/openai/openai.yml"
   - type: "connector"
     path: "../connectors/perplexity/perplexity.yml"
   - type: "connector"

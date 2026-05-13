@@ -7,8 +7,6 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   inputs:
     competitionIds: $.get('competitionIds') or $.get('competitionItem', {}).get('competitionIds')
     competitionItem: $.get('competitionItem')

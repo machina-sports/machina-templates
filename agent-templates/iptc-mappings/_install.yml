@@ -10,6 +10,8 @@ setup:
     - iptc
     - api-football
     - sportradar
+    - google-genai
+    - vertex-embedding
   status: available
   value: "agent-templates/iptc-mappings"
   version: 1.0.0

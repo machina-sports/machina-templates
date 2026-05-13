@@ -7,7 +7,8 @@ setup:
   features:
     - Quizzes
   integrations:
-    - machina-ai
+    - google-genai
+    - vertex-embedding
   status: available
   value: agent-templates/template-quizzes
   version: 1.1.0
@@ -16,7 +17,9 @@ datasets:
 
   # connectors
   - type: "connector"
-    path: "../../connectors/machina-ai/machina-ai.yml"
+    path: "../../connectors/google-genai/google-genai.yml"
+  - type: "connector"
+    path: "../../connectors/vertex-embedding/vertex-embedding.yml"
   - type: "connector"
     path: "../../connectors/machina-ai-fast/machina-ai-fast.yml"
 

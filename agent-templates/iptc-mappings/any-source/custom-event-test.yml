@@ -8,9 +8,12 @@ workflow:
     debugger:
       enabled: true
     google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
   inputs:
     custom-instruction: "$.get('custom_instruction') or None"
   outputs:
@@ -26,6 +29,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: global
+        provider: vertex_ai
       inputs:
         _custom-instruction: "$.get('custom-instruction')"
       outputs:
@@ -56,9 +61,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "vertex-embedding"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
       document_name: "'sport:Event'"
       documents:
         items: "$.get('parsed_event', [])"

@@ -9,7 +9,6 @@ setup:
     - Source citations with explanations accessible via "why?" feature
     - JSON API response optimized for mobile app consumption
   integrations:
-    - machina-ai
     - google-genai
     - oxylabs
     - grok

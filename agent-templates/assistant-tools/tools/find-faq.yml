@@ -8,9 +8,12 @@ workflow:
     debugger:
       enabled: false
     google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
       api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    vertex-embedding:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
     machina-ai-fast:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
   inputs:
@@ -53,9 +56,9 @@ workflow:
         search-limit: 100
         search-vector: true
       connector:
-        name: machina-ai
+        name: vertex-embedding
         command: invoke_embedding
-        model: text-embedding-3-small
+        model: text-embedding-004
       inputs:
         name: "'content-faq-snippets'"
         search-query: $.get('search_query')
