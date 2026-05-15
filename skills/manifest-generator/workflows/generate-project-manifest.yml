@@ -1,5 +1,4 @@
 workflow:
-
   name: generate-project-manifest
   title: Generate Project Manifest
   description: |
@@ -13,8 +12,24 @@ workflow:
     debugger:
       enabled: true
 
+  inputs:
+    workflow_names: "$.get('workflow_names', [])"
+    template_name:  "$.get('template_name', 'unnamed-template')"
+    description:    "$.get('description', '')"
+    enrich_with_llm: "$.get('enrich_with_llm', False)"
+
+  outputs:
+    workflow-status: "'executed' if $.get('extraction_ok', False) else 'skipped'"
+    ok: "$.get('extraction_ok', False)"
+    manifest_draft_doc_name: "f\"{$.get('template_name', 'unnamed-template')}-manifest-draft\""
+    stats: "$.get('extraction_stats', {})"
+    missing_workflows: "$.get('missing_workflows', [])"
+    external_datasets: "$.get('external_datasets', [])"
+
   tasks:
 
+    # 1. Deterministic pyscript extractor: aggregate every workflow_object
+    #    in the list into one manifest skeleton.
     - type: connector
       name: extract-deps
       description: "Run the deterministic pyscript extractor across all workflows."
@@ -26,19 +41,18 @@ workflow:
         template_name:  "$.get('template_name', 'unnamed-template')"
         description:    "$.get('description', '')"
       outputs:
-        extraction_ok:    "$.get('ok', False)"
-        draft_manifest:   "$.get('manifest', {})"
-        extraction_stats: "$.get('stats', {})"
+        extraction_ok:     "$.get('ok', False)"
+        draft_manifest:    "$.get('manifest', {})"
+        extraction_stats:  "$.get('stats', {})"
         missing_workflows: "$.get('missing', [])"
         external_datasets: "$.get('datasets_read_only', [])"
 
-    # Optional LLM enrichment — only runs if `enrich_with_llm=true` was
-    # passed in the input context. The prompt receives the draft manifest
-    # plus the list of external datasets it reads, and returns the same
-    # manifest with source_label, test_workflow + validation rules filled
-    # in. Output keys are merged onto draft_manifest by the next task.
+    # 2. Optional LLM enrichment. Runs ONLY when enrich_with_llm=true was
+    #    passed AND extraction succeeded. Receives the draft + the list of
+    #    external datasets, returns the same manifest with source_label /
+    #    test_workflow / validation / dataset descriptions filled in.
     - type: prompt
-      name: enrich-manifest
+      name: manifest-enrichment
       description: "Fill source_label, test_workflow, validation per credential."
       condition: "$.get('enrich_with_llm', False) is True and $.get('extraction_ok', False) is True"
       continue_on_error: true
@@ -48,15 +62,15 @@ workflow:
         model: gemini-3-flash-preview
         provider: vertex_ai
       inputs:
-        _1-template_name: "$.get('template_name', '')"
-        _2-draft_manifest: "$.get('draft_manifest', {})"
-        _3-external_datasets: "$.get('external_datasets', [])"
+        template_name:     "$.get('template_name', '')"
+        draft_manifest:    "$.get('draft_manifest', {})"
+        external_datasets: "$.get('external_datasets', [])"
       outputs:
         enriched_manifest: "$.get('enriched_manifest', $.get('draft_manifest', {}))"
 
-    # Persist the result as a project_manifest_draft document. The
-    # operator can then edit it in Studio, tweak labels/validation, then
-    # promote to the real `project_manifest` collection.
+    # 3. Persist the result as a project_manifest_draft document. Operator
+    #    can then edit it in Studio, tweak labels/validation, then promote
+    #    to the real `project_manifest` collection.
     - type: document
       name: save-draft
       description: "Write the draft manifest as a project_manifest_draft document."
@@ -76,11 +90,3 @@ workflow:
             'generated_at':        datetime.utcnow().isoformat(),
             'template_name':       $.get('template_name', ''),
           }
-
-  outputs:
-    ok: "$.get('extraction_ok', False)"
-    manifest_draft_doc_name: "'{$.get(\"template_name\", \"unnamed-template\")}-manifest-draft'"
-    stats: "$.get('extraction_stats', {})"
-    missing: "$.get('missing_workflows', [])"
-    workflow-status: |
-      'executed' if $.get('extraction_ok', False) else 'skipped'
