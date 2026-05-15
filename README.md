@@ -353,3 +353,4 @@ To contribute to this repository:
 2. Ensure all environment variables use the `$MACHINA_CONTEXT_VARIABLE_` prefix
 3. Document your templates and connectors thoroughly
 4. Test your workflows before submitting
+
