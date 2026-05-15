@@ -164,37 +164,62 @@ def _coerce_bool(raw):
     return False
 
 
-def aggregate_manifest(inputs):
+def aggregate_manifest(request_data):
     """Run the extraction across a list of workflow names + emit a draft.
 
-    Inputs (from the calling workflow task):
-        - workflow_names: list[str] OR comma-separated string
-        - template_name:  str
-        - description:    str
+    Returns the Machina-canonical pyscript shape:
+        {"status": True, "data": {...result...}, "message": "..."}
 
-    Returns a dict shaped like `project.manifest.yml`.
+    The engine (core/workflow/runner/connector.py:95) checks
+    `response.get("status") is not True` to decide failure; a non-True
+    `status` triggers connector_execution_failed and drops most of the
+    response. We always return `status: True` and put soft-fail flags
+    inside `data` (data.ok = False with error_message when input bad).
     """
-    import json as _json
+    try:
+        data = _aggregate_manifest_inner(request_data)
+    except Exception as exc:
+        import traceback
+        data = {
+            "ok": False,
+            "error_message": f"{type(exc).__name__}: {exc}",
+            "trace": traceback.format_exc()[-1200:],
+            "request_data_keys": sorted(list((request_data or {}).keys())),
+            "manifest": {},
+            "stats": {},
+            "missing": [],
+        }
+    return {
+        "status": True,
+        "data": data,
+        "message": "aggregate_manifest executed",
+    }
+
+
+def _aggregate_manifest_inner(request_data):
     from core.system.database import MongoDBConnection  # available inside pyscript runtime
 
-    raw_workflow_names = inputs.get("workflow_names")
+    params = (request_data or {}).get("params") or {}
+    raw_workflow_names = params.get("workflow_names")
     workflow_names = _coerce_workflow_names(raw_workflow_names)
-    template_name = (inputs.get("template_name") or "unnamed-template").strip()
-    description   = (inputs.get("description")   or "").strip()
+    template_name = (params.get("template_name") or "unnamed-template").strip()
+    description   = (params.get("description")   or "").strip()
 
     if not workflow_names:
-        # Defensive debug — return what we received so the caller can see
-        # whether the engine swallowed the input. (`_retrieve_from_context`
-        # in core/workflow/context.py defaults to `[]` on any eval error.)
-        debug = {
-            "received_inputs_keys": sorted(list(inputs.keys())),
-            "workflow_names_raw_type": type(raw_workflow_names).__name__,
-            "workflow_names_raw_repr": repr(raw_workflow_names)[:200],
-        }
         return {
-            "ok": False,
-            "error": "workflow_names is required and must be a non-empty list (or comma-separated string)",
-            "debug": debug,
+            "ok": True,
+            "status": "no_input",
+            "error_message": (
+                "workflow_names is required and must be a non-empty list "
+                "(or comma-separated string)"
+            ),
+            "request_data_keys": sorted(list((request_data or {}).keys())),
+            "params_keys": sorted(list(params.keys())),
+            "workflow_names_type": type(raw_workflow_names).__name__,
+            "workflow_names_repr": repr(raw_workflow_names)[:200],
+            "manifest": {},
+            "stats": {},
+            "missing": [],
         }
 
     col = MongoDBConnection().get_collection("workflow")
