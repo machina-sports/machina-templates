@@ -310,22 +310,57 @@ def _aggregate_manifest_inner(request_data):
     # Persist the draft directly here — the engine doesn't interpolate
     # dynamic document keys in workflow `documents:` blocks, so we do
     # the save in code where we know the template_name.
+    #
+    # IMPORTANT: write the full Studio-visible doc shape (title, filename,
+    # filetype, metadata.category, status, timestamps). A bare `{name,value}`
+    # doc is technically in the collection but Studio's Documents tab filters
+    # them out as orphans.
     draft_doc_name = f"{template_name}-manifest-draft"
     try:
         from datetime import datetime as _dt
+        import yaml as _yaml
+        now = _dt.utcnow()
+        manifest_dict = _ordered_to_dict(manifest)
+        # Render the manifest as YAML for display — operators prefer YAML
+        # for project.manifest.yml drafts. Falls back to JSON if PyYAML
+        # isn't available (it should be — it's a core platform dep).
+        try:
+            manifest_yaml = _yaml.dump(
+                manifest_dict, default_flow_style=False, sort_keys=False, allow_unicode=True
+            )
+        except Exception:
+            import json as _json
+            manifest_yaml = _json.dumps(manifest_dict, indent=2)
         doc_col = MongoDBConnection().get_collection("document")
+        existing = doc_col.find_one({"name": draft_doc_name}, {"created": 1})
         doc_col.update_one(
             {"name": draft_doc_name},
             {"$set": {
                 "name": draft_doc_name,
+                "title": f"Manifest draft — {template_name}",
+                "filename": f"{template_name}.manifest.yml",
+                "filetype": "yaml",
+                "status": "active",
+                "metadata": {
+                    "category": "manifest-draft",
+                    "template_name": template_name,
+                    "generated_by": "manifest-generator",
+                    "extraction_stats": stats,
+                    "missing_workflows": missing,
+                    "external_datasets": external_datasets,
+                    "generated_at": now.isoformat(),
+                },
                 "value": {
-                    "manifest": _ordered_to_dict(manifest),
+                    "manifest": manifest_dict,
+                    "manifest_yaml": manifest_yaml,
                     "extraction_stats": stats,
                     "missing_workflows": missing,
                     "external_datasets": external_datasets,
                     "template_name": template_name,
-                    "generated_at": _dt.utcnow().isoformat(),
+                    "generated_at": now.isoformat(),
                 },
+                "updated": now,
+                **({"created": existing.get("created", now)} if existing else {"created": now}),
             }},
             upsert=True,
         )
