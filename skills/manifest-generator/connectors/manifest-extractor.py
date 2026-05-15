@@ -174,16 +174,27 @@ def aggregate_manifest(inputs):
 
     Returns a dict shaped like `project.manifest.yml`.
     """
+    import json as _json
     from core.system.database import MongoDBConnection  # available inside pyscript runtime
 
-    workflow_names = _coerce_workflow_names(inputs.get("workflow_names"))
+    raw_workflow_names = inputs.get("workflow_names")
+    workflow_names = _coerce_workflow_names(raw_workflow_names)
     template_name = (inputs.get("template_name") or "unnamed-template").strip()
     description   = (inputs.get("description")   or "").strip()
 
     if not workflow_names:
+        # Defensive debug — return what we received so the caller can see
+        # whether the engine swallowed the input. (`_retrieve_from_context`
+        # in core/workflow/context.py defaults to `[]` on any eval error.)
+        debug = {
+            "received_inputs_keys": sorted(list(inputs.keys())),
+            "workflow_names_raw_type": type(raw_workflow_names).__name__,
+            "workflow_names_raw_repr": repr(raw_workflow_names)[:200],
+        }
         return {
             "ok": False,
             "error": "workflow_names is required and must be a non-empty list (or comma-separated string)",
+            "debug": debug,
         }
 
     col = MongoDBConnection().get_collection("workflow")
