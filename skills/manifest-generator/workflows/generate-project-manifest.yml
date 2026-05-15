@@ -12,11 +12,15 @@ workflow:
     debugger:
       enabled: true
 
+  # Pure pass-through — no defaults. The engine's resolver was coercing
+  # `$.get('workflow_names', [])` to the empty-list default when the user
+  # passed a string in context-workflow (Studio Execute UI sends strings).
+  # The pyscript coerce_workflow_names handles all input shapes.
   inputs:
-    workflow_names: "$.get('workflow_names', [])"
-    template_name:  "$.get('template_name', 'unnamed-template')"
-    description:    "$.get('description', '')"
-    enrich_with_llm: "$.get('enrich_with_llm', False)"
+    workflow_names: "$.get('workflow_names')"
+    template_name:  "$.get('template_name')"
+    description:    "$.get('description')"
+    enrich_with_llm: "$.get('enrich_with_llm')"
 
   outputs:
     workflow-status: "'executed' if $.get('extraction_ok', False) else 'skipped'"
@@ -37,9 +41,11 @@ workflow:
         name: manifest-extractor
         command: aggregate_manifest
       inputs:
-        workflow_names: "$.get('workflow_names', [])"
-        template_name:  "$.get('template_name', 'unnamed-template')"
-        description:    "$.get('description', '')"
+        # No defaults at task level either — let the value pass through
+        # whatever shape it was. Pyscript handles list, str, csv-str, None.
+        workflow_names: "$.get('workflow_names')"
+        template_name:  "$.get('template_name')"
+        description:    "$.get('description')"
       outputs:
         extraction_ok:     "$.get('ok', False)"
         draft_manifest:    "$.get('manifest', {})"
