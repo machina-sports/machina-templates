@@ -295,21 +295,62 @@ def _aggregate_manifest_inner(request_data):
         for ds in sorted(ds_writes)
     ]
 
+    stats = {
+        "workflows_seen": len(workflows_seen),
+        "workflows_missing": len(missing),
+        "credentials": len(creds),
+        "connectors": len(connectors),
+        "datasets_read": len(ds_reads),
+        "datasets_written": len(ds_writes),
+        "agents": len(agents),
+        "workflow_calls": len(wf_calls),
+    }
+    external_datasets = sorted(ds_reads - ds_writes)
+
+    # Persist the draft directly here — the engine doesn't interpolate
+    # dynamic document keys in workflow `documents:` blocks, so we do
+    # the save in code where we know the template_name.
+    draft_doc_name = f"{template_name}-manifest-draft"
+    try:
+        from datetime import datetime as _dt
+        doc_col = MongoDBConnection().get_collection("document")
+        doc_col.update_one(
+            {"name": draft_doc_name},
+            {"$set": {
+                "name": draft_doc_name,
+                "value": {
+                    "manifest": _ordered_to_dict(manifest),
+                    "extraction_stats": stats,
+                    "missing_workflows": missing,
+                    "external_datasets": external_datasets,
+                    "template_name": template_name,
+                    "generated_at": _dt.utcnow().isoformat(),
+                },
+            }},
+            upsert=True,
+        )
+    except Exception as exc:  # pragma: no cover — write is best-effort
+        # Don't fail the run on persistence — caller still gets the manifest
+        # in the response and can save it themselves.
+        pass
+
     return {
         "ok": True,
-        "manifest": manifest,
-        "stats": {
-            "workflows_seen": len(workflows_seen),
-            "workflows_missing": len(missing),
-            "credentials": len(creds),
-            "connectors": len(connectors),
-            "datasets_read": len(ds_reads),
-            "datasets_written": len(ds_writes),
-            "agents": len(agents),
-            "workflow_calls": len(wf_calls),
-        },
+        "manifest": _ordered_to_dict(manifest),
+        "stats": stats,
         "missing": missing,
-        "datasets_read_only": sorted(ds_reads - ds_writes),  # external deps to track elsewhere
+        "datasets_read_only": external_datasets,
         "agents": sorted(agents),
         "workflow_calls": sorted(wf_calls),
+        "draft_doc_name": draft_doc_name,
     }
+
+
+def _ordered_to_dict(o):
+    """Recursively convert OrderedDict → regular dict so Mongo + the engine
+    serialise it cleanly (some BSON encoders trip on OrderedDict)."""
+    if isinstance(o, dict):
+        return {k: _ordered_to_dict(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [_ordered_to_dict(x) for x in o]
+    return o
