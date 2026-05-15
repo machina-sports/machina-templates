@@ -54,7 +54,9 @@ workflow:
     - type: prompt
       name: manifest-enrichment
       description: "Fill source_label, test_workflow, validation per credential."
-      condition: "$.get('enrich_with_llm', False) is True and $.get('extraction_ok', False) is True"
+      # Lenient bool check — Studio's Execute UI sometimes passes booleans
+      # as strings ("true" / "false"). Accept both shapes here.
+      condition: "str($.get('enrich_with_llm', False)).lower() in ('true', '1', 'yes') and $.get('extraction_ok', False) is True"
       continue_on_error: true
       connector:
         name: google-genai
