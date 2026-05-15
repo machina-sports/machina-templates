@@ -1,12 +1,36 @@
 skill:
-  name: manifest-generator
-  title: Project Manifest Generator
+  name: "manifest-generator"
+  title: "Project Manifest Generator"
   description: |
-    Generate a draft `project.manifest.yml` from a list of workflows.
-    Powers fast adoption of the manifest pattern across machina-templates.
+    Generate a draft project.manifest.yml from a list of workflows.
+    Scales the Pipeline Platform Cleanup manifest pattern across
+    machina-templates so every project gets Project Health visibility
+    without writing manifests by hand.
+  version: "1.0.0"
+  category:
+    - "platform"
+    - "tooling"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "Project Manifest Generator Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "manifest-generator"
+
   workflows:
-    - name: generate-project-manifest
-  connectors:
-    - name: manifest-extractor
-  prompts:
-    - name: manifest-enrichment
+    - name: "generate-project-manifest"
+      description: "Scans workflows + emits a draft project.manifest.yml document."
+      inputs:
+        workflow_names: "$.get('workflow_names', [])"
+        template_name: "$.get('template_name', 'unnamed-template')"
+        description: "$.get('description', '')"
+        enrich_with_llm: "$.get('enrich_with_llm', False)"
+      outputs:
+        ok: "$.get('ok', False)"
+        manifest_draft_doc_name: "$.get('manifest_draft_doc_name', '')"
+        workflow-status: "$.get('workflow-status')"

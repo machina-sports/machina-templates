@@ -1,70 +1,51 @@
-prompt:
+prompts:
 
-  name: manifest-enrichment
-  title: Manifest Enrichment Prompt
-  description: |
-    Takes a draft project.manifest.yml (produced by the manifest-extractor
-    pyscript) and fills in the human-facing fields: source_label,
-    test_workflow, validation rule, dataset descriptions, populated_by.
+  # manifest-enrichment — fills source_label, test_workflow, validation
+  # rules + dataset descriptions on a draft project.manifest.yml.
+  - type: prompt
+    name: manifest-enrichment
+    title: Manifest Enrichment
+    description: |
+      Takes a draft project.manifest.yml (from the manifest-extractor pyscript)
+      and fills in the human-facing fields: source_label, test_workflow,
+      validation rule, dataset descriptions, populated_by.
+    instruction: |
+      You're filling in a Machina project manifest. The skeleton already has
+      the credential names, connector references, and dataset writes from a
+      static scan. Your job: enrich the human-readable bits using these rules.
 
-    Stays conservative: only fills what can be inferred from the
-    credential / dataset name + the connector list. Leaves uncertain
-    fields empty so the operator notices what needs manual attention.
+      CREDENTIAL source_label
+      - Naming convention: TEMP_CONTEXT_VARIABLE_<UPPERCASE>
+      - Pattern matches:
+        - ends in _API_KEY      → "<service> API key (<console URL>)"
+        - ends in _SECRET       → "<service> secret"
+        - matches _CREDENTIAL   → "Service account JSON for <service>"
+        - matches _ACCESS_ID    → "<service> partner access ID"
 
-  config:
-    response_format: json
-    temperature: 0.1
-    max_tokens: 3000
+      CREDENTIAL test_workflow
+      - Convention: `<connector-name>-test-credentials`
+      - Pick the most likely connector from the connectors list at top of the manifest.
 
-  inputs:
-    - name: _1-template_name
-      description: "Top-level manifest name."
-    - name: _2-draft_manifest
-      description: "Manifest skeleton from the extractor."
-    - name: _3-external_datasets
-      description: "Dataset names the workflows READ from (likely populated by other templates)."
+      CREDENTIAL validation
+      - API keys for known services (OpenAI, SportRadar, Groq, API-Football,
+        Mailgun) → http rule with the conventional probe URL.
+      - JSON service accounts → json_object with required_keys
+        [project_id, private_key, client_email].
+      - Free-text strings (project IDs, tokens) → non_empty_string.
+      - If unsure → leave validation: null.
 
-  system: |
-    You're filling in a Machina project manifest. The skeleton already
-    has the credential names, connector references, and dataset writes.
-    Your job: enrich the human-readable bits using these rules.
+      DATASET description + populated_by
+      - description: short one-liner about what the dataset holds.
+      - populated_by: usually `<template>-<area>-<action>` — guess based
+        on the dataset name pattern.
 
-    Credential `source_label`:
-    - Naming convention: TEMP_CONTEXT_VARIABLE_<UPPERCASE>
-    - Pattern matches:
-      - ends in _API_KEY      → "<service> API key (<console URL>)"
-      - ends in _SECRET       → "<service> secret"
-      - matches _CREDENTIAL   → "Service account JSON for <service>"
-      - matches _ACCESS_ID    → "<service> partner access ID"
+      INPUTS the workflow passes to you
+      - template_name: top-level manifest name
+      - draft_manifest: the skeleton from the extractor
+      - external_datasets: dataset names this template READS (likely
+        populated by OTHER templates, not by this one)
 
-    Credential `test_workflow`:
-    - Convention: `<connector-name>-test-credentials`. Pick the most
-      likely connector from the connectors list.
-
-    Credential `validation`:
-    - API keys for known services (OpenAI, SportRadar, Groq, API-Football,
-      Mailgun) → http rule with the conventional probe URL.
-    - JSON service accounts → json_object with required_keys
-      [project_id, private_key, client_email].
-    - Free-text strings → non_empty_string.
-    - If unsure → leave validation: null.
-
-    Dataset `description` + `populated_by`:
-    - description: short one-liner about what the dataset holds.
-    - populated_by: usually `<template>-<area>-<action>` — guess based
-      on the dataset name pattern.
-
-    Return the SAME manifest structure with these fields filled.
-
-  user: |
-    Template: {_1-template_name}
-
-    Draft manifest:
-    {_2-draft_manifest}
-
-    External datasets this template reads (populated by other templates):
-    {_3-external_datasets}
-
-  outputs:
-    - name: enriched_manifest
-      description: "The manifest dict with source_label, test_workflow, validation, descriptions filled in."
+      OUTPUT
+      - Return the SAME manifest structure with these fields filled.
+      - Keep keys as-is. Don't reorder. Don't add fields not in the schema.
+      - When uncertain, prefer leaving a field empty/null over guessing wrong.
