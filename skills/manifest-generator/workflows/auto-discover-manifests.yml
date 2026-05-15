@@ -1,0 +1,47 @@
+workflow:
+  name: auto-discover-manifests
+  title: Auto-Discover Manifests
+  description: |
+    Sprint 5 / Nível A — scans every workflow in the project, groups by
+    inferred template prefix, and runs aggregate_manifest for each group.
+    Produces `<template>-manifest-draft` documents for every template the
+    project has installed.
+
+    Intended to run scheduled (via the `manifest-auto-refresh` agent) so
+    drafts stay fresh as templates evolve. Can also be triggered manually
+    via the executor endpoint for an on-demand re-scan.
+
+  context-variables:
+    debugger:
+      enabled: true
+
+  inputs:
+    dry_run: "$.get('dry_run')"
+    enrich_with_llm: "$.get('enrich_with_llm')"
+
+  outputs:
+    workflow-status: "'executed' if $.get('ok', False) else 'skipped'"
+    ok: "$.get('ok', False)"
+    summary: "$.get('summary', {})"
+    templates_found: "$.get('templates_found', [])"
+    drafts_written: "$.get('drafts_written', [])"
+    failures: "$.get('failures', [])"
+
+  tasks:
+
+    - type: connector
+      name: discover-and-generate
+      description: "Scan workflows + group by template + batch aggregate_manifest."
+      connector:
+        name: manifest-extractor
+        command: discover_and_generate_all
+      inputs:
+        dry_run: "$.get('dry_run')"
+        enrich_with_llm: "$.get('enrich_with_llm')"
+      outputs:
+        ok: "$.get('ok', False)"
+        summary: "$.get('summary', {})"
+        templates_found: "$.get('templates_found', [])"
+        trivial_groups: "$.get('trivial_groups', [])"
+        drafts_written: "$.get('drafts_written', [])"
+        failures: "$.get('failures', [])"

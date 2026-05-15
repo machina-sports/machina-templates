@@ -34,3 +34,15 @@ skill:
         ok: "$.get('ok', False)"
         manifest_draft_doc_name: "$.get('manifest_draft_doc_name', '')"
         workflow-status: "$.get('workflow-status')"
+
+    - name: "auto-discover-manifests"
+      description: "Scans every workflow in the project + emits one draft per template."
+      inputs:
+        dry_run: "$.get('dry_run', False)"
+        enrich_with_llm: "$.get('enrich_with_llm', False)"
+      outputs:
+        ok: "$.get('ok', False)"
+        summary: "$.get('summary', {})"
+        templates_found: "$.get('templates_found', [])"
+        drafts_written: "$.get('drafts_written', [])"
+        workflow-status: "$.get('workflow-status')"

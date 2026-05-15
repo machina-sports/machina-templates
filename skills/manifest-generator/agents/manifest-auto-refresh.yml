@@ -1,0 +1,33 @@
+agent:
+
+  # manifest-auto-refresh — scheduled agent that scans every installed
+  # template and refreshes their manifest drafts.
+  name: manifest-auto-refresh
+  title: Manifest Auto-Refresh
+  description: |
+    Scheduled agent (24h frequency) that runs auto-discover-manifests
+    so the `<template>-manifest-draft` documents stay current as
+    templates evolve.
+
+    Start with `status: inactive` — operator enables it in Studio when
+    they want auto-refresh on. `config-frequency` is in minutes
+    (1440 = 24 hours).
+  context:
+    config-frequency: 1440
+    status: "inactive"
+  context-agent:
+    dry_run: $.get('dry_run', False)
+    enrich_with_llm: $.get('enrich_with_llm', False)
+  workflows:
+
+    - name: auto-discover-manifests
+      description: "Scan + group by template + batch aggregate"
+      inputs:
+        dry_run: $.get('dry_run', False)
+        enrich_with_llm: $.get('enrich_with_llm', False)
+      outputs:
+        ok: $.get('ok', False)
+        summary: $.get('summary', {})
+        drafts_written: $.get('drafts_written', [])
+        templates_found: $.get('templates_found', [])
+        failures: $.get('failures', [])

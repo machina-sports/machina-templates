@@ -354,3 +354,169 @@ def _ordered_to_dict(o):
     if isinstance(o, list):
         return [_ordered_to_dict(x) for x in o]
     return o
+
+
+# -------------------------------------------------------------------------
+# Auto-discovery (Sprint 5 / Nível A)
+# -------------------------------------------------------------------------
+
+def _infer_template_prefix(workflow_name):
+    """Derive a template grouping key from a workflow name.
+
+    Heuristic: most Machina workflows follow `<template>-<area>-<action>`
+    or `<template>-<action>` naming. We take the first 1-2 segments as
+    the group key. Single-segment names (rare) become their own group.
+
+    Special-cases templates that publish multi-word prefixes like
+    `byteplus-modelark-...` so they aren't split incorrectly.
+    """
+    parts = workflow_name.split("-")
+    if not parts:
+        return workflow_name
+
+    # Multi-word known prefixes — extend as we onboard more templates.
+    MULTI_WORD_PREFIXES = {
+        ("byteplus", "modelark"),
+        ("api", "football"),
+        ("google", "genai"),
+        ("google", "workstation"),
+        ("google", "speech"),
+        ("google", "vertex"),
+        ("machina", "ai"),
+        ("machina", "ai", "fast"),
+        ("machina", "assistant"),
+        ("machina", "cockpit"),
+        ("daily", "football", "recap"),
+        ("sports", "interaction"),
+        ("sportradar", "soccer"),
+        ("sportradar", "nba"),
+        ("voice", "tts"),
+        ("bwin", "coverage"),
+        ("bwin", "assistant"),
+        ("bwin", "data"),
+        ("botandwin", "coverage"),
+        ("personalized", "podcast"),
+        ("bundesliga", "podcast"),
+        ("event", "podcast"),
+    }
+
+    # Try longest match first
+    for n in (3, 2):
+        if len(parts) >= n and tuple(parts[:n]) in MULTI_WORD_PREFIXES:
+            return "-".join(parts[:n])
+
+    # Fall back to first segment
+    return parts[0]
+
+
+def discover_and_generate_all(request_data):
+    """Auto-discover every installed template via workflow name prefixes,
+    then run aggregate_manifest for each discovered template.
+
+    Inputs (under request_data["params"]):
+        - dry_run: bool (default false) — when true, only return the
+                   group mapping without generating manifests
+        - enrich_with_llm: bool (default false) — passed through
+
+    Returns:
+        {
+          "status": True,
+          "data": {
+            "ok": True,
+            "templates_found": [...],
+            "drafts_written": [...],
+            "summary": { templates: N, workflows_scanned: M, ... }
+          }
+        }
+    """
+    try:
+        data = _discover_and_generate_inner(request_data)
+    except Exception as exc:
+        import traceback
+        data = {
+            "ok": False,
+            "error_message": f"{type(exc).__name__}: {exc}",
+            "trace": traceback.format_exc()[-1200:],
+        }
+    return {
+        "status": True,
+        "data": data,
+        "message": "discover_and_generate_all executed",
+    }
+
+
+def _discover_and_generate_inner(request_data):
+    from core.system.database import MongoDBConnection
+
+    params = (request_data or {}).get("params") or {}
+    dry_run = _coerce_bool(params.get("dry_run"))
+    enrich_with_llm = _coerce_bool(params.get("enrich_with_llm"))
+
+    # Step 1: list every workflow in this project's Mongo
+    col = MongoDBConnection().get_collection("workflow")
+    all_workflows = list(col.find({}, {"name": 1, "_id": 0}))
+    names = [w.get("name") for w in all_workflows if w.get("name")]
+
+    # Step 2: group by inferred template prefix
+    groups = {}
+    for n in names:
+        key = _infer_template_prefix(n)
+        groups.setdefault(key, []).append(n)
+
+    # Pre-filter trivial groups (single workflows whose key matches their
+    # name — these are usually `test-credentials` or one-shot utilities,
+    # not full templates).
+    full_groups = {k: v for k, v in groups.items() if len(v) >= 2 or k != v[0]}
+    trivial_groups = {k: v for k, v in groups.items() if k not in full_groups}
+
+    if dry_run:
+        return {
+            "ok": True,
+            "dry_run": True,
+            "templates_found": sorted(full_groups.keys()),
+            "trivial_groups": sorted(trivial_groups.keys()),
+            "summary": {
+                "total_workflows": len(names),
+                "groups": len(groups),
+                "templates_with_drafts": len(full_groups),
+            },
+        }
+
+    # Step 3: for each non-trivial group, run aggregate_manifest
+    drafts_written = []
+    failures = []
+    for template_name, workflow_names in sorted(full_groups.items()):
+        try:
+            result = _aggregate_manifest_inner({
+                "params": {
+                    "workflow_names": workflow_names,
+                    "template_name": template_name,
+                    "description": f"Auto-discovered: {len(workflow_names)} workflows",
+                },
+            })
+            if result.get("ok"):
+                drafts_written.append({
+                    "template": template_name,
+                    "workflows": len(workflow_names),
+                    "stats": result.get("stats", {}),
+                    "draft_doc": result.get("draft_doc_name"),
+                })
+            else:
+                failures.append({"template": template_name, "error": result.get("error_message")})
+        except Exception as exc:  # noqa: BLE001 — keep walking
+            failures.append({"template": template_name, "error": f"{type(exc).__name__}: {exc}"})
+
+    return {
+        "ok": True,
+        "enrich_with_llm": enrich_with_llm,  # propagated for future use
+        "templates_found": sorted(full_groups.keys()),
+        "trivial_groups": sorted(trivial_groups.keys()),
+        "drafts_written": drafts_written,
+        "failures": failures,
+        "summary": {
+            "total_workflows": len(names),
+            "groups": len(groups),
+            "drafts_written": len(drafts_written),
+            "failures": len(failures),
+        },
+    }
