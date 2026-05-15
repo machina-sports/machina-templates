@@ -24,9 +24,19 @@ datasets:
   - type: prompts
     path: prompts/manifest-enrichment.yml
 
-  # Main orchestration workflow
+  # Main orchestration workflow — single-template manifest generation
   - type: workflow
     path: workflows/generate-project-manifest.yml
+
+  # Auto-discovery workflow — scans every workflow in the project,
+  # groups by template, runs aggregate_manifest in batch.
+  - type: workflow
+    path: workflows/auto-discover-manifests.yml
+
+  # Scheduled agent — runs auto-discover-manifests every 24h.
+  # Starts inactive; operator enables it in Studio when ready.
+  - type: agent
+    path: agents/manifest-auto-refresh.yml
 
   # Skill itself
   - type: skill

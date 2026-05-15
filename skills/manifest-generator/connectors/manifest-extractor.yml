@@ -13,3 +13,6 @@ connector:
 
     - name: Aggregate Manifest
       value: aggregate_manifest
+
+    - name: Discover and Generate All
+      value: discover_and_generate_all

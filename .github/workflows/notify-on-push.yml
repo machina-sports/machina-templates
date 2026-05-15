@@ -1,0 +1,93 @@
+name: Notify subscribers of template push
+
+# Sprint 5 / Nível C of the manifest auto-refresh pipeline.
+#
+# On every push to main, POST a webhook to each subscribed Machina
+# environment so it can refresh its manifest drafts for the templates
+# that changed. The receiver is `POST /system/templates-pushed` in
+# machina-client-api (see Sprint 5 #200 in that repo).
+#
+# Subscribers + webhook secrets are stored as repository secrets:
+#   MACHINA_WEBHOOK_URLS              — comma-separated list of POST URLs
+#   MACHINA_TEMPLATES_WEBHOOK_SECRET  — shared secret (same as backend env var)
+#
+# If either secret is unset, the workflow exits 0 with a notice — the
+# repo can be public without breaking on every push for forks.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # so HEAD~1 is reachable for the diff
+
+      - name: Compute changed paths
+        id: diff
+        run: |
+          # Files changed in this push. `before` is the parent of HEAD for
+          # a regular push; falls back to HEAD~1.
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="HEAD~1"
+          fi
+          CHANGED=$(git diff --name-only "$BASE" HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+          echo "Changed paths:"
+          echo "$CHANGED"
+          # Build a JSON array for the POST body
+          JSON_ARRAY=$(echo "$CHANGED" | jq -R . | jq -s 'map(select(length > 0))')
+          # Save to env for next step (multi-line)
+          {
+            echo "json<<__EOF__"
+            echo "$JSON_ARRAY"
+            echo "__EOF__"
+          } >> $GITHUB_OUTPUT
+
+      - name: POST to each subscriber
+        if: ${{ env.WEBHOOK_URLS != '' && env.WEBHOOK_SECRET != '' }}
+        env:
+          WEBHOOK_URLS: ${{ secrets.MACHINA_WEBHOOK_URLS }}
+          WEBHOOK_SECRET: ${{ secrets.MACHINA_TEMPLATES_WEBHOOK_SECRET }}
+          COMMIT: ${{ github.sha }}
+          REF: ${{ github.ref }}
+          CHANGED_JSON: ${{ steps.diff.outputs.json }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg ref "$REF" \
+            --arg commit "$COMMIT" \
+            --arg secret "$WEBHOOK_SECRET" \
+            --argjson changed "$CHANGED_JSON" \
+            '{ref:$ref, commit:$commit, secret:$secret, changed_paths:$changed}')
+
+          IFS=',' read -ra URLS <<< "$WEBHOOK_URLS"
+          for URL in "${URLS[@]}"; do
+            URL_TRIM=$(echo "$URL" | xargs)
+            [ -z "$URL_TRIM" ] && continue
+            echo "POST $URL_TRIM"
+            HTTP_CODE=$(curl -sS -o /tmp/resp.txt -w "%{http_code}" \
+              -X POST "$URL_TRIM" \
+              -H "Content-Type: application/json" \
+              -H "X-Webhook-Secret: $WEBHOOK_SECRET" \
+              -d "$PAYLOAD") || HTTP_CODE="000"
+            echo "  -> HTTP $HTTP_CODE"
+            cat /tmp/resp.txt | head -5 || true
+            echo ""
+          done
+
+      - name: Skipped — no subscribers configured
+        if: ${{ env.WEBHOOK_URLS == '' || env.WEBHOOK_SECRET == '' }}
+        env:
+          WEBHOOK_URLS: ${{ secrets.MACHINA_WEBHOOK_URLS }}
+          WEBHOOK_SECRET: ${{ secrets.MACHINA_TEMPLATES_WEBHOOK_SECRET }}
+        run: |
+          echo "::notice::Webhook secrets not set — no subscribers notified."
+          echo "Set MACHINA_WEBHOOK_URLS (comma-separated) and MACHINA_TEMPLATES_WEBHOOK_SECRET"
+          echo "in repo settings to enable. See .github/workflows/notify-on-push.yml for details."
