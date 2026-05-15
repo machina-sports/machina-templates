@@ -132,27 +132,58 @@ def _extract_workflow_calls(workflow_doc):
 # Public connector commands
 # -------------------------------------------------------------------------
 
+def _coerce_workflow_names(raw):
+    """Accept either a list[str] OR a comma/space/newline-separated string.
+
+    The Studio Execute UI sometimes serialises array inputs as strings
+    (single-line text input + JSON-escaped). To keep the operator UX clean
+    we accept both shapes and normalise to list[str].
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return [str(x).strip() for x in raw if str(x).strip()]
+    if isinstance(raw, str):
+        # Split on common separators; ignore empties.
+        import re
+        parts = re.split(r"[,\n;]+|\s{2,}", raw.strip())
+        return [p.strip() for p in parts if p.strip()]
+    # Anything else — return empty so the caller hits the validation error.
+    return []
+
+
+def _coerce_bool(raw):
+    """Coerce a string/bool/int to a bool. The Studio Execute UI sometimes
+    passes JSON booleans as strings ("true" / "false")."""
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        return bool(raw)
+    if isinstance(raw, str):
+        return raw.strip().lower() in ("true", "1", "yes", "y", "on")
+    return False
+
+
 def aggregate_manifest(inputs):
     """Run the extraction across a list of workflow names + emit a draft.
 
     Inputs (from the calling workflow task):
-        - workflow_names: list[str]   — workflows belonging to this template
-        - template_name:  str         — what to call this manifest
-        - description:    str         — one-liner for the manifest header
+        - workflow_names: list[str] OR comma-separated string
+        - template_name:  str
+        - description:    str
 
-    Returns a dict shaped like `project.manifest.yml` (no YAML serialisation
-    here — the workflow's next task renders it).
+    Returns a dict shaped like `project.manifest.yml`.
     """
     from core.system.database import MongoDBConnection  # available inside pyscript runtime
 
-    workflow_names = inputs.get("workflow_names") or []
-    template_name = inputs.get("template_name") or "unnamed-template"
-    description   = inputs.get("description")   or ""
+    workflow_names = _coerce_workflow_names(inputs.get("workflow_names"))
+    template_name = (inputs.get("template_name") or "unnamed-template").strip()
+    description   = (inputs.get("description")   or "").strip()
 
-    if not isinstance(workflow_names, list) or not workflow_names:
+    if not workflow_names:
         return {
             "ok": False,
-            "error": "workflow_names is required and must be a non-empty list",
+            "error": "workflow_names is required and must be a non-empty list (or comma-separated string)",
         }
 
     col = MongoDBConnection().get_collection("workflow")
