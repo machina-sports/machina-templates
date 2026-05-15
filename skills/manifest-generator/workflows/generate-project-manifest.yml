@@ -1,0 +1,86 @@
+workflow:
+
+  name: generate-project-manifest
+  title: Generate Project Manifest
+  description: |
+    Scans a list of workflows (workflow_names) belonging to a template,
+    extracts deps (credentials / connectors / datasets / agents) via the
+    manifest-extractor pyscript connector, optionally enriches with an
+    LLM pass for source_label + validation rules, and writes the result
+    as a `project_manifest_draft` document for operator review.
+
+  context-variables:
+    debugger:
+      enabled: true
+
+  tasks:
+
+    - type: connector
+      name: extract-deps
+      description: "Run the deterministic pyscript extractor across all workflows."
+      connector:
+        name: manifest-extractor
+        command: aggregate_manifest
+      inputs:
+        workflow_names: "$.get('workflow_names', [])"
+        template_name:  "$.get('template_name', 'unnamed-template')"
+        description:    "$.get('description', '')"
+      outputs:
+        extraction_ok:    "$.get('ok', False)"
+        draft_manifest:   "$.get('manifest', {})"
+        extraction_stats: "$.get('stats', {})"
+        missing_workflows: "$.get('missing', [])"
+        external_datasets: "$.get('datasets_read_only', [])"
+
+    # Optional LLM enrichment — only runs if `enrich_with_llm=true` was
+    # passed in the input context. The prompt receives the draft manifest
+    # plus the list of external datasets it reads, and returns the same
+    # manifest with source_label, test_workflow + validation rules filled
+    # in. Output keys are merged onto draft_manifest by the next task.
+    - type: prompt
+      name: enrich-manifest
+      description: "Fill source_label, test_workflow, validation per credential."
+      condition: "$.get('enrich_with_llm', False) is True and $.get('extraction_ok', False) is True"
+      continue_on_error: true
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3-flash-preview
+        provider: vertex_ai
+      inputs:
+        _1-template_name: "$.get('template_name', '')"
+        _2-draft_manifest: "$.get('draft_manifest', {})"
+        _3-external_datasets: "$.get('external_datasets', [])"
+      outputs:
+        enriched_manifest: "$.get('enriched_manifest', $.get('draft_manifest', {}))"
+
+    # Persist the result as a project_manifest_draft document. The
+    # operator can then edit it in Studio, tweak labels/validation, then
+    # promote to the real `project_manifest` collection.
+    - type: document
+      name: save-draft
+      description: "Write the draft manifest as a project_manifest_draft document."
+      condition: "$.get('extraction_ok', False) is True"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        "{$.get('template_name', 'unnamed-template')}-manifest-draft": |
+          {
+            'manifest':            $.get('enriched_manifest', $.get('draft_manifest', {})),
+            'extraction_stats':    $.get('extraction_stats', {}),
+            'missing_workflows':   $.get('missing_workflows', []),
+            'external_datasets':   $.get('external_datasets', []),
+            'enriched':            $.get('enrich_with_llm', False),
+            'generated_at':        datetime.utcnow().isoformat(),
+            'template_name':       $.get('template_name', ''),
+          }
+
+  outputs:
+    ok: "$.get('extraction_ok', False)"
+    manifest_draft_doc_name: "'{$.get(\"template_name\", \"unnamed-template\")}-manifest-draft'"
+    stats: "$.get('extraction_stats', {})"
+    missing: "$.get('missing_workflows', [])"
+    workflow-status: |
+      'executed' if $.get('extraction_ok', False) else 'skipped'

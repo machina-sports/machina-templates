@@ -1,0 +1,33 @@
+setup:
+  title: "Project Manifest Generator"
+  description: "Scans a template's workflows and emits a draft project.manifest.yml — credentials, datasets, connectors, agents — ready for review + commit."
+  category:
+    - special-templates
+  estimatedTime: 5 minutes
+  features:
+    - Static extraction (no LLM required for the deterministic skeleton)
+    - Optional LLM enrichment of `source_label` / `validation` / `description`
+    - Emits a `project_manifest_draft` document for operator review
+    - Designed to scale Sprint 1A (botandwin manifest) to every template in machina-templates
+  status: available
+  integrations: []
+  value: "skills/manifest-generator"
+  version: 1.0.0
+
+datasets:
+
+  # Pyscript connector — the deterministic extractor
+  - type: connector
+    path: connectors/manifest-extractor.yml
+
+  # LLM enrichment prompt — fills source_label + validation rules
+  - type: prompts
+    path: prompts/manifest-enrichment.yml
+
+  # Main orchestration workflow
+  - type: workflow
+    path: workflows/generate-project-manifest.yml
+
+  # Skill itself
+  - type: skill
+    path: skill.yml

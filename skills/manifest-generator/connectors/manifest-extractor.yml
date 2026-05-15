@@ -1,0 +1,39 @@
+connector:
+
+  name: manifest-extractor
+  title: Project Manifest Extractor
+  description: |
+    Deterministic extractor that scans a list of Machina workflows and
+    aggregates the credentials, connectors, datasets and agents they
+    depend on — outputting a draft project.manifest.yml ready for review.
+  filename: manifest-extractor.py
+  filetype: pyscript
+  commands:
+    - name: Aggregate Manifest
+      value: aggregate_manifest
+      description: |
+        Walks each workflow_object in `workflow_names`, extracts deps,
+        and returns a manifest skeleton.
+      inputs:
+        - name: workflow_names
+          type: array
+          description: "List of workflow names to scan"
+        - name: template_name
+          type: string
+          description: "Manifest top-level `name` field"
+        - name: description
+          type: string
+          description: "One-line description for the manifest header"
+      outputs:
+        - name: manifest
+          type: object
+        - name: stats
+          type: object
+        - name: missing
+          type: array
+        - name: datasets_read_only
+          type: array
+        - name: agents
+          type: array
+        - name: workflow_calls
+          type: array

@@ -1,0 +1,12 @@
+skill:
+  name: manifest-generator
+  title: Project Manifest Generator
+  description: |
+    Generate a draft `project.manifest.yml` from a list of workflows.
+    Powers fast adoption of the manifest pattern across machina-templates.
+  workflows:
+    - name: generate-project-manifest
+  connectors:
+    - name: manifest-extractor
+  prompts:
+    - name: manifest-enrichment
