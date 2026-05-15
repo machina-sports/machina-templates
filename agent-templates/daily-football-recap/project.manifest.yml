@@ -1,0 +1,62 @@
+# Daily Football Recap — Project Manifest
+#
+# Content-pipeline example: pulls fixtures from api-football, summarises with
+# Gemini, mails out daily recap via Mailgun. Demonstrates the manifest
+# pattern for a project with content datasets + multi-credential surface.
+
+name: daily-football-recap
+version: 1
+description: "Daily football recap pipeline — api-football → Gemini summary → Mailgun email"
+
+required_credentials:
+  - name: TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    source_label: "API-Football (dashboard.api-football.com)"
+    test_workflow: api-football-test-credentials
+    validation:
+      type: http
+      method: GET
+      url: "https://v3.football.api-sports.io/status"
+      headers:
+        x-rapidapi-key: "{value}"
+      expect_status: 200
+
+  - name: TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    source_label: "Gemini API key (aistudio.google.com)"
+    test_workflow: google-genai-test-credentials
+    validation:
+      type: non_empty_string
+
+  - name: TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY
+    source_label: "Mailgun API key (app.mailgun.com/settings/api_security)"
+    test_workflow: api-mailgun-test-credentials
+    validation:
+      type: non_empty_string
+
+required_config_documents:
+  - name: daily-football-recap-config
+    description: "Subscriber emails + competitions to cover"
+
+required_templates:
+  - repo: https://github.com/machina-sports/machina-templates
+    path: agent-templates/daily-football-recap
+    reason: "This template (recap pipeline + email rendering)"
+  - repo: https://github.com/machina-sports/machina-templates
+    path: connectors/api-football
+    reason: "Fixtures + match data"
+  - repo: https://github.com/machina-sports/machina-templates
+    path: connectors/google-genai
+    reason: "Gemini summary generation"
+  - repo: https://github.com/machina-sports/machina-templates
+    path: connectors/api-mailgun
+    reason: "Email delivery"
+
+depends_on_datasets:
+  - name: api-football-fixtures
+    description: "Match fixtures pulled from api-football"
+    populated_by: api-football-get-fixtures
+    min_count: 1
+
+  - name: daily-recap-content
+    description: "Generated recap articles"
+    populated_by: daily-football-recap-generate-daily-recap
+    min_count: 1
