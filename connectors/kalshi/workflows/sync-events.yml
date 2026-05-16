@@ -5,8 +5,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     category: $.get('category', '')
     tags: $.get('tags')
@@ -56,9 +57,11 @@ workflow:
         embed-vector: true
         force-update: $.get('force-update')
       connector:
-        name: machina-ai
+        name: google-genai
         command: invoke_embedding
-        model: text-embedding-3-small
+        model: text-embedding-004
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'kalshi-events'"
       documents:
         items: $.get('bulk-events', [])

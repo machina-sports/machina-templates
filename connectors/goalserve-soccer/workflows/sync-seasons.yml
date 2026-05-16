@@ -22,9 +22,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=24)}"
         value.status: "'active'"
@@ -94,9 +96,11 @@ workflow:
         force-update: true
       condition: "$.get('should_update') == True"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         goalserve-seasons: |
           {
@@ -119,9 +123,11 @@ workflow:
         force-update: true
       condition: "$.get('should_update') == True and len($.get('seasons', [])) > 0"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "goalserve-league-season"
       documents:
         items: |

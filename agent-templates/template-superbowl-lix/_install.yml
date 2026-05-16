@@ -25,7 +25,7 @@ datasets:
   - type: "connector"
     path: "../connectors/groq/groq.yml"
   - type: "connector"
-    path: "../connectors/openai/openai.yml"
+    path: "../connectors/google-genai/google-genai.yml"
   - type: "connector"
     path: "../connectors/sportradar-nfl/sportradar-nfl.yml"
 

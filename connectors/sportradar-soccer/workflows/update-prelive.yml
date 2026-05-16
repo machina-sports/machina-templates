@@ -181,9 +181,9 @@ workflow:
     #       and $.(result-event-lineups) is not None
     #     )
     #   connector:
-    #     name: "machina-ai"
+    #     name: "google-genai"
     #     command: "invoke_prompt"
-    #     model: "gpt-4.1"
+    #     model: "gemini-2.5-pro"
     #   inputs:
     #     _1-event_lineups: "$.get('result-event-lineups')"
     #   outputs:

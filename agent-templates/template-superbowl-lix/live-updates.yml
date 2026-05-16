@@ -5,8 +5,9 @@ workflow:
   context-variables:
     sportradar-nfl:
       sportradar_api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_code: "$.get('event_code') or None"
   outputs:
@@ -155,9 +156,11 @@ workflow:
       description: "Generate a live narration of the game, highlighting the key moments and insights."
       condition: "$.get('event_exists') is True and $.get('event-boxscore', {}).get('status', '') == 'inprogress'"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         data-event-boxscore: "$.get('event-boxscore', {}).get('last_event', {})"
       outputs:
@@ -169,9 +172,11 @@ workflow:
       description: "Generate a live summary of the game, highlighting the key moments and insights."
       condition: "$.get('event_exists') is True and $.get('event-boxscore', {}).get('status', '') == 'inprogress'"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "gpt-4o"
+        model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         data-event-boxscore: "$.get('event-boxscore', {}).get('last_event', {})"
       outputs:
@@ -218,9 +223,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "content-snippet"
       documents:
         items: "$.get('parsed-items')"

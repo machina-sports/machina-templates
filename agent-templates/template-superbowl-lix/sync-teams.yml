@@ -5,8 +5,9 @@ workflow:
   context-variables:
     sportradar-nfl:
       sportradar_api_key: "$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_code: "$.get('event_code') or None"
     season_year: "$.get('season_year') or None"
@@ -208,9 +209,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "player-profile"
       documents:
         items: "$.get('parsed-items')"

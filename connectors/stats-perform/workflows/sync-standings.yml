@@ -23,9 +23,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         value.tournament_calendar_id: "$.get('tournament_calendar_id')"
         value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=6)}"
@@ -79,9 +81,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         sp-standings: |
           {
@@ -107,9 +111,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-team-standing'"
       documents:
         items: "$.get('team_standings_list')"

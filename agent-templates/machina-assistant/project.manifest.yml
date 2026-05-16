@@ -27,20 +27,9 @@ version: 1
 description: "Foundational AI assistant for the Machina platform — chat, reasoning, knowledge base"
 
 required_credentials:
-  - name: TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
-    source_label: "OpenAI API key (platform.openai.com)"
-    test_workflow: machina-ai-test-credentials
-    validation:
-      type: http
-      method: GET
-      url: "https://api.openai.com/v1/models"
-      headers:
-        Authorization: "Bearer {value}"
-      expect_status: 200
-
-  - name: TEMP_CONTEXT_VARIABLE_GCW_CREDENTIAL
-    source_label: "GCP service account JSON for Google Vertex (Vertex AI User role)"
-    test_workflow: google-vertex-test-credentials
+  - name: TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+    source_label: "GCP service account JSON for Vertex AI (Vertex AI User role)"
+    test_workflow: google-genai-test-credentials
     validation:
       type: json_object
       required_keys:
@@ -48,9 +37,9 @@ required_credentials:
         - private_key
         - client_email
 
-  - name: TEMP_CONTEXT_VARIABLE_GCW_PROJECT_ID
+  - name: TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     source_label: "GCP project ID where Vertex AI is enabled"
-    test_workflow: google-vertex-test-credentials
+    test_workflow: google-genai-test-credentials
     validation:
       type: non_empty_string
 
@@ -61,11 +50,8 @@ required_templates:
     path: agent-templates/machina-assistant
     reason: "This template (assistant executor + reasoning prompts + KB)"
   - repo: https://github.com/machina-sports/machina-templates
-    path: connectors/machina-ai
-    reason: "OpenAI connector"
-  - repo: https://github.com/machina-sports/machina-templates
-    path: connectors/google-vertex
-    reason: "Vertex AI / Gemini connector"
+    path: connectors/google-genai
+    reason: "Vertex AI connector — prompts and embeddings"
 
 depends_on_datasets:
   - name: machina-assistant-thread

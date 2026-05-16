@@ -8,11 +8,8 @@ setup:
     - AI Agent to generate a personalized newsletter.
     - AI Reporter to generate a personalized newsletter.
   integrations:
-    - machina-ai
-    - machina-ai-fast
+    - google-genai
     - groq
-    - openai
-    - google-vertex
   status: available
   value: "agent-templates/template-newsletter"
   version: 1.0.0

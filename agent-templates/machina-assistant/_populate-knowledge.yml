@@ -6,8 +6,9 @@ workflow:
   context-variables:
     debugger:
       enabled: false
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   
   outputs:
     workflow-status: "'executed'"
@@ -23,9 +24,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
@@ -47,9 +50,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
@@ -71,16 +76,18 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
             'title': 'Chat Completion Guide',
             'category': 'chat',
-            'content': 'Chat workflows use prompt tasks with LLM connectors: OpenAI (machina-ai) for GPT-4o and GPT-4o-mini, Groq (machina-ai-fast) for Llama models with fast inference, Google Gemini (google-genai) for Gemini 2.5 Pro/Flash. RAG Implementation: Combine vector search with chat by searching documents using embeddings, passing context to LLM prompt, and generating contextual responses. Streaming: Use /agent/stream/{agent_id} endpoint with stream_workflows: true. Structured Output: Define schemas in prompts for predictable response formats. Best Practices: Choose appropriate models for speed/quality tradeoff, implement RAG for domain-specific knowledge, use structured output for data extraction, handle errors gracefully.',
-            'tags': ['chat', 'llm', 'openai', 'groq', 'gemini', 'rag', 'streaming']
+            'content': 'Chat workflows use prompt tasks with LLM connectors: Google Vertex AI (google-genai) for Gemini 2.5 Pro/Flash, Groq (machina-ai-fast) for Llama models with fast inference. RAG Implementation: Combine vector search with chat by searching documents using embeddings, passing context to LLM prompt, and generating contextual responses. Streaming: Use /agent/stream/{agent_id} endpoint with stream_workflows: true. Structured Output: Define schemas in prompts for predictable response formats. Best Practices: Choose appropriate models for speed/quality tradeoff, implement RAG for domain-specific knowledge, use structured output for data extraction, handle errors gracefully.',
+            'tags': ['chat', 'llm', 'vertex', 'groq', 'gemini', 'rag', 'streaming']
           }
       metadata:
         category: "'chat'"
@@ -95,9 +102,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
@@ -119,9 +128,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
@@ -143,15 +154,17 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
             'title': 'Document Database and Vector Search',
             'category': 'database',
-            'content': 'Document Database: Document Structure includes _id (unique identifier), name (document type like sport:Event, content-snippet, thread, etc.), value (content as JSON object), metadata (additional filterable fields), and embedding (vector for semantic search). Operations: save (create new documents), search (find with filters), update (modify existing), bulk-update (update multiple documents). Vector Search: Use embeddings for semantic search by setting search-vector to true, providing connector for embeddings (text-embedding-3-small), and configuring thresholds for similarity. Common Document Types: sport:Event (sports matches/events), sport:Team (team information), content-snippet (knowledge articles), thread (conversation threads), game-market (betting markets). Best Practices: Use meaningful document names, add comprehensive metadata, enable embeddings for semantic search, batch operations when possible.',
+            'content': 'Document Database: Document Structure includes _id (unique identifier), name (document type like sport:Event, content-snippet, thread, etc.), value (content as JSON object), metadata (additional filterable fields), and embedding (vector for semantic search). Operations: save (create new documents), search (find with filters), update (modify existing), bulk-update (update multiple documents). Vector Search: Use embeddings for semantic search by setting search-vector to true, providing connector for embeddings (text-embedding-004 via google-genai), and configuring thresholds for similarity. Common Document Types: sport:Event (sports matches/events), sport:Team (team information), content-snippet (knowledge articles), thread (conversation threads), game-market (betting markets). Best Practices: Use meaningful document names, add comprehensive metadata, enable embeddings for semantic search, batch operations when possible.',
             'tags': ['database', 'mongodb', 'vector-search', 'embeddings', 'documents']
           }
       metadata:
@@ -167,9 +180,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
@@ -191,15 +206,17 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
             'title': 'Creating Custom Connectors',
             'category': 'development',
-            'content': 'Custom Connector Development: Structure uses connectors/<name>/<name>.yml and <name>.py files. Definition in YAML includes name (unique connector identifier), description (what the connector does), filename (implementation file), filetype (pyscript or restapi), and commands (list of available commands). Implementation in Python uses functions that match command values - function takes params dictionary as input and returns result dictionary. Environment Variables use $MACHINA_CONTEXT_VARIABLE_ prefix like $MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY or $MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY. Best Practices: Use clear function names, handle errors gracefully, return consistent data structures, document parameters, and test thoroughly.',
+            'content': 'Custom Connector Development: Structure uses connectors/<name>/<name>.yml and <name>.py files. Definition in YAML includes name (unique connector identifier), description (what the connector does), filename (implementation file), filetype (pyscript or restapi), and commands (list of available commands). Implementation in Python uses functions that match command values - function takes params dictionary as input and returns result dictionary. Environment Variables use $MACHINA_CONTEXT_VARIABLE_ prefix like $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID or $MACHINA_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY. Best Practices: Use clear function names, handle errors gracefully, return consistent data structures, document parameters, and test thoroughly.',
             'tags': ['connector', 'development', 'custom', 'python', 'pyscript']
           }
       metadata:
@@ -215,9 +232,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {
@@ -239,9 +258,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         machina-knowledge: |
           {

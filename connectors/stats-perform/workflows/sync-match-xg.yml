@@ -23,9 +23,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         value.match_id: "$.get('match_id')"
         value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=24)}"
@@ -81,9 +83,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         sp-match-xg: |
           {
@@ -111,9 +115,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-team-match-xg'"
       documents:
         items: "$.get('team_xg_list')"
@@ -147,9 +153,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-player-match-xg'"
       documents:
         items: "$.get('player_xg_list')"
@@ -187,9 +195,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-shot-event-xg'"
       documents:
         items: "$.get('shot_events_list')"

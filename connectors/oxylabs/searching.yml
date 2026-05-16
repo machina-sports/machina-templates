@@ -7,8 +7,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     storage:
       api_key: "$TEMP_CONTEXT_VARIABLE_AZURE_BLOB_STRING"
     oxylabs:
@@ -132,7 +133,7 @@ workflow:
           and $.get('udm') == 2
         )
       connector:
-        name: machina-ai
+        name: google-genai
         command: "edit_image"
       inputs:
         image_id: f"id-{$.get('document-id')}-{$.get('image-name')}"

@@ -5,8 +5,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    openai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   
@@ -20,6 +21,8 @@ workflow:
         name: "google-genai"
         command: "invoke_search"
         model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
       foreach:
         concurrent: true
         name: search_query
@@ -57,6 +60,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         search_results: "$.get('news_search_response', [])"
         search_metadata: "$.get('news_search_metadata', [])"
@@ -109,9 +114,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "content-snippet"
       documents:
         items: "$.get('parsed-items')"

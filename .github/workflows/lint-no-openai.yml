@@ -1,0 +1,16 @@
+name: Lint - no OpenAI references
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for banned OpenAI / GPT / text-embedding-3 refs
+        run: |
+          chmod +x scripts/check-no-openai.sh
+          ./scripts/check-no-openai.sh all

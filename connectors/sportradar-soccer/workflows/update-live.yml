@@ -7,8 +7,9 @@ workflow:
   context-variables:
     debugger:
       enabled: false
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     sportradar-soccer:
       api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
   inputs:
@@ -186,9 +187,9 @@ workflow:
     #       and $.(result-event-lineups) is not None
     #     )
     #   connector:
-    #     name: "machina-ai"
+    #     name: "google-genai"
     #     command: "invoke_prompt"
-    #     model: "gpt-4.1"
+    #     model: "gemini-2.5-pro"
     #   inputs:
     #     _1-event_lineups: "$.get('result-event-lineups')"
     #   outputs:

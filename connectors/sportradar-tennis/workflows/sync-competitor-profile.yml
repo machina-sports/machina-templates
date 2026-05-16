@@ -47,9 +47,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         tennis-competitor-profile: |
           {

@@ -1,5 +1,5 @@
 connector:
-  name: "openai"
+  name: "google-genai"
   description: "This connector is the Open AI SDK connector."
   filename: "openai.py"
   filetype: "pyscript"

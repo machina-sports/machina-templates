@@ -23,9 +23,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         value.match_id: "$.get('match_id')"
         value.execution: "{'$gte': datetime.utcnow() - timedelta(hours=24)}"
@@ -82,9 +84,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         sp-match-stats: |
           {
@@ -112,9 +116,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-team-match-stats'"
       documents:
         items: "$.get('team_stats_list')"
@@ -146,9 +152,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-player-match-stats'"
       documents:
         items: "$.get('player_stats_list')"
