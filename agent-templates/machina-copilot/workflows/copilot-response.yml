@@ -1,0 +1,76 @@
+workflow:
+
+  # copilot-response
+  #
+  # Composes the final assistant message after the orchestrator has finished
+  # dispatching tools (if any). Streams the response back to the Studio chat.
+  name: copilot-response
+  title: Machina Copilot | Response
+  description: Compose the final reply incorporating any tool outputs.
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    document_id: $.get('document_id')
+    reasoning: $.get('reasoning', {})
+    tool_outputs: $.get('tool_outputs', [])
+  outputs:
+    document_content: |
+      [
+        {
+          'content': $.get('content'),
+          'objects': $.get('tool_outputs', []),
+          'role': 'assistant',
+          'suggestions': $.get('suggestions', []),
+          'timestamp': datetime.now().isoformat()
+        }
+      ]
+    workflow-status: $.get('content') is not None and 'executed' or 'skipped'
+  tasks:
+
+    # Reload the thread so we have the up-to-date message log
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'copilot-thread'"
+        document_id: $.get('document_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+        user_message: $.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else ''
+
+    # Recent history (excluding the last user turn which we pass separately)
+    - type: mapping
+      name: prepare-message-history
+      inputs:
+        message-history: $.get('messages')[-6:-1] if len($.get('messages', [])) > 1 else []
+      outputs:
+        message-history: $.get('message-history')
+
+    # Compose the streamed reply
+    - type: prompt
+      name: copilot-response-prompt
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+        stream: true
+      inputs:
+        _1-message-history: $.get('message-history')
+        _2-user-message: $.get('user_message')
+        _3-tool-outputs: $.get('tool_outputs', [])
+        _4-reasoning: $.get('reasoning', {})
+      outputs:
+        content: $.get('content')
+        suggestions: $.get('suggestions', [])

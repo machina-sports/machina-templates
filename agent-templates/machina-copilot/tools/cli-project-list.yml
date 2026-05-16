@@ -1,0 +1,72 @@
+workflow:
+
+  # cli-project-list
+  #
+  # Read-only. Mirrors `machina project list` — lists projects the caller has
+  # access to. Hits the platform core-api (api.machina.gg) rather than the
+  # local client-api, so it requires a service-account token configured in
+  # the vault as MACHINA_CORE_API_TOKEN. Without that token the tool returns
+  # a structured "not_configured" status that the response prompt explains
+  # to the user.
+  name: cli-project-list
+  title: CLI | List Projects
+  description: "List projects the caller has access to (cross-org). Requires MACHINA_CORE_API_TOKEN in the project vault."
+  metadata:
+    mutating: false
+    category: project
+    input_schema:
+      type: object
+      properties:
+        organization_slug:
+          type: string
+          description: Optional org slug to filter projects.
+      required: []
+  context-variables:
+    machina-core:
+      bearerAuth: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+      base_url: "https://api.machina.gg"
+  inputs:
+    organization_slug: $.get('organization_slug')
+    core_token: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+  outputs:
+    projects: $.get('projects', [])
+    status_reason: $.get('status_reason', 'executed')
+    workflow-status: "$.get('status_reason') == 'executed' and 'executed' or 'skipped'"
+  tasks:
+    # Gracefully bail out if the core-api token is not configured
+    - type: mapping
+      name: check-core-token
+      condition: $.get('core_token') is None or $.get('core_token') == ''
+      inputs:
+        status_reason: "'not_configured'"
+        hint: "'Add MACHINA_CORE_API_TOKEN to the vault (Studio → Credentials) to enable cross-org tools.'"
+      outputs:
+        status_reason: $.get('status_reason')
+        hint: $.get('hint')
+
+    - type: connector
+      name: search-projects
+      condition: $.get('core_token') is not None and $.get('core_token') != ''
+      connector:
+        name: http
+        command: post
+        url: "https://api.machina.gg/user/projects/search"
+        headers:
+          X-Session-Token: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+      inputs:
+        filters: |
+          {'organization_slug': $.get('organization_slug')} if $.get('organization_slug') else {}
+        page: "1"
+        page_size: "100"
+      outputs:
+        projects: |
+          [
+            {
+              'id': p.get('_id'),
+              'name': p.get('name'),
+              'organization': p.get('organization_slug'),
+              'address': p.get('address_url')
+            }
+            for p in $.get('projects', [])
+          ]
+        status_reason: "'executed'"

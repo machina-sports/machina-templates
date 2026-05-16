@@ -1,0 +1,42 @@
+workflow:
+
+  # cli-execution-get
+  #
+  # Read-only. Mirrors `machina execution get <run_id>` — returns the status
+  # and output of a single workflow_run document by id. Use to follow-up after
+  # the copilot kicked off a workflow with cli-workflow-run.
+  name: cli-execution-get
+  title: CLI | Get Execution
+  description: "Look up a single workflow run by run_id — status, started_at, finished_at, and output payload."
+  metadata:
+    mutating: false
+    category: execution
+    input_schema:
+      type: object
+      properties:
+        run_id:
+          type: string
+          description: The workflow_run document id (returned by cli-workflow-run).
+      required: [run_id]
+  inputs:
+    run_id: $.get('run_id')
+  outputs:
+    run: $.get('run', {})
+    workflow-status: "$.get('run') is not None and 'executed' or 'skipped'"
+  tasks:
+    - type: workflow
+      name: schedule-get
+      workflow:
+        name: workflow-schedule-get
+      inputs:
+        run_id: $.get('run_id')
+      outputs:
+        run: |
+          {
+            'run_id': $.get('_id'),
+            'workflow_name': $.get('workflow_name') or $.get('agent_id'),
+            'status': $.get('status'),
+            'started_at': $.get('started_at'),
+            'finished_at': $.get('finished_at'),
+            'output': $.get('workflow_output', {})
+          }

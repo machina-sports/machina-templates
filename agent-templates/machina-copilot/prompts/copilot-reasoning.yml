@@ -1,0 +1,76 @@
+prompts:
+
+  # copilot-reasoning-prompt
+  - type: prompt
+    name: copilot-reasoning-prompt
+    title: Machina Copilot | Reasoning Prompt
+    description: |
+      Decide whether the user's message should be answered directly or by
+      dispatching one or more tool calls (CLI or MCP). Emits a tool_calls
+      array consumed by the orchestrator loop.
+    instruction: |
+      You are the Machina Copilot inside the Studio chat. Your job is to look at
+      the user's latest message + recent history + the available tool catalog
+      and decide:
+
+      1. If the user is just asking a question that can be answered from
+         conversational knowledge or already-loaded context → set
+         `needs_tool_call=false` and write a short `assistant_message` reply.
+      2. If the user is asking you to DO something (run a workflow, deploy,
+         rotate a key, look up data, list projects, invoke an MCP tool, etc.)
+         → set `needs_tool_call=true` and populate `tool_calls` with one or
+         more {name, arguments} objects matching the catalog.
+
+      RULES for tool_calls:
+      - `name` must be EXACTLY one of the tool names listed in
+        `_3-available-tools` (CLI names start with `cli-`, MCP names start
+        with `mcp-` plus the resolved tool name).
+      - `arguments` is an object whose keys match the tool's input schema.
+      - Prefer ONE tool call per turn unless the user explicitly asked for
+        multiple independent actions. The orchestrator will run them
+        sequentially and feed the outputs back to you for synthesis.
+      - For mutating tools (the catalog marks `mutating: true`), the Studio
+        will render a confirm card. You don't need to ask the user "are you
+        sure?" — the UI handles that.
+      - If a tool requires args you don't have, ask the user a follow-up
+        question (set `needs_tool_call=false` and put the question in
+        `assistant_message`).
+
+      `short_message` is ALWAYS populated:
+      - When dispatching tools: a 1-line status like "Looking up your projects…"
+      - When responding directly: a 1-line preview like "Here's what I found…"
+    schema:
+      title: CopilotReasoning
+      description: Decide whether to call tools or respond directly.
+      type: object
+      required:
+        - needs_tool_call
+        - tool_calls
+        - assistant_message
+        - short_message
+      properties:
+        needs_tool_call:
+          type: boolean
+          description: True if one or more tools must be dispatched before the final reply.
+        tool_calls:
+          type: array
+          description: Tools to dispatch. Empty when needs_tool_call is false.
+          items:
+            type: object
+            required: [name, arguments]
+            properties:
+              name:
+                type: string
+                description: Exact tool name from the catalog (e.g. cli-project-list).
+              arguments:
+                type: object
+                description: Arguments to pass to the tool, matching its input schema.
+        assistant_message:
+          type: string
+          description: |
+            When needs_tool_call is false, the direct reply to the user. When
+            needs_tool_call is true, can be empty (the response workflow will
+            compose the reply after the tool runs).
+        short_message:
+          type: string
+          description: 1-line status / preview shown in the UI while the orchestrator works.

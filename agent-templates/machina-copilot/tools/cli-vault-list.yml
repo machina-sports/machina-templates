@@ -1,0 +1,46 @@
+workflow:
+
+  # cli-vault-list
+  #
+  # Read-only. Mirrors `machina credentials list` — returns vault entry NAMES
+  # (never values). Use when the user asks "which credentials are configured"
+  # or needs to know if a key exists before they ask to rotate it.
+  name: cli-vault-list
+  title: CLI | List Vault Entries
+  description: "List names of vault credentials configured in this project. Values are never returned."
+  metadata:
+    mutating: false
+    category: vault
+    input_schema:
+      type: object
+      properties:
+        name_filter:
+          type: string
+          description: Optional substring filter on the credential name.
+      required: []
+  inputs:
+    name_filter: $.get('name_filter')
+  outputs:
+    credentials: $.get('credentials', [])
+    workflow-status: "'executed'"
+  tasks:
+    - type: workflow
+      name: search-vault
+      workflow:
+        name: vault-search
+      inputs:
+        filters:
+          name:
+            $regex: |
+              $.get('name_filter') if $.get('name_filter') else None
+      outputs:
+        credentials: |
+          [
+            {
+              'name': v.get('name'),
+              'integration_type': v.get('integration_type'),
+              'level': v.get('level'),
+              'updated_at': v.get('updated_at')
+            }
+            for v in $.get('vault', [])
+          ]

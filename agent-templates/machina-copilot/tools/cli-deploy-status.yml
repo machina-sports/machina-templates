@@ -1,0 +1,62 @@
+workflow:
+
+  # cli-deploy-status
+  #
+  # Read-only. Mirrors `machina deploy status` — returns the current state of
+  # this project's pods (image tags, ready replicas, recent restarts). Hits
+  # the core-api which holds the canonical k8s view, so MACHINA_CORE_API_TOKEN
+  # is required.
+  name: cli-deploy-status
+  title: CLI | Deploy Status
+  description: "Show current deploy status for this project — image tags, ready replicas, restart counts."
+  metadata:
+    mutating: false
+    category: deploy
+    input_schema:
+      type: object
+      properties:
+        project_id:
+          type: string
+          description: Optional project id override; defaults to the current project.
+      required: []
+  context-variables:
+    machina-core:
+      bearerAuth: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+  inputs:
+    project_id: $.get('project_id')
+    core_token: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+  outputs:
+    deploy_status: $.get('deploy_status', {})
+    status_reason: $.get('status_reason', 'executed')
+    workflow-status: "$.get('status_reason') == 'executed' and 'executed' or 'skipped'"
+  tasks:
+    - type: mapping
+      name: check-core-token
+      condition: $.get('core_token') is None or $.get('core_token') == ''
+      inputs:
+        status_reason: "'not_configured'"
+        hint: "'Add MACHINA_CORE_API_TOKEN to the vault to query deploy state from core-api.'"
+      outputs:
+        status_reason: $.get('status_reason')
+        hint: $.get('hint')
+
+    - type: connector
+      name: get-deploy-status
+      condition: $.get('core_token') is not None and $.get('core_token') != ''
+      connector:
+        name: http
+        command: get
+        url: |
+          f"https://api.machina.gg/deploy/status/{$.get('project_id', '')}"
+        headers:
+          X-Session-Token: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+      outputs:
+        deploy_status: |
+          {
+            'project_id': $.get('project_id'),
+            'pods': $.get('pods', []),
+            'image': $.get('image'),
+            'ready_replicas': $.get('ready_replicas'),
+            'restart_count': $.get('restart_count')
+          }
+        status_reason: "'executed'"
