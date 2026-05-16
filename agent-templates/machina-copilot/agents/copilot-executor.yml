@@ -1,0 +1,64 @@
+agent:
+
+  # copilot-executor
+  #
+  # Thin entry-point used by the Studio Chat tab. The heavy lifting (tool
+  # dispatch loop, confirm gate, audit) lives in the Python orchestrator at
+  # machina-client-api:core/agent/copilot/orchestrator.py — this YAML just
+  # declares the canonical reasoning + response workflows so they show up in
+  # the standard agent registry and can be invoked by name.
+  #
+  # The orchestrator reads `reasoning.tool_calls` and dispatches each tool by
+  # POSTing to /workflow/executor/<tool_name> directly, looping until
+  # stop_reason == 'end_turn'. The agent itself doesn't enumerate every tool
+  # workflow as a conditional child — that would force every tool to load even
+  # when not needed.
+  name: copilot-executor
+  title: Machina Copilot Executor
+  description: Unified copilot agent — answers questions + dispatches CLI/MCP tools.
+  context:
+    status: "inactive"
+  context-agent:
+    input_message: $.get('input_message', '')
+    messages: $.get('messages', [])
+    thread_id: $.get('thread_id', None)
+    project_id: $.get('project_id', None)
+  workflows:
+
+    # copilot-reasoning — extracts tool_calls from the user message
+    - name: copilot-reasoning
+      description: Decide which tool(s) to call (or just respond)
+      condition: $.get('input_message') is not None
+      inputs:
+        input_message: $.get('input_message')
+        messages: $.get('messages', [])
+        thread_id: $.get('thread_id')
+      outputs:
+        document_id: $.get('document_id')
+        reasoning: $.get('reasoning')
+        reasoning-status: $.get('workflow-status') == 'executed'
+
+    # copilot-response — synthesizes final user-facing reply
+    - name: copilot-response
+      description: Compose the final reply incorporating tool outputs
+      condition: $.get('document_id') is not None
+      inputs:
+        document_id: $.get('document_id')
+        reasoning: $.get('reasoning')
+        tool_outputs: $.get('tool_outputs', [])
+      outputs:
+        document_content: $.get('document_content')
+        workflow-status: $.get('workflow-status')
+
+    # copilot-update — persist final message + status back to the thread
+    - name: copilot-update
+      description: Update the thread document with the assistant message
+      condition: $.get('document_id') is not None
+      inputs:
+        document_id: $.get('document_id')
+        document_content: $.get('document_content')
+        output_status: "'idle'"
+        status_message: "'done'"
+      outputs:
+        thread_id: $.get('document_id')
+        workflow-status: $.get('workflow-status')

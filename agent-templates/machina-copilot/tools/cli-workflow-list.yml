@@ -1,0 +1,60 @@
+workflow:
+
+  # cli-workflow-list
+  #
+  # Read-only. Mirrors `machina workflow list` — returns workflows registered
+  # in this project. Hits the LOCAL client-api (the same pod this workflow
+  # runs on) so no extra auth is needed.
+  name: cli-workflow-list
+  title: CLI | List Workflows
+  description: "List workflows registered in this project. Useful when the user asks 'what workflows exist' or wants to pick one to run."
+  metadata:
+    mutating: false
+    category: workflow
+    input_schema:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Page number (1-indexed).
+          default: 1
+        page_size:
+          type: integer
+          description: Items per page (max 100).
+          default: 25
+        name_prefix:
+          type: string
+          description: Optional name prefix filter (e.g. "bwin-").
+      required: []
+  inputs:
+    page: $.get('page', 1)
+    page_size: $.get('page_size', 25)
+    name_prefix: $.get('name_prefix')
+  outputs:
+    workflows: $.get('workflows', [])
+    total: $.get('total', 0)
+    workflow-status: "'executed'"
+  tasks:
+    - type: workflow
+      name: search-workflows
+      workflow:
+        name: workflow-search
+      inputs:
+        filters:
+          name:
+            $regex: |
+              f"^{$.get('name_prefix')}" if $.get('name_prefix') else None
+        page: $.get('page')
+        page_size: $.get('page_size')
+      outputs:
+        workflows: |
+          [
+            {
+              'name': w.get('name'),
+              'title': w.get('title', w.get('name')),
+              'description': w.get('description', ''),
+              'updated_at': w.get('updated_at')
+            }
+            for w in $.get('workflows', [])
+          ]
+        total: $.get('total', 0)

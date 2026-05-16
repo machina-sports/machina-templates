@@ -1,0 +1,77 @@
+setup:
+  title: Machina Copilot
+  description: |
+    Unified copilot for the Machina platform. Answers questions about a project
+    AND executes machina-cli commands + per-project MCP tools directly from
+    chat, gated by a confirmation card for any mutating action.
+  category:
+    - special-templates
+    - assistant
+  estimatedTime: 5 minutes
+  features:
+    - Conversational agent backed by Vertex AI (gemini-2.5-pro / -flash)
+    - Read-only CLI tools run automatically (project list, workflow search, deploy status, vault list, execution lookup)
+    - Mutating CLI tools (workflow run, deploy start, vault rotate) require explicit confirm card
+    - Dynamic MCP tool discovery — each project's MCP server adds its custom tools to the catalog
+    - Audit log of every executed tool call (copilot_audit collection, 90d TTL)
+  status: available
+  integrations:
+    - google-vertex
+  value: agent-templates/machina-copilot
+  version: 1.0.0
+
+datasets:
+
+  # Agent
+  - type: agent
+    path: agents/copilot-executor.yml
+
+  # Prompts
+  - type: prompts
+    path: prompts/copilot-reasoning.yml
+
+  - type: prompts
+    path: prompts/copilot-response.yml
+
+  # Core workflows
+  - type: workflow
+    path: workflows/copilot-reasoning.yml
+
+  - type: workflow
+    path: workflows/copilot-response.yml
+
+  - type: workflow
+    path: workflows/copilot-update.yml
+
+  - type: workflow
+    path: workflows/copilot-tools-list.yml
+
+  # CLI tool workflows (read-only — auto-run)
+  - type: workflow
+    path: tools/cli-project-list.yml
+
+  - type: workflow
+    path: tools/cli-workflow-list.yml
+
+  - type: workflow
+    path: tools/cli-deploy-status.yml
+
+  - type: workflow
+    path: tools/cli-vault-list.yml
+
+  - type: workflow
+    path: tools/cli-execution-get.yml
+
+  # CLI tool workflows (mutating — confirm gated)
+  - type: workflow
+    path: tools/cli-workflow-run.yml
+
+  - type: workflow
+    path: tools/cli-deploy-start.yml
+
+  - type: workflow
+    path: tools/cli-vault-rotate.yml
+
+  # MCP proxy tool
+  - type: workflow
+    path: tools/mcp-invoke.yml

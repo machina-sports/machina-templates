@@ -1,0 +1,73 @@
+workflow:
+
+  # cli-deploy-start
+  #
+  # MUTATING. Mirrors `machina deploy start --tag <tag>` — kicks off a deploy
+  # via core-api. Studio shows a confirm card with project + tag + container
+  # before the orchestrator dispatches this. Requires MACHINA_CORE_API_TOKEN.
+  name: cli-deploy-start
+  title: CLI | Start Deploy
+  description: "Start a deploy for this project (or another project) with a specific image tag. Requires MACHINA_CORE_API_TOKEN."
+  metadata:
+    mutating: true
+    category: deploy
+    input_schema:
+      type: object
+      properties:
+        project_id:
+          type: string
+          description: Project id to deploy. Defaults to current project.
+        image_tag:
+          type: string
+          description: Container image tag (e.g. v.bwin-stg.27).
+        container_name:
+          type: string
+          description: Container in the deployment to update. Defaults to "api".
+          default: api
+      required: [image_tag]
+  context-variables:
+    machina-core:
+      bearerAuth: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+  inputs:
+    project_id: $.get('project_id')
+    image_tag: $.get('image_tag')
+    container_name: $.get('container_name', 'api')
+    core_token: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+  outputs:
+    deploy: $.get('deploy', {})
+    status_reason: $.get('status_reason', 'executed')
+    workflow-status: "$.get('status_reason') == 'executed' and 'executed' or 'skipped'"
+  tasks:
+    - type: mapping
+      name: check-core-token
+      condition: $.get('core_token') is None or $.get('core_token') == ''
+      inputs:
+        status_reason: "'not_configured'"
+        hint: "'Add MACHINA_CORE_API_TOKEN to the vault to enable deploys from chat.'"
+      outputs:
+        status_reason: $.get('status_reason')
+        hint: $.get('hint')
+
+    - type: connector
+      name: start-deploy
+      condition: $.get('core_token') is not None and $.get('core_token') != '' and $.get('image_tag') is not None
+      connector:
+        name: http
+        command: post
+        url: "https://api.machina.gg/deploy/start"
+        headers:
+          X-Session-Token: $TEMP_CONTEXT_VARIABLE_MACHINA_CORE_API_TOKEN
+      inputs:
+        project_id: $.get('project_id')
+        image_tag: $.get('image_tag')
+        container_name: $.get('container_name')
+      outputs:
+        deploy: |
+          {
+            'project_id': $.get('project_id'),
+            'image_tag': $.get('image_tag'),
+            'container_name': $.get('container_name'),
+            'started_at': $.get('started_at'),
+            'rollout_status': $.get('rollout_status')
+          }
+        status_reason: "'executed'"

@@ -1,0 +1,56 @@
+workflow:
+
+  # copilot-update
+  #
+  # Persist the final assistant message + suggestions back to the thread
+  # document so the next reasoning turn sees the full conversation.
+  name: copilot-update
+  title: Machina Copilot | Update Thread
+  description: Update the thread document with the assistant message and status.
+  inputs:
+    document_id: $.get('document_id')
+    document_content: $.get('document_content', [])
+    output_status: $.get('output_status', 'idle')
+    status_message: $.get('status_message', 'done')
+  outputs:
+    thread_id: $.get('document_id')
+    workflow-status: $.get('updated') is True and 'executed' or 'skipped'
+  tasks:
+
+    - type: document
+      name: load-thread-document
+      description: Load thread document
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'copilot-thread'"
+        document_id: $.get('document_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    - type: document
+      name: append-assistant-message
+      condition: $.get('document_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        copilot-thread: |
+          {
+            **$.get('document_value', {}),
+            'messages': [
+              *$.get('messages', []),
+              *$.get('document_content', [])
+            ],
+            'status': $.get('output_status'),
+            'status_message': $.get('status_message')
+          }
+      filters:
+        document_id: $.get('document_id')
+      outputs:
+        updated: "True"

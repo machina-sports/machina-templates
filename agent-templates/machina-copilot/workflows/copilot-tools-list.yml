@@ -1,0 +1,93 @@
+workflow:
+
+  # copilot-tools-list
+  #
+  # Builds the merged tool catalog the Copilot can call. Two sources:
+  #   1. Workflows in this project whose name starts with `cli-` — their
+  #      description / inputs / setup metadata become tool definitions.
+  #   2. The per-project MCP server at <project_address>/mcp — discovered via
+  #      JSON-RPC tools/list.
+  #
+  # Consumed by:
+  #   - copilot-reasoning (so the LLM knows what's callable)
+  #   - GET /copilot/tools in client-api (so the Studio drawer can render)
+  name: copilot-tools-list
+  title: Machina Copilot | Tools List
+  description: Aggregate CLI tools (workflows) + MCP tools (project MCP server) into a single catalog.
+  context-variables:
+    machina:
+      project_address: $TEMP_CONTEXT_VARIABLE_PROJECT_ADDRESS
+  inputs:
+    project_address: $.get('project_address')
+  outputs:
+    available_tools: $.get('available_tools', [])
+    cli_tools: $.get('cli_tools', [])
+    mcp_tools: $.get('mcp_tools', [])
+    workflow-status: "'executed'"
+  tasks:
+
+    # 1. Pull every workflow whose name starts with "cli-" from the catalog
+    - type: workflow
+      name: list-cli-workflows
+      description: Discover CLI tool workflows installed in this project
+      workflow:
+        name: workflow-search
+      inputs:
+        filters:
+          name:
+            $regex: "^cli-"
+        page: 1
+        page_size: 100
+      outputs:
+        cli_tools: |
+          [
+            {
+              'name': w.get('name'),
+              'description': w.get('description', ''),
+              'kind': 'cli',
+              'mutating': bool(w.get('metadata', {}).get('mutating', False)),
+              'input_schema': w.get('metadata', {}).get('input_schema', {}),
+              'category': w.get('metadata', {}).get('category', 'general')
+            }
+            for w in $.get('workflows', [])
+          ]
+
+    # 2. Hit the per-project MCP server for its tools/list
+    - type: connector
+      name: list-mcp-tools
+      description: Query the project's own MCP server for available tools
+      condition: $.get('project_address') is not None and $.get('project_address') != ''
+      continue_on_error: true
+      connector:
+        name: http
+        command: post
+        url: |
+          f"{$.get('project_address').rstrip('/')}/mcp"
+      inputs:
+        jsonrpc: "'2.0'"
+        id: "1"
+        method: "'tools/list'"
+        params: "{}"
+      outputs:
+        mcp_tools_raw: $.get('result', {}).get('tools', [])
+        mcp_tools: |
+          [
+            {
+              'name': f"mcp-{t.get('name')}",
+              'description': t.get('description', ''),
+              'kind': 'mcp',
+              'mutating': bool(t.get('annotations', {}).get('destructiveHint', False)) or not t.get('annotations', {}).get('readOnlyHint', False),
+              'input_schema': t.get('inputSchema', {}),
+              'category': 'mcp'
+            }
+            for t in $.get('result', {}).get('tools', [])
+          ]
+
+    # 3. Merge the two lists for the consumer
+    - type: mapping
+      name: merge-catalogs
+      inputs:
+        cli_tools: $.get('cli_tools', [])
+        mcp_tools: $.get('mcp_tools', [])
+      outputs:
+        available_tools: "$.get('cli_tools', []) + $.get('mcp_tools', [])"

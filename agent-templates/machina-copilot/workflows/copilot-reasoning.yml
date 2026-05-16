@@ -1,0 +1,157 @@
+workflow:
+
+  # copilot-reasoning
+  #
+  # Decides whether to dispatch tools or reply directly. Loads / creates the
+  # thread document, appends the user message, then runs the reasoning prompt
+  # to emit a structured {needs_tool_call, tool_calls[], short_message}.
+  name: copilot-reasoning
+  title: Machina Copilot | Reasoning
+  description: Decide which tools (if any) to dispatch for the user's message.
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    input_message: $.get('input_message')
+    messages: $.get('messages', [])
+    thread_id: $.get('thread_id')
+  outputs:
+    document_id: $.get('document_id', None)
+    reasoning: $.get('reasoning', {})
+    workflow-status: $.get('document_exists') is True and 'executed' or 'skipped'
+  tasks:
+
+    # Load existing thread or create a fresh one
+    - type: document
+      name: load-thread-document
+      description: Load thread document if thread_id is provided
+      condition: $.get('thread_id') is not None and $.get('thread_id') != ''
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'copilot-thread'"
+        document_id: $.get('thread_id')
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
+
+    - type: document
+      name: create-thread-document
+      description: Create a new thread document if none exists
+      condition: ($.get('thread_id') is None or $.get('thread_id') == '') and ($.get('document_exists') is False or $.get('document_exists') is None)
+      config:
+        action: save
+        embed-vector: false
+        force-update: true
+      documents:
+        copilot-thread: |
+          {
+            'messages': [],
+            'status': 'created',
+            'status_message': 'Thread created'
+          }
+      metadata:
+        agent_id: "'copilot-executor'"
+        created_at: datetime.now().isoformat()
+        created_from: "'machina-copilot'"
+        source: "'machina-copilot'"
+        user_id: "'anonymous'"
+      outputs:
+        document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
+        document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
+        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
+
+    # Append the new user message to the thread before reasoning
+    - type: document
+      name: append-user-message
+      condition: $.get('document_id') is not None and $.get('input_message') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        copilot-thread: |
+          {
+            **$.get('document_value', {}),
+            'messages': [
+              *$.get('document_value', {}).get('messages', []),
+              {
+                'role': 'user',
+                'content': $.get('input_message'),
+                'timestamp': datetime.now().isoformat()
+              }
+            ],
+            'status': 'processing'
+          }
+      filters:
+        document_id: $.get('document_id')
+
+    # Load the live tool catalog so the reasoning prompt knows what's callable
+    - type: workflow
+      name: load-tool-catalog
+      description: Build the current CLI + MCP tool catalog for this project
+      workflow:
+        name: copilot-tools-list
+      inputs: {}
+      outputs:
+        available_tools: $.get('available_tools', [])
+
+    # Pull the last few turns for context
+    - type: mapping
+      name: prepare-message-history
+      condition: $.get('document_id') is not None
+      inputs:
+        message-history: $.get('messages')[-5:] if len($.get('messages', [])) > 0 else []
+      outputs:
+        message-history: $.get('message-history')
+
+    # Reasoning step: decide tool_calls[] or direct reply
+    - type: prompt
+      name: copilot-reasoning-prompt
+      condition: $.get('document_id') is not None
+      connector:
+        command: invoke_prompt
+        name: google-genai
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        _1-message-history: $.get('message-history')
+        _2-user-message: $.get('input_message')
+        _3-available-tools: $.get('available_tools', [])
+      outputs:
+        reasoning: $
+
+    # Persist reasoning + short status onto the thread
+    - type: document
+      name: update-thread-status
+      condition: $.get('document_id') is not None
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        copilot-thread: |
+          {
+            **$.get('document_value', {}),
+            'messages': [
+              *$.get('document_value', {}).get('messages', []),
+              {
+                'role': 'user',
+                'content': $.get('input_message'),
+                'timestamp': datetime.now().isoformat()
+              }
+            ],
+            'status': 'reasoning',
+            'status_message': $.get('reasoning', {}).get('short_message', ''),
+            'last_reasoning': $.get('reasoning', {})
+          }
+      filters:
+        document_id: $.get('document_id')

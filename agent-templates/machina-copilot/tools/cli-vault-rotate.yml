@@ -1,0 +1,54 @@
+workflow:
+
+  # cli-vault-rotate
+  #
+  # MUTATING. Mirrors `machina credentials update <name> <new-value>` for a
+  # secret already in the vault. Studio shows a confirm card with the
+  # credential name and ⚠ the value is redacted (orchestrator masks args
+  # before rendering) — only the user typing in the chat sees the raw value.
+  name: cli-vault-rotate
+  title: CLI | Rotate Vault Credential
+  description: "Replace the value of an existing vault credential. Fails if the credential does not already exist (use create flow for new credentials)."
+  metadata:
+    mutating: true
+    category: vault
+    input_schema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Vault credential name (e.g. MACHINA_API_KEY).
+        value:
+          type: string
+          description: New secret value. Masked in audit logs and confirm card.
+          x-machina-sensitive: true
+      required: [name, value]
+  inputs:
+    name: $.get('name')
+    value: $.get('value')
+  outputs:
+    rotated: $.get('rotated', False)
+    name: $.get('name')
+    workflow-status: "$.get('rotated') is True and 'executed' or 'skipped'"
+  tasks:
+    # Confirm the credential exists before we try to update
+    - type: workflow
+      name: probe-credential
+      workflow:
+        name: vault-search
+      inputs:
+        filters:
+          name: $.get('name')
+      outputs:
+        exists: "len($.get('vault', [])) > 0"
+
+    - type: workflow
+      name: update-credential
+      condition: $.get('exists') is True
+      workflow:
+        name: vault-update
+      inputs:
+        name: $.get('name')
+        value: $.get('value')
+      outputs:
+        rotated: "True"

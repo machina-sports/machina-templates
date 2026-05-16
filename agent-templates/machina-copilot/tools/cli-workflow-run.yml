@@ -1,0 +1,41 @@
+workflow:
+
+  # cli-workflow-run
+  #
+  # MUTATING. Mirrors `machina workflow run <name> --inputs ...` — schedules a
+  # workflow execution and returns the run_id. The Studio renders a confirm
+  # card before the orchestrator dispatches this tool.
+  name: cli-workflow-run
+  title: CLI | Run Workflow
+  description: "Schedule a workflow execution by name. Returns a run_id you can pass to cli-execution-get to follow progress."
+  metadata:
+    mutating: true
+    category: workflow
+    input_schema:
+      type: object
+      properties:
+        workflow_name:
+          type: string
+          description: Name of the workflow to run (use cli-workflow-list to discover).
+        inputs:
+          type: object
+          description: Inputs to pass to the workflow. Optional — empty object means no inputs.
+          default: {}
+      required: [workflow_name]
+  inputs:
+    workflow_name: $.get('workflow_name')
+    workflow_inputs: $.get('inputs', {})
+  outputs:
+    run_id: $.get('run_id')
+    workflow_name: $.get('workflow_name')
+    workflow-status: "$.get('run_id') is not None and 'executed' or 'skipped'"
+  tasks:
+    - type: workflow
+      name: dispatch-workflow
+      workflow:
+        name: workflow-schedule
+      inputs:
+        name: $.get('workflow_name')
+        inputs: $.get('workflow_inputs', {})
+      outputs:
+        run_id: $.get('_id') or $.get('run_id')

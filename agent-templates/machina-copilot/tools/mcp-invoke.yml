@@ -1,0 +1,58 @@
+workflow:
+
+  # mcp-invoke
+  #
+  # Generic proxy for the per-project MCP server. The orchestrator picks this
+  # tool whenever the LLM produces a tool_call whose name starts with `mcp-`
+  # — the `tool_name` arg carries the underlying MCP tool name (without the
+  # `mcp-` prefix). Mutability is decided per-call from the MCP catalog
+  # (annotations.readOnlyHint / destructiveHint) — see copilot-tools-list.
+  name: mcp-invoke
+  title: MCP | Invoke Tool
+  description: "Call a tool on the project's MCP server. Used internally by the orchestrator — not directly chosen by the LLM."
+  metadata:
+    mutating: false
+    category: mcp
+    input_schema:
+      type: object
+      properties:
+        tool_name:
+          type: string
+          description: Underlying MCP tool name (without the mcp- prefix).
+        arguments:
+          type: object
+          description: Arguments to pass to the MCP tool, matching its inputSchema.
+          default: {}
+      required: [tool_name]
+  context-variables:
+    machina:
+      project_address: $TEMP_CONTEXT_VARIABLE_PROJECT_ADDRESS
+  inputs:
+    tool_name: $.get('tool_name')
+    arguments: $.get('arguments', {})
+    project_address: $.get('project_address')
+  outputs:
+    result: $.get('mcp_result', {})
+    workflow-status: "$.get('mcp_result') is not None and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: call-mcp
+      description: JSON-RPC tools/call against the project's MCP server
+      condition: $.get('project_address') is not None and $.get('tool_name') is not None
+      connector:
+        name: http
+        command: post
+        url: |
+          f"{$.get('project_address').rstrip('/')}/mcp"
+      inputs:
+        jsonrpc: "'2.0'"
+        id: "1"
+        method: "'tools/call'"
+        params: |
+          {
+            'name': $.get('tool_name'),
+            'arguments': $.get('arguments', {})
+          }
+      outputs:
+        mcp_result: $.get('result', {})
+        mcp_error: $.get('error')

@@ -1,0 +1,53 @@
+# Machina Copilot — Project Manifest
+#
+# Declares the requirements for any project that adopts the `machina-copilot`
+# template — the unified in-Studio agent that executes machina-cli commands and
+# per-project MCP tools from a single chat.
+#
+# Consumed by:
+#   GET /project/health                  → vault + datasets snapshot
+#   POST /project/bootstrap-check        → preflight blockers/warnings
+#   POST /vault/validate                 → probe a credential against its rule
+#
+# Companion docs in machina-templates/CLAUDE.md describe the Vertex-only policy.
+
+name: machina-copilot
+version: 1
+description: "Unified copilot agent — answers questions + executes CLI/MCP tools from Studio chat"
+
+required_credentials:
+  - name: TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+    source_label: "GCP service account JSON for Vertex AI (Vertex AI User role)"
+    test_workflow: google-genai-test-credentials
+    validation:
+      type: json_object
+      required_keys:
+        - project_id
+        - private_key
+        - client_email
+
+  - name: TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    source_label: "GCP project ID where Vertex AI is enabled"
+    test_workflow: google-genai-test-credentials
+    validation:
+      type: non_empty_string
+
+required_config_documents: []
+
+required_templates:
+  - repo: https://github.com/machina-sports/machina-templates
+    path: agent-templates/machina-copilot
+    reason: "This template — copilot agent + CLI tool workflows"
+  - repo: https://github.com/machina-sports/machina-templates
+    path: connectors/google-genai
+    reason: "Vertex AI connector — reasoning + response prompts"
+
+depends_on_datasets:
+  - name: copilot-thread
+    description: "Conversation threads with the copilot"
+    populated_by: copilot-reasoning
+    min_count: 0
+  - name: copilot-audit
+    description: "Audit log of mutating tool calls executed via the copilot"
+    populated_by: copilot-orchestrator
+    min_count: 0
