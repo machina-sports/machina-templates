@@ -42,7 +42,7 @@ prompts:
       4. **Technical Accuracy**
          - Base answers on the provided knowledge_docs
          - Use correct JSONPath syntax: $.get('key')
-         - Reference actual connector names (openai, groq, google-genai, etc.)
+         - Reference actual connector names (google-genai, groq, machina-ai-fast, etc.)
          - Use proper document types (sport:Event, content-snippet, thread, etc.)
       
       5. **Response Format**

@@ -5,8 +5,9 @@ workflow:
   context-variables:
     groq:
       api_key: "$MACHINA_CONTEXT_VARIABLE_GROQ_API_KEY"
-    openai:
-      api_key: "$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_code: "'ca9d8f84-8e7b-4ee7-a310-54c2e3ca4edc'"
     event_type: "$.get('event_type', 'content-snippet')"
@@ -31,9 +32,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         name: "'thread'"
         value.status: "$.get('input_status')"
@@ -52,9 +55,11 @@ workflow:
         force-update: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         thread: |
           {
@@ -74,9 +79,11 @@ workflow:
         search-vector: false
       condition: "$.get('document_id') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         name: "$.get('event_type')"
         search-limit: "'5'"
@@ -96,9 +103,11 @@ workflow:
         search-vector: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         name: "$.get('event_type')"
         search-limit: "'1000'"
@@ -138,9 +147,9 @@ workflow:
         # model: "llama-3.1-8b-instant"
         # model: "llama-3.3-70b-versatile"
         model: "deepseek-r1-distill-llama-70b"
-        #name: "openai"
+        #name: "google-genai"
         command: "invoke_prompt"
-        #model: "gpt-4o-mini"
+        #model: "gemini-2.5-flash"
       inputs:
         documents: |
           [
@@ -191,9 +200,11 @@ workflow:
         search-vector: false
       condition: "$.get('document_id') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         _id: "$.get('document_id')"
       inputs:
@@ -211,9 +222,11 @@ workflow:
         force-update: true
       condition: "$.get('document_id') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         thread: |
           {

@@ -7,8 +7,9 @@ workflow:
       enabled: true
     api-football:
       api_key: "$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
-    openai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
   inputs:
@@ -121,6 +122,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         title: "$.get('title')"
         standings: "$.get('result-standings')"
@@ -192,6 +195,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         title: "$.get('title')"
         home-competitor: "$.get('result-home-competitor')"
@@ -248,6 +253,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         title: "$.get('title')"
         home-competitor-profile: "$.get('result-home-competitor-profile')"
@@ -312,9 +319,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "content-snippet"
       documents:
         items: "$.get('parsed-items')"

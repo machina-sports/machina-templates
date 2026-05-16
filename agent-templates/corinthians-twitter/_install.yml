@@ -10,7 +10,6 @@ setup:
     - AI Agent to analyze pre-match and post-match stats.
   integrations:
     - api-football
-    - openai
     - google-genai
   status: available
   value: agent-templates/corinthians-twitter

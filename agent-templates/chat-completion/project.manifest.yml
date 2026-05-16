@@ -1,26 +1,24 @@
 # Chat Completion — Project Manifest
 #
-# Minimal chat-only project: one connector, one credential, a single chat
-# loop. Useful as the "hello world" baseline for Project Health adoption.
+# Minimal chat-only project: one connector, one credential pair, a single
+# chat loop. Useful as the "hello world" baseline for Project Health adoption.
 #
 # Smallest possible manifest — bigger projects can copy this as the starting
 # point and add their own credentials + datasets.
 
 name: chat-completion
 version: 1
-description: "Minimal chat completion project — OpenAI-backed conversational loop"
+description: "Minimal chat completion project — Vertex AI-backed conversational loop"
 
 required_credentials:
-  - name: TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
-    source_label: "OpenAI API key (platform.openai.com)"
-    test_workflow: machina-ai-test-credentials
+  - name: TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+    source_label: "GCP service-account JSON for Vertex AI"
+    test_workflow: google-genai-test-credentials
     validation:
-      type: http
-      method: GET
-      url: "https://api.openai.com/v1/models"
-      headers:
-        Authorization: "Bearer {value}"
-      expect_status: 200
+      type: json_schema
+  - name: TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+    source_label: "GCP project ID hosting Vertex AI"
+    test_workflow: google-genai-test-credentials
 
 required_config_documents: []
 
@@ -29,7 +27,7 @@ required_templates:
     path: agent-templates/chat-completion
     reason: "This template — chat-executor agent + reasoning/response prompts"
   - repo: https://github.com/machina-sports/machina-templates
-    path: connectors/machina-ai
-    reason: "OpenAI connector"
+    path: connectors/google-genai
+    reason: "Vertex AI connector — prompts and embeddings"
 
 depends_on_datasets: []

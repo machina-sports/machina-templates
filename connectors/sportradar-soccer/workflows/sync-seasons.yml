@@ -22,9 +22,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         value.cid: "$.get('competition_id')"
         value.execution: "{'$gte': datetime.utcnow() - timedelta(days=7)}"
@@ -44,9 +46,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       condition: "$.get('should_update') == True"
       filters:
         value.id: "$.get('competition_id')"
@@ -90,9 +94,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         seasons: |
           {
@@ -116,9 +122,11 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'season'"
       documents:
         items: "$.get('seasons_parsed')"

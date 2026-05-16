@@ -5,8 +5,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     api-mailgun:
       username: "api"
       password: "$TEMP_CONTEXT_VARIABLE_MAILGUN_API_KEY"
@@ -36,9 +37,11 @@ workflow:
         search-limit: 1
         search-vector: false
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       filters:
         document_id: "$.get('document_id')"
       inputs:

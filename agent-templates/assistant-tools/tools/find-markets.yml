@@ -13,8 +13,9 @@ workflow:
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai-fast:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
   inputs:
@@ -102,9 +103,11 @@ workflow:
         search-sorters: ["value.startDate", 1]
         search-vector: true
       connector:
-        name: machina-ai
+        name: google-genai
         command: invoke_embedding
-        model: text-embedding-3-small
+        model: text-embedding-004
+        location: "global"
+        provider: "vertex_ai"
       filters:
         '$or': "[{'value.startDate':{'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}, {'value.startDateUtc': {'$gt': $.get('search_date_interval', {}).get('start_date') + 'T07:00:00+00:00'}}]"
         value.isOpenForBetting: "{'$eq': True}"

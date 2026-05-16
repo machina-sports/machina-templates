@@ -7,8 +7,9 @@ workflow:
       enabled: true
     google-genai:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
-    machina-ai:
-      api_key: "$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai-fast:
       api_key: "$TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"
   inputs:
@@ -29,6 +30,8 @@ workflow:
         command: "invoke_prompt"
         name: "google-genai"
         model: "gemini-2.5-flash-lite"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         _1-messages-parsed: "str($.get('messages'))"
       outputs:
@@ -52,9 +55,11 @@ workflow:
         search-limit: 1000
         search-vector: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         name: "'sport:Event'"
         search-query: "$.get('search_query')"
@@ -85,8 +90,10 @@ workflow:
         name: "google-genai"
         # model: "gemini-2.5-pro"
         model: "gemini-2.5-flash-lite"
-        # name: "machina-ai"
-        # model: "gpt-4.1"
+        location: "global"
+        provider: "vertex_ai"
+        # name: "google-genai"
+        # model: "gemini-2.5-pro"
       inputs:
         _0-date-time-now: "datetime.now().isoformat()"
         _1-events-parsed: "$.get('parsed_objects')"
@@ -129,6 +136,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         _event-title: "$.get('search_query')"
         _custom-instruction: "$.get('messages')"
@@ -160,9 +169,11 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sport:Event'"
       documents:
         items: "$.get('parsed_event', [])"
@@ -212,6 +223,8 @@ workflow:
         name: "google-genai"
         command: "invoke_prompt"
         model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         events_data: "$.get('events', [])"
         events_count: "$.get('events_count', 0)"

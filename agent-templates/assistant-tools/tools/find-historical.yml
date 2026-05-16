@@ -10,8 +10,9 @@ workflow:
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
     machina-ai-fast:
       api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
   inputs:
@@ -76,9 +77,11 @@ workflow:
         search-sorters: ["value.schema:startDate", -1]
         search-vector: context.get('vector_search')
       connector:
-        name: machina-ai
+        name: google-genai
         command: invoke_embedding
-        model: text-embedding-3-small
+        model: text-embedding-004
+        location: "global"
+        provider: "vertex_ai"
       filters:
         "value.sport:status": "{'$in': ['Played', 'closed', 'ended']}"
         "value.schema:startDate": |
@@ -134,9 +137,11 @@ workflow:
         search-sorters: ["value.schema:startDate", -1]
         search-vector: context.get('vector_search')
       connector:
-        name: machina-ai
+        name: google-genai
         command: invoke_embedding
-        model: text-embedding-3-small
+        model: text-embedding-004
+        location: "global"
+        provider: "vertex_ai"
       filters:
         "value.sport:status": "{'$in': ['Played', 'closed', 'ended']}"
         "value.schema:startDate": |

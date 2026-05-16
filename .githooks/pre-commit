@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-commit guardrail. Fails the commit if any staged .yml/.yaml file
+# re-introduces OpenAI / GPT / text-embedding-3 references that the repo
+# migrated away from on 2026-05-16.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+
+set -euo pipefail
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+"$REPO_ROOT/scripts/check-no-openai.sh" staged

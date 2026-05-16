@@ -89,9 +89,11 @@ workflow:
         force-update: true
       condition: "$.get('competitions') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       documents:
         sp-competitions: |
           {
@@ -113,9 +115,11 @@ workflow:
         force-update: true
       condition: "$.get('competitions') is not None"
       connector:
-        name: "openai"
+        name: "google-genai"
         command: "invoke_embedding"
-        model: "text-embedding-3-small"
+        model: "text-embedding-004"
+        location: "global"
+        provider: "vertex_ai"
       document_name: "'sp-competition'"
       documents:
         items: |
