@@ -3,7 +3,8 @@ workflow:
   # copilot-response
   #
   # Composes the final assistant message after the orchestrator has finished
-  # dispatching tools (if any). Streams the response back to the Studio chat.
+  # dispatching tools (if any). Read-only on the thread doc — Python owns
+  # writes via _persist_assistant_message.
   name: copilot-response
   title: Machina Copilot | Response
   description: Compose the final reply incorporating any tool outputs.
@@ -44,19 +45,11 @@ workflow:
         document_id: $.get('document_id')
       outputs:
         document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
-        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
         messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
         user_message: $.get('documents')[0].get('value', {}).get('messages', [])[-1].get('content', '') if len($.get('documents', [])) > 0 else ''
 
-    # Recent history (excluding the last user turn which we pass separately)
-    - type: mapping
-      name: prepare-message-history
-      inputs:
-        message-history: $.get('messages')[-6:-1] if len($.get('messages', [])) > 1 else []
-      outputs:
-        message-history: $.get('message-history')
-
-    # Compose the streamed reply
+    # Compose the streamed reply. Message history is sliced inline (no
+    # mapping task) so we don't need a registered Mapping doc.
     - type: prompt
       name: copilot-response-prompt
       connector:
@@ -65,9 +58,8 @@ workflow:
         model: gemini-2.5-pro
         location: global
         provider: vertex_ai
-        stream: true
       inputs:
-        _1-message-history: $.get('message-history')
+        _1-message-history: $.get('messages', [])[-6:-1] if len($.get('messages', [])) > 1 else []
         _2-user-message: $.get('user_message')
         _3-tool-outputs: $.get('tool_outputs', [])
         _4-reasoning: $.get('reasoning', {})
