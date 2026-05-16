@@ -2,14 +2,11 @@ workflow:
 
   # copilot-reasoning
   #
-  # Decides whether to dispatch tools or reply directly. Loads the thread
-  # document (Python creates it before calling us), then runs the reasoning
-  # prompt to emit a structured {needs_tool_call, tool_calls[], short_message}.
-  #
-  # Thread state is OWNED by the Python orchestrator at
-  # machina-client-api:core/agent/copilot/orchestrator.py — this workflow does
-  # NOT write to the thread doc (used to, but caused duplicate user messages
-  # + cross-collection mismatches). Read-only here.
+  # Decides whether to dispatch tools or reply directly. The Python orchestrator
+  # (machina-client-api:core/agent/copilot/orchestrator.py) creates the thread
+  # and passes both the tool `available_tools` catalog and the conversation
+  # `messages` as inputs — keeping this workflow read-only on the thread and
+  # free of `type: workflow`/`type: mapping` tasks that need registered docs.
   name: copilot-reasoning
   title: Machina Copilot | Reasoning
   description: Decide which tools (if any) to dispatch for the user's message.
@@ -23,6 +20,7 @@ workflow:
     input_message: $.get('input_message')
     messages: $.get('messages', [])
     thread_id: $.get('thread_id')
+    available_tools: $.get('available_tools', [])
   outputs:
     document_id: $.get('document_id', None)
     reasoning: $.get('reasoning', {})
@@ -44,30 +42,10 @@ workflow:
       outputs:
         document_id: $.get('documents')[0].get('_id') if len($.get('documents', [])) > 0 else None
         document_exists: len($.get('documents', [])) > 0 if $.get('documents') else False
-        document_value: $.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else {}
-        messages: $.get('documents')[0].get('value', {}).get('messages', []) if len($.get('documents', [])) > 0 else []
 
-    # Load the live tool catalog so the reasoning prompt knows what's callable
-    - type: workflow
-      name: load-tool-catalog
-      description: Build the current CLI + MCP tool catalog for this project
-      condition: $.get('document_id') is not None
-      workflow:
-        name: copilot-tools-list
-      inputs: {}
-      outputs:
-        available_tools: $.get('available_tools', [])
-
-    # Pull the last few turns for context
-    - type: mapping
-      name: prepare-message-history
-      condition: $.get('document_id') is not None
-      inputs:
-        message-history: $.get('messages')[-5:] if len($.get('messages', [])) > 0 else []
-      outputs:
-        message-history: $.get('message-history')
-
-    # Reasoning step: decide tool_calls[] or direct reply
+    # Reasoning step: pick tool_calls[] or write a direct reply.
+    # Message history + tool catalog are sliced inline so we don't need a
+    # registered Mapping doc or a workflow-search call.
     - type: prompt
       name: copilot-reasoning-prompt
       condition: $.get('document_id') is not None
@@ -78,7 +56,7 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        _1-message-history: $.get('message-history')
+        _1-message-history: $.get('messages', [])[-5:] if len($.get('messages', [])) > 0 else []
         _2-user-message: $.get('input_message')
         _3-available-tools: $.get('available_tools', [])
       outputs:
