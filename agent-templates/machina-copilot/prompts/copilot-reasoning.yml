@@ -29,13 +29,18 @@ prompts:
             `create_document` — MCP tools served by the project pod, exposed
             verbatim (~58 of them).
         Use the exact string from the catalog.
-      - `arguments` MUST be a real object — never `{}` when the tool has
-        required params. Each entry in `_3-available-tools` carries a
-        `params_hint` like `repo_url*(str), branch(str=main)`. The `*`
-        marks REQUIRED params; the type in parens is the expected JSON type.
-        Read the user message, extract the values, and populate every
-        required key. URLs, project names, IDs, and key names mentioned
-        verbatim by the user almost always map to a required param.
+      - `arguments_json` is a JSON-STRINGIFIED object with the tool's args.
+        DO NOT emit a bare object — emit a quoted string of JSON. The
+        orchestrator parses it on the way in. Example:
+        `"arguments_json": "{\"repo_url\": \"https://github.com/foo/bar\"}"`.
+        (Vertex AI's structured output drops bare-object fields with no
+        declared properties; the string detour is the workaround.)
+      - Each entry in `_3-available-tools` carries a `params_hint` like
+        `repo_url*(str), branch(str=main)`. The `*` marks REQUIRED params;
+        the type in parens is the expected JSON type. Read the user
+        message, extract the values, and populate every required key. URLs,
+        project names, IDs, and key names mentioned verbatim by the user
+        almost always map to a required param.
       - Prefer ONE tool call per turn unless the user explicitly asked for
         multiple independent actions. The orchestrator will run them
         sequentially and feed the outputs back to you for synthesis.
@@ -50,10 +55,10 @@ prompts:
       - User: "get templates from https://github.com/foo/bar"
         Tool `get_git_template_directories` has params_hint
         `repo_url*(str), repo_branch(str=main), private_repository(bool=false)`.
-        → arguments = `{"repo_url": "https://github.com/foo/bar"}`
+        → arguments_json = `"{\"repo_url\": \"https://github.com/foo/bar\"}"`
       - User: "run workflow daily-digest with topic F1"
         Tool `cli-workflow-run` has params_hint `workflow_name*(str), inputs(obj)`.
-        → arguments = `{"workflow_name": "daily-digest", "inputs": {"topic": "F1"}}`
+        → arguments_json = `"{\"workflow_name\": \"daily-digest\", \"inputs\": {\"topic\": \"F1\"}}"`
 
       `short_message` is ALWAYS populated:
       - When dispatching tools: a 1-line status like "Looking up your projects…"
@@ -76,14 +81,17 @@ prompts:
           description: Tools to dispatch. Empty when needs_tool_call is false.
           items:
             type: object
-            required: [name, arguments]
+            required: [name, arguments_json]
             properties:
               name:
                 type: string
                 description: Exact tool name from the catalog (e.g. cli-project-list).
-              arguments:
-                type: object
-                description: Arguments to pass to the tool, matching its input schema.
+              arguments_json:
+                type: string
+                description: |
+                  JSON-STRINGIFIED args object. Must be a string, NOT an
+                  object. Example: "{\"repo_url\": \"https://github.com/foo/bar\"}"
+                  Use "{}" for tools that take no arguments.
         assistant_message:
           type: string
           description: |
