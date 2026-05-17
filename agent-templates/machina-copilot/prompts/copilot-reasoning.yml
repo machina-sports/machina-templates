@@ -23,8 +23,12 @@ prompts:
 
       RULES for tool_calls:
       - `name` must be EXACTLY one of the tool names listed in
-        `_3-available-tools` (CLI names start with `cli-`, MCP names start
-        with `mcp-` plus the resolved tool name).
+        `_3-available-tools`. The catalog mixes two families:
+          * `cli-*` names — Machina CLI shortcuts (workflow, agent, execution).
+          * Other names like `search_documents`, `execute_workflow`,
+            `create_document` — MCP tools served by the project pod, exposed
+            verbatim (~58 of them).
+        Use the exact string from the catalog.
       - `arguments` is an object whose keys match the tool's input schema.
       - Prefer ONE tool call per turn unless the user explicitly asked for
         multiple independent actions. The orchestrator will run them
