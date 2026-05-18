@@ -1,0 +1,319 @@
+workflow:
+  name: build-athlete-tracker
+  title: Build Athlete Tracker Cards
+  description: |
+    White-label athlete tracker. Takes a roster `[{name, sport?}]` and
+    emits one daily card per athlete (latest performance + top-5 headlines
+    + narrative pulse). Multi-sport via the sports-skills connector.
+
+    Defensive defaults: empty news / no recent match render an
+    empty-state line in the card, never a 500.
+
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+
+  inputs:
+    # Roster shape: [{name: "Bukayo Saka", sport: "football"}, {name: "Jayson Tatum", sport: "nba"}, ...]
+    # `sport` is optional; missing/unknown sports still get a news-only card.
+    roster: "$.get('roster', [])"
+
+  outputs:
+    cards: "$.get('cards', [])"
+    roster_size: "len($.get('roster', []))"
+    workflow-status: "len($.get('roster', [])) > 0 and 'executed' or 'skipped'"
+
+  tasks:
+
+    # ---------------------------------------------------------------
+    # 1. News per athlete — always runs, sport-agnostic.
+    #    fan-out concurrent over the roster. The `invoke_news` module
+    #    of sports-skills aggregates news across providers (no API key).
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-news-per-athlete
+      description: Fetch top news headlines for each athlete in the roster.
+      condition: "len($.get('roster', [])) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_news
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "$.get('roster', [])"
+      inputs:
+        command: "'fetch_items'"
+        query: "$.get('athlete', {}).get('name', '')"
+        limit: 5
+      outputs:
+        # Accumulates one entry per athlete, in roster order.
+        # Wrap raw payload alongside the athlete so the assembler can
+        # match unambiguously even if a fetch returns empty.
+        news_per_athlete: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': $.get('athlete', {}).get('sport', ''),
+              'data': $.get('data', $.get('items', $.get('articles', [])))
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 2. Football performance — only runs for athletes with sport=='football'.
+    #    Each per-sport task writes to its OWN key (perf_football,
+    #    perf_nba, …) so subsequent tasks don't overwrite earlier
+    #    results. The assembler concatenates them.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-football-perf
+      description: Fetch last-match data for football athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'football']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_football
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'football']"
+      inputs:
+        command: "'search_player'"
+        query: "$.get('athlete', {}).get('name', '')"
+      outputs:
+        perf_football: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'football',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 3. NBA performance — sport=='nba'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-nba-perf
+      description: Fetch latest data for NBA athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'nba']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_nba
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'nba']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_nba: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'nba',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 4. NFL performance — sport=='nfl'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-nfl-perf
+      description: Fetch latest data for NFL athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'nfl']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_nfl
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'nfl']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_nfl: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'nfl',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 5. MLB performance — sport=='mlb'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-mlb-perf
+      description: Fetch latest data for MLB athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'mlb']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_mlb
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'mlb']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_mlb: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'mlb',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 6. NHL performance — sport=='nhl'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-nhl-perf
+      description: Fetch latest data for NHL athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'nhl']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_nhl
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'nhl']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_nhl: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'nhl',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 7. Tennis performance — sport=='tennis'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-tennis-perf
+      description: Fetch latest data for tennis athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'tennis']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_tennis
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'tennis']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_tennis: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'tennis',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 8. Golf performance — sport=='golf'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-golf-perf
+      description: Fetch latest data for golf athletes.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'golf']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_golf
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'golf']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_golf: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'golf',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 9. F1 performance — sport=='f1'.
+    # ---------------------------------------------------------------
+    - type: connector
+      name: fetch-f1-perf
+      description: Fetch latest data for F1 drivers.
+      condition: "len([a for a in $.get('roster', []) if a.get('sport') == 'f1']) > 0"
+      connector:
+        name: sports-skills
+        command: invoke_f1
+      foreach:
+        concurrent: true
+        name: athlete
+        expr: $
+        value: "[a for a in $.get('roster', []) if a.get('sport') == 'f1']"
+      inputs:
+        command: "'get_scoreboard'"
+      outputs:
+        perf_f1: |
+          [
+            {
+              'athlete': $.get('athlete', {}).get('name', ''),
+              'sport': 'f1',
+              'data': $.get('data', $)
+            }
+          ]
+
+    # ---------------------------------------------------------------
+    # 10. Assemble cards.
+    #     Concatenate all per-sport perf lists into one perf_per_athlete
+    #     blob and pass it (with the news blob and the original roster)
+    #     to the LLM. The assembler aligns by athlete name (each entry
+    #     carries its name) and renders white-label markdown + JSON.
+    #     Empty news → "Quiet news cycle". No perf entry → "No match
+    #     this week."
+    # ---------------------------------------------------------------
+    - type: prompt
+      name: assemble-athlete-cards
+      description: Compose one white-label card per athlete (markdown + JSON).
+      condition: "len($.get('roster', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-pro
+        location: global
+        provider: vertex_ai
+      inputs:
+        roster_json: "str($.get('roster', []))"
+        news_json: "str($.get('news_per_athlete', []))"
+        perf_json: |
+          str(
+            $.get('perf_football', []) +
+            $.get('perf_nba', []) +
+            $.get('perf_nfl', []) +
+            $.get('perf_mlb', []) +
+            $.get('perf_nhl', []) +
+            $.get('perf_tennis', []) +
+            $.get('perf_golf', []) +
+            $.get('perf_f1', [])
+          )
+      outputs:
+        cards: "$.get('cards', [])"

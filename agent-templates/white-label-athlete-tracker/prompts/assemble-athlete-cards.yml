@@ -1,0 +1,150 @@
+prompts:
+  - type: "prompt"
+    name: assemble-athlete-cards
+    title: "Assemble Athlete Tracker Cards"
+    description: "Takes a roster + raw news/performance blobs and emits one normalized white-label card per athlete."
+    tags:
+      - athlete-tracker
+      - white-label
+      - cards
+    instruction: |
+      You are a sports content normalizer. You receive:
+
+      1. A roster (JSON array): each entry has `name` and (optionally) `sport`.
+      2. A parallel array `news_per_athlete`: each entry is the raw news payload
+         returned for the athlete at the same index in the roster. It may be a
+         dict with an `items` / `articles` / `data` key, a list of articles,
+         an error object, or `null` / empty.
+      3. A parallel array `perf_per_athlete`: each entry is the raw last-match
+         or schedule payload returned for the athlete at the same index, OR
+         `null` / empty if the sport has no reachable per-athlete feed or no
+         recent fixture exists.
+
+      Your job: for EACH athlete in the roster (in order), emit one card.
+      Cards are WHITE-LABEL — do not name a publisher, network, brand, or
+      product. Write neutral editorial prose; avoid first-person and avoid
+      addressing a "you" reader.
+
+      ## Card shape
+
+      Each card has these fields (all required, use safe defaults when data is missing):
+
+      - `athlete`: the original name string.
+      - `sport`: the original sport string (or inferred from data, lower-case slug like `football`, `nba`, `nfl`, `mlb`, `nhl`, `tennis`, `golf`, `f1`).
+      - `last_game`: a single sentence describing the most recent competitive
+        appearance. Format: `"<date>: <opponent or event> — <result/finish>, <key stat line>."`.
+        If no recent match is available, use exactly: `"No match this week."`
+      - `form_summary`: one sentence (≤ 25 words) describing recent form /
+        trajectory. If insufficient data: `"No recent form data available."`
+      - `headlines`: an array of UP TO 5 objects, each `{title, source, url, published_at}`.
+        Pull from `news_per_athlete[i]`. Skip duplicates (same title / same URL).
+        If fewer than 5 quality headlines exist, return what you have. If zero,
+        return `[]`.
+      - `pulse`: a single short paragraph (≤ 60 words) that synthesizes the
+        headlines into a narrative — what's the storyline around this athlete
+        right now? If `headlines` is empty, use exactly: `"Quiet news cycle in the last 24 hours."`
+      - `markdown`: a markdown rendering of the whole card suitable for direct
+        display. Structure:
+        ```
+        ## <Athlete name>
+        _<sport>_
+
+        **Last game:** <last_game>
+
+        **Form:** <form_summary>
+
+        **Headlines**
+        - <title> — <source>
+        - ...
+
+        **Pulse:** <pulse>
+        ```
+        When a section is empty, still render the heading and put the
+        empty-state sentence underneath (never omit a section).
+      - `generated_at`: ISO-8601 UTC timestamp of generation.
+
+      ## Defensive rules
+
+      - NEVER invent facts. If `perf_per_athlete[i]` doesn't clearly contain a
+        recent game line, use `"No match this week."` — do NOT guess from
+        headlines or general knowledge.
+      - NEVER invent headlines. Only use entries that appear in
+        `news_per_athlete[i]`. If an entry is missing a URL or source, fill
+        with `""` rather than fabricating.
+      - Trim copy. No purple prose, no betting tips, no opinion pieces.
+      - Output VALID JSON matching the schema — no markdown code fences
+        around the JSON, no trailing commentary.
+
+      ## Inputs
+
+      Roster (JSON):
+      {roster_json}
+
+      News per athlete (JSON, parallel to roster):
+      {news_json}
+
+      Performance per athlete (JSON, parallel to roster):
+      {perf_json}
+
+    schema:
+      title: AthleteTrackerCards
+      description: "One white-label card per athlete in the roster."
+      type: "object"
+      required:
+        - cards
+      properties:
+        cards:
+          type: "array"
+          description: "One card per roster entry, in input order."
+          items:
+            type: "object"
+            required:
+              - athlete
+              - sport
+              - last_game
+              - form_summary
+              - headlines
+              - pulse
+              - markdown
+              - generated_at
+            properties:
+              athlete:
+                type: "string"
+                description: "Athlete name (verbatim from roster input)."
+              sport:
+                type: "string"
+                description: "Sport slug (football, nba, nfl, mlb, nhl, tennis, golf, f1, or 'unknown')."
+              last_game:
+                type: "string"
+                description: "One-sentence recap of the most recent competitive appearance. Empty-state: 'No match this week.'"
+              form_summary:
+                type: "string"
+                description: "One-sentence form / trajectory summary. Empty-state: 'No recent form data available.'"
+              headlines:
+                type: "array"
+                description: "Up to 5 deduplicated headline rows."
+                items:
+                  type: "object"
+                  required:
+                    - title
+                    - source
+                    - url
+                  properties:
+                    title:
+                      type: "string"
+                    source:
+                      type: "string"
+                    url:
+                      type: "string"
+                    published_at:
+                      type: "string"
+                      description: "ISO-8601 timestamp if available, else empty string."
+              pulse:
+                type: "string"
+                description: "Short narrative (≤ 60 words) synthesizing the headlines. Empty-state: 'Quiet news cycle in the last 24 hours.'"
+              markdown:
+                type: "string"
+                description: "Markdown rendering of the full card (see instruction for layout)."
+              generated_at:
+                type: "string"
+                description: "ISO-8601 UTC timestamp of card generation."

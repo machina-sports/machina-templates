@@ -1,0 +1,25 @@
+agent:
+
+  name: white-label-athlete-tracker
+  title: "White-Label Athlete Tracker"
+  description: "Daily card-per-athlete generator for a roster. White-label payload (no brand references) for CMS / mobile-app ingestion."
+
+  context:
+    status: "inactive"
+
+  context-agent:
+    # Roster shape: [{name: "Bukayo Saka", sport: "football"}, {name: "Jayson Tatum", sport: "nba"}, ...]
+    # `sport` is optional but recommended — without it the card falls back
+    # to news-only and the performance line will say "No match this week."
+    roster: $.get('roster', [])
+
+  workflows:
+
+    - name: build-athlete-tracker
+      description: Building athlete tracker cards
+      inputs:
+        roster: $.get('roster', [])
+      outputs:
+        cards: $.get('cards', [])
+        roster_size: $.get('roster_size', 0)
+        result: $.get('cards', [])

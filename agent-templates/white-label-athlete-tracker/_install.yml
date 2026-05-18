@@ -1,0 +1,31 @@
+setup:
+  title: "White-Label Athlete Tracker"
+  description: "Takes a roster of athletes and emits one daily card per athlete: latest performance, top-5 news headlines, and a short narrative pulse. Multi-sport (football, NBA, NFL, MLB, NHL, tennis, golf, F1) via the sports-skills connector. White-label payload — no brand references in the copy. Suitable for CMS / mobile-app ingestion."
+  category:
+    - custom-templates
+  estimatedTime: 2 minutes
+  features:
+    - "Multi-sport roster support (football, NBA, NFL, MLB, NHL, tennis, golf, F1)"
+    - "Per-athlete card: last-game line, form summary, 5 headlines, narrative pulse"
+    - "Graceful empty-state when no match or news in last 24h"
+    - "White-label payload — no brand references in output"
+    - "Parallel fan-out across the roster via foreach"
+  integrations:
+    - sports-skills
+    - google-vertex
+  status: available
+  value: "agent-templates/white-label-athlete-tracker"
+  version: 1.0.0
+
+datasets:
+  - type: "connector"
+    path: "connectors/sports-skills.yml"
+
+  - type: "prompts"
+    path: "prompts/assemble-athlete-cards.yml"
+
+  - type: "workflow"
+    path: "workflows/build-athlete-tracker.yml"
+
+  - type: "agent"
+    path: "agent.yml"
