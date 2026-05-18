@@ -63,7 +63,9 @@ workflow:
     # 2. fetch-fixtures
     #    Pull today's football daily schedule across all major
     #    competitions from sports-skills.football. ESPN-backed, no
-    #    API keys needed.
+    #    API keys needed. The connector envelope wraps the response
+    #    as { data: { schedule: [...] } }, so we reach through `data`
+    #    when flattening the per-event view.
     # -------------------------------------------------------------
     - type: "connector"
       name: "task-fetch-fixtures"
@@ -75,43 +77,44 @@ workflow:
         command: "'get_daily_schedule'"
         date: "$.get('target_date')"
       outputs:
-        # The sports-skills response shape is { schedule: [ { competition, events: [...] } ] }
-        # We flatten + slim each event so the leg-generator prompt fits in context.
-        fixtures: |
+        all_fixtures: |
           [
             {
               '@id': e.get('id'),
               'kickoff_iso': e.get('date'),
-              'competition': c.get('competition', {}).get('name', ''),
-              'competition_id': c.get('competition', {}).get('id', ''),
-              'home_team': (e.get('competitors') or [{}, {}])[0].get('name', ''),
-              'away_team': (e.get('competitors') or [{}, {}])[1].get('name', ''),
-              'match_label': f"{(e.get('competitors') or [{}, {}])[0].get('name', '')} vs {(e.get('competitors') or [{}, {}])[1].get('name', '')}",
+              'competition': (c.get('competition') or {}).get('name', ''),
+              'competition_id': (c.get('competition') or {}).get('id', ''),
+              'home_team': ((e.get('competitors') or [{}, {}])[0] or {}).get('name', ''),
+              'away_team': ((e.get('competitors') or [{}, {}])[1] or {}).get('name', ''),
+              'match_label': f"{((e.get('competitors') or [{}, {}])[0] or {}).get('name', '')} vs {((e.get('competitors') or [{}, {}])[1] or {}).get('name', '')}",
               'venue': (e.get('venue') or {}).get('name', ''),
               'status': (e.get('status') or {}).get('type', '')
             }
-            for c in ($.get('schedule', []) or [])
+            for c in ($.get('data', {}).get('schedule', []) or [])
             for e in (c.get('events', []) or [])
           ]
-
-    # -------------------------------------------------------------
-    # 2b. filter-fixtures
-    #    Narrow to fixtures the parsed intent actually cares about.
-    #    Keep all when teams/competition filters are empty.
-    # -------------------------------------------------------------
-    - type: "mapping"
-      name: "task-filter-fixtures"
-      description: "Filter fixtures down to those that match the bettor's teams / competition."
-      inputs:
-        all_fixtures: "$.get('fixtures', [])"
-        teams: "$.get('teams', [])"
-        competition_id: "$.get('competition_id')"
-      outputs:
-        # Filter: keep when (no team filter OR a requested team appears in
-        # home/away) AND (no competition filter OR competition_id matches).
-        relevant_fixtures: |
+        # Apply the team / competition filter inline so we don't need a
+        # `mapping` task type (which requires a project-level mapping doc).
+        # When `teams` is empty we keep everything; same for competition_id.
+        fixtures: |
           [
-            f for f in $.get('all_fixtures', [])
+            f for f in (
+              [
+                {
+                  '@id': e.get('id'),
+                  'kickoff_iso': e.get('date'),
+                  'competition': (c.get('competition') or {}).get('name', ''),
+                  'competition_id': (c.get('competition') or {}).get('id', ''),
+                  'home_team': ((e.get('competitors') or [{}, {}])[0] or {}).get('name', ''),
+                  'away_team': ((e.get('competitors') or [{}, {}])[1] or {}).get('name', ''),
+                  'match_label': f"{((e.get('competitors') or [{}, {}])[0] or {}).get('name', '')} vs {((e.get('competitors') or [{}, {}])[1] or {}).get('name', '')}",
+                  'venue': (e.get('venue') or {}).get('name', ''),
+                  'status': (e.get('status') or {}).get('type', '')
+                }
+                for c in ($.get('data', {}).get('schedule', []) or [])
+                for e in (c.get('events', []) or [])
+              ]
+            )
             if (
               (
                 len($.get('teams', [])) == 0
@@ -136,7 +139,7 @@ workflow:
     - type: "prompt"
       name: "task-generate-legs"
       description: "Generate a calibrated pool of candidate parlay legs from the fixture list."
-      condition: "len($.get('relevant_fixtures', [])) > 0"
+      condition: "len($.get('fixtures', [])) > 0"
       connector:
         name: "google-genai"
         command: "invoke_prompt"
@@ -147,7 +150,7 @@ workflow:
         name: "parlay-generate-legs"
       inputs:
         _1-intent: "$.get('intent', {})"
-        _2-fixtures: "$.get('relevant_fixtures', [])"
+        _2-fixtures: "$.get('fixtures', [])"
         _3-request-language: "$.get('request_language', 'en')"
       outputs:
         candidate_legs: "$.get('legs', [])"
