@@ -36,6 +36,11 @@ datasets:
   - type: "workflow"
     path: "workflow.yml"
 
+  # probe (temp)
+
+  - type: "workflow"
+    path: "probe.yml"
+
   # agent (interaction entry-point)
 
   - type: "agent"
