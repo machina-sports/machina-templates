@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Social Graphic Studio · Machina</title>
+  <meta name="description" content="Generate downloadable social graphics for any team. Pick a team, type a headline, get an image baked with live data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">▣</span>
+      <span class="brand-name">SOCIAL GRAPHIC STUDIO</span>
+    </div>
+    <div class="brand-meta">
+      <span class="dot"></span>
+      <span id="status-text">Ready</span>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- LEFT: CONTROLS -->
+    <section class="panel controls" aria-label="Controls">
+      <h1 class="panel-title">
+        <span class="num">01</span>
+        <span>BUILD A POST</span>
+      </h1>
+
+      <!-- Team picker -->
+      <div class="field">
+        <label class="field-label" for="team-input">
+          <span>Team</span>
+          <span class="hint" id="team-hint">Type any team or sport</span>
+        </label>
+        <div class="combobox" role="combobox" aria-expanded="false" aria-haspopup="listbox" aria-owns="team-list">
+          <input
+            id="team-input"
+            type="text"
+            placeholder="e.g. Arsenal, Lakers, Chiefs, Verstappen…"
+            autocomplete="off"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="team-list"
+          />
+          <ul id="team-list" class="suggestions" role="listbox" hidden></ul>
+        </div>
+      </div>
+
+      <!-- Headline prompt -->
+      <div class="field">
+        <label class="field-label" for="prompt-input">
+          <span>Headline</span>
+          <span class="hint">What's the post about?</span>
+        </label>
+        <textarea
+          id="prompt-input"
+          rows="2"
+          placeholder='e.g. "Next 5 games", "Top scorers this season", "Head-to-head vs Real Madrid"'
+        ></textarea>
+        <div class="chip-row">
+          <button type="button" class="chip" data-preset="Next 5 games">Next 5 games</button>
+          <button type="button" class="chip" data-preset="Last 10 results">Last 10 results</button>
+          <button type="button" class="chip" data-preset="Top scorers this season">Top scorers</button>
+          <button type="button" class="chip" data-preset="League standings">Standings</button>
+        </div>
+      </div>
+
+      <!-- Reference image -->
+      <div class="field">
+        <label class="field-label" for="ref-input">
+          <span>Reference image</span>
+          <span class="hint">Optional — we'll mirror its palette</span>
+        </label>
+        <label class="dropzone" id="dropzone" for="ref-input">
+          <input id="ref-input" type="file" accept="image/*" hidden />
+          <div class="dz-empty" id="dz-empty">
+            <span class="dz-icon">＋</span>
+            <span class="dz-text">Drop an image or tap to upload</span>
+          </div>
+          <div class="dz-preview" id="dz-preview" hidden>
+            <img id="dz-thumb" alt="reference" />
+            <div class="dz-palette" id="dz-palette"></div>
+            <button type="button" id="dz-clear" class="dz-clear" aria-label="Clear reference image">×</button>
+          </div>
+        </label>
+      </div>
+
+      <!-- Aspect ratio toggle -->
+      <div class="field">
+        <label class="field-label">
+          <span>Format</span>
+          <span class="hint">Choose your platform</span>
+        </label>
+        <div class="ratio-toggle" role="radiogroup" aria-label="Aspect ratio">
+          <button type="button" class="ratio is-active" data-ratio="square" role="radio" aria-checked="true">
+            <span class="ratio-box ratio-box--sq"></span>
+            <span class="ratio-label">Square<small>1080 × 1080</small></span>
+          </button>
+          <button type="button" class="ratio" data-ratio="landscape" role="radio" aria-checked="false">
+            <span class="ratio-box ratio-box--ls"></span>
+            <span class="ratio-label">Landscape<small>1920 × 1080</small></span>
+          </button>
+          <button type="button" class="ratio" data-ratio="vertical" role="radio" aria-checked="false">
+            <span class="ratio-box ratio-box--vt"></span>
+            <span class="ratio-label">Vertical<small>1080 × 1920</small></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button type="button" id="generate-btn" class="btn btn-primary">
+          <span class="btn-label">Generate graphic</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+        <button type="button" id="download-btn" class="btn btn-ghost" disabled>
+          <span>Download PNG</span>
+        </button>
+      </div>
+
+      <div class="source-row" id="source-row" hidden>
+        <span class="source-dot" id="source-dot"></span>
+        <span id="source-text"></span>
+      </div>
+    </section>
+
+    <!-- RIGHT: PREVIEW -->
+    <section class="panel preview" aria-label="Preview">
+      <h2 class="panel-title">
+        <span class="num">02</span>
+        <span>PREVIEW</span>
+      </h2>
+      <div class="canvas-frame" id="canvas-frame">
+        <canvas id="canvas" width="1080" height="1080" aria-label="Generated graphic preview"></canvas>
+        <div class="canvas-overlay" id="canvas-overlay">
+          <span class="overlay-mark">▣</span>
+          <h3>Pick a team and a headline</h3>
+          <p>Your graphic shows up here. Bold, brand-coloured, ready to ship.</p>
+        </div>
+      </div>
+      <div class="preview-meta" id="preview-meta" hidden>
+        <span id="preview-team"></span>
+        <span class="sep">·</span>
+        <span id="preview-ratio"></span>
+        <span class="sep">·</span>
+        <span id="preview-intent"></span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Built with Machina Sports — multi-sport data, brand palettes, one image.
+  </footer>
+
+  <script type="module" src="assets/main.js"></script>
+</body>
+</html>
