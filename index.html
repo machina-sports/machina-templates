@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d14" />
+  <title>Parlay Builder · chat-driven</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="brandlock">
+      <span class="dot"></span>
+      <span class="brand">the&nbsp;sportsbook&nbsp;·&nbsp;parlay&nbsp;copilot</span>
+    </div>
+    <div class="meta">
+      <span class="badge ok"><span></span>live edge</span>
+      <span class="muted small">never places bets — proposes only</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <!-- left rail: angle composer + recent angles -->
+    <aside class="rail">
+      <section class="card composer">
+        <div class="card-head">
+          <h2>your angle</h2>
+          <span class="muted small">type the way you'd say it</span>
+        </div>
+        <form id="angle-form">
+          <textarea
+            id="angle-input"
+            name="angle"
+            rows="4"
+            placeholder="e.g. 3-leg Arsenal parlay tonight, around +400. no draws."
+            autocomplete="off"
+          >3-leg Arsenal parlay tonight, around +400</textarea>
+          <div class="composer-foot">
+            <div class="chips" id="chip-row">
+              <button type="button" class="chip" data-preset="3-leg Arsenal parlay tonight, around +400">arsenal +400</button>
+              <button type="button" class="chip" data-preset="2-leg safe parlay across today's top matches, around +180">safe +180</button>
+              <button type="button" class="chip" data-preset="4-leg goalfest parlay tonight, over 2.5 + BTTS across the best matches, around +600">goalfest +600</button>
+              <button type="button" class="chip" data-preset="5-leg long-shot parlay tonight, big-name strikers anytime scorer, around +1500">long-shot +1500</button>
+            </div>
+            <button id="submit" class="submit" type="submit">
+              <span class="label">build tickets</span>
+              <span class="kbd">⏎</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card sources">
+        <div class="card-head"><h2>data sources</h2></div>
+        <ul class="sourcelist">
+          <li><span class="src-name">sports-skills · football</span><span class="src-desc">fixtures, form, lineups, live odds via ESPN/DraftKings feed</span></li>
+          <li><span class="src-name">sports-skills · kalshi</span><span class="src-desc">prediction-market lines on game outcomes</span></li>
+          <li><span class="src-name">sports-skills · polymarket</span><span class="src-desc">crypto-settled sports markets</span></li>
+          <li><span class="src-name">sports-skills · betting</span><span class="src-desc">parlay combinatorics, edge detection, kelly sizing</span></li>
+        </ul>
+      </section>
+
+      <section class="card guardrails">
+        <div class="card-head"><h2>guardrails</h2></div>
+        <ul class="bullets">
+          <li>operator name is never surfaced to bettors</li>
+          <li>no place-bet endpoint — only proposes ticket payloads</li>
+          <li>per-leg justification capped at 18 words</li>
+          <li>no two legs from the same fixture (unless thin market)</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- chat surface -->
+    <section class="thread" id="thread">
+      <article class="msg user">
+        <div class="role">bettor</div>
+        <div class="bubble">3-leg Arsenal parlay tonight, around +400</div>
+      </article>
+
+      <article class="msg assistant" data-seeded="true">
+        <div class="role">copilot</div>
+        <div class="bubble">
+          <div class="reply markdown" id="seed-reply">
+<!-- seeded with a real workflow execution from 2026-05-18 -->
+Here are 3 high-value parlay options for the Arsenal vs Burnley match, all centered around a dominant performance from the Gunners.
+
+**🎟️ Ticket 1: The Fortress (Best EV)**
+This parlay has the highest expected value (+11.9%). It combines an Arsenal win-to-nil with the match having over 2.5 goals, banking on a comfortable 3-0 or 4-0 type of victory.
+*   **Leg 1:** Arsenal to Win to Nil (-155)
+*   **Leg 2:** Over 2.5 Total Goals (-320)
+*   **Odds:** +116
+
+**🎟️ Ticket 2: The Blowout (High Odds)**
+Looking for a bigger payout? This ticket combines a large margin of victory with a goal from their star player, Bukayo Saka.
+*   **Leg 1:** Arsenal -2.5 Spread (-120)
+*   **Leg 2:** Bukayo Saka to Score Anytime (-115)
+*   **Odds:** +243
+
+**🎟️ Ticket 3: The Offensive Firepower**
+This is a balanced ticket focusing purely on Arsenal's attack. It predicts they'll score at least three goals, with Kai Havertz getting on the scoresheet.
+*   **Leg 1:** Arsenal Team Total Over 2.5 (-140)
+*   **Leg 2:** Kai Havertz to Score Anytime (-105)
+*   **Odds:** +235
+
+Good luck with your picks!
+          </div>
+
+          <div class="tickets" id="seed-tickets">
+            <!-- ticket cards (rendered from seed JSON below; rebuilt on every live response) -->
+          </div>
+
+          <div class="payload">
+            <details>
+              <summary><span class="dot-mono"></span>raw ticket payload <span class="muted small">— what the operator's frontend submits</span></summary>
+              <pre id="seed-payload"></pre>
+            </details>
+          </div>
+
+          <div class="followups" id="seed-followups">
+            <button type="button" class="chip muted" data-preset="Give me more details on Ticket 1">more on ticket 1</button>
+            <button type="button" class="chip muted" data-preset="Are there any safer single bets?">safer singles?</button>
+            <button type="button" class="chip muted" data-preset="Analyze another match">another match</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="bot">
+    <span class="muted small">built on machina · sports-skills · gemini · the operator runs the order book</span>
+  </footer>
+
+  <script id="seed-payload-json" type="application/json">
+{
+  "tickets": [
+    {
+      "ticket_id": "ticket-1",
+      "rationale": "Highest expected value: dominant Arsenal win with a high goal total.",
+      "combined_american_odds": 116,
+      "combined_decimal_odds": 2.16,
+      "combined_probability": 0.518,
+      "expected_value_pct": 11.9,
+      "kelly_fraction_pct": 10.2,
+      "legs": [
+        {"leg_id": "ars-wtn-h", "fixture_id": "740956", "match_label": "Arsenal vs Burnley", "market_type": "win_to_nil", "selection": "Arsenal", "book_american_odds": -155, "model_probability": 0.64, "justification": "Defensive strength + attacking prowess makes a clean sheet victory highly probable."},
+        {"leg_id": "arsbur-o25", "fixture_id": "740956", "match_label": "Arsenal vs Burnley", "market_type": "total_goals", "selection": "Over 2.5", "book_american_odds": -320, "model_probability": 0.81, "justification": "High-powered offense expected to score multiple goals against Burnley's defense."}
+      ]
+    },
+    {
+      "ticket_id": "ticket-2",
+      "rationale": "Targets a high-scoring win with great odds via spread + key attacker scoring.",
+      "combined_american_odds": 243,
+      "combined_decimal_odds": 3.43,
+      "combined_probability": 0.325,
+      "expected_value_pct": 11.3,
+      "kelly_fraction_pct": 4.7,
+      "legs": [
+        {"leg_id": "ars-sprd-h", "fixture_id": "740956", "match_label": "Arsenal vs Burnley", "market_type": "spread", "selection": "Arsenal -2.5", "book_american_odds": -120, "model_probability": 0.58, "justification": "The Gunners have firepower to win by a large margin at the Emirates."},
+        {"leg_id": "saka-ags", "fixture_id": "740956", "match_label": "Arsenal vs Burnley", "market_type": "anytime_scorer", "selection": "Bukayo Saka", "book_american_odds": -115, "model_probability": 0.56, "justification": "Primary attacker and penalty taker — strong candidate to score."}
+      ]
+    },
+    {
+      "ticket_id": "ticket-3",
+      "rationale": "Balanced ticket focused on Arsenal's offense producing 3+ goals.",
+      "combined_american_odds": 235,
+      "combined_decimal_odds": 3.35,
+      "combined_probability": 0.329,
+      "expected_value_pct": 10.2,
+      "kelly_fraction_pct": 4.4,
+      "legs": [
+        {"leg_id": "ars-tt-o25", "fixture_id": "740956", "match_label": "Arsenal vs Burnley", "market_type": "team_total_goals", "selection": "Arsenal Over 2.5", "book_american_odds": -140, "model_probability": 0.61, "justification": "Offense expected to dominate and score at least three goals."},
+        {"leg_id": "havertz-ags", "fixture_id": "740956", "match_label": "Arsenal vs Burnley", "market_type": "anytime_scorer", "selection": "Kai Havertz", "book_american_odds": -105, "model_probability": 0.54, "justification": "Central attacking role — in prime positions to score."}
+      ]
+    }
+  ]
+}
+  </script>
+
+  <script src="app.js"></script>
+</body>
+</html>
