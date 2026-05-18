@@ -1,0 +1,184 @@
+workflow:
+  name: "parlay-builder"
+  title: "Parlay Builder"
+  description: >
+    End-to-end chat-driven parlay builder. Parses a bettor's free-text angle,
+    pulls today's fixtures from sports-skills.football, asks the LLM to
+    propose a calibrated pool of candidate legs, then ranks the top-3
+    parlays by expected value and returns a chat-card payload the
+    sportsbook frontend can render. Never places bets.
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    # Free-text bettor angle, e.g. "3-leg Real Madrid parlay tonight around +400".
+    user_query: "$.get('user_query', '')"
+    # Optional ISO date YYYY-MM-DD; defaults to "today" on the upstream call when null.
+    target_date: "$.get('target_date')"
+    # Optional override of the competition slug; if null the workflow scans
+    # all today's fixtures across the major football competitions.
+    competition_id: "$.get('competition_id')"
+  outputs:
+    intent: "$.get('intent', {})"
+    fixtures: "$.get('fixtures', [])"
+    candidate_legs: "$.get('candidate_legs', [])"
+    tickets: "$.get('tickets', [])"
+    reply_markdown: "$.get('reply_markdown', '')"
+    followup_suggestions: "$.get('followup_suggestions', [])"
+    workflow-status: "len($.get('tickets', [])) > 0 and 'executed' or 'skipped'"
+
+  tasks:
+
+    # -------------------------------------------------------------
+    # 1. parse-intent
+    #    Free-text → structured BettorIntent JSON.
+    # -------------------------------------------------------------
+    - type: "prompt"
+      name: "task-parse-intent"
+      description: "Parse the bettor's free-text request into structured constraints."
+      condition: "$.get('user_query') is not None and len($.get('user_query', '')) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
+      prompt:
+        name: "parlay-parse-intent"
+      inputs:
+        user_query: "$.get('user_query')"
+      outputs:
+        intent: "$"
+        sport: "$.get('sport', 'soccer')"
+        leg_count: "$.get('leg_count', 3)"
+        teams: "$.get('teams', [])"
+        market_types: "$.get('market_types', [])"
+        timeframe: "$.get('timeframe', 'today')"
+        request_language: "$.get('language', 'en')"
+
+    # -------------------------------------------------------------
+    # 2. fetch-fixtures
+    #    Pull today's football daily schedule across all major
+    #    competitions from sports-skills.football. ESPN-backed, no
+    #    API keys needed.
+    # -------------------------------------------------------------
+    - type: "connector"
+      name: "task-fetch-fixtures"
+      description: "Pull today's football fixtures from sports-skills (ESPN-backed)."
+      connector:
+        name: "sports-skills"
+        command: "invoke_football"
+      inputs:
+        command: "'get_daily_schedule'"
+        date: "$.get('target_date')"
+      outputs:
+        # The sports-skills response shape is { schedule: [ { competition, events: [...] } ] }
+        # We flatten + slim each event so the leg-generator prompt fits in context.
+        fixtures: |
+          [
+            {
+              '@id': e.get('id'),
+              'kickoff_iso': e.get('date'),
+              'competition': c.get('competition', {}).get('name', ''),
+              'competition_id': c.get('competition', {}).get('id', ''),
+              'home_team': (e.get('competitors') or [{}, {}])[0].get('name', ''),
+              'away_team': (e.get('competitors') or [{}, {}])[1].get('name', ''),
+              'match_label': f"{(e.get('competitors') or [{}, {}])[0].get('name', '')} vs {(e.get('competitors') or [{}, {}])[1].get('name', '')}",
+              'venue': (e.get('venue') or {}).get('name', ''),
+              'status': (e.get('status') or {}).get('type', '')
+            }
+            for c in ($.get('schedule', []) or [])
+            for e in (c.get('events', []) or [])
+          ]
+
+    # -------------------------------------------------------------
+    # 2b. filter-fixtures
+    #    Narrow to fixtures the parsed intent actually cares about.
+    #    Keep all when teams/competition filters are empty.
+    # -------------------------------------------------------------
+    - type: "mapping"
+      name: "task-filter-fixtures"
+      description: "Filter fixtures down to those that match the bettor's teams / competition."
+      inputs:
+        all_fixtures: "$.get('fixtures', [])"
+        teams: "$.get('teams', [])"
+        competition_id: "$.get('competition_id')"
+      outputs:
+        # Filter: keep when (no team filter OR a requested team appears in
+        # home/away) AND (no competition filter OR competition_id matches).
+        relevant_fixtures: |
+          [
+            f for f in $.get('all_fixtures', [])
+            if (
+              (
+                len($.get('teams', [])) == 0
+                or any(
+                  t.lower() in (f.get('home_team', '') + ' ' + f.get('away_team', '')).lower()
+                  for t in $.get('teams', [])
+                )
+              )
+              and (
+                $.get('competition_id') is None
+                or $.get('competition_id') == ''
+                or f.get('competition_id') == $.get('competition_id')
+              )
+            )
+          ][:20]
+
+    # -------------------------------------------------------------
+    # 3. generate-candidate-legs
+    #    LLM proposes 8-14 calibrated candidate legs from the
+    #    relevant fixtures, each with book odds + model probability.
+    # -------------------------------------------------------------
+    - type: "prompt"
+      name: "task-generate-legs"
+      description: "Generate a calibrated pool of candidate parlay legs from the fixture list."
+      condition: "len($.get('relevant_fixtures', [])) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
+      prompt:
+        name: "parlay-generate-legs"
+      inputs:
+        _1-intent: "$.get('intent', {})"
+        _2-fixtures: "$.get('relevant_fixtures', [])"
+        _3-request-language: "$.get('request_language', 'en')"
+      outputs:
+        candidate_legs: "$.get('legs', [])"
+        coverage_note: "$.get('coverage_note', '')"
+
+    # -------------------------------------------------------------
+    # 4. rank-and-compose
+    #    LLM picks the top 3 parlays by EV, applies the parlay
+    #    combinatorics math, and writes the chat-ready markdown
+    #    reply + quick-reply suggestions.
+    # -------------------------------------------------------------
+    - type: "prompt"
+      name: "task-rank-and-compose"
+      description: "Pick the top-3 parlay combinations and compose the chat-card reply."
+      condition: "len($.get('candidate_legs', [])) > 0"
+      connector:
+        name: "google-genai"
+        command: "invoke_prompt"
+        model: "gemini-2.5-pro"
+        location: "global"
+        provider: "vertex_ai"
+      prompt:
+        name: "parlay-rank-and-compose"
+      inputs:
+        _1-intent: "$.get('intent', {})"
+        _2-candidate-legs: "$.get('candidate_legs', [])"
+        _3-leg-count: "$.get('leg_count', 3)"
+        _4-target-american-odds: "$.get('intent', {}).get('target_american_odds', 0)"
+        _5-odds-tolerance-pct: "$.get('intent', {}).get('odds_tolerance_pct', 25)"
+        _6-request-language: "$.get('request_language', 'en')"
+      outputs:
+        tickets: "$.get('tickets', [])"
+        reply_markdown: "$.get('reply_markdown', '')"
+        followup_suggestions: "$.get('followup_suggestions', [])"

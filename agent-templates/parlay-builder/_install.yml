@@ -1,0 +1,42 @@
+setup:
+  title: "Parlay Builder"
+  description: >
+    Chat-driven parlay builder for white-label sportsbooks. Bettors send a free-text
+    angle ("3-leg Real Madrid parlay tonight, around +400") and the agent returns
+    ranked tickets with combined odds, per-leg justifications, and a JSON payload
+    the operator's frontend can render or submit. The agent never places bets —
+    it only proposes them.
+  category:
+    - custom-templates
+    - betting
+  estimatedTime: 3 minutes
+  features:
+    - "Free-text intent parsing → structured constraints (teams, markets, odds, legs)"
+    - "Live football fixtures from ESPN via sports-skills (football, soccer)"
+    - "Pulls candidate legs across moneyline, totals, BTTS, player props"
+    - "Parlay combinatorics + edge detection + Kelly sizing via sports-skills (betting)"
+    - "Ranked top-3 tickets with one-line per-leg justifications and combined odds"
+    - "Chat-card payload (markdown + JSON) for the sportsbook frontend to render"
+  integrations:
+    - sports-skills
+    - google-vertex
+  status: available
+  value: "agent-templates/parlay-builder"
+  version: 1.0.0
+
+datasets:
+
+  # prompts (intent-parse + leg-generation + ticket-ranking)
+
+  - type: "prompts"
+    path: "prompts/prompts.yml"
+
+  # workflow
+
+  - type: "workflow"
+    path: "workflow.yml"
+
+  # agent (interaction entry-point)
+
+  - type: "agent"
+    path: "agent.yml"

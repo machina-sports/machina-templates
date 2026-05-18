@@ -1,0 +1,291 @@
+prompts:
+
+  # ---------------------------------------------------------------
+  # 1. parse-bettor-intent
+  #    Take free-text and emit structured constraints the workflow
+  #    can use to filter fixtures / candidate legs.
+  # ---------------------------------------------------------------
+  - type: "prompt"
+    title: "Parse Bettor Intent"
+    name: "parlay-parse-intent"
+    description: |
+      You are a betting-intent parser for a sportsbook chat assistant.
+      Read the bettor's free-text request and convert it into structured
+      betting constraints. Be conservative: if a constraint is not
+      mentioned, leave the field empty / null rather than inventing one.
+
+      Rules:
+      - sport defaults to "soccer" when unclear (the platform is soccer-first)
+      - leg_count defaults to 3 if not stated
+      - target_odds parses American odds (e.g. "+400", "around +300", "5/1")
+        into a numeric american_odds value when possible; otherwise leave null
+      - teams should be the canonical short names (e.g. "Real Madrid", "Arsenal")
+      - market_types should be drawn from this vocabulary only:
+        ["moneyline", "spread", "total_over", "total_under", "btts_yes",
+         "btts_no", "player_anytime_scorer", "player_shots", "player_cards",
+         "team_total", "double_chance", "draw_no_bet", "correct_score"]
+      - timeframe: "today", "tonight", "tomorrow", "this_weekend",
+        "next_3_days", or null
+      - language: 2-letter ISO code of the bettor's message (en, es, pt, …)
+    schema:
+      title: "BettorIntent"
+      description: "Structured constraints distilled from a bettor's free-text angle."
+      type: "object"
+      properties:
+        sport:
+          type: "string"
+          description: "soccer | basketball | football | tennis | hockey | baseball"
+        leg_count:
+          type: "integer"
+          description: "Number of legs the bettor wants in the parlay (2-8)."
+        target_american_odds:
+          type: "integer"
+          description: "Target combined American odds, e.g. 400 for +400. 0 if unspecified."
+        odds_tolerance_pct:
+          type: "integer"
+          description: "How much wiggle room around target_american_odds, in percent. Default 25."
+        teams:
+          type: "array"
+          description: "Canonical team names the bettor explicitly mentioned."
+          items:
+            type: "string"
+        market_types:
+          type: "array"
+          description: "Market types from the allowed vocabulary the bettor wants in the ticket."
+          items:
+            type: "string"
+        timeframe:
+          type: "string"
+          description: "today | tonight | tomorrow | this_weekend | next_3_days | empty"
+        risk_appetite:
+          type: "string"
+          description: "conservative | balanced | aggressive — inferred from tone."
+        free_text_note:
+          type: "string"
+          description: "Any extra colour the bettor gave that doesn't map to a field (e.g. 'no draws')."
+        language:
+          type: "string"
+          description: "ISO 639-1 code of the bettor's message."
+      required: ["sport", "leg_count", "teams", "market_types", "risk_appetite", "language"]
+
+  # ---------------------------------------------------------------
+  # 2. generate-candidate-legs
+  #    Given parsed intent + today's fixtures, propose a deep pool
+  #    of candidate legs with fair-value American odds and a one-line
+  #    justification each. The workflow then hands these to the
+  #    sports-skills.betting module for parlay combinatorics + EV.
+  # ---------------------------------------------------------------
+  - type: "prompt"
+    title: "Generate Candidate Parlay Legs"
+    name: "parlay-generate-legs"
+    description: |
+      You are a senior sports trader for an unnamed sportsbook ("the operator").
+      Given the bettor's parsed intent and today's fixture list, produce a deep
+      pool (8-14) of candidate parlay legs that match the intent.
+
+      For EVERY leg you MUST emit:
+        - book_american_odds: the price you believe the book will offer.
+          Calibrate to realistic market prices — a heavy home favourite
+          might be -250 to -180; a coin-flip is -110/-110; a long-shot
+          BTTS-no in a derby might be +180.
+        - model_probability: YOUR estimate of how often this hits (0.0-1.0).
+          Use the fixture context (team form, recent results, absentees,
+          home/away). For a fair market your model_probability should be
+          close to the implied probability of book_american_odds, but
+          your edge comes from deviations.
+        - justification: ONE short sentence (max 18 words) explaining
+          the angle in plain Portuguese-or-English depending on the
+          bettor's language. NEVER mention the operator by name.
+        - fixture_id: the @id of the fixture this leg lives in.
+        - kickoff_iso: kickoff time in ISO format.
+        - leg_id: unique short id you assign, e.g. "rma-ml-h", "ars-btts-y".
+
+      Stay strictly within the bettor's requested teams + market_types
+      when those are non-empty. If the bettor asked for a 3-leg ticket
+      targeting +400, ensure your pool contains diverse risk levels so
+      the combinatorics step can hit the target combined odds.
+
+      DO NOT propose more than 2 legs from the same fixture (correlation
+      kills parlays). DO NOT propose contradictory legs (e.g. both Over 2.5
+      and Under 2.5 in the same match).
+    schema:
+      title: "CandidateLegPool"
+      description: "Deep pool of candidate legs ready for parlay combinatorics."
+      type: "object"
+      properties:
+        legs:
+          type: "array"
+          description: "8-14 candidate legs across the fixtures."
+          minItems: 6
+          maxItems: 14
+          items:
+            type: "object"
+            properties:
+              leg_id:
+                type: "string"
+                description: "Short unique id, e.g. 'rma-ml-h'."
+              fixture_id:
+                type: "string"
+                description: "@id of the fixture document this leg references."
+              kickoff_iso:
+                type: "string"
+                description: "Kickoff time, ISO 8601."
+              match_label:
+                type: "string"
+                description: "'Real Madrid vs Barcelona' — for the chat card."
+              market_type:
+                type: "string"
+                description: "From the allowed vocabulary."
+              selection:
+                type: "string"
+                description: "Concrete selection, e.g. 'Real Madrid', 'Over 2.5', 'BTTS Yes', 'Vinicius Jr anytime scorer'."
+              book_american_odds:
+                type: "integer"
+                description: "Realistic American odds the book would price this at."
+              model_probability:
+                type: "number"
+                description: "Your model's hit probability (0.0-1.0)."
+              justification:
+                type: "string"
+                description: "One short sentence, max 18 words, in the bettor's language."
+            required:
+              ["leg_id", "fixture_id", "match_label", "market_type",
+               "selection", "book_american_odds", "model_probability", "justification"]
+        coverage_note:
+          type: "string"
+          description: "1-sentence note on which fixtures were missing data, if any."
+      required: ["legs"]
+
+  # ---------------------------------------------------------------
+  # 3. rank-and-compose-tickets
+  #    Take the candidate-leg pool and produce the top-3 parlay
+  #    tickets ranked by expected value, with combined odds, EV%,
+  #    Kelly-sizing, and a chat-ready markdown reply.
+  #
+  #    The math the LLM must apply for each ticket:
+  #      - decimal_odds_i = (american > 0) ? 1 + american/100 : 1 + 100/|american|
+  #      - combined_decimal = product(decimal_odds_i)
+  #      - combined_american = combined_decimal >= 2 ? round((combined_decimal-1)*100)
+  #                                                  : round(-100/(combined_decimal-1))
+  #      - combined_probability = product(model_probability_i)
+  #      - EV_pct = (combined_probability * combined_decimal - 1) * 100
+  #      - Kelly_fraction_pct = max(0, ((combined_decimal-1)*combined_probability -
+  #                                     (1-combined_probability)) /
+  #                                    (combined_decimal-1)) * 100
+  #
+  #    The LLM selects the 3 combos that best satisfy the bettor's
+  #    leg_count + target_american_odds while maximising EV. It MUST
+  #    NOT pick two legs from the same fixture in the same ticket.
+  # ---------------------------------------------------------------
+  - type: "prompt"
+    title: "Rank Parlays + Compose Chat Card"
+    name: "parlay-rank-and-compose"
+    description: |
+      You are the senior trader composing the final chat reply for an
+      unnamed sportsbook ("the operator"). Pick the TOP 3 parlay
+      combinations from the candidate leg pool, ranked by expected
+      value, and write the conversational reply.
+
+      Selection rules:
+      - Each ticket has EXACTLY the leg_count the bettor asked for.
+      - NO two legs from the same fixture in the same ticket
+        (correlation kills parlays).
+      - Combined American odds should fall within
+        `target_american_odds ± odds_tolerance_pct%` when target > 0;
+        otherwise just maximise EV.
+      - Diversify across the 3 tickets — don't return three near-identical
+        combos. Ticket 1 = highest EV, Ticket 2 = closest to target odds,
+        Ticket 3 = "safer" (lower variance, higher combined probability).
+
+      Math the LLM applies for every ticket (apply it, don't restate it):
+        decimal_i = (am>0) ? 1+am/100 : 1+100/abs(am)
+        combined_decimal  = product(decimal_i)
+        combined_american = (combined_decimal>=2)
+                              ? round((combined_decimal-1)*100)
+                              : round(-100/(combined_decimal-1))
+        combined_prob     = product(model_probability_i)
+        ev_pct            = (combined_prob * combined_decimal - 1) * 100
+        kelly_pct         = max(0, ((combined_decimal-1)*combined_prob -
+                                    (1-combined_prob)) / (combined_decimal-1)) * 100
+
+      Chat card rules:
+      - reply_markdown is the FULL reply rendered in the chat surface.
+      - Open with a 1-line acknowledgement of the angle ("3-leg Real
+        Madrid parlay around +400, here are 3 options:").
+      - Then 3 ticket blocks, each with a heading ("**Ticket 1 — +412
+        (EV +8.4%)**"), the legs as a tight bulleted list (`• selection
+        @ price — justification`), and a one-line Kelly hint.
+      - NEVER name the operator. Use "the sportsbook" / "the book" /
+        "the operator" if needed.
+      - NO "place bet" call to action — the operator's frontend handles
+        placement; the assistant only proposes.
+      - Reply language MUST match `request_language` (en, es, pt, …).
+      - 1-sentence sign-off inviting refinement.
+    schema:
+      title: "RankedTicketsCard"
+      description: "Top-3 parlay tickets + chat-ready reply."
+      type: "object"
+      properties:
+        tickets:
+          type: "array"
+          description: "Top 3 parlay tickets in rank order (best EV first)."
+          minItems: 1
+          maxItems: 3
+          items:
+            type: "object"
+            properties:
+              ticket_id:
+                type: "string"
+                description: "Short id, e.g. 'ticket-1'."
+              rationale:
+                type: "string"
+                description: "1-sentence why this ticket made the cut (EV / target-odds / safer)."
+              legs:
+                type: "array"
+                description: "The legs in this parlay."
+                items:
+                  type: "object"
+                  properties:
+                    leg_id: { type: "string" }
+                    fixture_id: { type: "string" }
+                    match_label: { type: "string" }
+                    market_type: { type: "string" }
+                    selection: { type: "string" }
+                    book_american_odds: { type: "integer" }
+                    model_probability: { type: "number" }
+                    justification: { type: "string" }
+                  required:
+                    ["leg_id", "fixture_id", "match_label", "market_type",
+                     "selection", "book_american_odds", "model_probability",
+                     "justification"]
+              combined_american_odds:
+                type: "integer"
+                description: "Combined American odds for the full ticket."
+              combined_decimal_odds:
+                type: "number"
+                description: "Combined decimal odds (product of per-leg decimals)."
+              combined_probability:
+                type: "number"
+                description: "Product of per-leg model_probability (0.0-1.0)."
+              expected_value_pct:
+                type: "number"
+                description: "(combined_probability * combined_decimal - 1) * 100"
+              kelly_fraction_pct:
+                type: "number"
+                description: "Suggested stake as % of bankroll, clamped at 0 if negative."
+            required:
+              ["ticket_id", "rationale", "legs", "combined_american_odds",
+               "combined_decimal_odds", "combined_probability",
+               "expected_value_pct", "kelly_fraction_pct"]
+        reply_markdown:
+          type: "string"
+          description: "Full markdown reply ready to render in the chat surface."
+        followup_suggestions:
+          type: "array"
+          description: "2-3 quick-reply chips the frontend can render."
+          minItems: 2
+          maxItems: 3
+          items:
+            type: "string"
+            description: "Short suggestion text, max 6 words."
+      required: ["tickets", "reply_markdown", "followup_suggestions"]
