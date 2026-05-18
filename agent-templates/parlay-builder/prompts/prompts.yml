@@ -85,9 +85,12 @@ prompts:
 
       For EVERY leg you MUST emit:
         - book_american_odds: the price you believe the book will offer.
-          Calibrate to realistic market prices — a heavy home favourite
-          might be -250 to -180; a coin-flip is -110/-110; a long-shot
-          BTTS-no in a derby might be +180.
+          When the fixture object includes an `odds` block with concrete
+          moneyline / spread / total prices from a real provider, ANCHOR
+          to those numbers — that's the book's actual line. Only deviate
+          when no live odds are available, in which case calibrate to
+          realistic market prices (heavy favourite -250 to -180, coin
+          flip -110/-110, long-shot BTTS-no in a derby +180, etc).
         - model_probability: YOUR estimate of how often this hits (0.0-1.0).
           Use the fixture context (team form, recent results, absentees,
           home/away). For a fair market your model_probability should be

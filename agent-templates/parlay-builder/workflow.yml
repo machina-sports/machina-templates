@@ -77,42 +77,39 @@ workflow:
         command: "'get_daily_schedule'"
         date: "$.get('target_date')"
       outputs:
-        all_fixtures: |
-          [
-            {
-              '@id': e.get('id'),
-              'kickoff_iso': e.get('date'),
-              'competition': (c.get('competition') or {}).get('name', ''),
-              'competition_id': (c.get('competition') or {}).get('id', ''),
-              'home_team': ((e.get('competitors') or [{}, {}])[0] or {}).get('name', ''),
-              'away_team': ((e.get('competitors') or [{}, {}])[1] or {}).get('name', ''),
-              'match_label': f"{((e.get('competitors') or [{}, {}])[0] or {}).get('name', '')} vs {((e.get('competitors') or [{}, {}])[1] or {}).get('name', '')}",
-              'venue': (e.get('venue') or {}).get('name', ''),
-              'status': (e.get('status') or {}).get('type', '')
-            }
-            for c in ($.get('data', {}).get('schedule', []) or [])
-            for e in (c.get('events', []) or [])
-          ]
-        # Apply the team / competition filter inline so we don't need a
-        # `mapping` task type (which requires a project-level mapping doc).
-        # When `teams` is empty we keep everything; same for competition_id.
+        # Connector envelope is { data: { date, events: [...] } } where each
+        # event already includes competition + competitors + live odds.
+        # Slim the event down to what the leg-generator prompt actually needs.
         fixtures: |
           [
             f for f in (
               [
                 {
-                  '@id': e.get('id'),
-                  'kickoff_iso': e.get('date'),
-                  'competition': (c.get('competition') or {}).get('name', ''),
-                  'competition_id': (c.get('competition') or {}).get('id', ''),
-                  'home_team': ((e.get('competitors') or [{}, {}])[0] or {}).get('name', ''),
-                  'away_team': ((e.get('competitors') or [{}, {}])[1] or {}).get('name', ''),
-                  'match_label': f"{((e.get('competitors') or [{}, {}])[0] or {}).get('name', '')} vs {((e.get('competitors') or [{}, {}])[1] or {}).get('name', '')}",
+                  '@id': str(e.get('id', '')),
+                  'kickoff_iso': e.get('start_time', e.get('date', '')),
+                  'competition': (e.get('competition') or {}).get('name', ''),
+                  'competition_id': (e.get('competition') or {}).get('id', ''),
+                  'home_team': (((e.get('competitors') or [{}, {}])[0] or {}).get('team') or {}).get('name', ''),
+                  'away_team': (((e.get('competitors') or [{}, {}])[1] or {}).get('team') or {}).get('name', ''),
+                  'match_label': (
+                    (((e.get('competitors') or [{}, {}])[0] or {}).get('team') or {}).get('name', '')
+                    + ' vs '
+                    + (((e.get('competitors') or [{}, {}])[1] or {}).get('team') or {}).get('name', '')
+                  ),
                   'venue': (e.get('venue') or {}).get('name', ''),
-                  'status': (e.get('status') or {}).get('type', '')
+                  'status': e.get('status', ''),
+                  # Live book odds (when available) — the LLM uses these as
+                  # the starting point for book_american_odds. Falls back to
+                  # empty dict so the prompt just calibrates from form.
+                  'odds': {
+                    'moneyline': ((e.get('odds') or {}).get('moneyline') or {}),
+                    'total': ((e.get('odds') or {}).get('total') or {}),
+                    'over_under': (e.get('odds') or {}).get('over_under'),
+                    'spread_line': ((e.get('odds') or {}).get('spread_line') or {}),
+                    'provider': (e.get('odds') or {}).get('provider', '')
+                  }
                 }
-                for c in ($.get('data', {}).get('schedule', []) or [])
-                for e in (c.get('events', []) or [])
+                for e in (($.get('data') or {}).get('events') or [])
               ]
             )
             if (
