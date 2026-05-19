@@ -14,7 +14,6 @@ const els = {
   teamChipDot:  $("team-chip-dot"),
   teamChipClr:  $("team-chip-clear"),
   prompt:       $("prompt-input"),
-  quickChips:   $("quick-chips"),
   dropzone:     $("dropzone"),
   refInput:     $("ref-input"),
   dzInner:      $("dropzone-inner"),
@@ -158,14 +157,6 @@ els.teamInput.addEventListener("keydown", (e) => {
   if (activeOption >= 0) opts[activeOption].scrollIntoView({ block: "nearest" });
 });
 
-// ---------- Quick chips ----------
-els.quickChips.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-quick]");
-  if (!btn) return;
-  els.prompt.value = btn.getAttribute("data-quick");
-  els.prompt.focus();
-});
-
 // ---------- Ratio toggle ----------
 els.ratioGroup.addEventListener("click", (e) => {
   const btn = e.target.closest(".ratio");
@@ -271,40 +262,34 @@ function rgbToHex(r, g, b) {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-// ---------- Intent parsing ----------
-// Parses the headline into { kind, opponent?, n? }.
-// kind ∈ "schedule" | "results" | "h2h" | "scorers"
-function parseIntent(text) {
-  const t = (text || "").trim().toLowerCase();
-  if (!t) return { kind: "schedule", n: 5 };
+// ---------- Intent (LLM-driven) ----------
+// The frontend no longer parses headlines locally. The user's free-text
+// prompt is routed through the `social-graphic-intent` workflow, which
+// calls Gemini 2.5 Flash with a typed schema and returns
+//   { kind, count, opponent_name, headline_text, kicker_text, tail_text,
+//     short_status }
+// kind ∈ "schedule" | "results" | "h2h" | "scorers" | "summary"
 
-  const n = (() => {
-    const m = t.match(/\b(\d{1,2})\b/);
-    return m ? Math.max(1, Math.min(10, parseInt(m[1], 10))) : 5;
-  })();
-
-  // head-to-head
-  if (/(\bh2h\b|head.?to.?head|versus|\bvs\.?\b|against)/.test(t)) {
-    // try to extract opponent name (last quoted thing or after the marker)
-    const after = t.replace(/.*?(h2h|head.?to.?head|versus|vs\.?|against)\s*/i, "");
-    return { kind: "h2h", opponent: after.trim(), n };
-  }
-  // top scorers / leaders
-  if (/(scorers?|leaders?|top.?goal|golden boot|assists?)/.test(t)) {
-    return { kind: "scorers", n };
-  }
-  // results / last / recent / past
-  if (/(last|recent|past|results?|form)/.test(t)) {
-    return { kind: "results", n };
-  }
-  // schedule / next / upcoming / fixtures
-  if (/(next|upcoming|fixtures?|schedule|coming)/.test(t)) {
-    return { kind: "schedule", n };
-  }
-  // default — interpret unknown prompts as "next 5"
-  return { kind: "schedule", n };
+async function routeIntent(userPrompt, team) {
+  // Defensive default if the prompt is empty — just show the next 5.
+  const text = (userPrompt || "").trim() || "Next 5 games";
+  const out = await callWorkflow("social-graphic-intent", {
+    user_prompt: text,
+    selected_team: team.name,
+  });
+  // Coerce to the shape the rest of the app expects.
+  return {
+    kind:        out.kind        || "schedule",
+    n:           Math.max(1, Math.min(10, parseInt(out.count, 10) || 5)),
+    opponent:    out.opponent_name || "",
+    headline:    out.headline_text || "",
+    kicker:      out.kicker_text   || "",
+    tail:        out.tail_text     || "",
+    status:      out.short_status  || `Generating "${text}" for ${team.name}…`,
+  };
 }
 
+// Fuzzy match a free-text opponent name to the curated catalog.
 function findOpponent(name) {
   const q = normalize(name);
   if (!q) return null;
@@ -338,35 +323,40 @@ els.cta.addEventListener("click", async () => {
     els.teamInput.focus();
     return;
   }
-  const headline = els.prompt.value.trim() || "Next 5 games";
-  const intent = parseIntent(headline);
+  const userText = els.prompt.value.trim() || "Next 5 games";
 
   setBusy(true);
-  setStatus(`Fetching ${describeIntent(intent)} for ${state.team.name}…`);
+  setStatus(`Reading your prompt…`);
 
   try {
+    // 1. Route the free-text prompt through the LLM intent workflow.
+    const intent = await routeIntent(userText, state.team);
+    setStatus(intent.status);
+
+    // 2. Fetch the data the intent points at.
     const payload = await fetchData(intent, state.team);
+
+    // 3. Render — either with data or as an empty state.
     if (!payload || payload.__empty) {
-      // Render an empty-state graphic so the user still gets something to download.
       lastRender = () => renderGraphic({
         team: state.team,
-        headline,
+        userText,
         intent,
         palette: paletteFor(state.team),
-        empty: payload && payload.__emptyReason || `No data available for "${headline}"`,
+        empty: (payload && payload.__emptyReason) || `No data available for "${userText}"`,
       });
       lastRender();
-      setStatus(payload && payload.__emptyReason || "No data found — showing empty-state graphic.", "error");
+      setStatus((payload && payload.__emptyReason) || "No data found — showing empty-state graphic.", "error");
     } else {
       lastRender = () => renderGraphic({
         team: state.team,
-        headline,
+        userText,
         intent,
         palette: paletteFor(state.team),
         data: payload,
       });
       lastRender();
-      setStatus(`Done. ${describeIntent(intent)} → ${state.team.name}.`, "ok");
+      setStatus(`Done · ${state.team.name} · ${intent.kind}.`, "ok");
     }
     els.previewFrame.classList.add("is-ready");
     els.download.disabled = false;
@@ -379,22 +369,17 @@ els.cta.addEventListener("click", async () => {
   }
 });
 
-function describeIntent(i) {
-  if (i.kind === "schedule") return `next ${i.n} games`;
-  if (i.kind === "results")  return `last ${i.n} results`;
-  if (i.kind === "h2h")      return `head-to-head vs ${i.opponent || "—"}`;
-  if (i.kind === "scorers")  return "league top scorers";
-  return i.kind;
-}
-
 function paletteFor(team) {
-  // reference image overrides team palette when present
-  if (state.refPalette && state.refPalette.length >= 3) {
+  // When a reference image is present, the canvas background IS the image
+  // (with a dark overlay), so `bg` is symbolic — text uses light ink for
+  // contrast and we pull an accent color from the image's dominant hues.
+  if (state.refImage) {
+    const accent = (state.refPalette && state.refPalette[0]) || team.primary;
     return {
-      bg:     state.refPalette[0],
-      accent: state.refPalette[1] || team.primary,
-      ink:    pickContrastInk(state.refPalette[0]),
-      muted:  state.refPalette[2] || "#888",
+      bg:     "#0a0c10",          // unused for image-mode but kept for the API
+      accent,
+      ink:    "#f8f6f0",          // light text always — the overlay is dark
+      muted:  "rgba(248,246,240,0.65)",
       source: "reference image",
     };
   }
@@ -423,6 +408,7 @@ function pickContrastInk(hex, fade = 1) {
 }
 
 // ---------- Data fetching ----------
+// Maps the LLM-routed intent to one of the existing data workflows on the pod.
 async function fetchData(intent, team) {
   if (intent.kind === "schedule" || intent.kind === "results") {
     const out = await callWorkflow("social-graphic-team-schedule", { competitor_id: team.id });
@@ -432,7 +418,7 @@ async function fetchData(intent, team) {
     // Each summary has sport_event.start_time and sport_event_status.status
     const now = Date.now();
     const upcoming = summaries
-      .filter(s => s.sport_event_status && s.sport_event_status.status !== "closed" && s.sport_event_status.status !== "ended"
+      .filter(s => (s.sport_event_status && s.sport_event_status.status !== "closed" && s.sport_event_status.status !== "ended")
                    || (s.sport_event && new Date(s.sport_event.start_time).getTime() > now))
       .sort((a, b) => new Date(a.sport_event.start_time) - new Date(b.sport_event.start_time));
     const recent = summaries
@@ -451,7 +437,7 @@ async function fetchData(intent, team) {
 
   if (intent.kind === "h2h") {
     const opp = findOpponent(intent.opponent);
-    if (!opp) return { __empty: true, __emptyReason: `Opponent "${intent.opponent}" not in catalog. Try a full club name.` };
+    if (!opp) return { __empty: true, __emptyReason: `Opponent "${intent.opponent}" not in our catalog. Try a full club name (e.g. "Real Madrid", "Arsenal FC").` };
     if (opp.id === team.id) return { __empty: true, __emptyReason: "H2H needs two different teams." };
     const out = await callWorkflow("social-graphic-head-to-head", {
       competitor_id_a: team.id, competitor_id_b: opp.id,
@@ -474,24 +460,34 @@ async function fetchData(intent, team) {
     };
   }
 
-  return { __empty: true, __emptyReason: "Unsupported intent." };
+  if (intent.kind === "summary") {
+    // No data feed — the LLM-generated headline IS the content. The renderer
+    // draws a hero card with the headline + team badge.
+    return { type: "summary" };
+  }
+
+  return { __empty: true, __emptyReason: `Unsupported intent: ${intent.kind}` };
 }
 
 // ---------- Canvas renderer ----------
-function renderGraphic({ team, headline, intent, palette, data, empty }) {
+function renderGraphic({ team, userText, intent, palette, data, empty }) {
   const { w, h } = RATIOS[state.ratio];
   els.canvas.width = w; els.canvas.height = h;
   const ctx = els.canvas.getContext("2d");
 
-  // Background — diagonal split: team color + darker variant
+  // Background — either team-color poster OR the user-uploaded reference image
+  // baked in as the canvas background with a legibility overlay.
   drawBackground(ctx, w, h, palette);
 
   // Top bar — date + competition tag
   drawTopBar(ctx, w, h, team, palette, data);
 
-  // Headline block
-  const hl = computedHeadline(intent, team, data);
-  drawHeadline(ctx, w, h, hl, palette);
+  // Headline block — uses the LLM's editorial copy verbatim
+  drawHeadline(ctx, w, h, {
+    kicker: intent.kicker || "",
+    main:   intent.headline || team.short.toUpperCase(),
+    tail:   intent.tail || "",
+  }, palette);
 
   // Main body
   if (empty) {
@@ -504,48 +500,81 @@ function renderGraphic({ team, headline, intent, palette, data, empty }) {
     drawH2H(ctx, w, h, team, data.opponent, data.summaries, palette);
   } else if (data && data.type === "scorers") {
     drawScorers(ctx, w, h, data, team, palette);
+  } else if (data && data.type === "summary") {
+    drawSummary(ctx, w, h, team, intent, palette);
   }
 
   // Footer — team mark + brand
   drawFooter(ctx, w, h, team, palette);
 }
 
-function computedHeadline(intent, team, data) {
-  if (data && data.type === "schedule")    return { kicker: "Upcoming", main: `Next ${data.matches.length}`, tail: "games" };
-  if (data && data.type === "results")     return { kicker: "Form",     main: `Last ${data.matches.length}`, tail: "results" };
-  if (data && data.type === "h2h")         return { kicker: "Head-to-head", main: data.opponent.short.toUpperCase(), tail: "rivalry" };
-  if (data && data.type === "scorers")     return { kicker: data.competition.name, main: `Top ${data.scorers.length}`, tail: "scorers" };
-  return { kicker: intent.kind, main: team.short.toUpperCase(), tail: "" };
-}
-
 function drawBackground(ctx, w, h, p) {
-  // Two-tone diagonal poster.
-  ctx.fillStyle = p.bg;
-  ctx.fillRect(0, 0, w, h);
+  if (state.refImage) {
+    // ---- Reference image becomes the canvas background ----
+    drawImageCover(ctx, state.refImage, 0, 0, w, h);
 
-  // Subtle diagonal swath of the accent
-  ctx.save();
-  ctx.translate(w * 0.5, h * 0.5);
-  ctx.rotate(-Math.PI / 9);
-  ctx.fillStyle = hexAlpha(p.accent, 0.12);
-  ctx.fillRect(-w, -h * 0.18, w * 2, h * 0.36);
-  ctx.restore();
+    // Legibility overlay: dark gradient anchored top-left (where the
+    // headline sits) fading toward bottom-right. Keeps the photograph
+    // visible while leaving the typography sharply readable.
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0,   "rgba(0,0,0,0.78)");
+    grad.addColorStop(0.45,"rgba(0,0,0,0.55)");
+    grad.addColorStop(1,   "rgba(0,0,0,0.20)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
 
-  // Vignette
-  const g = ctx.createRadialGradient(w * 0.5, h * 0.5, h * 0.2, w * 0.5, h * 0.5, h * 0.9);
-  g.addColorStop(0, "rgba(0,0,0,0)");
-  g.addColorStop(1, "rgba(0,0,0,0.45)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
+    // Secondary bottom band so the footer (team mark + brand) stays readable
+    const bg = ctx.createLinearGradient(0, h, 0, h - scale(w, 200));
+    bg.addColorStop(0, "rgba(0,0,0,0.65)");
+    bg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, h - scale(w, 200), w, scale(w, 200));
 
-  // Top-left bracket
-  ctx.strokeStyle = hexAlpha(p.ink, 0.4);
+    // Accent stripe — preserves brand identity through the image
+    ctx.fillStyle = hexAlpha(p.accent, 0.92);
+    ctx.fillRect(0, h - scale(w, 6), w, scale(w, 6));
+  } else {
+    // ---- No reference image — generative two-tone poster ----
+    ctx.fillStyle = p.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle diagonal swath of the accent
+    ctx.save();
+    ctx.translate(w * 0.5, h * 0.5);
+    ctx.rotate(-Math.PI / 9);
+    ctx.fillStyle = hexAlpha(p.accent, 0.12);
+    ctx.fillRect(-w, -h * 0.18, w * 2, h * 0.36);
+    ctx.restore();
+
+    // Vignette
+    const g = ctx.createRadialGradient(w * 0.5, h * 0.5, h * 0.2, w * 0.5, h * 0.5, h * 0.9);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Top-left bracket (looks good over both backgrounds)
+  ctx.strokeStyle = hexAlpha(p.ink, 0.55);
   ctx.lineWidth = scale(w, 3);
   ctx.beginPath();
   ctx.moveTo(margin(w), margin(h) + scale(w, 60));
   ctx.lineTo(margin(w), margin(h));
   ctx.lineTo(margin(w) + scale(w, 60), margin(h));
   ctx.stroke();
+}
+
+// Draws `img` into the (x,y,w,h) box using cover-fit (crops, never letterboxes).
+function drawImageCover(ctx, img, x, y, boxW, boxH) {
+  const iw = img.naturalWidth  || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const fit = Math.max(boxW / iw, boxH / ih);
+  const drawW = iw * fit;
+  const drawH = ih * fit;
+  const dx = x + (boxW - drawW) / 2;
+  const dy = y + (boxH - drawH) / 2;
+  ctx.drawImage(img, dx, dy, drawW, drawH);
 }
 
 function drawTopBar(ctx, w, h, team, p, data) {
@@ -781,6 +810,42 @@ function drawScorers(ctx, w, h, data, team, p) {
 
     y += rowH;
   }
+}
+
+// Hero card — used when kind=summary (the LLM headline IS the content).
+// Renders the user's prompt as a quote-style supporting line below the headline,
+// and the team name as the dominant secondary mark.
+function drawSummary(ctx, w, h, team, intent, p) {
+  const m = margin(w);
+  const y = bodyTop(w, h);
+
+  // Big quote-mark mark on the left
+  ctx.fillStyle = hexAlpha(p.accent, state.refImage ? 0.95 : 0.7);
+  ctx.font = `${scale(w, 160)}px "Bebas Neue", "Archivo Black", sans-serif`;
+  ctx.textBaseline = "top";
+  ctx.fillText("\u201C", m - scale(w, 8), y - scale(w, 60));
+
+  // Render the user's literal prompt as the supporting line — proves the
+  // graphic actually reflects what they asked for.
+  ctx.fillStyle = hexAlpha(p.ink, 0.92);
+  ctx.font = `${scale(w, 26)}px "Space Grotesk", sans-serif`;
+  wrapText(ctx, intent.headline || team.short.toUpperCase() + " — hero card",
+           m, y + scale(w, 90), w - 2 * m, scale(w, 36));
+
+  // Team mark — huge centred
+  ctx.fillStyle = p.ink;
+  ctx.font = `${scale(w, state.ratio === "landscape" ? 110 : 150)}px "Archivo Black", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(team.short.toUpperCase(), w / 2, h - scale(w, state.ratio === "landscape" ? 230 : 320));
+  ctx.textAlign = "left";
+
+  // Sub-line
+  ctx.fillStyle = hexAlpha(p.ink, 0.65);
+  ctx.font = `${scale(w, 16)}px "Space Grotesk", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.fillText(team.league.toUpperCase(), w / 2, h - scale(w, state.ratio === "landscape" ? 170 : 240));
+  ctx.textAlign = "left";
 }
 
 function drawEmpty(ctx, w, h, msg, p) {

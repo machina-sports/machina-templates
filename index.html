@@ -52,27 +52,26 @@
       <div class="field">
         <label class="field__label" for="prompt-input">
           <span class="field__index">02</span>
-          Headline
+          What do you want?
+          <span class="field__hint">free-text — an AI router picks the right data feed</span>
         </label>
         <textarea
           id="prompt-input"
           class="field__textarea"
-          rows="2"
-          placeholder='e.g. "Next 5 games", "Last 10 results", "Head-to-head vs Arsenal", "Top scorers this season"'
+          rows="3"
+          placeholder="Describe the graphic in your own words. Examples:
+• Next 5 games
+• Head-to-head vs Real Madrid
+• Top scorers this season
+• Champions of Europe vibes"
         ></textarea>
-        <div class="chips" id="quick-chips">
-          <button type="button" class="chip" data-quick="Next 5 games">Next 5 games</button>
-          <button type="button" class="chip" data-quick="Last 5 results">Last 5 results</button>
-          <button type="button" class="chip" data-quick="Head-to-head vs ">H2H vs…</button>
-          <button type="button" class="chip" data-quick="Top scorers this season">Top scorers</button>
-        </div>
       </div>
 
       <div class="field">
         <label class="field__label">
           <span class="field__index">03</span>
-          Reference image
-          <span class="field__hint">optional — we'll borrow its palette</span>
+          Background image
+          <span class="field__hint">optional — drop one and it becomes the banner's background</span>
         </label>
         <label class="dropzone" id="dropzone" for="ref-input">
           <input id="ref-input" type="file" accept="image/*" hidden />
@@ -80,7 +79,7 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M12 15V3m0 0l-4 4m4-4l4 4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span>Drop an image or click to upload</span>
+            <span>Drop a background image — it will be baked into the banner</span>
           </div>
           <img id="dropzone-preview" alt="" hidden />
           <button type="button" id="dropzone-clear" class="dropzone__clear" hidden aria-label="Remove reference">×</button>
