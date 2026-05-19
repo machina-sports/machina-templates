@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Pitchprint — Social Graphic Generator</title>
+  <meta name="description" content="Type a headline, pick a team, get a social-ready graphic with live stats baked in." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__dot" aria-hidden="true"></span>
+      <span class="brand__name">Pitchprint</span>
+      <span class="brand__tag">social graphic generator · live data</span>
+    </div>
+    <a class="brand__credit" href="https://machina.gg" target="_blank" rel="noopener">built on machina</a>
+  </header>
+
+  <main class="layout">
+    <!-- LEFT: controls -->
+    <section class="panel panel--controls" aria-label="Graphic controls">
+      <div class="field">
+        <label class="field__label" for="team-input">
+          <span class="field__index">01</span>
+          Team
+        </label>
+        <div class="combo" id="team-combo">
+          <input
+            id="team-input"
+            type="text"
+            class="combo__input"
+            placeholder="Type a club — Man City, Real Madrid, Bayern…"
+            autocomplete="off"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="team-list"
+            aria-expanded="false"
+          />
+          <div class="combo__chip" id="team-chip" hidden>
+            <span class="combo__chip-dot" id="team-chip-dot"></span>
+            <span class="combo__chip-name" id="team-chip-name"></span>
+            <button type="button" class="combo__chip-x" id="team-chip-clear" aria-label="Clear team">×</button>
+          </div>
+          <ul id="team-list" class="combo__list" role="listbox" hidden></ul>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="prompt-input">
+          <span class="field__index">02</span>
+          Headline
+        </label>
+        <textarea
+          id="prompt-input"
+          class="field__textarea"
+          rows="2"
+          placeholder='e.g. "Next 5 games", "Last 10 results", "Head-to-head vs Arsenal", "Top scorers this season"'
+        ></textarea>
+        <div class="chips" id="quick-chips">
+          <button type="button" class="chip" data-quick="Next 5 games">Next 5 games</button>
+          <button type="button" class="chip" data-quick="Last 5 results">Last 5 results</button>
+          <button type="button" class="chip" data-quick="Head-to-head vs ">H2H vs…</button>
+          <button type="button" class="chip" data-quick="Top scorers this season">Top scorers</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label">
+          <span class="field__index">03</span>
+          Reference image
+          <span class="field__hint">optional — we'll borrow its palette</span>
+        </label>
+        <label class="dropzone" id="dropzone" for="ref-input">
+          <input id="ref-input" type="file" accept="image/*" hidden />
+          <div class="dropzone__inner" id="dropzone-inner">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 15V3m0 0l-4 4m4-4l4 4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Drop an image or click to upload</span>
+          </div>
+          <img id="dropzone-preview" alt="" hidden />
+          <button type="button" id="dropzone-clear" class="dropzone__clear" hidden aria-label="Remove reference">×</button>
+        </label>
+        <div class="palette-strip" id="palette-strip" hidden></div>
+      </div>
+
+      <div class="field">
+        <label class="field__label">
+          <span class="field__index">04</span>
+          Ratio
+        </label>
+        <div class="ratio-group" role="radiogroup" aria-label="Output aspect ratio">
+          <button type="button" class="ratio is-active" data-ratio="square" role="radio" aria-checked="true">
+            <span class="ratio__box ratio__box--square"></span>
+            <span class="ratio__label">Square<br><em>1080×1080</em></span>
+          </button>
+          <button type="button" class="ratio" data-ratio="landscape" role="radio" aria-checked="false">
+            <span class="ratio__box ratio__box--landscape"></span>
+            <span class="ratio__label">Landscape<br><em>1920×1080</em></span>
+          </button>
+          <button type="button" class="ratio" data-ratio="vertical" role="radio" aria-checked="false">
+            <span class="ratio__box ratio__box--vertical"></span>
+            <span class="ratio__label">Vertical<br><em>1080×1920</em></span>
+          </button>
+        </div>
+      </div>
+
+      <button type="button" class="cta" id="generate-btn">
+        <span class="cta__label">Generate graphic</span>
+        <span class="cta__arrow" aria-hidden="true">→</span>
+      </button>
+
+      <p class="hint" id="status-line" aria-live="polite" aria-atomic="true">
+        Pick a team, type what you want, hit generate.
+      </p>
+    </section>
+
+    <!-- RIGHT: preview -->
+    <section class="panel panel--preview" aria-label="Preview">
+      <div class="preview-stage">
+        <div class="preview-frame" id="preview-frame" data-ratio="square">
+          <canvas id="canvas" width="1080" height="1080" aria-label="Generated graphic preview"></canvas>
+          <div class="preview-empty" id="preview-empty">
+            <div class="preview-empty__mark">⚽</div>
+            <div class="preview-empty__title">your graphic will appear here</div>
+            <div class="preview-empty__sub">real stats baked in · ready to post</div>
+          </div>
+        </div>
+      </div>
+      <div class="preview-actions">
+        <button type="button" class="download" id="download-btn" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Download PNG
+        </button>
+        <div class="meta-line" id="meta-line"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Data: Sportradar · Soccer competitions only (Premier League, La Liga, Serie A, Bundesliga, Ligue 1, etc.)</span>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
