@@ -1,22 +1,29 @@
-# Weekly Token Report
+# Token Usage Report
 
-Cron-driven weekly token-consumption report for any Machina pod. Reads
-the pod's own `/execution/workflow-search` and `/execution/agent-search`
-endpoints, aggregates by name, renders a PDF, ships to email + Slack.
+Cron-driven token-consumption report for any Machina pod. ONE template,
+TWO cadences — schedule it weekly (Monday 9am UTC, last completed
+Mon-Sun) AND monthly (1st of month 9am UTC, last completed calendar
+month). The `period_mode` input picks the window; the same workflow
+handles both.
+
+Reads the pod's own `/execution/workflow-search` and
+`/execution/agent-search` endpoints, aggregates by name, renders a
+PDF, ships to email + Slack.
 
 ## What you get
 
-Every Monday 9 a.m. UTC (configurable):
+Each scheduled run:
 
 - **Email** with the PDF attached and the headline numbers in the body.
 - **Slack** message with a clickable "Open PDF" button.
 - **PDF on GCS** — public URL valid as long as the bucket's object lives.
 
-The PDF (using `pdf-generator:metrics-report`) carries:
+The PDF (rendered via `pdf-generator:metrics-report`) contains:
 
-- Title row + period range
-- 4 summary KPI cards (total tokens, total runs, avg/run, success rate)
-- **By workflow / agent** — table of top 15 + an "others" bucket
+- Title — `<project> · <Weekly|Monthly> Token Report`
+- Period range (e.g. `May 12 – May 18, 2026 (UTC)` weekly, or `April 2026 (UTC)` monthly)
+- 4 summary KPI cards (total tokens, total runs, avg/run, success rate) with period-over-period delta
+- **By workflow / agent** — table of top 15 consumers + an "others" row
 - **By day** — token + run count per calendar day in the window
 - **Distribution** — p50 / p95 / max tokens per run
 - **Top consuming runs** — 5 most expensive bullets
@@ -26,66 +33,88 @@ The PDF (using `pdf-generator:metrics-report`) carries:
 ## Install
 
 ```bash
-machina template install agent-templates/weekly-token-report
-```
-
-This pulls in two new connectors (`token-aggregator` is bundled
-inline; `resend` and `slack-webhook` install separately if you don't
-already have them):
-
-```bash
+machina template install agent-templates/pdf-generator        # prerequisite
 machina connector install resend
 machina connector install slack-webhook
-# pdf-generator must also be present (existing template):
-machina template install agent-templates/pdf-generator
+machina template install agent-templates/token-usage-report
 ```
 
 ## Required vault keys
 
 | Key | What |
 |---|---|
-| `WEEKLY_TOKEN_REPORT_API_BASE_URL` | The pod's own public URL (e.g. `https://entain-organization-sports-interaction-v2.org.machina.gg`) |
-| `WEEKLY_TOKEN_REPORT_API_KEY` | The pod's own API key (same as `x-api-token` you use from Studio) |
-| `WEEKLY_TOKEN_REPORT_PROJECT_LABEL` | Display name (e.g. `Sports Interaction v2`) |
-| `WEEKLY_TOKEN_REPORT_BRAND_COLOR` | Hex accent for the PDF (e.g. `#FE4000`) |
-| `WEEKLY_TOKEN_REPORT_EMAIL_FROM` | Sender (e.g. `Machina Reports <reports@yourdomain.com>`); use `onboarding@resend.dev` if you don't have a verified domain |
-| `WEEKLY_TOKEN_REPORT_EMAIL_TO` | Comma-separated recipient list |
+| `TOKEN_REPORT_API_BASE_URL` | The pod's own public URL (e.g. `https://machina-reports-reports.org.machina.gg`) |
+| `TOKEN_REPORT_API_KEY` | The pod's own API key |
+| `TOKEN_REPORT_PROJECT_LABEL` | Display name (e.g. `Machina Reports`) |
+| `TOKEN_REPORT_BRAND_COLOR` | Hex accent for the PDF (e.g. `#FE4000`) |
+| `TOKEN_REPORT_EMAIL_FROM` | Sender (e.g. `Machina Reports <reports@yourdomain.com>`); use `onboarding@resend.dev` if you don't have a verified domain |
+| `TOKEN_REPORT_EMAIL_TO` | Comma-separated recipient list |
 | `RESEND_API_KEY` | From the Resend dashboard |
 | `SLACK_WEBHOOK_URL` | Full webhook URL `https://hooks.slack.com/services/T.../B.../...` |
 | `GOOGLE_STORAGE_API_KEY` | Service-account JSON (already present if pdf-generator is installed) |
 | `GOOGLE_STORAGE_BUCKET_NAME` | GCS bucket where PDFs land |
 
-## Schedule (recommended)
+## Recommended schedules — set both
 
-Run weekly on Monday 9 a.m. UTC via the pod's scheduler:
+Run the SAME workflow twice with different inputs:
 
-```bash
-pod_mcp_call schedule_workflow_name --name weekly-token-report --cron "0 9 * * MON"
-```
+### Weekly — every Monday at 9am UTC
 
-Or run on-demand from Studio / CLI:
+Covers the last completed Mon-Sun (UTC). Lands the Monday after.
 
 ```bash
-machina workflow run weekly-token-report
+pod_mcp_call schedule_workflow_name \
+  --name token-usage-report \
+  --cron "0 9 * * MON" \
+  --inputs '{"period_mode":"previous_week"}'
 ```
 
-Override the window for a one-off backfill:
+### Monthly — every 1st of the month at 9am UTC
+
+Covers the last completed calendar month (1st 00:00 → last day 23:59 UTC).
+Lands on the 1st.
 
 ```bash
-machina workflow run weekly-token-report period_days=30
+pod_mcp_call schedule_workflow_name \
+  --name token-usage-report \
+  --cron "0 9 1 * *" \
+  --inputs '{"period_mode":"previous_month"}'
 ```
 
-## Disabling a channel
-
-Set the input on the cron invocation:
+### On-demand backfill / debug
 
 ```bash
-pod_mcp_call schedule_workflow_name --name weekly-token-report \
-  --cron "0 9 * * MON" --inputs '{"notify_slack": false}'
+# Default = previous week
+machina workflow run token-usage-report
+
+# Last calendar month
+machina workflow run token-usage-report period_mode=previous_month
+
+# Custom rolling window (e.g. last 30 days)
+machina workflow run token-usage-report period_mode=rolling_days period_days=30
 ```
 
-Or skip the relevant vault key entirely — the wrapper workflows
-condition on the secret being non-empty.
+## period_mode reference
+
+| Mode | Window | Use it for |
+|---|---|---|
+| `previous_week` (default) | Last completed Monday 00:00 → Sunday 23:59:59 UTC | Monday cron — captures the week that just ended |
+| `previous_month` | 1st of last month 00:00 → last day 23:59:59 UTC | 1st-of-month cron — captures the month that just closed |
+| `rolling_days` | `now - period_days` → now | Manual / ad-hoc debugging; defaults to 7 days |
+
+## Disabling a channel per schedule
+
+Set the toggle in the schedule's `--inputs`:
+
+```bash
+pod_mcp_call schedule_workflow_name \
+  --name token-usage-report \
+  --cron "0 9 1 * *" \
+  --inputs '{"period_mode":"previous_month","notify_slack":false}'
+```
+
+Or skip the relevant vault key — the wrapper workflows condition on
+the secret being non-empty so absence = silently skip.
 
 ## Customizing
 
@@ -94,3 +123,25 @@ The aggregator (`connectors/token-aggregator.py`) groups by
 `wc-bracket-*` workflows into one row), edit `_row_name()`. The
 metrics-report payload schema is in pdf-generator's README — add new
 sections by extending the `sections` array in `invoke_aggregate()`.
+
+## Multi-pod (centralized reports)
+
+This template aggregates the pod IT'S INSTALLED ON by default. To
+pull from multiple customer pods into one centralized reports pod:
+install on the reports pod, then schedule one workflow per customer
+pod, each overriding `api_base_url` + `api_key` per schedule:
+
+```bash
+pod_mcp_call schedule_workflow_name \
+  --name token-usage-report \
+  --cron "0 9 * * MON" \
+  --inputs '{
+    "period_mode":"previous_week",
+    "api_base_url":"https://customer-pod-A.org.machina.gg",
+    "api_key":"<customer A pod api key>",
+    "project_label":"Customer A"
+  }'
+```
+
+The aggregator is stateless — running it N times against N pods
+produces N reports.

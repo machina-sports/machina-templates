@@ -1,18 +1,18 @@
 setup:
-  title: "Weekly Token Report"
-  description: "Cron-driven weekly token-consumption report for any Machina pod. Aggregates the pod's own /execution/* over the last N days (default 7), renders a PDF via pdf-generator's metrics-report layout, uploads to GCS, then notifies via email (Resend) and Slack (incoming webhook)."
+  title: "Token Usage Report"
+  description: "Cron-driven token-consumption report for any Machina pod. Runs weekly (last Mon-Sun) AND/OR monthly (last calendar month) via the same template — the cadence is selected per-schedule via `period_mode` input. Aggregates the pod's own /execution/* endpoints, renders a multi-section PDF via the existing pdf-generator template, and ships to email (Resend) + Slack (incoming webhook)."
   category:
     - custom-templates
     - notifications
   estimatedTime: 10 minutes
   features:
     - "Pure pod-side aggregation — no external billing service. Reads /execution/workflow-search + /execution/agent-search."
-    - "Top consumers, daily breakdown, p50 / p95 / max distribution, week-over-week delta"
-    - "Renders to a multi-section PDF via the existing pdf-generator template"
-    - "Email delivery via Resend (free tier OK for weekly cadence)"
-    - "Slack notification via Incoming Webhook with a clickable Open PDF button"
-    - "Either channel can be toggled off (notify_email / notify_slack inputs)"
-    - "Designed to be scheduled by pod_mcp_call(schedule_workflow_name) — every Monday 9am UTC recommended"
+    - "Same template, two cadences — schedule weekly Monday 9am UTC AND monthly 1st 9am UTC, each picks its own window via `period_mode` input."
+    - "Top consumers table, daily breakdown, p50 / p95 / max distribution, period-over-period delta."
+    - "Renders to a multi-section PDF via the existing pdf-generator (metrics-report layout)."
+    - "Email delivery via Resend (free tier 100/day covers weekly + monthly easily)."
+    - "Slack notification via Incoming Webhook with a clickable Open PDF button."
+    - "Either channel can be toggled off per-schedule (notify_email / notify_slack inputs)."
   integrations:
     - resend
     - slack
@@ -23,7 +23,7 @@ setup:
     - Google-Storage-API-Key
     - Pod-self-API-Key
   status: available
-  value: "agent-templates/weekly-token-report"
+  value: "agent-templates/token-usage-report"
   version: 1.0.0
 
 datasets:
@@ -32,4 +32,4 @@ datasets:
     path: "connectors/token-aggregator.yml"
 
   - type: "workflow"
-    path: "weekly-token-report.yml"
+    path: "token-usage-report.yml"

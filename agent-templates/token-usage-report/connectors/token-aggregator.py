@@ -18,7 +18,16 @@ Inputs (all optional except api_base_url + api_key):
     api_base_url     pod's own public URL (e.g.
                      https://entain-organization-sports-interaction-v2.org.machina.gg)
     api_key          x-api-token for the same pod
-    period_days      window size, default 7
+    period_mode      one of:
+                       "previous_week"  — last completed Mon-Sun (UTC)
+                                          [recommended for Monday cron]
+                       "previous_month" — last completed calendar month
+                                          [recommended for 1st-of-month cron]
+                       "rolling_days"   — last N days from now
+                                          [requires period_days]
+                     default: "previous_week"
+    period_days      window size when period_mode == "rolling_days",
+                     default 7. Ignored for previous_week / previous_month.
     project_label    display name for the report header
     page_size_cap    max executions to scan per source (default 5000;
                      bumps over this paginate)
@@ -230,6 +239,50 @@ def _by_day(rows, since_dt, until_dt):
 
 
 # ---------------------------------------------------------------------------
+# Window computation per period_mode
+# ---------------------------------------------------------------------------
+
+
+def _compute_window(period_mode, period_days, now):
+    """Return (since, until, prev_since, prev_until, mode_label) for the
+    given period_mode. All datetimes are UTC. The previous-window pair
+    is used for week-over-week / month-over-month delta math — same
+    length as the primary window, immediately preceding it."""
+
+    if period_mode == "previous_month":
+        # First day of THIS calendar month at 00:00:00 UTC
+        this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Last day of PREVIOUS month at 23:59:59 UTC
+        prev_month_end = this_month_start - timedelta(microseconds=1)
+        # First day of PREVIOUS month
+        prev_month_start = prev_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Month before THAT, for delta
+        prev_prev_end = prev_month_start - timedelta(microseconds=1)
+        prev_prev_start = prev_prev_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return prev_month_start, prev_month_end, prev_prev_start, prev_prev_end, "Monthly"
+
+    if period_mode == "previous_week":
+        # ISO weekday: Monday=1 ... Sunday=7. Last completed week is the
+        # Monday-Sunday block strictly before this Monday.
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        days_since_monday = today_midnight.isoweekday() - 1
+        this_monday = today_midnight - timedelta(days=days_since_monday)
+        prev_sunday = this_monday - timedelta(microseconds=1)
+        prev_monday = (prev_sunday - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+        # Week before THAT, for delta
+        prev_prev_sunday = prev_monday - timedelta(microseconds=1)
+        prev_prev_monday = (prev_prev_sunday - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+        return prev_monday, prev_sunday, prev_prev_monday, prev_prev_sunday, "Weekly"
+
+    # rolling_days (default — backward compatible)
+    since = now - timedelta(days=period_days)
+    prev_since = since - timedelta(days=period_days)
+    prev_until = since
+    label = f"Last {period_days}d"
+    return since, now, prev_since, prev_until, label
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
@@ -245,6 +298,7 @@ def invoke_aggregate(*args, **kwargs):
 
     api_base_url = inputs.get("api_base_url") or ""
     api_key = inputs.get("api_key") or ""
+    period_mode = inputs.get("period_mode") or "previous_week"
     period_days = int(inputs.get("period_days") or 7)
     project_label = inputs.get("project_label") or "Project"
     page_size_cap = int(inputs.get("page_size_cap") or 5000)
@@ -253,26 +307,24 @@ def invoke_aggregate(*args, **kwargs):
 
     if not api_base_url or not api_key:
         return {
-            "data": _empty_payload(project_label, period_days, brand_color, "Missing api_base_url or api_key — set TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_API_BASE_URL and TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_API_KEY in the vault."),
+            "data": _empty_payload(project_label, period_mode, period_days, brand_color, "Missing api_base_url or api_key — set TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_BASE_URL and TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_KEY in the vault."),
             "data_uri": None,
         }
 
     now = datetime.now(timezone.utc)
-    since = now - timedelta(days=period_days)
-    prev_since = since - timedelta(days=period_days)
-    prev_until = since
+    since, until, prev_since, prev_until, mode_label = _compute_window(period_mode, period_days, now)
 
     # --- Current window ------------------------------------------------
     wf_rows, wf_err = _fetch_executions(
         api_base_url, api_key, "execution/workflow-search",
-        since.isoformat(), now.isoformat(), page_size_cap,
+        since.isoformat(), until.isoformat(), page_size_cap,
     )
     ag_rows, ag_err = _fetch_executions(
         api_base_url, api_key, "execution/agent-search",
-        since.isoformat(), now.isoformat(), page_size_cap,
+        since.isoformat(), until.isoformat(), page_size_cap,
     )
 
-    # --- Previous window (for week-over-week delta) -------------------
+    # --- Previous window (for period-over-period delta) ---------------
     wf_prev, _ = _fetch_executions(
         api_base_url, api_key, "execution/workflow-search",
         prev_since.isoformat(), prev_until.isoformat(), page_size_cap,
@@ -289,12 +341,19 @@ def invoke_aggregate(*args, **kwargs):
     total_runs = len(rows)
     total_tokens_prev = sum(_row_tokens(r) for r in rows_prev) or 0
 
-    # WoW delta. Avoid div-by-zero by printing absolute when prev is 0.
+    # Period-over-period delta. Avoid div-by-zero by printing absolute
+    # when prev is 0. Delta noun matches the mode so the card reads
+    # naturally ("vs prev week" / "vs prev month").
+    delta_noun = {
+        "previous_week": "prev week",
+        "previous_month": "prev month",
+        "rolling_days": "prev period",
+    }.get(period_mode, "prev period")
     if total_tokens_prev > 0:
         delta_pct = ((total_tokens - total_tokens_prev) / total_tokens_prev) * 100
-        delta_str = f"{delta_pct:+.0f}% vs prev week"
+        delta_str = f"{delta_pct:+.0f}% vs {delta_noun}"
     elif total_tokens > 0:
-        delta_str = "first week with data"
+        delta_str = f"first {delta_noun.replace('prev ', '')} with data"
     else:
         delta_str = ""
 
@@ -311,7 +370,7 @@ def invoke_aggregate(*args, **kwargs):
         p50 = p95 = p_max = 0
 
     by_name = _aggregate(rows, include_failed)
-    by_day = _by_day(rows, since, now)
+    by_day = _by_day(rows, since, until)
 
     # Status breakdown
     status_counts = {}
@@ -324,10 +383,22 @@ def invoke_aggregate(*args, **kwargs):
     ) if total_runs > 0 else 0
 
     # Build metrics-report payload --------------------------------------
-    period_str = f"{since.strftime('%b %-d')} – {now.strftime('%b %-d, %Y')} (UTC)"
+    # Period label adapts to mode:
+    #   weekly:  "May 12 – May 18, 2026 (UTC)"
+    #   monthly: "April 2026 (UTC)"
+    #   rolling: "May 13 – May 20, 2026 (UTC)"
+    if period_mode == "previous_month":
+        period_str = f"{since.strftime('%B %Y')} (UTC)"
+        intro_window = f"in {since.strftime('%B %Y')}"
+    elif period_mode == "previous_week":
+        period_str = f"{since.strftime('%b %-d')} – {until.strftime('%b %-d, %Y')} (UTC)"
+        intro_window = f"in the week of {since.strftime('%b %-d')}"
+    else:
+        period_str = f"{since.strftime('%b %-d')} – {until.strftime('%b %-d, %Y')} (UTC)"
+        intro_window = f"in the last {period_days} days"
 
     intro_parts = [
-        f"{_format_number(total_tokens)} tokens consumed across {total_runs} runs in the last {period_days} days."
+        f"{_format_number(total_tokens)} tokens consumed across {total_runs} runs {intro_window}."
     ]
     if by_name:
         top = by_name[0]
@@ -404,7 +475,7 @@ def invoke_aggregate(*args, **kwargs):
         sections.append({
             "title": "Top consuming runs",
             "bullets": [
-                f"{_row_name(r)} — {_format_number(_row_tokens(r))} tokens ({(_row_date(r) or now).strftime('%b %-d %H:%M')})"
+                f"{_row_name(r)} — {_format_number(_row_tokens(r))} tokens ({(_row_date(r) or until).strftime('%b %-d %H:%M')})"
                 for r in expensive
             ],
         })
@@ -427,16 +498,17 @@ def invoke_aggregate(*args, **kwargs):
     if ag_err:
         notes.append(f"agent-search partial: {ag_err}")
     notes.append(f"Source: {api_base_url}/execution/{{workflow,agent}}-search")
-    notes.append(f"Window: {since.isoformat()} → {now.isoformat()}")
+    notes.append(f"Window: {since.isoformat()} → {until.isoformat()}")
+    notes.append(f"Mode: {period_mode}")
 
     payload = {
-        "title": f"{project_label} · Weekly Token Report",
+        "title": f"{project_label} · {mode_label} Token Report",
         "period": period_str,
         "intro": " ".join(intro_parts),
         "summary_cards": summary_cards,
         "sections": sections,
         "notes": notes,
-        "footer": f"Generated by weekly-token-report · {now.strftime('%Y-%m-%d %H:%M UTC')}",
+        "footer": f"Generated by token-usage-report · {now.strftime('%Y-%m-%d %H:%M UTC')}",
     }
 
     return {
@@ -445,19 +517,25 @@ def invoke_aggregate(*args, **kwargs):
         "total_runs": total_runs,
         "total_tokens_prev": total_tokens_prev,
         "period_from": since.isoformat(),
-        "period_to": now.isoformat(),
+        "period_to": until.isoformat(),
+        "period_mode": period_mode,
+        "mode_label": mode_label,
         "brand_color": brand_color,
     }
 
 
-def _empty_payload(project_label, period_days, brand_color, reason):
+def _empty_payload(project_label, period_mode, period_days, brand_color, reason):
     """Return a valid-but-empty metrics-report payload so the downstream
     PDF render still produces a one-page report instead of crashing."""
     now = datetime.now(timezone.utc)
-    since = now - timedelta(days=period_days)
+    since, until, _, _, mode_label = _compute_window(period_mode, period_days, now)
+    if period_mode == "previous_month":
+        period_str = f"{since.strftime('%B %Y')} (UTC)"
+    else:
+        period_str = f"{since.strftime('%b %-d')} – {until.strftime('%b %-d, %Y')} (UTC)"
     return {
-        "title": f"{project_label} · Weekly Token Report",
-        "period": f"{since.strftime('%b %-d')} – {now.strftime('%b %-d, %Y')} (UTC)",
+        "title": f"{project_label} · {mode_label} Token Report",
+        "period": period_str,
         "intro": f"No data: {reason}",
         "summary_cards": [
             {"label": "Total tokens", "value": "0"},
@@ -465,5 +543,5 @@ def _empty_payload(project_label, period_days, brand_color, reason):
         ],
         "sections": [],
         "notes": [reason],
-        "footer": f"Generated by weekly-token-report · {now.strftime('%Y-%m-%d %H:%M UTC')}",
+        "footer": f"Generated by token-usage-report · {now.strftime('%Y-%m-%d %H:%M UTC')}",
     }
