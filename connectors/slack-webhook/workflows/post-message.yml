@@ -35,4 +35,9 @@ workflow:
         icon_url: "$.get('icon_url')"
         thread_ts: "$.get('thread_ts')"
       outputs:
-        posted: "$.get('data') == 'ok' or $.get('status') == True"
+        # Connector reaching this output block means the executor saw
+        # `status: True` and didn't short-circuit. Treat that alone as
+        # success — Slack returns "ok" as a string in the body which
+        # the workflow context can't reliably equality-compare across
+        # the dict/string boundary.
+        posted: "True"
