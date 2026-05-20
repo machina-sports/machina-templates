@@ -2,7 +2,7 @@ workflow:
 
   name: "send-email"
   title: "Resend · Send Email"
-  description: "Thin wrapper around Resend's POST /emails. Takes a simple {from, to, subject, html, attachments} shape, returns the Resend message id. Use this from any other workflow that needs to fire a transactional email — keeps the connector call shape in one place so callers don't reimplement bearer auth + body envelope each time."
+  description: "Thin wrapper around Resend's POST /emails. Takes a simple {from, to, subject, html, text, attachments} shape, returns the Resend message id. The Resend API key is pulled from the vault via context-variables (TEMP_CONTEXT_VARIABLE_RESEND_API_KEY) so callers never have to plumb the bearer."
   context-variables:
     debugger:
       enabled: true

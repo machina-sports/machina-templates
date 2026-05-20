@@ -2,12 +2,15 @@ workflow:
 
   name: "slack-post-message"
   title: "Slack · Post Message"
-  description: "Thin wrapper around Slack's Incoming Webhook. Takes the full webhook URL from the vault (single SLACK_WEBHOOK_URL secret), splits it into the 3 path segments the connector expects, posts the message. Use this from any workflow that needs to fire a notification — keeps the URL-parsing in one place instead of each caller reimplementing it."
+  description: "Thin wrapper around Slack's Incoming Webhook. Pulls the webhook URL from the vault on its own (TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL), splits into the 3 path segments the connector expects, posts the message. Callers pass only `text`/`blocks`/`username`/`icon_emoji` — the URL stays vault-side."
   context-variables:
     debugger:
       enabled: true
+    # Resolve the vault secret here — workflow engine substitutes
+    # `$TEMP_CONTEXT_VARIABLE_*` to the actual value at task execution.
+    slack:
+      webhook_url: "$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL"
   inputs:
-    webhook_url: "$.get('webhook_url', '$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL')"
     text: "$.get('text', '')"
     blocks: "$.get('blocks', [])"
     username: "$.get('username', '')"
@@ -18,14 +21,13 @@ workflow:
     workflow-status: "$.get('posted') and 'executed' or 'failed'"
   tasks:
 
-    # The webhook URL pattern is https://hooks.slack.com/services/<TEAM>/<WEBHOOK>/<TOKEN>.
-    # We split on '/services/' and then on '/' to get the three segments.
-    # Defensive: if the URL is empty or malformed, leave the segments
-    # blank so the connector call fails cleanly with a 4xx instead of
-    # silently hitting a wrong URL.
+    # Split the resolved webhook URL into team_id / webhook_id / token.
+    # The context-variables block above injects `webhook_url` into the
+    # task context (see machina-client-api/core/workflow/context.py
+    # line ~845 — secret values get set_item'd by name).
     - type: "mapping"
       name: "split-webhook-url"
-      description: "Extract team_id / webhook_id / token from the Slack incoming-webhook URL."
+      description: "Extract team_id / webhook_id / token from the resolved Slack incoming-webhook URL."
       inputs:
         url: "$.get('webhook_url', '')"
       outputs:
