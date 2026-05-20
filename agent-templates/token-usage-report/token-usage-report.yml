@@ -20,20 +20,26 @@ workflow:
     # previous_week / previous_month.
     period_days: "$.get('period_days', 7)"
 
-    # Pod self-reference + display config + delivery config all come
-    # from vault. The workflow engine substitutes `$TEMP_CONTEXT_VARIABLE_*`
-    # ONLY when the entire input value IS the $NAME — it does NOT
-    # substitute when the $NAME is a default value inside a $.get()
-    # Python expression. So these inputs are always vault-sourced;
-    # cron schedules that want to override use `--inputs` to pass
-    # specific values, but the override path requires changing the
-    # input expression too. For v1 we treat vault as the source of truth.
-    api_base_url: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_BASE_URL"
-    api_key: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_KEY"
-    project_label: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_PROJECT_LABEL"
-    brand_color: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_BRAND_COLOR"
-    email_from: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_FROM"
-    email_to: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_TO"
+    # All config passed explicitly by the caller (cron / ad-hoc). The
+    # workflow engine's $NAME substitution only fires inside
+    # `context-variables` blocks scoped by connector name — it can't
+    # resolve vault entries into arbitrary input defaults. So the
+    # scheduler passes everything in the cron's --inputs block:
+    #   {
+    #     "period_mode": "previous_week",
+    #     "api_base_url": "http://localhost:5003",
+    #     "api_key": "<pod api key>",
+    #     "project_label": "Machina Reports",
+    #     "brand_color": "#FE4000",
+    #     "email_from": "...",
+    #     "email_to": "..."
+    #   }
+    api_base_url: "$.get('api_base_url', '')"
+    api_key: "$.get('api_key', '')"
+    project_label: "$.get('project_label', 'Project')"
+    brand_color: "$.get('brand_color', '#0A2540')"
+    email_from: "$.get('email_from', '')"
+    email_to: "$.get('email_to', '')"
 
     # Channel toggles — let the operator opt-out of one channel
     # without uninstalling.
