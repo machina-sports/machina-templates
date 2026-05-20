@@ -69,10 +69,17 @@ workflow:
         api_key: "$.get('api_key')"
         period_mode: "$.get('period_mode')"
         period_days: "$.get('period_days')"
-        # Project label that lands in the PDF title — combine org +
-        # project when both present so the PDF heading reads
-        # "Entain · SBOT Production · Weekly Token Report".
+        # Combine org + project into the SINGLE label the aggregator
+        # uses for the PDF title. Subsequent tasks (email, slack)
+        # read `project_label` from workflow context AFTER it's been
+        # updated here, so they MUST NOT prepend org_label again
+        # (would produce "Entain · Entain · ..." duplication).
         project_label: "f\"{($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')}\""
+        # Higher cap for production pods — sbot-prd runs ~1500 exec/day,
+        # so a 7-day window is ~10k rows. The default 2000 truncated
+        # billing-relevant data. max_pages=20 in the pyscript bounds
+        # the worst case to 10k rows per source anyway.
+        page_size_cap: "50000"
         brand_color: "$.get('brand_color')"
       outputs:
         report_payload: "$.get('payload')"
@@ -138,13 +145,13 @@ workflow:
         api_key: "$.get('api_key')"
         from: "$.get('email_from')"
         to: "$.get('email_to')"
-        # Subject and body always lead with "<Org> · <Project>" when
-        # an org_label is provided, otherwise just the project. Same
-        # naming used in the PDF title (set by the aggregator), the
-        # Slack message, and the email — single source of truth for
-        # billing readability.
-        subject: "f\"{($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')} · {$.get('mode_label', 'Report')} Token Report\""
-        text: "f\"{$.get('mode_label', 'Report')} token report for {($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url') or 'PDF unavailable this run'}\""
+        # project_label was ALREADY combined with org_label upstream in
+        # aggregate-tokens task input substitution — workflow context
+        # now holds the combined form "Entain · SBOT Production".
+        # Re-prepending org_label here would produce "Entain · Entain
+        # · SBOT Production". Use project_label as-is.
+        subject: "f\"{$.get('project_label')} · {$.get('mode_label', 'Report')} Token Report\""
+        text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('project_label')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url') or 'PDF unavailable this run'}\""
       outputs:
         email_message_id: "$.get('id')"
 
@@ -159,6 +166,8 @@ workflow:
         command: "invoke_post"
       inputs:
         webhook_url: "$.get('webhook_url')"
-        text: "f\":bar_chart: *{($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• PDF: {$.get('pdf_url') or '(unavailable)'}\""
+        # project_label already includes org prefix (set by
+        # aggregate-tokens above). Don't re-prepend.
+        text: "f\":bar_chart: *{$.get('project_label')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• PDF: {$.get('pdf_url') or '(unavailable)'}\""
       outputs:
         slack_posted: "True"
