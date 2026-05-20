@@ -48,4 +48,4 @@ workflow:
         attachments: "$.get('attachments')"
         tags: "$.get('tags')"
       outputs:
-        message_id: "$.get('data', {}).get('id')"
+        message_id: "$.get('id')"
