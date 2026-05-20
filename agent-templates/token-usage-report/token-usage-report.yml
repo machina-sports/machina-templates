@@ -6,8 +6,15 @@ workflow:
   context-variables:
     debugger:
       enabled: true
+    # Resolve all vault entries into the workflow context. The engine
+    # only substitutes `$TEMP_CONTEXT_VARIABLE_*` here (block-scoped by
+    # connector name) — not inside `inputs` expressions. After the
+    # connector task fires, the value lands in workflow context AND on
+    # the task's headers.
     resend:
-      authorization: "$TEMP_CONTEXT_VARIABLE_RESEND_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_RESEND_API_KEY"
+    slack-webhook:
+      webhook_url: "$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL"
     google-storage:
       api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
       bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
@@ -111,29 +118,37 @@ workflow:
     #    recipient list parsed inline from comma-separated vault value;
     #    no mapping task — that's reserved for registered mappings)
     # ---------------------------------------------------------------
-    - type: workflow
-      name: send-email
-      description: "Fire email via Resend. Compose subject/body via simple f-string."
-      workflow:
-        name: send-email
+    # 3. Email via Resend — direct connector call (the workflow engine's
+    #    type:workflow sub-workflow tasks are async/scheduled-only,
+    #    they return run_ids rather than the synchronous outputs the
+    #    report needs. Calling the pyscript connector directly works
+    #    the same as aggregate-tokens above.)
+    - type: "connector"
+      name: "send-email-task"
+      description: "POST /emails via the resend pyscript connector directly. Bearer prefix added inside the pyscript."
+      connector:
+        name: "resend"
+        command: "invoke_send"
       inputs:
+        # api_key arrives via context-variables block above
+        api_key: "$.get('api_key')"
         from: "$.get('email_from')"
         to: "$.get('email_to')"
         subject: "f\"{$.get('project_label')} · Token Report\""
         text: "f\"Total tokens: {$.get('total_tokens', 0)}. Total runs: {$.get('total_runs', 0)}.\""
       outputs:
-        email_message_id: "$.get('message_id')"
+        email_message_id: "$.get('id')"
 
-    # ---------------------------------------------------------------
-    # 4. Slack via incoming webhook — wrapper resolves SLACK_WEBHOOK_URL
-    #    from vault, no need to pass it from the caller
-    # ---------------------------------------------------------------
-    - type: workflow
-      name: post-slack
-      description: "Fire Slack message via webhook wrapper."
-      workflow:
-        name: slack-post-message
+    # 4. Slack via incoming webhook — direct connector call too.
+    - type: "connector"
+      name: "post-slack-task"
+      description: "POST to Slack webhook via the slack-webhook pyscript connector directly."
+      connector:
+        name: "slack-webhook"
+        command: "invoke_post"
       inputs:
+        # webhook_url arrives via context-variables block above
+        webhook_url: "$.get('webhook_url')"
         text: "f\"{$.get('project_label')} token report: {$.get('total_tokens', 0)} tokens, {$.get('total_runs', 0)} runs\""
       outputs:
-        slack_posted: "$.get('posted')"
+        slack_posted: "True"
