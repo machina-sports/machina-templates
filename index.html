@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pre-Game Brief — Production Desk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink:        #0c0d10;
+      --ink-soft:   #1c1f25;
+      --paper:      #f1ece1;
+      --paper-soft: #e7e0cf;
+      --rule:       #2a2d33;
+      --rule-soft:  rgba(12, 13, 16, 0.12);
+      --on-air:     #d92121;
+      --signal:     #1ea867;
+      --amber:      #d49a16;
+      --muted:      #6b6f78;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Inter", system-ui, sans-serif;
+      font-feature-settings: "ss01", "cv11";
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 22px;
+      background: var(--ink);
+      color: var(--paper);
+      border-bottom: 1px solid #000;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .topbar .dot {
+      width: 9px; height: 9px; border-radius: 999px;
+      background: var(--on-air);
+      box-shadow: 0 0 0 4px rgba(217, 33, 33, 0.18);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(217, 33, 33, 0.18); }
+      50%      { box-shadow: 0 0 0 8px rgba(217, 33, 33, 0.05); }
+    }
+    .topbar .channel { color: var(--paper); opacity: 0.7; }
+    .topbar .channel strong { color: var(--paper); opacity: 1; }
+    .topbar .spacer { flex: 1; }
+    .topbar .meta { opacity: 0.6; }
+
+    /* ---------- Layout ---------- */
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 28px 80px;
+    }
+
+    /* ---------- Header ---------- */
+    header.head {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      padding-bottom: 28px;
+      border-bottom: 1.5px solid var(--ink);
+      margin-bottom: 32px;
+    }
+    header.head .eyebrow {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    header.head h1 {
+      font-family: "Fraunces", "Times New Roman", serif;
+      font-weight: 900;
+      font-size: clamp(40px, 6vw, 72px);
+      line-height: 0.96;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    header.head h1 em {
+      font-style: italic;
+      font-weight: 500;
+      color: var(--signal);
+    }
+    header.head .lede {
+      max-width: 64ch;
+      color: var(--ink-soft);
+      font-size: 16px;
+    }
+
+    /* ---------- Input panel ---------- */
+    .panel {
+      background: #fff;
+      border: 1.5px solid var(--ink);
+      border-radius: 4px;
+      padding: 22px 22px 20px;
+      box-shadow: 6px 6px 0 var(--ink);
+      margin-bottom: 36px;
+    }
+    .panel .row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+    .panel label {
+      flex: 1 1 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .panel label .lbl {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .panel input[type="text"] {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 20px;
+      padding: 14px 16px;
+      border: 1.5px solid var(--ink);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 2px;
+      min-width: 0;
+      width: 100%;
+    }
+    .panel input[type="text"]:focus {
+      outline: 3px solid var(--signal);
+      outline-offset: 0;
+    }
+    .panel .actions {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    button, .btn {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 14px 22px;
+      border: 1.5px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      border-radius: 2px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.08s ease;
+      min-height: 48px;
+    }
+    button:hover, .btn:hover { transform: translate(-1px, -1px); }
+    button:active, .btn:active { transform: translate(1px, 1px); }
+    button.secondary, .btn.secondary {
+      background: var(--paper);
+      color: var(--ink);
+    }
+    button[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    .examples {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+    .examples .chip {
+      cursor: pointer;
+      padding: 6px 10px;
+      border: 1px solid var(--rule-soft);
+      background: var(--paper-soft);
+      color: var(--ink);
+      border-radius: 999px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .examples .chip:hover { border-color: var(--ink); }
+
+    /* ---------- Status line ---------- */
+    .status {
+      margin-top: 18px;
+      padding: 12px 14px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12.5px;
+      border-left: 4px solid var(--muted);
+      background: var(--paper-soft);
+      color: var(--ink-soft);
+      min-height: 20px;
+    }
+    .status[data-tone="busy"]   { border-left-color: var(--amber); }
+    .status[data-tone="ok"]     { border-left-color: var(--signal); }
+    .status[data-tone="error"]  { border-left-color: var(--on-air); }
+    .status[data-tone="warn"]   { border-left-color: var(--amber); }
+    .status .blink {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      margin-right: 8px;
+      animation: blink 1s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes blink { 50% { opacity: 0.2; } }
+
+    /* ---------- Output card ---------- */
+    .output {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed var(--rule-soft);
+    }
+    .toolbar .label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: auto;
+    }
+    .brief {
+      background: #fff;
+      border: 1.5px solid var(--ink);
+      box-shadow: 6px 6px 0 var(--ink);
+      border-radius: 4px;
+      padding: 36px 40px 44px;
+      min-height: 420px;
+    }
+    .brief h1 {
+      font-family: "Fraunces", serif;
+      font-weight: 800;
+      font-size: clamp(28px, 3.6vw, 44px);
+      line-height: 1.05;
+      margin: 0 0 6px;
+      letter-spacing: -0.015em;
+    }
+    .brief h2 {
+      font-family: "Fraunces", serif;
+      font-weight: 700;
+      font-size: 22px;
+      margin: 36px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--ink);
+    }
+    .brief h3 {
+      font-family: "Fraunces", serif;
+      font-weight: 600;
+      font-size: 17px;
+      margin: 20px 0 6px;
+    }
+    .brief p { margin: 10px 0; max-width: 70ch; }
+    .brief ul {
+      margin: 8px 0 16px;
+      padding-left: 22px;
+    }
+    .brief ul li { margin: 4px 0; }
+    .brief code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12.5px;
+      background: var(--paper-soft);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .brief .meta-line {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 16px;
+    }
+    .brief blockquote {
+      border-left: 4px solid var(--signal);
+      margin: 14px 0;
+      padding: 4px 0 4px 14px;
+      color: var(--ink-soft);
+      font-family: "Fraunces", serif;
+      font-style: italic;
+      font-size: 17px;
+    }
+    .brief .placeholder {
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    /* ---------- Section status pills ---------- */
+    .section-status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 4px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--paper-soft);
+      color: var(--muted);
+      border: 1px solid var(--rule-soft);
+    }
+    .pill .sw {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted);
+    }
+    .pill[data-state="ok"]      { color: #0a6a40; background: #e6f5ec; border-color: #b7e4c7; }
+    .pill[data-state="ok"] .sw  { background: var(--signal); }
+    .pill[data-state="warn"]    { color: #8a5a00; background: #fbf1d6; border-color: #f1d8a3; }
+    .pill[data-state="warn"] .sw{ background: var(--amber); }
+    .pill[data-state="error"]   { color: #8a0e0e; background: #f9dfdf; border-color: #f0b8b8; }
+    .pill[data-state="error"] .sw{ background: var(--on-air); }
+    .pill[data-state="busy"]    { color: #6d4d00; background: #fff4cc; border-color: #f1d894; }
+    .pill[data-state="busy"] .sw{ background: var(--amber); }
+
+    /* ---------- Footer ---------- */
+    footer.foot {
+      margin-top: 60px;
+      padding-top: 22px;
+      border-top: 1.5px solid var(--ink);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 640px) {
+      .wrap { padding: 24px 16px 60px; }
+      .topbar { padding: 12px 14px; font-size: 11px; flex-wrap: wrap; }
+      .topbar .meta { display: none; }
+      .panel { padding: 18px 16px; box-shadow: 4px 4px 0 var(--ink); }
+      .brief { padding: 22px 20px 30px; box-shadow: 4px 4px 0 var(--ink); }
+      .brief h2 { font-size: 19px; }
+      header.head { margin-bottom: 22px; padding-bottom: 18px; }
+      .panel .actions { width: 100%; }
+      .panel .actions button { flex: 1; }
+    }
+
+    /* Visually-hidden, but accessible to screen readers */
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar" role="banner">
+    <span class="dot" aria-hidden="true"></span>
+    <span class="channel"><strong>PRE-GAME BRIEF</strong> / PRODUCTION DESK</span>
+    <span class="spacer"></span>
+    <span class="meta">FOOTBALL · SINGLE FIXTURE · MARKDOWN OUT</span>
+  </div>
+
+  <main class="wrap">
+
+    <header class="head">
+      <div class="eyebrow">Brief generator · v1.0 · white-label</div>
+      <h1>Pre-game brief, ready for the <em>production team</em>.</h1>
+      <p class="lede">
+        Enter a single fixture id. We pull the matchup, both squads' last
+        five matches, the head-to-head, and the projected lineups, and
+        compose a broadcaster-ready markdown card you can hand to the
+        gallery or paste straight into a CMS.
+      </p>
+    </header>
+
+    <section class="panel" aria-labelledby="form-heading">
+      <h2 id="form-heading" class="sr-only">Fixture input</h2>
+      <form id="brief-form" autocomplete="off" novalidate>
+        <div class="row">
+          <label>
+            <span class="lbl">Fixture id (API-Football)</span>
+            <input
+              type="text"
+              id="fixture-id"
+              name="fixture_id"
+              inputmode="numeric"
+              pattern="[0-9]+"
+              placeholder="e.g. 1208021"
+              required
+            />
+          </label>
+          <div class="actions">
+            <button type="submit" id="generate-btn">Generate brief</button>
+          </div>
+        </div>
+        <div class="examples" aria-label="Sample fixture ids">
+          <span>Try:</span>
+          <button type="button" class="chip" data-id="1208021">1208021</button>
+          <button type="button" class="chip" data-id="868247">868247</button>
+          <button type="button" class="chip" data-id="710734">710734</button>
+        </div>
+        <div
+          class="status"
+          id="status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-tone="idle"
+        >Idle — sample brief shown below. Enter a fixture id to fetch live data.</div>
+        <div
+          class="section-status"
+          id="section-status"
+          aria-label="Data section status"
+        ></div>
+      </form>
+    </section>
+
+    <section class="output" aria-labelledby="output-heading">
+      <div class="toolbar">
+        <span class="label" id="output-heading">Output · markdown</span>
+        <button type="button" class="secondary" id="copy-btn" aria-live="polite">Copy markdown</button>
+        <a href="#" class="btn secondary" id="download-btn" download="pre-game-brief.md">Download .md</a>
+      </div>
+      <article
+        class="brief"
+        id="brief"
+        aria-label="Rendered pre-game brief"
+      ><!-- rendered markdown goes here --></article>
+    </section>
+
+    <footer class="foot">
+      <span>White-label · refers to the broadcaster / the production team</span>
+      <span>Data: API-Football via football-data skill</span>
+    </footer>
+
+  </main>
+
+  <!--
+    Runtime data path:
+      window.MACHINA_DEPLOY.proxyUrl + /workflow/execute/<workflow-name>
+    The proxy authenticates via Origin matching, no Authorization header.
+    Workflows called (in order):
+      1. football-data-get-fixture        (fixture_id)
+      2. football-data-get-team-recent-form (team_id, last=5)  -- x2
+      3. football-data-get-head-to-head     (team_a_id, team_b_id, last=5)
+      4. football-data-get-projected-lineup (fixture_id)
+  -->
+  <script src="./brief.js" defer></script>
+</body>
+</html>
