@@ -1,0 +1,26 @@
+setup:
+  title: Slack Incoming Webhook
+  description: Post messages to a Slack channel via an Incoming Webhook URL. No OAuth — the webhook URL itself is the secret. One webhook per channel.
+  category:
+    - notifications
+  estimatedTime: 1 minute
+  features:
+    - Post plain text or Block Kit JSON to one Slack channel
+    - No OAuth, no app install — generate the webhook URL in Slack's admin
+    - URL itself authenticates; rotate by regenerating in Slack
+    - Pairs with reporting templates that need a push notification (weekly-token-report, billing-alerts, etc.)
+  integrations:
+    - slack
+  requirements:
+    - Slack-Incoming-Webhook-URL
+  status: available
+  value: connectors/slack-webhook
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: slack-webhook.yml
+  - type: workflow
+    path: workflows/post-message.yml
+  - type: workflow
+    path: test-credentials.yml

@@ -1,0 +1,8 @@
+connector:
+  name: "token-aggregator"
+  description: "Query the host pod's own /execution/workflow-search and /execution/agent-search, aggregate token consumption over a configurable window, and return a payload shaped for pdf-generator's metrics-report template. Pyscript runs inside the pod, calls the pod's own public URL — no MongoDB driver dependency."
+  filename: "token-aggregator.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Aggregate Tokens"
+      value: "invoke_aggregate"

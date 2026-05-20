@@ -1,0 +1,27 @@
+setup:
+  title: Resend
+  description: Transactional email API. Send HTML / text emails with optional attachments. Used by reporting templates that need to notify recipients.
+  category:
+    - notifications
+    - data-acquisition
+  estimatedTime: 1 minute
+  features:
+    - Send transactional emails (HTML + plain text)
+    - Multiple recipients per send (to / cc / bcc)
+    - Inline attachments (PDFs, images) by URL or base64
+    - Bearer-auth API key, no domain verification needed for the resend.dev sandbox sender
+  integrations:
+    - resend
+  requirements:
+    - Resend-API-Key
+  status: available
+  value: connectors/resend
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: resend.yml
+  - type: workflow
+    path: workflows/send-email.yml
+  - type: workflow
+    path: test-credentials.yml

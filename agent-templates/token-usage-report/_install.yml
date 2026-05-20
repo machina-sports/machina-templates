@@ -1,0 +1,35 @@
+setup:
+  title: "Weekly Token Report"
+  description: "Cron-driven weekly token-consumption report for any Machina pod. Aggregates the pod's own /execution/* over the last N days (default 7), renders a PDF via pdf-generator's metrics-report layout, uploads to GCS, then notifies via email (Resend) and Slack (incoming webhook)."
+  category:
+    - custom-templates
+    - notifications
+  estimatedTime: 10 minutes
+  features:
+    - "Pure pod-side aggregation — no external billing service. Reads /execution/workflow-search + /execution/agent-search."
+    - "Top consumers, daily breakdown, p50 / p95 / max distribution, week-over-week delta"
+    - "Renders to a multi-section PDF via the existing pdf-generator template"
+    - "Email delivery via Resend (free tier OK for weekly cadence)"
+    - "Slack notification via Incoming Webhook with a clickable Open PDF button"
+    - "Either channel can be toggled off (notify_email / notify_slack inputs)"
+    - "Designed to be scheduled by pod_mcp_call(schedule_workflow_name) — every Monday 9am UTC recommended"
+  integrations:
+    - resend
+    - slack
+    - google
+  requirements:
+    - Resend-API-Key
+    - Slack-Incoming-Webhook-URL
+    - Google-Storage-API-Key
+    - Pod-self-API-Key
+  status: available
+  value: "agent-templates/weekly-token-report"
+  version: 1.0.0
+
+datasets:
+
+  - type: "connector"
+    path: "connectors/token-aggregator.yml"
+
+  - type: "workflow"
+    path: "weekly-token-report.yml"

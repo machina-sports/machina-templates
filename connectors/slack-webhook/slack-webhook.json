@@ -1,0 +1,114 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Slack Incoming Webhook",
+    "description": "Post messages to a Slack channel via an Incoming Webhook URL. The webhook URL itself authenticates — there's no Authorization header. URL pattern: `https://hooks.slack.com/services/<TEAM>/<WEBHOOK>/<TOKEN>`. Store the full URL in the vault and let the wrapper workflow split it into the 3 path segments before calling.\n\nResponse on success: HTTP 200 with body `ok`. On failure: HTTP 4xx with body describing the issue (`no_service`, `invalid_payload`, `channel_disabled`, etc.).",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Slack",
+      "url": "https://api.slack.com/messaging/webhooks"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://hooks.slack.com",
+      "description": "Slack Incoming Webhooks endpoint"
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/services/{team_id}/{webhook_id}/{token}": {
+      "post": {
+        "summary": "Post a message to the channel bound to this webhook",
+        "description": "Authentication is positional — the URL itself carries the secret. Path takes three segments: team_id (TXXXXXXXX), webhook_id (BXXXXXXXX), token (24-char random). Body accepts either a plain `text` string OR Block Kit `blocks` array (richer formatting).",
+        "operationId": "post-services-team-webhook-token",
+        "parameters": [
+          {
+            "name": "team_id",
+            "in": "path",
+            "required": true,
+            "description": "Team segment (e.g. T00000000)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "webhook_id",
+            "in": "path",
+            "required": true,
+            "description": "Webhook segment (e.g. B00000000)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "description": "Token segment (24 chars)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Either `text` alone, OR `blocks` (Block Kit). When both are present, `blocks` wins and `text` becomes the fallback shown in notifications / on clients that can't render blocks.",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "example": ":bar_chart: Weekly token report ready — see attached PDF."
+                  },
+                  "blocks": {
+                    "type": "array",
+                    "description": "Slack Block Kit blocks. See https://api.slack.com/block-kit. Each block is a {type, text, fields, accessory, ...} object.",
+                    "items": { "type": "object" }
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "Override the display name for this message (the webhook's default is set in Slack's admin UI)."
+                  },
+                  "icon_emoji": {
+                    "type": "string",
+                    "example": ":bar_chart:"
+                  },
+                  "icon_url": {
+                    "type": "string"
+                  },
+                  "thread_ts": {
+                    "type": "string",
+                    "description": "Reply in an existing thread by parent timestamp. New top-level message when omitted."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Posted",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string", "example": "ok" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad payload / unknown channel / invalid_payload",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "404": {
+            "description": "no_service — webhook URL is invalid or revoked. Regenerate in Slack admin.",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

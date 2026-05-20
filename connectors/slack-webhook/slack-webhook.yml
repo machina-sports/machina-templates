@@ -1,0 +1,5 @@
+connector:
+  name: "slack-webhook"
+  description: "Post to Slack via Incoming Webhook URLs (hooks.slack.com/services/<team>/<webhook>/<token>)"
+  filename: "slack-webhook.json"
+  filetype: "restapi"
