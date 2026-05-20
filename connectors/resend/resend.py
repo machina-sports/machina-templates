@@ -119,6 +119,11 @@ def invoke_send(request_data, *_, **__):
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            # Some APIs (incl. Resend on certain account states) reject
+            # requests without an identifiable User-Agent. urllib's
+            # default is "Python-urllib/3.x" which Resend may flag.
+            "User-Agent": "machina-connector/1.0",
+            "Accept": "application/json",
         },
         method="POST",
     )
@@ -135,17 +140,22 @@ def invoke_send(request_data, *_, **__):
     except urllib.error.HTTPError as e:
         try:
             body_text = e.read().decode("utf-8", errors="replace")
-            parsed = json.loads(body_text) if body_text else {}
         except Exception:
             body_text = ""
+        try:
+            parsed = json.loads(body_text) if body_text else {}
+        except Exception:
             parsed = {}
+        # Surface the FULL body even if it's not JSON — Resend's 403 is
+        # opaque and we need to see what they're complaining about.
+        msg = parsed.get("message") or parsed.get("error") or body_text[:500] or f"Resend HTTP {e.code}"
         return {
             "status": False,
             "data": {},
             "error": {
                 "code": e.code,
-                "message": parsed.get("message") or body_text[:300] or f"Resend HTTP {e.code}",
-                "details": parsed,
+                "message": f"Resend HTTP {e.code}: {msg}",
+                "details": parsed if parsed else {"raw": body_text[:500]},
             },
         }
     except Exception as e:
