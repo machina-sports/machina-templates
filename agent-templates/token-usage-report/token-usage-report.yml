@@ -108,63 +108,36 @@ workflow:
         page_count: "$.get('page_count')"
 
     # ---------------------------------------------------------------
-    # 3. Compose email + slack copy (plain text — avoids escape hell
-    #    of HTML/Block Kit in workflow yml expressions). Recipients
-    #    come from vault as a comma-separated string — split here.
-    # ---------------------------------------------------------------
-    - type: "mapping"
-      name: "compose-message"
-      description: "Build subject + body strings referencing the PDF URL. Same payload feeds both email and slack — keeps copy consistent across channels."
-      inputs:
-        project_label: "$.get('project_label')"
-        mode_label: "$.get('mode_label', 'Report')"
-        total_tokens: "$.get('total_tokens', 0)"
-        total_runs: "$.get('total_runs', 0)"
-        pdf_url: "$.get('pdf_url', '')"
-        email_to_raw: "$.get('email_to', '')"
-        period_to: "$.get('period_to', '')"
-      outputs:
-        # Split comma-sep recipient list into an array. Empty string → empty list.
-        email_to_list: "[a.strip() for a in $.get('email_to_raw', '').split(',') if a.strip()]"
-        # Subject — f-string with $.get() works in workflow yml (see goalserve-soccer/sync-fixtures).
-        subject: "f\"{$.get('project_label', 'Project')} · {$.get('mode_label', 'Report')} Token Report · {$.get('period_to', '')[:10]}\""
-        # Plain-text body for email + slack. Multi-line via \\n which YAML preserves.
-        body_text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('project_label', 'Project')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url', '')}\""
-        # Slack-flavoured text with mrkdwn + a clickable URL via Slack's <url|label> syntax.
-        slack_text: "f\":bar_chart: *{$.get('project_label', 'Project')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• <{$.get('pdf_url', '')}|Open PDF>\""
-
-    # ---------------------------------------------------------------
-    # 4. Email via Resend
+    # 3. Email via Resend (subject/body composed inline via f-strings;
+    #    recipient list parsed inline from comma-separated vault value;
+    #    no mapping task — that's reserved for registered mappings)
     # ---------------------------------------------------------------
     - type: "workflow"
       name: "send-email"
-      description: "Fire the email via the Resend wrapper workflow."
-      condition: "$.get('notify_email', True) and $.get('pdf_url') is not None and len($.get('email_to_list', [])) > 0"
+      description: "Fire the email via the Resend wrapper workflow. Wrapper coerces single-string `to` to array and adds the Bearer-prefixed auth header from vault."
+      condition: "$.get('notify_email', True) and $.get('pdf_url') is not None and len($.get('email_to', '')) > 0"
       workflow:
         name: "send-email"
       inputs:
         from: "$.get('email_from')"
-        to: "$.get('email_to_list')"
-        subject: "$.get('subject')"
-        text: "$.get('body_text')"
-        # No `html` — sender clients render `text` cleanly enough for a
-        # one-screen notification. HTML composition in workflow yml
-        # f-strings is too escape-heavy to be worth it.
+        to: "[a.strip() for a in $.get('email_to', '').split(',') if a.strip()]"
+        subject: "f\"{$.get('project_label', 'Project')} · {$.get('mode_label', 'Report')} Token Report · {$.get('period_to', '')[:10]}\""
+        text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('project_label', 'Project')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url', '')}\""
       outputs:
         email_message_id: "$.get('message_id')"
 
     # ---------------------------------------------------------------
-    # 5. Slack via incoming webhook
+    # 4. Slack via incoming webhook — wrapper resolves SLACK_WEBHOOK_URL
+    #    from vault, no need to pass it from the caller
     # ---------------------------------------------------------------
     - type: "workflow"
       name: "post-slack"
-      description: "Fire the Slack message via the slack-post-message wrapper."
-      condition: "$.get('notify_slack', True) and $.get('pdf_url') is not None and len($.get('slack_webhook_url', '')) > 0"
+      description: "Fire the Slack message via the slack-post-message wrapper. The webhook URL stays inside that wrapper's context-variables."
+      condition: "$.get('notify_slack', True) and $.get('pdf_url') is not None"
       workflow:
         name: "slack-post-message"
       inputs:
-        webhook_url: "$.get('slack_webhook_url')"
-        text: "$.get('slack_text')"
+        text: "f\":bar_chart: *{$.get('project_label', 'Project')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• <{$.get('pdf_url', '')}|Open PDF>\""
         username: "'Machina · Reports'"
         icon_emoji: "':bar_chart:'"
       outputs:

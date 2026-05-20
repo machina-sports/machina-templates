@@ -2,13 +2,11 @@ workflow:
 
   name: "slack-post-message"
   title: "Slack · Post Message"
-  description: "Thin wrapper around Slack's Incoming Webhook. Pulls the webhook URL from the vault on its own (TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL), splits into the 3 path segments the connector expects, posts the message. Callers pass only `text`/`blocks`/`username`/`icon_emoji` — the URL stays vault-side."
+  description: "Thin wrapper around Slack Incoming Webhooks. Reads TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL from vault, splits the URL into the 3 path segments the connector expects inline, posts the message. Callers pass only text/blocks/username/icon_emoji."
   context-variables:
     debugger:
       enabled: true
-    # Resolve the vault secret here — workflow engine substitutes
-    # `$TEMP_CONTEXT_VARIABLE_*` to the actual value at task execution.
-    slack:
+    slack-webhook:
       webhook_url: "$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL"
   inputs:
     text: "$.get('text', '')"
@@ -21,30 +19,16 @@ workflow:
     workflow-status: "$.get('posted') and 'executed' or 'failed'"
   tasks:
 
-    # Split the resolved webhook URL into team_id / webhook_id / token.
-    # The context-variables block above injects `webhook_url` into the
-    # task context (see machina-client-api/core/workflow/context.py
-    # line ~845 — secret values get set_item'd by name).
-    - type: "mapping"
-      name: "split-webhook-url"
-      description: "Extract team_id / webhook_id / token from the resolved Slack incoming-webhook URL."
-      inputs:
-        url: "$.get('webhook_url', '')"
-      outputs:
-        team_id: "($.get('url', '').split('/services/')[-1].split('/')[0]) if '/services/' in $.get('url', '') else ''"
-        webhook_id: "($.get('url', '').split('/services/')[-1].split('/')[1]) if '/services/' in $.get('url', '') and len($.get('url', '').split('/services/')[-1].split('/')) > 1 else ''"
-        token: "($.get('url', '').split('/services/')[-1].split('/')[2]) if '/services/' in $.get('url', '') and len($.get('url', '').split('/services/')[-1].split('/')) > 2 else ''"
-
     - type: "connector"
       name: "post"
-      description: "POST the assembled body to hooks.slack.com."
+      description: "POST the assembled body to hooks.slack.com. URL split happens inline — context-variables resolves webhook_url, then path params are sliced out via Python list-index expressions."
       connector:
         name: "slack-webhook"
         command: "post-services-team-webhook-token"
       inputs:
-        team_id: "$.get('team_id')"
-        webhook_id: "$.get('webhook_id')"
-        token: "$.get('token')"
+        team_id: "$.get('webhook_url', '').split('/services/')[-1].split('/')[0] if '/services/' in $.get('webhook_url', '') else ''"
+        webhook_id: "$.get('webhook_url', '').split('/services/')[-1].split('/')[1] if '/services/' in $.get('webhook_url', '') and len($.get('webhook_url', '').split('/services/')[-1].split('/')) > 1 else ''"
+        token: "$.get('webhook_url', '').split('/services/')[-1].split('/')[2] if '/services/' in $.get('webhook_url', '') and len($.get('webhook_url', '').split('/services/')[-1].split('/')) > 2 else ''"
         text: "$.get('text')"
         blocks: "$.get('blocks')"
         username: "$.get('username')"
