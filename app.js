@@ -332,35 +332,61 @@ async function onGenerate() {
   setStatus('fetching', 'busy');
   setLive('');
 
+  // Track final user-facing status separately so the `finally` block can
+  // tear down the spinner / button state regardless of how many things
+  // throw along the way. Previously: both `try` AND `catch` could throw
+  // inside `composeGraphic()`, leaving the "Composing graphic…" overlay
+  // stuck on screen with the page looking frozen.
+  let finalKind = 'ok';
+  let finalMsg  = '';
+
   try {
-    const data = await fetchLiveData(state.team, state.headline);
-    state.lastData = data;
+    let data;
+    try {
+      data = await fetchLiveData(state.team, state.headline);
+    } catch (fetchErr) {
+      console.error('[slate] fetchLiveData threw:', fetchErr);
+      data = { ...seedData(state.team, state.headline), __source: 'sample (live fetch failed)', __usingFallback: true };
+      finalKind = 'error';
+      finalMsg  = fetchErr.message || 'live data fetch failed — showing sample';
+    }
+
+    state.lastData   = data;
     state.lastSource = data.__source;
     dom.metaSource.textContent = `Data source: ${data.__source}`;
     showLoading('Composing graphic…');
-    await composeGraphic();
-    hideLoading();
-    dom.previewEmpty.hidden = true;
-    dom.download.disabled = false;
-    setStatus('ready', 'ok');
-    setLive(data.__usingFallback
-      ? 'live source returned nothing — showing sample data so you can preview the layout'
-      : 'graphic ready — hit Download to save', 'ok');
+
+    // composeGraphic catches its own draw errors and never rejects, so
+    // a single bad draw routine can't strand the spinner. We still wrap
+    // it here as a final safety net.
+    try {
+      await composeGraphic();
+      dom.previewEmpty.hidden = true;
+      dom.download.disabled = false;
+    } catch (composeErr) {
+      console.error('[slate] composeGraphic threw:', composeErr);
+      finalKind = 'error';
+      finalMsg  = composeErr.message || 'graphic composition failed';
+    }
+
+    if (finalKind === 'ok') {
+      finalMsg = data.__usingFallback
+        ? 'live source returned nothing — showing sample data so you can preview the layout'
+        : 'graphic ready — hit Download to save';
+    }
   } catch (err) {
-    console.error(err);
-    hideLoading();
-    setStatus('error', 'error');
-    setLive(err.message || 'something broke fetching live data', 'error');
-    // Even on failure, show a seeded preview rather than a blank canvas.
-    state.lastData = seedData(state.team, state.headline);
-    state.lastSource = 'sample (live fetch failed)';
-    dom.metaSource.textContent = `Data source: ${state.lastSource}`;
-    await composeGraphic();
-    dom.previewEmpty.hidden = true;
-    dom.download.disabled = false;
+    // Should be unreachable now (both nested awaits have their own
+    // try/catch) but keep as a last-resort safety net.
+    console.error('[slate] onGenerate unexpected error:', err);
+    finalKind = 'error';
+    finalMsg  = err.message || 'unexpected error';
   } finally {
+    // ALWAYS tear down loading state, regardless of how many things threw.
+    hideLoading();
     state.loading = false;
     dom.generate.classList.remove('is-loading');
+    setStatus(finalKind === 'ok' ? 'ready' : 'error', finalKind === 'ok' ? 'ok' : 'error');
+    setLive(finalMsg, finalKind);
     updateGenerateState();
   }
 }
@@ -649,41 +675,49 @@ function seedData(team, headline) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Canvas composer
+//
+// Every draw step is wrapped in `safeDraw` so that a single buggy routine
+// (e.g. an unexpected payload shape feeding the data block) can't strand
+// the "Composing graphic…" overlay. The caller (`onGenerate`) clears the
+// overlay in `finally`; we cooperate by never re-throwing from here.
 // ─────────────────────────────────────────────────────────────────────────────
+function safeDraw(name, fn) {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`[slate] draw step "${name}" threw:`, err);
+  }
+}
+
 async function composeGraphic() {
   const { w, h } = RATIOS[state.ratio];
   const team = state.team;
   const data = state.lastData;
   const refImg = state.refImage;
 
-  ctx.clearRect(0, 0, w, h);
+  safeDraw('clear', () => ctx.clearRect(0, 0, w, h));
 
   // 1) Background: reference image fills the entire canvas (cover fit).
   //    Otherwise — team-color diagonal gradient with subtle noise vignette.
   if (refImg) {
-    drawCover(refImg, 0, 0, w, h);
-    // Readability scrim: vertical gradient on the bottom 60% so text always lands.
-    const grad = ctx.createLinearGradient(0, h * 0.35, 0, h);
-    grad.addColorStop(0,    'rgba(0,0,0,0)');
-    grad.addColorStop(0.55, 'rgba(0,0,0,0.55)');
-    grad.addColorStop(1,    'rgba(0,0,0,0.88)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+    safeDraw('background:reference', () => {
+      drawCover(refImg, 0, 0, w, h);
+      // Readability scrim on the bottom so text always lands.
+      const grad = ctx.createLinearGradient(0, h * 0.35, 0, h);
+      grad.addColorStop(0,    'rgba(0,0,0,0)');
+      grad.addColorStop(0.55, 'rgba(0,0,0,0.55)');
+      grad.addColorStop(1,    'rgba(0,0,0,0.88)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
   } else {
-    drawTeamBackground(team, w, h);
+    safeDraw('background:team-colors', () => drawTeamBackground(team, w, h));
   }
 
-  // 2) Top-left brand strip
-  drawBrandStrip(team, w, h);
-
-  // 3) Headline block (bottom-left for square / portrait, bottom for landscape)
-  drawHeadline(state.headline, team, w, h, refImg);
-
-  // 4) Data block — adapts to data.kind
-  await drawDataBlock(data, team, w, h, refImg);
-
-  // 5) Footer attribution
-  drawFooter(w, h);
+  safeDraw('brand-strip', () => drawBrandStrip(team, w, h));
+  safeDraw('headline',    () => drawHeadline(state.headline, team, w, h, refImg));
+  safeDraw('data-block',  () => drawDataBlock(data, team, w, h, refImg));
+  safeDraw('footer',      () => drawFooter(w, h));
 }
 
 function drawCover(img, x, y, w, h) {
@@ -828,13 +862,13 @@ function wrapLines(text, maxW, startFont, minFont) {
   return { list: [text], fontSize: minFont };
 }
 
-async function drawDataBlock(data, team, w, h, hasRef) {
+function drawDataBlock(data, team, w, h, hasRef) {
   const padX = Math.round(w * 0.06);
   const blockY = Math.round(h * 0.68);
   const blockH = h - blockY - Math.round(h * 0.08);
   const blockW = w - padX * 2;
 
-  // Card background
+  // Card background — always drawn so the layout reads even with no data.
   ctx.fillStyle = hasRef ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.92)';
   roundRect(padX, blockY, blockW, blockH, 18);
   ctx.fill();
@@ -843,24 +877,60 @@ async function drawDataBlock(data, team, w, h, hasRef) {
   roundRect(padX, blockY, blockW, blockH, 18);
   ctx.stroke();
 
+  // Empty payload → explicit empty-state
   if (!data || !data.rows || data.rows.length === 0) {
-    ctx.fillStyle = '#6a6a6a';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `500 ${Math.round(h * 0.025)}px Archivo, sans-serif`;
-    ctx.fillText('No data available for this query.', w / 2, blockY + blockH / 2);
+    drawEmptyCard(team, padX, blockY, blockW, blockH, h, 'No data available for this query.');
     return;
   }
 
-  if (data.kind === 'standings' && data.rows.length === 1) {
-    drawStandingsHero(data.rows[0], team, padX, blockY, blockW, blockH, w, h);
-  } else if (data.kind === 'standings-top') {
-    drawStandingsTop(data.rows, padX, blockY, blockW, blockH, h);
-  } else if (data.kind === 'fixtures') {
-    drawFixtures(data.rows, padX, blockY, blockW, blockH, h);
-  } else if (data.kind === 'scoreboard') {
-    drawScoreboard(data.rows, padX, blockY, blockW, blockH, h);
+  // Branch on data.kind. If the dispatch falls through (unknown kind →
+  // the silent fail the user reported), drop into the explicit
+  // empty-state instead of leaving the card blank.
+  switch (data.kind) {
+    case 'standings':
+      // Single-row → big hero stat grid. Multi-row → top-5 list.
+      if (data.rows.length === 1) {
+        drawStandingsHero(data.rows[0], team, padX, blockY, blockW, blockH, w, h);
+      } else {
+        drawStandingsTop(data.rows, padX, blockY, blockW, blockH, h);
+      }
+      break;
+    case 'standings-top':
+      drawStandingsTop(data.rows, padX, blockY, blockW, blockH, h);
+      break;
+    case 'fixtures':
+      drawFixtures(data.rows, padX, blockY, blockW, blockH, h);
+      break;
+    case 'scoreboard':
+      drawScoreboard(data.rows, padX, blockY, blockW, blockH, h);
+      break;
+    default:
+      // Surface the unknown shape in DevTools so the dev can debug,
+      // and render a graceful empty-state instead of a blank card.
+      console.warn(`[slate] drawDataBlock: unknown data.kind="${data.kind}" — falling back to empty-state`, data);
+      drawEmptyCard(
+        team, padX, blockY, blockW, blockH, h,
+        `Couldn’t render data of type “${data.kind || 'unknown'}”.`
+      );
   }
+}
+
+// Shared empty-card content — used for genuinely-empty payloads AND for
+// the unknown-kind fallback, so we always show SOMETHING rather than a
+// blank white box.
+function drawEmptyCard(team, x, y, bw, bh, h, message) {
+  ctx.save();
+  ctx.fillStyle = '#0c0c0c';
+  ctx.font = `900 ${Math.round(h * 0.028)}px 'Archivo Black', Archivo, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText((team?.name || '').toUpperCase(), x + bw / 2, y + bh * 0.34);
+  ctx.fillStyle = '#6a6a6a';
+  ctx.font = `500 ${Math.round(h * 0.02)}px Archivo, sans-serif`;
+  ctx.fillText(message, x + bw / 2, y + bh * 0.6);
+  ctx.font = `500 ${Math.round(h * 0.014)}px 'JetBrains Mono', monospace`;
+  ctx.fillText('— retry, or rephrase your headline —', x + bw / 2, y + bh * 0.78);
+  ctx.restore();
 }
 
 function drawStandingsHero(row, team, x, y, bw, bh, w, h) {
