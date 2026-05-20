@@ -133,16 +133,15 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
 
     collected = []
     page = 1
-    # per_page=500 cut the sbot-prd report time roughly in half vs
-    # per_page=200 — each search call is ~2s instead of ~3s and we
-    # cover the 7-day window in 2-3 pages instead of 5-6.
     per_page = 500
-    # Safety cap on pages — even if the early-exit fails, we never
-    # walk more than 20 pages (= 10k rows) per source. Combined with
-    # page_size_cap=2000 default, the worst case is ~10 pages × 2s
-    # = 20s per source × 4 sources = 80s total. For prod pods with
-    # high volume, the early-exit hits well before this.
-    max_pages = 20
+    # Was 20 → bumped to 50 so high-volume pods (sbot-prd does
+    # ~1500-3000 runs/day = 15-20k rows per source per week) don't
+    # get their bills truncated. Combined with the early-exit check
+    # below, we still bail as soon as we cross the window boundary —
+    # this ceiling only matters when the window is 100% within
+    # available data and we'd otherwise paginate forever.
+    max_pages = 50
+    truncated_at_max_pages = False
 
     while len(collected) < page_size_cap and page <= max_pages:
         body = {
@@ -183,7 +182,13 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
 
         page += 1
 
-    return collected, None
+    # Flag if we exited due to page ceiling rather than reaching the
+    # end of the window — callers (the report payload) can surface
+    # this so billing reads aren't silently truncated.
+    if page > max_pages:
+        truncated_at_max_pages = True
+
+    return collected, ("max_pages_hit" if truncated_at_max_pages else None)
 
 
 # ---------------------------------------------------------------------------
