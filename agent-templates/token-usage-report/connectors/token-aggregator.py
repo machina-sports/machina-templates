@@ -287,14 +287,27 @@ def _compute_window(period_mode, period_days, now):
 # ---------------------------------------------------------------------------
 
 
-def invoke_aggregate(*args, **kwargs):
-    """Connector entrypoint. The workflow engine passes inputs as kwargs
-    OR as a single dict in args[0] — accept both."""
+def invoke_aggregate(request_data, *_, **__):
+    """Connector entrypoint. The workflow engine calls
+    `function(request_data)` where the actual workflow-level inputs live
+    under request_data['params'] (or request_data['inputs'] in legacy
+    callers). Mirror the unpack pattern from
+    agent-templates/pdf-generator/connectors/pdf-generator.py:invoke_generate
+    so workflow-style inputs reach us correctly.
 
-    inputs = {}
-    if args and isinstance(args[0], dict):
-        inputs.update(args[0])
-    inputs.update(kwargs)
+    Falls back to top-level keys when called directly (e.g. from a
+    Python smoke test that passes a flat dict). Returns the
+    pdf-generator metrics-report payload PLUS the wrapper
+    `status: True` the executor expects (see
+    machina-client-api/core/connector/executor.py — `if not result or
+    result.get("status") is not True` short-circuits to generic
+    "Connector failed" with no message, which is what swallowed the
+    real bug on first install)."""
+
+    if isinstance(request_data, dict):
+        inputs = request_data.get("params") or request_data.get("inputs") or request_data
+    else:
+        inputs = {}
 
     api_base_url = inputs.get("api_base_url") or ""
     api_key = inputs.get("api_key") or ""
@@ -307,8 +320,18 @@ def invoke_aggregate(*args, **kwargs):
 
     if not api_base_url or not api_key:
         return {
-            "data": _empty_payload(project_label, period_mode, period_days, brand_color, "Missing api_base_url or api_key — set TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_BASE_URL and TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_KEY in the vault."),
-            "data_uri": None,
+            "status": True,
+            "data": {
+                "data": _empty_payload(project_label, period_mode, period_days, brand_color, "Missing api_base_url or api_key — set TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_BASE_URL and TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_KEY in the vault."),
+                "total_tokens": 0,
+                "total_runs": 0,
+                "total_tokens_prev": 0,
+                "period_from": "",
+                "period_to": "",
+                "period_mode": period_mode,
+                "mode_label": "Report",
+                "brand_color": brand_color,
+            },
         }
 
     now = datetime.now(timezone.utc)
@@ -512,15 +535,18 @@ def invoke_aggregate(*args, **kwargs):
     }
 
     return {
-        "data": payload,
-        "total_tokens": total_tokens,
-        "total_runs": total_runs,
-        "total_tokens_prev": total_tokens_prev,
-        "period_from": since.isoformat(),
-        "period_to": until.isoformat(),
-        "period_mode": period_mode,
-        "mode_label": mode_label,
-        "brand_color": brand_color,
+        "status": True,
+        "data": {
+            "data": payload,
+            "total_tokens": total_tokens,
+            "total_runs": total_runs,
+            "total_tokens_prev": total_tokens_prev,
+            "period_from": since.isoformat(),
+            "period_to": until.isoformat(),
+            "period_mode": period_mode,
+            "mode_label": mode_label,
+            "brand_color": brand_color,
+        },
     }
 
 

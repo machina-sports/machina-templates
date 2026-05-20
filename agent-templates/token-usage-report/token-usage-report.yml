@@ -68,14 +68,17 @@ workflow:
         project_label: "$.get('project_label')"
         brand_color: "$.get('brand_color')"
       outputs:
-        report_payload: "$.get('data')"
-        total_tokens: "$.get('total_tokens', 0)"
-        total_runs: "$.get('total_runs', 0)"
-        period_from: "$.get('period_from')"
-        period_to: "$.get('period_to')"
-        period_mode_used: "$.get('period_mode')"
-        mode_label: "$.get('mode_label', 'Report')"
-        brand_color: "$.get('brand_color', '#0A2540')"
+        # The pyscript wraps everything under data: {data: <payload>, ...}
+        # to satisfy the executor's `status: True` contract — same shape
+        # as pdf-generator. Unpack one level here.
+        report_payload: "$.get('data', {}).get('data')"
+        total_tokens: "$.get('data', {}).get('total_tokens', 0)"
+        total_runs: "$.get('data', {}).get('total_runs', 0)"
+        period_from: "$.get('data', {}).get('period_from')"
+        period_to: "$.get('data', {}).get('period_to')"
+        period_mode_used: "$.get('data', {}).get('period_mode')"
+        mode_label: "$.get('data', {}).get('mode_label', 'Report')"
+        brand_color: "$.get('data', {}).get('brand_color', '#0A2540')"
 
     # ---------------------------------------------------------------
     # 2. Render the PDF via the existing pdf-generator template's
