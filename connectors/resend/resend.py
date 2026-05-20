@@ -135,10 +135,6 @@ def invoke_send(request_data, *_, **__):
                 parsed = json.loads(raw) if raw else {}
             except Exception:
                 parsed = {"_raw": raw}
-            # Debug: log the parsed response so we can see what Resend
-            # actually returned (id field present? wrong key?).
-            print(f"[RESEND_DEBUG] response keys: {list(parsed.keys()) if isinstance(parsed, dict) else type(parsed).__name__}")
-            print(f"[RESEND_DEBUG] response full: {raw[:300]}")
             return {
                 "status": True,
                 "data": parsed,

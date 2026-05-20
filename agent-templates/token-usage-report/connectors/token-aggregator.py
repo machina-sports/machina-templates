@@ -98,7 +98,6 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
     collected = []
     page = 1
     per_page = 200
-    print(f"[FETCH_DEBUG] hitting {url} page=1")
     while len(collected) < page_size_cap:
         body = {
             "filters": {},
@@ -107,11 +106,7 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
         }
         resp = _http_post(url, headers, body)
         if resp.get("_error"):
-            print(f"[FETCH_DEBUG] _error: {resp['_error']}")
             return collected, resp["_error"]
-        # Surface what came back for visibility — total_documents / data length
-        if page == 1:
-            print(f"[FETCH_DEBUG] page=1 total_documents={resp.get('total_documents')} data_len={len(resp.get('data') or [])} keys={list(resp.keys())}")
         rows = resp.get("data") or []
         if not rows:
             break
@@ -557,7 +552,6 @@ def invoke_aggregate(request_data, *_, **__):
             "brand_color": brand_color,
         },
     }
-    print(f"[AGGREGATOR_DEBUG] returning data keys: {list(result['data'].keys())}, total_runs={total_runs}, total_tokens={total_tokens}")
     return result
 
 
