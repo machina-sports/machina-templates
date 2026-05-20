@@ -1,0 +1,22 @@
+setup:
+  title: "Football Data"
+  description: "Read-side football data primitives (fixture, recent form, head-to-head, lineup) backed by API-Football."
+  category:
+    - custom-templates
+  integrations:
+    - api-football
+  status: available
+  value: "skills/football-data"
+  version: 1.0.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+  - type: "workflow"
+    path: "workflows/football-data-get-fixture.yml"
+  - type: "workflow"
+    path: "workflows/football-data-get-team-recent-form.yml"
+  - type: "workflow"
+    path: "workflows/football-data-get-head-to-head.yml"
+  - type: "workflow"
+    path: "workflows/football-data-get-projected-lineup.yml"

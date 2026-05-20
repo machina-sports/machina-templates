@@ -1,0 +1,52 @@
+workflow:
+  name: "football-data-get-projected-lineup"
+  title: "Football Data — Get Projected Lineup"
+  description: "Fetch the confirmed / projected lineups for a fixture. Returns an empty list when lineups have not been released yet."
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture_id: "$.get('fixture_id')"
+  outputs:
+    lineups: "$.get('lineups', [])"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "fetch-fixture-for-lineups"
+      description: "Call api-football /fixtures?id=<fixture_id>. Lineups are embedded in the fixture response once released."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        id: "$.get('fixture_id')"
+      outputs:
+        lineups: |
+          [
+            {
+              'team': {
+                'id': line.get('team', {}).get('id'),
+                'name': line.get('team', {}).get('name'),
+              },
+              'formation': line.get('formation'),
+              'coach': line.get('coach', {}).get('name'),
+              'startXI': [
+                {
+                  'name': p.get('player', {}).get('name'),
+                  'number': p.get('player', {}).get('number'),
+                  'pos': p.get('player', {}).get('pos'),
+                  'grid': p.get('player', {}).get('grid'),
+                }
+                for p in line.get('startXI', [])
+              ],
+              'substitutes': [
+                {
+                  'name': p.get('player', {}).get('name'),
+                  'number': p.get('player', {}).get('number'),
+                  'pos': p.get('player', {}).get('pos'),
+                }
+                for p in line.get('substitutes', [])
+              ],
+            }
+            for line in ($.get('response', [{}])[0].get('lineups', []) if $.get('response') else [])
+          ]

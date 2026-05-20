@@ -1,0 +1,47 @@
+workflow:
+  name: "football-data-get-head-to-head"
+  title: "Football Data — Get Head To Head"
+  description: "Fetch the last N head-to-head meetings between two teams (default 5) via API-Football."
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    team_a_id: "$.get('team_a_id')"
+    team_b_id: "$.get('team_b_id')"
+    last: "$.get('last', 5)"
+  outputs:
+    matches: "$.get('matches', [])"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "fetch-h2h"
+      description: "Call api-football /fixtures/headtohead?h2h=<a-b>&last=<N>."
+      connector:
+        name: "api-football"
+        command: "get-fixtures/headtohead"
+      inputs:
+        h2h: "str($.get('team_a_id')) + '-' + str($.get('team_b_id'))"
+        last: "$.get('last', 5)"
+      outputs:
+        matches: |
+          [
+            {
+              'fixture_id': item.get('fixture', {}).get('id'),
+              'date': item.get('fixture', {}).get('date'),
+              'status': item.get('fixture', {}).get('status', {}).get('short'),
+              'league': item.get('league', {}).get('name'),
+              'home': {
+                'id': item.get('teams', {}).get('home', {}).get('id'),
+                'name': item.get('teams', {}).get('home', {}).get('name'),
+                'winner': item.get('teams', {}).get('home', {}).get('winner'),
+              },
+              'away': {
+                'id': item.get('teams', {}).get('away', {}).get('id'),
+                'name': item.get('teams', {}).get('away', {}).get('name'),
+                'winner': item.get('teams', {}).get('away', {}).get('winner'),
+              },
+              'goals': item.get('goals', {}),
+            }
+            for item in $.get('response', [])
+          ]

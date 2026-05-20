@@ -1,0 +1,55 @@
+skill:
+  name: "football-data"
+  title: "Football Data"
+  description: "Read-side football data primitives (fixture lookup, recent form, head-to-head, projected lineup) backed by API-Football."
+  version: "1.0.0"
+  category:
+    - "sports-data"
+    - "football"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "Football Data Skill Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "football-data"
+
+  workflows:
+    - name: "football-data-get-fixture"
+      description: "Fetch one fixture by id. Returns teams, league, kickoff, venue, status, and embedded lineups."
+      inputs:
+        fixture_id: "$.get('fixture_id')"
+      outputs:
+        fixture: "$.get('fixture', {})"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: "football-data-get-team-recent-form"
+      description: "Fetch a team's most recent N matches (default 5)."
+      inputs:
+        team_id: "$.get('team_id')"
+        last: "$.get('last', 5)"
+      outputs:
+        matches: "$.get('matches', [])"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: "football-data-get-head-to-head"
+      description: "Fetch the last N head-to-head meetings between two teams (default 5)."
+      inputs:
+        team_a_id: "$.get('team_a_id')"
+        team_b_id: "$.get('team_b_id')"
+        last: "$.get('last', 5)"
+      outputs:
+        matches: "$.get('matches', [])"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: "football-data-get-projected-lineup"
+      description: "Fetch the confirmed / projected lineups for a fixture. Returns an empty list when lineups have not been released yet."
+      inputs:
+        fixture_id: "$.get('fixture_id')"
+      outputs:
+        lineups: "$.get('lineups', [])"
+        workflow-status: "$.get('workflow-status')"

@@ -1,0 +1,40 @@
+workflow:
+  name: "football-data-get-fixture"
+  title: "Football Data — Get Fixture"
+  description: "Fetch one fixture by id from API-Football. Returns teams, league, kickoff, venue, status, and embedded lineups."
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    fixture_id: "$.get('fixture_id')"
+  outputs:
+    fixture: "$.get('fixture', {})"
+    workflow-status: "$.get('fixture') and 'executed' or 'skipped'"
+  tasks:
+
+    - type: "connector"
+      name: "fetch-fixture"
+      description: "Call api-football /fixtures?id=<fixture_id>."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        id: "$.get('fixture_id')"
+      outputs:
+        fixture: |
+          (lambda raw: (
+            {
+              'id': raw[0].get('fixture', {}).get('id'),
+              'date': raw[0].get('fixture', {}).get('date'),
+              'status': raw[0].get('fixture', {}).get('status', {}),
+              'venue': raw[0].get('fixture', {}).get('venue', {}),
+              'referee': raw[0].get('fixture', {}).get('referee'),
+              'league': raw[0].get('league', {}),
+              'teams': raw[0].get('teams', {}),
+              'goals': raw[0].get('goals', {}),
+              'score': raw[0].get('score', {}),
+              'lineups': raw[0].get('lineups', []),
+              'events': raw[0].get('events', []),
+              'statistics': raw[0].get('statistics', []),
+            } if raw else {}
+          ))($.get('response', []))

@@ -1,0 +1,46 @@
+workflow:
+  name: "football-data-get-team-recent-form"
+  title: "Football Data — Get Team Recent Form"
+  description: "Fetch a team's most recent N finished matches (default 5) via API-Football."
+  context-variables:
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    team_id: "$.get('team_id')"
+    last: "$.get('last', 5)"
+  outputs:
+    matches: "$.get('matches', [])"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: "connector"
+      name: "fetch-recent-form"
+      description: "Call api-football /fixtures?team=<team_id>&last=<N>."
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        team: "$.get('team_id')"
+        last: "$.get('last', 5)"
+      outputs:
+        matches: |
+          [
+            {
+              'fixture_id': item.get('fixture', {}).get('id'),
+              'date': item.get('fixture', {}).get('date'),
+              'status': item.get('fixture', {}).get('status', {}).get('short'),
+              'league': item.get('league', {}).get('name'),
+              'home': {
+                'id': item.get('teams', {}).get('home', {}).get('id'),
+                'name': item.get('teams', {}).get('home', {}).get('name'),
+                'winner': item.get('teams', {}).get('home', {}).get('winner'),
+              },
+              'away': {
+                'id': item.get('teams', {}).get('away', {}).get('id'),
+                'name': item.get('teams', {}).get('away', {}).get('name'),
+                'winner': item.get('teams', {}).get('away', {}).get('winner'),
+              },
+              'goals': item.get('goals', {}),
+            }
+            for item in $.get('response', [])
+          ]
