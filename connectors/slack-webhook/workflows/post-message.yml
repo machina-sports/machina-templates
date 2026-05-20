@@ -2,7 +2,7 @@ workflow:
 
   name: "slack-post-message"
   title: "Slack · Post Message"
-  description: "Thin wrapper around Slack Incoming Webhooks. Reads TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL from vault, splits the URL into the 3 path segments the connector expects inline, posts the message. Callers pass only text/blocks/username/icon_emoji."
+  description: "Thin wrapper around the slack-webhook pyscript connector. Resolves TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL from vault, forwards the message body. The pyscript handles the POST + Slack's quirky `text` vs `blocks` body shape."
   context-variables:
     debugger:
       enabled: true
@@ -13,6 +13,7 @@ workflow:
     blocks: "$.get('blocks', [])"
     username: "$.get('username', '')"
     icon_emoji: "$.get('icon_emoji', '')"
+    icon_url: "$.get('icon_url', '')"
     thread_ts: "$.get('thread_ts', '')"
   outputs:
     posted: "$.get('posted', False)"
@@ -21,18 +22,17 @@ workflow:
 
     - type: "connector"
       name: "post"
-      description: "POST the assembled body to hooks.slack.com. URL split happens inline — context-variables resolves webhook_url, then path params are sliced out via Python list-index expressions."
+      description: "Fire the slack-webhook pyscript."
       connector:
         name: "slack-webhook"
-        command: "post-services-team-webhook-token"
+        command: "invoke_post"
       inputs:
-        team_id: "$.get('webhook_url', '').split('/services/')[-1].split('/')[0] if '/services/' in $.get('webhook_url', '') else ''"
-        webhook_id: "$.get('webhook_url', '').split('/services/')[-1].split('/')[1] if '/services/' in $.get('webhook_url', '') and len($.get('webhook_url', '').split('/services/')[-1].split('/')) > 1 else ''"
-        token: "$.get('webhook_url', '').split('/services/')[-1].split('/')[2] if '/services/' in $.get('webhook_url', '') and len($.get('webhook_url', '').split('/services/')[-1].split('/')) > 2 else ''"
+        webhook_url: "$.get('webhook_url')"
         text: "$.get('text')"
         blocks: "$.get('blocks')"
         username: "$.get('username')"
         icon_emoji: "$.get('icon_emoji')"
+        icon_url: "$.get('icon_url')"
         thread_ts: "$.get('thread_ts')"
       outputs:
-        posted: "$.get('status_code', 0) == 200 or $.get('data') == 'ok'"
+        posted: "$.get('data') == 'ok' or $.get('status') == True"

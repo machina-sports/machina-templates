@@ -1,5 +1,8 @@
 connector:
   name: "slack-webhook"
-  description: "Post to Slack via Incoming Webhook URLs (hooks.slack.com/services/<team>/<webhook>/<token>)"
-  filename: "slack-webhook.json"
-  filetype: "restapi"
+  description: "Post to Slack via Incoming Webhook URLs (pyscript wrapper — takes the full webhook URL as one input, no URL-split dance)"
+  filename: "slack-webhook.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Post Message"
+      value: "invoke_post"

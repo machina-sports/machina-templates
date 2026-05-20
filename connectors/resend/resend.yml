@@ -1,5 +1,8 @@
 connector:
   name: "resend"
-  description: "Resend transactional email API"
-  filename: "resend.json"
-  filetype: "restapi"
+  description: "Resend transactional email API (pyscript wrapper — adds Bearer prefix, coerces to/cc/bcc to lists, serializes body via json.dumps)"
+  filename: "resend.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Send Email"
+      value: "invoke_send"

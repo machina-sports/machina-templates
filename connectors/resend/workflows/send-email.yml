@@ -2,12 +2,17 @@ workflow:
 
   name: "send-email"
   title: "Resend · Send Email"
-  description: "Thin wrapper around Resend's POST /emails. The Resend API key is pulled from the vault via context-variables — store it as `Bearer re_xxxxx` (full Authorization header value) since the workflow engine's $NAME substitution can't prepend a string. Coercion of `to` from str to array happens inline in the connector inputs."
+  description: "Thin wrapper around the resend pyscript connector. The connector handles Bearer-prefix + to/cc/bcc coercion + body serialization, so this workflow's job is purely: resolve the API key from vault, forward inputs."
   context-variables:
     debugger:
       enabled: true
+    # Resolve the secret here — the workflow engine substitutes
+    # `$TEMP_CONTEXT_VARIABLE_*` to the actual decrypted value when
+    # the connector task fires (see machina-client-api/core/workflow/
+    # context.py line ~845). The pyscript reads it from inputs.api_key
+    # and prepends "Bearer " itself.
     resend:
-      authorization: "$TEMP_CONTEXT_VARIABLE_RESEND_API_KEY"
+      api_key: "$TEMP_CONTEXT_VARIABLE_RESEND_API_KEY"
   inputs:
     from: "$.get('from')"
     to: "$.get('to')"
@@ -17,6 +22,7 @@ workflow:
     attachments: "$.get('attachments', [])"
     cc: "$.get('cc', [])"
     bcc: "$.get('bcc', [])"
+    reply_to: "$.get('reply_to', [])"
     tags: "$.get('tags', [])"
   outputs:
     message_id: "$.get('message_id')"
@@ -25,18 +31,20 @@ workflow:
 
     - type: "connector"
       name: "send"
-      description: "POST /emails on Resend with the assembled body. Coerces `to`/`cc`/`bcc` inline — Resend rejects single-string forms with HTTP 422."
+      description: "Fire the resend pyscript."
       connector:
         name: "resend"
-        command: "post-emails"
+        command: "invoke_send"
       inputs:
+        api_key: "$.get('api_key')"
         from: "$.get('from')"
-        to: "[$.get('to')] if isinstance($.get('to'), str) else ($.get('to') or [])"
-        cc: "[$.get('cc')] if isinstance($.get('cc'), str) else ($.get('cc') or [])"
-        bcc: "[$.get('bcc')] if isinstance($.get('bcc'), str) else ($.get('bcc') or [])"
+        to: "$.get('to')"
         subject: "$.get('subject')"
         html: "$.get('html')"
         text: "$.get('text')"
+        cc: "$.get('cc')"
+        bcc: "$.get('bcc')"
+        reply_to: "$.get('reply_to')"
         attachments: "$.get('attachments')"
         tags: "$.get('tags')"
       outputs:
