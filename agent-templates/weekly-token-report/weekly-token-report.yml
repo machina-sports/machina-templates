@@ -1,0 +1,184 @@
+workflow:
+
+  name: "weekly-token-report"
+  title: "Weekly Token Report"
+  description: "End-to-end weekly token-consumption report. Aggregates the pod's own /execution/* over the last N days (default 7), renders a PDF via pdf-generator's metrics-report layout, uploads to GCS, then notifies via email (Resend) and Slack (incoming webhook). Designed to be cron-scheduled by the pod operator (every Monday 9am UTC is the recommended cadence)."
+  context-variables:
+    debugger:
+      enabled: true
+    resend:
+      bearer: "$TEMP_CONTEXT_VARIABLE_RESEND_API_KEY"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    # Window — defaults to last 7 days. Operator can override on demand.
+    period_days: "$.get('period_days', 7)"
+
+    # Pod self-reference (where the aggregator queries from). The
+    # pod's own URL + API key — same one the operator uses to call
+    # the pod from Studio. Stored in vault, fall back to inputs for
+    # ad-hoc runs.
+    api_base_url: "$.get('api_base_url', '$TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_API_BASE_URL')"
+    api_key: "$.get('api_key', '$TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_API_KEY')"
+
+    # Display config.
+    project_label: "$.get('project_label', '$TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_PROJECT_LABEL')"
+    brand_color: "$.get('brand_color', '$TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_BRAND_COLOR')"
+
+    # Delivery — email recipients and slack webhook URL.
+    email_from: "$.get('email_from', '$TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_EMAIL_FROM')"
+    email_to: "$.get('email_to', '$TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_EMAIL_TO')"
+    slack_webhook_url: "$.get('slack_webhook_url', '$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL')"
+
+    # Channel toggles — let the operator opt-out of one channel
+    # without uninstalling.
+    notify_email: "$.get('notify_email', True)"
+    notify_slack: "$.get('notify_slack', True)"
+
+  outputs:
+    pdf_url: "$.get('pdf_url')"
+    total_tokens: "$.get('total_tokens', 0)"
+    total_runs: "$.get('total_runs', 0)"
+    email_message_id: "$.get('email_message_id')"
+    slack_posted: "$.get('slack_posted', False)"
+    workflow-status: "$.get('pdf_url') is not None and 'executed' or 'failed'"
+
+  tasks:
+
+    # ---------------------------------------------------------------
+    # 1. Aggregate token usage from the pod's own /execution/* endpoints
+    # ---------------------------------------------------------------
+    - type: "connector"
+      name: "aggregate-tokens"
+      description: "Query workflow + agent executions over the window, group by name, build a metrics-report payload."
+      connector:
+        name: "token-aggregator"
+        command: "invoke_aggregate"
+      inputs:
+        api_base_url: "$.get('api_base_url')"
+        api_key: "$.get('api_key')"
+        period_days: "$.get('period_days')"
+        project_label: "$.get('project_label')"
+        brand_color: "$.get('brand_color')"
+      outputs:
+        report_payload: "$.get('data')"
+        total_tokens: "$.get('total_tokens', 0)"
+        total_runs: "$.get('total_runs', 0)"
+        period_from: "$.get('period_from')"
+        period_to: "$.get('period_to')"
+        brand_color: "$.get('brand_color', '#0A2540')"
+
+    # ---------------------------------------------------------------
+    # 2. Render the PDF via the existing pdf-generator template's
+    #    metrics-report layout, upload to GCS, capture public URL
+    # ---------------------------------------------------------------
+    - type: "workflow"
+      name: "render-pdf"
+      description: "Hand the aggregated payload to pdf-generator. Returns a public GCS URL."
+      workflow:
+        name: "pdf-generator"
+      inputs:
+        template: "metrics-report"
+        content: "$.get('report_payload', {})"
+        filename: "weekly-token-report-{period_to_short}.pdf"
+        page_size: "Letter"
+        brand_color: "$.get('brand_color')"
+        remote_path: "weekly-token-reports/"
+      outputs:
+        pdf_url: "$.get('pdf_url')"
+        pdf_filename: "$.get('pdf_filename')"
+        size_bytes: "$.get('size_bytes')"
+        page_count: "$.get('page_count')"
+
+    # ---------------------------------------------------------------
+    # 3. Compose email subject + html and fire via Resend
+    # ---------------------------------------------------------------
+    - type: "mapping"
+      name: "compose-email"
+      description: "Build subject + HTML body referencing the PDF URL. Recipients come from vault as a comma-separated string — split here."
+      condition: "$.get('notify_email', True) and $.get('pdf_url') is not None"
+      inputs:
+        project_label: "$.get('project_label')"
+        total_tokens: "$.get('total_tokens', 0)"
+        total_runs: "$.get('total_runs', 0)"
+        pdf_url: "$.get('pdf_url')"
+        email_to_raw: "$.get('email_to', '')"
+        period_to: "$.get('period_to', '')"
+      outputs:
+        email_to_list: "[addr.strip() for addr in $.get('email_to_raw', '').split(',') if addr.strip()]"
+        subject: "f\"{$.get('project_label', 'Project')} · Weekly Token Report · {$.get('period_to', '')[:10]}\""
+        html: "f'<div style=\"font-family:Inter,system-ui,sans-serif;color:#0B2234;line-height:1.5\"><p>Weekly token report for <b>{$.get(\"project_label\", \"Project\")}</b> is ready.</p><ul><li><b>{$.get(\"total_tokens\", 0):,}</b> tokens consumed</li><li><b>{$.get(\"total_runs\", 0):,}</b> runs</li></ul><p><a href=\"{$.get(\"pdf_url\", \"\")}\" style=\"background:#FE4000;color:#fff;padding:10px 16px;border-radius:4px;text-decoration:none;display:inline-block\">Open PDF →</a></p><p style=\"color:#5C6E7C;font-size:13px;margin-top:32px\">Generated automatically by weekly-token-report. To change cadence or recipients, update the cron schedule and TEMP_CONTEXT_VARIABLE_WEEKLY_TOKEN_REPORT_EMAIL_TO in your vault.</p></div>'"
+        text: "f\"Weekly token report — {$.get('total_tokens', 0):,} tokens across {$.get('total_runs', 0):,} runs. PDF: {$.get('pdf_url', '')}\""
+
+    - type: "workflow"
+      name: "send-email"
+      description: "Fire the email via the Resend wrapper workflow."
+      condition: "$.get('notify_email', True) and $.get('pdf_url') is not None and len($.get('email_to_list', [])) > 0"
+      workflow:
+        name: "send-email"
+      inputs:
+        from: "$.get('email_from')"
+        to: "$.get('email_to_list')"
+        subject: "$.get('subject')"
+        html: "$.get('html')"
+        text: "$.get('text')"
+        attachments:
+          - filename: "weekly-token-report.pdf"
+            path: "$.get('pdf_url')"
+            content_type: "application/pdf"
+      outputs:
+        email_message_id: "$.get('message_id')"
+
+    # ---------------------------------------------------------------
+    # 4. Compose Slack message + post via webhook wrapper
+    # ---------------------------------------------------------------
+    - type: "mapping"
+      name: "compose-slack"
+      description: "Build a Block Kit message with the headline numbers + a button to open the PDF."
+      condition: "$.get('notify_slack', True) and $.get('pdf_url') is not None and len($.get('slack_webhook_url', '')) > 0"
+      inputs:
+        project_label: "$.get('project_label')"
+        total_tokens: "$.get('total_tokens', 0)"
+        total_runs: "$.get('total_runs', 0)"
+        pdf_url: "$.get('pdf_url')"
+        period_to: "$.get('period_to', '')"
+      outputs:
+        slack_text: "f\":bar_chart: *{$.get('project_label', 'Project')}* — weekly token report\\n• *{$.get('total_tokens', 0):,}* tokens\\n• *{$.get('total_runs', 0):,}* runs\\n• <{$.get('pdf_url', '')}|Open PDF>\""
+        slack_blocks:
+          - type: "header"
+            text:
+              type: "plain_text"
+              text: "Weekly Token Report"
+          - type: "section"
+            fields:
+              - type: "mrkdwn"
+                text: "*Project*\n{project_label}"
+              - type: "mrkdwn"
+                text: "*Period*\n{period_to_short}"
+              - type: "mrkdwn"
+                text: "*Tokens*\n{total_tokens_fmt}"
+              - type: "mrkdwn"
+                text: "*Runs*\n{total_runs_fmt}"
+          - type: "actions"
+            elements:
+              - type: "button"
+                text:
+                  type: "plain_text"
+                  text: "Open PDF"
+                url: "{pdf_url}"
+                style: "primary"
+
+    - type: "workflow"
+      name: "post-slack"
+      description: "Fire the Slack message via the slack-post-message wrapper."
+      condition: "$.get('notify_slack', True) and $.get('pdf_url') is not None and len($.get('slack_webhook_url', '')) > 0"
+      workflow:
+        name: "slack-post-message"
+      inputs:
+        webhook_url: "$.get('slack_webhook_url')"
+        text: "$.get('slack_text')"
+        username: "Machina · Weekly Reports"
+        icon_emoji: ":bar_chart:"
+      outputs:
+        slack_posted: "$.get('posted')"

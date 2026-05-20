@@ -1,0 +1,52 @@
+workflow:
+
+  name: "slack-post-message"
+  title: "Slack · Post Message"
+  description: "Thin wrapper around Slack's Incoming Webhook. Takes the full webhook URL from the vault (single SLACK_WEBHOOK_URL secret), splits it into the 3 path segments the connector expects, posts the message. Use this from any workflow that needs to fire a notification — keeps the URL-parsing in one place instead of each caller reimplementing it."
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    webhook_url: "$.get('webhook_url', '$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL')"
+    text: "$.get('text', '')"
+    blocks: "$.get('blocks', [])"
+    username: "$.get('username', '')"
+    icon_emoji: "$.get('icon_emoji', '')"
+    thread_ts: "$.get('thread_ts', '')"
+  outputs:
+    posted: "$.get('posted', False)"
+    workflow-status: "$.get('posted') and 'executed' or 'failed'"
+  tasks:
+
+    # The webhook URL pattern is https://hooks.slack.com/services/<TEAM>/<WEBHOOK>/<TOKEN>.
+    # We split on '/services/' and then on '/' to get the three segments.
+    # Defensive: if the URL is empty or malformed, leave the segments
+    # blank so the connector call fails cleanly with a 4xx instead of
+    # silently hitting a wrong URL.
+    - type: "mapping"
+      name: "split-webhook-url"
+      description: "Extract team_id / webhook_id / token from the Slack incoming-webhook URL."
+      inputs:
+        url: "$.get('webhook_url', '')"
+      outputs:
+        team_id: "($.get('url', '').split('/services/')[-1].split('/')[0]) if '/services/' in $.get('url', '') else ''"
+        webhook_id: "($.get('url', '').split('/services/')[-1].split('/')[1]) if '/services/' in $.get('url', '') and len($.get('url', '').split('/services/')[-1].split('/')) > 1 else ''"
+        token: "($.get('url', '').split('/services/')[-1].split('/')[2]) if '/services/' in $.get('url', '') and len($.get('url', '').split('/services/')[-1].split('/')) > 2 else ''"
+
+    - type: "connector"
+      name: "post"
+      description: "POST the assembled body to hooks.slack.com."
+      connector:
+        name: "slack-webhook"
+        command: "post-services-team-webhook-token"
+      inputs:
+        team_id: "$.get('team_id')"
+        webhook_id: "$.get('webhook_id')"
+        token: "$.get('token')"
+        text: "$.get('text')"
+        blocks: "$.get('blocks')"
+        username: "$.get('username')"
+        icon_emoji: "$.get('icon_emoji')"
+        thread_ts: "$.get('thread_ts')"
+      outputs:
+        posted: "$.get('status_code', 0) == 200 or $.get('data') == 'ok'"
