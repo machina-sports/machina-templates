@@ -83,11 +83,38 @@ def _http_post(url, headers, body, timeout=30):
         return {"_error": f"{type(e).__name__}: {e}"}
 
 
+def _parse_row_date(row):
+    """Best-effort parse of an execution row's timestamp. Returns a
+    tz-aware UTC datetime or None."""
+    raw = row.get("date") or row.get("finished_time") or ""
+    if not raw:
+        return None
+    for fmt in ("%a, %d %b %Y %H:%M:%S %Z", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            parsed = datetime.strptime(str(raw).split("+")[0].strip("Z"), fmt)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except (ValueError, AttributeError):
+            continue
+    return None
+
+
 def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_size_cap):
     """Page through one of /execution/workflow-search or
-    /execution/agent-search. The endpoint accepts page + page_size in
-    the body; we walk until total_documents OR page_size_cap, whichever
-    comes first."""
+    /execution/agent-search.
+
+    Critical perf note for high-volume pods (sbot-prd has 180k+ execs):
+    pages are returned newest-first. Once a full page is OLDER than
+    `since_iso` (i.e. all rows fall outside the window), we abort
+    pagination — no point pulling every historical row just to filter
+    it out client-side. This early-exit is what makes the aggregator
+    usable against production pods.
+
+    `page_size_cap` is a hard ceiling on COLLECTED matching rows; we
+    stop accepting more once we've seen that many. Doesn't apply to
+    skipped (pre-window) rows.
+    """
 
     url = f"{base_url.rstrip('/')}/{endpoint}"
     headers = {
@@ -95,10 +122,23 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
         "content-type": "application/json",
     }
 
+    try:
+        since_dt = datetime.fromisoformat(since_iso.replace("Z", "+00:00"))
+        until_dt = datetime.fromisoformat(until_iso.replace("Z", "+00:00"))
+    except Exception:
+        # Bad input window — fall back to last 7 days hard limit so we
+        # don't paginate the whole table.
+        since_dt = datetime.now(timezone.utc) - timedelta(days=7)
+        until_dt = datetime.now(timezone.utc)
+
     collected = []
     page = 1
     per_page = 200
-    while len(collected) < page_size_cap:
+    # Safety cap on pages — even if the early-exit fails, we never
+    # walk more than 50 pages (=10k rows) per source.
+    max_pages = 50
+
+    while len(collected) < page_size_cap and page <= max_pages:
         body = {
             "filters": {},
             "page": page,
@@ -110,36 +150,31 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
         rows = resp.get("data") or []
         if not rows:
             break
-        # Filter by date window client-side — the search endpoint
-        # doesn't accept date filters in every client-api version.
-        for row in rows:
-            row_date = row.get("date") or row.get("finished_time") or ""
-            try:
-                # Date field is typically "Wed, 20 May 2026 16:48:17 GMT"
-                # or ISO 8601. Try both.
-                parsed = None
-                for fmt in ("%a, %d %b %Y %H:%M:%S %Z", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
-                    try:
-                        parsed = datetime.strptime(row_date.split("+")[0].strip("Z"), fmt)
-                        if parsed.tzinfo is None:
-                            parsed = parsed.replace(tzinfo=timezone.utc)
-                        break
-                    except (ValueError, AttributeError):
-                        continue
-                if parsed is None:
-                    # Unparseable date — keep the row anyway, don't filter
-                    collected.append(row)
-                    continue
-                since_dt = datetime.fromisoformat(since_iso.replace("Z", "+00:00"))
-                until_dt = datetime.fromisoformat(until_iso.replace("Z", "+00:00"))
-                if since_dt <= parsed <= until_dt:
-                    collected.append(row)
-            except Exception:
-                collected.append(row)
 
-        total = resp.get("total_documents") or len(rows)
-        if len(collected) >= total or len(rows) < per_page:
+        # Window filter + early-exit detection.
+        last_row_date = None
+        page_had_in_window = False
+        for row in rows:
+            parsed = _parse_row_date(row)
+            if parsed is None:
+                # Unparseable — keep it; we can't filter so don't filter.
+                collected.append(row)
+                continue
+            if since_dt <= parsed <= until_dt:
+                collected.append(row)
+                page_had_in_window = True
+            last_row_date = parsed if last_row_date is None else min(last_row_date, parsed)
+
+        # If the OLDEST row on this page is already older than the
+        # window AND none of the rows fell into the window, the rest
+        # of the table is irrelevant — stop paginating.
+        if last_row_date is not None and last_row_date < since_dt and not page_had_in_window:
             break
+
+        # Last page reached.
+        if len(rows) < per_page:
+            break
+
         page += 1
 
     return collected, None
@@ -173,17 +208,9 @@ def _row_name(row):
     )
 
 
-def _row_date(row):
-    raw = row.get("date") or row.get("finished_time") or ""
-    for fmt in ("%a, %d %b %Y %H:%M:%S %Z", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
-        try:
-            parsed = datetime.strptime(str(raw).split("+")[0].strip("Z"), fmt)
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            return parsed
-        except (ValueError, AttributeError):
-            continue
-    return None
+# Alias _row_date → _parse_row_date for backward compat with the rest
+# of the module (was a duplicate definition; consolidated).
+_row_date = _parse_row_date
 
 
 def _format_number(n):
