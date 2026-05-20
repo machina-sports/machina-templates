@@ -91,46 +91,36 @@ workflow:
     # 2. Render the PDF via the existing pdf-generator template's
     #    metrics-report layout, upload to GCS, capture public URL
     # ---------------------------------------------------------------
-    # render-pdf is BEST-EFFORT — when the pdf-generator template's
-    # internal upload-pdf step skips (its own output extraction is
-    # buggy under the workflow engine's data-spread behavior, and the
-    # `pdf_url` ends up null), we still want email + slack to fire
-    # with just the headline numbers. `continue_on_error: true` keeps
-    # the workflow alive even when the sub-workflow returns 'skipped'
-    # or its output evaluation throws. The downstream notification
-    # tasks treat pdf_url null as "no PDF this run" gracefully.
-    - type: "workflow"
-      name: "render-pdf"
-      description: "Hand the aggregated payload to pdf-generator. Best-effort — failures don't block notifications."
-      continue_on_error: true
-      workflow:
-        name: "pdf-generator"
-      inputs:
-        template: "'metrics-report'"
-        content: "$.get('report_payload', {})"
-        filename: "''"
-        page_size: "'Letter'"
-        brand_color: "$.get('brand_color')"
-        remote_path: "'token-usage-reports/'"
-      outputs:
-        pdf_url: "$.get('pdf_url')"
+    # PDF rendering is OPTIONAL for v1 — the existing pdf-generator
+    # template's internal upload-pdf step has its own output-extraction
+    # bug that returns null pdf_url. Skipping the sub-workflow call
+    # entirely for now; email + slack ship the headline numbers without
+    # the PDF link. Add this back once pdf-generator's own yml fixes
+    # the $.get('data', {}).get('data_uri') antipattern in its
+    # render-pdf task outputs.
+    #
+    # - type: workflow
+    #   name: render-pdf
+    #   workflow:
+    #     name: pdf-generator
+    #   inputs: { template: "'metrics-report'", content: "$.get('report_payload', {})", ... }
+    #   outputs: { pdf_url: "$.get('pdf_url')" }
 
     # ---------------------------------------------------------------
     # 3. Email via Resend (subject/body composed inline via f-strings;
     #    recipient list parsed inline from comma-separated vault value;
     #    no mapping task — that's reserved for registered mappings)
     # ---------------------------------------------------------------
-    - type: "workflow"
-      name: "send-email"
-      description: "Fire the email via the Resend wrapper workflow. Sends even when pdf_url is null — the PDF link is optional context, the headline numbers are the value."
-      condition: "$.get('notify_email', True) and len($.get('email_to', '')) > 0"
+    - type: workflow
+      name: send-email
+      description: "Fire email via Resend. Compose subject/body via simple f-string."
       workflow:
-        name: "send-email"
+        name: send-email
       inputs:
         from: "$.get('email_from')"
-        to: "[a.strip() for a in $.get('email_to', '').split(',') if a.strip()]"
-        subject: "f\"{$.get('project_label', 'Project')} · {$.get('mode_label', 'Report')} Token Report · {$.get('period_to', '')[:10]}\""
-        text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('project_label', 'Project')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url', '')}\""
+        to: "$.get('email_to')"
+        subject: "f\"{$.get('project_label')} · Token Report\""
+        text: "f\"Total tokens: {$.get('total_tokens', 0)}. Total runs: {$.get('total_runs', 0)}.\""
       outputs:
         email_message_id: "$.get('message_id')"
 
@@ -138,15 +128,12 @@ workflow:
     # 4. Slack via incoming webhook — wrapper resolves SLACK_WEBHOOK_URL
     #    from vault, no need to pass it from the caller
     # ---------------------------------------------------------------
-    - type: "workflow"
-      name: "post-slack"
-      description: "Fire the Slack message via the slack-post-message wrapper. Posts even when pdf_url is null — headline numbers are the value, the link is optional."
-      condition: "$.get('notify_slack', True)"
+    - type: workflow
+      name: post-slack
+      description: "Fire Slack message via webhook wrapper."
       workflow:
-        name: "slack-post-message"
+        name: slack-post-message
       inputs:
-        text: "f\":bar_chart: *{$.get('project_label', 'Project')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• <{$.get('pdf_url', '')}|Open PDF>\""
-        username: "'Machina · Reports'"
-        icon_emoji: "':bar_chart:'"
+        text: "f\"{$.get('project_label')} token report: {$.get('total_tokens', 0)} tokens, {$.get('total_runs', 0)} runs\""
       outputs:
         slack_posted: "$.get('posted')"
