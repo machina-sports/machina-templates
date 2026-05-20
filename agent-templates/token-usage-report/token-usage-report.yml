@@ -32,7 +32,12 @@ workflow:
     api_base_url: "$.get('api_base_url', '')"
     api_key: "$.get('api_key', '')"
 
-    # Display + delivery.
+    # Display + delivery. `org_label` is the umbrella org name (Entain,
+    # DAZN, Machina); `project_label` is the specific pod (SBOT
+    # Production, Sports Interaction v2). Combined in subject/body
+    # as "<Org> · <Project>" so notifications are unambiguous when
+    # multiple pods report into the same Slack channel + email inbox.
+    org_label: "$.get('org_label', '')"
     project_label: "$.get('project_label', 'Project')"
     brand_color: "$.get('brand_color', '#FE4000')"
     email_from: "$.get('email_from', 'Machina Reports <onboarding@resend.dev>')"
@@ -64,7 +69,10 @@ workflow:
         api_key: "$.get('api_key')"
         period_mode: "$.get('period_mode')"
         period_days: "$.get('period_days')"
-        project_label: "$.get('project_label')"
+        # Project label that lands in the PDF title — combine org +
+        # project when both present so the PDF heading reads
+        # "Entain · SBOT Production · Weekly Token Report".
+        project_label: "f\"{($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')}\""
         brand_color: "$.get('brand_color')"
       outputs:
         report_payload: "$.get('payload')"
@@ -130,8 +138,13 @@ workflow:
         api_key: "$.get('api_key')"
         from: "$.get('email_from')"
         to: "$.get('email_to')"
-        subject: "f\"{$.get('project_label')} · {$.get('mode_label', 'Report')} Token Report\""
-        text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('project_label')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url') or 'PDF unavailable this run'}\""
+        # Subject and body always lead with "<Org> · <Project>" when
+        # an org_label is provided, otherwise just the project. Same
+        # naming used in the PDF title (set by the aggregator), the
+        # Slack message, and the email — single source of truth for
+        # billing readability.
+        subject: "f\"{($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')} · {$.get('mode_label', 'Report')} Token Report\""
+        text: "f\"{$.get('mode_label', 'Report')} token report for {($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url') or 'PDF unavailable this run'}\""
       outputs:
         email_message_id: "$.get('id')"
 
@@ -146,6 +159,6 @@ workflow:
         command: "invoke_post"
       inputs:
         webhook_url: "$.get('webhook_url')"
-        text: "f\":bar_chart: *{$.get('project_label')}* {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• PDF: {$.get('pdf_url') or '(unavailable)'}\""
+        text: "f\":bar_chart: *{($.get('org_label') + ' · ') if $.get('org_label') else ''}{$.get('project_label')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• PDF: {$.get('pdf_url') or '(unavailable)'}\""
       outputs:
         slack_posted: "True"
