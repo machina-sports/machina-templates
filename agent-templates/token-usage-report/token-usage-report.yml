@@ -20,21 +20,20 @@ workflow:
     # previous_week / previous_month.
     period_days: "$.get('period_days', 7)"
 
-    # Pod self-reference (where the aggregator queries from). The
-    # pod's own URL + API key — same one the operator uses to call
-    # the pod from Studio. Stored in vault, fall back to inputs for
-    # ad-hoc runs.
-    api_base_url: "$.get('api_base_url', '$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_BASE_URL')"
-    api_key: "$.get('api_key', '$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_KEY')"
-
-    # Display config.
-    project_label: "$.get('project_label', '$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_PROJECT_LABEL')"
-    brand_color: "$.get('brand_color', '$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_BRAND_COLOR')"
-
-    # Delivery — email recipients and slack webhook URL.
-    email_from: "$.get('email_from', '$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_FROM')"
-    email_to: "$.get('email_to', '$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_TO')"
-    slack_webhook_url: "$.get('slack_webhook_url', '$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL')"
+    # Pod self-reference + display config + delivery config all come
+    # from vault. The workflow engine substitutes `$TEMP_CONTEXT_VARIABLE_*`
+    # ONLY when the entire input value IS the $NAME — it does NOT
+    # substitute when the $NAME is a default value inside a $.get()
+    # Python expression. So these inputs are always vault-sourced;
+    # cron schedules that want to override use `--inputs` to pass
+    # specific values, but the override path requires changing the
+    # input expression too. For v1 we treat vault as the source of truth.
+    api_base_url: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_BASE_URL"
+    api_key: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_API_KEY"
+    project_label: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_PROJECT_LABEL"
+    brand_color: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_BRAND_COLOR"
+    email_from: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_FROM"
+    email_to: "$TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_TO"
 
     # Channel toggles — let the operator opt-out of one channel
     # without uninstalling.
