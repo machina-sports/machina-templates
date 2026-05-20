@@ -699,7 +699,7 @@
     "/fixtures": {
       "get": {
         "summary": "Get fixtures",
-        "description": "Retrieve football fixtures based on various filters. Supports single/multiple fixture IDs, live fixtures, date ranges, league/team filtering, and venue-specific queries. Returns events, lineups, and statistics for specific fixture requests.",
+        "description": "Retrieve football fixtures based on various filters. Supports single/multiple fixture IDs, live fixtures, date ranges, league/team filtering, and venue-specific queries. Returns events, lineups, and statistics for specific fixture requests. TIER NOTES: `next` and `last` are PAID-only (Free returns HTTP 400). On Free, use `{date: \"YYYY-MM-DD\"}` for both upcoming and recent lookups, optionally narrowed by `league`/`team`/`season`. FILTER FAMILIES are mutually exclusive: combining `live` with `date`/`from`/`to`/`next`/`last` returns HTTP 400 — pick ONE filter per request.",
         "operationId": "get-fixtures",
         "security": [
           {
@@ -779,7 +779,7 @@
           {
             "name": "last",
             "in": "query",
-            "description": "Number of last fixtures to retrieve",
+            "description": "Number of last fixtures to retrieve. PAID-TIER ONLY — Free plans get HTTP 400 'Free plans do not have access to the Last parameter.' On Free, use `{date: \"YYYY-MM-DD\"}` (optionally narrowed by `league`/`team`/`season`) to look up recently-played fixtures instead.",
             "required": false,
             "schema": {
               "type": "integer"
@@ -788,7 +788,7 @@
           {
             "name": "next",
             "in": "query",
-            "description": "Number of next fixtures to retrieve",
+            "description": "Number of next fixtures to retrieve. PAID-TIER ONLY — Free plans get HTTP 400 'Free plans do not have access to the Next parameter.' On Free, use `{date: \"YYYY-MM-DD\"}` (optionally narrowed by `league`/`team`/`season`) to look up upcoming fixtures on a specific day instead.",
             "required": false,
             "schema": {
               "type": "integer"
