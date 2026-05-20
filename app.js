@@ -761,19 +761,27 @@ function drawBrandStrip(team, w, h) {
 }
 
 function drawHeadline(text, team, w, h, hasRef) {
+  // Position so the headline ALWAYS finishes above the data card (which
+  // starts at h * 0.68). We anchor the bottom of the last line at h * 0.64.
   const padX = Math.round(w * 0.06);
-  const baseY = h - Math.round(h * 0.4);
   const wrapW = w - padX * 2;
-  const maxFont = Math.round(h * 0.085);
-  const minFont = Math.round(h * 0.045);
+  const headlineBottom = Math.round(h * 0.64);
+  // Headline font scales off the SHORTER axis so landscape doesn't
+  // produce a tiny banner type and portrait doesn't blow up.
+  const baseAxis = Math.min(w, h);
+  const maxFont = Math.round(baseAxis * 0.085);
+  const minFont = Math.round(baseAxis * 0.045);
   const lines = wrapLines(text.trim().toUpperCase(), wrapW, maxFont, minFont);
 
   const lineH = lines.fontSize * 0.95;
+  const totalH = lineH * lines.list.length;
+  const baseY  = headlineBottom - totalH;
+
   ctx.font = `900 ${lines.fontSize}px 'Archivo Black', Archivo, sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
-  // Accent slab behind the first line so the eye lands
+  // Accent slab above the headline so the eye lands
   const slabH = Math.round(lines.fontSize * 0.18);
   ctx.fillStyle = '#ffd60a';
   ctx.fillRect(padX - 8, baseY - slabH - 12, Math.round(w * 0.18), slabH);
@@ -781,7 +789,6 @@ function drawHeadline(text, team, w, h, hasRef) {
   // Headline lines
   lines.list.forEach((ln, i) => {
     const y = baseY + i * lineH;
-    // Shadow band under each line for readability over busy backgrounds
     ctx.save();
     if (hasRef) {
       ctx.shadowColor = 'rgba(0,0,0,0.7)';
