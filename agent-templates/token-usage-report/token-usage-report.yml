@@ -52,7 +52,7 @@ workflow:
     total_runs: "$.get('total_runs', 0)"
     email_message_id: "$.get('email_message_id')"
     slack_posted: "$.get('slack_posted', False)"
-    workflow-status: "$.get('pdf_url') is not None and 'executed' or 'failed'"
+    workflow-status: "($.get('email_message_id') is not None or $.get('slack_posted')) and 'executed' or ($.get('total_runs', 0) > 0 and 'executed' or 'failed')"
 
   tasks:
 
@@ -121,8 +121,8 @@ workflow:
     # ---------------------------------------------------------------
     - type: "workflow"
       name: "send-email"
-      description: "Fire the email via the Resend wrapper workflow. Wrapper coerces single-string `to` to array and adds the Bearer-prefixed auth header from vault."
-      condition: "$.get('notify_email', True) and $.get('pdf_url') is not None and len($.get('email_to', '')) > 0"
+      description: "Fire the email via the Resend wrapper workflow. Sends even when pdf_url is null — the PDF link is optional context, the headline numbers are the value."
+      condition: "$.get('notify_email', True) and len($.get('email_to', '')) > 0"
       workflow:
         name: "send-email"
       inputs:
@@ -139,8 +139,8 @@ workflow:
     # ---------------------------------------------------------------
     - type: "workflow"
       name: "post-slack"
-      description: "Fire the Slack message via the slack-post-message wrapper. The webhook URL stays inside that wrapper's context-variables."
-      condition: "$.get('notify_slack', True) and $.get('pdf_url') is not None"
+      description: "Fire the Slack message via the slack-post-message wrapper. Posts even when pdf_url is null — headline numbers are the value, the link is optional."
+      condition: "$.get('notify_slack', True)"
       workflow:
         name: "slack-post-message"
       inputs:
