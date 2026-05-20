@@ -731,7 +731,7 @@
           {
             "name": "live",
             "in": "query",
-            "description": "Live fixtures - use 'all' for all live fixtures or league IDs separated by hyphens (returns events)",
+            "description": "Live fixtures - use 'all' for all live fixtures or league IDs separated by hyphens (returns events). MUTUALLY EXCLUSIVE with `date`, `from`, `to`, `next`, `last` — pick one filter family per request; combining returns HTTP 400 'The Date field cannot be used with live field.' (and similar).",
             "required": false,
             "schema": {
               "type": "string",
@@ -741,7 +741,7 @@
           {
             "name": "date",
             "in": "query",
-            "description": "Date in YYYY-MM-DD format",
+            "description": "Date in YYYY-MM-DD format. MUTUALLY EXCLUSIVE with `live` — combining returns HTTP 400. Pair with `league`/`season`/`team` to narrow.",
             "required": false,
             "schema": {
               "type": "string",
