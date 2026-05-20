@@ -98,6 +98,7 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
     collected = []
     page = 1
     per_page = 200
+    print(f"[FETCH_DEBUG] hitting {url} page=1")
     while len(collected) < page_size_cap:
         body = {
             "filters": {},
@@ -106,7 +107,11 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
         }
         resp = _http_post(url, headers, body)
         if resp.get("_error"):
+            print(f"[FETCH_DEBUG] _error: {resp['_error']}")
             return collected, resp["_error"]
+        # Surface what came back for visibility — total_documents / data length
+        if page == 1:
+            print(f"[FETCH_DEBUG] page=1 total_documents={resp.get('total_documents')} data_len={len(resp.get('data') or [])} keys={list(resp.keys())}")
         rows = resp.get("data") or []
         if not rows:
             break
