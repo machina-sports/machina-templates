@@ -1536,6 +1536,336 @@
         }
       }
     },
+    "/fixtures/lineups": {
+      "get": {
+        "summary": "Get fixture lineups",
+        "description": "Get both teams' starting XI, formation string, coach, and substitutes for a fixture. Players come with a `grid` field like \"1:1\" / \"2:3\" (X = row from goal outward, Y = column left-to-right) — the canonical input for rendering a tactical pitch viz. Available 20-40 minutes before kick-off when the competition's coverage supports it; otherwise populated after the match.",
+        "operationId": "get-fixtures/lineups",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fixture",
+            "in": "query",
+            "description": "Fixture ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 592872
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "description": "Team ID to filter lineups to one side",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 50
+            }
+          },
+          {
+            "name": "player",
+            "in": "query",
+            "description": "Player ID to filter lineups to a single player",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 35845
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Lineup subset (currently only startXI is documented)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["startXI"],
+              "example": "startXI"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": { "type": "string" },
+                    "parameters": { "type": "object" },
+                    "errors": { "type": "array", "items": { "type": "string" } },
+                    "results": { "type": "integer" },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "team": { "type": "object" },
+                          "coach": { "type": "object" },
+                          "formation": { "type": "string", "example": "4-3-3" },
+                          "startXI": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "player": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": { "type": "integer" },
+                                    "name": { "type": "string" },
+                                    "number": { "type": "integer" },
+                                    "pos": { "type": "string" },
+                                    "grid": { "type": "string", "example": "2:1" }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "substitutes": { "type": "array", "items": { "type": "object" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/predictions": {
+      "get": {
+        "summary": "Get fixture predictions",
+        "description": "Pre-match probability for home/draw/away outcomes, advice text, expected winner, and side-by-side comparisons (form, attack, defence, h2h, goals, total) plus team season context. Available once both teams' last 10 fixtures of the season are processed.",
+        "operationId": "get-predictions",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fixture",
+            "in": "query",
+            "description": "Fixture ID",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "example": 198772
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": { "type": "string" },
+                    "parameters": { "type": "object" },
+                    "errors": { "type": "array", "items": { "type": "string" } },
+                    "results": { "type": "integer" },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "predictions": {
+                            "type": "object",
+                            "properties": {
+                              "winner": { "type": "object" },
+                              "win_or_draw": { "type": "boolean" },
+                              "under_over": { "type": "string" },
+                              "goals": { "type": "object" },
+                              "advice": { "type": "string" },
+                              "percent": {
+                                "type": "object",
+                                "properties": {
+                                  "home": { "type": "string", "example": "47%" },
+                                  "draw": { "type": "string", "example": "24%" },
+                                  "away": { "type": "string", "example": "29%" }
+                                }
+                              }
+                            }
+                          },
+                          "league": { "type": "object" },
+                          "teams": { "type": "object" },
+                          "comparison": { "type": "object" },
+                          "h2h": { "type": "array", "items": { "type": "object" } }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/odds": {
+      "get": {
+        "summary": "Get pre-match odds",
+        "description": "Pre-match odds from multiple bookmakers for a fixture or league/season. NOTE this is pre-match only — for live odds use /odds/live (not yet wired here). Odds disappear from this endpoint a few hours after the fixture starts; archived odds live under /odds/mapping. At least one of (fixture, league, season, date) is required.",
+        "operationId": "get-odds",
+        "security": [
+          {
+            "x-apisports-key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fixture",
+            "in": "query",
+            "description": "Fixture ID — narrowest filter",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 164327
+            }
+          },
+          {
+            "name": "league",
+            "in": "query",
+            "description": "League ID (pair with `season`)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 39
+            }
+          },
+          {
+            "name": "season",
+            "in": "query",
+            "description": "Season year (YYYY)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 2024
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Date YYYY-MM-DD",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2024-08-17"
+            }
+          },
+          {
+            "name": "bookmaker",
+            "in": "query",
+            "description": "Bookmaker ID — narrow to a single sportsbook's lines",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 6
+            }
+          },
+          {
+            "name": "bet",
+            "in": "query",
+            "description": "Bet type ID — narrow to one market (e.g. 1 = Match Winner)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "description": "IANA timezone for date/time fields in the response",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "Europe/London"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Pagination cursor (default 1)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "get": { "type": "string" },
+                    "parameters": { "type": "object" },
+                    "errors": { "type": "array", "items": { "type": "string" } },
+                    "results": { "type": "integer" },
+                    "paging": { "type": "object" },
+                    "response": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "league": { "type": "object" },
+                          "fixture": { "type": "object" },
+                          "update": { "type": "string", "format": "date-time" },
+                          "bookmakers": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "integer" },
+                                "name": { "type": "string" },
+                                "bets": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": { "type": "integer" },
+                                      "name": { "type": "string" },
+                                      "values": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "value": { "type": "string" },
+                                            "odd": { "type": "string" }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/fixtures/players": {
       "get": {
         "summary": "Get fixture players statistics",
