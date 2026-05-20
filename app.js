@@ -417,11 +417,15 @@ async function fetchLiveData(team, headline) {
         command: call.command,
         params:  call.params || {},
       });
-      // Validate shape before access — fixes the "validate-api-response" anti-pattern.
-      const inner   = result && result.data && result.data.outputs;
-      if (!inner) continue;
-      const payload = inner.result;
-      const status  = inner['workflow-status'];
+      // The proxy may either unwrap the workflow outputs into a flat object
+      // ({ result, "workflow-status" }) OR return the full Client API
+      // envelope ({ data: { data: { outputs: {...} } } }). Handle both —
+      // validate every level before access (anti-pattern: blind property
+      // chaining → TypeError).
+      const outputs = extractOutputs(result);
+      if (!outputs) continue;
+      const payload = outputs.result;
+      const status  = outputs['workflow-status'];
       if (status === 'executed' && payload && Object.keys(payload).length > 0) {
         const shaped = shapeFor(call.intent, payload, team);
         if (shaped && shaped.rows && shaped.rows.length > 0) {
@@ -440,6 +444,21 @@ async function fetchLiveData(team, headline) {
   // Everything empty — give the user something to look at so they
   // understand what the layout will be once the data path is wired.
   return { ...seedData(team, headline), __source: 'sample (no live data for this query)', __usingFallback: true };
+}
+
+// Walk the proxy response and find the workflow's `outputs` dict —
+// which the platform sometimes returns flat (`{result, "workflow-status"}`)
+// and sometimes nested as `data.data.outputs` depending on the proxy
+// version. Returns null when neither shape matches.
+function extractOutputs(res) {
+  if (!res || typeof res !== 'object') return null;
+  // Shape A: proxy already unwrapped → outputs are at the top level.
+  if ('workflow-status' in res || 'result' in res) return res;
+  // Shape B: full Client API envelope.
+  if (res.data && res.data.data && res.data.data.outputs) return res.data.data.outputs;
+  // Shape C: single-level envelope.
+  if (res.data && res.data.outputs) return res.data.outputs;
+  return null;
 }
 
 async function callWorkflow(proxyUrl, name, inputs) {
