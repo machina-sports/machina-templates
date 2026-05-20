@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Drop — Sports graphic generator</title>
+  <meta name="description" content="Pick a team, type a headline, drop a reference. Out comes a baked social-media graphic with real data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a0a0a'/%3E%3Ctext x='12' y='17' font-family='Arial Black' font-size='14' fill='%23ff3d00' text-anchor='middle'%3ED%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <div class="grain"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">▮</span>
+      <span class="brand-name">DROP</span>
+      <span class="brand-sub">/ sports graphic studio</span>
+    </div>
+    <div class="status" id="api-status" aria-live="polite">
+      <span class="dot dot-idle"></span>
+      <span class="status-text">ready</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- LEFT: controls -->
+    <section class="panel controls" aria-label="Compose">
+      <h1 class="bigtitle">
+        Make a <em>graphic</em>.<br />
+        <span class="bigtitle-sub">Real data. Real fast.</span>
+      </h1>
+
+      <!-- TEAM -->
+      <div class="field">
+        <label for="team-input" class="label">
+          <span class="label-num">01</span>
+          <span class="label-text">Pick a team</span>
+        </label>
+        <div class="combo">
+          <input
+            id="team-input"
+            type="text"
+            class="text-input"
+            placeholder="Try: Lakers, Real Madrid, Chiefs, Yankees…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div id="team-results" class="combo-popover" role="listbox" hidden></div>
+          <div id="team-chip" class="chip" hidden>
+            <span class="chip-dot" id="team-chip-dot"></span>
+            <span class="chip-label" id="team-chip-label"></span>
+            <span class="chip-meta" id="team-chip-meta"></span>
+            <button type="button" class="chip-x" id="team-chip-clear" aria-label="Clear team">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROMPT -->
+      <div class="field">
+        <label for="prompt-input" class="label">
+          <span class="label-num">02</span>
+          <span class="label-text">What's the headline?</span>
+        </label>
+        <textarea
+          id="prompt-input"
+          class="text-input textarea"
+          placeholder="Next 5 games. Last 10 results. Head-to-head vs Celtics. Top scorers this month."
+          rows="3"
+          maxlength="240"
+        ></textarea>
+        <div class="hints" id="prompt-hints"></div>
+      </div>
+
+      <!-- REFERENCE -->
+      <div class="field">
+        <label class="label">
+          <span class="label-num">03</span>
+          <span class="label-text">Reference image <span class="muted">(optional)</span></span>
+        </label>
+        <div id="dropzone" class="dropzone" tabindex="0">
+          <input type="file" id="ref-file" accept="image/*" hidden />
+          <div id="dropzone-empty" class="dz-empty">
+            <div class="dz-icon" aria-hidden="true">⌖</div>
+            <div class="dz-title">Drop an image, paste a URL, or click</div>
+            <div class="dz-sub">Background gets borrowed. Palette gets borrowed.</div>
+            <input type="url" id="ref-url" class="dz-url" placeholder="…or paste an image URL" />
+          </div>
+          <div id="dropzone-preview" class="dz-preview" hidden>
+            <img id="ref-img" alt="Reference" />
+            <div class="dz-info">
+              <div class="dz-pals" id="ref-pals" aria-label="Extracted palette"></div>
+              <button type="button" class="ghost" id="ref-clear">remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RATIO -->
+      <div class="field">
+        <label class="label">
+          <span class="label-num">04</span>
+          <span class="label-text">Output ratio</span>
+        </label>
+        <div class="ratios" role="radiogroup" aria-label="Aspect ratio">
+          <button class="ratio active" data-ratio="1:1" data-w="1080" data-h="1080" role="radio" aria-checked="true">
+            <span class="ratio-box r-square"></span>
+            <span class="ratio-name">Square</span>
+            <span class="ratio-dim">1080×1080</span>
+          </button>
+          <button class="ratio" data-ratio="16:9" data-w="1920" data-h="1080" role="radio" aria-checked="false">
+            <span class="ratio-box r-landscape"></span>
+            <span class="ratio-name">Landscape</span>
+            <span class="ratio-dim">1920×1080</span>
+          </button>
+          <button class="ratio" data-ratio="9:16" data-w="1080" data-h="1920" role="radio" aria-checked="false">
+            <span class="ratio-box r-vertical"></span>
+            <span class="ratio-name">Vertical</span>
+            <span class="ratio-dim">1080×1920</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ADVANCED -->
+      <div class="field">
+        <label class="label-row">
+          <input type="checkbox" id="ai-bg" />
+          <span class="label-text">Generate AI background <span class="muted">(uses reference if dropped)</span></span>
+        </label>
+      </div>
+
+      <button id="generate-btn" class="cta" type="button">
+        <span class="cta-text">Generate graphic</span>
+        <span class="cta-spinner" aria-hidden="true"></span>
+      </button>
+
+      <p class="footnote" id="error-line" aria-live="polite"></p>
+    </section>
+
+    <!-- RIGHT: preview -->
+    <section class="panel preview" aria-label="Preview">
+      <div class="preview-tools">
+        <div class="preview-meta" id="preview-meta">— no graphic yet —</div>
+        <div class="preview-actions">
+          <button id="download-btn" class="ghost" type="button" disabled>↓ Download PNG</button>
+        </div>
+      </div>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="canvas" width="1080" height="1080"></canvas>
+        <div id="canvas-overlay" class="canvas-overlay" hidden>
+          <div class="spinner-big"></div>
+          <div class="overlay-msg" id="overlay-msg">Composing…</div>
+        </div>
+      </div>
+      <div class="preview-note">
+        Designed in the browser. Data baked in. Right-click → save, or hit Download.
+      </div>
+    </section>
+  </main>
+
+  <footer class="footbar">
+    <span>built with the machina sports skills · live ESPN + multi-league feeds</span>
+    <span class="kbd-hint">Tip: drop a reference image to steer palette + background</span>
+  </footer>
+
+  <script src="./teams.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
