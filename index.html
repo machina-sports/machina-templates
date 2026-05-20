@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Slate — sports-data social graphics</title>
+  <meta name="description" content="Pick a team, type a headline, drop a reference image, get a downloadable social-media graphic with live sports data baked in." />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500;700&display=swap" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">SLATE</span>
+      <span class="brand-tag">graphic studio for sports posts</span>
+    </div>
+    <div class="topbar-meta">
+      <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+      <span class="status-text" id="status-text">ready</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <!-- ───────── Controls column ───────── -->
+    <section class="controls" aria-label="Graphic controls">
+      <div class="control-block">
+        <label class="lbl">
+          <span class="lbl-text">01 · Team</span>
+          <span class="lbl-hint" id="team-hint">type a team or league</span>
+        </label>
+        <div class="typeahead">
+          <input
+            id="team-input"
+            type="text"
+            inputmode="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Lakers, Real Madrid, Chiefs…"
+            aria-autocomplete="list"
+            aria-controls="team-results"
+            aria-expanded="false"
+          />
+          <ul class="typeahead-results" id="team-results" role="listbox" hidden></ul>
+        </div>
+        <div class="selected-team" id="selected-team" hidden>
+          <img id="selected-team-logo" alt="" />
+          <div class="selected-team-meta">
+            <div class="selected-team-name" id="selected-team-name"></div>
+            <div class="selected-team-league" id="selected-team-league"></div>
+          </div>
+          <button type="button" class="ghost-btn" id="clear-team" aria-label="Clear team">×</button>
+        </div>
+      </div>
+
+      <div class="control-block">
+        <label class="lbl" for="headline">
+          <span class="lbl-text">02 · Headline</span>
+          <span class="lbl-hint">what should this graphic say?</span>
+        </label>
+        <textarea
+          id="headline"
+          rows="3"
+          maxlength="160"
+          placeholder="Next 5 games · Last 10 results · Top scorers · Head-to-head vs the Lakers"
+        ></textarea>
+        <div class="char-count"><span id="char-count">0</span>/160</div>
+      </div>
+
+      <div class="control-block">
+        <label class="lbl">
+          <span class="lbl-text">03 · Reference image</span>
+          <span class="lbl-hint">optional — becomes the banner background</span>
+        </label>
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="ref-image-input" accept="image/png,image/jpeg,image/webp" hidden />
+          <div class="dropzone-empty" id="dropzone-empty">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2Z" stroke="currentColor" stroke-width="1.6"/>
+              <path d="m3 16 5-5a2 2 0 0 1 3 0l8 8M14 14l1.5-1.5a2 2 0 0 1 3 0L21 15" stroke="currentColor" stroke-width="1.6"/>
+              <circle cx="8.5" cy="8.5" r="1.6" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            <div>
+              <strong>Drop a reference image</strong>
+              <small>or click — png · jpg · webp · ≤ 8 MB</small>
+            </div>
+          </div>
+          <div class="dropzone-preview" id="dropzone-preview" hidden>
+            <img id="ref-preview" alt="reference" />
+            <button type="button" class="ghost-btn" id="clear-ref" aria-label="Remove image">×</button>
+          </div>
+        </label>
+      </div>
+
+      <div class="control-block">
+        <label class="lbl">
+          <span class="lbl-text">04 · Aspect ratio</span>
+          <span class="lbl-hint">where will this live?</span>
+        </label>
+        <div class="ratio-toggle" role="radiogroup" aria-label="Aspect ratio">
+          <button type="button" class="ratio-btn is-active" data-ratio="1:1" role="radio" aria-checked="true">
+            <span class="ratio-icon"><span class="r-square"></span></span>
+            <span class="ratio-name">Square</span>
+            <span class="ratio-dim">1080 × 1080</span>
+          </button>
+          <button type="button" class="ratio-btn" data-ratio="16:9" role="radio" aria-checked="false">
+            <span class="ratio-icon"><span class="r-landscape"></span></span>
+            <span class="ratio-name">Landscape</span>
+            <span class="ratio-dim">1920 × 1080</span>
+          </button>
+          <button type="button" class="ratio-btn" data-ratio="9:16" role="radio" aria-checked="false">
+            <span class="ratio-icon"><span class="r-portrait"></span></span>
+            <span class="ratio-name">Vertical</span>
+            <span class="ratio-dim">1080 × 1920</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="control-actions">
+        <button type="button" class="primary-btn" id="generate-btn" disabled>
+          <span class="primary-btn-label">Generate graphic</span>
+          <span class="primary-btn-sub">pick a team + headline first</span>
+        </button>
+        <button type="button" class="secondary-btn" id="download-btn" disabled>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 3v14m0 0-5-5m5 5 5-5M5 21h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Download PNG
+        </button>
+      </div>
+
+      <div class="live-region" id="live-region" role="status" aria-live="polite" aria-atomic="true"></div>
+    </section>
+
+    <!-- ───────── Preview column ───────── -->
+    <section class="preview" aria-label="Graphic preview">
+      <div class="preview-frame" id="preview-frame" data-ratio="1:1">
+        <canvas id="preview-canvas" width="1080" height="1080" aria-label="Generated graphic preview"></canvas>
+        <div class="preview-empty" id="preview-empty">
+          <div class="preview-empty-art" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <h2>Your graphic will appear here</h2>
+          <p>Pick a team, write a headline, hit <em>Generate</em>. Live data lands on the canvas at the size you chose.</p>
+        </div>
+        <div class="preview-loading" id="preview-loading" hidden>
+          <div class="spinner" aria-hidden="true"></div>
+          <p id="loading-text">Fetching live data…</p>
+        </div>
+      </div>
+      <div class="preview-meta">
+        <span class="meta-item" id="meta-source">Data source: —</span>
+        <span class="meta-item" id="meta-size">1080 × 1080 px</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pagefoot">
+    <span>Sports data via <code>sports-skills-call</code> on this Machina project.</span>
+    <span>Composition rendered locally on your browser — nothing leaves your device except the data fetch.</span>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
