@@ -90,16 +90,17 @@ workflow:
       workflow:
         name: "pdf-generator"
       inputs:
-        template: "metrics-report"
+        # Workflow yml inputs are evaluated as Python expressions —
+        # bare strings like "metrics-report" get treated as
+        # `metrics - report`. Wrap every string literal in single
+        # quotes inside the outer yml quotes (same pattern pdf-generator
+        # uses for `cache_control: "'public, max-age=300'"`).
+        template: "'metrics-report'"
         content: "$.get('report_payload', {})"
-        # Filename is auto-derived (the connector slugs the title +
-        # timestamp). Leaving blank rather than templating a yml string
-        # with runtime values — the yml mapping engine doesn't always
-        # substitute these reliably.
-        filename: ""
-        page_size: "Letter"
+        filename: "''"
+        page_size: "'Letter'"
         brand_color: "$.get('brand_color')"
-        remote_path: "token-usage-reports/"
+        remote_path: "'token-usage-reports/'"
       outputs:
         pdf_url: "$.get('pdf_url')"
         pdf_filename: "$.get('pdf_filename')"
@@ -107,25 +108,34 @@ workflow:
         page_count: "$.get('page_count')"
 
     # ---------------------------------------------------------------
-    # 3. Compose email subject + html and fire via Resend
+    # 3. Compose email + slack copy (plain text — avoids escape hell
+    #    of HTML/Block Kit in workflow yml expressions). Recipients
+    #    come from vault as a comma-separated string — split here.
     # ---------------------------------------------------------------
     - type: "mapping"
-      name: "compose-email"
-      description: "Build subject + HTML body referencing the PDF URL. Recipients come from vault as a comma-separated string — split here."
-      condition: "$.get('notify_email', True) and $.get('pdf_url') is not None"
+      name: "compose-message"
+      description: "Build subject + body strings referencing the PDF URL. Same payload feeds both email and slack — keeps copy consistent across channels."
       inputs:
         project_label: "$.get('project_label')"
+        mode_label: "$.get('mode_label', 'Report')"
         total_tokens: "$.get('total_tokens', 0)"
         total_runs: "$.get('total_runs', 0)"
-        pdf_url: "$.get('pdf_url')"
+        pdf_url: "$.get('pdf_url', '')"
         email_to_raw: "$.get('email_to', '')"
         period_to: "$.get('period_to', '')"
       outputs:
-        email_to_list: "[addr.strip() for addr in $.get('email_to_raw', '').split(',') if addr.strip()]"
-        subject: "f\"{$.get('project_label', 'Project')} · Weekly Token Report · {$.get('period_to', '')[:10]}\""
-        html: "f'<div style=\"font-family:Inter,system-ui,sans-serif;color:#0B2234;line-height:1.5\"><p>Weekly token report for <b>{$.get(\"project_label\", \"Project\")}</b> is ready.</p><ul><li><b>{$.get(\"total_tokens\", 0):,}</b> tokens consumed</li><li><b>{$.get(\"total_runs\", 0):,}</b> runs</li></ul><p><a href=\"{$.get(\"pdf_url\", \"\")}\" style=\"background:#FE4000;color:#fff;padding:10px 16px;border-radius:4px;text-decoration:none;display:inline-block\">Open PDF →</a></p><p style=\"color:#5C6E7C;font-size:13px;margin-top:32px\">Generated automatically by weekly-token-report. To change cadence or recipients, update the cron schedule and TEMP_CONTEXT_VARIABLE_TOKEN_REPORT_EMAIL_TO in your vault.</p></div>'"
-        text: "f\"Weekly token report — {$.get('total_tokens', 0):,} tokens across {$.get('total_runs', 0):,} runs. PDF: {$.get('pdf_url', '')}\""
+        # Split comma-sep recipient list into an array. Empty string → empty list.
+        email_to_list: "[a.strip() for a in $.get('email_to_raw', '').split(',') if a.strip()]"
+        # Subject — f-string with $.get() works in workflow yml (see goalserve-soccer/sync-fixtures).
+        subject: "f\"{$.get('project_label', 'Project')} · {$.get('mode_label', 'Report')} Token Report · {$.get('period_to', '')[:10]}\""
+        # Plain-text body for email + slack. Multi-line via \\n which YAML preserves.
+        body_text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('project_label', 'Project')}.\\n\\nTotal tokens: {$.get('total_tokens', 0):,}\\nTotal runs: {$.get('total_runs', 0):,}\\n\\nPDF: {$.get('pdf_url', '')}\""
+        # Slack-flavoured text with mrkdwn + a clickable URL via Slack's <url|label> syntax.
+        slack_text: "f\":bar_chart: *{$.get('project_label', 'Project')}* — {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs\\n• <{$.get('pdf_url', '')}|Open PDF>\""
 
+    # ---------------------------------------------------------------
+    # 4. Email via Resend
+    # ---------------------------------------------------------------
     - type: "workflow"
       name: "send-email"
       description: "Fire the email via the Resend wrapper workflow."
@@ -136,54 +146,16 @@ workflow:
         from: "$.get('email_from')"
         to: "$.get('email_to_list')"
         subject: "$.get('subject')"
-        html: "$.get('html')"
-        text: "$.get('text')"
-        attachments:
-          - filename: "weekly-token-report.pdf"
-            path: "$.get('pdf_url')"
-            content_type: "application/pdf"
+        text: "$.get('body_text')"
+        # No `html` — sender clients render `text` cleanly enough for a
+        # one-screen notification. HTML composition in workflow yml
+        # f-strings is too escape-heavy to be worth it.
       outputs:
         email_message_id: "$.get('message_id')"
 
     # ---------------------------------------------------------------
-    # 4. Compose Slack message + post via webhook wrapper
+    # 5. Slack via incoming webhook
     # ---------------------------------------------------------------
-    - type: "mapping"
-      name: "compose-slack"
-      description: "Build a Block Kit message with the headline numbers + a button to open the PDF."
-      condition: "$.get('notify_slack', True) and $.get('pdf_url') is not None and len($.get('slack_webhook_url', '')) > 0"
-      inputs:
-        project_label: "$.get('project_label')"
-        total_tokens: "$.get('total_tokens', 0)"
-        total_runs: "$.get('total_runs', 0)"
-        pdf_url: "$.get('pdf_url')"
-        period_to: "$.get('period_to', '')"
-      outputs:
-        slack_text: "f\":bar_chart: *{$.get('project_label', 'Project')}* — weekly token report\\n• *{$.get('total_tokens', 0):,}* tokens\\n• *{$.get('total_runs', 0):,}* runs\\n• <{$.get('pdf_url', '')}|Open PDF>\""
-        slack_blocks:
-          - type: "header"
-            text:
-              type: "plain_text"
-              text: "Weekly Token Report"
-          - type: "section"
-            fields:
-              - type: "mrkdwn"
-                text: "*Project*\n{project_label}"
-              - type: "mrkdwn"
-                text: "*Period*\n{period_to_short}"
-              - type: "mrkdwn"
-                text: "*Tokens*\n{total_tokens_fmt}"
-              - type: "mrkdwn"
-                text: "*Runs*\n{total_runs_fmt}"
-          - type: "actions"
-            elements:
-              - type: "button"
-                text:
-                  type: "plain_text"
-                  text: "Open PDF"
-                url: "{pdf_url}"
-                style: "primary"
-
     - type: "workflow"
       name: "post-slack"
       description: "Fire the Slack message via the slack-post-message wrapper."
@@ -193,7 +165,7 @@ workflow:
       inputs:
         webhook_url: "$.get('slack_webhook_url')"
         text: "$.get('slack_text')"
-        username: "Machina · Weekly Reports"
-        icon_emoji: ":bar_chart:"
+        username: "'Machina · Reports'"
+        icon_emoji: "':bar_chart:'"
       outputs:
         slack_posted: "$.get('posted')"
