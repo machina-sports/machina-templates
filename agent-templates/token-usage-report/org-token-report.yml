@@ -1,0 +1,136 @@
+workflow:
+
+  name: "org-token-report"
+  title: "Org Token Report (multi-pod)"
+  description: "Roll up token usage across ALL pods in an organization into ONE PDF report. Designed for billing: produces the consolidated per-project breakdown that goes into customer invoices. Schedule one per org (Entain, DAZN, etc.) with the pod list as input."
+  context-variables:
+    debugger:
+      enabled: true
+    resend:
+      api_key: "$TEMP_CONTEXT_VARIABLE_RESEND_API_KEY"
+    slack-webhook:
+      webhook_url: "$TEMP_CONTEXT_VARIABLE_SLACK_WEBHOOK_URL"
+    google-storage:
+      api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY"
+      bucket_name: "$TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME"
+  inputs:
+    # Cadence
+    period_mode: "$.get('period_mode', 'previous_week')"
+    period_days: "$.get('period_days', 7)"
+
+    # Org config + pod list. `pods` is a JSON array of
+    # {project_label, api_base_url, api_key} dicts — one per customer
+    # pod under this org. The aggregator queries each in series and
+    # rolls up totals per project + org-wide.
+    org_label: "$.get('org_label', 'Organization')"
+    pods: "$.get('pods', [])"
+
+    # Display + delivery
+    brand_color: "$.get('brand_color', '#FE4000')"
+    email_from: "$.get('email_from', 'Machina Reports <onboarding@resend.dev>')"
+    email_to: "$.get('email_to', '')"
+
+  outputs:
+    pdf_url: "$.get('pdf_url')"
+    total_tokens: "$.get('total_tokens', 0)"
+    total_runs: "$.get('total_runs', 0)"
+    total_pods: "$.get('total_pods', 0)"
+    pods_reporting: "$.get('pods_reporting', 0)"
+    email_message_id: "$.get('email_message_id')"
+    slack_posted: "$.get('slack_posted', False)"
+    workflow-status: "($.get('email_message_id') is not None or $.get('slack_posted')) and 'executed' or 'failed'"
+
+  tasks:
+
+    # ---------------------------------------------------------------
+    # 1. Multi-pod aggregate — queries every pod in `pods`, rolls up
+    #    per-project + org-wide
+    # ---------------------------------------------------------------
+    - type: "connector"
+      name: "aggregate-multi"
+      description: "Hierarchical token aggregation across the org's pods."
+      connector:
+        name: "token-aggregator"
+        command: "invoke_aggregate_multi"
+      inputs:
+        org_label: "$.get('org_label')"
+        pods: "$.get('pods')"
+        period_mode: "$.get('period_mode')"
+        period_days: "$.get('period_days')"
+        brand_color: "$.get('brand_color')"
+      outputs:
+        report_payload: "$.get('payload')"
+        total_tokens: "$.get('total_tokens', 0)"
+        total_runs: "$.get('total_runs', 0)"
+        total_pods: "$.get('total_pods', 0)"
+        pods_reporting: "$.get('pods_reporting', 0)"
+        period_from: "$.get('period_from')"
+        period_to: "$.get('period_to')"
+        mode_label: "$.get('mode_label', 'Report')"
+
+    # ---------------------------------------------------------------
+    # 2. Render the PDF (pdf-generator connector → base64 data URI)
+    # ---------------------------------------------------------------
+    - type: "connector"
+      name: "render-pdf"
+      description: "Render the hierarchical metrics-report payload via pdf-generator pyscript."
+      connector:
+        name: "pdf-generator"
+        command: "invoke_generate"
+      inputs:
+        template: "'metrics-report'"
+        content: "$.get('report_payload')"
+        page_size: "'Letter'"
+        brand_color: "$.get('brand_color')"
+      outputs:
+        pdf_data_uri: "$.get('data_uri')"
+        pdf_filename: "$.get('filename')"
+
+    # ---------------------------------------------------------------
+    # 3. Upload PDF to GCS
+    # ---------------------------------------------------------------
+    - type: "connector"
+      name: "upload-pdf"
+      description: "Upload PDF to GCS via google-storage connector. Returns the public URL."
+      connector:
+        name: "google-storage"
+        command: "invoke_upload"
+      inputs:
+        file_path: "$.get('pdf_data_uri')"
+        filename: "$.get('pdf_filename')"
+        folder: "'org-token-reports/'"
+      outputs:
+        pdf_url: "$.get('url')"
+
+    # ---------------------------------------------------------------
+    # 4. Email via Resend
+    # ---------------------------------------------------------------
+    - type: "connector"
+      name: "send-email-task"
+      description: "Email the report to the org's billing contacts."
+      connector:
+        name: "resend"
+        command: "invoke_send"
+      inputs:
+        api_key: "$.get('api_key')"
+        from: "$.get('email_from')"
+        to: "$.get('email_to')"
+        subject: "f\"{$.get('org_label')} · {$.get('mode_label', 'Report')} Token Report\""
+        text: "f\"{$.get('mode_label', 'Report')} token report for {$.get('org_label')}.\\n\\nTotal: {$.get('total_tokens', 0):,} tokens across {$.get('total_runs', 0):,} runs over {$.get('pods_reporting', 0)}/{$.get('total_pods', 0)} pods.\\n\\nPDF: {$.get('pdf_url') or 'PDF unavailable this run'}\""
+      outputs:
+        email_message_id: "$.get('id')"
+
+    # ---------------------------------------------------------------
+    # 5. Slack
+    # ---------------------------------------------------------------
+    - type: "connector"
+      name: "post-slack-task"
+      description: "Post org summary to Slack channel."
+      connector:
+        name: "slack-webhook"
+        command: "invoke_post"
+      inputs:
+        webhook_url: "$.get('webhook_url')"
+        text: "f\":bar_chart: *{$.get('org_label')}* {$.get('mode_label', 'report')} token report\\n• *{$.get('total_tokens', 0):,}* tokens · *{$.get('total_runs', 0):,}* runs · {$.get('pods_reporting', 0)}/{$.get('total_pods', 0)} pods\\n• PDF: {$.get('pdf_url') or '(unavailable)'}\""
+      outputs:
+        slack_posted: "True"

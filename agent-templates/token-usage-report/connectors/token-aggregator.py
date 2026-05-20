@@ -555,6 +555,304 @@ def invoke_aggregate(request_data, *_, **__):
     return result
 
 
+# ---------------------------------------------------------------------------
+# Multi-pod aggregation — for billing-grade reports that span an entire
+# org. Takes a list of pod configs, queries each in turn, produces a
+# hierarchical (org → project → workflow) metrics-report payload.
+# ---------------------------------------------------------------------------
+
+
+def invoke_aggregate_multi(request_data, *_, **__):
+    """Roll up token usage across MULTIPLE pods into a single report.
+
+    Inputs (under request_data['params'] or 'inputs'):
+
+      org_label    — display name for the report header (e.g. "Entain")
+      period_mode  — same as invoke_aggregate
+      period_days  — same as invoke_aggregate
+      brand_color  — hex accent for PDF
+      pods         — list of {project_label, api_base_url, api_key} dicts.
+                     Each entry is one customer pod to aggregate.
+                     project_label appears as the per-pod row label in
+                     the report; api_base_url + api_key authenticate
+                     against that pod's /execution/* endpoints.
+
+    Returns a payload shaped for pdf-generator's metrics-report layout
+    with:
+
+      - Title: "<org_label> · <Mode> Token Report (multi-pod)"
+      - Summary cards: total tokens, total runs, total pods, avg/pod
+      - Section "By project" (table): per-pod totals — runs, tokens,
+        avg tokens/run, share of org total
+      - Section "Top consuming workflows": top 15 across ALL pods
+      - Section "By day": org-wide daily timeseries
+
+    Each pod is queried in series; a per-pod fetch failure is logged
+    as a `notes` entry but doesn't abort the report. Billing
+    accountability requires we always emit something — partial data
+    with explicit gaps is more useful than a hard failure.
+    """
+
+    if isinstance(request_data, dict):
+        inputs = request_data.get("params") or request_data.get("inputs") or request_data
+    else:
+        inputs = {}
+
+    org_label = inputs.get("org_label") or "Organization"
+    period_mode = inputs.get("period_mode") or "previous_week"
+    period_days = int(inputs.get("period_days") or 7)
+    brand_color = inputs.get("brand_color") or "#FE4000"
+    pods = inputs.get("pods") or []
+    page_size_cap = int(inputs.get("page_size_cap") or 5000)
+    include_failed = bool(inputs.get("include_failed", True))
+
+    if not pods:
+        return {
+            "status": True,
+            "data": {
+                "payload": _empty_payload(org_label, period_mode, period_days, brand_color, "No pods configured — pass a non-empty `pods` array."),
+                "total_tokens": 0,
+                "total_runs": 0,
+                "total_pods": 0,
+                "period_mode": period_mode,
+            },
+        }
+
+    now = datetime.now(timezone.utc)
+    since, until, prev_since, prev_until, mode_label = _compute_window(period_mode, period_days, now)
+
+    per_pod_results = []
+    org_total_tokens = 0
+    org_total_runs = 0
+    org_total_tokens_prev = 0
+    all_rows = []         # for cross-pod top-workflows ranking
+    all_rows_by_pod = {}  # for cross-pod per-day rollup
+    notes = []
+
+    for pod_cfg in pods:
+        project_label = pod_cfg.get("project_label") or pod_cfg.get("name") or "(unnamed)"
+        api_base_url = pod_cfg.get("api_base_url") or ""
+        api_key = pod_cfg.get("api_key") or ""
+        if not api_base_url or not api_key:
+            notes.append(f"{project_label}: skipped — missing api_base_url or api_key")
+            per_pod_results.append({
+                "project_label": project_label,
+                "runs": 0,
+                "tokens": 0,
+                "tokens_prev": 0,
+                "error": "missing credentials",
+            })
+            continue
+
+        # Current window
+        wf_rows, wf_err = _fetch_executions(
+            api_base_url, api_key, "execution/workflow-search",
+            since.isoformat(), until.isoformat(), page_size_cap,
+        )
+        ag_rows, ag_err = _fetch_executions(
+            api_base_url, api_key, "execution/agent-search",
+            since.isoformat(), until.isoformat(), page_size_cap,
+        )
+
+        # Previous window for delta
+        wf_prev, _ = _fetch_executions(
+            api_base_url, api_key, "execution/workflow-search",
+            prev_since.isoformat(), prev_until.isoformat(), page_size_cap,
+        )
+        ag_prev, _ = _fetch_executions(
+            api_base_url, api_key, "execution/agent-search",
+            prev_since.isoformat(), prev_until.isoformat(), page_size_cap,
+        )
+
+        rows = wf_rows + ag_rows
+        rows_prev = wf_prev + ag_prev
+        # Annotate each row with its source pod so cross-pod rankings
+        # can disambiguate same-named workflows running in different
+        # projects (e.g. "wc-bracket-event-details" exists in both
+        # sbot-stg and sports-interaction-v2 with different costs).
+        for r in rows:
+            r["_pod"] = project_label
+
+        pod_tokens = sum(_row_tokens(r) for r in rows)
+        pod_tokens_prev = sum(_row_tokens(r) for r in rows_prev)
+        pod_runs = len(rows)
+
+        org_total_tokens += pod_tokens
+        org_total_runs += pod_runs
+        org_total_tokens_prev += pod_tokens_prev
+
+        all_rows.extend(rows)
+        all_rows_by_pod[project_label] = rows
+
+        per_pod_results.append({
+            "project_label": project_label,
+            "runs": pod_runs,
+            "tokens": pod_tokens,
+            "tokens_prev": pod_tokens_prev,
+            "avg": int(pod_tokens / pod_runs) if pod_runs else 0,
+            "error": wf_err or ag_err,
+        })
+        if wf_err:
+            notes.append(f"{project_label}: workflow-search partial — {wf_err}")
+        if ag_err:
+            notes.append(f"{project_label}: agent-search partial — {ag_err}")
+
+    # ---- Build metrics-report payload -----------------------------
+
+    if period_mode == "previous_month":
+        period_str = f"{since.strftime('%B %Y')} (UTC)"
+    else:
+        period_str = f"{since.strftime('%b %-d')} – {until.strftime('%b %-d, %Y')} (UTC)"
+
+    # Org-level delta
+    if org_total_tokens_prev > 0:
+        delta_pct = ((org_total_tokens - org_total_tokens_prev) / org_total_tokens_prev) * 100
+        org_delta_str = f"{delta_pct:+.0f}% vs prev period"
+    elif org_total_tokens > 0:
+        org_delta_str = "first period with data"
+    else:
+        org_delta_str = ""
+
+    summary_cards = [
+        {"label": "Total tokens", "value": _format_number(org_total_tokens), "delta": org_delta_str},
+        {"label": "Total runs", "value": f"{org_total_runs:,}"},
+        {"label": "Pods reporting", "value": f"{sum(1 for p in per_pod_results if not p.get('error') or p.get('runs', 0) > 0)} / {len(pods)}"},
+        {"label": "Avg tokens / pod", "value": _format_number(org_total_tokens / max(1, len(pods)))},
+    ]
+
+    intro_parts = [
+        f"{_format_number(org_total_tokens)} tokens consumed across {org_total_runs:,} runs in {len(pods)} {org_label} pods."
+    ]
+    if per_pod_results:
+        # Top consumer pod
+        top_pod = max(per_pod_results, key=lambda p: p.get("tokens", 0))
+        if top_pod.get("tokens", 0) > 0:
+            share = (top_pod["tokens"] / org_total_tokens * 100) if org_total_tokens > 0 else 0
+            intro_parts.append(
+                f"{share:.0f}% from `{top_pod['project_label']}` ({_format_number(top_pod['tokens'])} tokens)."
+            )
+
+    sections = []
+
+    # 1. Per-project table (the most important section for billing)
+    sorted_pods = sorted(per_pod_results, key=lambda p: p.get("tokens", 0), reverse=True)
+    project_rows = []
+    for p in sorted_pods:
+        share = (p.get("tokens", 0) / org_total_tokens * 100) if org_total_tokens > 0 else 0
+        project_rows.append([
+            p["project_label"],
+            f"{p.get('runs', 0):,}",
+            _format_number(p.get("tokens", 0)),
+            _format_number(p.get("avg", 0)),
+            f"{share:.1f}%",
+        ])
+    sections.append({
+        "title": "By project (billing breakdown)",
+        "table": {
+            "headers": ["Project", "Runs", "Tokens", "Avg/run", "Share"],
+            "rows": project_rows,
+        },
+    })
+
+    # 2. Top workflows across the org
+    by_name = _aggregate(all_rows, include_failed)
+    if by_name:
+        head = by_name[:15]
+        rows_for_table = [
+            [r["name"], f"{r['runs']:,}", _format_number(r["tokens"]), _format_number(r["avg"])]
+            for r in head
+        ]
+        if len(by_name) > 15:
+            tail_runs = sum(r["runs"] for r in by_name[15:])
+            tail_tokens = sum(r["tokens"] for r in by_name[15:])
+            rows_for_table.append([
+                f"… and {len(by_name) - 15} others",
+                f"{tail_runs:,}",
+                _format_number(tail_tokens),
+                "—",
+            ])
+        sections.append({
+            "title": "Top consuming workflows (org-wide)",
+            "table": {
+                "headers": ["Workflow", "Runs", "Tokens", "Avg/run"],
+                "rows": rows_for_table,
+            },
+        })
+
+    # 3. Per-day timeseries org-wide
+    by_day = _by_day(all_rows, since, until)
+    if by_day:
+        sections.append({
+            "title": "By day (org-wide)",
+            "table": {
+                "headers": ["Date", "Runs", "Tokens"],
+                "rows": [
+                    [d["date"], f"{d['runs']:,}", _format_number(d["tokens"])]
+                    for d in by_day
+                ],
+            },
+        })
+
+    # 4. Distribution stats org-wide
+    samples = [_row_tokens(r) for r in all_rows if _row_tokens(r) > 0]
+    if samples:
+        samples.sort()
+        p50 = samples[len(samples) // 2]
+        p95 = samples[min(len(samples) - 1, int(len(samples) * 0.95))]
+        p_max = samples[-1]
+        sections.append({
+            "title": "Distribution (tokens per run, org-wide)",
+            "stats": [
+                {"label": "p50", "value": _format_number(p50)},
+                {"label": "p95", "value": _format_number(p95)},
+                {"label": "max", "value": _format_number(p_max)},
+            ],
+        })
+
+    # 5. Top consuming individual runs (highest single costs)
+    expensive = sorted(all_rows, key=_row_tokens, reverse=True)[:5]
+    if expensive and _row_tokens(expensive[0]) > 0:
+        sections.append({
+            "title": "Top consuming runs",
+            "bullets": [
+                f"{r.get('_pod', '?')} · {_row_name(r)} — {_format_number(_row_tokens(r))} tokens ({(_row_date(r) or until).strftime('%b %-d %H:%M')})"
+                for r in expensive
+            ],
+        })
+
+    notes.append(f"Window: {since.isoformat()} → {until.isoformat()}")
+    notes.append(f"Mode: {period_mode}")
+    notes.append(f"Pods queried: {len(pods)}")
+
+    payload = {
+        "title": f"{org_label} · {mode_label} Token Report",
+        "period": period_str,
+        "intro": " ".join(intro_parts),
+        "summary_cards": summary_cards,
+        "sections": sections,
+        "notes": notes,
+        "footer": f"Generated by token-usage-report (multi-pod) · {now.strftime('%Y-%m-%d %H:%M UTC')}",
+    }
+
+    return {
+        "status": True,
+        "data": {
+            "payload": payload,
+            "total_tokens": org_total_tokens,
+            "total_runs": org_total_runs,
+            "total_tokens_prev": org_total_tokens_prev,
+            "total_pods": len(pods),
+            "pods_reporting": sum(1 for p in per_pod_results if not p.get("error") or p.get("runs", 0) > 0),
+            "period_from": since.isoformat(),
+            "period_to": until.isoformat(),
+            "period_mode": period_mode,
+            "mode_label": mode_label,
+            "brand_color": brand_color,
+            "per_pod": per_pod_results,
+        },
+    }
+
+
 def _empty_payload(project_label, period_mode, period_days, brand_color, reason):
     """Return a valid-but-empty metrics-report payload so the downstream
     PDF render still produces a one-page report instead of crashing."""
