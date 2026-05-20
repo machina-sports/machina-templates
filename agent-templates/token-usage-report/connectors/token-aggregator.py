@@ -133,10 +133,16 @@ def _fetch_executions(base_url, api_key, endpoint, since_iso, until_iso, page_si
 
     collected = []
     page = 1
-    per_page = 200
+    # per_page=500 cut the sbot-prd report time roughly in half vs
+    # per_page=200 — each search call is ~2s instead of ~3s and we
+    # cover the 7-day window in 2-3 pages instead of 5-6.
+    per_page = 500
     # Safety cap on pages — even if the early-exit fails, we never
-    # walk more than 50 pages (=10k rows) per source.
-    max_pages = 50
+    # walk more than 20 pages (= 10k rows) per source. Combined with
+    # page_size_cap=2000 default, the worst case is ~10 pages × 2s
+    # = 20s per source × 4 sources = 80s total. For prod pods with
+    # high volume, the early-exit hits well before this.
+    max_pages = 20
 
     while len(collected) < page_size_cap and page <= max_pages:
         body = {
@@ -341,7 +347,7 @@ def invoke_aggregate(request_data, *_, **__):
     period_mode = inputs.get("period_mode") or "previous_week"
     period_days = int(inputs.get("period_days") or 7)
     project_label = inputs.get("project_label") or "Project"
-    page_size_cap = int(inputs.get("page_size_cap") or 5000)
+    page_size_cap = int(inputs.get("page_size_cap") or 2000)
     include_failed = bool(inputs.get("include_failed", True))
     brand_color = inputs.get("brand_color") or "#0A2540"
 
@@ -630,7 +636,7 @@ def invoke_aggregate_multi(request_data, *_, **__):
     period_days = int(inputs.get("period_days") or 7)
     brand_color = inputs.get("brand_color") or "#FE4000"
     pods = inputs.get("pods") or []
-    page_size_cap = int(inputs.get("page_size_cap") or 5000)
+    page_size_cap = int(inputs.get("page_size_cap") or 2000)
     include_failed = bool(inputs.get("include_failed", True))
 
     if not pods:
