@@ -537,11 +537,8 @@ def invoke_aggregate(request_data, *_, **__):
     # Workflow engine spreads connector's `data` dict keys into the
     # task context root — so $.get('total_tokens') works, but
     # $.get('data', {}).get('total_tokens') returns None. Keep keys
-    # at one level. The metrics-report payload itself goes under
-    # `payload` so the caller can do $.get('payload') to pass to
-    # pdf-generator (using `data` would collide with the executor's
-    # own envelope handling).
-    return {
+    # at one level.
+    result = {
         "status": True,
         "data": {
             "payload": payload,
@@ -555,6 +552,8 @@ def invoke_aggregate(request_data, *_, **__):
             "brand_color": brand_color,
         },
     }
+    print(f"[AGGREGATOR_DEBUG] returning data keys: {list(result['data'].keys())}, total_runs={total_runs}, total_tokens={total_tokens}")
+    return result
 
 
 def _empty_payload(project_label, period_mode, period_days, brand_color, reason):
