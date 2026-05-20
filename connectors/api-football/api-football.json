@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "API-Football",
-    "description": "Football data API providing comprehensive information about leagues, teams, players, fixtures, and more. This API covers leagues from around the world with detailed season information, fixture data, and comprehensive coverage details.",
+    "description": "Football data API providing comprehensive information about leagues, teams, players, fixtures, and more. This API covers leagues from around the world with detailed season information, fixture data, and comprehensive coverage details.\n\nRATE LIMITS (api-sports.io direct, NOT RapidAPI): Free = 100 requests/day + 10/minute burst; Pro = 7,500/day + 450/min; Ultra = 75,000/day + 900/min. Exceeding either ceiling returns HTTP 429 with body `{\"message\": \"Too many requests\"}` or — on the daily cap — a 200 with body `{\"errors\": {\"requests\": \"You have reached the request limit for the day.\"}}` (note: HTTP 200 + error body, NOT a 4xx — agents must check `errors` and `results=0` in the response shape, not just the HTTP status). Free-tier customers should: (1) avoid auto-polling loops (a 30s refresh = 2 req/min = blows the daily cap in ~50 min of viewing); (2) cache lineups/standings/h2h for the duration of a match (they don't change); (3) prefer manual Refresh buttons over background polling. Long-lived dashboards consuming live data need Pro tier minimum.",
     "version": "3.0.0",
     "contact": {
       "name": "API-Sports",
