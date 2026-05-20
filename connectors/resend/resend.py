@@ -131,11 +131,21 @@ def invoke_send(request_data, *_, **__):
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode("utf-8")
-            parsed = json.loads(raw)
+            try:
+                parsed = json.loads(raw) if raw else {}
+            except Exception:
+                parsed = {"_raw": raw}
+            # Debug: log the parsed response so we can see what Resend
+            # actually returned (id field present? wrong key?).
+            print(f"[RESEND_DEBUG] response keys: {list(parsed.keys()) if isinstance(parsed, dict) else type(parsed).__name__}")
+            print(f"[RESEND_DEBUG] response full: {raw[:300]}")
             return {
                 "status": True,
                 "data": parsed,
                 "message": "Email sent via Resend",
+                # Surface `id` at top level too so workflow expressions
+                # can read it as $.get('id') OR $.get('data', {}).get('id')
+                "id": parsed.get("id") if isinstance(parsed, dict) else None,
             }
     except urllib.error.HTTPError as e:
         try:
