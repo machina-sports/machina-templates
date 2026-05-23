@@ -1,0 +1,65 @@
+mappings:
+
+  # iptc-opta-player-mapping
+  # JOIN squads + per-team seasonstats by personId and emit one IPTC Sport
+  # Schema document per player. Squads (TM3) carry biographical fields plus the
+  # contestant the player belongs to; seasonstats (TM4) carries aggregated
+  # match stats as a name/value list. The squad task already filters out
+  # non-players (coaches / staff) and the seasonstats task already aggregates
+  # one entry per personId across all teams of the season.
+  - type: mapping
+    title: "IPTC | Stats Perform Opta Player Mapping"
+    name: "iptc-opta-player-mapping"
+    description: "Mapping data from Stats Perform Opta squads + seasonstats to IPTC Sport Schema player format"
+    outputs:
+      sport_schema_players: |
+        [
+          {
+            "@context": {
+              "sport": "https://www.sportschema.org/ontologies/sport#",
+              "schema": "https://schema.org/"
+            },
+            "@id": f"urn:opta:player:{person.get('id')}",
+            "@type": ["sport:Player", "schema:Person"],
+            "name": person.get('matchName', person.get('knownName', f"{person.get('firstName','')} {person.get('lastName','')}".strip())),
+            "schema:name": person.get('matchName', person.get('knownName', f"{person.get('firstName','')} {person.get('lastName','')}".strip())),
+            "schema:givenName": person.get('firstName', ''),
+            "schema:familyName": person.get('lastName', ''),
+            "sport:knownName": person.get('knownName', ''),
+            "sport:matchName": person.get('matchName', ''),
+            "sport:position": person.get('position', ''),
+            "sport:shirtNumber": person.get('shirtNumber', ''),
+            "sport:nationality": person.get('nationality', ''),
+            "sport:nationalityId": person.get('nationalityId', ''),
+            "sport:secondNationality": person.get('secondNationality', ''),
+            "sport:placeOfBirth": person.get('placeOfBirth', ''),
+            "schema:birthDate": person.get('dateOfBirth', ''),
+            "sport:gender": person.get('gender', ''),
+            "sport:club": person.get('_contestantName', ''),
+            "sport:clubId": person.get('_contestantId', ''),
+            "sport:clubCode": person.get('_contestantCode', ''),
+            "sport:competitionId": person.get('_competitionId', ''),
+            "sport:competitionName": person.get('_competitionName', ''),
+            "sport:seasonId": person.get('_seasonId', ''),
+            "sport:active": person.get('active', '') == 'yes',
+            "sport:startDate": person.get('startDate', ''),
+            "sport:endDate": person.get('endDate', ''),
+            "sport:type": person.get('type', 'player'),
+            "stats": {
+              "goals": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Goals'), 0),
+              "shots": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Total Shots'), 0),
+              "shots_on_target": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Shots On Target ( inc goals )'), 0),
+              "chances_created": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Big Chances Created'), 0),
+              "key_passes": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Total Successful Key Passes'), 0),
+              "final_third_passes": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Successful Final Third Passes'), 0),
+              "expected_goals": next((float(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Expected Goals (xG)'), 0.0),
+              "minutes_played": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Time Played'), 0),
+              "appearances": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Appearances'), 0),
+              "games_played": next((int(s.get('value', 0)) for s in person.get('_stats', []) if s.get('name') == 'Games Played'), 0)
+            },
+            "lastUpdated": person.get('_lastUpdated', ''),
+            "title": person.get('matchName', person.get('knownName', f"{person.get('firstName','')} {person.get('lastName','')}".strip()))
+          }
+          for person in $.get('players_raw', [])
+          if person.get('id') and person.get('type', 'player') == 'player'
+        ]
