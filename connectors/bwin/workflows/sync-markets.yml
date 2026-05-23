@@ -74,9 +74,9 @@ workflow:
         embed-vector: true
         force-update: true
       connector:
-        name: google-genai
-        command: invoke_embedding
-        model: text-embedding-004
+        name: "google-genai"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
         location: "global"
         provider: "vertex_ai"
       document_name: "'game-market'"

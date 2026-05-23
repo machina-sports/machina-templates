@@ -27,8 +27,8 @@ workflow:
       description: Get a season fixtures from Bwin
       condition: $.get('competitionIds') is not None
       connector:
-        name: bwin
-        command: get-offer/api/{sportId}/{country}/fixtures
+        name: "bwin"
+        command: "get-offer/api/{sportId}/{country}/fixtures"
         command_attribute:
           country: $.get('country')
           sportId: $.get('sportId')
@@ -49,8 +49,8 @@ workflow:
       description: Filter NFL markets - extracts Moneyline, Spread, Total
       condition: $.get('fixtures') is not None and len($.get('fixtures', [])) > 0
       connector:
-        name: bwin-grep-sports
-        command: grep_nfl_markets
+        name: "bwin-grep-sports"
+        command: "grep_nfl_markets"
       inputs:
         fixtures: $.get('fixtures', [])
       outputs:
@@ -82,8 +82,8 @@ workflow:
       description: Calculate odds delta and maintain history
       condition: $.get('bulk-odds') is not None
       connector:
-        name: bwin-odds-delta
-        command: calculate_odds_delta
+        name: "bwin-odds-delta"
+        command: "calculate_odds_delta"
       inputs:
         current_markets: $.get('bulk-odds', [])
         existing_documents: $.get('existing_documents', [])
@@ -101,9 +101,9 @@ workflow:
         embed-vector: false
         force-update: true
       connector:
-        name: google-genai
-        command: invoke_embedding
-        model: text-embedding-004
+        name: "google-genai"
+        command: "invoke_embedding"
+        model: "text-embedding-004"
         location: "global"
         provider: "vertex_ai"
       document_name: "'market-odds'"
