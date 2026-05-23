@@ -62,15 +62,13 @@ workflow:
       description: "Bulk save the fixtures."
       condition: "$.get('competitionIds') is not None"
       config:
+        # embed-vector disabled — engine eval bug on invoke_embedding
+        # crashed bulk-save when true. Odds don't need vector embeddings
+        # for the Bruxo/Comparator surfaces; revisit when semantic
+        # search over market-odds matters.
         action: "bulk-update"
-        embed-vector: true
+        embed-vector: false
         force-update: true
-      connector:
-        name: "google-genai"
-        command: "invoke_embedding"
-        model: "text-embedding-004"
-        location: "global"
-        provider: "vertex_ai"
       document_name: "'market-odds'"
       documents:
         items: "$.get('parsedItems')"
