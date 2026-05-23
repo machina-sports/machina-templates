@@ -1,0 +1,168 @@
+workflow:
+  name: "sp-opta-sync-players"
+  title: "Stats Perform Opta - Players"
+  description: "Workflow to synchronize players (with squad bio + per-season aggregated stats) from Stats Perform Opta API to Machina sport:Player documents. Pass season_id (tournament calendar) to import bio for ALL squads of the season; pass team_id additionally to enrich one team's players with seasonstats (goals, shots, xG, key passes, …)."
+  context-variables:
+    debugger:
+      enabled: true
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    season_id: "$.get('season_id')"
+    team_id: "$.get('team_id', '')"
+  outputs:
+    players: "$.get('iptc_players', [])"
+    workflow-status: "len($.get('all_player_ids', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+
+    # Get OAuth access token
+    - type: "connector"
+      name: "get-access-token"
+      description: "Get OAuth access token from Stats Perform Opta API."
+      condition: "$.get('season_id') is not None"
+      connector:
+        name: "opta"
+        command: "authorization"
+      outputs:
+        access_token: "$.get('access_token')"
+
+    # Load squads (TM3) for ALL teams of the tournament calendar (season).
+    # Returns squad[].person[] grouped per contestant. We pass competition_id=""
+    # so the connector skips appending `comp=` to the URL — TM3 only accepts
+    # tmcl / ctst / prsn filters and rejects comp with Opta error 10201.
+    - type: "connector"
+      name: "load-squads"
+      description: "Get all squads (bio per player) for the season from Stats Perform Opta squads endpoint (TM3)."
+      condition: "$.get('access_token') is not None and $.get('season_id') is not None"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'squads'"
+        competition_id: "''"
+        query_params: |
+          {
+            'tmcl': str($.get('season_id'))
+          }
+      outputs:
+        squads_raw: "$.get('squad', [])"
+        squads_last_updated: "$.get('lastUpdated', '')"
+
+    # Load per-team season-aggregated player stats (TM4 seasonstats).
+    # seasonstats REQUIRES a `ctst` (contestant) — there's no season-wide
+    # call available in the standard subscription. If team_id is omitted
+    # this task is skipped and stats default to zero for every player.
+    # The data shape is `{player: [{id, stat: [{name,value}], …}]}`.
+    - type: "connector"
+      name: "load-player-stats"
+      description: "Get season-aggregated player stats from Stats Perform Opta seasonstats endpoint (TM4) for a single team."
+      condition: "$.get('access_token') is not None and $.get('season_id') is not None and $.get('team_id', '') != ''"
+      connector:
+        name: "opta"
+        command: "invoke_request"
+      inputs:
+        access_token: "$.get('access_token')"
+        endpoint: "'seasonstats'"
+        competition_id: "''"
+        query_params: |
+          {
+            'tmcl': str($.get('season_id')),
+            'ctst': str($.get('team_id'))
+          }
+      outputs:
+        stats_players_raw: "$.get('player', [])"
+
+    # Flatten squad[].person[] into a single list and JOIN per personId with
+    # the stats payload (when present). Done inline (no extra connector) so
+    # the resulting `players_raw` already carries the squad context fields
+    # (_contestantId, _contestantName, _competitionId, …) plus the player's
+    # `_stats` array, ready for the IPTC mapping.
+    - type: "mapping"
+      name: "iptc-opta-player-mapping"
+      description: "Convert squads + stats join to IPTC Sport Schema player format."
+      condition: "$.get('squads_raw') is not None"
+      inputs:
+        players_raw: |
+          [
+            {
+              **person,
+              '_contestantId': squad.get('contestantId', ''),
+              '_contestantName': squad.get('contestantName', ''),
+              '_contestantCode': squad.get('contestantCode', ''),
+              '_competitionId': squad.get('competitionId', ''),
+              '_competitionName': squad.get('competitionName', ''),
+              '_seasonId': squad.get('tournamentCalendarId', str($.get('season_id', ''))),
+              '_lastUpdated': $.get('squads_last_updated', ''),
+              '_stats': next(
+                (p.get('stat', []) for p in $.get('stats_players_raw', []) if p.get('id') == person.get('id')),
+                []
+              )
+            }
+            for squad in $.get('squads_raw', [])
+            for person in squad.get('person', [])
+            if person is not None
+              and person.get('id')
+              and person.get('type', 'player') == 'player'
+          ]
+      outputs:
+        iptc_players: "$.get('sport_schema_players', [])"
+        all_player_ids: |
+          [str(p.get('@id', '')) for p in $.get('sport_schema_players', [])]
+
+    # Load existing player documents by ID so we only insert/update what changed.
+    - type: "document"
+      name: "load-players-by-ids"
+      description: "Load existing players by Opta IDs to compute deltas."
+      condition: "$.get('all_player_ids') is not None and len($.get('all_player_ids', [])) > 0"
+      config:
+        action: "search"
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.player_code: |
+          {'$in': $.(all_player_ids)}
+      inputs:
+        name: "'sport:Player'"
+      outputs:
+        existing_player_ids: |
+          [
+            doc.get('metadata', {}).get('player_code', '')
+            for doc in $.get('documents', [])
+          ]
+
+    # Bulk save players. embed-vector: false to avoid the current
+    # invoke_embedding bug on this project (same workaround used by
+    # sync-match-stats and sync-competitions).
+    - type: "document"
+      name: "bulk-save-players"
+      description: "Bulk save the individual players as sport:Player documents."
+      condition: "$.get('all_player_ids') is not None and len($.get('all_player_ids', [])) > 0"
+      config:
+        action: "bulk-save"
+        embed-vector: false
+        force-update: true
+      document_name: "'sport:Player'"
+      documents:
+        items: "$.get('new_players_list')"
+      inputs:
+        new_players_list: |
+          [
+            {
+              **p,
+              'metadata': {
+                'player_code': str(p.get('@id', '')),
+                'club_id': str(p.get('sport:clubId', '')),
+                'club_code': str(p.get('sport:clubCode', '')),
+                'competition_id': str(p.get('sport:competitionId', '')),
+                'season_id': str(p.get('sport:seasonId', '')),
+                'position': str(p.get('sport:position', '')),
+                'nationality': str(p.get('sport:nationality', ''))
+              },
+              'title': p.get('title', p.get('name', ''))
+            }
+            for p in $.get('iptc_players', [])
+          ]
+      metadata:
+        document_type: "'sp-player'"

@@ -29,6 +29,9 @@ datasets:
   - type: mappings
     path: mappings/iptc-team.yml
 
+  - type: mappings
+    path: mappings/iptc-player.yml
+
   # workflows
 
   - type: workflow
@@ -60,6 +63,9 @@ datasets:
 
   - type: workflow
     path: workflows/sync-teams.yml
+
+  - type: workflow
+    path: workflows/sync-players.yml
 
   - type: workflow
     path: workflows/sync-update-live.yml
