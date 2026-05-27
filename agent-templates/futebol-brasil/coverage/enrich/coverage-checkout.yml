@@ -1,0 +1,48 @@
+workflow:
+  name: futebol-brasil-coverage-checkout
+  title: "Futebol Brasil | Coverage Checkout"
+  description: "Mark a coverage run as completed. Writes 'futebol-brasil-coverage-checkout' with run_id + completed_at + summary."
+  inputs:
+    run_id: "$.get('run_id')"
+    summary: "$.get('summary', {})"
+    status: "$.get('status', 'success')"
+  outputs:
+    run_id: "$.get('run_id')"
+    workflow-status: "'executed'"
+  tasks:
+
+    - type: document
+      name: read-checkin
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'futebol-brasil-coverage-checkin'"
+      outputs:
+        checkin_run_id: "$.get('documents')[0].get('value', {}).get('run_id') if len($.get('documents', [])) > 0 else None"
+        started_at: "$.get('documents')[0].get('value', {}).get('started_at') if len($.get('documents', [])) > 0 else None"
+
+    - type: document
+      name: write-checkout
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        futebol-brasil-coverage-checkout: |
+          {
+            'title': 'Futebol Brasil | Coverage Checkout',
+            'run_id': $.get('run_id') or $.get('checkin_run_id'),
+            'matches_checkin': (
+              $.get('run_id') is None
+              or str($.get('run_id', '')) == str($.get('checkin_run_id', ''))
+            ),
+            'status': $.get('status', 'success'),
+            'summary': $.get('summary', {}),
+            'started_at': $.get('started_at'),
+            'completed_at': datetime.utcnow()
+          }
+      metadata:
+        document_type: "'futebol-brasil-coverage-event'"
+        kind: "'checkout'"

@@ -1,0 +1,44 @@
+workflow:
+  name: futebol-brasil-coverage-checkin
+  title: "Futebol Brasil | Coverage Checkin"
+  description: "Mark a coverage run as started. Writes 'futebol-brasil-coverage-checkin' with run_id + started_at."
+  inputs:
+    run_id: "$.get('run_id')"
+    trigger: "$.get('trigger', 'manual')"
+    note: "$.get('note', '')"
+  outputs:
+    run_id: "$.get('run_id_out')"
+    workflow-status: "'executed'"
+  tasks:
+
+    # default run_id if not supplied
+    - type: document
+      name: prepare
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        run_id_out: "$.get('run_id') or str(datetime.utcnow().timestamp())"
+
+    - type: document
+      name: write-checkin
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        futebol-brasil-coverage-checkin: |
+          {
+            'title': 'Futebol Brasil | Coverage Checkin',
+            'run_id': $.get('run_id_out'),
+            'trigger': $.get('trigger', 'manual'),
+            'note': $.get('note', ''),
+            'started_at': datetime.utcnow(),
+            'status': 'in_progress'
+          }
+      metadata:
+        document_type: "'futebol-brasil-coverage-event'"
+        kind: "'checkin'"

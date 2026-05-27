@@ -1,0 +1,141 @@
+workflow:
+  name: futebol-brasil-enrich-rosters
+  title: "Futebol Brasil | Enrich Rosters"
+  description: "Fetch + normalize + save squad/roster for one team into a brand-agnostic 'brasil-competitor' document."
+  context-variables:
+    debugger:
+      enabled: false
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    competition: "$.get('competition')"
+    team_id: "$.get('team_id')"
+    force: "$.get('force', False)"
+    ttl_minutes: "$.get('ttl_minutes', 1440)"
+  outputs:
+    skipped: "$.get('skipped', False)"
+    workflow-status: "len($.get('players', [])) > 0 and 'executed' or ($.get('skipped') and 'skipped' or 'empty')"
+  tasks:
+
+    - type: document
+      name: gate-no-team
+      condition: "$.get('team_id') is None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    - type: document
+      name: read-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        title: "f\"Futebol Brasil | Rosters enrich · {$.get('competition', 'unknown')} · team {$.get('team_id', 'na')}\""
+        metadata.document_type: "'futebol-brasil-sync-marker'"
+      outputs:
+        last_synced_at: "$.get('documents')[0].get('value', {}).get('synced_at') if len($.get('documents', [])) > 0 else None"
+
+    - type: document
+      name: gate-recent
+      condition: "not $.get('skipped', False) and not $.get('force', False) and $.get('last_synced_at') is not None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    - type: connector
+      name: task-get-squad
+      condition: "not $.get('skipped', False)"
+      connector:
+        name: api-football
+        command: get-players/squad
+      inputs:
+        team: "$.get('team_id')"
+      outputs:
+        team_data: "$.get('response', [{}])[0].get('team', {}) if len($.get('response', [])) > 0 else {}"
+        players: "$.get('response', [{}])[0].get('players', []) if len($.get('response', [])) > 0 else []"
+
+    # bulk-upsert one competitor doc (dedup by title — team_id baked in)
+    - type: document
+      name: save-competitor
+      condition: "not $.get('skipped', False) and len($.get('players', [])) > 0"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'brasil-competitor'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"brasil-competitor · team {$.get('team_id', 'na')}",
+              'team_id': $.get('team_id'),
+              'competition': $.get('competition'),
+              'team': $.get('team_data', {}),
+              'players': [
+                {
+                  'id': p.get('id'),
+                  'name': p.get('name'),
+                  'age': p.get('age'),
+                  'number': p.get('number'),
+                  'position': p.get('position'),
+                  'photo': p.get('photo')
+                }
+                for p in $.get('players', [])
+              ],
+              'players_count': len($.get('players', [])),
+              'metadata': {
+                'team_id': $.get('team_id'),
+                'competition': $.get('competition'),
+                'source': 'api-football',
+                'document_type': 'brasil-competitor'
+              },
+              'updated_at': datetime.utcnow()
+            }
+          ]
+      metadata:
+        team_id: "$.get('team_id')"
+        competition: "$.get('competition')"
+        document_type: "'brasil-competitor'"
+
+    - type: document
+      name: write-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'futebol-brasil-sync-marker'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"Futebol Brasil | Rosters enrich · {$.get('competition', 'unknown')} · team {$.get('team_id', 'na')}",
+              'competition': $.get('competition'),
+              'team_id': $.get('team_id'),
+              'synced_at': datetime.utcnow(),
+              'status': 'active',
+              'metadata': {
+                'competition': $.get('competition'),
+                'team_id': $.get('team_id'),
+                'document_type': 'futebol-brasil-sync-marker'
+              }
+            }
+          ]
+      metadata:
+        competition: "$.get('competition')"
+        team_id: "$.get('team_id')"
+        document_type: "'futebol-brasil-sync-marker'"

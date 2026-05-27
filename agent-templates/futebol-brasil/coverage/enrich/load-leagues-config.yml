@@ -1,0 +1,100 @@
+workflow:
+  name: futebol-brasil-load-leagues-config
+  title: "Futebol Brasil | Load Leagues Config"
+  description: "Load Brazilian football coverage configuration (5 competitions pinned to api-football IDs)."
+  outputs:
+    leagues_config: "$.get('leagues_config', [])"
+    enabled_leagues: "$.get('enabled_leagues', [])"
+    workflow-status: "'executed'"
+  tasks:
+
+    # search existing config document (idempotent install)
+    - type: document
+      name: load-config
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'futebol-brasil-leagues-config'"
+      outputs:
+        existing_config: "$.get('documents', [])[0] if len($.get('documents', [])) > 0 else None"
+
+    # seed default config if missing (data-driven, 5 competitions)
+    - type: document
+      name: seed-config
+      description: "Seed default Brazilian football coverage config if missing."
+      condition: "$.get('existing_config') is None"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        futebol-brasil-leagues-config: |
+          {
+            'title': 'Futebol Brasil | Leagues Config',
+            'leagues': [
+              {
+                'competition': 'selecao-brasileira',
+                'kind': 'national-team',
+                'team_id': 6,
+                'league_id': None,
+                'season': 2026,
+                'name': 'Seleção Brasileira',
+                'country': 'Brazil',
+                'enabled': True
+              },
+              {
+                'competition': 'brasileirao-serie-a',
+                'kind': 'league',
+                'league_id': 71,
+                'season': 2026,
+                'name': 'Brasileirão Série A',
+                'country': 'Brazil',
+                'enabled': True
+              },
+              {
+                'competition': 'copa-libertadores',
+                'kind': 'continental-cup',
+                'league_id': 13,
+                'season': 2026,
+                'name': 'CONMEBOL Libertadores',
+                'country': 'World',
+                'enabled': True
+              },
+              {
+                'competition': 'copa-do-brasil',
+                'kind': 'domestic-cup',
+                'league_id': 73,
+                'season': 2026,
+                'name': 'Copa do Brasil',
+                'country': 'Brazil',
+                'enabled': True
+              },
+              {
+                'competition': 'copa-sul-americana',
+                'kind': 'continental-cup',
+                'league_id': 11,
+                'season': 2026,
+                'name': 'CONMEBOL Sudamericana',
+                'country': 'World',
+                'enabled': True
+              }
+            ],
+            'updated_at': datetime.utcnow()
+          }
+      metadata:
+        document_type: "'futebol-brasil-config'"
+
+    # re-read after potential seed
+    - type: document
+      name: read-config
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'futebol-brasil-leagues-config'"
+      outputs:
+        leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []"
+        enabled_leagues: "[l for l in ($.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []) if l.get('enabled', True)]"

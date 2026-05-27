@@ -1,0 +1,161 @@
+workflow:
+  name: futebol-brasil-enrich-standings
+  title: "Futebol Brasil | Enrich Standings"
+  description: "Fetch + normalize + save standings for one league into a brand-agnostic 'brasil-standings' document (one per competition/season)."
+  context-variables:
+    debugger:
+      enabled: false
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    competition: "$.get('competition')"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    force: "$.get('force', False)"
+    ttl_minutes: "$.get('ttl_minutes', 60)"
+  outputs:
+    skipped: "$.get('skipped', False)"
+    workflow-status: "len($.get('standings', [])) > 0 and 'executed' or ($.get('skipped') and 'skipped' or 'empty')"
+  tasks:
+
+    # skip if no league (selecao-brasileira, knock-out only)
+    - type: document
+      name: gate-no-league
+      condition: "$.get('league_id') is None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    # incremental gate
+    - type: document
+      name: read-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        title: "f\"Futebol Brasil | Standings enrich · {$.get('competition', 'unknown')}\""
+        metadata.document_type: "'futebol-brasil-sync-marker'"
+      outputs:
+        last_synced_at: "$.get('documents')[0].get('value', {}).get('synced_at') if len($.get('documents', [])) > 0 else None"
+
+    - type: document
+      name: gate-recent
+      condition: "not $.get('skipped', False) and not $.get('force', False) and $.get('last_synced_at') is not None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    # pull standings
+    - type: connector
+      name: task-get-standings
+      condition: "not $.get('skipped', False)"
+      connector:
+        name: api-football
+        command: get-standings
+      inputs:
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        standings: "$.get('response', [])"
+
+    # bulk-upsert one normalized standings doc (dedup by title)
+    - type: document
+      name: save-standings
+      condition: "not $.get('skipped', False) and len($.get('standings', [])) > 0"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'brasil-standings'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"brasil-standings · {$.get('competition', 'unknown')} · {$.get('season', '')}",
+              'competition': $.get('competition'),
+              'league_id': $.get('league_id'),
+              'season_id': $.get('season'),
+              'league': $.get('standings', [{}])[0].get('league', {}),
+              'groups': [
+                {
+                  'group_index': i,
+                  'rows': [
+                    {
+                      'rank': r.get('rank'),
+                      'team_id': r.get('team', {}).get('id'),
+                      'team_name': r.get('team', {}).get('name'),
+                      'team_logo': r.get('team', {}).get('logo'),
+                      'points': r.get('points'),
+                      'goalsDiff': r.get('goalsDiff'),
+                      'played': r.get('all', {}).get('played'),
+                      'wins': r.get('all', {}).get('win'),
+                      'draws': r.get('all', {}).get('draw'),
+                      'losses': r.get('all', {}).get('lose'),
+                      'goals_for': r.get('all', {}).get('goals', {}).get('for'),
+                      'goals_against': r.get('all', {}).get('goals', {}).get('against'),
+                      'form': r.get('form'),
+                      'description': r.get('description')
+                    }
+                    for r in group
+                  ]
+                }
+                for i, group in enumerate($.get('standings', [{}])[0].get('league', {}).get('standings', []))
+              ],
+              'metadata': {
+                'competition': $.get('competition'),
+                'league_id': $.get('league_id'),
+                'season_id': $.get('season'),
+                'source': 'api-football',
+                'document_type': 'brasil-standings'
+              },
+              'updated_at': datetime.utcnow()
+            }
+          ]
+      metadata:
+        competition: "$.get('competition')"
+        league_id: "$.get('league_id')"
+        season_id: "$.get('season')"
+        document_type: "'brasil-standings'"
+
+    # sync marker (bulk-update keyed by title)
+    - type: document
+      name: write-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'futebol-brasil-sync-marker'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"Futebol Brasil | Standings enrich · {$.get('competition', 'unknown')}",
+              'competition': $.get('competition'),
+              'league_id': $.get('league_id'),
+              'season': $.get('season'),
+              'synced_at': datetime.utcnow(),
+              'status': 'active',
+              'metadata': {
+                'competition': $.get('competition'),
+                'document_type': 'futebol-brasil-sync-marker'
+              }
+            }
+          ]
+      metadata:
+        competition: "$.get('competition')"
+        document_type: "'futebol-brasil-sync-marker'"

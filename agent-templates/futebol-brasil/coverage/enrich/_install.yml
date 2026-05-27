@@ -1,0 +1,73 @@
+setup:
+  title: Futebol Brasil | Coverage Enrich
+  description: |
+    Performant, brand-agnostic enrich pipeline for Brazilian football coverage.
+    Pins 5 competitions (Seleção Brasileira, Brasileirão Série A, Libertadores, Copa do Brasil, Sul-Americana)
+    to api-football IDs and produces normalized documents: brasil-fixture, brasil-standings,
+    brasil-competitor, brasil-leaders. Incremental (synced_at gating), idempotent, schedule-safe.
+  category:
+    - data-acquisition
+    - football
+  estimatedTime: 5 minutes
+  features:
+    - "5 pinned Brazilian competitions (data-driven config document)"
+    - "Brand-agnostic output documents (brasil-fixture, brasil-standings, brasil-competitor, brasil-leaders)"
+    - "Incremental sync with ttl_minutes gating (skips recent runs)"
+    - "Coverage gateway + checkin/checkout markers for orchestration"
+    - "Idempotent + safe for scheduled execution"
+    - "Reuses api-football connector (no new data source)"
+  integrations:
+    - api-football
+  status: available
+  value: agent-templates/futebol-brasil/coverage/enrich
+  version: 1.0.0
+
+datasets:
+
+  # config (pin 5 competitions)
+  - type: workflow
+    path: load-leagues-config.yml
+
+  # load-* (raw fetchers, reusable ad-hoc)
+  - type: workflow
+    path: load-fixtures.yml
+
+  - type: workflow
+    path: load-standings.yml
+
+  - type: workflow
+    path: load-rosters.yml
+
+  - type: workflow
+    path: load-season-leaders.yml
+
+  # enrich-* (fetch + normalize + bulk-save brand-agnostic docs)
+  - type: workflow
+    path: enrich-fixtures.yml
+
+  - type: workflow
+    path: enrich-standings.yml
+
+  - type: workflow
+    path: enrich-rosters.yml
+
+  - type: workflow
+    path: enrich-season-leaders.yml
+
+  # coverage gateway + checkin/checkout
+  - type: workflow
+    path: coverage-gateway.yml
+
+  - type: workflow
+    path: coverage-checkin.yml
+
+  - type: workflow
+    path: coverage-checkout.yml
+
+  # prompts
+  - type: prompt
+    path: prompts/coverage-status.yml
+
+  # orchestration agent
+  - type: agent
+    path: agent.yml

@@ -1,0 +1,166 @@
+workflow:
+  name: futebol-brasil-enrich-fixtures
+  title: "Futebol Brasil | Enrich Fixtures"
+  description: "Fetch + normalize + bulk-save fixtures for one competition into brand-agnostic 'brasil-fixture' documents."
+  context-variables:
+    debugger:
+      enabled: false
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    competition: "$.get('competition')"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    team: "$.get('team')"
+    next: "$.get('next', 50)"
+    from: "$.get('from')"
+    to: "$.get('to')"
+    last: "$.get('last')"
+    force: "$.get('force', False)"
+    ttl_minutes: "$.get('ttl_minutes', 15)"
+  outputs:
+    saved_count: "$.get('saved_count', 0)"
+    skipped: "$.get('skipped', False)"
+    workflow-status: "$.get('saved_count', 0) > 0 and 'executed' or ($.get('skipped') and 'skipped' or 'empty')"
+  tasks:
+
+    # incremental gate (lookup last marker by title)
+    - type: document
+      name: read-sync-marker
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        title: "f\"Futebol Brasil | Fixtures enrich · {$.get('competition', 'unknown')}\""
+        metadata.document_type: "'futebol-brasil-sync-marker'"
+      outputs:
+        last_synced_at: "$.get('documents')[0].get('value', {}).get('synced_at') if len($.get('documents', [])) > 0 else None"
+
+    - type: document
+      name: gate-recent
+      condition: "not $.get('force', False) and $.get('last_synced_at') is not None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    # pull from api-football
+    - type: connector
+      name: task-get-fixtures
+      condition: "not $.get('skipped', False)"
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+        team: "$.get('team')"
+        from: "$.get('from')"
+        to: "$.get('to')"
+        next: "$.get('next') if $.get('from') is None and $.get('to') is None and $.get('last') is None else None"
+        last: "$.get('last')"
+      outputs:
+        fixtures: "$.get('response', [])"
+
+    # bulk-save normalized brasil-fixture docs (idempotent on fixture id via title)
+    - type: document
+      name: bulk-save-fixtures
+      condition: "not $.get('skipped', False) and len($.get('fixtures', [])) > 0"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'brasil-fixture'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"brasil-fixture · {f.get('fixture', {}).get('id', 'na')}",
+              'fixture_id': f.get('fixture', {}).get('id'),
+              'competition': $.get('competition'),
+              'league_id': $.get('league_id'),
+              'season_id': $.get('season'),
+              'date': f.get('fixture', {}).get('date'),
+              'timestamp': f.get('fixture', {}).get('timestamp'),
+              'status': f.get('fixture', {}).get('status', {}),
+              'venue': f.get('fixture', {}).get('venue', {}),
+              'round': f.get('league', {}).get('round'),
+              'home_team': {
+                'id': f.get('teams', {}).get('home', {}).get('id'),
+                'name': f.get('teams', {}).get('home', {}).get('name'),
+                'logo': f.get('teams', {}).get('home', {}).get('logo')
+              },
+              'away_team': {
+                'id': f.get('teams', {}).get('away', {}).get('id'),
+                'name': f.get('teams', {}).get('away', {}).get('name'),
+                'logo': f.get('teams', {}).get('away', {}).get('logo')
+              },
+              'goals': f.get('goals', {}),
+              'score': f.get('score', {}),
+              'label': f"{f.get('teams', {}).get('home', {}).get('name', '?')} vs {f.get('teams', {}).get('away', {}).get('name', '?')}",
+              'metadata': {
+                'fixture_code': str(f.get('fixture', {}).get('id', '')),
+                'competition': $.get('competition'),
+                'league_id': $.get('league_id'),
+                'season_id': $.get('season'),
+                'source': 'api-football',
+                'document_type': 'brasil-fixture'
+              },
+              'updated_at': datetime.utcnow()
+            }
+            for f in $.get('fixtures', [])
+          ]
+      metadata:
+        competition: "$.get('competition')"
+        league_id: "$.get('league_id')"
+        season_id: "$.get('season')"
+        document_type: "'brasil-fixture'"
+
+    # sync marker
+    - type: document
+      name: write-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'futebol-brasil-sync-marker'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"Futebol Brasil | Fixtures enrich · {$.get('competition', 'unknown')}",
+              'competition': $.get('competition'),
+              'league_id': $.get('league_id'),
+              'season': $.get('season'),
+              'count': len($.get('fixtures', [])),
+              'synced_at': datetime.utcnow(),
+              'status': 'active',
+              'metadata': {
+                'competition': $.get('competition'),
+                'document_type': 'futebol-brasil-sync-marker'
+              }
+            }
+          ]
+      metadata:
+        competition: "$.get('competition')"
+        document_type: "'futebol-brasil-sync-marker'"
+
+    - type: document
+      name: count-saved
+      condition: "not $.get('skipped', False)"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        saved_count: "len($.get('fixtures', []))"

@@ -1,0 +1,79 @@
+workflow:
+  name: futebol-brasil-coverage-gateway
+  title: "Futebol Brasil | Coverage Gateway"
+  description: "Read coverage state: enabled leagues, last checkin/checkout, freshness of each enrich pipeline. Used by orchestration agents to decide what to refresh."
+  outputs:
+    leagues_config: "$.get('leagues_config', [])"
+    enabled_leagues: "$.get('enabled_leagues', [])"
+    last_checkin: "$.get('last_checkin')"
+    last_checkout: "$.get('last_checkout')"
+    sync_markers: "$.get('sync_markers', [])"
+    in_progress: "$.get('in_progress', False)"
+    workflow-status: "'executed'"
+  tasks:
+
+    # read leagues config
+    - type: document
+      name: read-config
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'futebol-brasil-leagues-config'"
+      outputs:
+        leagues_config: "$.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []"
+        enabled_leagues: "[l for l in ($.get('documents')[0].get('value', {}).get('leagues', []) if len($.get('documents', [])) > 0 else []) if l.get('enabled', True)]"
+
+    # read latest checkin marker
+    - type: document
+      name: read-checkin
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'futebol-brasil-coverage-checkin'"
+      outputs:
+        last_checkin: "$.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else None"
+
+    # read latest checkout marker
+    - type: document
+      name: read-checkout
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        name: "'futebol-brasil-coverage-checkout'"
+      outputs:
+        last_checkout: "$.get('documents')[0].get('value', {}) if len($.get('documents', [])) > 0 else None"
+
+    # read all sync markers (per-pipeline freshness)
+    - type: document
+      name: read-sync-markers
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      inputs:
+        metadata.document_type: "'futebol-brasil-sync-marker'"
+      outputs:
+        sync_markers: |
+          [
+            {
+              'name': d.get('name'),
+              'competition': d.get('value', {}).get('competition'),
+              'synced_at': d.get('value', {}).get('synced_at'),
+              'count': d.get('value', {}).get('count')
+            }
+            for d in $.get('documents', [])
+          ]
+        in_progress: |
+          (
+            $.get('last_checkin') is not None
+            and (
+              $.get('last_checkout') is None
+              or str($.get('last_checkin', {}).get('run_id', '')) != str($.get('last_checkout', {}).get('run_id', ''))
+            )
+          )

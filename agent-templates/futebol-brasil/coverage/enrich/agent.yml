@@ -1,0 +1,97 @@
+agent:
+  name: futebol-brasil-coverage-enrich
+  title: "Futebol Brasil | Coverage Enrich"
+  description: |
+    Orchestrates the Brazilian football coverage enrich pipeline.
+    Reads the 5 pinned competitions from config, runs each enrich-* workflow per league,
+    and bookends the run with checkin/checkout markers.
+  context:
+    status: "inactive"
+  config-frequency: 60
+  workflows:
+
+    # bookend: mark coverage run started
+    - name: futebol-brasil-coverage-checkin
+      description: Mark coverage run started
+      inputs:
+        trigger: $.get('trigger', 'scheduled')
+      outputs:
+        run_id: $.get('run_id')
+
+    # load config (5 pinned competitions)
+    - name: futebol-brasil-load-leagues-config
+      description: Load Brazilian football coverage config
+      outputs:
+        leagues_config: $.get('leagues_config', [])
+        enabled_leagues: $.get('enabled_leagues', [])
+
+    # enrich fixtures per enabled league (handles selecao-brasileira via team= filter when league_id is None)
+    - name: futebol-brasil-enrich-fixtures
+      description: Enrich fixtures for each enabled competition
+      foreach:
+        name: league
+        expr: $
+        value: $.get('enabled_leagues', [])
+      inputs:
+        competition: $.get('league').get('competition')
+        league_id: $.get('league').get('league_id')
+        season: $.get('league').get('season')
+        team: $.get('league').get('team_id')
+        force: $.get('force', False)
+      outputs:
+        fixtures_status: $.get('workflow-status', 'skipped')
+
+    # enrich standings (auto-skips competitions without league_id)
+    - name: futebol-brasil-enrich-standings
+      description: Enrich standings for each enabled league
+      foreach:
+        name: league
+        expr: $
+        value: $.get('enabled_leagues', [])
+      inputs:
+        competition: $.get('league').get('competition')
+        league_id: $.get('league').get('league_id')
+        season: $.get('league').get('season')
+        force: $.get('force', False)
+      outputs:
+        standings_status: $.get('workflow-status', 'skipped')
+
+    # enrich season leaders (auto-skips competitions without league_id)
+    - name: futebol-brasil-enrich-season-leaders
+      description: Enrich season leaders (top teams) for each enabled league
+      foreach:
+        name: league
+        expr: $
+        value: $.get('enabled_leagues', [])
+      inputs:
+        competition: $.get('league').get('competition')
+        league_id: $.get('league').get('league_id')
+        season: $.get('league').get('season')
+        force: $.get('force', False)
+      outputs:
+        leaders_status: $.get('workflow-status', 'skipped')
+
+    # enrich rosters for national team only (cheap; club rosters can be invoked ad-hoc)
+    - name: futebol-brasil-enrich-rosters
+      description: Enrich roster for the national team
+      foreach:
+        name: league
+        expr: $
+        value: "[l for l in $.get('enabled_leagues', []) if l.get('kind') == 'national-team']"
+      inputs:
+        competition: $.get('league').get('competition')
+        team_id: $.get('league').get('team_id')
+        force: $.get('force', False)
+      outputs:
+        rosters_status: $.get('workflow-status', 'skipped')
+
+    # bookend: mark coverage run completed
+    - name: futebol-brasil-coverage-checkout
+      description: Mark coverage run completed
+      inputs:
+        run_id: $.get('run_id')
+        status: "'success'"
+        summary:
+          competitions: $.get('enabled_leagues', [])
+      outputs:
+        completed_run_id: $.get('run_id')

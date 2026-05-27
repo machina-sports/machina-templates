@@ -1,0 +1,122 @@
+workflow:
+  name: futebol-brasil-load-season-leaders
+  title: "Futebol Brasil | Load Season Leaders"
+  description: "Derive season leaders (top teams by points) from api-football standings for one league/season. Incremental: skip if synced recently."
+  context-variables:
+    debugger:
+      enabled: false
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    competition: "$.get('competition')"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    limit: "$.get('limit', 10)"
+    force: "$.get('force', False)"
+    ttl_minutes: "$.get('ttl_minutes', 120)"
+  outputs:
+    leaders: "$.get('leaders', [])"
+    skipped: "$.get('skipped', False)"
+    workflow-status: "len($.get('leaders', [])) > 0 and 'executed' or ($.get('skipped') and 'skipped' or 'empty')"
+  tasks:
+
+    - type: document
+      name: gate-no-league
+      condition: "$.get('league_id') is None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    - type: document
+      name: read-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      inputs:
+        title: "f\"Futebol Brasil | Leaders load · {$.get('competition', 'unknown')}\""
+        metadata.document_type: "'futebol-brasil-sync-marker'"
+      outputs:
+        last_synced_at: "$.get('documents')[0].get('value', {}).get('synced_at') if len($.get('documents', [])) > 0 else None"
+
+    - type: document
+      name: gate-recent
+      condition: "not $.get('skipped', False) and not $.get('force', False) and $.get('last_synced_at') is not None"
+      config:
+        action: search
+        search-limit: 0
+        search-vector: false
+      inputs:
+        name: "'__noop__'"
+      outputs:
+        skipped: "True"
+
+    - type: connector
+      name: task-get-standings
+      condition: "not $.get('skipped', False)"
+      connector:
+        name: api-football
+        command: get-standings
+      inputs:
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        standings: "$.get('response', [])"
+        leaders: |
+          [
+            {
+              'rank': row.get('rank'),
+              'team_id': row.get('team', {}).get('id'),
+              'team_name': row.get('team', {}).get('name'),
+              'team_logo': row.get('team', {}).get('logo'),
+              'points': row.get('points'),
+              'goalsDiff': row.get('goalsDiff'),
+              'played': row.get('all', {}).get('played'),
+              'wins': row.get('all', {}).get('win'),
+              'draws': row.get('all', {}).get('draw'),
+              'losses': row.get('all', {}).get('lose'),
+              'goals_for': row.get('all', {}).get('goals', {}).get('for'),
+              'goals_against': row.get('all', {}).get('goals', {}).get('against'),
+              'form': row.get('form')
+            }
+            for row in (
+              $.get('response', [{}])[0].get('league', {}).get('standings', [[]])[0]
+              if len($.get('response', [])) > 0 else []
+            )
+          ][:$.get('limit', 10)]
+
+    - type: document
+      name: write-sync-marker
+      condition: "not $.get('skipped', False)"
+      config:
+        action: bulk-update
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'futebol-brasil-sync-marker'"
+      documents:
+        items: |
+          [
+            {
+              'title': f"Futebol Brasil | Leaders load · {$.get('competition', 'unknown')}",
+              'competition': $.get('competition'),
+              'league_id': $.get('league_id'),
+              'season': $.get('season'),
+              'count': len($.get('leaders', [])),
+              'synced_at': datetime.utcnow(),
+              'status': 'active',
+              'metadata': {
+                'competition': $.get('competition'),
+                'document_type': 'futebol-brasil-sync-marker'
+              }
+            }
+          ]
+      metadata:
+        competition: "$.get('competition')"
+        document_type: "'futebol-brasil-sync-marker'"

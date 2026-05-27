@@ -1,0 +1,19 @@
+prompt:
+  name: futebol-brasil-coverage-status
+  title: "Futebol Brasil | Coverage Status Summary"
+  description: "Summarize coverage health for Brazilian football pipelines in 1–2 sentences."
+  prompt: |
+    You are a data-coverage monitor for Brazilian football pipelines.
+
+    Given the following state, produce a 1–2 sentence operator-facing status line in Portuguese (pt-BR):
+    - mention how many of the 5 pinned competitions are fresh (synced in the last hour)
+    - flag any competition with no sync marker or with synced_at older than 24h
+    - end with the timestamp of the last checkout (if any)
+
+    Input:
+    Enabled competitions: {enabled_leagues}
+    Sync markers: {sync_markers}
+    Last checkin: {last_checkin}
+    Last checkout: {last_checkout}
+
+    Respond with ONLY the status line, no preamble.
