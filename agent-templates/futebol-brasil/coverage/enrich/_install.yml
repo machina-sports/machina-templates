@@ -1,0 +1,70 @@
+setup:
+  title: Futebol Brasil - Coverage Enrich
+  description: |
+    Performant, incremental coverage module for the 5 pinned Brazilian
+    football targets (Brasileirão Série A, Libertadores, Copa do Brasil,
+    Sudamericana, Seleção Brasileira). Uses the existing api-football
+    connector — does NOT install a duplicate source. No odds, no mocks.
+
+    Writes brand-agnostic brasil-* documents (fixture, standings,
+    leaders, roster, competitor) with version_control + staleness
+    policy so downstream consumers can render without re-fetching.
+  category:
+    - data-acquisition
+    - football
+  estimatedTime: 5 minutes
+  features:
+    - "5 pinned competitions (Brasileirão A, Libertadores, Copa do Brasil, Sudamericana, Seleção)"
+    - "Incremental loaders — per-resource staleness policy skips fresh data"
+    - "Soft-lock check-in/check-out — safe for high-frequency scheduling"
+    - "Brand-agnostic brasil-* documents (fixture, standings, leaders, roster, competitor)"
+    - "Reuses the existing api-football connector — no duplicate source"
+    - "Zero-LLM, zero-mock — deterministic projection from the api response"
+  integrations:
+    - api-football
+  status: available
+  value: agent-templates/futebol-brasil/coverage/enrich
+  version: 1.0.0
+
+datasets:
+
+  # config workflow (seeds the 5 pinned competitions)
+  - type: "workflow"
+    path: "load-leagues-config.yml"
+
+  # gateway / check-in / check-out
+  - type: "workflow"
+    path: "workflows/coverage-gateway.yml"
+
+  - type: "workflow"
+    path: "workflows/checkin.yml"
+
+  - type: "workflow"
+    path: "workflows/checkout.yml"
+
+  # load-* workflows (api-football → brasil-* documents)
+  - type: "workflow"
+    path: "workflows/load-competitions.yml"
+
+  - type: "workflow"
+    path: "workflows/load-fixtures.yml"
+
+  - type: "workflow"
+    path: "workflows/load-standings.yml"
+
+  - type: "workflow"
+    path: "workflows/load-rosters.yml"
+
+  - type: "workflow"
+    path: "workflows/load-season-leaders.yml"
+
+  # enrich-* workflows (pure document joins, no API)
+  - type: "workflow"
+    path: "workflows/enrich-competitor.yml"
+
+  # agents
+  - type: "agent"
+    path: "agent.yml"
+
+  - type: "agent"
+    path: "agent-selecao.yml"

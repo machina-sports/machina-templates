@@ -1,0 +1,42 @@
+agent:
+  name: futebol-brasil-coverage-selecao
+  title: Futebol Brasil - Coverage Seleção
+  description: |
+    Per-tick coverage agent for the Brazilian national team
+    (team_id=6). National teams don't fit the league/season gateway
+    pattern (no standings, no leaders) so they get a dedicated agent:
+      - load-fixtures in team mode (last 20 + next 20)
+      - load-rosters (squad)
+      - enrich-competitor (recent + upcoming + roster summary)
+
+    Lighter than the league agent — runs in a fixed 6h cadence by default.
+    Start status=inactive; operator enables in Studio.
+  context:
+    config-frequency: 360
+    status: "inactive"
+  workflows:
+
+    # 1. Fixtures for the national team
+    - name: futebol-brasil-coverage-load-fixtures
+      description: Last 20 + next 20 fixtures for Seleção (team_id=6).
+      inputs:
+        team_id: 6
+      outputs:
+        fixtures-status: $.get('workflow-status', 'skipped')
+        fixtures-upserted: $.get('fixtures-upserted', 0)
+
+    # 2. Roster (squad)
+    - name: futebol-brasil-coverage-load-rosters
+      description: Current squad for Seleção (team_id=6).
+      inputs:
+        team_id: 6
+      outputs:
+        rosters-status: $.get('workflow-status', 'skipped')
+
+    # 3. Build brasil-competitor doc for Seleção
+    - name: futebol-brasil-coverage-enrich-competitor
+      description: Aggregate brasil-competitor for Seleção.
+      inputs:
+        team_id: 6
+      outputs:
+        competitor-status: $.get('workflow-status', 'skipped')

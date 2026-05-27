@@ -1,0 +1,94 @@
+workflow:
+
+  # futebol-brasil-coverage-checkin
+  name: "futebol-brasil-coverage-checkin"
+  title: "Futebol Brasil - Coverage Check-In"
+  description: |
+    Picks ONE competition to process this tick and marks it as
+    processing=True (soft lock). Two selection modes:
+      - Manual: caller passes league_id -> use that doc if not locked.
+      - Auto: pick the least-recently checked-out enabled competition.
+
+    The processing flag is cleared by the checkout workflow at the end
+    of the tick.
+  inputs:
+    league_id: "$.get('league_id')"
+  outputs:
+    selected-competition: "$.get('selected-competition', {})"
+    selected-league_id: "$.get('selected-league_id')"
+    selected-season: "$.get('selected-season')"
+    workflow-status: "($.get('selected-league_id') is not None) and 'executed' or 'skipped'"
+  tasks:
+
+    # search-manual
+    - type: "document"
+      name: "search-manual"
+      description: "Manual override: pick the doc for the given league_id (if not locked)."
+      condition: "$.get('league_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+        metadata.league_id: "$.get('league_id')"
+        value.version_control.processing: "{'$ne': True}"
+      outputs:
+        manual-doc: "$.get('documents', [{}])[0] if $.get('documents') else None"
+
+    # search-auto
+    - type: "document"
+      name: "search-auto"
+      description: "Auto-select the least-recently checked-out enabled competition."
+      condition: "$.get('league_id') is None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+        search-sorters: [["value.version_control.last_checkout_at", 1]]
+      filters:
+        name: "'futebol-brasil-competition'"
+        value.version_control.processing: "{'$ne': True}"
+      outputs:
+        auto-doc: "$.get('documents', [{}])[0] if $.get('documents') else None"
+
+    # resolve-selection
+    - type: "document"
+      name: "resolve-selection"
+      description: "Resolve manual vs auto pick (manual wins)."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'__futebol_brasil_noop__'"
+      outputs:
+        chosen-doc: "$.get('manual-doc') or $.get('auto-doc')"
+        chosen-document_id: "($.get('manual-doc') or $.get('auto-doc') or {}).get('_id')"
+        chosen-value: "($.get('manual-doc') or $.get('auto-doc') or {}).get('value', {})"
+        selected-competition: "($.get('manual-doc') or $.get('auto-doc') or {}).get('value', {})"
+        selected-league_id: "($.get('manual-doc') or $.get('auto-doc') or {}).get('metadata', {}).get('league_id')"
+        selected-season: "($.get('manual-doc') or $.get('auto-doc') or {}).get('metadata', {}).get('season')"
+
+    # mark-processing
+    - type: "document"
+      name: "mark-processing"
+      description: "Set processing=True and stamp last_checkin_at."
+      condition: "$.get('chosen-document_id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('chosen-document_id')"
+      documents:
+        futebol-brasil-competition: |
+          {
+            **$.get('chosen-value', {}),
+            'version_control': {
+              **$.get('chosen-value', {}).get('version_control', {}),
+              'processing': True,
+              'last_checkin_at': datetime.utcnow().isoformat() + 'Z'
+            },
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }

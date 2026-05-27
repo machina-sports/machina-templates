@@ -1,0 +1,108 @@
+workflow:
+
+  # futebol-brasil-coverage-load-rosters
+  name: "futebol-brasil-coverage-load-rosters"
+  title: "Futebol Brasil - Coverage Load Rosters"
+  description: |
+    Load the squad (roster) for ONE team from api-football
+    (get-players/squad) and upsert a single futebol-brasil-roster
+    document per team.
+
+    Caller iterates per-team. Two entry modes:
+      - league mode: caller passes league_id + season + team_id; the
+        workflow stamps roster_synced_at on the league's competition doc.
+      - national-team mode: caller passes team_id only; staleness
+        check is against value.rosters_synced_at on the
+        futebol-brasil-national-team document (looked up via team_id).
+
+    Squads are slow-moving — default rosters_stale_hours is 168h (1 week).
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    force: "$.get('force', False)"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    team_id: "$.get('team_id')"
+  outputs:
+    players-in-squad: "$.get('squad-count', 0)"
+    workflow-status: "($.get('squad-count', 0) > 0) and 'executed' or 'skipped'"
+  tasks:
+
+    # load-existing-roster (for freshness check + version_control merge)
+    - type: "document"
+      name: "load-existing-roster"
+      description: "Look up existing roster doc to merge version_control."
+      condition: "$.get('team_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'brasil-roster'"
+        metadata.team_id: "$.get('team_id')"
+      outputs:
+        roster-document-id: "$.get('documents', [{}])[0].get('_id') if $.get('documents') else None"
+        roster-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+        roster-fresh: "(not $.get('force', False) and $.get('documents') and $.get('documents', [{}])[0].get('value', {}).get('synced_at') and ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 < 168))"
+
+    # fetch-squad
+    - type: "connector"
+      name: "fetch-squad"
+      description: "Pull squad from api-football."
+      condition: "$.get('team_id') is not None and $.get('roster-fresh') is not True"
+      connector:
+        name: "api-football"
+        command: "get-players/squad"
+      inputs:
+        team: "$.get('team_id')"
+      outputs:
+        squad-team: "(($.get('response') or [{}])[0].get('team', {}) if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else {})"
+        squad-players: |
+          [
+            {
+              'id': p.get('id'),
+              'name': p.get('name'),
+              'age': p.get('age'),
+              'number': p.get('number'),
+              'position': p.get('position'),
+              'photo': p.get('photo')
+            }
+            for p in (($.get('response') or [{}])[0].get('players', []) if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else [])
+            if p.get('id') is not None
+          ]
+        squad-count: "len([p for p in (($.get('response') or [{}])[0].get('players', []) if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else []) if p.get('id') is not None])"
+
+    # upsert-roster
+    - type: "document"
+      name: "upsert-roster"
+      description: "Upsert one futebol-brasil-roster doc per team."
+      condition: "$.get('squad-count', 0) > 0"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "'brasil-roster'"
+        metadata.team_id: "$.get('team_id')"
+      documents:
+        brasil-roster: |
+          {
+            'team_id': $.get('team_id'),
+            'team_name': $.get('squad-team', {}).get('name'),
+            'team_logo': $.get('squad-team', {}).get('logo'),
+            'league_id': $.get('league_id'),
+            'season': $.get('season'),
+            'players': $.get('squad-players', []),
+            'players_count': $.get('squad-count', 0),
+            'synced_at': datetime.utcnow().isoformat() + 'Z',
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      metadata:
+        scope: "'futebol-brasil'"
+        document_type: "'roster'"
+        team_id: "$.get('team_id')"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"

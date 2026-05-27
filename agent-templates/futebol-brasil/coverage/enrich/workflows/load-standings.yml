@@ -1,0 +1,137 @@
+workflow:
+
+  # futebol-brasil-coverage-load-standings
+  name: "futebol-brasil-coverage-load-standings"
+  title: "Futebol Brasil - Coverage Load Standings"
+  description: |
+    Load standings for ONE league/season from api-football
+    (get-standings) and upsert a single futebol-brasil-standings document.
+
+    Incremental: skips when standings_synced_at is fresher than
+    staleness_policy.standings_stale_hours. Skips entirely when the
+    competition's has_standings flag is False (cups in elimination
+    phase, e.g. Copa do Brasil).
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    force: "$.get('force', False)"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+  outputs:
+    teams-in-table: "$.get('standings-rows-count', 0)"
+    standings-rows: "$.get('standings-rows', [])"
+    workflow-status: "($.get('standings-rows-count', 0) > 0) and 'executed' or 'skipped'"
+  tasks:
+
+    # load-competition-doc
+    - type: "document"
+      name: "load-competition-doc"
+      description: "Read competition staleness."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        competition-document-id: "$.get('documents', [{}])[0].get('_id') if $.get('documents') else None"
+        competition-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+        has-standings: "$.get('documents', [{}])[0].get('value', {}).get('has_standings', False) if $.get('documents') else False"
+        standings-fresh: "(not $.get('force', False) and $.get('documents') and $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('standings_synced_at') and ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('standings_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 < $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('standings_stale_hours', 1)))"
+
+    # fetch-standings
+    - type: "connector"
+      name: "fetch-standings"
+      description: "Pull standings from api-football."
+      condition: "$.get('has-standings') is True and $.get('standings-fresh') is not True"
+      connector:
+        name: "api-football"
+        command: "get-standings"
+      inputs:
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        standings-league: "(($.get('response') or [{}])[0].get('league', {}) if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else {})"
+        standings-rows: |
+          [
+            {
+              'rank': r.get('rank'),
+              'team': {
+                'id': r.get('team', {}).get('id'),
+                'name': r.get('team', {}).get('name'),
+                'logo': r.get('team', {}).get('logo')
+              },
+              'points': r.get('points'),
+              'goalsDiff': r.get('goalsDiff'),
+              'group': r.get('group'),
+              'form': r.get('form'),
+              'status': r.get('status'),
+              'description': r.get('description'),
+              'all': r.get('all'),
+              'home': r.get('home'),
+              'away': r.get('away'),
+              'update': r.get('update')
+            }
+            for group in (($.get('response') or [{}])[0].get('league', {}).get('standings', []) if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else [])
+            for r in group
+          ]
+        standings-rows-count: "sum(len(group) for group in (($.get('response') or [{}])[0].get('league', {}).get('standings', []) if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else []))"
+
+    # upsert-standings
+    - type: "document"
+      name: "upsert-standings"
+      description: "Upsert one futebol-brasil-standings doc per (league, season)."
+      condition: "$.get('standings-rows-count', 0) > 0"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "'brasil-standings'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      documents:
+        brasil-standings: |
+          {
+            'league_id': $.get('league_id'),
+            'season': $.get('season'),
+            'league_name': $.get('standings-league', {}).get('name'),
+            'logo': $.get('standings-league', {}).get('logo'),
+            'rows': $.get('standings-rows', []),
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      metadata:
+        scope: "'futebol-brasil'"
+        document_type: "'standings'"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"
+        competition: "$.get('standings-league', {}).get('name')"
+        updated_at: "datetime.utcnow().isoformat() + 'Z'"
+
+    # stamp-competition
+    - type: "document"
+      name: "stamp-competition"
+      description: "Mark standings_synced_at on competition doc."
+      condition: "$.get('standings-rows-count', 0) > 0 and $.get('competition-document-id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('competition-document-id')"
+      documents:
+        futebol-brasil-competition: |
+          {
+            **$.get('competition-value', {}),
+            'version_control': {
+              **$.get('competition-value', {}).get('version_control', {}),
+              'standings_synced_at': datetime.utcnow().isoformat() + 'Z',
+              'standings_rows_count': $.get('standings-rows-count', 0)
+            },
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
