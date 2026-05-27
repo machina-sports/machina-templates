@@ -42,3 +42,5 @@ connector:
       value: "invoke_metadata"
     - name: "Sports news"
       value: "invoke_news"
+    - name: "Sports skills (dynamic dispatcher)"
+      value: "invoke_sports_skills"

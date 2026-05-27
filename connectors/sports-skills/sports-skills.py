@@ -312,3 +312,40 @@ def invoke_news(request_data):
     Commands: fetch_items (params: query, limit).
     """
     return _dispatch("news", request_data)
+
+
+def invoke_sports_skills(request_data):
+    """Dynamic sports-skills dispatcher.
+
+    Reads `sport` and `league` from params, resolves the module and correct command.
+    """
+    params = request_data.get("params") or {}
+
+    # Extract sport and league
+    sport = str(params.get("sport") or "").strip().lower()
+    league = str(params.get("league") or "").strip().upper()
+
+    # 1. Resolve module name
+    if sport == "soccer" or (sport == "football" and league in ["MLS", "LALIGA", "PREMIER LEAGUE", "NWSL"]):
+        module_name = "football"
+        default_command = "get_player_profile"
+    elif league == "NBA":
+        module_name = "nba"
+        default_command = "get_player_stats"
+    elif league == "WNBA":
+        module_name = "wnba"
+        default_command = "get_player_stats"
+    elif sport == "baseball":
+        module_name = "mlb"
+        default_command = "get_player_stats"
+    else:
+        # Default to NFL
+        module_name = "nfl"
+        default_command = "get_nflverse_player_stats"
+
+    # 2. Inject resolved default command if not already provided
+    if "command" not in params or not params.get("command"):
+        request_data.setdefault("params", {})["command"] = default_command
+
+    return _dispatch(module_name, request_data)
+
