@@ -21,7 +21,7 @@ prompt:
               description: "A reference to the parent event object's ID."
             type:
               type: "string"
-              description: "The category of the storyline (e.g., live_swing, injury, trade, market_move, milestone, upset, narrative)."
+              description: "The category of the storyline. Allowed types: 'turning_point' (game-changing moment), 'player_storyline' (narrative around form/pressure), 'tactical_shift' (formations/adjustments), 'momentum_swing' (shift in control), 'prematch_brief' (pre-game context), 'live_story' (unfolding live narrative), 'postgame_angle' (editorial hooks), 'coach_decision' (tactical choices), 'missed_opportunity' (missed PKs, turnovers), 'rivalry_context' (rivalry history/tension), 'fan_emotion' (debate/spark sparks), 'underdog_story' (unbalanced expectation), 'comeback_story' (fighting back), 'player_duel' (individual duels), 'atmosphere' (stadium pressure/stakes), 'injury' (medical/physical state), 'trade' (roster movements), 'market_move' (betting/line shifts), 'milestone' (achievements/records), 'upset' (unexpected outcomes), 'narrative' (general story)."
             urgency:
               type: "string"
               description: "The priority of the storyline (breaking, high, medium, low)."
@@ -55,7 +55,28 @@ prompt:
     Return a JSON object containing a `candidate_storylines` array. Each object in the array must conform to the specified schema:
     - id: A unique ID for the storyline.
     - event_ref: The ID of the event this storyline relates to.
-    - type: The type of story (e.g., 'live_swing', 'injury', 'milestone').
+    - type: The type of story. Must be one of:
+      * 'turning_point' (moments that changed the direction of the game)
+      * 'player_storyline' (narrative around individual form, impact, pressure, momentum)
+      * 'tactical_shift' (formations, substitutions, and tactical adjustments)
+      * 'momentum_swing' (when control moved from one team to the other and why)
+      * 'prematch_brief' (context, tension, and stories before kick-off)
+      * 'live_story' (real-time narratives as the play unfolds)
+      * 'postgame_angle' (strongest editorial hooks after the final whistle)
+      * 'coach_decision' (coaching choices that shaped the game)
+      * 'missed_opportunity' (critical moments that could have changed the results)
+      * 'rivalry_context' (history, tension, emotion, and matchup stakes)
+      * 'fan_emotion' (moments that spark debate, controversy, or high-reaction)
+      * 'underdog_story' (pressure and expectation shaping the narrative)
+      * 'comeback_story' (fighting back, shift in belief and momentum)
+      * 'player_duel' (individual matchups and duels)
+      * 'atmosphere' (stadium crowd, stakes, and emotional context)
+      * 'injury' (injuries with fantasy or betting market implications)
+      * 'trade' (trades, roster movements, and contract situations)
+      * 'market_move' (significant line movements or betting odds shifts)
+      * 'milestone' (records, major achievements, and historic performances)
+      * 'upset' (unexpected outcomes or heavy underdogs outperforming)
+      * 'narrative' (general story/editorial angle)
     - urgency: How critical is this story ('breaking', 'high', 'medium', 'low').
     - headline: A concise, sports-media tone headline.
     - supporting_facts: An array of strings with the exact data points that support this storyline.
