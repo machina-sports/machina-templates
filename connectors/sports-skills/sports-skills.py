@@ -315,17 +315,27 @@ def invoke_news(request_data):
 
 
 def invoke_sports_skills(request_data):
-    """Dynamic sports-skills dispatcher.
-
-    Reads `sport` and `league` from params, resolves the module and correct command.
-    """
+    """Dynamic sports-skills dispatcher with cascading league lookup fallbacks."""
     params = request_data.get("params") or {}
 
     # Extract sport and league
     sport = str(params.get("sport") or "").strip().lower()
     league = str(params.get("league") or "").strip().upper()
 
-    # 1. Resolve module name
+    # 1. Handle Basketball cascading lookup if league is missing
+    if sport == "basketball" and not league:
+        request_data.setdefault("params", {})["command"] = "get_player_stats"
+        res = _dispatch("wnba", request_data)
+        if res.get("status") is True and res.get("data", {}).get("status") is True:
+            return res
+        # Try NBA next
+        res = _dispatch("nba", request_data)
+        if res.get("status") is True and res.get("data", {}).get("status") is True:
+            return res
+        # Fall back to CBB (College Basketball)
+        return _dispatch("cbb", request_data)
+
+    # 2. Standard resolution
     if sport == "soccer" or (sport == "football" and league in ["MLS", "LALIGA", "PREMIER LEAGUE", "NWSL"]):
         module_name = "football"
         default_command = "get_player_profile"
@@ -343,7 +353,7 @@ def invoke_sports_skills(request_data):
         module_name = "nfl"
         default_command = "get_player_stats"
 
-    # 2. Inject resolved default command if not already provided
+    # Inject resolved default command if not already provided
     if "command" not in params or not params.get("command"):
         request_data.setdefault("params", {})["command"] = default_command
 
