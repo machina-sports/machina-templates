@@ -28,7 +28,7 @@ A single, newsworthy narrative thread related to an event. This is the atomic un
 | :--- | :--- | :--- |
 | `id` | `string` | A unique identifier for the storyline. |
 | `event_ref` | `string` | A reference to the parent `event` object. |
-| `type` | `string` | The category of the storyline (e.g., `live_swing`, `injury`, `trade`, `market_move`, `milestone`, `upset`, `narrative`). |
+| `type` | `string` | The category of the storyline (e.g., `turning_point`, `player_storyline`, `tactical_shift`, `momentum_swing`, `prematch_brief`, `live_story`, `postgame_angle`, `coach_decision`, `missed_opportunity`, `rivalry_context`, `fan_emotion`, `underdog_story`, `comeback_story`, `player_duel`, `atmosphere`, `injury`, `trade`, `market_move`, `milestone`, `upset`, `narrative`). |
 | `urgency` | `string` | The priority of the storyline (`breaking`, `high`, `medium`, `low`). |
 | `headline` | `string` | A concise, machine-readable summary of the storyline. |
 | `supporting_facts` | `array` | A list of data points or facts that support the headline. |
