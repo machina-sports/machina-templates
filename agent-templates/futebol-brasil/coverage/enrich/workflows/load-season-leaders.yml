@@ -1,0 +1,160 @@
+workflow:
+
+  # futebol-brasil-coverage-load-season-leaders
+  name: "futebol-brasil-coverage-load-season-leaders"
+  title: "Futebol Brasil - Coverage Load Season Leaders"
+  description: |
+    Aggregate "team leaders" (top of the table proxy: points scored,
+    goals scored, goals conceded, goal difference, form) for ONE
+    league/season from the already-loaded futebol-brasil-standings
+    document. Writes a single futebol-brasil-leaders doc.
+
+    NOTE: api-football's /players/topscorers and /players/topassists
+    endpoints are NOT exposed by the api-football connector in this
+    project, so true player-level leaders aren't available without
+    a connector extension. This workflow computes TEAM-LEVEL leaders
+    from standings (the cheapest proxy that requires no extra API call).
+    When the connector gains player-level top* commands, swap the
+    aggregate-leaders task for a connector fetch.
+
+    Incremental: skips when leaders_synced_at is fresher than
+    staleness_policy.leaders_stale_hours. Skips when has_leaders=False.
+  inputs:
+    force: "$.get('force', False)"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+  outputs:
+    leader-rows: "$.get('leaders-count', 0)"
+    workflow-status: "($.get('leaders-count', 0) > 0) and 'executed' or 'skipped'"
+  tasks:
+
+    # load-competition-doc
+    - type: "document"
+      name: "load-competition-doc"
+      description: "Read competition staleness."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        competition-document-id: "$.get('documents', [{}])[0].get('_id') if $.get('documents') else None"
+        competition-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+        has-leaders: "$.get('documents', [{}])[0].get('value', {}).get('has_leaders', False) if $.get('documents') else False"
+        leaders-fresh: "(not $.get('force', False) and $.get('documents') and $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('leaders_synced_at') and ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('leaders_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 < $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('leaders_stale_hours', 6)))"
+
+    # load-standings (source of truth for team leaders)
+    - type: "document"
+      name: "load-standings"
+      description: "Read the standings document populated by load-standings."
+      condition: "$.get('has-leaders') is True and $.get('leaders-fresh') is not True"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'brasil-standings'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        standings-rows: "$.get('documents', [{}])[0].get('value', {}).get('rows', []) if $.get('documents') else []"
+
+    # aggregate-leaders (compute top-N per category from standings rows)
+    - type: "document"
+      name: "aggregate-leaders"
+      description: "Compute team-leader categories from standings rows."
+      condition: "len($.get('standings-rows', [])) > 0"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'__futebol_brasil_noop__'"
+      outputs:
+        top-attack: |
+          sorted(
+            [{'team': r.get('team', {}), 'goals_for': (r.get('all', {}) or {}).get('goals', {}).get('for', 0), 'played': (r.get('all', {}) or {}).get('played', 0)} for r in $.get('standings-rows', [])],
+            key=lambda x: (-(x.get('goals_for') or 0), -(x.get('played') or 0))
+          )[:10]
+        top-defense: |
+          sorted(
+            [{'team': r.get('team', {}), 'goals_against': (r.get('all', {}) or {}).get('goals', {}).get('against', 0), 'played': (r.get('all', {}) or {}).get('played', 0)} for r in $.get('standings-rows', [])],
+            key=lambda x: ((x.get('goals_against') or 0), -(x.get('played') or 0))
+          )[:10]
+        top-goal-diff: |
+          sorted(
+            [{'team': r.get('team', {}), 'goalsDiff': r.get('goalsDiff', 0)} for r in $.get('standings-rows', [])],
+            key=lambda x: -(x.get('goalsDiff') or 0)
+          )[:10]
+        top-points: |
+          sorted(
+            [{'team': r.get('team', {}), 'points': r.get('points', 0), 'rank': r.get('rank')} for r in $.get('standings-rows', [])],
+            key=lambda x: -(x.get('points') or 0)
+          )[:10]
+        top-form: |
+          [
+            {'team': r.get('team', {}), 'form': r.get('form', '')}
+            for r in $.get('standings-rows', [])
+            if r.get('form')
+          ][:10]
+        leaders-count: "len($.get('standings-rows', []))"
+
+    # upsert-leaders
+    - type: "document"
+      name: "upsert-leaders"
+      description: "Upsert one futebol-brasil-leaders doc per (league, season)."
+      condition: "$.get('leaders-count', 0) > 0"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "'brasil-leaders'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      documents:
+        brasil-leaders: |
+          {
+            'league_id': $.get('league_id'),
+            'season': $.get('season'),
+            'source': 'standings-aggregate',
+            'categories': {
+              'top_points': $.get('top-points', []),
+              'top_attack': $.get('top-attack', []),
+              'top_defense': $.get('top-defense', []),
+              'top_goal_diff': $.get('top-goal-diff', []),
+              'top_form': $.get('top-form', [])
+            },
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      metadata:
+        scope: "'futebol-brasil'"
+        document_type: "'leaders'"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"
+
+    # stamp-competition
+    - type: "document"
+      name: "stamp-competition"
+      description: "Mark leaders_synced_at on competition doc."
+      condition: "$.get('leaders-count', 0) > 0 and $.get('competition-document-id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('competition-document-id')"
+      documents:
+        futebol-brasil-competition: |
+          {
+            **$.get('competition-value', {}),
+            'version_control': {
+              **$.get('competition-value', {}).get('version_control', {}),
+              'leaders_synced_at': datetime.utcnow().isoformat() + 'Z',
+              'leaders_rows_count': $.get('leaders-count', 0)
+            },
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }

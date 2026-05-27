@@ -1,0 +1,208 @@
+workflow:
+
+  # futebol-brasil-coverage-load-fixtures
+  name: "futebol-brasil-coverage-load-fixtures"
+  title: "Futebol Brasil - Coverage Load Fixtures"
+  description: |
+    Load fixtures for ONE league/season (or ONE national team) from
+    api-football, normalize the response and bulk-upsert
+    futebol-brasil-fixture documents.
+
+    Caller iterates per-competition (the agent's foreach over the
+    config doc). Incremental: skips when fixtures_synced_at is fresher
+    than staleness_policy.fixtures_stale_hours (force=True bypasses).
+
+    Inputs:
+      league_id  - api-football league id (mutually exclusive with team_id)
+      season     - api-football season (required when league_id is set)
+      team_id    - api-football team id (national team mode, no season)
+      force      - bypass staleness check
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    force: "$.get('force', False)"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    team_id: "$.get('team_id')"
+  outputs:
+    fixtures-upserted: "$.get('fixtures-count', 0)"
+    workflow-status: "($.get('fixtures-count', 0) > 0) and 'executed' or 'skipped'"
+  tasks:
+
+    # load-competition-doc (staleness check by league_id+season)
+    - type: "document"
+      name: "load-competition-doc"
+      description: "Look up competition doc for staleness policy + last sync time."
+      condition: "$.get('league_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        competition-document-id: "$.get('documents', [{}])[0].get('_id') if $.get('documents') else None"
+        competition-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+        fixtures-fresh: "(not $.get('force', False) and $.get('documents') and $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('fixtures_synced_at') and ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('fixtures_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 < $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('fixtures_stale_hours', 1)))"
+
+    # fetch-fixtures-by-league
+    - type: "connector"
+      name: "fetch-fixtures-by-league"
+      description: "Fetch fixtures for the given league + season."
+      condition: "$.get('league_id') is not None and $.get('fixtures-fresh') is not True"
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        league: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        raw-fixtures: "$.get('response', [])"
+
+    # fetch-fixtures-by-team (national team mode: last 20 + next 20)
+    - type: "connector"
+      name: "fetch-fixtures-by-team-last"
+      description: "National team mode: last 20 fixtures."
+      condition: "$.get('team_id') is not None and $.get('league_id') is None"
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        team: "$.get('team_id')"
+        last: 20
+      outputs:
+        raw-fixtures-last: "$.get('response', [])"
+
+    - type: "connector"
+      name: "fetch-fixtures-by-team-next"
+      description: "National team mode: next 20 fixtures."
+      condition: "$.get('team_id') is not None and $.get('league_id') is None"
+      connector:
+        name: "api-football"
+        command: "get-fixtures"
+      inputs:
+        team: "$.get('team_id')"
+        next: 20
+      outputs:
+        raw-fixtures-next: "$.get('response', [])"
+
+    # parse-and-merge (handles both modes: league or team)
+    - type: "document"
+      name: "parse-and-merge"
+      description: "Normalize the api-football fixture payload into a slim shape ready for upsert."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'__futebol_brasil_noop__'"
+      outputs:
+        fixtures-parsed: |
+          [
+            {
+              'fixture_id': f.get('fixture', {}).get('id'),
+              'league_id': f.get('league', {}).get('id'),
+              'season': f.get('league', {}).get('season'),
+              'date': f.get('fixture', {}).get('date'),
+              'timestamp': f.get('fixture', {}).get('timestamp'),
+              'timezone': f.get('fixture', {}).get('timezone'),
+              'status': {
+                'long': f.get('fixture', {}).get('status', {}).get('long'),
+                'short': f.get('fixture', {}).get('status', {}).get('short'),
+                'elapsed': f.get('fixture', {}).get('status', {}).get('elapsed')
+              },
+              'venue': f.get('fixture', {}).get('venue', {}),
+              'referee': f.get('fixture', {}).get('referee'),
+              'league': {
+                'id': f.get('league', {}).get('id'),
+                'name': f.get('league', {}).get('name'),
+                'country': f.get('league', {}).get('country'),
+                'logo': f.get('league', {}).get('logo'),
+                'flag': f.get('league', {}).get('flag'),
+                'season': f.get('league', {}).get('season'),
+                'round': f.get('league', {}).get('round')
+              },
+              'teams': {
+                'home': {
+                  'id': f.get('teams', {}).get('home', {}).get('id'),
+                  'name': f.get('teams', {}).get('home', {}).get('name'),
+                  'logo': f.get('teams', {}).get('home', {}).get('logo'),
+                  'winner': f.get('teams', {}).get('home', {}).get('winner')
+                },
+                'away': {
+                  'id': f.get('teams', {}).get('away', {}).get('id'),
+                  'name': f.get('teams', {}).get('away', {}).get('name'),
+                  'logo': f.get('teams', {}).get('away', {}).get('logo'),
+                  'winner': f.get('teams', {}).get('away', {}).get('winner')
+                }
+              },
+              'goals': f.get('goals', {}),
+              'score': f.get('score', {}),
+              'updated_at': datetime.utcnow().isoformat() + 'Z'
+            }
+            for f in ($.get('raw-fixtures', []) + $.get('raw-fixtures-last', []) + $.get('raw-fixtures-next', []))
+            if f.get('fixture', {}).get('id') is not None
+          ]
+        fixtures-count: "len([f for f in ($.get('raw-fixtures', []) + $.get('raw-fixtures-last', []) + $.get('raw-fixtures-next', [])) if f.get('fixture', {}).get('id') is not None])"
+
+    # bulk-save-fixtures
+    - type: "document"
+      name: "bulk-save-fixtures"
+      description: "Bulk upsert futebol-brasil-fixture documents (one per fixture_id)."
+      condition: "$.get('fixtures-count', 0) > 0"
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'brasil-fixture'"
+      documents:
+        items: |
+          [
+            {
+              **f,
+              'title': 'brasil-fixture-' + str(f.get('fixture_id', '')),
+              'metadata': {
+                'scope': 'futebol-brasil',
+                'document_type': 'fixture',
+                'fixture_id': f.get('fixture_id'),
+                'league_id': f.get('league_id'),
+                'season': f.get('season'),
+                'home_team_id': f.get('teams', {}).get('home', {}).get('id'),
+                'away_team_id': f.get('teams', {}).get('away', {}).get('id'),
+                'status_short': f.get('status', {}).get('short'),
+                'date': f.get('date'),
+                'competition': f.get('league', {}).get('name'),
+                'updated_at': datetime.utcnow().isoformat() + 'Z'
+              }
+            }
+            for f in $.get('fixtures-parsed', [])
+          ]
+
+    # stamp-competition (bump fixtures_synced_at)
+    - type: "document"
+      name: "stamp-competition"
+      description: "Bump fixtures_synced_at on the competition doc (league mode only)."
+      condition: "$.get('fixtures-count', 0) > 0 and $.get('competition-document-id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('competition-document-id')"
+      documents:
+        futebol-brasil-competition: |
+          {
+            **$.get('competition-value', {}),
+            'version_control': {
+              **$.get('competition-value', {}).get('version_control', {}),
+              'fixtures_synced_at': datetime.utcnow().isoformat() + 'Z',
+              'fixtures_count': $.get('fixtures-count', 0)
+            },
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }

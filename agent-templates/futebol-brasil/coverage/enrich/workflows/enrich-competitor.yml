@@ -1,0 +1,158 @@
+workflow:
+
+  # futebol-brasil-coverage-enrich-competitor
+  name: "futebol-brasil-coverage-enrich-competitor"
+  title: "Futebol Brasil - Coverage Enrich Competitor"
+  description: |
+    Build one consolidated brasil-competitor document per team by
+    joining data already loaded by the load-* workflows:
+      - brasil-standings (rank, points, goals_for/against, form)
+      - brasil-roster    (squad, players_count)
+      - brasil-fixture   (last 5 + next 5 matches for the team)
+
+    Pure document workflow — does NOT hit api-football. Cheap and
+    idempotent: safe to schedule per team after the loaders fill the
+    upstream docs. Caller passes team_id (+ optional league_id/season
+    to scope the standings + fixtures join).
+
+    Inputs:
+      team_id    - api-football team id (required)
+      league_id  - scope standings + fixtures lookup
+      season     - scope standings + fixtures lookup
+  inputs:
+    team_id: "$.get('team_id')"
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+  outputs:
+    competitor-written: "$.get('competitor-written', False)"
+    workflow-status: "$.get('competitor-written') and 'executed' or 'skipped'"
+  tasks:
+
+    # load-standings (find this team's row)
+    - type: "document"
+      name: "load-standings"
+      description: "Read the league's brasil-standings doc."
+      condition: "$.get('team_id') is not None and $.get('league_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'brasil-standings'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        standings-row: "[r for r in $.get('documents', [{}])[0].get('value', {}).get('rows', []) if r.get('team', {}).get('id') == $.get('team_id')][:1] if $.get('documents') else []"
+        league-name: "$.get('documents', [{}])[0].get('value', {}).get('league_name') if $.get('documents') else None"
+
+    # load-roster
+    - type: "document"
+      name: "load-roster"
+      description: "Read brasil-roster doc for the team."
+      condition: "$.get('team_id') is not None"
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'brasil-roster'"
+        metadata.team_id: "$.get('team_id')"
+      outputs:
+        roster-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+
+    # load-recent-fixtures
+    - type: "document"
+      name: "load-recent-fixtures"
+      description: "Last 5 fixtures (any status: finished, postponed, …)."
+      condition: "$.get('team_id') is not None"
+      config:
+        action: "search"
+        search-limit: 5
+        search-vector: false
+        search-sorters: [["value.timestamp", -1]]
+      filters:
+        name: "'brasil-fixture'"
+        '$or': "[{'metadata.home_team_id': $.get('team_id')}, {'metadata.away_team_id': $.get('team_id')}]"
+        value.timestamp: "{'$lte': int(datetime.utcnow().timestamp())}"
+      outputs:
+        recent-fixtures: |
+          [
+            {
+              'fixture_id': d.get('value', {}).get('fixture_id'),
+              'date': d.get('value', {}).get('date'),
+              'status': d.get('value', {}).get('status', {}).get('short'),
+              'home': d.get('value', {}).get('teams', {}).get('home', {}),
+              'away': d.get('value', {}).get('teams', {}).get('away', {}),
+              'goals': d.get('value', {}).get('goals', {}),
+              'league': d.get('value', {}).get('league', {}).get('name')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # load-upcoming-fixtures
+    - type: "document"
+      name: "load-upcoming-fixtures"
+      description: "Next 5 fixtures."
+      condition: "$.get('team_id') is not None"
+      config:
+        action: "search"
+        search-limit: 5
+        search-vector: false
+        search-sorters: [["value.timestamp", 1]]
+      filters:
+        name: "'brasil-fixture'"
+        '$or': "[{'metadata.home_team_id': $.get('team_id')}, {'metadata.away_team_id': $.get('team_id')}]"
+        value.timestamp: "{'$gt': int(datetime.utcnow().timestamp())}"
+      outputs:
+        upcoming-fixtures: |
+          [
+            {
+              'fixture_id': d.get('value', {}).get('fixture_id'),
+              'date': d.get('value', {}).get('date'),
+              'status': d.get('value', {}).get('status', {}).get('short'),
+              'home': d.get('value', {}).get('teams', {}).get('home', {}),
+              'away': d.get('value', {}).get('teams', {}).get('away', {}),
+              'league': d.get('value', {}).get('league', {}).get('name')
+            }
+            for d in $.get('documents', [])
+          ]
+
+    # upsert-competitor
+    - type: "document"
+      name: "upsert-competitor"
+      description: "Upsert one brasil-competitor doc per team."
+      condition: "$.get('team_id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "'brasil-competitor'"
+        metadata.team_id: "$.get('team_id')"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      documents:
+        brasil-competitor: |
+          {
+            'team_id': $.get('team_id'),
+            'team': ($.get('standings-row', [{}])[0].get('team', {}) if $.get('standings-row') else {'id': $.get('team_id'), 'name': $.get('roster-value', {}).get('team_name'), 'logo': $.get('roster-value', {}).get('team_logo')}),
+            'league_id': $.get('league_id'),
+            'season': $.get('season'),
+            'league_name': $.get('league-name'),
+            'table': ($.get('standings-row', [{}])[0] if $.get('standings-row') else None),
+            'squad_summary': {
+              'players_count': $.get('roster-value', {}).get('players_count'),
+              'roster_synced_at': $.get('roster-value', {}).get('synced_at')
+            },
+            'recent': $.get('recent-fixtures', []),
+            'upcoming': $.get('upcoming-fixtures', []),
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      metadata:
+        scope: "'futebol-brasil'"
+        document_type: "'competitor'"
+        team_id: "$.get('team_id')"
+        league_id: "$.get('league_id')"
+        season: "$.get('season')"
+      outputs:
+        competitor-written: "True"

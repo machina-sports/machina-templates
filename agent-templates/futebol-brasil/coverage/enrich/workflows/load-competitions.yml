@@ -1,0 +1,165 @@
+workflow:
+
+  # futebol-brasil-coverage-load-competitions
+  name: "futebol-brasil-coverage-load-competitions"
+  title: "Futebol Brasil - Coverage Load Competitions"
+  description: |
+    Fetch league metadata for the 4 pinned tournaments from api-football
+    (get-leagues) and bulk-upsert futebol-brasil-competition documents
+    used by the gateway for staleness decisions. Reads
+    futebol-brasil-coverage-config (set by load-leagues-config).
+
+    Idempotent — safe to run every N hours. competition_stale_hours
+    controls minimum spacing per league.
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: "$TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY"
+  inputs:
+    force: "$.get('force', False)"
+  outputs:
+    competitions-upserted: "$.get('competitions_upserted_count', 0)"
+    workflow-status: "($.get('competitions_upserted_count', 0) > 0) and 'executed' or 'skipped'"
+  tasks:
+
+    # load-config
+    - type: "document"
+      name: "load-config"
+      description: "Load coverage config (pinned competitions)."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-coverage-config'"
+      outputs:
+        config-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+        config-by-league: "{c.get('league_id'): c for c in ($.get('documents', [{}])[0].get('value', {}).get('competitions', []) if $.get('documents') else []) if c.get('league_id') is not None}"
+
+    # load-existing-competitions (merge version_control across runs)
+    - type: "document"
+      name: "load-existing-competitions"
+      description: "Pull existing competition docs to merge version_control."
+      config:
+        action: "search"
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+      outputs:
+        existing-by-league: "{doc.get('metadata', {}).get('league_id'): doc.get('value', {}) for doc in $.get('documents', []) if doc.get('metadata', {}).get('league_id') is not None}"
+
+    # fetch-brasileirao (id=71)
+    - type: "connector"
+      name: "fetch-brasileirao"
+      description: "Brasileirão Série A (71)."
+      connector:
+        name: "api-football"
+        command: "get-leagues"
+      inputs:
+        id: 71
+      outputs:
+        league-71: "(($.get('response') or [{}])[0] if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else {})"
+
+    # fetch-libertadores (id=13)
+    - type: "connector"
+      name: "fetch-libertadores"
+      description: "Libertadores (13)."
+      connector:
+        name: "api-football"
+        command: "get-leagues"
+      inputs:
+        id: 13
+      outputs:
+        league-13: "(($.get('response') or [{}])[0] if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else {})"
+
+    # fetch-copa-do-brasil (id=73)
+    - type: "connector"
+      name: "fetch-copa-do-brasil"
+      description: "Copa do Brasil (73)."
+      connector:
+        name: "api-football"
+        command: "get-leagues"
+      inputs:
+        id: 73
+      outputs:
+        league-73: "(($.get('response') or [{}])[0] if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else {})"
+
+    # fetch-sudamericana (id=11)
+    - type: "connector"
+      name: "fetch-sudamericana"
+      description: "Sudamericana (11)."
+      connector:
+        name: "api-football"
+        command: "get-leagues"
+      inputs:
+        id: 11
+      outputs:
+        league-11: "(($.get('response') or [{}])[0] if isinstance($.get('response'), list) and len($.get('response') or []) > 0 else {})"
+
+    # bulk-upsert-competitions
+    - type: "document"
+      name: "bulk-upsert-competitions"
+      description: "Bulk upsert one futebol-brasil-competition document per enabled league."
+      config:
+        action: "bulk-update"
+        embed-selector: "$.get('title')"
+        embed-vector: false
+        force-update: true
+      document_name: "'futebol-brasil-competition'"
+      documents:
+        items: |
+          [
+            {
+              'key': $.get('config-by-league', {}).get(lid, {}).get('key'),
+              'league_id': lid,
+              'season': $.get('config-by-league', {}).get(lid, {}).get('season'),
+              'name': (api_doc.get('league', {}).get('name') or $.get('config-by-league', {}).get(lid, {}).get('name')),
+              'short_name': $.get('config-by-league', {}).get(lid, {}).get('short_name'),
+              'country': (api_doc.get('country', {}).get('name') or $.get('config-by-league', {}).get(lid, {}).get('country')),
+              'country_code': api_doc.get('country', {}).get('code'),
+              'flag': api_doc.get('country', {}).get('flag'),
+              'type': (api_doc.get('league', {}).get('type') or $.get('config-by-league', {}).get(lid, {}).get('type')),
+              'logo': (api_doc.get('league', {}).get('logo') or $.get('config-by-league', {}).get(lid, {}).get('logo')),
+              'current_season': [s for s in api_doc.get('seasons', []) if s.get('year') == $.get('config-by-league', {}).get(lid, {}).get('season')][:1],
+              'has_standings': $.get('config-by-league', {}).get(lid, {}).get('has_standings', False),
+              'has_leaders': $.get('config-by-league', {}).get(lid, {}).get('has_leaders', False),
+              'has_rosters': $.get('config-by-league', {}).get(lid, {}).get('has_rosters', False),
+              'staleness_policy': {
+                'fixtures_stale_hours': $.get('config-by-league', {}).get(lid, {}).get('fixtures_stale_hours', 1),
+                'standings_stale_hours': $.get('config-by-league', {}).get(lid, {}).get('standings_stale_hours', 1),
+                'leaders_stale_hours': $.get('config-by-league', {}).get(lid, {}).get('leaders_stale_hours', 6),
+                'rosters_stale_hours': $.get('config-by-league', {}).get(lid, {}).get('rosters_stale_hours', 168),
+                'competition_stale_hours': $.get('config-by-league', {}).get(lid, {}).get('competition_stale_hours', 24)
+              },
+              'version_control': {
+                **$.get('existing-by-league', {}).get(lid, {}).get('version_control', {}),
+                'competition_synced_at': datetime.utcnow().isoformat() + 'Z'
+              },
+              'updated_at': datetime.utcnow().isoformat() + 'Z',
+              'title': 'futebol-brasil-competition-' + str(lid) + '-' + str($.get('config-by-league', {}).get(lid, {}).get('season', '')),
+              'metadata': {
+                'scope': 'futebol-brasil',
+                'document_type': 'competition',
+                'league_id': lid,
+                'season': $.get('config-by-league', {}).get(lid, {}).get('season'),
+                'key': $.get('config-by-league', {}).get(lid, {}).get('key')
+              }
+            }
+            for lid, api_doc in [(71, $.get('league-71', {})), (13, $.get('league-13', {})), (73, $.get('league-73', {})), (11, $.get('league-11', {}))]
+            if $.get('config-by-league', {}).get(lid, {}).get('enabled', True)
+          ]
+
+    # stamp-count (capture for output)
+    - type: "document"
+      name: "stamp-count"
+      description: "Count enabled competitions for workflow output."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'__futebol_brasil_noop__'"
+      outputs:
+        competitions_upserted_count: "len([lid for lid in [71, 13, 73, 11] if $.get('config-by-league', {}).get(lid, {}).get('enabled', True)])"

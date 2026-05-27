@@ -1,0 +1,43 @@
+workflow:
+
+  # futebol-brasil-coverage-gateway
+  name: "futebol-brasil-coverage-gateway"
+  title: "Futebol Brasil - Coverage Gateway"
+  description: |
+    Zero-API decision step: reads the competition doc's
+    version_control + staleness_policy and emits should-load-* signals
+    for fixtures / standings / leaders / rosters. The coverage agent
+    uses these signals to decide which load-* workflows to run.
+
+    All four signals respect the per-resource stale_hours window from
+    the competition doc's staleness_policy (seeded by load-leagues-config).
+  inputs:
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    force: "$.get('force', False)"
+  outputs:
+    should-load-fixtures: "$.get('should-load-fixtures', False)"
+    should-load-standings: "$.get('should-load-standings', False)"
+    should-load-leaders: "$.get('should-load-leaders', False)"
+    should-load-rosters: "$.get('should-load-rosters', False)"
+    workflow-status: "'executed'"
+  tasks:
+
+    # load-competition
+    - type: "document"
+      name: "load-competition"
+      description: "Read the competition doc."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        comp-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+        should-load-fixtures: "($.get('force', False) is True or not $.get('documents') or not $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('fixtures_synced_at') or ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('fixtures_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 >= $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('fixtures_stale_hours', 1)))"
+        should-load-standings: "($.get('documents', [{}])[0].get('value', {}).get('has_standings', False) and ($.get('force', False) is True or not $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('standings_synced_at') or ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('standings_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 >= $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('standings_stale_hours', 1)))) if $.get('documents') else False"
+        should-load-leaders: "($.get('documents', [{}])[0].get('value', {}).get('has_leaders', False) and ($.get('force', False) is True or not $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('leaders_synced_at') or ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('leaders_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 >= $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('leaders_stale_hours', 6)))) if $.get('documents') else False"
+        should-load-rosters: "($.get('documents', [{}])[0].get('value', {}).get('has_rosters', False) and ($.get('force', False) is True or not $.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('rosters_synced_at') or ((datetime.utcnow() - datetime.fromisoformat($.get('documents', [{}])[0].get('value', {}).get('version_control', {}).get('rosters_synced_at', '1970-01-01T00:00:00').replace('Z', ''))).total_seconds() / 3600.0 >= $.get('documents', [{}])[0].get('value', {}).get('staleness_policy', {}).get('rosters_stale_hours', 168)))) if $.get('documents') else False"

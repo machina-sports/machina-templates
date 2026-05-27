@@ -1,0 +1,119 @@
+agent:
+  name: futebol-brasil-coverage-enrich
+  title: Futebol Brasil - Coverage Enrich
+  description: |
+    Per-tick coverage agent for the 5 pinned Brazilian football targets
+    (Brasileirão Série A, Libertadores, Copa do Brasil, Sudamericana,
+    Seleção Brasileira). One tick processes ONE competition selected by
+    futebol-brasil-coverage-checkin (auto-rotates least-recently
+    checked-out), runs the gateway to decide which resources are
+    stale, dispatches conditional load-* workflows, then releases the
+    lock via checkout.
+
+    Lean, incremental, idempotent — safe to schedule every minute.
+    Start status=inactive; operator enables in Studio.
+
+    First-run bootstrap:
+      1. Run futebol-brasil-coverage-load-leagues-config (seeds config).
+      2. Run futebol-brasil-coverage-load-competitions (seeds 4 competition docs).
+      3. Enable this agent.
+  context:
+    config-frequency: 1
+    status: "inactive"
+  workflows:
+
+    # 1. Pick a competition for this tick
+    - name: futebol-brasil-coverage-checkin
+      description: Pick ONE competition to process this tick.
+      outputs:
+        selected-league_id: $.get('selected-league_id')
+        selected-season: $.get('selected-season')
+        selected-competition: $.get('selected-competition', {})
+
+    # 2. Decide what's stale (zero API cost)
+    - name: futebol-brasil-coverage-gateway
+      description: Emit should-load-* signals for the picked competition.
+      condition: $.get('selected-league_id') is not None
+      inputs:
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+      outputs:
+        should-load-fixtures: $.get('should-load-fixtures', False)
+        should-load-standings: $.get('should-load-standings', False)
+        should-load-leaders: $.get('should-load-leaders', False)
+        should-load-rosters: $.get('should-load-rosters', False)
+
+    # 3. Load fixtures (api-football)
+    - name: futebol-brasil-coverage-load-fixtures
+      description: Load fixtures for the picked league/season.
+      condition: $.get('should-load-fixtures') is True
+      inputs:
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+      outputs:
+        fixtures-status: $.get('workflow-status', 'skipped')
+        fixtures-upserted: $.get('fixtures-upserted', 0)
+
+    # 4. Load standings (api-football)
+    - name: futebol-brasil-coverage-load-standings
+      description: Load standings for the picked league/season.
+      condition: $.get('should-load-standings') is True
+      inputs:
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+      outputs:
+        standings-status: $.get('workflow-status', 'skipped')
+        teams-in-table: $.get('teams-in-table', 0)
+        standings-rows: $.get('standings-rows', [])
+
+    # 5. Load season-leaders (derived from standings; cheap re-projection)
+    - name: futebol-brasil-coverage-load-season-leaders
+      description: Recompute leaders from the freshly-loaded standings.
+      condition: $.get('should-load-leaders') is True
+      inputs:
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+      outputs:
+        leaders-status: $.get('workflow-status', 'skipped')
+
+    # 6. Load rosters for every team in the standings (foreach)
+    - name: futebol-brasil-coverage-load-rosters
+      description: Load roster for each team in the standings table.
+      condition: $.get('should-load-rosters') is True and len($.get('standings-rows', [])) > 0
+      foreach:
+        name: row
+        expr: $
+        value: $.get('standings-rows', []) or []
+      inputs:
+        team_id: $.get('row').get('team', {}).get('id')
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+      outputs:
+        rosters-status: $.get('workflow-status', 'skipped')
+
+    # 7. Enrich competitor doc per team (cross-doc join, no API)
+    - name: futebol-brasil-coverage-enrich-competitor
+      description: Build a brasil-competitor doc per team in the table.
+      condition: $.get('should-load-standings') is True and len($.get('standings-rows', [])) > 0
+      foreach:
+        name: row
+        expr: $
+        value: $.get('standings-rows', []) or []
+      inputs:
+        team_id: $.get('row').get('team', {}).get('id')
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+      outputs:
+        competitor-status: $.get('workflow-status', 'skipped')
+
+    # 8. Release lock + stamp last_full_refresh_at
+    - name: futebol-brasil-coverage-checkout
+      description: Release the soft lock and stamp last_full_refresh_at.
+      condition: $.get('selected-league_id') is not None
+      inputs:
+        league_id: $.get('selected-league_id')
+        season: $.get('selected-season')
+        any_load_executed: |
+          ($.get('fixtures-status') == 'executed') or ($.get('standings-status') == 'executed') or ($.get('leaders-status') == 'executed') or ($.get('rosters-status') == 'executed')
+      outputs:
+        checked-out: $.get('checked-out', False)

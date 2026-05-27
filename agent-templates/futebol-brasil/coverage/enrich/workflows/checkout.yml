@@ -1,0 +1,64 @@
+workflow:
+
+  # futebol-brasil-coverage-checkout
+  name: "futebol-brasil-coverage-checkout"
+  title: "Futebol Brasil - Coverage Check-Out"
+  description: |
+    Release the soft lock (processing=False) on the competition doc.
+    Stamps last_checkout_at; sets last_full_refresh_at when at least
+    one load-* workflow executed during this tick.
+
+    Should ALWAYS run at the tail of the coverage agent (no condition),
+    to guarantee locks get released even when individual load-*
+    workflows fail or skip.
+  inputs:
+    league_id: "$.get('league_id')"
+    season: "$.get('season')"
+    any_load_executed: "$.get('any_load_executed', False)"
+    lock_timeout_minutes: "$.get('lock_timeout_minutes', 30)"
+  outputs:
+    checked-out: "$.get('checked-out', False)"
+    workflow-status: "'executed'"
+  tasks:
+
+    # load-current-doc
+    - type: "document"
+      name: "load-current-doc"
+      description: "Pull competition doc."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-competition'"
+        metadata.league_id: "$.get('league_id')"
+        metadata.season: "$.get('season')"
+      outputs:
+        comp-document_id: "$.get('documents', [{}])[0].get('_id') if $.get('documents') else None"
+        comp-value: "$.get('documents', [{}])[0].get('value', {}) if $.get('documents') else {}"
+
+    # release-lock
+    - type: "document"
+      name: "release-lock"
+      description: "Clear processing=True and stamp last_checkout_at."
+      condition: "$.get('comp-document_id') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        document_id: "$.get('comp-document_id')"
+      documents:
+        futebol-brasil-competition: |
+          {
+            **$.get('comp-value', {}),
+            'version_control': {
+              **$.get('comp-value', {}).get('version_control', {}),
+              'processing': False,
+              'last_checkout_at': datetime.utcnow().isoformat() + 'Z',
+              'last_full_refresh_at': (datetime.utcnow().isoformat() + 'Z' if $.get('any_load_executed', False) is True else $.get('comp-value', {}).get('version_control', {}).get('last_full_refresh_at'))
+            },
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      outputs:
+        checked-out: "True"

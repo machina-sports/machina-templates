@@ -1,0 +1,154 @@
+workflow:
+
+  # futebol-brasil-coverage-load-leagues-config
+  name: "futebol-brasil-coverage-load-leagues-config"
+  title: "Futebol Brasil - Coverage Load Leagues Config"
+  description: |
+    Seeds the futebol-brasil-coverage-config document with the 5 pinned
+    Brazilian football targets (Seleção + Brasileirão A + Libertadores +
+    Copa do Brasil + Sudamericana). Idempotent — only writes when missing
+    or when force=True.
+
+    Each competition entry carries:
+    - league_id / season (api-football identifiers)
+    - key / short_name / logo (display)
+    - has_standings / has_leaders / has_rosters (capability flags)
+    - *_stale_hours (per-resource freshness policy, drives gateway)
+    - enabled (master switch per competition)
+
+    National teams use team_id instead of league_id (Seleção has no
+    standings, only fixtures + roster).
+  inputs:
+    force: "$.get('force', False)"
+  outputs:
+    config-exists: "$.get('config-exists', False)"
+    workflow-status: "'executed' if $.get('seeded') or $.get('force', False) else 'skipped'"
+  tasks:
+
+    # check-existing-config
+    - type: "document"
+      name: "check-existing-config"
+      description: "Look for an existing futebol-brasil-coverage-config document."
+      config:
+        action: "search"
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'futebol-brasil-coverage-config'"
+      outputs:
+        config-exists: "len($.get('documents', [])) > 0"
+
+    # seed-config
+    - type: "document"
+      name: "seed-config"
+      description: "Seed the futebol-brasil-coverage-config document if it doesn't exist (or force=True)."
+      condition: "$.get('config-exists') is not True or $.get('force', False) is True"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "'futebol-brasil-coverage-config'"
+      documents:
+        futebol-brasil-coverage-config: |
+          {
+            'scope': 'futebol-brasil',
+            'competitions': [
+              {
+                'key': 'brasileirao-serie-a',
+                'league_id': 71,
+                'season': 2026,
+                'name': 'Brasileirão Série A',
+                'short_name': 'Brasileirão',
+                'country': 'Brazil',
+                'type': 'League',
+                'logo': 'https://media.api-sports.io/football/leagues/71.png',
+                'has_standings': True,
+                'has_leaders': True,
+                'has_rosters': True,
+                'enabled': True,
+                'fixtures_stale_hours': 1,
+                'standings_stale_hours': 1,
+                'leaders_stale_hours': 6,
+                'rosters_stale_hours': 168,
+                'competition_stale_hours': 24
+              },
+              {
+                'key': 'libertadores',
+                'league_id': 13,
+                'season': 2026,
+                'name': 'CONMEBOL Libertadores',
+                'short_name': 'Libertadores',
+                'country': 'World',
+                'type': 'Cup',
+                'logo': 'https://media.api-sports.io/football/leagues/13.png',
+                'has_standings': True,
+                'has_leaders': True,
+                'has_rosters': False,
+                'enabled': True,
+                'fixtures_stale_hours': 1,
+                'standings_stale_hours': 2,
+                'leaders_stale_hours': 12,
+                'rosters_stale_hours': 168,
+                'competition_stale_hours': 24
+              },
+              {
+                'key': 'copa-do-brasil',
+                'league_id': 73,
+                'season': 2026,
+                'name': 'Copa do Brasil',
+                'short_name': 'Copa do Brasil',
+                'country': 'Brazil',
+                'type': 'Cup',
+                'logo': 'https://media.api-sports.io/football/leagues/73.png',
+                'has_standings': False,
+                'has_leaders': True,
+                'has_rosters': False,
+                'enabled': True,
+                'fixtures_stale_hours': 1,
+                'standings_stale_hours': 0,
+                'leaders_stale_hours': 12,
+                'rosters_stale_hours': 168,
+                'competition_stale_hours': 24
+              },
+              {
+                'key': 'sudamericana',
+                'league_id': 11,
+                'season': 2026,
+                'name': 'CONMEBOL Sudamericana',
+                'short_name': 'Sudamericana',
+                'country': 'World',
+                'type': 'Cup',
+                'logo': 'https://media.api-sports.io/football/leagues/11.png',
+                'has_standings': True,
+                'has_leaders': True,
+                'has_rosters': False,
+                'enabled': True,
+                'fixtures_stale_hours': 1,
+                'standings_stale_hours': 2,
+                'leaders_stale_hours': 12,
+                'rosters_stale_hours': 168,
+                'competition_stale_hours': 24
+              }
+            ],
+            'national_teams': [
+              {
+                'key': 'selecao',
+                'team_id': 6,
+                'name': 'Brasil',
+                'short_name': 'Seleção',
+                'country': 'Brazil',
+                'logo': 'https://media.api-sports.io/football/teams/6.png',
+                'has_rosters': True,
+                'enabled': True,
+                'fixtures_stale_hours': 1,
+                'rosters_stale_hours': 168
+              }
+            ],
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      metadata:
+        document_type: "'config'"
+        scope: "'futebol-brasil'"
+      outputs:
+        seeded: "True"
