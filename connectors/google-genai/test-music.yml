@@ -1,0 +1,38 @@
+workflow:
+  name: "google-genai-test-music"
+  title: "Google Gemini Test Music"
+  description: "Workflow to test the Lyria 3 music generation using the google-genai connector. Supports both Lyria 3 Clip and Pro models."
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      api_key: "$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY"
+      credential: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+      project_id: "$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+  inputs:
+    provider: "$.get('provider', 'ai_studio')"
+    model_name: "$.get('model_name', 'lyria-3-clip-preview')"
+    prompt: "$.get('prompt', 'A 30-second cheerful acoustic folk song with guitar and harmonica.')"
+    response_format: "$.get('response_format', 'mp3')"
+    image_paths: "$.get('image_paths', [])"
+    image_path: "$.get('image_path')"
+  outputs:
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    
+    - type: "connector"
+      name: "test-music"
+      description: "Test the Google Gemini Lyria 3 music generation."
+      connector:
+        name: "google-genai"
+        command: "invoke_music"
+      inputs:
+        provider: "$.get('provider')"
+        model_name: "$.get('model_name')"
+        prompt: "$.get('prompt')"
+        response_format: "$.get('response_format')"
+        image_path: "$.get('image_path')"
+        image_paths: "$.get('image_paths')"
+      outputs:
+        result: "$"
+        workflow-status: "'executed'"
