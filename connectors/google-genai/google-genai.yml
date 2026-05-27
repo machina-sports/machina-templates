@@ -27,3 +27,6 @@ connector:
 
     - name: Synthesize Custom Voice
       value: invoke_synthesize_custom_voice
+
+    - name: Music
+      value: invoke_music

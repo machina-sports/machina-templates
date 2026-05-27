@@ -1710,3 +1710,247 @@ def invoke_synthesize_custom_voice(request_data):
     except Exception as e:
         print(f"Custom voice synth error: {e}")
         return {"status": False, "message": f"Error synthesizing custom voice: {e}"}
+
+
+def invoke_music(request_data):
+    """Generate music using Google's Lyria 3 model.
+
+    Supports both AI Studio (default) and Vertex AI providers.
+
+    Provider selection:
+    - provider: "ai_studio" (default) or "vertex_ai" — read from params first, then headers.
+
+    AI Studio auth (provider="ai_studio"):
+    - api_key: Required — get from https://aistudio.google.com/apikey
+
+    Vertex AI auth (provider="vertex_ai"):
+    - project_id: Required — your GCP Project ID
+    - credential: Required — service account JSON (string or dict)
+    - location: Optional — defaults to "us-central1"
+
+    NOTE: Vertex AI does NOT support API keys; OAuth2 service account credentials only.
+    """
+
+    params = request_data.get("params")
+    headers = request_data.get("headers")
+
+    api_key = None
+    project_id = None
+    location = None
+    credentials = None
+
+    provider = (params.get("provider") or headers.get("provider") or "ai_studio").lower()
+
+    if provider == "ai_studio":
+        api_key = headers.get("api_key") or params.get("api_key")
+        if not api_key:
+            return {"status": False, "message": "API key is required for AI Studio."}
+    elif provider == "vertex_ai":
+        project_id = headers.get("project_id") or params.get("project_id")
+        if not project_id:
+            return {"status": False, "message": "project_id is required for Vertex AI."}
+
+        credential = headers.get("credential") or params.get("credential")
+        location = params.get("location") or headers.get("location") or "us-central1"
+
+        credentials = None
+        if credential:
+            if isinstance(credential, str):
+                try:
+                    credential = json.loads(credential)
+                except json.JSONDecodeError:
+                    return {"status": False, "message": "credential must be valid JSON"}
+            credentials = service_account.Credentials.from_service_account_info(
+                credential,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+    else:
+        return {
+            "status": False,
+            "message": f"Invalid provider: {provider}. Must be 'ai_studio' or 'vertex_ai'.",
+        }
+
+    # Get parameters
+    prompt = params.get("prompt", "A 30-second cheerful acoustic folk song with guitar and harmonica.")
+    model_name = params.get("model_name") or "lyria-3-clip-preview"
+    response_format_param = params.get("response_format", "mp3").lower()
+
+    # Input image paths
+    image_paths = params.get("image_paths", [])
+    image_path = params.get("image_path")
+
+    # Collect individual image_path_N fields and add to array
+    i = 1
+    while True:
+        field_name = f"image_path_{i}"
+        field_value = params.get(field_name)
+        if field_value:
+            image_paths.append(field_value)
+            print(f"📎 Adicionado {field_name}: {field_value}")
+            i += 1
+        else:
+            break
+
+    if image_path and image_path not in image_paths:
+        image_paths.append(image_path)
+
+    # Get template variables for replacement
+    home_team = params.get("home_team")
+    away_team = params.get("away_team")
+    home_animal = params.get("home_animal")
+    away_animal = params.get("away_animal")
+
+    # Substitute template variables in prompt
+    if "{{" in prompt:
+        if home_team:
+            prompt = prompt.replace("{{home_team}}", str(home_team))
+        if away_team:
+            prompt = prompt.replace("{{away_team}}", str(away_team))
+        if home_animal:
+            prompt = prompt.replace("{{home_animal}}", str(home_animal))
+        if away_animal:
+            prompt = prompt.replace("{{away_animal}}", str(away_animal))
+
+    try:
+        if provider == "ai_studio":
+            client = genai.Client(api_key=api_key)
+        else:  # vertex_ai
+            client = genai.Client(
+                vertexai=True,
+                project=project_id,
+                location=location,
+                credentials=credentials,
+            )
+
+        # Prepare image parts if image_paths are provided
+        image_parts = []
+        if image_paths:
+            print(f"🖼️ Processando {len(image_paths)} imagens")
+            for i, img_path in enumerate(image_paths):
+                print(f"📷 Processando imagem {i+1}/{len(image_paths)}: {img_path}")
+
+                image_data = None
+                if img_path.startswith(("http://", "https://")):
+                    print(f"🌐 Baixando imagem de URL: {img_path}")
+                    try:
+                        resp = requests.get(img_path)
+                        resp.raise_for_status()
+                        image_data = resp.content
+                    except Exception as e:
+                        print(f"❌ Erro ao baixar imagem {i+1}: {e}")
+                        continue
+                elif os.path.exists(img_path):
+                    print(f"📁 Lendo imagem local: {img_path}")
+                    try:
+                        with open(img_path, "rb") as image_file:
+                            image_data = image_file.read()
+                    except Exception as e:
+                        print(f"❌ Erro ao ler imagem {i+1}: {e}")
+                        continue
+                else:
+                    print(f"❌ Imagem não encontrada: {img_path}")
+                    continue
+
+                if image_data:
+                    mime_type = "image/jpeg"
+                    if img_path.lower().endswith(".png"):
+                        mime_type = "image/png"
+                    elif img_path.lower().endswith(".gif"):
+                        mime_type = "image/gif"
+                    elif img_path.lower().endswith(".webp"):
+                        mime_type = "image/webp"
+
+                    image_part = types.Part(
+                        inline_data=types.Blob(data=image_data, mime_type=mime_type)
+                    )
+                    image_parts.append(image_part)
+                    print(f"✅ Imagem {i+1} preparada com sucesso ({mime_type})")
+
+        # Decide contents based on available inputs
+        parts = []
+        if image_parts:
+            parts.extend(image_parts)
+        if prompt:
+            parts.append(types.Part(text=prompt))
+
+        if parts:
+            contents = [types.Content(role="user", parts=parts)]
+        else:
+            contents = "Create a 30-second cheerful acoustic folk song."
+
+        # Configure response format (for Lyria 3 Pro, WAV can be requested)
+        config = None
+        if response_format_param == "wav" or response_format_param == "audio/wav":
+            config = types.GenerateContentConfig(
+                response_modalities=["AUDIO", "TEXT"],
+                response_format={"audio": {"mime_type": "audio/wav"}},
+            )
+            print("🔊 Formato de saída configurado para WAV")
+
+        print(f"Gerando música com modelo {model_name}...")
+        response = client.models.generate_content(
+            model=model_name,
+            contents=contents,
+            config=config
+        )
+
+        parts_to_parse = []
+        if hasattr(response, "parts") and response.parts:
+            parts_to_parse = response.parts
+        elif hasattr(response, "candidates") and response.candidates and len(response.candidates) > 0:
+            candidate = response.candidates[0]
+            if hasattr(candidate, "content") and candidate.content and hasattr(candidate.content, "parts"):
+                parts_to_parse = candidate.content.parts
+
+        lyrics = []
+        audio_data = None
+
+        for part in parts_to_parse:
+            if hasattr(part, "text") and part.text:
+                lyrics.append(part.text)
+            elif hasattr(part, "inline_data") and part.inline_data:
+                audio_data = part.inline_data.data
+
+        if audio_data:
+            suffix = f".{response_format_param}"
+            temp_file = tempfile.NamedTemporaryFile(
+                delete=False, suffix=suffix
+            )
+            temp_path = temp_file.name
+            temp_file.write(audio_data)
+            temp_file.close()
+
+            filename = os.path.basename(temp_path)
+            lyrics_text = "\n".join(lyrics) if lyrics else None
+
+            return {
+                "status": True,
+                "data": {
+                    "audio_path": temp_path,
+                    "filename": filename,
+                    "audio_format": response_format_param.upper(),
+                    "prompt": prompt,
+                    "model": model_name,
+                    "lyrics": lyrics_text,
+                    "input_images_count": len(image_parts),
+                    "input_image_paths": image_paths if image_paths else [],
+                },
+                "message": "Music generated successfully.",
+            }
+        else:
+            # Check for block/safety issues
+            if hasattr(response, "prompt_feedback") and response.prompt_feedback:
+                if hasattr(response.prompt_feedback, "block_reason"):
+                    return {
+                        "status": False,
+                        "message": f"Request blocked: {response.prompt_feedback.block_reason}",
+                    }
+
+            return {
+                "status": False,
+                "message": "No audio data was returned by the Lyria model.",
+            }
+
+    except Exception as e:
+        return {"status": False, "message": f"Exception when generating music: {e}"}
+
