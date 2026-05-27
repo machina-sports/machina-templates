@@ -341,7 +341,7 @@ def invoke_sports_skills(request_data):
     else:
         # Default to NFL
         module_name = "nfl"
-        default_command = "get_nflverse_player_stats"
+        default_command = "get_player_stats"
 
     # 2. Inject resolved default command if not already provided
     if "command" not in params or not params.get("command"):
