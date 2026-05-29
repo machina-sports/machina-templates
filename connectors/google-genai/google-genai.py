@@ -490,7 +490,8 @@ def invoke_search(request_data):
     end_date = params.get("end_date")  # YYYY-MM-DD
     start_date_iso = params.get("startDate")  # ISO8601 datetime
     end_date_iso = params.get("endDate")  # ISO8601 datetime
-    days_back = params.get("days_back", 3)  # used when start_date is missing but end is present
+    days_back = params.get("days_back")  # window size before an explicit end date
+    recency_days = params.get("recency_days")  # rolling window of the last N days, anchored to today
 
     def _parse_date_or_datetime(value, field_name):
         """
@@ -570,7 +571,11 @@ def invoke_search(request_data):
 
     try:
         try:
-            days_back_n = _parse_days_back(days_back, "days_back")
+            # recency_days (preferred) and days_back share the same window size.
+            # Default of 3 only matters when an end date is present (explicit or anchored).
+            days_back_n = _parse_days_back(
+                recency_days if recency_days is not None else days_back, "recency_days"
+            )
 
             # Direct params take precedence
             start_dt = _parse_date_or_datetime(start_date, "start_date")
@@ -586,6 +591,10 @@ def invoke_search(request_data):
                 anchor_end_dt = _parse_date_or_datetime(start_date_iso, "startDate")
                 if end_dt is None:
                     end_dt = anchor_end_dt
+
+            # recency_days: anchor the rolling window to today when no explicit dates were given
+            if recency_days is not None and end_dt is None and start_dt is None:
+                end_dt = datetime.datetime.utcnow().date()
 
             # If we have an end date but no start date, derive start_dt = end_dt - days_back
             if end_dt is not None and start_dt is None:
@@ -643,6 +652,7 @@ def invoke_search(request_data):
                 "startDate": start_date_iso,    # echo input (ISO8601)
                 "endDate": end_date_iso,        # echo input (ISO8601)
                 "days_back": days_back,         # echo input
+                "recency_days": recency_days,   # echo input
                 "derived_start_date": start_dt.isoformat() if start_dt else None,
                 "derived_end_date": end_dt.isoformat() if end_dt else None,
                 "answer": response.content,
