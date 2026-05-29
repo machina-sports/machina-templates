@@ -1,0 +1,22 @@
+setup:
+  title: Azure AI Foundry
+  description: Connector for Azure AI Foundry and Azure OpenAI Services. Integrates premium models like GPT-4o, GPT-5.5, GPT-Image-2 and Sora-2.
+  category:
+    - ai-models
+  estimatedTime: 1 minute
+  features:
+    - Support for GPT-4o and GPT-5.5 text and grounding models
+    - Image Generation via GPT-Image-2
+    - Video Generation via Sora-2
+  requirements:
+    - Azure-OpenAI-API-Key
+    - Azure-OpenAI-Endpoint
+  status: available
+  value: connectors/azure-foundry
+  version: 1.0.0
+
+datasets:
+  - type: connector
+    path: azure-foundry.yml
+  - type: workflow
+    path: test-credentials.yml

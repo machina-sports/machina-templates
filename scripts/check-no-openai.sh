@@ -19,6 +19,7 @@
 # Exempted paths (legacy connector self-refs + this script):
 #   - connectors/openai/
 #   - connectors/machina-ai/
+#   - connectors/azure-foundry/
 #   - scripts/
 #   - .githooks/
 #   - .github/workflows/lint-no-openai.yml
@@ -36,6 +37,7 @@ else
     -not -path './node_modules/*' \
     -not -path './connectors/openai/*' \
     -not -path './connectors/machina-ai/*' \
+    -not -path './connectors/azure-foundry/*' \
     -not -path './scripts/*' \
     -not -path './.githooks/*' \
     -not -path './.github/workflows/lint-no-openai.yml' 2>/dev/null || true)
@@ -51,7 +53,7 @@ FILTERED=""
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   case "$f" in
-    connectors/openai/*|connectors/machina-ai/*|scripts/*|.githooks/*|.github/workflows/lint-no-openai.yml)
+    connectors/openai/*|connectors/machina-ai/*|connectors/azure-foundry/*|scripts/*|.githooks/*|.github/workflows/lint-no-openai.yml)
       continue ;;
   esac
   FILTERED+="$f"$'\n'

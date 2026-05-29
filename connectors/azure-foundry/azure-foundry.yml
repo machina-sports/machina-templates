@@ -1,0 +1,11 @@
+connector:
+  name: "azure-foundry"
+  description: "This connector is the Azure AI Foundry / Azure OpenAI connector."
+  filename: "azure-foundry.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Prompt"
+      value: "invoke_prompt"
+
+    - name: "Embedding"
+      value: "invoke_embedding"
