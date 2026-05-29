@@ -3,16 +3,8 @@ from langchain_openai import ChatAzureOpenAI, AzureOpenAIEmbeddings
 
 def invoke_prompt(params):
     """
-    Load ChatAzureOpenAI client.
-
-    Parameters:
-    - api_key (str): Azure OpenAI API key
-    - azure_endpoint (str): Azure OpenAI base endpoint (e.g. https://<your-subdomain>.openai.azure.com/)
-    - azure_deployment (str): Deployment name of the model on Azure OpenAI
-    - api_version (str): Azure OpenAI API version (defaults to '2024-08-01-preview')
-    - temperature (float): Sampling temperature (defaults to 0.7)
+    Invoke Azure OpenAI chat completion.
     """
-    # Flexibly retrieve API keys and endpoints from headers, params, or root levels
     headers = params.get("headers", {}) or {}
     inner_params = params.get("params", {}) or {}
 
@@ -83,13 +75,7 @@ def invoke_prompt(params):
 
 def invoke_embedding(params):
     """
-    Load AzureOpenAIEmbeddings client.
-
-    Parameters:
-    - api_key (str): Azure OpenAI API key
-    - azure_endpoint (str): Azure OpenAI base endpoint
-    - azure_deployment (str): Deployment name of the embedding model
-    - api_version (str): Azure OpenAI API version (defaults to '2023-05-15')
+    Invoke Azure OpenAI text embeddings.
     """
     headers = params.get("headers", {}) or {}
     inner_params = params.get("params", {}) or {}
