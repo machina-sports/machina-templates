@@ -225,7 +225,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "get-players/squad"
+        command: "get-players/squads"
       inputs:
         team: "$.get('team_home_id')"
       outputs:
@@ -238,7 +238,7 @@ workflow:
       condition: "$.get('event_exists') is True and $.get('season') is not None"
       connector:
         name: "api-football"
-        command: "get-players/squad"
+        command: "get-players/squads"
       inputs:
         team: "$.get('team_away_id')"
       outputs:
