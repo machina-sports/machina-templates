@@ -2380,7 +2380,7 @@
       "get": {
         "summary": "Get squad",
         "description": "Get the squad of a team",
-        "operationId": "get-players/squad",
+        "operationId": "get-players/squads",
         "security": [
           {
             "x-apisports-key": []

@@ -5,7 +5,7 @@ workflow:
   title: "Futebol Brasil - Coverage Load Rosters"
   description: |
     Load the squad (roster) for ONE team from api-football
-    (get-players/squad) and upsert a single futebol-brasil-roster
+    (get-players/squads) and upsert a single futebol-brasil-roster
     document per team.
 
     Caller iterates per-team. Two entry modes:
@@ -55,7 +55,7 @@ workflow:
       condition: "$.get('team_id') is not None and $.get('roster-fresh') is not True"
       connector:
         name: "api-football"
-        command: "get-players/squad"
+        command: "get-players/squads"
       inputs:
         team: "$.get('team_id')"
       outputs:
