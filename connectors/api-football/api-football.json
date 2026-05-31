@@ -2376,7 +2376,7 @@
         }
       }
     },
-    "/players/squad": {
+    "/players/squads": {
       "get": {
         "summary": "Get squad",
         "description": "Get the squad of a team",
