@@ -7,6 +7,9 @@ connector:
     - name: Prompt
       value: invoke_prompt
 
+    - name: Embedding
+      value: invoke_embedding
+
     - name: Image
       value: invoke_image
 

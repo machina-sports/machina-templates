@@ -6,7 +6,7 @@ from google.oauth2 import service_account
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_vertexai import ChatVertexAI, VertexAIEmbeddings
 
 from io import BytesIO
 
@@ -178,6 +178,61 @@ def invoke_prompt(params):
             "status": False,
             "message": f"Invalid provider: {provider}. Must be 'ai_studio' or 'vertex_ai'.",
         }
+
+
+def invoke_embedding(params):
+    """
+    Vertex AI text embeddings (default: text-embedding-004).
+
+    Mirrors the Vertex auth convention used by invoke_prompt (provider=vertex_ai):
+    reads `credential` (service account JSON, string or dict) and `project_id`
+    from the connector context-variables. OpenAI model names
+    (text-embedding-3-*, *ada*) are remapped to text-embedding-004 so existing
+    workflows keep working without touching the `model` they pass.
+
+    Parameters:
+    - model_name: Model to use (default: "text-embedding-004")
+    - project_id: GCP Project ID (from context-variables)
+    - location:   GCP location (default: "us-central1")
+    - credential: Service account JSON (string or dict). Falls back to ADC.
+    """
+    model_name = params.get("model_name") or ""
+    if (not model_name) or ("text-embedding-3" in model_name) or ("ada" in model_name):
+        model_name = "text-embedding-004"
+
+    project_id = params.get("project_id") or params.get("project")
+    location = params.get("location", "us-central1")
+    credential = params.get("credential")
+
+    try:
+        credentials = None
+        if credential:
+            if isinstance(credential, str):
+                try:
+                    credential = json.loads(credential)
+                except json.JSONDecodeError as e:
+                    return {"status": False, "message": f"credential must be valid JSON: {e}"}
+            credentials = service_account.Credentials.from_service_account_info(
+                credential, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+
+        kwargs = {"model_name": model_name}
+        if project_id:
+            kwargs["project"] = project_id
+        if location:
+            kwargs["location"] = location
+        if credentials:
+            kwargs["credentials"] = credentials
+
+        llm = VertexAIEmbeddings(**kwargs)
+
+        return {
+            "status": True,
+            "data": llm,
+            "message": f"VertexAI embeddings loaded: {model_name}",
+        }
+    except Exception as e:
+        return {"status": False, "message": f"Exception when creating embedding model: {e}"}
 
 
 def invoke_image(request_data):

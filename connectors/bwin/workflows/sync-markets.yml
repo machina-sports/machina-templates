@@ -69,12 +69,13 @@ workflow:
       name: bulk-save-fixtures
       description: Bulk save the fixtures.
       config:
-        # embed-vector left disabled — engine eval bug on invoke_embedding
-        # when true (NameError: name 'invoke_embedding' is not defined).
-        # Markets don't need vector embeddings for the Bruxo/Comparator
-        # surfaces; revisit when semantic search over game-market matters.
         action: bulk-update
-        embed-vector: false
+        embed-vector: true
+        embed-selector: $.get('title')
+        connector:
+          name: google-genai
+          command: invoke_embedding
+          model: text-embedding-004
         force-update: true
       document_name: "'game-market'"
       documents:
