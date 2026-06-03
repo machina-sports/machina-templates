@@ -70,6 +70,14 @@ def _first(record: dict[str, Any], *keys: str) -> Any:
     return None
 
 
+def _to_float(value: Any) -> float:
+    """Coerce provider volume/liquidity values to float; non-numeric becomes 0.0."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _normalize_status(source: str, record: dict[str, Any]) -> str:
     raw = _lower(_first(record, "status", "state", "market_status"))
     if raw in {"active", "open", "live", "trading"}:
@@ -169,9 +177,20 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
     source_event_id = _first(record, "event_id", "event_ticker", "game_id", "series_ticker")
     outcomes = _polymarket_outcomes(record) if source == "polymarket" else _kalshi_outcomes(record)
     status = _normalize_status(source, record)
-    cache_id = f"{source}:{_text(source_market_id) or _text(title).lower().replace(' ', '-')[:80]}"
+    if source_market_id:
+        cache_key = _text(source_market_id)
+    else:
+        # Title fallback: include the event id so same-title markets don't collide.
+        cache_key = _text(title).lower().replace(" ", "-")[:80]
+        if source_event_id:
+            cache_key = f"{cache_key}:{_text(source_event_id)}"
+    cache_id = f"{source}:{cache_key}"
 
     return {
+        # `id` is the document-store upsert key (same convention as other sync
+        # templates, e.g. bwin game-market items) so re-syncs overwrite instead
+        # of inserting duplicate cache rows.
+        "id": cache_id,
         "cache_id": cache_id,
         "source": source,
         "source_market_id": _text(source_market_id) or None,
@@ -238,11 +257,21 @@ def _market_matches(market: dict[str, Any], *, query: str, team: str, event_urn:
     )
     if team and _lower(team) not in haystack:
         return False
+    # Relevance gate: keep only World Cup-related markets (or markets already
+    # linked to a Machina event) so broad sports payloads don't pollute results.
+    if not any(term in haystack for term in WORLD_CUP_TERMS) and not market.get("machina_event_urn"):
+        return False
     if query:
         normalized_query = _lower(query)
-        query_tokens = [token for token in normalized_query.split() if len(token) > 2]
-        if normalized_query not in haystack and not any(term in haystack for term in WORLD_CUP_TERMS):
-            # Allow token-level matching for team/player searches while filtering out unrelated sports noise.
+        # Generic World Cup words don't discriminate between markets; only
+        # specific tokens (teams, players, "group h") narrow the results.
+        generic_tokens = {"fifa", "world", "cup", "2026"}
+        query_tokens = [
+            token
+            for token in normalized_query.split()
+            if len(token) > 2 and token not in generic_tokens
+        ]
+        if query_tokens and normalized_query not in haystack:
             if not any(token in haystack for token in query_tokens):
                 return False
     return True
@@ -266,7 +295,7 @@ def _filter_markets(markets: list[dict[str, Any]], params: dict[str, Any]) -> li
         if _market_matches(market, query=query, team=team, event_urn=event_urn, source=source, status=status)
     ]
     # Prefer the most liquid / highest-volume candidates when providers return broad sports payloads.
-    filtered.sort(key=lambda market: float(market.get("volume") or market.get("liquidity") or 0), reverse=True)
+    filtered.sort(key=lambda market: max(_to_float(market.get("volume")), _to_float(market.get("liquidity"))), reverse=True)
     return filtered[:limit]
 
 
@@ -326,16 +355,47 @@ def normalize_market_sources(request_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+STALE_CACHE_SECONDS = 900  # 15 min — market prices move; warn consumers about cache age.
+
+
+def _cache_age_warning(markets: list[dict[str, Any]]) -> str | None:
+    """Return a staleness warning when the oldest served market is past the TTL."""
+    oldest: datetime | None = None
+    for market in markets:
+        raw = _text(market.get("fetched_at"))
+        if not raw:
+            continue
+        try:
+            fetched = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if oldest is None or fetched < oldest:
+            oldest = fetched
+    if oldest is None:
+        return "Cached markets have no fetched_at timestamp; freshness unknown. Use force_live=true for current prices."
+    age = (datetime.now(timezone.utc) - oldest).total_seconds()
+    if age > STALE_CACHE_SECONDS:
+        return (
+            f"Cached market data is up to {int(age // 60)} minutes old. "
+            "Prices may have moved; use force_live=true for current prices."
+        )
+    return None
+
+
 def filter_cached_markets(request_data: dict[str, Any]) -> dict[str, Any]:
     """Filter normalized markets already read from same-pod document storage."""
     params = _params(request_data)
     cached_markets = [item for item in _as_list(params.get("cached_markets")) if isinstance(item, dict)]
     markets = _filter_markets(cached_markets, params)
+    warnings = [] if markets else ["No cached markets matched the request filters."]
+    age_warning = _cache_age_warning(markets) if markets else None
+    if age_warning:
+        warnings.append(age_warning)
     return {
         "status": True,
         "data": {
             "markets": markets,
             "count": len(markets),
-            "warnings": [] if markets else ["No cached markets matched the request filters."],
+            "warnings": warnings,
         },
     }

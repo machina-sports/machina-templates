@@ -4,6 +4,16 @@ MCP/public gateway routes should call only allowlisted workflows from this templ
 
 All public routes are read-only market intelligence. Execution, betting placement, trading, and portfolio actions are out of scope.
 
+## Platform connector requirements
+
+`machina-urn-resolver` (canonical URN resolution) and `machina-search` (grounded web search, xAI/Grok social search) are platform-side connectors and are not defined in this repo. Workflows degrade gracefully when they are unavailable:
+
+- `worldcup-ingest-fixtures` saves events with provider URNs (`urn:apifootball:sport_event:{id}`) as ids instead of canonical Machina URNs.
+- `worldcup-fan-sentiment-context` returns `workflow-status: skipped`.
+- `worldcup-generate-market-brief` and `worldcup-refresh-prematch-enrichment` proceed without grounded prematch research.
+
+Validate both connectors on a hosted pod before exposing the launch workflow set publicly.
+
 ## Launch workflow set
 
 - `worldcup-search-markets`
@@ -27,6 +37,7 @@ All public routes are read-only market intelligence. Execution, betting placemen
 
 ```json
 {
+  "id": "polymarket:2415458",
   "cache_id": "polymarket:2415458",
   "source": "polymarket",
   "source_market_id": "2415458",

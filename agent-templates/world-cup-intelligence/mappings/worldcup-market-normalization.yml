@@ -18,15 +18,6 @@ mappings:
           "data_quality_notes": []
         }
       edge_candidates: |
-        [
-          {
-            "candidate_type": "cross_source_price_dislocation",
-            "markets": [m],
-            "edge_bps": 0,
-            "confidence": "needs_pairing",
-            "notes": ["Scaffold placeholder: replace with paired outcome comparison once market normalization preserves comparable outcome keys."]
-          }
-          for m in $.get('markets', [])[:int($.get('limit', 50))]
-        ]
-      warnings: |
         []
+      warnings: |
+        ["Edge detection is not yet implemented: cross-source outcome pairing is pending, so no edge candidates are produced."]

@@ -42,7 +42,8 @@ workflow:
 
     - type: connector
       name: social-search
-      description: Search X/Twitter and news via xAI/Grok for fan sentiment and narratives.
+      description: Search X/Twitter and news via xAI/Grok for fan sentiment and narratives. Optional platform connector — workflow returns skipped when unavailable.
+      continue_on_error: true
       connector:
         name: machina-search
         command: social_search

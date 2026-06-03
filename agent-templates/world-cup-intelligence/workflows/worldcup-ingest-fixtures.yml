@@ -51,8 +51,9 @@ workflow:
 
     - type: connector
       name: resolve-machina-urns
-      description: Resolve provider/IPTC URNs to canonical Machina URNs.
+      description: Resolve provider/IPTC URNs to canonical Machina URNs. Optional platform connector — when unavailable, events are saved with provider URNs as ids.
       condition: "len($.get('iptc_events', [])) > 0"
+      continue_on_error: true
       connector:
         name: machina-urn-resolver
         command: resolve_events
@@ -65,14 +66,15 @@ workflow:
 
     - type: document
       name: save-worldcup-events
-      description: Save resolved World Cup events in the same pod document store.
-      condition: "len($.get('resolved_events', [])) > 0"
+      description: Save resolved World Cup events in the same pod document store. Falls back to provider-URN events when the resolver is unavailable.
+      condition: "len($.get('resolved_events', []) or $.get('iptc_events', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "worldcup:event"
       documents:
-        items: "$.get('resolved_events', [])"
+        items: "$.get('resolved_events', []) or $.get('iptc_events', [])"
       inputs:
         resolved_events: "$.get('resolved_events', [])"
+        iptc_events: "$.get('iptc_events', [])"

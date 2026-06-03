@@ -25,6 +25,7 @@ workflow:
   outputs:
     edge_candidates: "$.get('edge_candidates', [])"
     analysis: "$.get('analysis', {})"
+    warnings: "$.get('edge_warnings', [])"
     workflow-status: "'executed'"
   tasks:
     - type: document
@@ -49,6 +50,7 @@ workflow:
         min_edge_bps: "$.get('min_edge_bps', 100)"
       outputs:
         edge_candidates: "$.get('edge_candidates', [])"
+        edge_warnings: "$.get('warnings', [])"
 
     - type: prompt
       name: worldcup-market-edge-analysis

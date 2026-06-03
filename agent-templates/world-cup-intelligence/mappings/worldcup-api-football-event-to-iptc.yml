@@ -9,6 +9,8 @@ mappings:
           {
             "@context": {"sport": "https://www.sportschema.org/ontologies/sport#", "schema": "https://schema.org/"},
             "@id": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}",
+            "id": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}",
+            "_id": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}",
             "@type": ["sport:Event", "schema:SportsEvent"],
             "name": f"{f.get('teams', {}).get('home', {}).get('name')} vs {f.get('teams', {}).get('away', {}).get('name')} - {f.get('league', {}).get('name')}",
             "schema:startDate": f.get('fixture', {}).get('date'),

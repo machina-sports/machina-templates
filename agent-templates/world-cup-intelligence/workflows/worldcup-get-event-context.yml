@@ -28,7 +28,8 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Lookup canonical event context from the same pod document store.
+      description: Lookup canonical event context from the same pod document store. Requires an identifying input so an arbitrary event is never returned.
+      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search
         search-limit: 1

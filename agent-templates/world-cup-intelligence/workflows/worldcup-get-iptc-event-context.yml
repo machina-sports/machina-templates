@@ -26,7 +26,8 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Lookup canonical Machina event by URN/provider id.
+      description: Lookup canonical Machina event by URN/provider id. Requires an identifying input so an arbitrary event is never returned.
+      condition: "$.get('machina_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search
         search-limit: 1
