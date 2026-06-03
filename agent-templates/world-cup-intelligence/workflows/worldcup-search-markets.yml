@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-search-markets
   title: World Cup Intelligence - Search Markets
-  description: Fast read workflow for searching World Cup markets across same-pod cached and live Kalshi/Polymarket sources.
+  description: Fast read workflow for searching normalized World Cup markets across same-pod cache plus live Kalshi/Polymarket sources.
 
   context-variables:
     debugger:
@@ -17,7 +17,7 @@ workflow:
       google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
       xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
   inputs:
-    query: "$.get('query', 'World Cup')"
+    query: "$.get('query', 'FIFA World Cup 2026')"
     event_urn: "$.get('event_urn', '')"
     team: "$.get('team', '')"
     source: "$.get('source', 'all')"
@@ -26,6 +26,8 @@ workflow:
     force_live: "$.get('force_live', False)"
   outputs:
     markets: "$.get('markets', [])"
+    count: "len($.get('markets', []))"
+    sources: "$.get('sources', {})"
     warnings: "$.get('warnings', [])"
     workflow-status: "'executed'"
   tasks:
@@ -34,39 +36,113 @@ workflow:
       description: Search cached normalized World Cup markets in the same pod document store first.
       config:
         action: search
-        search-limit: 50
+        search-limit: 250
         search-vector: false
       filters:
         name: "'worldcup:market-cache'"
         value.status: "$.get('status', 'open')"
         value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
       outputs:
-        cached_markets: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 20))]"
+        cached_markets: "[d.get('value', {}) for d in $.get('documents', [])]"
         cache_count: "len($.get('documents', []))"
 
     - type: connector
-      name: live-market-search
-      description: Live fallback through Sports Skills when cache is empty or force_live is set.
-      condition: "$.get('force_live', False) is True or $.get('cache_count', 0) == 0"
+      name: filter-cached-markets
+      description: Apply query/team/source/status/limit filters to same-pod cached markets before any live calls.
+      connector:
+        name: worldcup-market-intelligence
+        command: filter_cached_markets
+      inputs:
+        cached_markets: "$.get('cached_markets', [])"
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        team: "$.get('team', '')"
+        event_urn: "$.get('event_urn', '')"
+        source: "$.get('source', 'all')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 20)"
+      outputs:
+        cached_filtered_markets: "$.get('data', {}).get('markets', []) if $.get('status') else []"
+        cached_filtered_count: "$.get('data', {}).get('count', 0) if $.get('status') else 0"
+
+    - type: connector
+      name: live-sports-skills-search
+      description: Live cross-provider fallback through Sports Skills when cache misses or force_live is set.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
       connector:
         name: sports-skills
         command: invoke_markets
       inputs:
         command: "'search_entity'"
-        entity: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        sport: "'football'"
+      outputs:
+        sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: live-polymarket-search
+      description: Direct Polymarket search fallback for World Cup/FIFA markets.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
         sport: "'football'"
         limit: "$.get('limit', 20)"
       outputs:
-        live_markets: "$.get('data', {}) if $.get('status') else {}"
+        polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: live-kalshi-search
+      description: Direct Kalshi search fallback for World Cup/FIFA markets.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        sport: "'football'"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 20)"
+      outputs:
+        kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: normalize-live-markets
+      description: Normalize live Sports Skills/Kalshi/Polymarket payloads into stable WorldCupMarket records.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_sources
+      inputs:
+        sports_skills_markets: "$.get('sports_skills_markets', {})"
+        polymarket_markets: "$.get('polymarket_markets', {})"
+        kalshi_markets: "$.get('kalshi_markets', {})"
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        team: "$.get('team', '')"
+        event_urn: "$.get('event_urn', '')"
+        source: "$.get('source', 'all')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 20)"
+      outputs:
+        live_normalized_markets: "$.get('data', {}).get('markets', []) if $.get('status') else []"
+        live_sources: "$.get('data', {}).get('sources', {}) if $.get('status') else {}"
+        live_warnings: "$.get('data', {}).get('warnings', []) if $.get('status') else []"
 
     - type: mapping
       name: worldcup-market-normalization
-      title: World Cup | Market Search Response Normalization
+      title: World Cup | Market Search Response Selection
       inputs:
-        cached_markets: "$.get('cached_markets', [])"
-        live_markets: "$.get('live_markets', {})"
-        source: "$.get('source', 'all')"
-        limit: "$.get('limit', 20)"
+        cached_markets: "$.get('cached_filtered_markets', [])"
+        live_markets: "$.get('live_normalized_markets', [])"
+        live_sources: "$.get('live_sources', {})"
+        live_warnings: "$.get('live_warnings', [])"
+        force_live: "$.get('force_live', False)"
       outputs:
-        markets: "$.get('markets', $.get('cached_markets', []))"
-        warnings: "$.get('warnings', [])"
+        markets: "($.get('live_markets', []) if $.get('force_live', False) else ($.get('cached_markets', []) or $.get('live_markets', [])))[:int($.get('limit', 20))]"
+        sources: "$.get('live_sources', {})"
+        warnings: "$.get('live_warnings', [])"

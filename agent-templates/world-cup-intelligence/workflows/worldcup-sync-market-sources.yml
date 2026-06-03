@@ -19,11 +19,14 @@ workflow:
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
     sport: "$.get('sport', 'football')"
+    source: "$.get('source', 'all')"
     status: "$.get('status', 'open')"
     limit: "$.get('limit', 100)"
   outputs:
     markets_count: "len($.get('normalized_markets', []))"
     linked_count: "len([m for m in $.get('linked_markets', []) if m.get('machina_event_urn')])"
+    sources: "$.get('sources', {})"
+    warnings: "$.get('warnings', [])"
     workflow-status: "len($.get('normalized_markets', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector
@@ -33,10 +36,9 @@ workflow:
         name: sports-skills
         command: invoke_markets
       inputs:
-        command: "'get_sport_markets'"
+        command: "'search_entity'"
+        query: "$.get('query', 'FIFA World Cup 2026')"
         sport: "$.get('sport', 'football')"
-        status: "$.get('status', 'open')"
-        limit: "$.get('limit', 100)"
       outputs:
         sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
 
@@ -50,6 +52,7 @@ workflow:
       inputs:
         command: "'search_markets'"
         query: "$.get('query', 'FIFA World Cup 2026')"
+        sport: "$.get('sport', 'football')"
         limit: "$.get('limit', 100)"
       outputs:
         polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
@@ -62,31 +65,41 @@ workflow:
         name: sports-skills
         command: invoke_kalshi
       inputs:
-        command: "'get_events'"
-        search: "$.get('query', 'FIFA World Cup 2026')"
+        command: "'search_markets'"
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        sport: "$.get('sport', 'football')"
+        status: "$.get('status', 'open')"
         limit: "$.get('limit', 100)"
       outputs:
         kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
 
-    - type: mapping
-      name: worldcup-market-normalization
-      title: World Cup | Market Normalization
-      description: Normalize Sports Skills, Kalshi, and Polymarket market payloads.
+    - type: connector
+      name: normalize-market-sources
+      description: Normalize Sports Skills, Kalshi, and Polymarket market payloads into cacheable WorldCupMarket records.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_sources
       inputs:
         sports_skills_markets: "$.get('sports_skills_markets', {})"
         polymarket_markets: "$.get('polymarket_markets', {})"
         kalshi_markets: "$.get('kalshi_markets', {})"
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        source: "$.get('source', 'all')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 100)"
       outputs:
-        normalized_markets: "$.get('normalized_markets', [])"
+        normalized_markets: "$.get('data', {}).get('normalized_markets', []) if $.get('status') else []"
+        sources: "$.get('data', {}).get('sources', {}) if $.get('status') else {}"
+        warnings: "$.get('data', {}).get('warnings', []) if $.get('status') else []"
 
     - type: mapping
       name: worldcup-market-entity-linking
       title: World Cup | Market Entity Linking
-      description: Link normalized markets to Machina URNs where confidence is high.
+      description: Preserve normalized markets and attach Machina URNs where confidence is already present.
       inputs:
         markets: "$.get('normalized_markets', [])"
       outputs:
-        linked_markets: "$.get('linked_markets', [])"
+        linked_markets: "$.get('linked_markets', $.get('markets', []))"
 
     - type: document
       name: save-market-cache

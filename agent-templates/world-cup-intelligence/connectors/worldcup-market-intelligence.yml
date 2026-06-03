@@ -1,0 +1,10 @@
+connector:
+  name: "worldcup-market-intelligence"
+  description: "Read-only World Cup market-intelligence utilities for normalizing and filtering Sports Skills, Kalshi, and Polymarket payloads into stable API/MCP response shapes."
+  filename: "worldcup-market-intelligence.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Normalize market sources"
+      value: "normalize_market_sources"
+    - name: "Filter cached markets"
+      value: "filter_cached_markets"
