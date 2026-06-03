@@ -1,0 +1,48 @@
+workflow:
+  name: worldcup-compare-market-sources
+  title: World Cup Intelligence - Compare Market Sources
+  description: Compare Kalshi and Polymarket market data without executing trades or giving personalized financial advice.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    query: "$.get('query', '')"
+    event_urn: "$.get('event_urn', '')"
+    market_type: "$.get('market_type', 'all')"
+    include_reasoning: "$.get('include_reasoning', False)"
+  outputs:
+    comparison: "$.get('comparison', {})"
+    workflow-status: "$.get('comparison', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-markets
+      description: Load normalized linked markets for comparison from the same pod document store.
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+      outputs:
+        markets: "[d.get('value', {}) for d in $.get('documents', [])]"
+
+    - type: mapping
+      name: worldcup-market-normalization
+      title: World Cup | Market Comparison Shape
+      inputs:
+        markets: "$.get('markets', [])"
+        market_type: "$.get('market_type', 'all')"
+      outputs:
+        comparison: "$.get('comparison', {'markets': $.get('markets', []), 'data_quality_notes': []})"

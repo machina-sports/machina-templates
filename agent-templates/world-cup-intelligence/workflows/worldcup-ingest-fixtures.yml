@@ -1,0 +1,78 @@
+workflow:
+  name: worldcup-ingest-fixtures
+  title: World Cup Intelligence - Ingest Fixtures
+  description: Fetch World Cup fixtures from API-Football, normalize to IPTC Sport Schema, resolve Machina URNs, and save to the same pod document store.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+    provider: "$.get('provider', 'api-football')"
+    force: "$.get('force', False)"
+  outputs:
+    fixtures_count: "$.get('fixtures_count', 0)"
+    resolved_count: "$.get('resolved_count', 0)"
+    workflow-status: "$.get('fixtures_count', 0) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-fixtures
+      description: Fetch fixtures from API-Football for the configured league/season.
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+      outputs:
+        raw_fixtures: "$.get('response', [])"
+        fixtures_count: "len($.get('response', []))"
+
+    - type: mapping
+      name: worldcup-api-football-event-to-iptc
+      title: World Cup | API-Football Event to IPTC
+      description: Normalize API-Football fixtures to IPTC/Sportschema event documents.
+      condition: "len($.get('raw_fixtures', [])) > 0"
+      inputs:
+        fixtures: "$.get('raw_fixtures', [])"
+      outputs:
+        iptc_events: "$.get('sport_schema_events', [])"
+
+    - type: connector
+      name: resolve-machina-urns
+      description: Resolve provider/IPTC URNs to canonical Machina URNs.
+      condition: "len($.get('iptc_events', [])) > 0"
+      connector:
+        name: machina-urn-resolver
+        command: resolve_events
+      inputs:
+        events: "$.get('iptc_events', [])"
+        provider: "$.get('provider', 'api-football')"
+      outputs:
+        resolved_events: "$.get('events', [])"
+        resolved_count: "$.get('count', 0)"
+
+    - type: document
+      name: save-worldcup-events
+      description: Save resolved World Cup events in the same pod document store.
+      condition: "len($.get('resolved_events', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "worldcup:event"
+      documents:
+        items: "$.get('resolved_events', [])"
+      inputs:
+        resolved_events: "$.get('resolved_events', [])"

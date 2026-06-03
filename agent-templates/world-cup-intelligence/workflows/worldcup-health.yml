@@ -1,0 +1,20 @@
+workflow:
+  name: worldcup-health
+  title: World Cup Intelligence - Health
+  description: Cheap smoke test for the World Cup Intelligence template.
+  inputs:
+    include_connectors: "$.get('include_connectors', False)"
+  outputs:
+    product: "'world_cup_market_intelligence'"
+    version: "'0.1.0'"
+    workflow-status: "'executed'"
+  tasks:
+    - type: expression
+      name: health
+      description: Return template metadata.
+      inputs:
+        include_connectors: "$.get('include_connectors', False)"
+      outputs:
+        product: "'world_cup_market_intelligence'"
+        version: "'0.1.0'"
+        connectors: "['api-football', 'sports-skills', 'kalshi', 'polymarket', 'google-genai', 'grok'] if $.get('include_connectors') else []"

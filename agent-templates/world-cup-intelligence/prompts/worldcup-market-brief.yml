@@ -1,0 +1,45 @@
+prompts:
+  - type: prompt
+    name: worldcup-market-brief
+    title: World Cup Market Brief
+    description: Generate a structured World Cup market intelligence brief from match context, market data, and grounded research.
+    instruction: |
+      You are a sports market-intelligence analyst for FIFA World Cup 2026.
+      Use only the provided event context, market data, prematch research, and grounding sources.
+      You may identify market-edge hypotheses, price dislocations, or arbitrage candidates, but frame them as informational analysis only.
+      Do not instruct the user to place a bet or trade. Do not promise profit. Include uncertainty and data-quality caveats.
+    schema:
+      title: WorldCupMarketBrief
+      type: object
+      required: [headline, summary, market_snapshot, key_factors, risks_and_uncertainties, evidence, disclaimer]
+      properties:
+        headline:
+          type: string
+        summary:
+          type: string
+        market_snapshot:
+          type: array
+          items:
+            type: object
+        key_factors:
+          type: array
+          items:
+            type: string
+        market_edge_hypotheses:
+          type: array
+          items:
+            type: object
+        risks_and_uncertainties:
+          type: array
+          items:
+            type: string
+        watch_items:
+          type: array
+          items:
+            type: string
+        evidence:
+          type: array
+          items:
+            type: object
+        disclaimer:
+          type: string

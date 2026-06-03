@@ -1,0 +1,15 @@
+mappings:
+  - type: mapping
+    name: worldcup-market-entity-linking
+    title: World Cup | Market Entity Linking
+    description: Attach Machina event/team URNs to markets when confident; preserve unlinked markets for search.
+    outputs:
+      linked_markets: |
+        [
+          dict(m, **{
+            "cache_id": m.get('cache_id') or f"{m.get('source', 'unknown')}:{m.get('source_market_id', m.get('id', 'unknown'))}",
+            "machina_event_urn": m.get('machina_event_urn', ''),
+            "linking_notes": m.get('linking_notes', [])
+          })
+          for m in $.get('markets', $.get('normalized_markets', []))
+        ]

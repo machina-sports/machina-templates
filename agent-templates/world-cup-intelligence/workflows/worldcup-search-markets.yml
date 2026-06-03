@@ -1,0 +1,72 @@
+workflow:
+  name: worldcup-search-markets
+  title: World Cup Intelligence - Search Markets
+  description: Fast read workflow for searching World Cup markets across same-pod cached and live Kalshi/Polymarket sources.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    query: "$.get('query', 'World Cup')"
+    event_urn: "$.get('event_urn', '')"
+    team: "$.get('team', '')"
+    source: "$.get('source', 'all')"
+    status: "$.get('status', 'open')"
+    limit: "$.get('limit', 20)"
+    force_live: "$.get('force_live', False)"
+  outputs:
+    markets: "$.get('markets', [])"
+    warnings: "$.get('warnings', [])"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: lookup-market-cache
+      description: Search cached normalized World Cup markets in the same pod document store first.
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.status: "$.get('status', 'open')"
+        value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+      outputs:
+        cached_markets: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 20))]"
+        cache_count: "len($.get('documents', []))"
+
+    - type: connector
+      name: live-market-search
+      description: Live fallback through Sports Skills when cache is empty or force_live is set.
+      condition: "$.get('force_live', False) is True or $.get('cache_count', 0) == 0"
+      connector:
+        name: sports-skills
+        command: invoke_markets
+      inputs:
+        command: "'search_entity'"
+        entity: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        sport: "'football'"
+        limit: "$.get('limit', 20)"
+      outputs:
+        live_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: mapping
+      name: worldcup-market-normalization
+      title: World Cup | Market Search Response Normalization
+      inputs:
+        cached_markets: "$.get('cached_markets', [])"
+        live_markets: "$.get('live_markets', {})"
+        source: "$.get('source', 'all')"
+        limit: "$.get('limit', 20)"
+      outputs:
+        markets: "$.get('markets', $.get('cached_markets', []))"
+        warnings: "$.get('warnings', [])"

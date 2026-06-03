@@ -1,0 +1,103 @@
+workflow:
+  name: worldcup-sync-market-sources
+  title: World Cup Intelligence - Sync Market Sources
+  description: Refresh Kalshi and Polymarket World Cup market cache in the same pod document store.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    query: "$.get('query', 'FIFA World Cup 2026')"
+    sport: "$.get('sport', 'football')"
+    status: "$.get('status', 'open')"
+    limit: "$.get('limit', 100)"
+  outputs:
+    markets_count: "len($.get('normalized_markets', []))"
+    linked_count: "len([m for m in $.get('linked_markets', []) if m.get('machina_event_urn')])"
+    workflow-status: "len($.get('normalized_markets', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-sports-skills-markets
+      description: Fetch football/FIFA markets using the Sports Skills market orchestrator.
+      connector:
+        name: sports-skills
+        command: invoke_markets
+      inputs:
+        command: "'get_sport_markets'"
+        sport: "$.get('sport', 'football')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 100)"
+      outputs:
+        sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: search-polymarket-fallback
+      description: Direct Polymarket fallback search for World Cup/FIFA markets.
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        limit: "$.get('limit', 100)"
+      outputs:
+        polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: search-kalshi-fallback
+      description: Direct Kalshi fallback search for World Cup/FIFA markets.
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_events'"
+        search: "$.get('query', 'FIFA World Cup 2026')"
+        limit: "$.get('limit', 100)"
+      outputs:
+        kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: mapping
+      name: worldcup-market-normalization
+      title: World Cup | Market Normalization
+      description: Normalize Sports Skills, Kalshi, and Polymarket market payloads.
+      inputs:
+        sports_skills_markets: "$.get('sports_skills_markets', {})"
+        polymarket_markets: "$.get('polymarket_markets', {})"
+        kalshi_markets: "$.get('kalshi_markets', {})"
+      outputs:
+        normalized_markets: "$.get('normalized_markets', [])"
+
+    - type: mapping
+      name: worldcup-market-entity-linking
+      title: World Cup | Market Entity Linking
+      description: Link normalized markets to Machina URNs where confidence is high.
+      inputs:
+        markets: "$.get('normalized_markets', [])"
+      outputs:
+        linked_markets: "$.get('linked_markets', [])"
+
+    - type: document
+      name: save-market-cache
+      description: Save normalized linked market cache in the same pod document store.
+      condition: "len($.get('linked_markets', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "worldcup:market-cache"
+      documents:
+        items: "$.get('linked_markets', [])"
+      inputs:
+        linked_markets: "$.get('linked_markets', [])"

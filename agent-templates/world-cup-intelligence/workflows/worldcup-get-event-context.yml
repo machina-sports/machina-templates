@@ -1,0 +1,79 @@
+workflow:
+  name: worldcup-get-event-context
+  title: World Cup Intelligence - Event Context
+  description: Return enriched World Cup event context from same-pod state, match truth, Sports Skills context, linked markets, and optional social pulse.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
+    include_markets: "$.get('include_markets', True)"
+    include_prematch_research: "$.get('include_prematch_research', True)"
+    include_social_pulse: "$.get('include_social_pulse', False)"
+  outputs:
+    event_context: "$.get('event_context', {})"
+    workflow-status: "$.get('event_context', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event
+      description: Lookup canonical event context from the same pod document store.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+        value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
+      outputs:
+        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: connector
+      name: fetch-event-summary
+      description: Optional Sports Skills football event summary if a provider event id is available.
+      condition: "$.get('provider_event_id', '') != ''"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_event_summary'"
+        event_id: "$.get('provider_event_id')"
+      outputs:
+        sports_context: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: document
+      name: lookup-linked-markets
+      description: Pull markets linked to this Machina event from the same pod document store.
+      condition: "$.get('include_markets', True) is True and $.get('event_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.machina_event_urn: "$.get('event_urn')"
+      outputs:
+        linked_markets: "[d.get('value', {}) for d in $.get('documents', [])]"
+
+    - type: mapping
+      name: worldcup-iptc-event-to-api-response
+      title: World Cup | Event Context Envelope
+      inputs:
+        event_document: "$.get('event_document', {})"
+        sports_context: "$.get('sports_context', {})"
+        linked_markets: "$.get('linked_markets', [])"
+      outputs:
+        event_context: "$.get('event_context', {'event': $.get('event_document', {}), 'sports_context': $.get('sports_context', {}), 'markets': $.get('linked_markets', [])})"

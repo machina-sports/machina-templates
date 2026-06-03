@@ -1,0 +1,32 @@
+mappings:
+  - type: mapping
+    name: worldcup-market-normalization
+    title: World Cup | Market Normalization
+    description: Normalize cached, Sports Skills, Kalshi, and Polymarket market payloads into a stable product shape.
+    outputs:
+      normalized_markets: |
+        $.get('cached_markets', []) or $.get('markets', []) or $.get('sports_skills_markets', {}).get('markets', []) or []
+      markets: |
+        ($.get('cached_markets', []) or $.get('markets', []) or $.get('normalized_markets', []))[:int($.get('limit', 50))]
+      comparison: |
+        {
+          "markets": $.get('markets', []),
+          "markets_by_source": {
+            "kalshi": [m for m in $.get('markets', []) if m.get('source') == 'kalshi'],
+            "polymarket": [m for m in $.get('markets', []) if m.get('source') == 'polymarket']
+          },
+          "data_quality_notes": []
+        }
+      edge_candidates: |
+        [
+          {
+            "candidate_type": "cross_source_price_dislocation",
+            "markets": [m],
+            "edge_bps": 0,
+            "confidence": "needs_pairing",
+            "notes": ["Scaffold placeholder: replace with paired outcome comparison once market normalization preserves comparable outcome keys."]
+          }
+          for m in $.get('markets', [])[:int($.get('limit', 50))]
+        ]
+      warnings: |
+        []

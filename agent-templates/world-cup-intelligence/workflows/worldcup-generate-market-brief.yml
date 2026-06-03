@@ -1,0 +1,95 @@
+workflow:
+  name: worldcup-generate-market-brief
+  title: World Cup Intelligence - Generate Market Brief
+  description: Generate a structured Google GenAI market-intelligence brief from same-pod event context, markets, prematch research, and optional xAI social pulse.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    query: "$.get('query', '')"
+    event_urn: "$.get('event_urn', '')"
+    market_ids: "$.get('market_ids', [])"
+    depth: "$.get('depth', 'standard')"
+    include_social_pulse: "$.get('include_social_pulse', True)"
+  outputs:
+    brief: "$.get('brief', {})"
+    evidence: "$.get('evidence', [])"
+    workflow-status: "$.get('brief', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event-context
+      description: Load event context from same-pod document store if event_urn is provided.
+      condition: "$.get('event_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn')"
+      outputs:
+        event_context: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: document
+      name: lookup-markets
+      description: Load linked market cache for the event or query from same-pod state.
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+      outputs:
+        markets: "[d.get('value', {}) for d in $.get('documents', [])]"
+
+    - type: connector
+      name: grounded-prematch-research
+      description: Google GenAI grounded search/extract for latest match and market context.
+      condition: "$.get('query', '') != ''"
+      continue_on_error: true
+      connector:
+        name: machina-search
+        command: web_search_extract
+      inputs:
+        entity_id: "$.get('event_urn', '')"
+        entity_name: "$.get('query', '')"
+        search_query: "$.get('query', '') + ' FIFA World Cup 2026 team news odds market analysis'"
+        extraction_prompt: "Extract factual World Cup match context, team news, market-relevant factors, and source URLs. Return JSON with keys: match_context, team_news, key_factors, sources. Do not invent facts."
+        recency_days: "7"
+        model: "'gemini-2.5-flash'"
+        location: "'global'"
+      outputs:
+        prematch_research: "$.get('extraction', {})"
+        grounding_sources: "$.get('search_results', [])"
+
+    - type: prompt
+      name: worldcup-market-brief
+      description: Generate the structured market brief with Google GenAI.
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        query: "$.get('query', '')"
+        event_context: "$.get('event_context', {})"
+        markets: "$.get('markets', [])"
+        prematch_research: "$.get('prematch_research', {})"
+        grounding_sources: "$.get('grounding_sources', [])"
+        depth: "$.get('depth', 'standard')"
+      outputs:
+        brief: "$"
+        evidence: "$.get('evidence', [])"

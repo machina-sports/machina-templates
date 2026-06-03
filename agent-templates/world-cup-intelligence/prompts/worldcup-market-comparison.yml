@@ -1,0 +1,26 @@
+prompts:
+  - type: prompt
+    name: worldcup-market-comparison
+    title: World Cup Market Comparison
+    description: Compare Kalshi and Polymarket markets using normalized data.
+    instruction: |
+      Compare the provided World Cup market data across sources. Focus on probability differences, liquidity, volume, market status, and source coverage. Avoid financial advice.
+    schema:
+      title: WorldCupMarketComparison
+      type: object
+      required: [summary, markets_by_source, notable_differences, data_quality_notes, disclaimer]
+      properties:
+        summary:
+          type: string
+        markets_by_source:
+          type: object
+        notable_differences:
+          type: array
+          items:
+            type: object
+        data_quality_notes:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string

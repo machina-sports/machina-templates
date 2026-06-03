@@ -1,0 +1,15 @@
+folders:
+  - name: World Cup Intelligence
+    description: World Cup 2026 market intelligence workflows and MCP-facing tools.
+    workflows:
+      - worldcup-health
+      - worldcup-ingest-fixtures
+      - worldcup-sync-market-sources
+      - worldcup-search-markets
+      - worldcup-get-iptc-event-context
+      - worldcup-get-event-context
+      - worldcup-compare-market-sources
+      - worldcup-find-market-edges
+      - worldcup-generate-market-brief
+      - worldcup-fan-sentiment-context
+      - worldcup-refresh-prematch-enrichment

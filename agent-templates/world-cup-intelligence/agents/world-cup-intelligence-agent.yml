@@ -1,0 +1,48 @@
+agent:
+  name: world-cup-intelligence-agent
+  title: World Cup Intelligence Agent
+  description: Read-only agent for FIFA World Cup fixture context, semantic event lookup, prediction-market discovery, grounded market intelligence, and market-edge analysis.
+  context:
+    config-frequency: 60
+    status: "inactive"
+  context-agent:
+    query: "$.get('query', 'FIFA World Cup 2026')"
+    event_urn: "$.get('event_urn', '')"
+  workflows:
+    - name: worldcup-search-markets
+      description: Search Kalshi/Polymarket World Cup markets
+      inputs:
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        markets: "$.get('markets', [])"
+
+    - name: worldcup-get-event-context
+      description: Resolve enriched match context
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        event_context: "$.get('event_context', {})"
+
+    - name: worldcup-find-market-edges
+      description: Identify informational market-edge and arbitrage candidates
+      inputs:
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        edge_candidates: "$.get('edge_candidates', [])"
+        edge_analysis: "$.get('analysis', {})"
+
+    - name: worldcup-generate-market-brief
+      description: Generate a grounded World Cup market-intelligence brief
+      inputs:
+        query: "$.get('query', 'FIFA World Cup 2026')"
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        brief: "$.get('brief', {})"
+
+  instructions: |
+    Use canonical match truth from API-Football, IPTC mappings, and Machina URNs before reasoning over markets.
+    Use Google GenAI for grounded structured briefs and xAI/Grok for social/news pulse.
+    You may surface market-edge or arbitrage candidates as informational analysis, but do not place trades, execute bets, promise profit, or present personalized financial advice.
+    Always include evidence, uncertainty, and source attribution when available.

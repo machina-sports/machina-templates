@@ -1,0 +1,76 @@
+workflow:
+  name: worldcup-fan-sentiment-context
+  title: World Cup Intelligence - Fan Sentiment Context
+  description: Use xAI/Grok social/news search to extract fan sentiment and save pulse in same-pod state.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+    machina-search:
+      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    query: "$.get('query', '')"
+    lookback_hours: "$.get('lookback_hours', 48)"
+    force_live: "$.get('force_live', False)"
+  outputs:
+    fan_sentiment: "$.get('fan_sentiment', {})"
+    citations: "$.get('citations', [])"
+    workflow-status: "$.get('fan_sentiment', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event
+      description: Lookup event/team names for sentiment query construction from same-pod state.
+      condition: "$.get('event_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn')"
+      outputs:
+        event_context: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: connector
+      name: social-search
+      description: Search X/Twitter and news via xAI/Grok for fan sentiment and narratives.
+      connector:
+        name: machina-search
+        command: social_search
+      inputs:
+        entity_id: "$.get('event_urn', '')"
+        entity_name: "$.get('query') or $.get('event_context', {}).get('name', '')"
+        search_prompt: >
+          f"Analyze fan sentiment, live narratives, breaking news, and X/Twitter discussion for {$.get('query') or $.get('event_context', {}).get('name', 'FIFA World Cup 2026')}. Focus on the last {$.get('lookback_hours', 48)} hours. Return JSON with keys: buzz_level, overall_sentiment, home_fan_narrative, away_fan_narrative, breaking_news, narrative_threads, confidence. Attribute claims to sources."
+      outputs:
+        fan_sentiment: "$.get('parsed_data', {})"
+        citations: "$.get('citations', [])"
+
+    - type: document
+      name: save-social-cache
+      description: Cache social pulse in same-pod document state for reuse.
+      condition: "$.get('event_urn', '') != '' and $.get('fan_sentiment', {}) != {}"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        worldcup:social-cache: |
+          {
+            'event_urn': $.get('event_urn'),
+            'fan_sentiment': $.get('fan_sentiment', {}),
+            'citations': $.get('citations', []),
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+          }
+      filters:
+        name: "'worldcup:social-cache'"
+        value.event_urn: "$.get('event_urn')"
