@@ -535,6 +535,21 @@ def invoke_search(request_data):
     model_name = params.get("model_name") or headers.get("model")
 
     search_query = params.get("search_query")
+
+    # Optional per-call timeout (seconds). Without it a stalled grounded-search
+    # request hangs indefinitely (ChatVertexAI.invoke has no default deadline),
+    # which can block a whole batch. Mirrors invoke_prompt: values > 600 are
+    # treated as milliseconds for backwards compatibility.
+    timeout_param = params.get("timeout")
+    search_timeout_seconds = None
+    if timeout_param is not None:
+        try:
+            search_timeout_seconds = float(timeout_param)
+            if search_timeout_seconds > 600:
+                search_timeout_seconds = search_timeout_seconds / 1000.0
+        except (TypeError, ValueError):
+            search_timeout_seconds = None
+
     # Date filtering (inclusive).
     # We support:
     # - start_date/end_date as YYYY-MM-DD
@@ -669,13 +684,17 @@ def invoke_search(request_data):
         if priority_mode:
             additional_headers["x-vertex-ai-llm-shared-request-type"] = "priority"
 
-        llm = ChatVertexAI(
-            model=model_name,
-            credentials=credentials,
-            location=location,
-            project=project_id,
-            additional_headers=additional_headers if additional_headers else None,
-        )
+        vertex_search_kwargs = {
+            "model": model_name,
+            "credentials": credentials,
+            "location": location,
+            "project": project_id,
+            "additional_headers": additional_headers if additional_headers else None,
+        }
+        if search_timeout_seconds is not None:
+            vertex_search_kwargs["timeout"] = search_timeout_seconds
+
+        llm = ChatVertexAI(**vertex_search_kwargs)
 
         llm = llm.bind_tools([{"google_search": {}}])
 
