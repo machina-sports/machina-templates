@@ -54,8 +54,10 @@ workflow:
         token_id: "(($.get('cached', {}).get('outcomes', []) or [{}])[0].get('token_id')) if $.get('requested_id', '').startswith('polymarket:') else None"
         interval: "'1h'"
       outputs:
-        # $ is the stripped connector data payload; points sit at the top.
-        history: "$.get('points', [])"
+        # sports-skills self-envelopes ({status, data:{points}}), then the
+        # connector wraps again; the runner strips one layer, so $ is the
+        # package response and points live under data.
+        history: "$.get('data', {}).get('points', []) if $.get('status') else []"
 
     - type: connector
       name: detect-move
