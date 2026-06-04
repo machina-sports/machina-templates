@@ -40,12 +40,20 @@ _PIP_PACKAGE = "sports-skills>=0.26.1,<1.0"
 _TARGET_DIR = "/tmp/sports-skills-site"
 
 
-def _version_ok():
-    """True when the importable sports-skills meets _MIN_VERSION."""
-    try:
-        from importlib import metadata
+def _loaded_version_ok():
+    """True when the ACTUALLY-IMPORTED sports_skills meets _MIN_VERSION.
 
-        parts = metadata.version("sports-skills").split(".")[:3]
+    Must check the live module's __version__, not importlib.metadata: once
+    _TARGET_DIR is on sys.path, metadata reports the upgraded version while a
+    worker process may still hold the stale system module cached in
+    sys.modules. Trusting metadata there reuses the old module (missing newer
+    commands like markets.get_price_history) — a race across the worker pool.
+    """
+    mod = sys.modules.get("sports_skills")
+    if mod is None:
+        return False
+    try:
+        parts = str(getattr(mod, "__version__", "0")).split(".")[:3]
         return tuple(int(p) for p in parts) >= _MIN_VERSION
     except Exception:
         return False
@@ -71,24 +79,21 @@ def _ensure_sports_skills():
     floor should be enforced in the pod image requirements — this branch
     keeps already-deployed pods working without a rebuild.
     """
-    # Fast path: an acceptable version is already importable.
-    if _version_ok():
-        try:
-            importlib.import_module("sports_skills")
-            return True, None
-        except ImportError:
-            pass
+    # Fast path: an acceptable version is already imported in THIS process.
+    if _loaded_version_ok():
+        return True, None
 
     # A previous call (possibly in another worker process of this container)
-    # may have already installed the upgrade to /tmp — just activate it.
+    # may have already installed the upgrade to /tmp — activate it and force
+    # a fresh import (purging any stale system module this worker cached).
     if os.path.isdir(os.path.join(_TARGET_DIR, "sports_skills")):
         _activate_target()
-        if _version_ok():
-            try:
-                importlib.import_module("sports_skills")
-                return True, None
-            except ImportError:
-                pass
+        try:
+            importlib.import_module("sports_skills")
+        except ImportError:
+            pass
+        if _loaded_version_ok():
+            return True, None
 
     # Install/upgrade into the writable target. Capture stdout+stderr so
     # failures surface a real error in the workflow output instead of a
