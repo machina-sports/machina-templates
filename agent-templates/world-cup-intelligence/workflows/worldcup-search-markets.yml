@@ -6,16 +6,6 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    api-football:
-      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
-    google-genai:
-      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
-    machina-search:
-      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
     team: "$.get('team', '')"

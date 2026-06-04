@@ -6,8 +6,6 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    api-football:
-      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
