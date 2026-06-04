@@ -68,14 +68,16 @@ workflow:
         force-update: true
       document_name: "'worldcup:event'"
       documents:
+        # Failed foreach iterations can leave None entries in search_results;
+        # guard every access with isinstance checks.
         items: |
           [
             dict(f, **{
               'metadata': {'event_urn': f.get('_id', '')},
-              'prematch_research': next((r for r in $.get('search_results', []) if r.get('entity_id') == f.get('_id')), {})
+              'prematch_research': next((r for r in $.get('search_results', []) if isinstance(r, dict) and r.get('entity_id') == f.get('_id') and r.get('research')), {})
             })
             for f in $.get('fixtures', [])
-            if f.get('_id') and next((r for r in $.get('search_results', []) if r.get('entity_id') == f.get('_id') and r.get('research')), None)
+            if isinstance(f, dict) and f.get('_id') and any(isinstance(r, dict) and r.get('entity_id') == f.get('_id') and r.get('research') for r in $.get('search_results', []))
           ]
       inputs:
         fixtures: "$.get('fixtures', [])"
