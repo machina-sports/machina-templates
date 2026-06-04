@@ -29,31 +29,49 @@ import subprocess
 import sys
 
 
-_PIP_PACKAGE = "sports-skills>=0.21,<1.0"
+_MIN_VERSION = (0, 25, 1)
+_PIP_PACKAGE = "sports-skills>=0.25.1,<1.0"
+
+
+def _installed_version():
+    """Return the installed sports-skills version as a tuple, or None."""
+    try:
+        from importlib import metadata
+
+        parts = metadata.version("sports-skills").split(".")[:3]
+        return tuple(int(p) for p in parts)
+    except Exception:
+        return None
 
 
 def _ensure_sports_skills():
-    """Import sports_skills, pip-installing on first failure.
+    """Import sports_skills, pip-installing or upgrading when needed.
 
-    Returns (ok: bool, err_msg: str|None). The pip-install fallback exists
-    so a fresh pod can use this connector immediately after template
-    install, without operator action. Long-term the package should be
-    baked into the pod base image — this branch is a graceful degrade.
+    Returns (ok: bool, err_msg: str|None). Pod base images bake a pinned
+    sports-skills into system site-packages; when that copy is older than
+    _MIN_VERSION (features like the 'worldcup' sport key would be missing),
+    this upgrades in place instead of silently using the stale version.
+    Long-term the floor should be enforced in the pod image requirements —
+    this branch keeps already-deployed pods working without a rebuild.
 
     Uses `--user` so the install lands in the running container user's
     `~/.local` (the pod runs as a non-root user that can't write to the
     system site-packages). After install, the `~/.local/lib/...`
-    site-packages dir is added to `sys.path` so the in-process import
-    sees the newly installed package without a restart.
+    site-packages dir is added to `sys.path` and any previously imported
+    (older) sports_skills modules are purged so the in-process re-import
+    picks up the upgrade without a restart.
     """
-    try:
-        importlib.import_module("sports_skills")
-        return True, None
-    except ImportError:
-        pass
+    version = _installed_version()
+    if version is not None and version >= _MIN_VERSION:
+        try:
+            importlib.import_module("sports_skills")
+            return True, None
+        except ImportError:
+            pass
 
-    # First-call pip install. Capture stdout+stderr so failures surface a
-    # real error in the workflow output instead of a cryptic exit code.
+    # First-call pip install (or in-place upgrade of a stale baked copy).
+    # Capture stdout+stderr so failures surface a real error in the
+    # workflow output instead of a cryptic exit code.
     proc = subprocess.run(  # noqa: S603 — args are constants, no shell
         [
             sys.executable,
@@ -62,6 +80,7 @@ def _ensure_sports_skills():
             "install",
             "--user",
             "--no-cache-dir",
+            "--upgrade",
             _PIP_PACKAGE,
         ],
         capture_output=True,
@@ -71,17 +90,26 @@ def _ensure_sports_skills():
     if proc.returncode != 0:
         # pip prints the actionable bit to stderr; include both for safety.
         tail = (proc.stderr or proc.stdout or "")[-1500:]
+        if version is not None:
+            # A stale copy exists — degrade gracefully rather than hard-fail.
+            try:
+                importlib.import_module("sports_skills")
+                return True, None
+            except ImportError:
+                pass
         return False, f"pip install {_PIP_PACKAGE} failed (rc={proc.returncode}): {tail}"
 
     # `--user` writes to a path Python doesn't know about yet in this
     # process. Re-resolve and inject into sys.path so the import below
-    # finds it.
+    # finds it, and purge any already-imported older modules.
     import site
 
     user_site = site.getusersitepackages()
     if user_site and user_site not in sys.path:
         sys.path.insert(0, user_site)
     importlib.invalidate_caches()
+    for name in [m for m in sys.modules if m == "sports_skills" or m.startswith("sports_skills.")]:
+        del sys.modules[name]
 
     try:
         importlib.import_module("sports_skills")
