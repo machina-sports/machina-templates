@@ -30,8 +30,8 @@ workflow:
       outputs:
         home_team_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_home_team_id')"
         away_team_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_away_team_id')"
-        home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('teams', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
-        away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('teams', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
+        home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
+        away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
         resolved_league: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_league_id')"
         resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('start_date') or '2026'))[:4]"
 
