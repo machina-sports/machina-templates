@@ -52,6 +52,14 @@ datasets:
   - type: workflow
     path: workflows/worldcup-get-event-context.yml
   - type: workflow
+    path: workflows/worldcup-get-standings.yml
+  - type: workflow
+    path: workflows/worldcup-get-squads.yml
+  - type: workflow
+    path: workflows/worldcup-get-injuries.yml
+  - type: workflow
+    path: workflows/worldcup-get-schedule.yml
+  - type: workflow
     path: workflows/worldcup-compare-market-sources.yml
   - type: workflow
     path: workflows/worldcup-find-market-edges.yml
