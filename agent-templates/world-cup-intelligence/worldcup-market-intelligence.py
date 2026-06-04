@@ -682,6 +682,16 @@ def detect_market_edges(request_data):
         priced = [(leg, p) for leg, p in priced if p is not None]
         if len(priced) < 2:
             continue
+        # Book-sum == 1.0 only holds for SINGLE-WINNER mutually-exclusive
+        # events (one match: home/away/tie). "Top 2 advance" group markets
+        # sum to ~2.0 and outright-winner fields are independent binaries —
+        # both would throw false edges. A draw/tie leg is the structural
+        # signal of a single-winner match market, so gate on it.
+        names = [_lower((leg.get("outcomes") or [{}])[0].get("name")) for leg, _ in priced]
+        names += [_lower(leg.get("title")) for leg, _ in priced]
+        has_draw = any("draw" in n or "tie" in n for n in names)
+        if not has_draw:
+            continue
         book_sum = round(sum(p for _, p in priced), 6)
         edge_bps = round(abs(book_sum - 1.0) * 10000)
         if edge_bps < min_edge_bps:

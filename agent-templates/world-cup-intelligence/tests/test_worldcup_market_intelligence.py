@@ -308,6 +308,18 @@ class TestDetectMarketEdges:
         r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 150}})
         assert r["data"]["count"] == 0
 
+    def test_group_qualify_market_not_flagged(self):
+        # "Top 2 advance" group markets sum to ~2.0 by design (no draw leg) —
+        # must NOT be reported as a book-sum edge.
+        cached = [
+            _leg("kalshi:Q-MAR", "Q", "Morocco", 0.84),
+            _leg("kalshi:Q-BRA", "Q", "Brazil", 0.98),
+            _leg("kalshi:Q-SCO", "Q", "Scotland", 0.73),
+            _leg("kalshi:Q-HAI", "Q", "Haiti", 0.13),
+        ]
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 50}})
+        assert r["data"]["count"] == 0
+
     def test_cross_venue_draw(self):
         cached = [_leg("kalshi:KXWCGAME-26JUN27JORARG-TIE", "KXWCGAME-26JUN27JORARG", "Tie", 0.28)]
         matches = [{
