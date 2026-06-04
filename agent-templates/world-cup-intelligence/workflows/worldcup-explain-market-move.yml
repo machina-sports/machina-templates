@@ -11,6 +11,10 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     market_id: "$.get('market_id', '')"
+    # Top-level mirror under a name no task input/output shares — document
+    # task outputs evaluate against the search payload, so deriving this
+    # inside a task yields '' (no market_id in that context).
+    requested_id: "$.get('market_id', '')"
     window_hours: "$.get('window_hours', 24)"
     min_move_bps: "$.get('min_move_bps', 200)"
     include_reasoning: "$.get('include_reasoning', True)"
@@ -31,10 +35,9 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:market-cache'"
-        metadata.cache_id: "$.get('market_id')"
+        metadata.cache_id: "$.get('requested_id')"
       outputs:
         cached: "($.get('documents', []) or [{}])[0].get('value', {})"
-        requested_id: "$.get('market_id', '')"
 
     - type: connector
       name: price-history
