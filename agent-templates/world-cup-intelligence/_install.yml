@@ -24,7 +24,6 @@ setup:
     - xai
     - grok
     - pod-document-store
-    - machina-search
   status: available
   value: agent-templates/world-cup-intelligence
   version: 0.1.0

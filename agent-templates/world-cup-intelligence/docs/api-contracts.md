@@ -14,7 +14,7 @@ Market-to-event entity linking (matching a Kalshi/Polymarket market to a specifi
 
 - `worldcup-ingest-fixtures` needs the `api-football` connector and a vault secret named `API_FOOTBALL_API_KEY`.
 - `worldcup-fan-sentiment-context` needs the `grok` connector (this repo) and a vault secret named `MACHINA_CONTEXT_VARIABLE_GROK_API_KEY`.
-- `machina-search` (grounded web search) is a platform-side connector not defined in this repo. `worldcup-generate-market-brief` and `worldcup-refresh-prematch-enrichment` degrade gracefully without it (no grounded prematch research).
+- `worldcup-generate-market-brief`, `worldcup-refresh-prematch-enrichment`, and `worldcup-find-market-edges` need the `google-genai` connector (this repo) and vault secrets `TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL` + `TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID`. Grounded prematch research uses `invoke_search` (Google Search grounding); all reasoning runs on `gemini-3.5-flash`.
 
 Secret lookup uses the literal name after `$` in a workflow's context-variables.
 

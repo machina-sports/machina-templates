@@ -1,19 +1,17 @@
 workflow:
   name: worldcup-refresh-prematch-enrichment
   title: World Cup Intelligence - Refresh Prematch Enrichment
-  description: Internal/admin workflow to refresh grounded prematch research and optional social pulse for upcoming fixtures from same-pod state.
+  description: Internal/admin workflow to refresh grounded prematch research for upcoming fixtures and save it onto the same-pod event documents.
 
   context-variables:
     debugger:
       enabled: true
-    machina-search:
-      google_credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-      google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-      xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     competition_slug: "$.get('competition_slug', 'world-cup-2026')"
     limit: "$.get('limit', 10)"
-    include_social: "$.get('include_social', True)"
     force: "$.get('force', False)"
   outputs:
     fixtures_enriched: "len($.get('search_results', []))"
@@ -33,26 +31,52 @@ workflow:
         fixtures: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 10))]"
         has_fixtures: "len($.get('documents', [])) > 0"
 
+    # Grounded Google Search via google-genai invoke_search (sportingbot
+    # coverage pattern) — one grounded answer + source links per fixture.
     - type: connector
-      name: search-and-extract-prematch
-      description: Search Google and extract structured pre-match analysis.
+      name: search-prematch
+      description: Grounded Google Search for pre-match analysis per fixture.
       condition: "$.get('has_fixtures') is True"
       continue_on_error: true
       connector:
-        name: machina-search
-        command: web_search_extract
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.5-flash
+        provider: vertex_ai
+        location: global
       foreach:
         concurrent: false
         name: fixture_item
         expr: $
         value: "$.get('fixtures', [])"
       inputs:
-        entity_id: "$.get('fixture_item', {}).get('_id', '')"
-        entity_name: "$.get('fixture_item', {}).get('name', '')"
         search_query: >
           $.get('fixture_item', {}).get('name', '') + ' FIFA World Cup 2026 preview injuries lineups odds market context'
-        extraction_prompt: "Extract structured pre-match analysis with keys: team_form, injuries_suspensions, head_to_head, key_players, tactical_preview, prediction_context, sources. Only use sourced facts."
         recency_days: 7
+        timeout: 120
       outputs:
         search_results: |
-          [{'entity_id': $.get('entity_id', ''), 'extraction': $.get('extraction', {}), 'sources': $.get('search_results', [])}]
+          [{'entity_id': $.get('fixture_item', {}).get('_id', ''), 'research': $.get('answer', ''), 'sources': $.get('search_results', [])}]
+
+    - type: document
+      name: save-prematch-research
+      description: Save grounded research onto the event documents so get-event-context serves it.
+      condition: "len($.get('search_results', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:event'"
+      documents:
+        items: |
+          [
+            dict(f, **{
+              'metadata': {'event_urn': f.get('_id', '')},
+              'prematch_research': next((r for r in $.get('search_results', []) if r.get('entity_id') == f.get('_id')), {})
+            })
+            for f in $.get('fixtures', [])
+            if f.get('_id') and next((r for r in $.get('search_results', []) if r.get('entity_id') == f.get('_id') and r.get('research')), None)
+          ]
+      inputs:
+        fixtures: "$.get('fixtures', [])"
+        search_results: "$.get('search_results', [])"
