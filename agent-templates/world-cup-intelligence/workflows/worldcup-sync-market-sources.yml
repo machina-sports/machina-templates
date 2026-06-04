@@ -46,53 +46,24 @@ workflow:
       outputs:
         polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
 
-    # Kalshi has no query search over sports and sports-skills has no
-    # 'worldcup' sport key — World Cup markets live in dedicated series.
-    # Fetch the three main series directly and merge before normalization.
+    # Kalshi World Cup markets span 10 dedicated series; sports-skills
+    # >=0.25.1 fans out across all of them via sport='worldcup'. No query is
+    # passed — game titles ("France vs Senegal Winner?") carry no World Cup
+    # wording, so the normalization connector's relevance gate filters instead.
     - type: connector
-      name: fetch-kalshi-outrights
-      description: Kalshi Men's World Cup winner markets (KXMENWORLDCUP).
+      name: fetch-kalshi-worldcup
+      description: Kalshi World Cup markets across all dedicated series (sport=worldcup).
       continue_on_error: true
       connector:
         name: sports-skills
         command: invoke_kalshi
       inputs:
-        command: "'get_markets'"
-        series_ticker: "'KXMENWORLDCUP'"
+        command: "'search_markets'"
+        sport: "'worldcup'"
         status: "$.get('status', 'open')"
         limit: "200"
       outputs:
-        kalshi_outrights: "$.get('data', {}) if $.get('status') else {}"
-
-    - type: connector
-      name: fetch-kalshi-games
-      description: Kalshi World Cup match-winner markets (KXWCGAME).
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_kalshi
-      inputs:
-        command: "'get_markets'"
-        series_ticker: "'KXWCGAME'"
-        status: "$.get('status', 'open')"
-        limit: "200"
-      outputs:
-        kalshi_games: "$.get('data', {}) if $.get('status') else {}"
-
-    - type: connector
-      name: fetch-kalshi-groups
-      description: Kalshi World Cup group qualification markets (KXWCGROUPQUAL).
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_kalshi
-      inputs:
-        command: "'get_markets'"
-        series_ticker: "'KXWCGROUPQUAL'"
-        status: "$.get('status', 'open')"
-        limit: "200"
-      outputs:
-        kalshi_groups: "$.get('data', {}) if $.get('status') else {}"
+        kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
 
     - type: connector
       name: normalize-market-sources
@@ -103,7 +74,7 @@ workflow:
       inputs:
         sports_skills_markets: "$.get('sports_skills_markets', {})"
         polymarket_markets: "$.get('polymarket_markets', {})"
-        kalshi_markets: "{'markets': $.get('kalshi_outrights', {}).get('markets', []) + $.get('kalshi_games', {}).get('markets', []) + $.get('kalshi_groups', {}).get('markets', [])}"
+        kalshi_markets: "$.get('kalshi_markets', {})"
         query: "$.get('query', 'FIFA World Cup')"
         source: "$.get('source', 'all')"
         status: "$.get('status', 'open')"

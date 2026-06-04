@@ -88,39 +88,25 @@ workflow:
       outputs:
         polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
 
-    # Kalshi World Cup markets live in dedicated series (no query search);
-    # fetch them directly and let the connector filter by query/team.
+    # Kalshi World Cup markets span 10 dedicated series; sports-skills
+    # >=0.25.1 fans out across all of them via sport='worldcup'. No query is
+    # passed — game titles carry no World Cup wording, so the normalization
+    # connector filters by query/team instead.
     - type: connector
-      name: live-kalshi-outrights
-      description: Kalshi Men's World Cup winner markets (KXMENWORLDCUP).
+      name: live-kalshi-worldcup
+      description: Kalshi World Cup markets across all dedicated series (sport=worldcup).
       condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
       continue_on_error: true
       connector:
         name: sports-skills
         command: invoke_kalshi
       inputs:
-        command: "'get_markets'"
-        series_ticker: "'KXMENWORLDCUP'"
+        command: "'search_markets'"
+        sport: "'worldcup'"
         status: "$.get('status', 'open')"
         limit: "200"
       outputs:
-        kalshi_outrights: "$.get('data', {}) if $.get('status') else {}"
-
-    - type: connector
-      name: live-kalshi-games
-      description: Kalshi World Cup match-winner markets (KXWCGAME).
-      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
-      continue_on_error: true
-      connector:
-        name: sports-skills
-        command: invoke_kalshi
-      inputs:
-        command: "'get_markets'"
-        series_ticker: "'KXWCGAME'"
-        status: "$.get('status', 'open')"
-        limit: "200"
-      outputs:
-        kalshi_games: "$.get('data', {}) if $.get('status') else {}"
+        kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
 
     - type: connector
       name: normalize-live-markets
@@ -132,7 +118,7 @@ workflow:
       inputs:
         sports_skills_markets: "$.get('sports_skills_markets', {})"
         polymarket_markets: "$.get('polymarket_markets', {})"
-        kalshi_markets: "{'markets': $.get('kalshi_outrights', {}).get('markets', []) + $.get('kalshi_games', {}).get('markets', [])}"
+        kalshi_markets: "$.get('kalshi_markets', {})"
         query: "$.get('query', 'FIFA World Cup')"
         team: "$.get('team', '')"
         source: "$.get('source', 'all')"
