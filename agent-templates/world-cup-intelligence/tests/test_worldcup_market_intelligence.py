@@ -14,6 +14,7 @@ _spec.loader.exec_module(_module)
 
 normalize_market_sources = _module.normalize_market_sources
 filter_cached_markets = _module.filter_cached_markets
+normalize_market_state = _module.normalize_market_state
 
 
 def _kalshi_record(**overrides):
@@ -191,3 +192,81 @@ class TestFilterCachedMarkets:
         result = filter_cached_markets({"params": {"cached_markets": [], "query": "Brazil"}})
         assert result["data"]["count"] == 0
         assert result["data"]["warnings"]
+
+
+class TestNormalizeMarketState:
+    def test_kalshi_state_full(self):
+        # Shapes captured live from Kalshi (KXWCGAME-26JUN16FRASEN-FRA).
+        result = normalize_market_state({"params": {
+            "market_id": "kalshi:KXWCGAME-26JUN16FRASEN-FRA",
+            "cached": {"cache_id": "kalshi:KXWCGAME-26JUN16FRASEN-FRA", "source": "kalshi", "title": "France vs Senegal Winner?"},
+            "kalshi_market": {
+                "ticker": "KXWCGAME-26JUN16FRASEN-FRA",
+                "title": "France vs Senegal Winner?",
+                "yes_sub_title": "France",
+                "status": "active",
+                "yes_bid_dollars": "0.6900",
+                "no_bid_dollars": "0.2900",
+                "volume_fp": "12988.99",
+            },
+            "kalshi_book": {"ticker": "KXWCGAME-26JUN16FRASEN-FRA", "orderbook": {
+                "yes_dollars": [["0.0100", "100.00"], ["0.6900", "568.15"]],
+                "no_dollars": [["0.0200", "50.00"], ["0.2900", "300.00"]],
+            }},
+            "kalshi_candles": {"candlesticks": [
+                {"end_period_ts": 1780545600, "price": {"close_dollars": "0.7000"}, "volume_fp": "140.72"},
+                {"end_period_ts": 1780549200, "price": {"close_dollars": "0.6900"}, "volume_fp": "10.00"},
+            ]},
+            "kalshi_trades": {"trades": [{"taker_side": "yes", "count_fp": "5"}]},
+        }})
+        d = result["data"]
+        assert d["source"] == "kalshi"
+        assert d["market"]["outcomes"][0]["name"] == "France"
+        yes_book = d["book"]["outcomes"][0]
+        # Best bid is the HIGHEST yes bid, not the first level.
+        assert yes_book["best_bid"] == 0.69
+        # Yes asks implied from no bids: 1 - 0.29 = 0.71 best.
+        assert yes_book["best_ask"] == 0.71
+        assert yes_book["spread"] == 0.02
+        assert [h["price"] for h in d["history"]] == [0.7, 0.69]
+        assert d["trades"] and d["warnings"] == []
+
+    def test_polymarket_state_full(self):
+        # Shapes captured live from Polymarket (Belgium R16, token 7804...).
+        result = normalize_market_state({"params": {
+            "market_id": "polymarket:2415458",
+            "cached": {
+                "cache_id": "polymarket:2415458", "source": "polymarket",
+                "title": "Will Belgium reach the Round of 16?",
+                "outcomes": [
+                    {"name": "Yes", "token_id": "tok-yes"},
+                    {"name": "No", "token_id": "tok-no"},
+                ],
+            },
+            "poly_books": [{
+                "token_id": "tok-yes",
+                # CLOB returns bids ascending / asks descending — worst first.
+                "bids": [{"price": 0.01, "size": 100.0}, {"price": 0.60, "size": 200.0}],
+                "asks": [{"price": 0.99, "size": 300.0}, {"price": 0.62, "size": 50.0}],
+            }],
+            "poly_history": {"history": [{"t": 1780547104, "p": 0.605}]},
+            "poly_last_trade": {"token_id": "tok-yes", "price": 0.62, "side": "BUY"},
+        }})
+        d = result["data"]
+        book = d["book"]["outcomes"][0]
+        assert book["name"] == "Yes"
+        # Correct best levels despite provider ordering.
+        assert book["best_bid"] == 0.60
+        assert book["best_ask"] == 0.62
+        assert d["history"][0] == {"ts": 1780547104, "price": 0.605, "volume": None}
+        assert d["last_trade"]["price"] == 0.62
+
+    def test_unknown_source_rejected(self):
+        result = normalize_market_state({"params": {"market_id": "bovada:123"}})
+        assert result["status"] is False
+
+    def test_missing_everything_warns(self):
+        result = normalize_market_state({"params": {"market_id": "kalshi:KXNOPE-1"}})
+        d = result["data"]
+        assert d["market"] == {}
+        assert len(d["warnings"]) == 3

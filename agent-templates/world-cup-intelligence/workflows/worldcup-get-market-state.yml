@@ -1,0 +1,214 @@
+workflow:
+  name: worldcup-get-market-state
+  title: World Cup Intelligence - Get Market State
+  description: Resolve a market_id (kalshi:<ticker> | polymarket:<id>) to current state, order-book depth, price history, and trades.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    market_id: "$.get('market_id', '')"
+    include_book: "$.get('include_book', True)"
+    include_history: "$.get('include_history', True)"
+    include_trades: "$.get('include_trades', False)"
+    history_hours: "$.get('history_hours', 24)"
+    period_interval: "$.get('period_interval', 60)"
+    history_interval: "$.get('history_interval', '1d')"
+    history_fidelity: "$.get('history_fidelity', 60)"
+  outputs:
+    market_id: "$.get('market_id', '')"
+    source: "$.get('market_id', '').split(':', 1)[0] if ':' in $.get('market_id', '') else ''"
+    market: "$.get('market', {})"
+    book: "$.get('book', {})"
+    history: "$.get('history', [])"
+    last_trade: "$.get('last_trade')"
+    trades: "$.get('trades', [])"
+    warnings: "$.get('state_warnings', [])"
+    workflow-status: "$.get('market', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-cached-market
+      description: Load the cached market snapshot (outcome token ids, titles) by cache id.
+      condition: "$.get('market_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        metadata.cache_id: "$.get('market_id')"
+      outputs:
+        cached: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    # ── Kalshi branch ────────────────────────────────────────────────────
+    - type: connector
+      name: kalshi-market
+      description: Live Kalshi market snapshot.
+      condition: "$.get('market_id', '').startswith('kalshi:')"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_market'"
+        ticker: "$.get('market_id', '').split(':', 1)[1]"
+      outputs:
+        kalshi_market: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: kalshi-book
+      description: Kalshi order book (yes/no bid depth). Requires sports-skills >= 0.25.3; degrades with a warning otherwise.
+      condition: "$.get('market_id', '').startswith('kalshi:') and $.get('include_book', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_market_orderbook'"
+        ticker: "$.get('market_id', '').split(':', 1)[1]"
+      outputs:
+        kalshi_book: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: kalshi-candles
+      description: Kalshi price candlesticks for the requested window.
+      condition: "$.get('market_id', '').startswith('kalshi:') and $.get('include_history', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_market_candlesticks'"
+        series_ticker: "$.get('market_id', '').split(':', 1)[1].split('-')[0]"
+        ticker: "$.get('market_id', '').split(':', 1)[1]"
+        start_ts: "int((datetime.utcnow() - timedelta(hours=int($.get('history_hours', 24)))).timestamp())"
+        end_ts: "int(datetime.utcnow().timestamp())"
+        period_interval: "int($.get('period_interval', 60))"
+      outputs:
+        kalshi_candles: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: kalshi-trades
+      description: Recent Kalshi trades for this market.
+      condition: "$.get('market_id', '').startswith('kalshi:') and $.get('include_trades', False) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'get_trades'"
+        ticker: "$.get('market_id', '').split(':', 1)[1]"
+        limit: "100"
+      outputs:
+        kalshi_trades: "$.get('data', {}) if $.get('status') else {}"
+
+    # ── Polymarket branch ────────────────────────────────────────────────
+    - type: connector
+      name: poly-details
+      description: Live Polymarket market details.
+      condition: "$.get('market_id', '').startswith('polymarket:')"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'get_market_details'"
+        market_id: "$.get('market_id', '').split(':', 1)[1]"
+      outputs:
+        poly_details: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: poly-books
+      description: Polymarket CLOB order book per outcome token.
+      condition: "$.get('market_id', '').startswith('polymarket:') and $.get('include_book', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      foreach:
+        concurrent: false
+        name: token_item
+        expr: $
+        value: "[o.get('token_id') for o in $.get('cached', {}).get('outcomes', []) if isinstance(o, dict) and o.get('token_id')]"
+      inputs:
+        command: "'get_order_book'"
+        token_id: "$.get('token_item', '')"
+      outputs:
+        # Foreach outputs see only the result payload; the book echoes its
+        # token_id, which is the correlation key back to the outcome.
+        poly_books: |
+          [{'token_id': $.get('token_id', ''), 'bids': $.get('bids', []), 'asks': $.get('asks', [])}]
+
+    - type: connector
+      name: poly-history
+      description: Polymarket price history for the primary outcome token.
+      condition: "$.get('market_id', '').startswith('polymarket:') and $.get('include_history', True) is True"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'get_price_history'"
+        token_id: "(($.get('cached', {}).get('outcomes', []) or [{}])[0].get('token_id') or '')"
+        interval: "$.get('history_interval', '1d')"
+        fidelity: "int($.get('history_fidelity', 60))"
+      outputs:
+        poly_history: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: poly-last-trade
+      description: Polymarket last trade price for the primary outcome token.
+      condition: "$.get('market_id', '').startswith('polymarket:')"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'get_last_trade_price'"
+        token_id: "(($.get('cached', {}).get('outcomes', []) or [{}])[0].get('token_id') or '')"
+      outputs:
+        poly_last_trade: "$.get('data', {}) if $.get('status') else {}"
+
+    # ── Normalize and refresh ────────────────────────────────────────────
+    - type: connector
+      name: normalize-market-state
+      description: Unify venue payloads into one market-state shape.
+      condition: "$.get('market_id', '') != ''"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_state
+      inputs:
+        market_id: "$.get('market_id', '')"
+        cached: "$.get('cached', {})"
+        kalshi_market: "$.get('kalshi_market', {})"
+        kalshi_book: "$.get('kalshi_book', {})"
+        kalshi_candles: "$.get('kalshi_candles', {})"
+        kalshi_trades: "$.get('kalshi_trades', {})"
+        poly_details: "$.get('poly_details', {})"
+        poly_books: "$.get('poly_books', [])"
+        poly_history: "$.get('poly_history', {})"
+        poly_last_trade: "$.get('poly_last_trade', {})"
+      outputs:
+        # $ here is the connector's data payload (envelope already stripped).
+        market: "$.get('market', {})"
+        book: "$.get('book', {})"
+        history: "$.get('history', [])"
+        last_trade: "$.get('last_trade')"
+        trades: "$.get('trades', [])"
+        state_warnings: "$.get('warnings', [])"
+
+    - type: document
+      name: refresh-market-cache
+      description: Keep the cache warm — every state read refreshes the cached snapshot.
+      condition: "$.get('market', {}) != {} and $.get('market_id', '') != ''"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:market-cache'"
+      documents:
+        # Single guaranteed item — the engine crashes on empty bulk-updates.
+        items: "[dict($.get('market', {}), **{'metadata': {'cache_id': $.get('market_id', '')}})]"
+      inputs:
+        market: "$.get('market', {})"
+        market_id: "$.get('market_id', '')"

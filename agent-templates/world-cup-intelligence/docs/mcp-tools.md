@@ -23,6 +23,22 @@ Returns:
 - source counts
 - warnings/caveats
 
+### `worldcup_get_market_state`
+
+Backed by `worldcup-get-market-state`.
+
+Inputs:
+
+- `market_id`: cache id from search/sync (`kalshi:<ticker>` | `polymarket:<id>`) — required
+- `include_book`, `include_history`, `include_trades`: section toggles
+- `history_hours`, `period_interval` (Kalshi candles), `history_interval`/`history_fidelity` (Polymarket)
+
+Returns:
+
+- refreshed `WorldCupMarket` + per-outcome order book (computed best bid/ask/spread)
+- price history `[{ts, price, volume}]`, last trade / recent trades
+- warnings (missing depth, stale, degraded sections)
+
 ### `worldcup_get_event_context`
 
 Backed by `worldcup-get-event-context`.

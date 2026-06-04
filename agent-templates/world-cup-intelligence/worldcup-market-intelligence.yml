@@ -8,3 +8,5 @@ connector:
       value: "normalize_market_sources"
     - name: "Filter cached markets"
       value: "filter_cached_markets"
+    - name: "Normalize market state"
+      value: "normalize_market_state"

@@ -417,3 +417,198 @@ def filter_cached_markets(request_data: dict[str, Any]) -> dict[str, Any]:
             "warnings": warnings,
         },
     }
+
+
+# ── Market state (PR 3): market_id → current state + depth + history ─────────
+
+
+def _book_side(levels: Any, *, descending: bool) -> list[dict[str, Any]]:
+    """Normalize order-book levels into [{price, size}], best level first.
+
+    Accepts Polymarket dicts ({price, size}) or Kalshi dollar-string pairs
+    ([["0.1600", "42.55"], ...]). Sorting is done here because provider
+    ordering is unreliable (Polymarket CLOB returns bids ascending, so naive
+    first-element 'best bid' reads the WORST level).
+    """
+    normalized = []
+    for level in _as_list(levels) if not isinstance(levels, dict) else []:
+        if isinstance(level, dict):
+            price, size = level.get("price"), level.get("size")
+        elif isinstance(level, (list, tuple)) and len(level) >= 2:
+            price, size = level[0], level[1]
+        else:
+            continue
+        price_f, size_f = _to_float(price), _to_float(size)
+        if 0 <= price_f <= 1:
+            normalized.append({"price": round(price_f, 6), "size": round(size_f, 4)})
+    normalized.sort(key=lambda lvl: lvl["price"], reverse=descending)
+    return normalized
+
+
+def _book_outcome(name: str, token_id: Any, bids: Any, asks: Any) -> dict[str, Any]:
+    bid_levels = _book_side(bids, descending=True)
+    ask_levels = _book_side(asks, descending=False)
+    best_bid = bid_levels[0]["price"] if bid_levels else None
+    best_ask = ask_levels[0]["price"] if ask_levels else None
+    spread = round(best_ask - best_bid, 6) if best_bid is not None and best_ask is not None else None
+    return {
+        "name": name,
+        "token_id": _text(token_id) or None,
+        "bids": bid_levels,
+        "asks": ask_levels,
+        "best_bid": best_bid,
+        "best_ask": best_ask,
+        "spread": spread,
+    }
+
+
+def _kalshi_state_book(kalshi_book: Any, market: dict[str, Any]) -> list[dict[str, Any]]:
+    """Kalshi orderbook_fp → per-outcome book.
+
+    Kalshi exposes yes/no BID levels only; the ask side of YES is implied by
+    the NO bids (ask_yes = 1 - bid_no) and vice versa.
+    """
+    book = _unwrap(kalshi_book)
+    levels = book.get("orderbook") if isinstance(book, dict) else {}
+    if not isinstance(levels, dict):
+        return []
+    yes_bids = _as_list(levels.get("yes_dollars") or levels.get("yes"))
+    no_bids = _as_list(levels.get("no_dollars") or levels.get("no"))
+
+    def _implied(side: list[Any]) -> list[list[float]]:
+        out = []
+        for level in side:
+            if isinstance(level, (list, tuple)) and len(level) >= 2:
+                price = _to_float(level[0])
+                if price > 1:  # legacy integer cents
+                    price = price / 100.0
+                out.append([round(1 - price, 6), _to_float(level[1])])
+        return out
+
+    yes_name = "Yes"
+    outcomes = market.get("outcomes") if isinstance(market, dict) else None
+    if outcomes and isinstance(outcomes[0], dict):
+        yes_name = outcomes[0].get("name") or "Yes"
+    return [
+        _book_outcome(yes_name, None, yes_bids, _implied(no_bids)),
+        _book_outcome("No", None, no_bids, _implied(yes_bids)),
+    ]
+
+
+def _kalshi_state_history(kalshi_candles: Any) -> list[dict[str, Any]]:
+    data = _unwrap(kalshi_candles)
+    candles = _as_list(data.get("candlesticks")) if isinstance(data, dict) else []
+    history = []
+    for candle in candles:
+        if not isinstance(candle, dict):
+            continue
+        price = candle.get("price") if isinstance(candle.get("price"), dict) else {}
+        close = _first(price, "close_dollars", "close")
+        if close is None:
+            continue
+        close_f = _to_float(close)
+        if close_f > 1:  # legacy integer cents
+            close_f = close_f / 100.0
+        history.append(
+            {
+                "ts": candle.get("end_period_ts"),
+                "price": round(close_f, 6),
+                "volume": _to_float(_first(candle, "volume_fp", "volume")),
+            }
+        )
+    return history
+
+
+def _poly_state_book(poly_books: Any, market: dict[str, Any]) -> list[dict[str, Any]]:
+    token_names = {}
+    for outcome in market.get("outcomes", []) if isinstance(market, dict) else []:
+        if isinstance(outcome, dict) and outcome.get("token_id"):
+            token_names[_text(outcome["token_id"])] = outcome.get("name") or "unknown"
+    outcomes = []
+    for raw in _as_list(poly_books) if not isinstance(poly_books, dict) else [poly_books]:
+        book = _unwrap(raw)
+        if not isinstance(book, dict):
+            continue
+        token_id = _text(book.get("token_id") or book.get("asset_id"))
+        outcomes.append(
+            _book_outcome(token_names.get(token_id, "unknown"), token_id, book.get("bids"), book.get("asks"))
+        )
+    return outcomes
+
+
+def _poly_state_history(poly_history: Any) -> list[dict[str, Any]]:
+    data = _unwrap(poly_history)
+    points = _as_list(data.get("history")) if isinstance(data, dict) else _as_list(data)
+    return [
+        {"ts": point.get("t"), "price": round(_to_float(point.get("p")), 6), "volume": None}
+        for point in points
+        if isinstance(point, dict) and point.get("t") is not None
+    ]
+
+
+def normalize_market_state(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Unify per-venue market state into one shape.
+
+    Params accepted:
+      - market_id: cache id ("kalshi:<ticker>" | "polymarket:<id>")
+      - cached: the cached WorldCupMarket record (may be {})
+      - kalshi_market, kalshi_book, kalshi_candles, kalshi_trades
+      - poly_details, poly_books, poly_history, poly_last_trade
+    """
+    params = _params(request_data)
+    market_id = _text(params.get("market_id"))
+    cached = params.get("cached") if isinstance(params.get("cached"), dict) else {}
+    source = market_id.split(":", 1)[0] if ":" in market_id else _text(cached.get("source"))
+    fetched_at = _now_iso()
+    warnings: list[str] = []
+
+    # Refresh the market snapshot from the live record when available.
+    market = cached
+    if source == "kalshi":
+        live = _unwrap(params.get("kalshi_market"))
+        if isinstance(live, dict) and live:
+            market = _normalize_record("kalshi", live, fetched_at) or cached
+        book = _kalshi_state_book(params.get("kalshi_book"), market)
+        history = _kalshi_state_history(params.get("kalshi_candles"))
+        trades_data = _unwrap(params.get("kalshi_trades"))
+        trades = _as_list(trades_data.get("trades")) if isinstance(trades_data, dict) else []
+        last_trade = None
+    elif source == "polymarket":
+        live = _unwrap(params.get("poly_details"))
+        if isinstance(live, dict) and live:
+            market = _normalize_record("polymarket", live, fetched_at) or cached
+        if not (isinstance(market, dict) and market.get("outcomes")) and cached.get("outcomes"):
+            market = cached
+        book = _poly_state_book(params.get("poly_books"), market)
+        history = _poly_state_history(params.get("poly_history"))
+        trades = []
+        last = _unwrap(params.get("poly_last_trade"))
+        last_trade = last if isinstance(last, dict) and last.get("price") is not None else None
+    else:
+        return {
+            "status": False,
+            "data": {},
+            "message": f"market_id must be prefixed with a known source (kalshi:|polymarket:), got: {market_id!r}",
+        }
+
+    if not market:
+        warnings.append("Market not found in cache and no live record returned.")
+    if not book:
+        warnings.append("No order-book depth available for this market.")
+    if not history:
+        warnings.append("No price history available for the requested window.")
+
+    return {
+        "status": True,
+        "data": {
+            "market_id": market_id,
+            "source": source,
+            "market": market or {},
+            "book": {"outcomes": book},
+            "history": history,
+            "last_trade": last_trade,
+            "trades": trades[:100],
+            "fetched_at": fetched_at,
+            "warnings": warnings,
+        },
+    }

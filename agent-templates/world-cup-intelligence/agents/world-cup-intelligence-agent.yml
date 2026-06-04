@@ -16,6 +16,15 @@ agent:
       outputs:
         markets: "$.get('markets', [])"
 
+    - name: worldcup-get-market-state
+      description: Get current price, order-book depth, and history for a market by id
+      inputs:
+        market_id: "$.get('market_id', '')"
+      outputs:
+        market: "$.get('market', {})"
+        book: "$.get('book', {})"
+        history: "$.get('history', [])"
+
     - name: worldcup-get-event-context
       description: Resolve enriched match context
       inputs:

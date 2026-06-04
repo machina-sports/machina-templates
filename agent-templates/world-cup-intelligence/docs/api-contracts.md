@@ -21,6 +21,7 @@ Secret lookup uses the literal name after `$` in a workflow's context-variables.
 ## Launch workflow set
 
 - `worldcup-search-markets`
+- `worldcup-get-market-state`
 - `worldcup-get-event-context`
 - `worldcup-get-iptc-event-context`
 - `worldcup-compare-market-sources`
@@ -110,6 +111,57 @@ Notes:
 - `source` accepts `all`, `polymarket`, or `kalshi`.
 - `force_live=true` bypasses cache preference and returns fresh normalized provider data.
 - Provider records are filtered for World Cup/FIFA/team/query relevance to avoid broad sports-market noise.
+
+## `worldcup-get-market-state`
+
+Resolve a `market_id` to current state, order-book depth, price history, and trades. Every read also refreshes the cached snapshot.
+
+Request:
+
+```json
+{
+  "market_id": "kalshi:KXWCGAME-26JUN16FRASEN-FRA",
+  "include_book": true,
+  "include_history": true,
+  "include_trades": false,
+  "history_hours": 24,
+  "period_interval": 60
+}
+```
+
+Response:
+
+```json
+{
+  "market_id": "kalshi:KXWCGAME-26JUN16FRASEN-FRA",
+  "source": "kalshi",
+  "market": "WorldCupMarket (refreshed)",
+  "book": {
+    "outcomes": [
+      {
+        "name": "France",
+        "token_id": null,
+        "bids": [{"price": 0.69, "size": 568.15}],
+        "asks": [{"price": 0.71, "size": 300.0}],
+        "best_bid": 0.69,
+        "best_ask": 0.71,
+        "spread": 0.02
+      }
+    ]
+  },
+  "history": [{"ts": 1780545600, "price": 0.70, "volume": 140.72}],
+  "last_trade": null,
+  "trades": [],
+  "warnings": []
+}
+```
+
+Notes:
+
+- `market_id` uses the cache id namespace from search/sync (`kalshi:<ticker>` | `polymarket:<id>`).
+- Kalshi asks are implied from the opposite side's bids (ask_yes = 1 − bid_no); depth requires `sports-skills >= 0.25.3` and degrades with a warning below that.
+- Polymarket depth/history/trades are per outcome token; history covers the primary outcome.
+- Best bid/ask are computed by sorting levels — provider ordering is not trusted.
 
 ## `worldcup-sync-market-sources`
 
