@@ -61,4 +61,5 @@ workflow:
         home_team: "$.get('home_team_name', '')"
         away_team: "$.get('away_team_name', '')"
       outputs:
-        injuries: "$.get('data', {}) if $.get('status') else {}"
+        # runner strips our connector's {status,data} envelope -> $ is the data.
+        injuries: "$"
