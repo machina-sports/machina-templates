@@ -31,7 +31,7 @@ setup:
 
 datasets:
   - type: connector
-    path: connectors/worldcup-market-intelligence.yml
+    path: worldcup-market-intelligence.yml
 
   - type: agent
     path: agents/world-cup-intelligence-agent.yml
