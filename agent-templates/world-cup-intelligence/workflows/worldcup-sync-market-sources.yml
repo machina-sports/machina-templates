@@ -77,9 +77,11 @@ workflow:
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 100)"
       outputs:
-        normalized_markets: "$.get('data', {}).get('normalized_markets', []) if $.get('status') else []"
-        sources: "$.get('data', {}).get('sources', {}) if $.get('status') else {}"
-        warnings: "$.get('data', {}).get('warnings', []) if $.get('status') else []"
+        # $ here is the connector's data payload (the engine strips the
+        # status/data envelope before task outputs are evaluated).
+        normalized_markets: "$.get('normalized_markets', [])"
+        sources: "$.get('sources', {})"
+        warnings: "$.get('warnings', [])"
 
     - type: document
       name: save-market-cache

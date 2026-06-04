@@ -48,9 +48,11 @@ workflow:
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 20)"
       outputs:
-        cached_filtered_markets: "$.get('data', {}).get('markets', []) if $.get('status') else []"
-        cached_filtered_count: "$.get('data', {}).get('count', 0) if $.get('status') else 0"
-        cached_warnings: "$.get('data', {}).get('warnings', []) if $.get('status') else []"
+        # $ here is the connector's data payload (the engine strips the
+        # status/data envelope before task outputs are evaluated).
+        cached_filtered_markets: "$.get('markets', [])"
+        cached_filtered_count: "$.get('count', 0)"
+        cached_warnings: "$.get('warnings', [])"
 
     - type: connector
       name: live-sports-skills-search
@@ -117,9 +119,10 @@ workflow:
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 20)"
       outputs:
-        live_normalized_markets: "$.get('data', {}).get('markets', []) if $.get('status') else []"
-        live_sources: "$.get('data', {}).get('sources', {}) if $.get('status') else {}"
-        live_warnings: "$.get('data', {}).get('warnings', []) if $.get('status') else []"
+        # $ here is the connector's data payload (envelope already stripped).
+        live_normalized_markets: "$.get('markets', [])"
+        live_sources: "$.get('sources', {})"
+        live_warnings: "$.get('warnings', [])"
 
     - type: mapping
       name: worldcup-market-normalization
