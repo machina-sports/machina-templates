@@ -8,7 +8,6 @@ workflow:
       enabled: true
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
-    sport: "$.get('sport', 'football')"
     source: "$.get('source', 'all')"
     status: "$.get('status', 'open')"
     limit: "$.get('limit', 100)"
@@ -25,9 +24,11 @@ workflow:
         name: sports-skills
         command: invoke_markets
       inputs:
+        # No sport scoping: Kalshi/Polymarket sport keys are league-level
+        # (epl, fifwc, ...) — 'football' matches nothing. The normalization
+        # connector's World Cup relevance gate filters the results instead.
         command: "'search_entity'"
         query: "$.get('query', 'FIFA World Cup 2026')"
-        sport: "$.get('sport', 'football')"
       outputs:
         sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
 
@@ -41,7 +42,6 @@ workflow:
       inputs:
         command: "'search_markets'"
         query: "$.get('query', 'FIFA World Cup 2026')"
-        sport: "$.get('sport', 'football')"
         limit: "$.get('limit', 100)"
       outputs:
         polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
@@ -56,7 +56,6 @@ workflow:
       inputs:
         command: "'search_markets'"
         query: "$.get('query', 'FIFA World Cup 2026')"
-        sport: "$.get('sport', 'football')"
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 100)"
       outputs:

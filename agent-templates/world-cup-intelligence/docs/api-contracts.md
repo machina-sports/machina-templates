@@ -120,7 +120,6 @@ Request:
 ```json
 {
   "query": "FIFA World Cup 2026",
-  "sport": "football",
   "source": "all",
   "status": "open",
   "limit": 100
