@@ -181,6 +181,94 @@
     }
   },
   "paths": {
+    "/responses": {
+      "post": {
+        "summary": "Create a response (Agent Tools API)",
+        "description": "Creates a model response with optional server-side agent tools (web_search, x_search, code_interpreter). Replaces the deprecated chat-completions live search (search_parameters), which xAI now rejects with HTTP 410.",
+        "operationId": "responses",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "ID of the model to use",
+                    "example": "grok-4-fast"
+                  },
+                  "input": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Message"
+                    },
+                    "description": "Conversation input messages"
+                  },
+                  "stream": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "description": "Server-side tool type: web_search, x_search, code_interpreter"
+                        }
+                      }
+                    },
+                    "description": "Server-side agent tools executed by xAI"
+                  },
+                  "text": {
+                    "type": "object",
+                    "description": "Output formatting, e.g. {format: {type: json_schema, name, schema}}"
+                  }
+                },
+                "required": ["model", "input"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response with output items (reasoning, tool calls, message with url_citation annotations)"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/chat/completions": {
       "post": {
         "summary": "Create a chat completion",
