@@ -25,23 +25,39 @@ Runtime requirement:
 
 import importlib
 import inspect
+import os
 import subprocess
 import sys
 
 
 _MIN_VERSION = (0, 25, 1)
 _PIP_PACKAGE = "sports-skills>=0.25.1,<1.0"
+# Writable install target for in-place upgrades. The pod runs as a non-root
+# user whose home dir is read-only (`pip install --user` fails with EACCES on
+# /home/machina), and system site-packages is root-owned — /tmp is the one
+# reliably writable location. Contents live for the container's lifetime,
+# which matches how long the upgrade is needed.
+_TARGET_DIR = "/tmp/sports-skills-site"
 
 
-def _installed_version():
-    """Return the installed sports-skills version as a tuple, or None."""
+def _version_ok():
+    """True when the importable sports-skills meets _MIN_VERSION."""
     try:
         from importlib import metadata
 
         parts = metadata.version("sports-skills").split(".")[:3]
-        return tuple(int(p) for p in parts)
+        return tuple(int(p) for p in parts) >= _MIN_VERSION
     except Exception:
-        return None
+        return False
+
+
+def _activate_target():
+    """Put _TARGET_DIR first on sys.path and drop stale imported modules."""
+    if _TARGET_DIR not in sys.path:
+        sys.path.insert(0, _TARGET_DIR)
+    importlib.invalidate_caches()
+    for name in [m for m in sys.modules if m == "sports_skills" or m.startswith("sports_skills.")]:
+        del sys.modules[name]
 
 
 def _ensure_sports_skills():
@@ -50,37 +66,43 @@ def _ensure_sports_skills():
     Returns (ok: bool, err_msg: str|None). Pod base images bake a pinned
     sports-skills into system site-packages; when that copy is older than
     _MIN_VERSION (features like the 'worldcup' sport key would be missing),
-    this upgrades in place instead of silently using the stale version.
-    Long-term the floor should be enforced in the pod image requirements —
-    this branch keeps already-deployed pods working without a rebuild.
-
-    Uses `--user` so the install lands in the running container user's
-    `~/.local` (the pod runs as a non-root user that can't write to the
-    system site-packages). After install, the `~/.local/lib/...`
-    site-packages dir is added to `sys.path` and any previously imported
-    (older) sports_skills modules are purged so the in-process re-import
-    picks up the upgrade without a restart.
+    this installs the current release to _TARGET_DIR and puts it first on
+    sys.path instead of silently using the stale version. Long-term the
+    floor should be enforced in the pod image requirements — this branch
+    keeps already-deployed pods working without a rebuild.
     """
-    version = _installed_version()
-    if version is not None and version >= _MIN_VERSION:
+    # Fast path: an acceptable version is already importable.
+    if _version_ok():
         try:
             importlib.import_module("sports_skills")
             return True, None
         except ImportError:
             pass
 
-    # First-call pip install (or in-place upgrade of a stale baked copy).
-    # Capture stdout+stderr so failures surface a real error in the
-    # workflow output instead of a cryptic exit code.
+    # A previous call (possibly in another worker process of this container)
+    # may have already installed the upgrade to /tmp — just activate it.
+    if os.path.isdir(os.path.join(_TARGET_DIR, "sports_skills")):
+        _activate_target()
+        if _version_ok():
+            try:
+                importlib.import_module("sports_skills")
+                return True, None
+            except ImportError:
+                pass
+
+    # Install/upgrade into the writable target. Capture stdout+stderr so
+    # failures surface a real error in the workflow output instead of a
+    # cryptic exit code.
     proc = subprocess.run(  # noqa: S603 — args are constants, no shell
         [
             sys.executable,
             "-m",
             "pip",
             "install",
-            "--user",
             "--no-cache-dir",
             "--upgrade",
+            "--target",
+            _TARGET_DIR,
             _PIP_PACKAGE,
         ],
         capture_output=True,
@@ -90,33 +112,22 @@ def _ensure_sports_skills():
     if proc.returncode != 0:
         # pip prints the actionable bit to stderr; include both for safety.
         tail = (proc.stderr or proc.stdout or "")[-1500:]
-        if version is not None:
-            # A stale copy exists — degrade gracefully rather than hard-fail.
-            try:
-                importlib.import_module("sports_skills")
-                return True, None
-            except ImportError:
-                pass
+        # If a stale baked copy exists, degrade gracefully rather than
+        # hard-fail (offline pods keep working on the old feature set).
+        try:
+            importlib.import_module("sports_skills")
+            return True, None
+        except ImportError:
+            pass
         return False, f"pip install {_PIP_PACKAGE} failed (rc={proc.returncode}): {tail}"
 
-    # `--user` writes to a path Python doesn't know about yet in this
-    # process. Re-resolve and inject into sys.path so the import below
-    # finds it, and purge any already-imported older modules.
-    import site
-
-    user_site = site.getusersitepackages()
-    if user_site and user_site not in sys.path:
-        sys.path.insert(0, user_site)
-    importlib.invalidate_caches()
-    for name in [m for m in sys.modules if m == "sports_skills" or m.startswith("sports_skills.")]:
-        del sys.modules[name]
-
+    _activate_target()
     try:
         importlib.import_module("sports_skills")
         return True, None
     except ImportError as e:
         return False, (
-            f"sports_skills installed but not importable from {user_site}: {e}. "
+            f"sports_skills installed but not importable from {_TARGET_DIR}: {e}. "
             f"pip stdout tail: {(proc.stdout or '')[-500:]}"
         )
 
