@@ -16,6 +16,11 @@ WORLD_CUP_TERMS = (
     "fifa",
     "2026 world cup",
     "fifa world cup",
+    # Kalshi World Cup series tickers (e.g. KXWCGAME-26JUN27CODUZB-UZB,
+    # KXMENWORLDCUP-...). Game titles like "Congo DR vs Uzbekistan Winner?"
+    # carry no World Cup wording — the ticker in the haystack is the signal.
+    "kxwc",
+    "worldcup",
 )
 
 
@@ -131,14 +136,31 @@ def _kalshi_outcomes(record: dict[str, Any]) -> list[dict[str, Any]]:
         return normalized
 
     yes_price = _normalize_probability(
-        _first(record, "yes_price", "yes_ask", "yes_bid", "last_price", "price")
+        _first(
+            record,
+            "yes_price",
+            "yes_ask",
+            "yes_bid",
+            "last_price",
+            "price",
+            # Kalshi's current trade API returns dollar-string fields.
+            "last_price_dollars",
+            "yes_ask_dollars",
+            "yes_bid_dollars",
+        )
     )
-    no_price = _normalize_probability(_first(record, "no_price", "no_ask", "no_bid"))
+    no_price = _normalize_probability(
+        _first(record, "no_price", "no_ask", "no_bid", "no_ask_dollars", "no_bid_dollars")
+    )
     if no_price is None and yes_price is not None:
         no_price = round(1 - yes_price, 6)
+    # Kalshi binary markets describe the strike via yes_sub_title (e.g.
+    # "Uzbekistan" for "Congo DR vs Uzbekistan Winner?"). no_sub_title repeats
+    # the strike, so the No side keeps its literal name.
+    yes_name = _text(record.get("yes_sub_title")) or "Yes"
     results = []
     if yes_price is not None:
-        results.append({"name": "Yes", "price": yes_price, "token_id": None, "source_outcome_id": "yes"})
+        results.append({"name": yes_name, "price": yes_price, "token_id": None, "source_outcome_id": "yes"})
     if no_price is not None:
         results.append({"name": "No", "price": no_price, "token_id": None, "source_outcome_id": "no"})
     return results
@@ -202,8 +224,8 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
         "status": status,
         "market_type": _text(_first(record, "sports_market_type", "type", "category", "market_type")) or None,
         "outcomes": outcomes,
-        "volume": _first(record, "volume", "volume_24h", "dollar_volume"),
-        "liquidity": _first(record, "liquidity", "open_interest"),
+        "volume": _first(record, "volume", "volume_24h", "dollar_volume", "volume_fp"),
+        "liquidity": _first(record, "liquidity", "open_interest", "liquidity_dollars", "open_interest_fp"),
         "spread": _first(record, "spread", "bid_ask_spread"),
         "start_time": _first(record, "start_date", "start_time", "open_time"),
         "end_time": _first(record, "end_date", "close_time", "expiration_time", "expected_expiration_time"),

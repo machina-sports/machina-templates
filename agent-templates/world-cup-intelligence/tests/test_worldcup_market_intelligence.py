@@ -130,6 +130,28 @@ class TestNormalizeMarketSources:
         assert result["data"]["count"] == 1
         assert result["data"]["markets"][0]["status"] == "open"
 
+    def test_kalshi_dollar_fields_and_series_ticker_relevance(self):
+        # Real KXWCGAME shape: dollar-string prices, no World Cup wording in
+        # the title — the series ticker is the relevance signal.
+        record = {
+            "ticker": "KXWCGAME-26JUN27CODUZB-UZB",
+            "event_ticker": "KXWCGAME-26JUN27CODUZB",
+            "title": "Congo DR vs Uzbekistan Winner?",
+            "yes_sub_title": "Uzbekistan",
+            "no_sub_title": "Uzbekistan",
+            "status": "active",
+            "yes_bid_dollars": "0.29",
+            "no_bid_dollars": "0.67",
+            "volume_fp": "357.97",
+            "liquidity_dollars": "0.0000",
+        }
+        result = normalize_market_sources({"params": {"kalshi_markets": {"markets": [record]}}})
+        assert result["data"]["count"] == 1
+        market = result["data"]["markets"][0]
+        outcomes = {o["name"]: o["price"] for o in market["outcomes"]}
+        assert outcomes == {"Uzbekistan": 0.29, "No": 0.67}
+        assert market["volume"] == "357.97"
+
 
 class TestFilterCachedMarkets:
     def _cached(self, fetched_at, **overrides):
