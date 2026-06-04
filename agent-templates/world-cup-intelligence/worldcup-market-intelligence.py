@@ -678,9 +678,23 @@ def detect_market_edges(request_data):
         if event_id:
             groups.setdefault((market.get("source"), event_id), []).append(market)
     for (source, event_id), legs in groups.items():
-        priced = [(leg, _yes_price(leg)) for leg in legs]
+        # Dedup repeated cache_ids — overlapping sync generations can leave
+        # two docs for one outcome, which would double-count a leg.
+        seen_ids = set()
+        unique_legs = []
+        for leg in legs:
+            cid = leg.get("cache_id")
+            if cid in seen_ids:
+                continue
+            seen_ids.add(cid)
+            unique_legs.append(leg)
+        priced = [(leg, _yes_price(leg)) for leg in unique_legs]
         priced = [(leg, p) for leg, p in priced if p is not None]
         if len(priced) < 2:
+            continue
+        # A YES leg priced at exactly 0.0 has no bid (unpriced/illiquid), not
+        # a real ~0 probability — it deflates the sum into a fake underround.
+        if any(p == 0.0 for _, p in priced):
             continue
         # Book-sum == 1.0 only holds for SINGLE-WINNER mutually-exclusive
         # events (one match: home/away/tie). "Top 2 advance" group markets
@@ -730,7 +744,9 @@ def detect_market_edges(request_data):
             if isinstance(pm, dict) and "draw" in _lower(pm.get("question")):
                 p_draw = _outcome_price(pm, "yes")
                 break
-        if k_tie is None or p_draw is None:
+        # Exactly 0.0 means the venue has no bid on the tie (unpriced), not a
+        # genuine ~0 draw probability — can't form a real cross-venue edge.
+        if k_tie is None or p_draw is None or k_tie == 0.0 or p_draw == 0.0:
             continue
         delta = round(k_tie - p_draw, 6)
         edge_bps = round(abs(delta) * 10000)

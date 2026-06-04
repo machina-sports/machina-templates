@@ -370,3 +370,40 @@ class TestDetectPriceMove:
         r = detect_price_move({"params": {"history": [{"ts": 1, "price": 0.5}]}})
         assert r["data"]["moved"] is False
         assert r["data"]["warnings"]
+
+
+class TestEdgeDataQuality:
+    def test_duplicate_leg_deduped(self):
+        # Two cache docs for the same outcome must count once.
+        cached = [
+            _leg("kalshi:M-FRA", "M", "France", 0.70),
+            _leg("kalshi:M-FRA", "M", "France", 0.70),  # dup
+            _leg("kalshi:M-SEN", "M", "Senegal", 0.13),
+            _leg("kalshi:M-TIE", "M", "Tie", 0.20),
+        ]
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 50}})
+        cands = r["data"]["edge_candidates"]
+        assert len(cands) == 1
+        assert cands[0]["book_sum"] == 1.03  # not 1.73
+
+    def test_zero_priced_tie_excluded_from_book(self):
+        cached = [
+            _leg("kalshi:M-A", "M", "A", 0.70),
+            _leg("kalshi:M-B", "M", "B", 0.13),
+            _leg("kalshi:M-TIE", "M", "Tie", 0.0),  # unpriced
+        ]
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 50}})
+        assert r["data"]["count"] == 0
+
+    def test_zero_kalshi_tie_excluded_cross_venue(self):
+        cached = [_leg("kalshi:KXWCGAME-X-TIE", "KXWCGAME-X", "Tie", 0.0)]
+        matches = [{
+            "title": "A vs. B", "match_method": "code",
+            "kalshi": {"market_tickers": ["KXWCGAME-X-TIE"]},
+            "polymarket": {"markets": [
+                {"question": "Will A vs. B end in a draw?",
+                 "outcomes": [{"name": "Yes", "price": 0.30}]},
+            ]},
+        }]
+        r = detect_market_edges({"params": {"cached_markets": cached, "matches": matches, "min_edge_bps": 50}})
+        assert not [c for c in r["data"]["edge_candidates"] if c["candidate_type"] == "cross_venue_draw"]
