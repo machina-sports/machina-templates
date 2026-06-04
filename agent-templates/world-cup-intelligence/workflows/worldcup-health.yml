@@ -1,20 +1,25 @@
 workflow:
   name: worldcup-health
   title: World Cup Intelligence - Health
-  description: Cheap smoke test for the World Cup Intelligence template.
+  description: Cheap smoke test for the World Cup Intelligence template; proves the same-pod document store responds.
   inputs:
     include_connectors: "$.get('include_connectors', False)"
   outputs:
     product: "'world_cup_market_intelligence'"
     version: "'0.1.0'"
+    store_reachable: "$.get('store_reachable', False)"
+    connectors: "$.get('connectors', [])"
     workflow-status: "'executed'"
   tasks:
-    - type: expression
+    - type: document
       name: health
-      description: Return template metadata.
-      inputs:
-        include_connectors: "$.get('include_connectors', False)"
+      description: Cheap read against the same-pod document store.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'doc-structure'"
       outputs:
-        product: "'world_cup_market_intelligence'"
-        version: "'0.1.0'"
+        store_reachable: "True"
         connectors: "['api-football', 'sports-skills', 'kalshi', 'polymarket', 'google-genai', 'grok'] if $.get('include_connectors') else []"
