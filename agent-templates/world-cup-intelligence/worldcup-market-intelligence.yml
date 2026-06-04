@@ -10,3 +10,7 @@ connector:
       value: "filter_cached_markets"
     - name: "Normalize market state"
       value: "normalize_market_state"
+    - name: "Detect market edges"
+      value: "detect_market_edges"
+    - name: "Detect price move"
+      value: "detect_price_move"

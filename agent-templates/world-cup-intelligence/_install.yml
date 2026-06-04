@@ -56,6 +56,8 @@ datasets:
   - type: workflow
     path: workflows/worldcup-find-market-edges.yml
   - type: workflow
+    path: workflows/worldcup-explain-market-move.yml
+  - type: workflow
     path: workflows/worldcup-generate-market-brief.yml
   - type: workflow
     path: workflows/worldcup-fan-sentiment-context.yml
@@ -70,6 +72,8 @@ datasets:
     path: prompts/worldcup-market-comparison.yml
   - type: prompts
     path: prompts/worldcup-market-edge-analysis.yml
+  - type: prompts
+    path: prompts/worldcup-market-move-explain.yml
   - type: prompts
     path: prompts/worldcup-event-context-summary.yml
   - type: prompts

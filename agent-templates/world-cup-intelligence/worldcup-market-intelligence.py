@@ -612,3 +612,218 @@ def normalize_market_state(request_data: dict[str, Any]) -> dict[str, Any]:
             "warnings": warnings,
         },
     }
+
+
+# -- Edge detection + price-move (PR 5) --------------------------------------
+
+
+def _yes_price(market):
+    """Best YES-style probability for a normalized market (first outcome)."""
+    outcomes = market.get("outcomes") if isinstance(market, dict) else None
+    if outcomes and isinstance(outcomes[0], dict):
+        price = outcomes[0].get("price")
+        if price is not None:
+            return _to_float(price)
+    return None
+
+
+def _outcome_price(market, name_contains):
+    """Price of the first outcome whose name contains a substring (lowercased)."""
+    for outcome in market.get("outcomes", []) if isinstance(market, dict) else []:
+        if isinstance(outcome, dict) and name_contains in _lower(outcome.get("name")):
+            price = outcome.get("price")
+            return _to_float(price) if price is not None else None
+    return None
+
+
+def detect_market_edges(request_data):
+    """Find informational market dislocations from cached markets + match pairs.
+
+    Two detector families, both arithmetic over normalized 0-1 prices:
+
+      1. within_venue_book_sum: a multi-outcome event (Kalshi home/away/tie)
+         whose YES prices sum away from 1.0 is mispriced against itself.
+         sum < 1 => buying every NO is a fee-blind lock; > 1 the reverse.
+         edge_bps = |sum - 1| * 10000.
+
+      2. cross_venue_draw: when match_markets pairs a game across venues, the
+         draw/tie outcome is the cleanest line both venues price. Compare the
+         Kalshi tie price (joined from cache by ticker) to the Polymarket draw
+         price. edge_bps = |delta| * 10000.
+
+    Params:
+      - cached_markets: normalized WorldCupMarket[] (worldcup:market-cache)
+      - matches: match_markets output (optional; enables cross-venue)
+      - min_edge_bps: minimum edge to report (default 50)
+      - limit: max candidates (default 50)
+    """
+    params = _params(request_data)
+    cached = [m for m in _as_list(params.get("cached_markets")) if isinstance(m, dict)]
+    try:
+        min_edge_bps = int(params.get("min_edge_bps") or 50)
+    except (TypeError, ValueError):
+        min_edge_bps = 50
+    try:
+        limit = max(1, min(int(params.get("limit") or 50), 250))
+    except (TypeError, ValueError):
+        limit = 50
+
+    by_cache_id = {m.get("cache_id"): m for m in cached if m.get("cache_id")}
+    candidates = []
+
+    # 1. Within-venue book-sum dislocations, grouped by source event.
+    groups = {}
+    for market in cached:
+        event_id = market.get("source_event_id")
+        if event_id:
+            groups.setdefault((market.get("source"), event_id), []).append(market)
+    for (source, event_id), legs in groups.items():
+        priced = [(leg, _yes_price(leg)) for leg in legs]
+        priced = [(leg, p) for leg, p in priced if p is not None]
+        if len(priced) < 2:
+            continue
+        book_sum = round(sum(p for _, p in priced), 6)
+        edge_bps = round(abs(book_sum - 1.0) * 10000)
+        if edge_bps < min_edge_bps:
+            continue
+        candidates.append({
+            "candidate_type": "within_venue_book_sum",
+            "source": source,
+            "event_id": event_id,
+            "book_sum": book_sum,
+            "edge_bps": edge_bps,
+            "direction": "buy_all_no" if book_sum < 1 else "buy_all_yes",
+            "legs": [
+                {"cache_id": leg.get("cache_id"), "title": leg.get("title"),
+                 "outcome": (leg.get("outcomes") or [{}])[0].get("name"), "yes_price": p}
+                for leg, p in priced
+            ],
+            "caveats": [
+                "Fee-, liquidity-, and resolution-rule-blind. Verify book depth and settlement terms before acting.",
+                "A sum near 1.0 within the bid/ask spread is normal, not an edge.",
+            ],
+        })
+
+    # 2. Cross-venue draw line, from match pairs.
+    for match in _as_list(params.get("matches")):
+        if not isinstance(match, dict):
+            continue
+        kalshi = match.get("kalshi") or {}
+        poly = match.get("polymarket") or {}
+        tie_ticker = next(
+            (t for t in _as_list(kalshi.get("market_tickers")) if str(t).upper().endswith("-TIE")),
+            None,
+        )
+        k_tie = _yes_price(by_cache_id.get("kalshi:" + _text(tie_ticker), {})) if tie_ticker else None
+        p_draw = None
+        for pm in _as_list(poly.get("markets")):
+            if isinstance(pm, dict) and "draw" in _lower(pm.get("question")):
+                p_draw = _outcome_price(pm, "yes")
+                break
+        if k_tie is None or p_draw is None:
+            continue
+        delta = round(k_tie - p_draw, 6)
+        edge_bps = round(abs(delta) * 10000)
+        if edge_bps < min_edge_bps:
+            continue
+        candidates.append({
+            "candidate_type": "cross_venue_draw",
+            "title": match.get("title"),
+            "match_method": match.get("match_method"),
+            "kalshi_tie_price": k_tie,
+            "polymarket_draw_price": p_draw,
+            "delta": delta,
+            "edge_bps": edge_bps,
+            "cheaper_venue": "kalshi" if k_tie < p_draw else "polymarket",
+            "caveats": [
+                "Draw lines may differ in resolution rules (90-min vs incl. extra time). Verify both before acting.",
+                "Fee- and liquidity-blind; cross-venue execution carries transfer/settlement risk.",
+            ],
+        })
+
+    candidates.sort(key=lambda c: c["edge_bps"], reverse=True)
+    candidates = candidates[:limit]
+
+    warnings = []
+    if not cached:
+        warnings.append("No cached markets supplied -- run worldcup-sync-market-sources first.")
+    if not params.get("matches"):
+        warnings.append("No match pairs supplied -- cross-venue draw detection skipped (within-venue only).")
+    if not candidates:
+        warnings.append("No dislocations >= " + str(min_edge_bps) + " bps found. Markets look efficiently priced.")
+
+    return {
+        "status": True,
+        "data": {
+            "edge_candidates": candidates,
+            "count": len(candidates),
+            "min_edge_bps": min_edge_bps,
+            "warnings": warnings,
+        },
+    }
+
+
+def detect_price_move(request_data):
+    """Detect the largest price move in a normalized history window.
+
+    Params:
+      - history: normalized points [{ts|timestamp, price|p}] (0-1 prices)
+      - window_hours: only consider points within the last N hours (optional)
+      - min_move_bps: threshold to flag a move (default 200 = 2 cents)
+    """
+    params = _params(request_data)
+    raw = _as_list(params.get("history"))
+    try:
+        min_move_bps = int(params.get("min_move_bps") or 200)
+    except (TypeError, ValueError):
+        min_move_bps = 200
+
+    points = []
+    for point in raw:
+        if not isinstance(point, dict):
+            continue
+        ts = point.get("ts", point.get("timestamp"))
+        price = point.get("price", point.get("p"))
+        if ts is None or price is None:
+            continue
+        points.append({"ts": int(_to_float(ts)), "price": round(_to_float(price), 6)})
+    points.sort(key=lambda pt: pt["ts"])
+
+    window_hours = params.get("window_hours")
+    if window_hours and points:
+        try:
+            cutoff = points[-1]["ts"] - int(window_hours) * 3600
+            points = [pt for pt in points if pt["ts"] >= cutoff] or points
+        except (TypeError, ValueError):
+            pass
+
+    if len(points) < 2:
+        return {"status": True, "data": {
+            "moved": False, "net_move_bps": 0, "swing_bps": 0, "points": len(points),
+            "warnings": ["Not enough history points to detect a move."],
+        }}
+
+    start, end = points[0], points[-1]
+    net_bps = round((end["price"] - start["price"]) * 10000)
+    lo = min(points, key=lambda pt: pt["price"])
+    hi = max(points, key=lambda pt: pt["price"])
+    swing_bps = round((hi["price"] - lo["price"]) * 10000)
+
+    return {
+        "status": True,
+        "data": {
+            "moved": abs(net_bps) >= min_move_bps or swing_bps >= min_move_bps,
+            "net_move_bps": net_bps,
+            "swing_bps": swing_bps,
+            "direction": "up" if net_bps > 0 else ("down" if net_bps < 0 else "flat"),
+            "from_price": start["price"],
+            "to_price": end["price"],
+            "low": {"price": lo["price"], "ts": lo["ts"]},
+            "high": {"price": hi["price"], "ts": hi["ts"]},
+            "from_ts": start["ts"],
+            "to_ts": end["ts"],
+            "points": len(points),
+            "min_move_bps": min_move_bps,
+            "warnings": [],
+        },
+    }

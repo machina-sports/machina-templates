@@ -1,0 +1,107 @@
+workflow:
+  name: worldcup-explain-market-move
+  title: World Cup Intelligence - Explain Market Move
+  description: Detect a price move for a market_id over a window and explain its likely drivers with grounded, cited evidence.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    market_id: "$.get('market_id', '')"
+    window_hours: "$.get('window_hours', 24)"
+    min_move_bps: "$.get('min_move_bps', 200)"
+    include_reasoning: "$.get('include_reasoning', True)"
+  outputs:
+    market_id: "$.get('requested_id', '')"
+    move: "$.get('move', {})"
+    explanation: "$.get('explanation', {})"
+    warnings: "$.get('move_warnings', [])"
+    workflow-status: "$.get('move', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-cached-market
+      description: Load the cached market snapshot (title, source, token ids) by cache id.
+      condition: "$.get('market_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        metadata.cache_id: "$.get('market_id')"
+      outputs:
+        cached: "($.get('documents', []) or [{}])[0].get('value', {})"
+        requested_id: "$.get('market_id', '')"
+
+    - type: connector
+      name: price-history
+      description: Normalized price history for the market (venue-routed by id prefix).
+      condition: "$.get('requested_id', '') != ''"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_markets
+      inputs:
+        command: "'get_price_history'"
+        venue: "$.get('requested_id', '').split(':', 1)[0]"
+        ticker: "$.get('requested_id', '').split(':', 1)[1] if $.get('requested_id', '').startswith('kalshi:') else None"
+        token_id: "(($.get('cached', {}).get('outcomes', []) or [{}])[0].get('token_id')) if $.get('requested_id', '').startswith('polymarket:') else None"
+        interval: "'1h'"
+      outputs:
+        history: "$.get('data', {}).get('points', []) if $.get('status') else []"
+
+    - type: connector
+      name: detect-move
+      description: Detect the largest move in the window.
+      condition: "$.get('requested_id', '') != ''"
+      connector:
+        name: worldcup-market-intelligence
+        command: detect_price_move
+      inputs:
+        history: "$.get('history', [])"
+        window_hours: "$.get('window_hours', 24)"
+        min_move_bps: "$.get('min_move_bps', 200)"
+      outputs:
+        move: "$"
+        move_warnings: "$.get('warnings', [])"
+
+    - type: connector
+      name: grounded-move-research
+      description: Grounded Google Search for what happened to this matchup in the move window.
+      condition: "$.get('move', {}).get('moved') is True and $.get('include_reasoning', True) is True"
+      continue_on_error: true
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.5-flash
+        provider: vertex_ai
+        location: global
+      inputs:
+        search_query: "$.get('cached', {}).get('title', 'FIFA World Cup 2026') + ' FIFA World Cup 2026 news injury lineup odds movement'"
+        recency_days: "max(1, int(int($.get('window_hours', 24)) / 24) + 1)"
+        timeout: 120
+      outputs:
+        research: "$.get('answer', '')"
+        research_sources: "$.get('search_results', [])"
+
+    - type: prompt
+      name: worldcup-market-move-explain
+      description: Explain the move with grounded evidence.
+      condition: "$.get('move', {}).get('moved') is True and $.get('include_reasoning', True) is True"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        market: "{'title': $.get('cached', {}).get('title'), 'source': $.get('cached', {}).get('source')}"
+        move: "$.get('move', {})"
+        research: "$.get('research', '')"
+        research_sources: "$.get('research_sources', [])"
+        timeout: 120
+      outputs:
+        explanation: "$"

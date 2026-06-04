@@ -270,3 +270,91 @@ class TestNormalizeMarketState:
         d = result["data"]
         assert d["market"] == {}
         assert len(d["warnings"]) == 3
+
+
+detect_market_edges = _module.detect_market_edges
+detect_price_move = _module.detect_price_move
+
+
+def _leg(cache_id, event_id, name, price):
+    return {
+        "cache_id": cache_id, "source": "kalshi", "source_event_id": event_id,
+        "title": "Game", "outcomes": [{"name": name, "price": price}],
+    }
+
+
+class TestDetectMarketEdges:
+    def test_within_venue_book_sum_underround(self):
+        # Three-way book summing to 0.97 → 300 bps "buy all no" lock.
+        cached = [
+            _leg("kalshi:G-A", "G", "Colombia", 0.66),
+            _leg("kalshi:G-B", "G", "Congo DR", 0.10),
+            _leg("kalshi:G-TIE", "G", "Tie", 0.21),
+        ]
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 50}})
+        cands = r["data"]["edge_candidates"]
+        assert len(cands) == 1
+        assert cands[0]["candidate_type"] == "within_venue_book_sum"
+        assert cands[0]["book_sum"] == 0.97
+        assert cands[0]["edge_bps"] == 300
+        assert cands[0]["direction"] == "buy_all_no"
+
+    def test_efficient_book_no_edge(self):
+        cached = [
+            _leg("kalshi:G-A", "G", "A", 0.50),
+            _leg("kalshi:G-B", "G", "B", 0.48),
+            _leg("kalshi:G-TIE", "G", "Tie", 0.03),
+        ]  # sum 1.01 → 100 bps
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 150}})
+        assert r["data"]["count"] == 0
+
+    def test_cross_venue_draw(self):
+        cached = [_leg("kalshi:KXWCGAME-26JUN27JORARG-TIE", "KXWCGAME-26JUN27JORARG", "Tie", 0.28)]
+        matches = [{
+            "title": "Jordan vs. Argentina", "match_method": "code",
+            "kalshi": {"market_tickers": ["KXWCGAME-26JUN27JORARG-JOR", "KXWCGAME-26JUN27JORARG-TIE"]},
+            "polymarket": {"markets": [
+                {"question": "Will Jordan vs. Argentina end in a draw?",
+                 "outcomes": [{"name": "Yes", "price": 0.125}, {"name": "No", "price": 0.875}]},
+            ]},
+        }]
+        r = detect_market_edges({"params": {"cached_markets": cached, "matches": matches, "min_edge_bps": 50}})
+        cross = [c for c in r["data"]["edge_candidates"] if c["candidate_type"] == "cross_venue_draw"]
+        assert len(cross) == 1
+        assert cross[0]["kalshi_tie_price"] == 0.28
+        assert cross[0]["polymarket_draw_price"] == 0.125
+        assert cross[0]["edge_bps"] == 1550
+        assert cross[0]["cheaper_venue"] == "polymarket"
+
+    def test_empty_warns(self):
+        r = detect_market_edges({"params": {}})
+        assert r["data"]["count"] == 0
+        assert any("sync" in w for w in r["data"]["warnings"])
+
+
+class TestDetectPriceMove:
+    def test_detects_net_move(self):
+        hist = [{"ts": 1, "price": 0.50}, {"ts": 2, "price": 0.55}, {"ts": 3, "price": 0.62}]
+        r = detect_price_move({"params": {"history": hist, "min_move_bps": 200}})
+        d = r["data"]
+        assert d["moved"] is True
+        assert d["net_move_bps"] == 1200
+        assert d["direction"] == "up"
+        assert d["from_price"] == 0.50 and d["to_price"] == 0.62
+
+    def test_swing_within_flat_net(self):
+        # Net flat, but a real intraday swing should still register.
+        hist = [{"timestamp": 1, "p": 0.50}, {"timestamp": 2, "p": 0.40}, {"timestamp": 3, "p": 0.50}]
+        r = detect_price_move({"params": {"history": hist, "min_move_bps": 500}})
+        assert r["data"]["swing_bps"] == 1000
+        assert r["data"]["moved"] is True
+
+    def test_quiet_market_no_move(self):
+        hist = [{"ts": 1, "price": 0.70}, {"ts": 2, "price": 0.705}, {"ts": 3, "price": 0.70}]
+        r = detect_price_move({"params": {"history": hist, "min_move_bps": 200}})
+        assert r["data"]["moved"] is False
+
+    def test_insufficient_history(self):
+        r = detect_price_move({"params": {"history": [{"ts": 1, "price": 0.5}]}})
+        assert r["data"]["moved"] is False
+        assert r["data"]["warnings"]

@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-find-market-edges
   title: World Cup Intelligence - Find Market Edges
-  description: Identify informational price dislocations, arbitrage candidates, and market-edge hypotheses across Kalshi/Polymarket. Does not execute trades.
+  description: Identify informational price dislocations and arbitrage candidates across Kalshi/Polymarket (within-venue book sums + cross-venue draw lines). Does not execute trades.
 
   context-variables:
     debugger:
@@ -9,38 +9,55 @@ workflow:
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
   inputs:
-    query: "$.get('query', 'FIFA World Cup 2026')"
     min_edge_bps: "$.get('min_edge_bps', 100)"
     include_reasoning: "$.get('include_reasoning', True)"
     limit: "$.get('limit', 50)"
   outputs:
     edge_candidates: "$.get('edge_candidates', [])"
+    count: "len($.get('edge_candidates', []))"
     analysis: "$.get('analysis', {})"
     warnings: "$.get('edge_warnings', [])"
     workflow-status: "'executed'"
   tasks:
     - type: document
       name: load-market-cache
-      description: Load normalized markets for candidate edge detection from the same pod document store.
+      description: Load all normalized markets from the same pod document store.
       config:
         action: search
-        search-limit: 50
+        search-limit: 500
         search-vector: false
       filters:
         name: "'worldcup:market-cache'"
       outputs:
-        markets: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 50))]"
+        markets: "[d.get('value', {}) for d in $.get('documents', [])]"
 
-    - type: mapping
-      name: worldcup-market-normalization
-      title: World Cup | Market Edge Candidate Detection
-      description: Compute cross-source price dislocations and arbitrage-candidate gaps from normalized market data.
+    - type: connector
+      name: match-cross-venue
+      description: Deterministically pair the same game across Kalshi and Polymarket.
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_markets
       inputs:
-        markets: "$.get('markets', [])"
-        min_edge_bps: "$.get('min_edge_bps', 100)"
+        command: "'match_markets'"
+        sport: "'worldcup'"
       outputs:
+        matches: "$.get('data', {}).get('matches', []) if $.get('status') else []"
+
+    - type: connector
+      name: detect-edges
+      description: Compute within-venue book-sum and cross-venue draw dislocations.
+      connector:
+        name: worldcup-market-intelligence
+        command: detect_market_edges
+      inputs:
+        cached_markets: "$.get('markets', [])"
+        matches: "$.get('matches', [])"
+        min_edge_bps: "$.get('min_edge_bps', 100)"
+        limit: "$.get('limit', 50)"
+      outputs:
+        # $ is the connector data payload (envelope already stripped).
         edge_candidates: "$.get('edge_candidates', [])"
         edge_warnings: "$.get('warnings', [])"
 
@@ -55,9 +72,7 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        query: "$.get('query')"
         edge_candidates: "$.get('edge_candidates', [])"
-        markets: "[{'title': m.get('title'), 'source': m.get('source'), 'outcomes': m.get('outcomes'), 'volume': m.get('volume')} for m in $.get('markets', [])][:30]"
         timeout: 120
       outputs:
         analysis: "$"

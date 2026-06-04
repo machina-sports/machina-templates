@@ -35,10 +35,18 @@ agent:
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
       inputs:
-        query: "$.get('query', 'FIFA World Cup')"
+        min_edge_bps: "$.get('min_edge_bps', 100)"
       outputs:
         edge_candidates: "$.get('edge_candidates', [])"
         edge_analysis: "$.get('analysis', {})"
+
+    - name: worldcup-explain-market-move
+      description: Explain why a market price moved, with grounded evidence
+      inputs:
+        market_id: "$.get('market_id', '')"
+      outputs:
+        move: "$.get('move', {})"
+        explanation: "$.get('explanation', {})"
 
     - name: worldcup-generate-market-brief
       description: Generate a grounded World Cup market-intelligence brief

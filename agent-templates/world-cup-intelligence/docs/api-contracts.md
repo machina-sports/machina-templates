@@ -26,6 +26,7 @@ Secret lookup uses the literal name after `$` in a workflow's context-variables.
 - `worldcup-get-iptc-event-context`
 - `worldcup-compare-market-sources`
 - `worldcup-find-market-edges`
+- `worldcup-explain-market-move`
 - `worldcup-generate-market-brief`
 - `worldcup-fan-sentiment-context`
 
@@ -162,6 +163,26 @@ Notes:
 - Kalshi asks are implied from the opposite side's bids (ask_yes = 1 − bid_no); depth requires `sports-skills >= 0.25.3` and degrades with a warning below that.
 - Polymarket depth/history/trades are per outcome token; history covers the primary outcome.
 - Best bid/ask are computed by sorting levels — provider ordering is not trusted.
+
+## `worldcup-find-market-edges`
+
+Scans the cached markets and cross-venue match pairs for dislocations.
+
+Request: `{ "min_edge_bps": 100, "include_reasoning": true, "limit": 50 }`
+
+Returns `edge_candidates[]`, each either:
+- `within_venue_book_sum` — a Kalshi event whose outcome YES prices sum away from 1.0 (`book_sum`, `edge_bps`, `direction`, `legs[]`)
+- `cross_venue_draw` — Kalshi tie price vs Polymarket draw price for a matched game (`delta`, `edge_bps`, `cheaper_venue`)
+
+Plus `analysis` (gemini-3.5-flash explanation with fee/liquidity/resolution caveats). Informational only; never trade execution.
+
+## `worldcup-explain-market-move`
+
+Detects the largest price move for a `market_id` over a window and explains it.
+
+Request: `{ "market_id": "kalshi:KXWCGAME-...-FRA", "window_hours": 24, "min_move_bps": 200 }`
+
+Returns `move` (`moved`, `net_move_bps`, `swing_bps`, `direction`, from/to price + ts) and, when moved, `explanation` (grounded, cited drivers classified confirmed/speculative/noise). Uses `get_price_history` (normalized 0-1) + `invoke_search`.
 
 ## `worldcup-sync-market-sources`
 
