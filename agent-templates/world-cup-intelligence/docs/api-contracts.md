@@ -10,14 +10,13 @@ Events are keyed by provider URNs built deterministically from API-Football ids:
 
 Market-to-event entity linking (matching a Kalshi/Polymarket market to a specific fixture) is **planned, not implemented**. Markets are discovered by `query`/`team` text search, not by event id.
 
-## Platform connector requirements
+## Connector and secret requirements
 
-`machina-search` (grounded web search, xAI/Grok social search) is a platform-side connector and is not defined in this repo. Workflows degrade gracefully when it is unavailable:
+- `worldcup-ingest-fixtures` needs the `api-football` connector and a vault secret named `API_FOOTBALL_API_KEY`.
+- `worldcup-fan-sentiment-context` needs the `grok` connector (this repo) and a vault secret named `MACHINA_CONTEXT_VARIABLE_GROK_API_KEY`.
+- `machina-search` (grounded web search) is a platform-side connector not defined in this repo. `worldcup-generate-market-brief` and `worldcup-refresh-prematch-enrichment` degrade gracefully without it (no grounded prematch research).
 
-- `worldcup-fan-sentiment-context` returns `workflow-status: skipped`.
-- `worldcup-generate-market-brief` and `worldcup-refresh-prematch-enrichment` proceed without grounded prematch research.
-
-Validate the connector on a hosted pod before exposing the launch workflow set publicly.
+Secret lookup uses the literal name after `$` in a workflow's context-variables.
 
 ## Launch workflow set
 
