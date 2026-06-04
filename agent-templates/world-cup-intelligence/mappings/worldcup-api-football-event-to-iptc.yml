@@ -7,6 +7,7 @@ mappings:
       sport_schema_events: |
         [
           {
+            "metadata": {"event_urn": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}"},
             "@context": {"sport": "https://www.sportschema.org/ontologies/sport#", "schema": "https://schema.org/"},
             "@id": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}",
             "id": f"urn:apifootball:sport_event:{f.get('fixture', {}).get('id')}",

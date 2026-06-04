@@ -42,6 +42,7 @@ Validate the connector on a hosted pod before exposing the launch workflow set p
 
 ```json
 {
+  "metadata": {"cache_id": "polymarket:2415458"},
   "id": "polymarket:2415458",
   "cache_id": "polymarket:2415458",
   "source": "polymarket",

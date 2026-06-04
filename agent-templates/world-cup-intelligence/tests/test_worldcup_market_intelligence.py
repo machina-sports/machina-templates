@@ -66,12 +66,15 @@ class TestNormalizeMarketSources:
         assert len(markets) == 1
         assert [o["token_id"] for o in markets[0]["outcomes"]] == ["tok-yes", "tok-no"]
 
-    def test_id_equals_cache_id_for_upsert(self):
+    def test_metadata_is_upsert_key(self):
         result = normalize_market_sources(
             {"params": {"polymarket_markets": {"markets": [_poly_record()]}}}
         )
         market = result["data"]["markets"][0]
         assert market["id"] == market["cache_id"] == "polymarket:2415458"
+        # Document-store bulk-update upserts on {metadata, name}; without a
+        # unique per-item metadata every market collapses into one document.
+        assert market["metadata"] == {"cache_id": "polymarket:2415458"}
 
     def test_search_entity_payload_shape(self):
         payload = {"kalshi": [_kalshi_record()], "polymarket": [_poly_record()], "total_results": 2}

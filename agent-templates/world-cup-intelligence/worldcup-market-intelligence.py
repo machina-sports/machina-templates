@@ -187,9 +187,10 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
     cache_id = f"{source}:{cache_key}"
 
     return {
-        # `id` is the document-store upsert key (same convention as other sync
-        # templates, e.g. bwin game-market items) so re-syncs overwrite instead
-        # of inserting duplicate cache rows.
+        # `metadata` is the document-store bulk-update upsert key (the engine
+        # filters on {metadata, name}), so re-syncs overwrite the same cache
+        # row instead of collapsing all items into one document.
+        "metadata": {"cache_id": cache_id},
         "id": cache_id,
         "cache_id": cache_id,
         "source": source,
