@@ -1,15 +1,63 @@
-folders:
-  - name: World Cup Intelligence
-    description: World Cup 2026 market intelligence workflows and MCP-facing tools.
-    workflows:
-      - worldcup-health
-      - worldcup-ingest-fixtures
-      - worldcup-sync-market-sources
-      - worldcup-search-markets
-      - worldcup-get-iptc-event-context
-      - worldcup-get-event-context
-      - worldcup-compare-market-sources
-      - worldcup-find-market-edges
-      - worldcup-generate-market-brief
-      - worldcup-fan-sentiment-context
-      - worldcup-refresh-prematch-enrichment
+workflow:
+  name: worldcup-folders
+  title: World Cup Intelligence - Folders
+  description: World Cup Intelligence - Folders Structure
+  context-variables:
+    debugger:
+      enabled: false
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # Setup folder structure
+    - type: document
+      name: install-documents
+      description: Install documents and folder structure.
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      documents:
+        doc-structure: |
+          [
+            {
+              "title": "World Cup Intelligence",
+              "isActive": True,
+              "icon": "folder",
+              "items": [
+                {
+                  "name": "worldcup-events",
+                  "title": "Events",
+                  "description": "World Cup events normalized to IPTC Sport Schema with provider URNs",
+                  "category": "World Cup",
+                  "metadata": {
+                    "name": ["worldcup:event"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "worldcup-market-cache",
+                  "title": "Market Cache",
+                  "description": "Normalized Kalshi/Polymarket World Cup market cache",
+                  "category": "World Cup",
+                  "metadata": {
+                    "name": ["worldcup:market-cache"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                },
+                {
+                  "name": "worldcup-social-cache",
+                  "title": "Social Pulse",
+                  "description": "Cached xAI/Grok fan sentiment and social pulse",
+                  "category": "World Cup",
+                  "metadata": {
+                    "name": ["worldcup:social-cache"]
+                  },
+                  "sorters": ['_id', -1],
+                  "view": "list"
+                }
+              ]
+            }
+          ]
