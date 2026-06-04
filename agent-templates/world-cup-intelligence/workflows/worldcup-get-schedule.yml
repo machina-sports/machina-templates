@@ -1,0 +1,45 @@
+workflow:
+  name: worldcup-get-schedule
+  title: World Cup Intelligence - Schedule
+  description: List World Cup fixtures from the normalized event cache (IPTC), filtered by date range, team, or status. Serves our own derived event data from same-pod state — not a raw upstream proxy.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    date_from: "$.get('date_from', '')"
+    date_to: "$.get('date_to', '')"
+    team: "$.get('team', '')"
+    status: "$.get('status', '')"
+    limit: "$.get('limit', 100)"
+  outputs:
+    schedule: "$.get('schedule', {})"
+    workflow-status: "$.get('schedule', {}).get('events') is not None and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-events
+      description: Load cached World Cup events from same-pod document state.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: normalize-schedule
+      description: Shape and filter cached events into a fixture-list view.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_schedule
+      inputs:
+        events: "$.get('events', [])"
+        date_from: "$.get('date_from', '')"
+        date_to: "$.get('date_to', '')"
+        team: "$.get('team', '')"
+        status: "$.get('status', '')"
+        limit: "$.get('limit', 100)"
+      outputs:
+        schedule: "$.get('data', {}) if $.get('status') else {}"
