@@ -57,6 +57,7 @@ workflow:
       inputs:
         query: "$.get('query')"
         edge_candidates: "$.get('edge_candidates', [])"
-        markets: "$.get('markets', [])"
+        markets: "[{'title': m.get('title'), 'source': m.get('source'), 'outcomes': m.get('outcomes'), 'volume': m.get('volume')} for m in $.get('markets', [])][:30]"
+        timeout: 120
       outputs:
         analysis: "$"

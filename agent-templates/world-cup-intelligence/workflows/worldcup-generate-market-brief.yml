@@ -79,10 +79,15 @@ workflow:
       inputs:
         query: "$.get('query', '')"
         event_context: "$.get('event_context', {})"
-        markets: "$.get('markets', [])"
+        # Slim the market payload — full cache records (descriptions, token
+        # ids, payload keys) bloat the prompt without improving the brief.
+        markets: "[{'title': m.get('title'), 'source': m.get('source'), 'status': m.get('status'), 'outcomes': m.get('outcomes'), 'volume': m.get('volume'), 'liquidity': m.get('liquidity'), 'end_time': m.get('end_time')} for m in $.get('markets', [])][:30]"
         prematch_research: "$.get('prematch_research', '')"
         grounding_sources: "$.get('grounding_sources', [])"
         depth: "$.get('depth', 'standard')"
+        # Per-call deadline — without it a stalled Vertex call hangs the
+        # worker indefinitely (no default SDK timeout).
+        timeout: 120
       outputs:
         brief: "$"
         evidence: "$.get('evidence', [])"
