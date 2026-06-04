@@ -90,7 +90,7 @@ workflow:
         action: bulk-update
         embed-vector: false
         force-update: true
-      document_name: "worldcup:market-cache"
+      document_name: "'worldcup:market-cache'"
       documents:
         items: "$.get('normalized_markets', [])"
       inputs:

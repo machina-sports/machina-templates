@@ -48,7 +48,7 @@ workflow:
         action: bulk-update
         embed-vector: false
         force-update: true
-      document_name: "worldcup:event"
+      document_name: "'worldcup:event'"
       documents:
         items: "$.get('iptc_events', [])"
       inputs:

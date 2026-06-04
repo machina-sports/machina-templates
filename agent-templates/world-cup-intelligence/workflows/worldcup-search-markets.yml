@@ -14,10 +14,12 @@ workflow:
     limit: "$.get('limit', 20)"
     force_live: "$.get('force_live', False)"
   outputs:
-    markets: "$.get('markets', [])"
-    count: "len($.get('markets', []))"
-    sources: "$.get('sources', {})"
-    warnings: "$.get('warnings', [])"
+    # Selection happens here: workflow outputs evaluate against full state,
+    # so cached vs live preference reads the task outputs directly.
+    markets: "($.get('live_normalized_markets', []) if $.get('force_live', False) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', [])))[:int($.get('limit', 20))]"
+    count: "len(($.get('live_normalized_markets', []) if $.get('force_live', False) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', [])))[:int($.get('limit', 20))])"
+    sources: "$.get('live_sources', {})"
+    warnings: "($.get('cached_warnings', []) if not $.get('force_live', False) and $.get('cached_filtered_markets', []) else []) + $.get('live_warnings', [])"
     workflow-status: "'executed'"
   tasks:
     - type: document
@@ -123,18 +125,3 @@ workflow:
         live_normalized_markets: "$.get('markets', [])"
         live_sources: "$.get('sources', {})"
         live_warnings: "$.get('warnings', [])"
-
-    - type: mapping
-      name: worldcup-market-normalization
-      title: World Cup | Market Search Response Selection
-      inputs:
-        cached_markets: "$.get('cached_filtered_markets', [])"
-        live_markets: "$.get('live_normalized_markets', [])"
-        live_sources: "$.get('live_sources', {})"
-        live_warnings: "$.get('live_warnings', [])"
-        cached_warnings: "$.get('cached_warnings', [])"
-        force_live: "$.get('force_live', False)"
-      outputs:
-        markets: "($.get('live_markets', []) if $.get('force_live', False) else ($.get('cached_markets', []) or $.get('live_markets', [])))[:int($.get('limit', 20))]"
-        sources: "$.get('live_sources', {})"
-        warnings: "($.get('cached_warnings', []) if not $.get('force_live', False) and $.get('cached_markets', []) else []) + $.get('live_warnings', [])"
