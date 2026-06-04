@@ -54,7 +54,8 @@ workflow:
         token_id: "(($.get('cached', {}).get('outcomes', []) or [{}])[0].get('token_id')) if $.get('requested_id', '').startswith('polymarket:') else None"
         interval: "'1h'"
       outputs:
-        history: "$.get('data', {}).get('points', []) if $.get('status') else []"
+        # $ is the stripped connector data payload; points sit at the top.
+        history: "$.get('points', [])"
 
     - type: connector
       name: detect-move
