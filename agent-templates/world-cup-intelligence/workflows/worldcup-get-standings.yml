@@ -1,0 +1,75 @@
+workflow:
+  name: worldcup-get-standings
+  title: World Cup Intelligence - Standings
+  description: World Cup group tables / standings. api-football is primary (official points/GD); sports-skills is the fallback and backfills ESPN crests. Resolve by event_urn or league/season.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    league: "$.get('league', '')"
+    season: "$.get('season', '')"
+  outputs:
+    standings: "$.get('standings', {})"
+    workflow-status: "$.get('standings', {}).get('groups') and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event
+      description: Resolve api-football league id + season year and the sports-skills season slug from the cached event when an event_urn is given.
+      condition: "$.get('event_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn')"
+      outputs:
+        resolved_league: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_league_id')"
+        resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('start_date') or '2026'))[:4]"
+        resolved_season_slug: "(($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('machina_competition_slug')"
+
+    - type: connector
+      name: fetch-standings-af
+      description: Official standings from api-football (primary).
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-standings
+      inputs:
+        league: "$.get('resolved_league') or $.get('league') or '1'"
+        season: "$.get('resolved_year') or $.get('season') or '2026'"
+      outputs:
+        standings_af: "$"
+        af_group_count: "len(((($.get('response') or [{}])[0] or {}).get('league', {}) or {}).get('standings', []) or [])"
+
+    - type: connector
+      name: fetch-standings-ss
+      description: Sports Skills (ESPN) standings fallback when api-football returns nothing.
+      condition: "$.get('af_group_count', 0) == 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_football
+      inputs:
+        command: "'get_season_standings'"
+        season_id: "$.get('resolved_season_slug') or 'world-cup-2026'"
+      outputs:
+        standings_ss: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: normalize-standings
+      description: Unify api-football + sports-skills standings into a stable group-table shape.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_standings
+      inputs:
+        af: "$.get('standings_af', {})"
+        ss: "$.get('standings_ss', {})"
+        league_id: "$.get('resolved_league') or $.get('league') or '1'"
+        season: "$.get('resolved_year') or $.get('season') or '2026'"
+      outputs:
+        standings: "$.get('data', {}) if $.get('status') else {}"

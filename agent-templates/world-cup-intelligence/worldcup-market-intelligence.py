@@ -853,3 +853,371 @@ def detect_price_move(request_data):
             "warnings": [],
         },
     }
+
+
+# -- Canonical reads: standings + squads -------------------------------------
+#
+# These pair api-football (official, authoritative) with sports-skills (ESPN,
+# crests, fallback) per the "both strengths where needed" split:
+#   - standings: api-football primary, sports-skills fallback + crest backfill
+#   - squads:    api-football only (official 26-man lists)
+
+
+def _std_rows_af(af: Any) -> list[dict[str, Any]]:
+    """Group tables from an api-football /standings response."""
+    data = _unwrap(af)
+    response = data.get("response", []) if isinstance(data, dict) else []
+    groups: list[dict[str, Any]] = []
+    for entry in response if isinstance(response, list) else []:
+        league = entry.get("league", {}) if isinstance(entry, dict) else {}
+        for table in league.get("standings", []) or []:
+            if not isinstance(table, list):
+                continue
+            group_name = ""
+            rows: list[dict[str, Any]] = []
+            for r in table:
+                if not isinstance(r, dict):
+                    continue
+                group_name = group_name or _text(r.get("group"))
+                team = r.get("team", {}) if isinstance(r.get("team"), dict) else {}
+                allst = r.get("all", {}) if isinstance(r.get("all"), dict) else {}
+                goals = allst.get("goals", {}) if isinstance(allst.get("goals"), dict) else {}
+                rows.append({
+                    "rank": r.get("rank"),
+                    "team_id": team.get("id"),
+                    "team": _text(team.get("name")),
+                    "crest": _text(team.get("logo")) or None,
+                    "played": allst.get("played"),
+                    "win": allst.get("win"),
+                    "draw": allst.get("draw"),
+                    "lose": allst.get("lose"),
+                    "goals_for": goals.get("for"),
+                    "goals_against": goals.get("against"),
+                    "goal_diff": r.get("goalsDiff"),
+                    "points": r.get("points"),
+                })
+            if rows:
+                groups.append({"group": group_name, "table": rows})
+    return groups
+
+
+def _std_rows_ss(ss: Any) -> list[dict[str, Any]]:
+    """Group tables from a sports-skills get_season_standings response."""
+    data = _unwrap(ss)
+    standings = data.get("standings", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+    groups: list[dict[str, Any]] = []
+    for grp in standings if isinstance(standings, list) else []:
+        if not isinstance(grp, dict):
+            continue
+        rows: list[dict[str, Any]] = []
+        for e in grp.get("entries", []) or []:
+            if not isinstance(e, dict):
+                continue
+            team = e.get("team", {}) if isinstance(e.get("team"), dict) else {}
+            rows.append({
+                "rank": _first(e, "position", "rank"),
+                "team_id": team.get("id"),
+                "team": _text(team.get("name")),
+                "crest": _text(team.get("crest")) or None,
+                "played": e.get("played"),
+                "win": _first(e, "won", "win"),
+                "draw": _first(e, "drawn", "draw"),
+                "lose": _first(e, "lost", "lose"),
+                "goals_for": _first(e, "goals_for"),
+                "goals_against": _first(e, "goals_against"),
+                "goal_diff": _first(e, "goal_difference", "goal_diff"),
+                "points": e.get("points"),
+            })
+        if rows:
+            groups.append({"group": _text(grp.get("name")), "table": rows})
+    return groups
+
+
+def normalize_standings(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Unify api-football (primary) + sports-skills (fallback) WC standings.
+
+    Params:
+      - af: raw api-football /standings response
+      - ss: raw sports-skills get_season_standings response
+      - league_id, season: passthrough labels for the envelope
+    api-football carries official points/GD; sports-skills is the fallback and
+    backfills crests when api-football rows lack a logo.
+    """
+    params = _params(request_data)
+    warnings: list[str] = []
+    groups = _std_rows_af(params.get("af"))
+    source = "api-football"
+    if not groups:
+        groups = _std_rows_ss(params.get("ss"))
+        source = "sports-skills" if groups else "none"
+    elif params.get("ss") not in (None, "", {}, []):
+        # Backfill missing crests from sports-skills by team name.
+        crest_by_team = {
+            _lower(row.get("team")): row.get("crest")
+            for grp in _std_rows_ss(params.get("ss"))
+            for row in grp.get("table", [])
+            if row.get("crest")
+        }
+        for grp in groups:
+            for row in grp["table"]:
+                if not row.get("crest"):
+                    row["crest"] = crest_by_team.get(_lower(row.get("team")))
+
+    if not groups:
+        warnings.append("No standings available from api-football or sports-skills.")
+    for grp in groups:
+        grp["table"].sort(key=lambda r: (r.get("rank") is None, r.get("rank") or 0))
+
+    return {
+        "status": True,
+        "data": {
+            "source": source,
+            "season": params.get("season"),
+            "league_id": _text(params.get("league_id")) or None,
+            "group_count": len(groups),
+            "groups": groups,
+            "warnings": warnings,
+        },
+    }
+
+
+def _squad_team_af(af: Any) -> dict[str, Any]:
+    data = _unwrap(af)
+    response = data.get("response", []) if isinstance(data, dict) else []
+    if response and isinstance(response[0], dict):
+        team = response[0].get("team", {})
+        return team if isinstance(team, dict) else {}
+    return {}
+
+
+def _squad_players_af(af: Any) -> list[dict[str, Any]]:
+    data = _unwrap(af)
+    response = data.get("response", []) if isinstance(data, dict) else []
+    players: list[dict[str, Any]] = []
+    for entry in response if isinstance(response, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        for p in entry.get("players", []) or []:
+            if not isinstance(p, dict):
+                continue
+            players.append({
+                "id": p.get("id"),
+                "name": _text(p.get("name")),
+                "number": p.get("number"),
+                "position": _text(p.get("position")),
+                "age": p.get("age"),
+                "photo": _text(p.get("photo")) or None,
+            })
+    return players
+
+
+def _squad_team_ss(ss: Any) -> dict[str, Any]:
+    data = _unwrap(ss)
+    team = data.get("team") if isinstance(data, dict) else None
+    return team if isinstance(team, dict) else {}
+
+
+def _squad_players_ss(ss: Any) -> list[dict[str, Any]]:
+    """Roster from a sports-skills get_team_profile response (full pool)."""
+    data = _unwrap(ss)
+    roster = data.get("players") if isinstance(data, dict) else None
+    players: list[dict[str, Any]] = []
+    for p in roster if isinstance(roster, list) else []:
+        if not isinstance(p, dict):
+            continue
+        players.append({
+            "id": _first(p, "id", "espn_athlete_id"),
+            "name": _text(_first(p, "name", "full_name", "display_name")),
+            "number": _first(p, "shirt_number", "number", "jersey"),
+            "position": _text(_first(p, "position", "pos")),
+            "age": _first(p, "age"),
+            "photo": _text(_first(p, "photo", "headshot")) or None,
+        })
+    return players
+
+
+def normalize_squads(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Unify api-football (primary) + sports-skills (fallback) squads.
+
+    Params per side ("home"/"away"):
+      - {side}_af: raw api-football /players/squads response (official 26-man)
+      - {side}_ss: raw sports-skills get_team_profile response (full pool fallback)
+      - {side}_team_id, {side}_team: resolved labels (optional; backfilled)
+    api-football is the official trimmed list; sports-skills is the fallback when
+    api-football is empty (e.g. unauthenticated or squad not yet published).
+    """
+    params = _params(request_data)
+    teams: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for side in ("home", "away"):
+        af = params.get(f"{side}_af")
+        ss = params.get(f"{side}_ss")
+        if af in (None, "", {}, []) and ss in (None, "", {}, []):
+            continue
+        players = _squad_players_af(af)
+        source = "api-football" if players else "none"
+        if not players:
+            players = _squad_players_ss(ss)
+            source = "sports-skills" if players else "none"
+        team_id = params.get(f"{side}_team_id")
+        team_name = _text(params.get(f"{side}_team"))
+        if not team_id or not team_name:
+            ident = _squad_team_af(af) or _squad_team_ss(ss)
+            team_id = team_id or ident.get("id")
+            team_name = team_name or _text(ident.get("name"))
+        if not players:
+            warnings.append(f"No squad returned for {team_name or team_id or side}.")
+        teams.append({
+            "side": side,
+            "team_id": team_id,
+            "team": team_name,
+            "source": source,
+            "count": len(players),
+            "players": players,
+        })
+    if not teams:
+        warnings.append("No squad payloads provided.")
+    return {"status": True, "data": {"teams": teams, "warnings": warnings}}
+
+
+def _injuries_items(af: Any) -> list[dict[str, Any]]:
+    """Injury rows from an api-football /injuries response (body or list)."""
+    data = _unwrap(af)
+    if isinstance(data, dict):
+        resp = data.get("response")
+        return resp if isinstance(resp, list) else []
+    return data if isinstance(data, list) else []
+
+
+def normalize_injuries(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Per-team injuries/suspensions, filtered to a fixture's two teams.
+
+    api-football /injuries returns league-wide rows of the shape
+    {player:{id,name,photo,type,reason}, team:{id,name}, fixture:{id,date,timestamp}}.
+    A player out for several upcoming fixtures appears once per fixture, so we
+    dedup per player and keep the most recent fixture.
+
+    Params:
+      - af: api-football /injuries response (league-wide; body or list)
+      - home_team_id, away_team_id, home_team, away_team
+    api-football is the only structured World Cup injury source — sports-skills
+    get_missing_players is Premier-League-only — so this read is af-backed.
+    """
+    params = _params(request_data)
+    items = _injuries_items(params.get("af"))
+    teams: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for side in ("home", "away"):
+        tid = params.get(f"{side}_team_id")
+        tname = _text(params.get(f"{side}_team"))
+        if tid in (None, "") and not tname:
+            continue
+        by_player: dict[Any, dict[str, Any]] = {}
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            team = it.get("team", {}) if isinstance(it.get("team"), dict) else {}
+            if str(team.get("id")) != str(tid):
+                continue
+            player = it.get("player", {}) if isinstance(it.get("player"), dict) else {}
+            fixture = it.get("fixture", {}) if isinstance(it.get("fixture"), dict) else {}
+            entry = {
+                "name": _text(player.get("name")),
+                "player_id": player.get("id"),
+                "photo": _text(player.get("photo")) or None,
+                "type": _text(player.get("type")),
+                "reason": _text(player.get("reason")),
+                "fixture_id": fixture.get("id"),
+                "fixture_date": _text(fixture.get("date")) or None,
+            }
+            key = player.get("id") if player.get("id") is not None else _lower(entry["name"])
+            ts = _to_float(fixture.get("timestamp"))
+            prev = by_player.get(key)
+            if prev is None or ts >= prev["_ts"]:
+                entry["_ts"] = ts
+                by_player[key] = entry
+        missing = [{k: v for k, v in e.items() if k != "_ts"} for e in by_player.values()]
+        teams.append({
+            "side": side,
+            "team_id": tid,
+            "team": tname,
+            "source": "api-football",
+            "count": len(missing),
+            "missing": missing,
+        })
+    if not teams:
+        warnings.append("No team identifiers provided; cannot resolve injuries.")
+    elif not any(t["count"] for t in teams):
+        warnings.append(
+            "No injuries/suspensions reported for these teams yet (api-football). "
+            "Expect data closer to matchday."
+        )
+    return {"status": True, "data": {"source": "api-football", "teams": teams, "warnings": warnings}}
+
+
+def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Shape cached worldcup:event docs into a fixture-list (schedule) view.
+
+    Serves our own normalized/IPTC-derived event data from the same-pod cache —
+    not a raw upstream proxy. Filters by date range (YYYY-MM-DD, inclusive),
+    team-name substring, and status.
+
+    Params:
+      - events: list of worldcup:event doc values
+      - date_from, date_to, team, status, limit
+    """
+    params = _params(request_data)
+    events = _as_list(params.get("events"))
+    team = _lower(params.get("team"))
+    status = _lower(params.get("status"))
+    date_from = _text(params.get("date_from"))[:10]
+    date_to = _text(params.get("date_to"))[:10]
+    try:
+        limit = max(1, min(int(params.get("limit") or 100), 500))
+    except (TypeError, ValueError):
+        limit = 100
+
+    out: list[dict[str, Any]] = []
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        start = _text(_first(ev, "start_date", "schema:startDate"))
+        start_day = start[:10]
+        st = _lower(_first(ev, "status", "sport:status"))
+        competitors = ev.get("teams") or ev.get("sport:competitors") or []
+        names = [_text(t.get("name")) for t in competitors if isinstance(t, dict)]
+
+        if status and status != st:
+            continue
+        if team and not any(team in _lower(n) for n in names):
+            continue
+        if date_from and start_day and start_day < date_from:
+            continue
+        if date_to and start_day and start_day > date_to:
+            continue
+
+        venue = ev.get("venue") if isinstance(ev.get("venue"), dict) else (
+            ev.get("sport:venue") if isinstance(ev.get("sport:venue"), dict) else {})
+        competition = ev.get("sport:competition") if isinstance(ev.get("sport:competition"), dict) else {}
+        out.append({
+            "event_urn": _first(ev, "_id", "id", "event_urn"),
+            "name": _text(ev.get("name")),
+            "start_date": start,
+            "status": st,
+            "competition": _text(ev.get("competition")) or _text(competition.get("name")) or "World Cup",
+            "teams": [
+                {
+                    "name": _text(t.get("name")),
+                    "qualifier": _text(t.get("sport:qualifier")),
+                    "crest": _text(_first(t, "schema:logo", "crest")) or None,
+                }
+                for t in competitors if isinstance(t, dict)
+            ],
+            "venue": _text(venue.get("name")) or None,
+            "fixture_id": (ev.get("provider_ids") or {}).get("api_football_fixture_id"),
+        })
+
+    out.sort(key=lambda e: e.get("start_date") or "")
+    out = out[:limit]
+    warnings = [] if out else ["No events matched the schedule filters."]
+    return {"status": True, "data": {"events": out, "count": len(out), "warnings": warnings}}

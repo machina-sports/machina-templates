@@ -32,6 +32,36 @@ agent:
       outputs:
         event_context: "$.get('event_context', {})"
 
+    - name: worldcup-get-standings
+      description: World Cup group tables / standings (api-football primary, sports-skills fallback)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        standings: "$.get('standings', {})"
+
+    - name: worldcup-get-squads
+      description: Official 26-man squads for both teams in a fixture (api-football)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        squads: "$.get('squads', {})"
+
+    - name: worldcup-get-injuries
+      description: Injuries and suspensions for both teams in a fixture (api-football)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        injuries: "$.get('injuries', {})"
+
+    - name: worldcup-get-schedule
+      description: List World Cup fixtures from the event cache, filtered by date/team/status
+      inputs:
+        team: "$.get('team', '')"
+        date_from: "$.get('date_from', '')"
+        date_to: "$.get('date_to', '')"
+      outputs:
+        schedule: "$.get('schedule', {})"
+
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
       inputs:

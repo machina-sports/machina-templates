@@ -15,6 +15,10 @@ _spec.loader.exec_module(_module)
 normalize_market_sources = _module.normalize_market_sources
 filter_cached_markets = _module.filter_cached_markets
 normalize_market_state = _module.normalize_market_state
+normalize_standings = _module.normalize_standings
+normalize_squads = _module.normalize_squads
+normalize_injuries = _module.normalize_injuries
+normalize_schedule = _module.normalize_schedule
 
 
 def _kalshi_record(**overrides):
@@ -407,3 +411,294 @@ class TestEdgeDataQuality:
         }]
         r = detect_market_edges({"params": {"cached_markets": cached, "matches": matches, "min_edge_bps": 50}})
         assert not [c for c in r["data"]["edge_candidates"] if c["candidate_type"] == "cross_venue_draw"]
+
+
+# -- Canonical reads: standings + squads -------------------------------------
+
+
+def _af_standings(**overrides):
+    """Minimal api-football /standings response (one group, two rows)."""
+    return {
+        "response": [{
+            "league": {
+                "id": 1, "name": "World Cup", "season": 2026,
+                "standings": [[
+                    {"rank": 1, "team": {"id": 7, "name": "Uruguay", "logo": "af://7.png"},
+                     "points": 6, "goalsDiff": 3, "group": "Group H",
+                     "all": {"played": 2, "win": 2, "draw": 0, "lose": 0,
+                             "goals": {"for": 4, "against": 1}}},
+                    {"rank": 2, "team": {"id": 9, "name": "Spain"},
+                     "points": 3, "goalsDiff": 0, "group": "Group H",
+                     "all": {"played": 2, "win": 1, "draw": 0, "lose": 1,
+                             "goals": {"for": 2, "against": 2}}},
+                ]],
+            }
+        }]
+    }
+
+
+def _ss_standings():
+    """Minimal sports-skills get_season_standings payload (with crests)."""
+    return {"standings": [{
+        "name": "Group H", "type": "TOTAL", "entries": [
+            {"position": 1, "team": {"id": "203", "name": "Uruguay", "crest": "espn://uru.png"},
+             "played": 2, "won": 2, "drawn": 0, "lost": 0,
+             "goals_for": 4, "goals_against": 1, "goal_difference": 3, "points": 6},
+            {"position": 2, "team": {"id": "204", "name": "Spain", "crest": "espn://esp.png"},
+             "played": 2, "won": 1, "drawn": 0, "lost": 1,
+             "goals_for": 2, "goals_against": 2, "goal_difference": 0, "points": 3},
+        ],
+    }]}
+
+
+class TestNormalizeStandings:
+    def test_af_primary(self):
+        r = normalize_standings({"params": {"af": _af_standings(), "season": "2026", "league_id": "1"}})
+        assert r["status"] is True
+        data = r["data"]
+        assert data["source"] == "api-football"
+        assert data["group_count"] == 1
+        table = data["groups"][0]["table"]
+        assert data["groups"][0]["group"] == "Group H"
+        assert table[0]["team"] == "Uruguay"
+        assert table[0]["points"] == 6 and table[0]["goal_diff"] == 3
+        assert table[0]["goals_for"] == 4 and table[0]["goals_against"] == 1
+
+    def test_ss_fallback_when_af_empty(self):
+        r = normalize_standings({"params": {"af": {}, "ss": _ss_standings()}})
+        assert r["data"]["source"] == "sports-skills"
+        assert r["data"]["groups"][0]["table"][0]["crest"] == "espn://uru.png"
+
+    def test_crest_backfill_from_ss(self):
+        # Spain has no logo in af; should be backfilled from ss by name.
+        r = normalize_standings({"params": {"af": _af_standings(), "ss": _ss_standings()}})
+        assert r["data"]["source"] == "api-football"
+        rows = {row["team"]: row for row in r["data"]["groups"][0]["table"]}
+        assert rows["Uruguay"]["crest"] == "af://7.png"   # af logo kept
+        assert rows["Spain"]["crest"] == "espn://esp.png"  # backfilled
+
+    def test_rows_sorted_by_rank(self):
+        r = normalize_standings({"params": {"af": _af_standings()}})
+        ranks = [row["rank"] for row in r["data"]["groups"][0]["table"]]
+        assert ranks == [1, 2]
+
+    def test_empty(self):
+        r = normalize_standings({"params": {}})
+        assert r["data"]["group_count"] == 0
+        assert r["data"]["warnings"]
+
+
+def _af_squad(team_id, team_name, n=2):
+    return {"response": [{
+        "team": {"id": team_id, "name": team_name},
+        "players": [
+            {"id": team_id * 10 + i, "name": f"{team_name} Player {i}",
+             "number": i, "position": "Midfielder", "age": 25 + i,
+             "photo": f"af://p{i}.png"}
+            for i in range(1, n + 1)
+        ],
+    }]}
+
+
+class TestNormalizeSquads:
+    def test_two_teams(self):
+        r = normalize_squads({"params": {
+            "home_af": _af_squad(7, "Uruguay", 3),
+            "away_af": _af_squad(9, "Spain", 2),
+            "home_team": "Uruguay", "away_team": "Spain",
+            "home_team_id": 7, "away_team_id": 9,
+        }})
+        assert r["status"] is True
+        teams = {t["side"]: t for t in r["data"]["teams"]}
+        assert teams["home"]["team"] == "Uruguay" and teams["home"]["count"] == 3
+        assert teams["away"]["count"] == 2
+        assert teams["home"]["players"][0]["position"] == "Midfielder"
+        assert teams["home"]["source"] == "api-football"
+
+    def test_team_identity_backfilled_from_payload(self):
+        # No labels passed; should read team identity from the af response.
+        r = normalize_squads({"params": {"home_af": _af_squad(7, "Uruguay", 1)}})
+        team = r["data"]["teams"][0]
+        assert team["team"] == "Uruguay" and team["team_id"] == 7
+
+    def test_empty_payload_skipped(self):
+        r = normalize_squads({"params": {"home_af": {}, "away_af": {}}})
+        assert r["data"]["teams"] == []
+        assert r["data"]["warnings"]
+
+    def test_ss_fallback_when_af_empty(self):
+        # api-football empty (e.g. unauthenticated) -> fall back to ss roster.
+        ss_profile = {"team": {"id": "212", "name": "Uruguay", "crest": "espn://uru.png"},
+                      "players": [
+                          {"id": "1", "name": "Sergio Rochet", "position": "G",
+                           "shirt_number": "1", "age": 33, "nationality": "Uruguay"},
+                          {"id": "2", "name": "Federico Valverde", "position": "M",
+                           "shirt_number": "15", "age": 27, "nationality": "Uruguay"},
+                      ]}
+        r = normalize_squads({"params": {"home_af": {}, "home_ss": ss_profile}})
+        team = r["data"]["teams"][0]
+        assert team["source"] == "sports-skills"
+        assert team["team"] == "Uruguay" and team["team_id"] == "212"
+        assert team["count"] == 2
+        # shirt_number maps to number.
+        assert team["players"][1]["number"] == "15"
+
+    def test_af_preferred_over_ss(self):
+        ss_profile = {"team": {"id": "212", "name": "Uruguay"},
+                      "players": [{"id": "x", "name": "Pool Player", "position": "M"}]}
+        r = normalize_squads({"params": {
+            "home_af": _af_squad(7, "Uruguay", 3), "home_ss": ss_profile,
+        }})
+        team = r["data"]["teams"][0]
+        assert team["source"] == "api-football" and team["count"] == 3
+
+
+# -- Canonical reads: injuries -----------------------------------------------
+
+
+def _af_injury(team_id, team_name, player_id, name, reason, itype="Missing Fixture",
+               fixture_id=1, ts=1000):
+    # Matches the real api-football /injuries shape: type/reason nested in player.
+    return {
+        "player": {"id": player_id, "name": name, "photo": f"af://p{player_id}.png",
+                   "type": itype, "reason": reason},
+        "team": {"id": team_id, "name": team_name, "logo": f"af://t{team_id}.png"},
+        "fixture": {"id": fixture_id, "timezone": "UTC", "date": "2026-06-26T18:00:00+00:00",
+                    "timestamp": ts},
+        "league": {"id": 1, "season": 2026, "name": "World Cup"},
+    }
+
+
+class TestNormalizeInjuries:
+    def test_filters_to_two_teams_and_maps_fields(self):
+        af = {"response": [
+            _af_injury(7, "Uruguay", 100, "G. De Arrascaeta", "Calf Injury"),
+            _af_injury(9, "Spain", 200, "Fermin Lopez", "Suspended", itype="Questionable"),
+            _af_injury(50, "Other", 300, "Someone Else", "Knee Injury"),  # filtered out
+        ]}
+        r = normalize_injuries({"params": {
+            "af": af, "home_team_id": 7, "away_team_id": 9,
+            "home_team": "Uruguay", "away_team": "Spain",
+        }})
+        assert r["status"] is True and r["data"]["source"] == "api-football"
+        teams = {t["side"]: t for t in r["data"]["teams"]}
+        assert teams["home"]["count"] == 1
+        m = teams["home"]["missing"][0]
+        assert m["name"] == "G. De Arrascaeta" and m["reason"] == "Calf Injury"
+        assert m["type"] == "Missing Fixture" and m["player_id"] == 100
+        assert teams["away"]["missing"][0]["reason"] == "Suspended"
+        # the third team's player must not leak into either side
+        assert all(p["player_id"] != 300 for t in teams.values() for p in t["missing"])
+
+    def test_dedup_keeps_latest_fixture_per_player(self):
+        af = {"response": [
+            _af_injury(7, "Uruguay", 100, "Player A", "Thigh Injury", fixture_id=1, ts=1000),
+            _af_injury(7, "Uruguay", 100, "Player A", "Thigh Injury", fixture_id=2, ts=2000),
+        ]}
+        r = normalize_injuries({"params": {"af": af, "home_team_id": 7, "home_team": "Uruguay"}})
+        team = r["data"]["teams"][0]
+        assert team["count"] == 1
+        assert team["missing"][0]["fixture_id"] == 2  # most recent kept
+        assert "_ts" not in team["missing"][0]         # helper field stripped
+
+    def test_empty_injuries_warns(self):
+        r = normalize_injuries({"params": {
+            "af": {"response": []}, "home_team_id": 7, "away_team_id": 9,
+            "home_team": "Uruguay", "away_team": "Spain",
+        }})
+        assert len(r["data"]["teams"]) == 2
+        assert all(t["count"] == 0 for t in r["data"]["teams"])
+        assert any("closer to matchday" in w for w in r["data"]["warnings"])
+
+    def test_accepts_bare_list(self):
+        items = [_af_injury(7, "Uruguay", 100, "Player A", "Injury")]
+        r = normalize_injuries({"params": {"af": items, "home_team_id": 7, "home_team": "Uruguay"}})
+        assert r["data"]["teams"][0]["count"] == 1
+
+    def test_no_team_ids_skips(self):
+        r = normalize_injuries({"params": {"af": {"response": []}}})
+        assert r["data"]["teams"] == []
+        assert r["data"]["warnings"]
+
+
+# -- Canonical reads: schedule -----------------------------------------------
+
+
+def _event_doc(urn, name, start, status="NS", home="A", away="B", venue="Stadium", fixture="100"):
+    # Mirrors the worldcup:event doc value shape (IPTC summary fields).
+    return {
+        "_id": urn, "name": name, "start_date": start, "status": status,
+        "competition": "World Cup",
+        "teams": [
+            {"name": home, "sport:qualifier": "home", "schema:logo": f"af://{home}.png"},
+            {"name": away, "sport:qualifier": "away", "schema:logo": f"af://{away}.png"},
+        ],
+        "venue": {"name": venue, "schema:addressLocality": "City"},
+        "provider_ids": {"api_football_fixture_id": fixture},
+    }
+
+
+class TestNormalizeSchedule:
+    def _events(self):
+        return [
+            _event_doc("urn:x:1", "Uruguay vs Spain", "2026-06-27T00:00:00+00:00", home="Uruguay", away="Spain"),
+            _event_doc("urn:x:2", "Brazil vs Serbia", "2026-06-15T18:00:00+00:00", home="Brazil", away="Serbia"),
+            _event_doc("urn:x:3", "France vs Senegal", "2026-06-16T15:00:00+00:00", status="FT", home="France", away="Senegal"),
+        ]
+
+    def test_sorted_by_start_and_shaped(self):
+        r = normalize_schedule({"params": {"events": self._events()}})
+        assert r["status"] is True
+        evs = r["data"]["events"]
+        assert [e["event_urn"] for e in evs] == ["urn:x:2", "urn:x:3", "urn:x:1"]
+        first = evs[0]
+        assert first["name"] == "Brazil vs Serbia"
+        assert first["venue"] == "Stadium" and first["fixture_id"] == "100"
+        assert {t["qualifier"] for t in first["teams"]} == {"home", "away"}
+        assert first["teams"][0]["crest"] == "af://Brazil.png"
+
+    def test_team_filter(self):
+        r = normalize_schedule({"params": {"events": self._events(), "team": "spain"}})
+        assert [e["event_urn"] for e in r["data"]["events"]] == ["urn:x:1"]
+
+    def test_date_range_inclusive(self):
+        r = normalize_schedule({"params": {"events": self._events(),
+                                           "date_from": "2026-06-15", "date_to": "2026-06-16"}})
+        urns = {e["event_urn"] for e in r["data"]["events"]}
+        assert urns == {"urn:x:2", "urn:x:3"}
+
+    def test_status_filter(self):
+        r = normalize_schedule({"params": {"events": self._events(), "status": "FT"}})
+        assert [e["event_urn"] for e in r["data"]["events"]] == ["urn:x:3"]
+
+    def test_limit_and_empty_warns(self):
+        r = normalize_schedule({"params": {"events": self._events(), "limit": 1}})
+        assert len(r["data"]["events"]) == 1
+        r2 = normalize_schedule({"params": {"events": [], "team": "nobody"}})
+        assert r2["data"]["events"] == [] and r2["data"]["warnings"]
+
+    def test_real_iptc_doc_shape(self):
+        # The actual worldcup:event value is raw IPTC: schema:startDate,
+        # sport:status, sport:competitors, sport:venue, sport:competition.
+        iptc = {
+            "_id": "urn:apifootball:sport_event:1489417",
+            "name": "Uruguay vs Spain - World Cup",
+            "schema:startDate": "2026-06-27T00:00:00+00:00",
+            "sport:status": "NS",
+            "sport:competition": {"@type": "sport:Competition", "name": "World Cup"},
+            "sport:venue": {"@type": "sport:Venue", "name": "Estadio Akron"},
+            "sport:competitors": [
+                {"name": "Uruguay", "sport:qualifier": "home", "schema:logo": "u.png"},
+                {"name": "Spain", "sport:qualifier": "away", "schema:logo": "s.png"},
+            ],
+            "provider_ids": {"api_football_fixture_id": "1489417"},
+        }
+        r = normalize_schedule({"params": {"events": [iptc], "team": "spain"}})
+        ev = r["data"]["events"][0]
+        assert ev["event_urn"] == "urn:apifootball:sport_event:1489417"
+        assert ev["start_date"] == "2026-06-27T00:00:00+00:00"
+        assert ev["status"] == "ns"
+        assert ev["competition"] == "World Cup"
+        assert ev["venue"] == "Estadio Akron"
+        assert ev["fixture_id"] == "1489417"
+        assert {t["name"] for t in ev["teams"]} == {"Uruguay", "Spain"}

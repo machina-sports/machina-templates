@@ -1,2482 +1,2690 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "API-Football",
-    "description": "Football data API providing comprehensive information about leagues, teams, players, fixtures, and more. This API covers leagues from around the world with detailed season information, fixture data, and comprehensive coverage details.\n\nRATE LIMITS (api-sports.io direct, NOT RapidAPI): Free = 100 requests/day + 10/minute burst; Pro = 7,500/day + 450/min; Ultra = 75,000/day + 900/min. Exceeding either ceiling returns HTTP 429 with body `{\"message\": \"Too many requests\"}` or — on the daily cap — a 200 with body `{\"errors\": {\"requests\": \"You have reached the request limit for the day.\"}}` (note: HTTP 200 + error body, NOT a 4xx — agents must check `errors` and `results=0` in the response shape, not just the HTTP status). Free-tier customers should: (1) avoid auto-polling loops (a 30s refresh = 2 req/min = blows the daily cap in ~50 min of viewing); (2) cache lineups/standings/h2h for the duration of a match (they don't change); (3) prefer manual Refresh buttons over background polling. Long-lived dashboards consuming live data need Pro tier minimum.",
-    "version": "3.0.0",
-    "contact": {
-      "name": "API-Sports",
-      "url": "https://www.api-sports.io/",
-      "email": "contact@api-sports.io"
-    }
+ "openapi": "3.0.3",
+ "info": {
+  "title": "API-Football",
+  "description": "Football data API providing comprehensive information about leagues, teams, players, fixtures, and more. This API covers leagues from around the world with detailed season information, fixture data, and comprehensive coverage details.\n\nRATE LIMITS (api-sports.io direct, NOT RapidAPI): Free = 100 requests/day + 10/minute burst; Pro = 7,500/day + 450/min; Ultra = 75,000/day + 900/min. Exceeding either ceiling returns HTTP 429 with body `{\"message\": \"Too many requests\"}` or — on the daily cap — a 200 with body `{\"errors\": {\"requests\": \"You have reached the request limit for the day.\"}}` (note: HTTP 200 + error body, NOT a 4xx — agents must check `errors` and `results=0` in the response shape, not just the HTTP status). Free-tier customers should: (1) avoid auto-polling loops (a 30s refresh = 2 req/min = blows the daily cap in ~50 min of viewing); (2) cache lineups/standings/h2h for the duration of a match (they don't change); (3) prefer manual Refresh buttons over background polling. Long-lived dashboards consuming live data need Pro tier minimum.",
+  "version": "3.0.0",
+  "contact": {
+   "name": "API-Sports",
+   "url": "https://www.api-sports.io/",
+   "email": "contact@api-sports.io"
+  }
+ },
+ "servers": [
+  {
+   "url": "https://v3.football.api-sports.io",
+   "description": "Production server"
+  }
+ ],
+ "security": [
+  {
+   "x-apisports-key": []
+  }
+ ],
+ "components": {
+  "securitySchemes": {
+   "x-apisports-key": {
+    "type": "apiKey",
+    "description": "Token",
+    "name": "x-apisports-key",
+    "in": "header"
+   }
   },
-  "servers": [
-    {
-      "url": "https://v3.football.api-sports.io",
-      "description": "Production server"
-    }
-  ],
-  "security": [
-    {
-      "x-apisports-key": []
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "x-apisports-key": {
-        "type": "apiKey",
-        "description": "Token",
-        "name": "x-apisports-key",
-        "in": "header"
+  "schemas": {
+   "League": {
+    "type": "object",
+    "properties": {
+     "league": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "integer",
+        "description": "League ID"
+       },
+       "name": {
+        "type": "string",
+        "description": "League name"
+       },
+       "type": {
+        "type": "string",
+        "description": "League type (League, Cup)",
+        "enum": [
+         "League",
+         "Cup"
+        ]
+       },
+       "logo": {
+        "type": "string",
+        "nullable": true,
+        "description": "League logo URL"
+       }
       }
-    },
-    "schemas": {
-      "League": {
+     },
+     "country": {
+      "type": "object",
+      "properties": {
+       "name": {
+        "type": "string",
+        "description": "Country name"
+       },
+       "code": {
+        "type": "string",
+        "nullable": true,
+        "description": "Country code (2 letters)"
+       },
+       "flag": {
+        "type": "string",
+        "nullable": true,
+        "description": "Country flag URL"
+       }
+      }
+     },
+     "seasons": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "year": {
+         "type": "integer",
+         "description": "Season year"
+        },
+        "start": {
+         "type": "string",
+         "format": "date",
+         "description": "Season start date"
+        },
+        "end": {
+         "type": "string",
+         "format": "date",
+         "description": "Season end date"
+        },
+        "current": {
+         "type": "boolean",
+         "description": "Whether this season is current"
+        },
+        "coverage": {
+         "type": "object",
+         "properties": {
+          "fixtures": {
+           "type": "object",
+           "properties": {
+            "events": {
+             "type": "boolean"
+            },
+            "lineups": {
+             "type": "boolean"
+            },
+            "statistics_fixtures": {
+             "type": "boolean"
+            },
+            "statistics_players": {
+             "type": "boolean"
+            }
+           }
+          },
+          "standings": {
+           "type": "boolean"
+          },
+          "players": {
+           "type": "boolean"
+          },
+          "top_scorers": {
+           "type": "boolean"
+          },
+          "top_assists": {
+           "type": "boolean"
+          },
+          "top_cards": {
+           "type": "boolean"
+          },
+          "injuries": {
+           "type": "boolean"
+          },
+          "predictions": {
+           "type": "boolean"
+          },
+          "odds": {
+           "type": "boolean"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "LeagueApiResponse": {
+    "type": "object",
+    "properties": {
+     "get": {
+      "type": "string",
+      "description": "Endpoint name"
+     },
+     "parameters": {
+      "type": "object",
+      "description": "Request parameters"
+     },
+     "errors": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "results": {
+      "type": "integer",
+      "description": "Number of results"
+     },
+     "paging": {
+      "type": "object",
+      "properties": {
+       "current": {
+        "type": "integer"
+       },
+       "total": {
+        "type": "integer"
+       }
+      }
+     },
+     "response": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/League"
+      }
+     }
+    }
+   },
+   "Fixture": {
+    "type": "object",
+    "properties": {
+     "fixture": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "integer",
+        "description": "Fixture ID"
+       },
+       "referee": {
+        "type": "string",
+        "nullable": true,
+        "description": "Referee name"
+       },
+       "timezone": {
+        "type": "string",
+        "description": "Timezone"
+       },
+       "date": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Fixture date and time"
+       },
+       "timestamp": {
+        "type": "integer",
+        "description": "Unix timestamp"
+       },
+       "periods": {
         "type": "object",
         "properties": {
-          "league": {
+         "first": {
+          "type": "integer",
+          "nullable": true
+         },
+         "second": {
+          "type": "integer",
+          "nullable": true
+         }
+        }
+       },
+       "venue": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer",
+          "nullable": true
+         },
+         "name": {
+          "type": "string",
+          "nullable": true
+         },
+         "city": {
+          "type": "string",
+          "nullable": true
+         }
+        }
+       },
+       "status": {
+        "type": "object",
+        "properties": {
+         "long": {
+          "type": "string"
+         },
+         "short": {
+          "type": "string"
+         },
+         "elapsed": {
+          "type": "integer",
+          "nullable": true
+         }
+        }
+       }
+      }
+     },
+     "league": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "integer"
+       },
+       "name": {
+        "type": "string"
+       },
+       "country": {
+        "type": "string"
+       },
+       "logo": {
+        "type": "string"
+       },
+       "flag": {
+        "type": "string"
+       },
+       "season": {
+        "type": "integer"
+       },
+       "round": {
+        "type": "string"
+       }
+      }
+     },
+     "teams": {
+      "type": "object",
+      "properties": {
+       "home": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer"
+         },
+         "name": {
+          "type": "string"
+         },
+         "logo": {
+          "type": "string"
+         },
+         "winner": {
+          "type": "boolean",
+          "nullable": true
+         }
+        }
+       },
+       "away": {
+        "type": "object",
+        "properties": {
+         "id": {
+          "type": "integer"
+         },
+         "name": {
+          "type": "string"
+         },
+         "logo": {
+          "type": "string"
+         },
+         "winner": {
+          "type": "boolean",
+          "nullable": true
+         }
+        }
+       }
+      }
+     },
+     "goals": {
+      "type": "object",
+      "properties": {
+       "home": {
+        "type": "integer",
+        "nullable": true
+       },
+       "away": {
+        "type": "integer",
+        "nullable": true
+       }
+      }
+     },
+     "score": {
+      "type": "object",
+      "properties": {
+       "halftime": {
+        "type": "object",
+        "properties": {
+         "home": {
+          "type": "integer",
+          "nullable": true
+         },
+         "away": {
+          "type": "integer",
+          "nullable": true
+         }
+        }
+       },
+       "fulltime": {
+        "type": "object",
+        "properties": {
+         "home": {
+          "type": "integer",
+          "nullable": true
+         },
+         "away": {
+          "type": "integer",
+          "nullable": true
+         }
+        }
+       },
+       "extratime": {
+        "type": "object",
+        "properties": {
+         "home": {
+          "type": "integer",
+          "nullable": true
+         },
+         "away": {
+          "type": "integer",
+          "nullable": true
+         }
+        }
+       },
+       "penalty": {
+        "type": "object",
+        "properties": {
+         "home": {
+          "type": "integer",
+          "nullable": true
+         },
+         "away": {
+          "type": "integer",
+          "nullable": true
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "ApiResponse": {
+    "type": "object",
+    "properties": {
+     "get": {
+      "type": "string",
+      "description": "Endpoint name"
+     },
+     "parameters": {
+      "type": "object",
+      "description": "Request parameters"
+     },
+     "errors": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "results": {
+      "type": "integer",
+      "description": "Number of results"
+     },
+     "paging": {
+      "type": "object",
+      "properties": {
+       "current": {
+        "type": "integer"
+       },
+       "total": {
+        "type": "integer"
+       }
+      }
+     },
+     "response": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/Fixture"
+      }
+     }
+    }
+   }
+  }
+ },
+ "paths": {
+  "/leagues": {
+   "get": {
+    "summary": "Get leagues",
+    "description": "Retrieve football leagues/cups based on various filters",
+    "operationId": "get-leagues",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "query",
+      "description": "League ID",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 39
+      }
+     },
+     {
+      "name": "name",
+      "in": "query",
+      "description": "League name",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "premier league"
+      }
+     },
+     {
+      "name": "country",
+      "in": "query",
+      "description": "Country name",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "england"
+      }
+     },
+     {
+      "name": "code",
+      "in": "query",
+      "description": "Country code (2 letters)",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "gb"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "description": "Season year",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 2025
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "description": "Team ID to find leagues where the team has played",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 33
+      }
+     },
+     {
+      "name": "search",
+      "in": "query",
+      "description": "Search text for league name or country",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "premier league"
+      }
+     },
+     {
+      "name": "type",
+      "in": "query",
+      "description": "League type",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "league",
+        "cup"
+       ],
+       "example": "league"
+      }
+     },
+     {
+      "name": "current",
+      "in": "query",
+      "description": "Filter leagues where the season is currently in progress",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "example": true
+      }
+     },
+     {
+      "name": "last",
+      "in": "query",
+      "description": "Number of last leagues/cups added to the API",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 99,
+       "example": 10
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LeagueApiResponse"
+        },
+        "example": {
+         "get": "leagues",
+         "parameters": {
+          "id": "39"
+         },
+         "errors": [],
+         "results": 1,
+         "paging": {
+          "current": 1,
+          "total": 1
+         },
+         "response": [
+          {
+           "league": {
+            "id": 39,
+            "name": "Premier League",
+            "type": "League",
+            "logo": "https://media.api-sports.io/football/leagues/39.png"
+           },
+           "country": {
+            "name": "England",
+            "code": "GB",
+            "flag": "https://media.api-sports.io/flags/gb.svg"
+           },
+           "seasons": [
+            {
+             "year": 2025,
+             "start": "2025-08-16",
+             "end": "2026-05-24",
+             "current": true,
+             "coverage": {
+              "fixtures": {
+               "events": true,
+               "lineups": true,
+               "statistics_fixtures": true,
+               "statistics_players": true
+              },
+              "standings": true,
+              "players": true,
+              "top_scorers": true,
+              "top_assists": true,
+              "top_cards": true,
+              "injuries": false,
+              "predictions": true,
+              "odds": false
+             }
+            }
+           ]
+          }
+         ]
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Unauthorized - Invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        },
+        "example": {
+         "errors": [
+          "You are not subscribed to this API."
+         ]
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Too Many Requests - Rate limit exceeded",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        },
+        "example": {
+         "errors": [
+          "Requests limit exceeded"
+         ]
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "Internal Server Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        },
+        "example": {
+         "errors": [
+          "Internal server error"
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fixtures": {
+   "get": {
+    "summary": "Get fixtures",
+    "description": "Retrieve football fixtures based on various filters. Supports single/multiple fixture IDs, live fixtures, date ranges, league/team filtering, and venue-specific queries. Returns events, lineups, and statistics for specific fixture requests. TIER NOTES: `next` and `last` are PAID-only (Free returns HTTP 400). On Free, use `{date: \"YYYY-MM-DD\"}` for both upcoming and recent lookups, optionally narrowed by `league`/`team`/`season`. FILTER FAMILIES are mutually exclusive: combining `live` with `date`/`from`/`to`/`next`/`last` returns HTTP 400 — pick ONE filter per request.",
+    "operationId": "get-fixtures",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "query",
+      "description": "Fixture ID (returns events, lineups, statistics)",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 215662
+      }
+     },
+     {
+      "name": "ids",
+      "in": "query",
+      "description": "Multiple fixture IDs separated by hyphens (returns events, lineups, statistics)",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "pattern": "^[0-9]+(-[0-9]+)*$",
+       "example": "215662-215663-215664-215665"
+      }
+     },
+     {
+      "name": "live",
+      "in": "query",
+      "description": "Live fixtures - use 'all' for all live fixtures or league IDs separated by hyphens (returns events). MUTUALLY EXCLUSIVE with `date`, `from`, `to`, `next`, `last` — pick one filter family per request; combining returns HTTP 400 'The Date field cannot be used with live field.' (and similar).",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "all"
+      }
+     },
+     {
+      "name": "date",
+      "in": "query",
+      "description": "Date in YYYY-MM-DD format. MUTUALLY EXCLUSIVE with `live` — combining returns HTTP 400. Pair with `league`/`season`/`team` to narrow.",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "example": "2025-08-21"
+      }
+     },
+     {
+      "name": "league",
+      "in": "query",
+      "description": "League ID",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "description": "Season year",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "description": "Team ID",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "last",
+      "in": "query",
+      "description": "Number of last fixtures to retrieve. PAID-TIER ONLY — Free plans get HTTP 400 'Free plans do not have access to the Last parameter.' On Free, use `{date: \"YYYY-MM-DD\"}` (optionally narrowed by `league`/`team`/`season`) to look up recently-played fixtures instead.",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "next",
+      "in": "query",
+      "description": "Number of next fixtures to retrieve. PAID-TIER ONLY — Free plans get HTTP 400 'Free plans do not have access to the Next parameter.' On Free, use `{date: \"YYYY-MM-DD\"}` (optionally narrowed by `league`/`team`/`season`) to look up upcoming fixtures on a specific day instead.",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "from",
+      "in": "query",
+      "description": "Start date in YYYY-MM-DD format",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "date"
+      }
+     },
+     {
+      "name": "to",
+      "in": "query",
+      "description": "End date in YYYY-MM-DD format",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "date"
+      }
+     },
+     {
+      "name": "round",
+      "in": "query",
+      "description": "Round name",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "description": "Fixture status (e.g., 'ft' for finished)",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "ft"
+      }
+     },
+     {
+      "name": "venue",
+      "in": "query",
+      "description": "Venue/Stadium ID",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 358
+      }
+     },
+     {
+      "name": "timezone",
+      "in": "query",
+      "description": "Timezone for fixture times",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "Europe/London"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        },
+        "example": {
+         "get": "fixtures",
+         "parameters": {
+          "date": "2025-08-21"
+         },
+         "errors": [],
+         "results": 1,
+         "paging": {
+          "current": 1,
+          "total": 1
+         },
+         "response": [
+          {
+           "fixture": {
+            "id": 1234567,
+            "referee": "John Smith",
+            "timezone": "UTC",
+            "date": "2025-08-21T19:00:00+00:00",
+            "timestamp": 1734897600,
+            "periods": {
+             "first": 1734897600,
+             "second": 1734901200
+            },
+            "venue": {
+             "id": 123,
+             "name": "Stadium Name",
+             "city": "City Name"
+            },
+            "status": {
+             "long": "Match Finished",
+             "short": "FT",
+             "elapsed": 90
+            }
+           },
+           "league": {
+            "id": 39,
+            "name": "Premier League",
+            "country": "England",
+            "logo": "https://media.api-sports.io/football/leagues/39.png",
+            "flag": "https://media.api-sports.io/flags/gb.svg",
+            "season": 2025,
+            "round": "Regular Season - 1"
+           },
+           "teams": {
+            "home": {
+             "id": 40,
+             "name": "Arsenal",
+             "logo": "https://media.api-sports.io/football/teams/40.png",
+             "winner": true
+            },
+            "away": {
+             "id": 47,
+             "name": "Tottenham",
+             "logo": "https://media.api-sports.io/football/teams/47.png",
+             "winner": false
+            }
+           },
+           "goals": {
+            "home": 2,
+            "away": 1
+           },
+           "score": {
+            "halftime": {
+             "home": 1,
+             "away": 0
+            },
+            "fulltime": {
+             "home": 2,
+             "away": 1
+            },
+            "extratime": {
+             "home": null,
+             "away": null
+            },
+            "penalty": {
+             "home": null,
+             "away": null
+            }
+           }
+          }
+         ]
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Unauthorized - Invalid API key",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        },
+        "example": {
+         "errors": [
+          "You are not subscribed to this API."
+         ]
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Too Many Requests - Rate limit exceeded",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        },
+        "example": {
+         "errors": [
+          "Requests limit exceeded"
+         ]
+        }
+       }
+      }
+     },
+     "500": {
+      "description": "Internal Server Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          }
+         }
+        },
+        "example": {
+         "errors": [
+          "Internal server error"
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fixtures/statistics": {
+   "get": {
+    "summary": "Get fixture statistics",
+    "description": "Get detailed statistics for a fixture",
+    "operationId": "get-fixtures/statistics",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "fixture",
+      "in": "query",
+      "description": "Fixture ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 215662
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "get": {
+           "type": "string",
+           "description": "Endpoint name"
+          },
+          "parameters": {
+           "type": "object",
+           "description": "Request parameters"
+          },
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "results": {
+           "type": "integer",
+           "description": "Number of results"
+          },
+          "paging": {
+           "type": "object",
+           "properties": {
+            "current": {
+             "type": "integer"
+            },
+            "total": {
+             "type": "integer"
+            }
+           }
+          },
+          "response": {
+           "type": "array",
+           "description": "Team statistics data",
+           "items": {
             "type": "object",
             "properties": {
-              "id": {
-                "type": "integer",
-                "description": "League ID"
-              },
-              "name": {
-                "type": "string",
-                "description": "League name"
-              },
-              "type": {
-                "type": "string",
-                "description": "League type (League, Cup)",
-                "enum": ["League", "Cup"]
-              },
-              "logo": {
-                "type": "string",
-                "nullable": true,
-                "description": "League logo URL"
-              }
-            }
-          },
-          "country": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "Country name"
-              },
-              "code": {
-                "type": "string",
-                "nullable": true,
-                "description": "Country code (2 letters)"
-              },
-              "flag": {
-                "type": "string",
-                "nullable": true,
-                "description": "Country flag URL"
-              }
-            }
-          },
-          "seasons": {
-            "type": "array",
-            "items": {
+             "team": {
               "type": "object",
               "properties": {
-                "year": {
-                  "type": "integer",
-                  "description": "Season year"
-                },
-                "start": {
-                  "type": "string",
-                  "format": "date",
-                  "description": "Season start date"
-                },
-                "end": {
-                  "type": "string",
-                  "format": "date",
-                  "description": "Season end date"
-                },
-                "current": {
-                  "type": "boolean",
-                  "description": "Whether this season is current"
-                },
-                "coverage": {
-                  "type": "object",
-                  "properties": {
-                    "fixtures": {
-                      "type": "object",
-                      "properties": {
-                        "events": {
-                          "type": "boolean"
-                        },
-                        "lineups": {
-                          "type": "boolean"
-                        },
-                        "statistics_fixtures": {
-                          "type": "boolean"
-                        },
-                        "statistics_players": {
-                          "type": "boolean"
-                        }
-                      }
-                    },
-                    "standings": {
-                      "type": "boolean"
-                    },
-                    "players": {
-                      "type": "boolean"
-                    },
-                    "top_scorers": {
-                      "type": "boolean"
-                    },
-                    "top_assists": {
-                      "type": "boolean"
-                    },
-                    "top_cards": {
-                      "type": "boolean"
-                    },
-                    "injuries": {
-                      "type": "boolean"
-                    },
-                    "predictions": {
-                      "type": "boolean"
-                    },
-                    "odds": {
-                      "type": "boolean"
-                    }
-                  }
-                }
+               "id": {
+                "type": "integer",
+                "description": "Team ID"
+               },
+               "name": {
+                "type": "string",
+                "description": "Team name"
+               },
+               "logo": {
+                "type": "string",
+                "description": "Team logo URL"
+               }
               }
+             },
+             "statistics": {
+              "type": "array",
+              "description": "Array of statistics",
+              "items": {
+               "type": "object",
+               "properties": {
+                "type": {
+                 "type": "string",
+                 "description": "Statistic type"
+                },
+                "value": {
+                 "oneOf": [
+                  {
+                   "type": "integer"
+                  },
+                  {
+                   "type": "string"
+                  }
+                 ],
+                 "description": "Statistic value (can be number or string like percentages)"
+                }
+               }
+              }
+             }
             }
+           }
           }
+         }
+        },
+        "example": {
+         "get": "fixtures/statistics",
+         "parameters": {
+          "fixture": "215662"
+         },
+         "errors": [],
+         "results": 2,
+         "paging": {
+          "current": 1,
+          "total": 1
+         },
+         "response": [
+          {
+           "team": {
+            "id": 463,
+            "name": "Aldosivi",
+            "logo": "https://media.api-sports.io/football/teams/463.png"
+           },
+           "statistics": [
+            {
+             "type": "Shots on Goal",
+             "value": 3
+            },
+            {
+             "type": "Shots off Goal",
+             "value": 2
+            },
+            {
+             "type": "Total Shots",
+             "value": 9
+            },
+            {
+             "type": "Blocked Shots",
+             "value": 4
+            },
+            {
+             "type": "Shots insidebox",
+             "value": 4
+            },
+            {
+             "type": "Shots outsidebox",
+             "value": 5
+            },
+            {
+             "type": "Fouls",
+             "value": 22
+            },
+            {
+             "type": "Corner Kicks",
+             "value": 3
+            },
+            {
+             "type": "Offsides",
+             "value": 1
+            },
+            {
+             "type": "Ball Possession",
+             "value": "32%"
+            },
+            {
+             "type": "Yellow Cards",
+             "value": 5
+            },
+            {
+             "type": "Red Cards",
+             "value": 1
+            },
+            {
+             "type": "Goalkeeper Saves",
+             "value": 0
+            },
+            {
+             "type": "Total passes",
+             "value": 242
+            },
+            {
+             "type": "Passes accurate",
+             "value": 121
+            },
+            {
+             "type": "Passes %",
+             "value": "50%"
+            }
+           ]
+          },
+          {
+           "team": {
+            "id": 442,
+            "name": "Defensa Y Justicia",
+            "logo": "https://media.api-sports.io/football/teams/442.png"
+           },
+           "statistics": [
+            {
+             "type": "Shots on Goal",
+             "value": 0
+            },
+            {
+             "type": "Shots off Goal",
+             "value": 3
+            },
+            {
+             "type": "Total Shots",
+             "value": 7
+            },
+            {
+             "type": "Blocked Shots",
+             "value": 4
+            },
+            {
+             "type": "Shots insidebox",
+             "value": 4
+            },
+            {
+             "type": "Shots outsidebox",
+             "value": 3
+            },
+            {
+             "type": "Fouls",
+             "value": 10
+            },
+            {
+             "type": "Corner Kicks",
+             "value": 5
+            },
+            {
+             "type": "Offsides",
+             "value": 9
+            },
+            {
+             "type": "Ball Possession",
+             "value": "68%"
+            },
+            {
+             "type": "Yellow Cards",
+             "value": 5
+            },
+            {
+             "type": "Red Cards",
+             "value": 0
+            },
+            {
+             "type": "Goalkeeper Saves",
+             "value": 2
+            },
+            {
+             "type": "Total passes",
+             "value": 514
+            },
+            {
+             "type": "Passes accurate",
+             "value": 397
+            },
+            {
+             "type": "Passes %",
+             "value": "77%"
+            }
+           ]
+          }
+         ]
         }
-      },
-      "LeagueApiResponse": {
-        "type": "object",
-        "properties": {
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fixtures/events": {
+   "get": {
+    "summary": "Get fixture events",
+    "description": "Get all available events from a fixture including goals, cards, substitutions, and other match events",
+    "operationId": "get-fixtures/events",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "fixture",
+      "in": "query",
+      "description": "Fixture ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 215662
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "description": "Team ID to filter events by team",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 463
+      }
+     },
+     {
+      "name": "player",
+      "in": "query",
+      "description": "Player ID to filter events by player",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 35845
+      }
+     },
+     {
+      "name": "type",
+      "in": "query",
+      "description": "Event type to filter by (Goal, Card, subst, etc.)",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "Goal",
+        "Card",
+        "subst",
+        "Var"
+       ],
+       "example": "Card"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
           "get": {
-            "type": "string",
-            "description": "Endpoint name"
+           "type": "string",
+           "description": "Endpoint name"
           },
           "parameters": {
-            "type": "object",
-            "description": "Request parameters"
+           "type": "object",
+           "description": "Request parameters"
           },
           "errors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
           },
           "results": {
-            "type": "integer",
-            "description": "Number of results"
+           "type": "integer",
+           "description": "Number of results"
           },
           "paging": {
-            "type": "object",
-            "properties": {
-              "current": {
-                "type": "integer"
-              },
-              "total": {
-                "type": "integer"
-              }
+           "type": "object",
+           "properties": {
+            "current": {
+             "type": "integer"
+            },
+            "total": {
+             "type": "integer"
             }
+           }
           },
           "response": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/League"
-            }
-          }
-        }
-      },
-      "Fixture": {
-        "type": "object",
-        "properties": {
-          "fixture": {
+           "type": "array",
+           "description": "Fixture events data",
+           "items": {
             "type": "object",
             "properties": {
-              "id": {
+             "time": {
+              "type": "object",
+              "properties": {
+               "elapsed": {
                 "type": "integer",
-                "description": "Fixture ID"
-              },
-              "referee": {
+                "description": "Elapsed minutes"
+               },
+               "extra": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Extra time minutes"
+               }
+              }
+             },
+             "team": {
+              "type": "object",
+              "properties": {
+               "id": {
+                "type": "integer",
+                "description": "Team ID"
+               },
+               "name": {
+                "type": "string",
+                "description": "Team name"
+               },
+               "logo": {
+                "type": "string",
+                "description": "Team logo URL"
+               }
+              }
+             },
+             "player": {
+              "type": "object",
+              "properties": {
+               "id": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Player ID"
+               },
+               "name": {
                 "type": "string",
                 "nullable": true,
-                "description": "Referee name"
-              },
-              "timezone": {
+                "description": "Player name"
+               }
+              }
+             },
+             "assist": {
+              "type": "object",
+              "properties": {
+               "id": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Assist player ID"
+               },
+               "name": {
                 "type": "string",
-                "description": "Timezone"
-              },
-              "date": {
-                "type": "string",
-                "format": "date-time",
-                "description": "Fixture date and time"
-              },
-              "timestamp": {
-                "type": "integer",
-                "description": "Unix timestamp"
-              },
-              "periods": {
-                "type": "object",
-                "properties": {
-                  "first": {
-                    "type": "integer",
-                    "nullable": true
-                  },
-                  "second": {
-                    "type": "integer",
-                    "nullable": true
-                  }
-                }
-              },
-              "venue": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer",
-                    "nullable": true
-                  },
-                  "name": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "city": {
-                    "type": "string",
-                    "nullable": true
-                  }
-                }
-              },
-              "status": {
-                "type": "object",
-                "properties": {
-                  "long": {
-                    "type": "string"
-                  },
-                  "short": {
-                    "type": "string"
-                  },
-                  "elapsed": {
-                    "type": "integer",
-                    "nullable": true
-                  }
-                }
+                "nullable": true,
+                "description": "Assist player name"
+               }
               }
+             },
+             "type": {
+              "type": "string",
+              "description": "Event type",
+              "enum": [
+               "Goal",
+               "Card",
+               "subst",
+               "Var"
+              ]
+             },
+             "detail": {
+              "type": "string",
+              "description": "Event detail (e.g., Yellow Card, Normal Goal, Substitution 1)"
+             },
+             "comments": {
+              "type": "string",
+              "nullable": true,
+              "description": "Additional comments"
+             }
             }
-          },
-          "league": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer"
-              },
-              "name": {
-                "type": "string"
-              },
-              "country": {
-                "type": "string"
-              },
-              "logo": {
-                "type": "string"
-              },
-              "flag": {
-                "type": "string"
-              },
-              "season": {
-                "type": "integer"
-              },
-              "round": {
-                "type": "string"
-              }
-            }
-          },
-          "teams": {
-            "type": "object",
-            "properties": {
-              "home": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "logo": {
-                    "type": "string"
-                  },
-                  "winner": {
-                    "type": "boolean",
-                    "nullable": true
-                  }
-                }
-              },
-              "away": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  },
-                  "name": {
-                    "type": "string"
-                  },
-                  "logo": {
-                    "type": "string"
-                  },
-                  "winner": {
-                    "type": "boolean",
-                    "nullable": true
-                  }
-                }
-              }
-            }
-          },
-          "goals": {
-            "type": "object",
-            "properties": {
-              "home": {
-                "type": "integer",
-                "nullable": true
-              },
-              "away": {
-                "type": "integer",
-                "nullable": true
-              }
-            }
-          },
-          "score": {
-            "type": "object",
-            "properties": {
-              "halftime": {
-                "type": "object",
-                "properties": {
-                  "home": {
-                    "type": "integer",
-                    "nullable": true
-                  },
-                  "away": {
-                    "type": "integer",
-                    "nullable": true
-                  }
-                }
-              },
-              "fulltime": {
-                "type": "object",
-                "properties": {
-                  "home": {
-                    "type": "integer",
-                    "nullable": true
-                  },
-                  "away": {
-                    "type": "integer",
-                    "nullable": true
-                  }
-                }
-              },
-              "extratime": {
-                "type": "object",
-                "properties": {
-                  "home": {
-                    "type": "integer",
-                    "nullable": true
-                  },
-                  "away": {
-                    "type": "integer",
-                    "nullable": true
-                  }
-                }
-              },
-              "penalty": {
-                "type": "object",
-                "properties": {
-                  "home": {
-                    "type": "integer",
-                    "nullable": true
-                  },
-                  "away": {
-                    "type": "integer",
-                    "nullable": true
-                  }
-                }
-              }
-            }
+           }
           }
+         }
+        },
+        "example": {
+         "get": "fixtures/events",
+         "parameters": {
+          "fixture": "215662"
+         },
+         "errors": [],
+         "results": 18,
+         "paging": {
+          "current": 1,
+          "total": 1
+         },
+         "response": [
+          {
+           "time": {
+            "elapsed": 25,
+            "extra": null
+           },
+           "team": {
+            "id": 463,
+            "name": "Aldosivi",
+            "logo": "https://media.api-sports.io/football/teams/463.png"
+           },
+           "player": {
+            "id": 6126,
+            "name": "F. Andrada"
+           },
+           "assist": {
+            "id": null,
+            "name": null
+           },
+           "type": "Goal",
+           "detail": "Normal Goal",
+           "comments": null
+          },
+          {
+           "time": {
+            "elapsed": 33,
+            "extra": null
+           },
+           "team": {
+            "id": 442,
+            "name": "Defensa Y Justicia",
+            "logo": "https://media.api-sports.io/football/teams/442.png"
+           },
+           "player": {
+            "id": 5936,
+            "name": "Julio González"
+           },
+           "assist": {
+            "id": null,
+            "name": null
+           },
+           "type": "Card",
+           "detail": "Yellow Card",
+           "comments": null
+          }
+         ]
         }
-      },
-      "ApiResponse": {
-        "type": "object",
-        "properties": {
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fixtures/lineups": {
+   "get": {
+    "summary": "Get fixture lineups",
+    "description": "Get both teams' starting XI, formation string, coach, and substitutes for a fixture. Players come with a `grid` field like \"1:1\" / \"2:3\" (X = row from goal outward, Y = column left-to-right) — the canonical input for rendering a tactical pitch viz. Available 20-40 minutes before kick-off when the competition's coverage supports it; otherwise populated after the match.",
+    "operationId": "get-fixtures/lineups",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "fixture",
+      "in": "query",
+      "description": "Fixture ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 592872
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "description": "Team ID to filter lineups to one side",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 50
+      }
+     },
+     {
+      "name": "player",
+      "in": "query",
+      "description": "Player ID to filter lineups to a single player",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 35845
+      }
+     },
+     {
+      "name": "type",
+      "in": "query",
+      "description": "Lineup subset (currently only startXI is documented)",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "startXI"
+       ],
+       "example": "startXI"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
           "get": {
-            "type": "string",
-            "description": "Endpoint name"
+           "type": "string"
           },
           "parameters": {
-            "type": "object",
-            "description": "Request parameters"
+           "type": "object"
           },
           "errors": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
           },
           "results": {
-            "type": "integer",
-            "description": "Number of results"
-          },
-          "paging": {
-            "type": "object",
-            "properties": {
-              "current": {
-                "type": "integer"
-              },
-              "total": {
-                "type": "integer"
-              }
-            }
+           "type": "integer"
           },
           "response": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Fixture"
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "team": {
+              "type": "object"
+             },
+             "coach": {
+              "type": "object"
+             },
+             "formation": {
+              "type": "string",
+              "example": "4-3-3"
+             },
+             "startXI": {
+              "type": "array",
+              "items": {
+               "type": "object",
+               "properties": {
+                "player": {
+                 "type": "object",
+                 "properties": {
+                  "id": {
+                   "type": "integer"
+                  },
+                  "name": {
+                   "type": "string"
+                  },
+                  "number": {
+                   "type": "integer"
+                  },
+                  "pos": {
+                   "type": "string"
+                  },
+                  "grid": {
+                   "type": "string",
+                   "example": "2:1"
+                  }
+                 }
+                }
+               }
+              }
+             },
+             "substitutes": {
+              "type": "array",
+              "items": {
+               "type": "object"
+              }
+             }
             }
+           }
           }
+         }
         }
+       }
       }
+     }
     }
+   }
   },
-  "paths": {
-    "/leagues": {
-      "get": {
-        "summary": "Get leagues",
-        "description": "Retrieve football leagues/cups based on various filters",
-        "operationId": "get-leagues",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "query",
-            "description": "League ID",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 39
-            }
-          },
-          {
-            "name": "name",
-            "in": "query",
-            "description": "League name",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "premier league"
-            }
-          },
-          {
-            "name": "country",
-            "in": "query",
-            "description": "Country name",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "england"
-            }
-          },
-          {
-            "name": "code",
-            "in": "query",
-            "description": "Country code (2 letters)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "gb"
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "description": "Season year",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 2025
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "description": "Team ID to find leagues where the team has played",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 33
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "description": "Search text for league name or country",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "premier league"
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "description": "League type",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": ["league", "cup"],
-              "example": "league"
-            }
-          },
-          {
-            "name": "current",
-            "in": "query",
-            "description": "Filter leagues where the season is currently in progress",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "example": true
-            }
-          },
-          {
-            "name": "last",
-            "in": "query",
-            "description": "Number of last leagues/cups added to the API",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 99,
-              "example": 10
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LeagueApiResponse"
-                },
-                "example": {
-                  "get": "leagues",
-                  "parameters": {
-                    "id": "39"
-                  },
-                  "errors": [],
-                  "results": 1,
-                  "paging": {
-                    "current": 1,
-                    "total": 1
-                  },
-                  "response": [
-                    {
-                      "league": {
-                        "id": 39,
-                        "name": "Premier League",
-                        "type": "League",
-                        "logo": "https://media.api-sports.io/football/leagues/39.png"
-                      },
-                      "country": {
-                        "name": "England",
-                        "code": "GB",
-                        "flag": "https://media.api-sports.io/flags/gb.svg"
-                      },
-                      "seasons": [
-                        {
-                          "year": 2025,
-                          "start": "2025-08-16",
-                          "end": "2026-05-24",
-                          "current": true,
-                          "coverage": {
-                            "fixtures": {
-                              "events": true,
-                              "lineups": true,
-                              "statistics_fixtures": true,
-                              "statistics_players": true
-                            },
-                            "standings": true,
-                            "players": true,
-                            "top_scorers": true,
-                            "top_assists": true,
-                            "top_cards": true,
-                            "injuries": false,
-                            "predictions": true,
-                            "odds": false
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "errors": [
-                    "You are not subscribed to this API."
-                  ]
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests - Rate limit exceeded",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "errors": [
-                    "Requests limit exceeded"
-                  ]
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "errors": [
-                    "Internal server error"
-                  ]
-                }
-              }
-            }
-          }
-        }
+  "/predictions": {
+   "get": {
+    "summary": "Get fixture predictions",
+    "description": "Pre-match probability for home/draw/away outcomes, advice text, expected winner, and side-by-side comparisons (form, attack, defence, h2h, goals, total) plus team season context. Available once both teams' last 10 fixtures of the season are processed.",
+    "operationId": "get-predictions",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "fixture",
+      "in": "query",
+      "description": "Fixture ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 198772
       }
-    },
-    "/fixtures": {
-      "get": {
-        "summary": "Get fixtures",
-        "description": "Retrieve football fixtures based on various filters. Supports single/multiple fixture IDs, live fixtures, date ranges, league/team filtering, and venue-specific queries. Returns events, lineups, and statistics for specific fixture requests. TIER NOTES: `next` and `last` are PAID-only (Free returns HTTP 400). On Free, use `{date: \"YYYY-MM-DD\"}` for both upcoming and recent lookups, optionally narrowed by `league`/`team`/`season`. FILTER FAMILIES are mutually exclusive: combining `live` with `date`/`from`/`to`/`next`/`last` returns HTTP 400 — pick ONE filter per request.",
-        "operationId": "get-fixtures",
-        "security": [
-          {
-            "x-apisports-key": []
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "get": {
+           "type": "string"
+          },
+          "parameters": {
+           "type": "object"
+          },
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "results": {
+           "type": "integer"
+          },
+          "response": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "predictions": {
+              "type": "object",
+              "properties": {
+               "winner": {
+                "type": "object"
+               },
+               "win_or_draw": {
+                "type": "boolean"
+               },
+               "under_over": {
+                "type": "string"
+               },
+               "goals": {
+                "type": "object"
+               },
+               "advice": {
+                "type": "string"
+               },
+               "percent": {
+                "type": "object",
+                "properties": {
+                 "home": {
+                  "type": "string",
+                  "example": "47%"
+                 },
+                 "draw": {
+                  "type": "string",
+                  "example": "24%"
+                 },
+                 "away": {
+                  "type": "string",
+                  "example": "29%"
+                 }
+                }
+               }
+              }
+             },
+             "league": {
+              "type": "object"
+             },
+             "teams": {
+              "type": "object"
+             },
+             "comparison": {
+              "type": "object"
+             },
+             "h2h": {
+              "type": "array",
+              "items": {
+               "type": "object"
+              }
+             }
+            }
+           }
           }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "query",
-            "description": "Fixture ID (returns events, lineups, statistics)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 215662
-            }
-          },
-          {
-            "name": "ids",
-            "in": "query",
-            "description": "Multiple fixture IDs separated by hyphens (returns events, lineups, statistics)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+(-[0-9]+)*$",
-              "example": "215662-215663-215664-215665"
-            }
-          },
-          {
-            "name": "live",
-            "in": "query",
-            "description": "Live fixtures - use 'all' for all live fixtures or league IDs separated by hyphens (returns events). MUTUALLY EXCLUSIVE with `date`, `from`, `to`, `next`, `last` — pick one filter family per request; combining returns HTTP 400 'The Date field cannot be used with live field.' (and similar).",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "all"
-            }
-          },
-          {
-            "name": "date",
-            "in": "query",
-            "description": "Date in YYYY-MM-DD format. MUTUALLY EXCLUSIVE with `live` — combining returns HTTP 400. Pair with `league`/`season`/`team` to narrow.",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date",
-              "example": "2025-08-21"
-            }
-          },
-          {
-            "name": "league",
-            "in": "query",
-            "description": "League ID",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "description": "Season year",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "description": "Team ID",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "last",
-            "in": "query",
-            "description": "Number of last fixtures to retrieve. PAID-TIER ONLY — Free plans get HTTP 400 'Free plans do not have access to the Last parameter.' On Free, use `{date: \"YYYY-MM-DD\"}` (optionally narrowed by `league`/`team`/`season`) to look up recently-played fixtures instead.",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "next",
-            "in": "query",
-            "description": "Number of next fixtures to retrieve. PAID-TIER ONLY — Free plans get HTTP 400 'Free plans do not have access to the Next parameter.' On Free, use `{date: \"YYYY-MM-DD\"}` (optionally narrowed by `league`/`team`/`season`) to look up upcoming fixtures on a specific day instead.",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "description": "Start date in YYYY-MM-DD format",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "description": "End date in YYYY-MM-DD format",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          {
-            "name": "round",
-            "in": "query",
-            "description": "Round name",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Fixture status (e.g., 'ft' for finished)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "ft"
-            }
-          },
-          {
-            "name": "venue",
-            "in": "query",
-            "description": "Venue/Stadium ID",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 358
-            }
-          },
-          {
-            "name": "timezone",
-            "in": "query",
-            "description": "Timezone for fixture times",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "Europe/London"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                },
-                "example": {
-                  "get": "fixtures",
-                  "parameters": {
-                    "date": "2025-08-21"
-                  },
-                  "errors": [],
-                  "results": 1,
-                  "paging": {
-                    "current": 1,
-                    "total": 1
-                  },
-                  "response": [
-                    {
-                      "fixture": {
-                        "id": 1234567,
-                        "referee": "John Smith",
-                        "timezone": "UTC",
-                        "date": "2025-08-21T19:00:00+00:00",
-                        "timestamp": 1734897600,
-                        "periods": {
-                          "first": 1734897600,
-                          "second": 1734901200
-                        },
-                        "venue": {
-                          "id": 123,
-                          "name": "Stadium Name",
-                          "city": "City Name"
-                        },
-                        "status": {
-                          "long": "Match Finished",
-                          "short": "FT",
-                          "elapsed": 90
-                        }
-                      },
-                      "league": {
-                        "id": 39,
-                        "name": "Premier League",
-                        "country": "England",
-                        "logo": "https://media.api-sports.io/football/leagues/39.png",
-                        "flag": "https://media.api-sports.io/flags/gb.svg",
-                        "season": 2025,
-                        "round": "Regular Season - 1"
-                      },
-                      "teams": {
-                        "home": {
-                          "id": 40,
-                          "name": "Arsenal",
-                          "logo": "https://media.api-sports.io/football/teams/40.png",
-                          "winner": true
-                        },
-                        "away": {
-                          "id": 47,
-                          "name": "Tottenham",
-                          "logo": "https://media.api-sports.io/football/teams/47.png",
-                          "winner": false
-                        }
-                      },
-                      "goals": {
-                        "home": 2,
-                        "away": 1
-                      },
-                      "score": {
-                        "halftime": {
-                          "home": 1,
-                          "away": 0
-                        },
-                        "fulltime": {
-                          "home": 2,
-                          "away": 1
-                        },
-                        "extratime": {
-                          "home": null,
-                          "away": null
-                        },
-                        "penalty": {
-                          "home": null,
-                          "away": null
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized - Invalid API key",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "errors": [
-                    "You are not subscribed to this API."
-                  ]
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests - Rate limit exceeded",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "errors": [
-                    "Requests limit exceeded"
-                  ]
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "errors": [
-                    "Internal server error"
-                  ]
-                }
-              }
-            }
-          }
+         }
         }
+       }
       }
-    },
-    "/fixtures/statistics": {
-      "get": {
-        "summary": "Get fixture statistics",
-        "description": "Get detailed statistics for a fixture",
-        "operationId": "get-fixtures/statistics",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "fixture",
-            "in": "query",
-            "description": "Fixture ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 215662
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": {
-                      "type": "string",
-                      "description": "Endpoint name"
-                    },
-                    "parameters": {
-                      "type": "object",
-                      "description": "Request parameters"
-                    },
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "results": {
-                      "type": "integer",
-                      "description": "Number of results"
-                    },
-                    "paging": {
-                      "type": "object",
-                      "properties": {
-                        "current": {
-                          "type": "integer"
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    },
-                    "response": {
-                      "type": "array",
-                      "description": "Team statistics data",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "team": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "integer",
-                                "description": "Team ID"
-                              },
-                              "name": {
-                                "type": "string",
-                                "description": "Team name"
-                              },
-                              "logo": {
-                                "type": "string",
-                                "description": "Team logo URL"
-                              }
-                            }
-                          },
-                          "statistics": {
-                            "type": "array",
-                            "description": "Array of statistics",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "type": {
-                                  "type": "string",
-                                  "description": "Statistic type"
-                                },
-                                "value": {
-                                  "oneOf": [
-                                    {
-                                      "type": "integer"
-                                    },
-                                    {
-                                      "type": "string"
-                                    }
-                                  ],
-                                  "description": "Statistic value (can be number or string like percentages)"
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "get": "fixtures/statistics",
-                  "parameters": {
-                    "fixture": "215662"
-                  },
-                  "errors": [],
-                  "results": 2,
-                  "paging": {
-                    "current": 1,
-                    "total": 1
-                  },
-                  "response": [
-                    {
-                      "team": {
-                        "id": 463,
-                        "name": "Aldosivi",
-                        "logo": "https://media.api-sports.io/football/teams/463.png"
-                      },
-                      "statistics": [
-                        {
-                          "type": "Shots on Goal",
-                          "value": 3
-                        },
-                        {
-                          "type": "Shots off Goal",
-                          "value": 2
-                        },
-                        {
-                          "type": "Total Shots",
-                          "value": 9
-                        },
-                        {
-                          "type": "Blocked Shots",
-                          "value": 4
-                        },
-                        {
-                          "type": "Shots insidebox",
-                          "value": 4
-                        },
-                        {
-                          "type": "Shots outsidebox",
-                          "value": 5
-                        },
-                        {
-                          "type": "Fouls",
-                          "value": 22
-                        },
-                        {
-                          "type": "Corner Kicks",
-                          "value": 3
-                        },
-                        {
-                          "type": "Offsides",
-                          "value": 1
-                        },
-                        {
-                          "type": "Ball Possession",
-                          "value": "32%"
-                        },
-                        {
-                          "type": "Yellow Cards",
-                          "value": 5
-                        },
-                        {
-                          "type": "Red Cards",
-                          "value": 1
-                        },
-                        {
-                          "type": "Goalkeeper Saves",
-                          "value": 0
-                        },
-                        {
-                          "type": "Total passes",
-                          "value": 242
-                        },
-                        {
-                          "type": "Passes accurate",
-                          "value": 121
-                        },
-                        {
-                          "type": "Passes %",
-                          "value": "50%"
-                        }
-                      ]
-                    },
-                    {
-                      "team": {
-                        "id": 442,
-                        "name": "Defensa Y Justicia",
-                        "logo": "https://media.api-sports.io/football/teams/442.png"
-                      },
-                      "statistics": [
-                        {
-                          "type": "Shots on Goal",
-                          "value": 0
-                        },
-                        {
-                          "type": "Shots off Goal",
-                          "value": 3
-                        },
-                        {
-                          "type": "Total Shots",
-                          "value": 7
-                        },
-                        {
-                          "type": "Blocked Shots",
-                          "value": 4
-                        },
-                        {
-                          "type": "Shots insidebox",
-                          "value": 4
-                        },
-                        {
-                          "type": "Shots outsidebox",
-                          "value": 3
-                        },
-                        {
-                          "type": "Fouls",
-                          "value": 10
-                        },
-                        {
-                          "type": "Corner Kicks",
-                          "value": 5
-                        },
-                        {
-                          "type": "Offsides",
-                          "value": 9
-                        },
-                        {
-                          "type": "Ball Possession",
-                          "value": "68%"
-                        },
-                        {
-                          "type": "Yellow Cards",
-                          "value": 5
-                        },
-                        {
-                          "type": "Red Cards",
-                          "value": 0
-                        },
-                        {
-                          "type": "Goalkeeper Saves",
-                          "value": 2
-                        },
-                        {
-                          "type": "Total passes",
-                          "value": 514
-                        },
-                        {
-                          "type": "Passes accurate",
-                          "value": 397
-                        },
-                        {
-                          "type": "Passes %",
-                          "value": "77%"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/fixtures/events": {
-      "get": {
-        "summary": "Get fixture events",
-        "description": "Get all available events from a fixture including goals, cards, substitutions, and other match events",
-        "operationId": "get-fixtures/events",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "fixture",
-            "in": "query",
-            "description": "Fixture ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 215662
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "description": "Team ID to filter events by team",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 463
-            }
-          },
-          {
-            "name": "player",
-            "in": "query",
-            "description": "Player ID to filter events by player",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 35845
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "description": "Event type to filter by (Goal, Card, subst, etc.)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": ["Goal", "Card", "subst", "Var"],
-              "example": "Card"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": {
-                      "type": "string",
-                      "description": "Endpoint name"
-                    },
-                    "parameters": {
-                      "type": "object",
-                      "description": "Request parameters"
-                    },
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "results": {
-                      "type": "integer",
-                      "description": "Number of results"
-                    },
-                    "paging": {
-                      "type": "object",
-                      "properties": {
-                        "current": {
-                          "type": "integer"
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    },
-                    "response": {
-                      "type": "array",
-                      "description": "Fixture events data",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "time": {
-                            "type": "object",
-                            "properties": {
-                              "elapsed": {
-                                "type": "integer",
-                                "description": "Elapsed minutes"
-                              },
-                              "extra": {
-                                "type": "integer",
-                                "nullable": true,
-                                "description": "Extra time minutes"
-                              }
-                            }
-                          },
-                          "team": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "integer",
-                                "description": "Team ID"
-                              },
-                              "name": {
-                                "type": "string",
-                                "description": "Team name"
-                              },
-                              "logo": {
-                                "type": "string",
-                                "description": "Team logo URL"
-                              }
-                            }
-                          },
-                          "player": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "integer",
-                                "nullable": true,
-                                "description": "Player ID"
-                              },
-                              "name": {
-                                "type": "string",
-                                "nullable": true,
-                                "description": "Player name"
-                              }
-                            }
-                          },
-                          "assist": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "integer",
-                                "nullable": true,
-                                "description": "Assist player ID"
-                              },
-                              "name": {
-                                "type": "string",
-                                "nullable": true,
-                                "description": "Assist player name"
-                              }
-                            }
-                          },
-                          "type": {
-                            "type": "string",
-                            "description": "Event type",
-                            "enum": ["Goal", "Card", "subst", "Var"]
-                          },
-                          "detail": {
-                            "type": "string",
-                            "description": "Event detail (e.g., Yellow Card, Normal Goal, Substitution 1)"
-                          },
-                          "comments": {
-                            "type": "string",
-                            "nullable": true,
-                            "description": "Additional comments"
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "get": "fixtures/events",
-                  "parameters": {
-                    "fixture": "215662"
-                  },
-                  "errors": [],
-                  "results": 18,
-                  "paging": {
-                    "current": 1,
-                    "total": 1
-                  },
-                  "response": [
-                    {
-                      "time": {
-                        "elapsed": 25,
-                        "extra": null
-                      },
-                      "team": {
-                        "id": 463,
-                        "name": "Aldosivi",
-                        "logo": "https://media.api-sports.io/football/teams/463.png"
-                      },
-                      "player": {
-                        "id": 6126,
-                        "name": "F. Andrada"
-                      },
-                      "assist": {
-                        "id": null,
-                        "name": null
-                      },
-                      "type": "Goal",
-                      "detail": "Normal Goal",
-                      "comments": null
-                    },
-                    {
-                      "time": {
-                        "elapsed": 33,
-                        "extra": null
-                      },
-                      "team": {
-                        "id": 442,
-                        "name": "Defensa Y Justicia",
-                        "logo": "https://media.api-sports.io/football/teams/442.png"
-                      },
-                      "player": {
-                        "id": 5936,
-                        "name": "Julio González"
-                      },
-                      "assist": {
-                        "id": null,
-                        "name": null
-                      },
-                      "type": "Card",
-                      "detail": "Yellow Card",
-                      "comments": null
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/fixtures/lineups": {
-      "get": {
-        "summary": "Get fixture lineups",
-        "description": "Get both teams' starting XI, formation string, coach, and substitutes for a fixture. Players come with a `grid` field like \"1:1\" / \"2:3\" (X = row from goal outward, Y = column left-to-right) — the canonical input for rendering a tactical pitch viz. Available 20-40 minutes before kick-off when the competition's coverage supports it; otherwise populated after the match.",
-        "operationId": "get-fixtures/lineups",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "fixture",
-            "in": "query",
-            "description": "Fixture ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 592872
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "description": "Team ID to filter lineups to one side",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 50
-            }
-          },
-          {
-            "name": "player",
-            "in": "query",
-            "description": "Player ID to filter lineups to a single player",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 35845
-            }
-          },
-          {
-            "name": "type",
-            "in": "query",
-            "description": "Lineup subset (currently only startXI is documented)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": ["startXI"],
-              "example": "startXI"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": { "type": "string" },
-                    "parameters": { "type": "object" },
-                    "errors": { "type": "array", "items": { "type": "string" } },
-                    "results": { "type": "integer" },
-                    "response": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "team": { "type": "object" },
-                          "coach": { "type": "object" },
-                          "formation": { "type": "string", "example": "4-3-3" },
-                          "startXI": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "player": {
-                                  "type": "object",
-                                  "properties": {
-                                    "id": { "type": "integer" },
-                                    "name": { "type": "string" },
-                                    "number": { "type": "integer" },
-                                    "pos": { "type": "string" },
-                                    "grid": { "type": "string", "example": "2:1" }
-                                  }
-                                }
-                              }
-                            }
-                          },
-                          "substitutes": { "type": "array", "items": { "type": "object" } }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/predictions": {
-      "get": {
-        "summary": "Get fixture predictions",
-        "description": "Pre-match probability for home/draw/away outcomes, advice text, expected winner, and side-by-side comparisons (form, attack, defence, h2h, goals, total) plus team season context. Available once both teams' last 10 fixtures of the season are processed.",
-        "operationId": "get-predictions",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "fixture",
-            "in": "query",
-            "description": "Fixture ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 198772
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": { "type": "string" },
-                    "parameters": { "type": "object" },
-                    "errors": { "type": "array", "items": { "type": "string" } },
-                    "results": { "type": "integer" },
-                    "response": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "predictions": {
-                            "type": "object",
-                            "properties": {
-                              "winner": { "type": "object" },
-                              "win_or_draw": { "type": "boolean" },
-                              "under_over": { "type": "string" },
-                              "goals": { "type": "object" },
-                              "advice": { "type": "string" },
-                              "percent": {
-                                "type": "object",
-                                "properties": {
-                                  "home": { "type": "string", "example": "47%" },
-                                  "draw": { "type": "string", "example": "24%" },
-                                  "away": { "type": "string", "example": "29%" }
-                                }
-                              }
-                            }
-                          },
-                          "league": { "type": "object" },
-                          "teams": { "type": "object" },
-                          "comparison": { "type": "object" },
-                          "h2h": { "type": "array", "items": { "type": "object" } }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/odds": {
-      "get": {
-        "summary": "Get pre-match odds",
-        "description": "Pre-match odds from multiple bookmakers for a fixture or league/season. NOTE this is pre-match only — for live odds use /odds/live (not yet wired here). Odds disappear from this endpoint a few hours after the fixture starts; archived odds live under /odds/mapping. At least one of (fixture, league, season, date) is required.",
-        "operationId": "get-odds",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "fixture",
-            "in": "query",
-            "description": "Fixture ID — narrowest filter",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 164327
-            }
-          },
-          {
-            "name": "league",
-            "in": "query",
-            "description": "League ID (pair with `season`)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 39
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "description": "Season year (YYYY)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 2024
-            }
-          },
-          {
-            "name": "date",
-            "in": "query",
-            "description": "Date YYYY-MM-DD",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date",
-              "example": "2024-08-17"
-            }
-          },
-          {
-            "name": "bookmaker",
-            "in": "query",
-            "description": "Bookmaker ID — narrow to a single sportsbook's lines",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 6
-            }
-          },
-          {
-            "name": "bet",
-            "in": "query",
-            "description": "Bet type ID — narrow to one market (e.g. 1 = Match Winner)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "name": "timezone",
-            "in": "query",
-            "description": "IANA timezone for date/time fields in the response",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "Europe/London"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Pagination cursor (default 1)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": { "type": "string" },
-                    "parameters": { "type": "object" },
-                    "errors": { "type": "array", "items": { "type": "string" } },
-                    "results": { "type": "integer" },
-                    "paging": { "type": "object" },
-                    "response": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "league": { "type": "object" },
-                          "fixture": { "type": "object" },
-                          "update": { "type": "string", "format": "date-time" },
-                          "bookmakers": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "id": { "type": "integer" },
-                                "name": { "type": "string" },
-                                "bets": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "id": { "type": "integer" },
-                                      "name": { "type": "string" },
-                                      "values": {
-                                        "type": "array",
-                                        "items": {
-                                          "type": "object",
-                                          "properties": {
-                                            "value": { "type": "string" },
-                                            "odd": { "type": "string" }
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/fixtures/players": {
-      "get": {
-        "summary": "Get fixture players statistics",
-        "description": "Get detailed statistics for all players in a specific fixture",
-        "operationId": "get-fixtures/players",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "fixture",
-            "in": "query",
-            "description": "Fixture ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 215662
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "description": "Team ID to filter players by team",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "example": 33
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": {
-                      "type": "string",
-                      "description": "Endpoint name"
-                    },
-                    "parameters": {
-                      "type": "object",
-                      "description": "Request parameters"
-                    },
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "results": {
-                      "type": "integer",
-                      "description": "Number of results"
-                    },
-                    "response": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "player": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "integer",
-                                "description": "Player ID"
-                              },
-                              "name": {
-                                "type": "string",
-                                "description": "Player name"
-                              },
-                              "pos": {
-                                "type": "string",
-                                "description": "Player position"
-                              },
-                              "number": {
-                                "type": "integer",
-                                "description": "Jersey number"
-                              },
-                              "photo": {
-                                "type": "string",
-                                "description": "Player photo URL"
-                              }
-                            }
-                          },
-                          "statistics": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "games": {
-                                  "type": "object",
-                                  "properties": {
-                                    "minutes": {
-                                      "type": "integer"
-                                    },
-                                    "rating": {
-                                      "type": "string"
-                                    }
-                                  }
-                                },
-                                "goals": {
-                                  "type": "object",
-                                  "properties": {
-                                    "total": {
-                                      "type": "integer"
-                                    },
-                                    "assists": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                },
-                                "shots": {
-                                  "type": "object",
-                                  "properties": {
-                                    "total": {
-                                      "type": "integer"
-                                    },
-                                    "on": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                },
-                                "passes": {
-                                  "type": "object",
-                                  "properties": {
-                                    "total": {
-                                      "type": "integer"
-                                    },
-                                    "accuracy": {
-                                      "type": "string"
-                                    }
-                                  }
-                                },
-                                "tackles": {
-                                  "type": "object",
-                                  "properties": {
-                                    "total": {
-                                      "type": "integer"
-                                    },
-                                    "interceptions": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                },
-                                "fouls": {
-                                  "type": "object",
-                                  "properties": {
-                                    "committed": {
-                                      "type": "integer"
-                                    },
-                                    "drawn": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                },
-                                "cards": {
-                                  "type": "object",
-                                  "properties": {
-                                    "yellow": {
-                                      "type": "integer"
-                                    },
-                                    "red": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                },
-                                "dribbles": {
-                                  "type": "object",
-                                  "properties": {
-                                    "attempts": {
-                                      "type": "integer"
-                                    },
-                                    "success": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                },
-                                "duels": {
-                                  "type": "object",
-                                  "properties": {
-                                    "total": {
-                                      "type": "integer"
-                                    },
-                                    "won": {
-                                      "type": "integer"
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/teams/statistics": {
-      "get": {
-        "summary": "Get team statistics",
-        "description": "Get detailed statistics for a team in a specific league and season",
-        "operationId": "get-teams/statistics",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "league",
-            "in": "query",
-            "description": "League ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 39
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "description": "Team ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 33
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "description": "Season year",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "example": 2019
-            }
-          },
-          {
-            "name": "date",
-            "in": "query",
-            "description": "End date in YYYY-MM-DD format",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date",
-              "example": "2019-10-08"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "get": {
-                      "type": "string",
-                      "description": "Endpoint name"
-                    },
-                    "parameters": {
-                      "type": "object",
-                      "description": "Request parameters"
-                    },
-                    "errors": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "results": {
-                      "type": "integer",
-                      "description": "Number of results"
-                    },
-                    "paging": {
-                      "type": "object",
-                      "properties": {
-                        "current": {
-                          "type": "integer"
-                        },
-                        "total": {
-                          "type": "integer"
-                        }
-                      }
-                    },
-                    "response": {
-                      "type": "object",
-                      "description": "Team statistics data",
-                      "properties": {
-                        "league": {
-                          "type": "object"
-                        },
-                        "team": {
-                          "type": "object"
-                        },
-                        "form": {
-                          "type": "string"
-                        },
-                        "fixtures": {
-                          "type": "object"
-                        },
-                        "goals": {
-                          "type": "object"
-                        },
-                        "biggest": {
-                          "type": "object"
-                        },
-                        "clean_sheet": {
-                          "type": "object"
-                        },
-                        "failed_to_score": {
-                          "type": "object"
-                        },
-                        "penalty": {
-                          "type": "object"
-                        },
-                        "lineups": {
-                          "type": "array"
-                        },
-                        "cards": {
-                          "type": "object"
-                        }
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "get": "teams/statistics",
-                  "parameters": {
-                    "league": "39",
-                    "team": "33",
-                    "season": "2019"
-                  },
-                  "errors": [],
-                  "results": 11,
-                  "paging": {
-                    "current": 1,
-                    "total": 1
-                  },
-                  "response": {
-                    "league": {
-                      "id": 39,
-                      "name": "Premier League",
-                      "country": "England",
-                      "logo": "https://media.api-sports.io/football/leagues/39.png",
-                      "flag": "https://media.api-sports.io/flags/gb-eng.svg",
-                      "season": 2019
-                    },
-                    "team": {
-                      "id": 33,
-                      "name": "Manchester United",
-                      "logo": "https://media.api-sports.io/football/teams/33.png"
-                    },
-                    "form": "WDLDWLDLDWLWDDWWDLWWLWLLDWWDWDWWWWDWDW",
-                    "fixtures": {
-                      "played": {
-                        "home": 19,
-                        "away": 19,
-                        "total": 38
-                      },
-                      "wins": {
-                        "home": 10,
-                        "away": 8,
-                        "total": 18
-                      },
-                      "draws": {
-                        "home": 7,
-                        "away": 5,
-                        "total": 12
-                      },
-                      "loses": {
-                        "home": 2,
-                        "away": 6,
-                        "total": 8
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/standings": {
-      "get": {
-        "summary": "Get standings",
-        "description": "Get standings for a league and season",
-        "operationId": "get-standings",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "league",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "team",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/fixtures/headtohead": {
-      "get": {
-        "summary": "Get head to head",
-        "description": "Get head to head data between two teams",
-        "operationId": "get-fixtures/headtohead",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "h2h",
-            "in": "query",
-            "description": "ID of the two teams separated by a hyphen",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "example": "33-34"
-            }
-          },
-          {
-            "name": "date",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          {
-            "name": "league",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "last",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/players/squads": {
-      "get": {
-        "summary": "Get squad",
-        "description": "Get the squad of a team",
-        "operationId": "get-players/squads",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "team",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/teams": {
-      "get": {
-        "summary": "Get teams",
-        "description": "Get teams by league, season, ID, or search",
-        "operationId": "get-teams",
-        "security": [
-          {
-            "x-apisports-key": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "name",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "league",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "season",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "country",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
-                }
-              }
-            }
-          }
-        }
-      }
+     }
     }
+   }
+  },
+  "/odds": {
+   "get": {
+    "summary": "Get pre-match odds",
+    "description": "Pre-match odds from multiple bookmakers for a fixture or league/season. NOTE this is pre-match only — for live odds use /odds/live (not yet wired here). Odds disappear from this endpoint a few hours after the fixture starts; archived odds live under /odds/mapping. At least one of (fixture, league, season, date) is required.",
+    "operationId": "get-odds",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "fixture",
+      "in": "query",
+      "description": "Fixture ID — narrowest filter",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 164327
+      }
+     },
+     {
+      "name": "league",
+      "in": "query",
+      "description": "League ID (pair with `season`)",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 39
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "description": "Season year (YYYY)",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 2024
+      }
+     },
+     {
+      "name": "date",
+      "in": "query",
+      "description": "Date YYYY-MM-DD",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "example": "2024-08-17"
+      }
+     },
+     {
+      "name": "bookmaker",
+      "in": "query",
+      "description": "Bookmaker ID — narrow to a single sportsbook's lines",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 6
+      }
+     },
+     {
+      "name": "bet",
+      "in": "query",
+      "description": "Bet type ID — narrow to one market (e.g. 1 = Match Winner)",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 1
+      }
+     },
+     {
+      "name": "timezone",
+      "in": "query",
+      "description": "IANA timezone for date/time fields in the response",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "example": "Europe/London"
+      }
+     },
+     {
+      "name": "page",
+      "in": "query",
+      "description": "Pagination cursor (default 1)",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 1
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "get": {
+           "type": "string"
+          },
+          "parameters": {
+           "type": "object"
+          },
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "results": {
+           "type": "integer"
+          },
+          "paging": {
+           "type": "object"
+          },
+          "response": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "league": {
+              "type": "object"
+             },
+             "fixture": {
+              "type": "object"
+             },
+             "update": {
+              "type": "string",
+              "format": "date-time"
+             },
+             "bookmakers": {
+              "type": "array",
+              "items": {
+               "type": "object",
+               "properties": {
+                "id": {
+                 "type": "integer"
+                },
+                "name": {
+                 "type": "string"
+                },
+                "bets": {
+                 "type": "array",
+                 "items": {
+                  "type": "object",
+                  "properties": {
+                   "id": {
+                    "type": "integer"
+                   },
+                   "name": {
+                    "type": "string"
+                   },
+                   "values": {
+                    "type": "array",
+                    "items": {
+                     "type": "object",
+                     "properties": {
+                      "value": {
+                       "type": "string"
+                      },
+                      "odd": {
+                       "type": "string"
+                      }
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fixtures/players": {
+   "get": {
+    "summary": "Get fixture players statistics",
+    "description": "Get detailed statistics for all players in a specific fixture",
+    "operationId": "get-fixtures/players",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "fixture",
+      "in": "query",
+      "description": "Fixture ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 215662
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "description": "Team ID to filter players by team",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "example": 33
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "get": {
+           "type": "string",
+           "description": "Endpoint name"
+          },
+          "parameters": {
+           "type": "object",
+           "description": "Request parameters"
+          },
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "results": {
+           "type": "integer",
+           "description": "Number of results"
+          },
+          "response": {
+           "type": "array",
+           "items": {
+            "type": "object",
+            "properties": {
+             "player": {
+              "type": "object",
+              "properties": {
+               "id": {
+                "type": "integer",
+                "description": "Player ID"
+               },
+               "name": {
+                "type": "string",
+                "description": "Player name"
+               },
+               "pos": {
+                "type": "string",
+                "description": "Player position"
+               },
+               "number": {
+                "type": "integer",
+                "description": "Jersey number"
+               },
+               "photo": {
+                "type": "string",
+                "description": "Player photo URL"
+               }
+              }
+             },
+             "statistics": {
+              "type": "array",
+              "items": {
+               "type": "object",
+               "properties": {
+                "games": {
+                 "type": "object",
+                 "properties": {
+                  "minutes": {
+                   "type": "integer"
+                  },
+                  "rating": {
+                   "type": "string"
+                  }
+                 }
+                },
+                "goals": {
+                 "type": "object",
+                 "properties": {
+                  "total": {
+                   "type": "integer"
+                  },
+                  "assists": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                "shots": {
+                 "type": "object",
+                 "properties": {
+                  "total": {
+                   "type": "integer"
+                  },
+                  "on": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                "passes": {
+                 "type": "object",
+                 "properties": {
+                  "total": {
+                   "type": "integer"
+                  },
+                  "accuracy": {
+                   "type": "string"
+                  }
+                 }
+                },
+                "tackles": {
+                 "type": "object",
+                 "properties": {
+                  "total": {
+                   "type": "integer"
+                  },
+                  "interceptions": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                "fouls": {
+                 "type": "object",
+                 "properties": {
+                  "committed": {
+                   "type": "integer"
+                  },
+                  "drawn": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                "cards": {
+                 "type": "object",
+                 "properties": {
+                  "yellow": {
+                   "type": "integer"
+                  },
+                  "red": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                "dribbles": {
+                 "type": "object",
+                 "properties": {
+                  "attempts": {
+                   "type": "integer"
+                  },
+                  "success": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                "duels": {
+                 "type": "object",
+                 "properties": {
+                  "total": {
+                   "type": "integer"
+                  },
+                  "won": {
+                   "type": "integer"
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/teams/statistics": {
+   "get": {
+    "summary": "Get team statistics",
+    "description": "Get detailed statistics for a team in a specific league and season",
+    "operationId": "get-teams/statistics",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "league",
+      "in": "query",
+      "description": "League ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 39
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "description": "Team ID",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 33
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "description": "Season year",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "example": 2019
+      }
+     },
+     {
+      "name": "date",
+      "in": "query",
+      "description": "End date in YYYY-MM-DD format",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "format": "date",
+       "example": "2019-10-08"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "get": {
+           "type": "string",
+           "description": "Endpoint name"
+          },
+          "parameters": {
+           "type": "object",
+           "description": "Request parameters"
+          },
+          "errors": {
+           "type": "array",
+           "items": {
+            "type": "string"
+           }
+          },
+          "results": {
+           "type": "integer",
+           "description": "Number of results"
+          },
+          "paging": {
+           "type": "object",
+           "properties": {
+            "current": {
+             "type": "integer"
+            },
+            "total": {
+             "type": "integer"
+            }
+           }
+          },
+          "response": {
+           "type": "object",
+           "description": "Team statistics data",
+           "properties": {
+            "league": {
+             "type": "object"
+            },
+            "team": {
+             "type": "object"
+            },
+            "form": {
+             "type": "string"
+            },
+            "fixtures": {
+             "type": "object"
+            },
+            "goals": {
+             "type": "object"
+            },
+            "biggest": {
+             "type": "object"
+            },
+            "clean_sheet": {
+             "type": "object"
+            },
+            "failed_to_score": {
+             "type": "object"
+            },
+            "penalty": {
+             "type": "object"
+            },
+            "lineups": {
+             "type": "array"
+            },
+            "cards": {
+             "type": "object"
+            }
+           }
+          }
+         }
+        },
+        "example": {
+         "get": "teams/statistics",
+         "parameters": {
+          "league": "39",
+          "team": "33",
+          "season": "2019"
+         },
+         "errors": [],
+         "results": 11,
+         "paging": {
+          "current": 1,
+          "total": 1
+         },
+         "response": {
+          "league": {
+           "id": 39,
+           "name": "Premier League",
+           "country": "England",
+           "logo": "https://media.api-sports.io/football/leagues/39.png",
+           "flag": "https://media.api-sports.io/flags/gb-eng.svg",
+           "season": 2019
+          },
+          "team": {
+           "id": 33,
+           "name": "Manchester United",
+           "logo": "https://media.api-sports.io/football/teams/33.png"
+          },
+          "form": "WDLDWLDLDWLWDDWWDLWWLWLLDWWDWDWWWWDWDW",
+          "fixtures": {
+           "played": {
+            "home": 19,
+            "away": 19,
+            "total": 38
+           },
+           "wins": {
+            "home": 10,
+            "away": 8,
+            "total": 18
+           },
+           "draws": {
+            "home": 7,
+            "away": 5,
+            "total": 12
+           },
+           "loses": {
+            "home": 2,
+            "away": 6,
+            "total": 8
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/standings": {
+   "get": {
+    "summary": "Get standings",
+    "description": "Get standings for a league and season",
+    "operationId": "get-standings",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "league",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/injuries": {
+   "get": {
+    "summary": "Get injuries and suspensions",
+    "description": "Player injuries and suspensions for a league/season, fixture, team, or player.",
+    "operationId": "get-injuries",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "league",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "fixture",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "player",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "date",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "format": "date"
+      }
+     },
+     {
+      "name": "ids",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "timezone",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/fixtures/headtohead": {
+   "get": {
+    "summary": "Get head to head",
+    "description": "Get head to head data between two teams",
+    "operationId": "get-fixtures/headtohead",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "h2h",
+      "in": "query",
+      "description": "ID of the two teams separated by a hyphen",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "example": "33-34"
+      }
+     },
+     {
+      "name": "date",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "format": "date"
+      }
+     },
+     {
+      "name": "league",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "last",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/players/squads": {
+   "get": {
+    "summary": "Get squad",
+    "description": "Get the squad of a team",
+    "operationId": "get-players/squads",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "team",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/teams": {
+   "get": {
+    "summary": "Get teams",
+    "description": "Get teams by league, season, ID, or search",
+    "operationId": "get-teams",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "name",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "league",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "country",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "search",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
   }
+ }
 }

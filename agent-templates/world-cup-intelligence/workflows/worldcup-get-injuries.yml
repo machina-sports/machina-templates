@@ -1,0 +1,64 @@
+workflow:
+  name: worldcup-get-injuries
+  title: World Cup Intelligence - Injuries
+  description: Injuries and suspensions for both teams in a World Cup fixture, from api-football /injuries (the only structured WC source; sports-skills get_missing_players is Premier-League-only). Resolve the two teams from an event_urn. Returns empty pre-tournament and populates closer to matchday.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    league: "$.get('league', '')"
+    season: "$.get('season', '')"
+  outputs:
+    injuries: "$.get('injuries', {})"
+    workflow-status: "$.get('injuries', {}).get('teams') and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event
+      description: Resolve home/away api-football team ids/names, league id and season from the cached event.
+      condition: "$.get('event_urn', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn')"
+      outputs:
+        home_team_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_home_team_id')"
+        away_team_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_away_team_id')"
+        home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('teams', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
+        away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('teams', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
+        resolved_league: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_league_id')"
+        resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('start_date') or '2026'))[:4]"
+
+    - type: connector
+      name: fetch-injuries-af
+      description: League-wide World Cup injuries/suspensions from api-football.
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-injuries
+      inputs:
+        league: "$.get('resolved_league') or $.get('league') or '1'"
+        season: "$.get('resolved_year') or $.get('season') or '2026'"
+      outputs:
+        injuries_af: "$"
+
+    - type: connector
+      name: normalize-injuries
+      description: Filter league-wide injuries to the fixture's two teams and dedup per player.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_injuries
+      inputs:
+        af: "$.get('injuries_af', {})"
+        home_team_id: "$.get('home_team_id')"
+        away_team_id: "$.get('away_team_id')"
+        home_team: "$.get('home_team_name', '')"
+        away_team: "$.get('away_team_name', '')"
+      outputs:
+        injuries: "$.get('data', {}) if $.get('status') else {}"
