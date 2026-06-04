@@ -10,10 +10,9 @@ agent:
     event_urn: "$.get('event_urn', '')"
   workflows:
     - name: worldcup-search-markets
-      description: Search Kalshi/Polymarket World Cup markets
+      description: Search Kalshi/Polymarket World Cup markets by query/team text
       inputs:
         query: "$.get('query', 'FIFA World Cup 2026')"
-        event_urn: "$.get('event_urn', '')"
       outputs:
         markets: "$.get('markets', [])"
 
@@ -28,7 +27,6 @@ agent:
       description: Identify informational market-edge and arbitrage candidates
       inputs:
         query: "$.get('query', 'FIFA World Cup 2026')"
-        event_urn: "$.get('event_urn', '')"
       outputs:
         edge_candidates: "$.get('edge_candidates', [])"
         edge_analysis: "$.get('analysis', {})"
@@ -42,7 +40,7 @@ agent:
         brief: "$.get('brief', {})"
 
   instructions: |
-    Use canonical match truth from API-Football, IPTC mappings, and Machina URNs before reasoning over markets.
+    Use canonical match truth from API-Football, IPTC mappings, and provider event URNs before reasoning over markets.
     Use Google GenAI for grounded structured briefs and xAI/Grok for social/news pulse.
     You may surface market-edge or arbitrage candidates as informational analysis, but do not place trades, execute bets, promise profit, or present personalized financial advice.
     Always include evidence, uncertainty, and source attribution when available.

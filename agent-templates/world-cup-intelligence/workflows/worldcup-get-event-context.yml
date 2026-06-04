@@ -19,7 +19,6 @@ workflow:
   inputs:
     event_urn: "$.get('event_urn', '')"
     provider_event_id: "$.get('provider_event_id', '')"
-    include_markets: "$.get('include_markets', True)"
     include_prematch_research: "$.get('include_prematch_research', True)"
     include_social_pulse: "$.get('include_social_pulse', False)"
   outputs:
@@ -55,26 +54,11 @@ workflow:
       outputs:
         sports_context: "$.get('data', {}) if $.get('status') else {}"
 
-    - type: document
-      name: lookup-linked-markets
-      description: Pull markets linked to this Machina event from the same pod document store.
-      condition: "$.get('include_markets', True) is True and $.get('event_urn', '') != ''"
-      config:
-        action: search
-        search-limit: 50
-        search-vector: false
-      filters:
-        name: "'worldcup:market-cache'"
-        value.machina_event_urn: "$.get('event_urn')"
-      outputs:
-        linked_markets: "[d.get('value', {}) for d in $.get('documents', [])]"
-
     - type: mapping
       name: worldcup-iptc-event-to-api-response
       title: World Cup | Event Context Envelope
       inputs:
         event_document: "$.get('event_document', {})"
         sports_context: "$.get('sports_context', {})"
-        linked_markets: "$.get('linked_markets', [])"
       outputs:
-        event_context: "$.get('event_context', {'event': $.get('event_document', {}), 'sports_context': $.get('sports_context', {}), 'markets': $.get('linked_markets', [])})"
+        event_context: "$.get('event_context', {'event': $.get('event_document', {}), 'sports_context': $.get('sports_context', {})})"

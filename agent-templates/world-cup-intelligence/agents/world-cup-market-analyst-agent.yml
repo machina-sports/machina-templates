@@ -13,7 +13,6 @@ agent:
       description: Compare normalized markets by source
       inputs:
         query: "$.get('query', 'FIFA World Cup 2026')"
-        event_urn: "$.get('event_urn', '')"
       outputs:
         comparison: "$.get('comparison', {})"
 
@@ -21,7 +20,6 @@ agent:
       description: Identify informational arbitrage/edge candidates
       inputs:
         query: "$.get('query', 'FIFA World Cup 2026')"
-        event_urn: "$.get('event_urn', '')"
       outputs:
         edge_candidates: "$.get('edge_candidates', [])"
         analysis: "$.get('analysis', {})"
@@ -35,6 +33,6 @@ agent:
         brief: "$.get('brief', {})"
 
   instructions: |
-    Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, close times, and linked Machina event URNs.
+    Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, and close times.
     Call out candidate price dislocations or arbitrage-style opportunities only as analysis for a human/agent to evaluate independently.
     Do not execute trades or provide personalized financial advice.

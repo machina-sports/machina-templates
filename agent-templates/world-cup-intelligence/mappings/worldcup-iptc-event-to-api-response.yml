@@ -6,7 +6,7 @@ mappings:
     outputs:
       event: |
         {
-          "machina_urn": $.get('event_document', {}).get('_id', $.get('event_document', {}).get('@id', '')),
+          "event_urn": $.get('event_document', {}).get('_id', $.get('event_document', {}).get('@id', '')),
           "provider_ids": $.get('event_document', {}).get('provider_ids', {}),
           "iptc": $.get('event_document', {}),
           "name": $.get('event_document', {}).get('name', ''),
@@ -20,7 +20,6 @@ mappings:
         {
           "event": $.get('event', $.get('event_document', {})),
           "sports_context": $.get('sports_context', {}),
-          "markets": $.get('linked_markets', []),
           "prematch_research": $.get('event_document', {}).get('prematch_research', {}),
           "social_pulse": $.get('event_document', {}).get('prematch_social_pulse', {})
         }

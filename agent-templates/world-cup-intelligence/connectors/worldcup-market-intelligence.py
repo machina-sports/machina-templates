@@ -208,8 +208,6 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
         "end_time": _first(record, "end_date", "close_time", "expiration_time", "expected_expiration_time"),
         "updated_at": _first(record, "updated_at", "last_update_time", "last_updated") or fetched_at,
         "fetched_at": fetched_at,
-        "machina_event_urn": _text(record.get("machina_event_urn")),
-        "linking_notes": list(record.get("linking_notes") or []),
         "resolution_risk_notes": [
             "Read-only market intelligence. Verify provider resolution rules, fees, liquidity, and freshness before acting."
         ],
@@ -237,12 +235,10 @@ def _extract_source_records(source: str, payloads: list[Any]) -> list[dict[str, 
     return records
 
 
-def _market_matches(market: dict[str, Any], *, query: str, team: str, event_urn: str, source: str, status: str) -> bool:
+def _market_matches(market: dict[str, Any], *, query: str, team: str, source: str, status: str) -> bool:
     if source and source != "all" and market.get("source") != source:
         return False
     if status and status != "all" and market.get("status") not in {status, "unknown"}:
-        return False
-    if event_urn and market.get("machina_event_urn") != event_urn:
         return False
 
     haystack = " ".join(
@@ -257,9 +253,9 @@ def _market_matches(market: dict[str, Any], *, query: str, team: str, event_urn:
     )
     if team and _lower(team) not in haystack:
         return False
-    # Relevance gate: keep only World Cup-related markets (or markets already
-    # linked to a Machina event) so broad sports payloads don't pollute results.
-    if not any(term in haystack for term in WORLD_CUP_TERMS) and not market.get("machina_event_urn"):
+    # Relevance gate: keep only World Cup-related markets so broad sports
+    # payloads don't pollute results.
+    if not any(term in haystack for term in WORLD_CUP_TERMS):
         return False
     if query:
         normalized_query = _lower(query)
@@ -280,7 +276,6 @@ def _market_matches(market: dict[str, Any], *, query: str, team: str, event_urn:
 def _filter_markets(markets: list[dict[str, Any]], params: dict[str, Any]) -> list[dict[str, Any]]:
     query = _text(params.get("query"))
     team = _text(params.get("team"))
-    event_urn = _text(params.get("event_urn"))
     source = _lower(params.get("source") or "all")
     status = _lower(params.get("status") or "open")
     try:
@@ -292,7 +287,7 @@ def _filter_markets(markets: list[dict[str, Any]], params: dict[str, Any]) -> li
     filtered = [
         market
         for market in markets
-        if _market_matches(market, query=query, team=team, event_urn=event_urn, source=source, status=status)
+        if _market_matches(market, query=query, team=team, source=source, status=status)
     ]
     # Prefer the most liquid / highest-volume candidates when providers return broad sports payloads.
     filtered.sort(key=lambda market: max(_to_float(market.get("volume")), _to_float(market.get("liquidity"))), reverse=True)
@@ -304,7 +299,7 @@ def normalize_market_sources(request_data: dict[str, Any]) -> dict[str, Any]:
 
     Params accepted:
       - sports_skills_markets, polymarket_markets, kalshi_markets
-      - query, team, event_urn, source, status, limit
+      - query, team, source, status, limit
     """
     params = _params(request_data)
     fetched_at = _now_iso()

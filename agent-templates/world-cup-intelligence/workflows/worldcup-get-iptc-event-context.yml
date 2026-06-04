@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-iptc-event-context
   title: World Cup Intelligence - IPTC Event Context
-  description: Return canonical IPTC/Sportschema and Machina URN context from the same pod document store.
+  description: Return canonical IPTC/Sportschema event context keyed by provider URN from the same pod document store.
 
   context-variables:
     debugger:
@@ -17,7 +17,7 @@ workflow:
       google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
       xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
   inputs:
-    machina_urn: "$.get('machina_urn', '')"
+    event_urn: "$.get('event_urn', '')"
     provider_event_id: "$.get('provider_event_id', '')"
     provider: "$.get('provider', 'api-football')"
   outputs:
@@ -26,15 +26,15 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Lookup canonical Machina event by URN/provider id. Requires an identifying input so an arbitrary event is never returned.
-      condition: "$.get('machina_urn', '') != '' or $.get('provider_event_id', '') != ''"
+      description: Lookup canonical event by provider URN/provider id. Requires an identifying input so an arbitrary event is never returned.
+      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search
         search-limit: 1
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value._id: "$.get('machina_urn') if $.get('machina_urn') else {'$exists': True}"
+        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
         value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
         event_document: "($.get('documents', []) or [{}])[0].get('value', {})"

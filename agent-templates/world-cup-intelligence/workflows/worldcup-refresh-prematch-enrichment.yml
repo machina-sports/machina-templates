@@ -17,7 +17,7 @@ workflow:
       google_project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
       xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
   inputs:
-    competition_urn: "$.get('competition_urn', 'urn:machina:soccer:competition:fifa-world-cup')"
+    competition_slug: "$.get('competition_slug', 'world-cup-2026')"
     limit: "$.get('limit', 10)"
     include_social: "$.get('include_social', True)"
     force: "$.get('force', False)"
@@ -34,7 +34,7 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value.competition: "$.get('competition_urn')"
+        value.machina_competition_slug: "$.get('competition_slug', 'world-cup-2026')"
       outputs:
         fixtures: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 10))]"
         has_fixtures: "len($.get('documents', [])) > 0"
@@ -56,7 +56,7 @@ workflow:
         entity_id: "$.get('fixture_item', {}).get('_id', '')"
         entity_name: "$.get('fixture_item', {}).get('name', '')"
         search_query: >
-          $.get('fixture_item', {}).get('home_team_name', '') + ' vs ' + $.get('fixture_item', {}).get('away_team_name', '') + ' FIFA World Cup 2026 preview injuries lineups odds market context'
+          $.get('fixture_item', {}).get('name', '') + ' FIFA World Cup 2026 preview injuries lineups odds market context'
         extraction_prompt: "Extract structured pre-match analysis with keys: team_form, injuries_suspensions, head_to_head, key_players, tactical_preview, prediction_context, sources. Only use sourced facts."
         recency_days: 7
       outputs:

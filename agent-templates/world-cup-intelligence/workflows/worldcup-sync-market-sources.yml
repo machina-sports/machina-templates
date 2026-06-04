@@ -24,7 +24,6 @@ workflow:
     limit: "$.get('limit', 100)"
   outputs:
     markets_count: "len($.get('normalized_markets', []))"
-    linked_count: "len([m for m in $.get('linked_markets', []) if m.get('machina_event_urn')])"
     sources: "$.get('sources', {})"
     warnings: "$.get('warnings', [])"
     workflow-status: "len($.get('normalized_markets', [])) > 0 and 'executed' or 'skipped'"
@@ -92,25 +91,16 @@ workflow:
         sources: "$.get('data', {}).get('sources', {}) if $.get('status') else {}"
         warnings: "$.get('data', {}).get('warnings', []) if $.get('status') else []"
 
-    - type: mapping
-      name: worldcup-market-entity-linking
-      title: World Cup | Market Entity Linking
-      description: Preserve normalized markets and attach Machina URNs where confidence is already present.
-      inputs:
-        markets: "$.get('normalized_markets', [])"
-      outputs:
-        linked_markets: "$.get('linked_markets', $.get('markets', []))"
-
     - type: document
       name: save-market-cache
-      description: Save normalized linked market cache in the same pod document store.
-      condition: "len($.get('linked_markets', [])) > 0"
+      description: Save the normalized market cache in the same pod document store, upserted by record id.
+      condition: "len($.get('normalized_markets', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "worldcup:market-cache"
       documents:
-        items: "$.get('linked_markets', [])"
+        items: "$.get('normalized_markets', [])"
       inputs:
-        linked_markets: "$.get('linked_markets', [])"
+        normalized_markets: "$.get('normalized_markets', [])"

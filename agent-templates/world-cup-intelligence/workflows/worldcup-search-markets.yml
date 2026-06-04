@@ -18,7 +18,6 @@ workflow:
       xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
-    event_urn: "$.get('event_urn', '')"
     team: "$.get('team', '')"
     source: "$.get('source', 'all')"
     status: "$.get('status', 'open')"
@@ -41,7 +40,6 @@ workflow:
       filters:
         name: "'worldcup:market-cache'"
         value.status: "{'$in': [$.get('status', 'open'), 'unknown']} if $.get('status', 'open') != 'all' else {'$exists': True}"
-        value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
       outputs:
         cached_markets: "[d.get('value', {}) for d in $.get('documents', [])]"
         cache_count: "len($.get('documents', []))"
@@ -56,7 +54,6 @@ workflow:
         cached_markets: "$.get('cached_markets', [])"
         query: "$.get('query', 'FIFA World Cup 2026')"
         team: "$.get('team', '')"
-        event_urn: "$.get('event_urn', '')"
         source: "$.get('source', 'all')"
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 20)"
@@ -126,7 +123,6 @@ workflow:
         kalshi_markets: "$.get('kalshi_markets', {})"
         query: "$.get('query', 'FIFA World Cup 2026')"
         team: "$.get('team', '')"
-        event_urn: "$.get('event_urn', '')"
         source: "$.get('source', 'all')"
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 20)"

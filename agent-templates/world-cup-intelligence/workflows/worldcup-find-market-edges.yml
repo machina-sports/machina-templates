@@ -18,7 +18,6 @@ workflow:
       xai_api_key: $TEMP_CONTEXT_VARIABLE_XAI_API_KEY
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
-    event_urn: "$.get('event_urn', '')"
     min_edge_bps: "$.get('min_edge_bps', 100)"
     include_reasoning: "$.get('include_reasoning', True)"
     limit: "$.get('limit', 50)"
@@ -37,7 +36,6 @@ workflow:
         search-vector: false
       filters:
         name: "'worldcup:market-cache'"
-        value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
       outputs:
         markets: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 50))]"
 
@@ -64,7 +62,6 @@ workflow:
         provider: vertex_ai
       inputs:
         query: "$.get('query')"
-        event_urn: "$.get('event_urn')"
         edge_candidates: "$.get('edge_candidates', [])"
         markets: "$.get('markets', [])"
       outputs:

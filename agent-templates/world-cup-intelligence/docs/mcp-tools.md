@@ -12,7 +12,6 @@ Inputs:
 
 - `query`: natural-language market search query, default `FIFA World Cup 2026`
 - `team`: optional team filter
-- `event_urn`: optional Machina event URN filter
 - `source`: `all`, `polymarket`, or `kalshi`
 - `status`: `open`, `closed`, or `all`
 - `limit`: result cap
@@ -74,4 +73,4 @@ Read-only utility connector. Normalizes Sports Skills/Kalshi/Polymarket payloads
 
 ### `worldcup-market-intelligence.filter_cached_markets`
 
-Read-only utility connector. Applies query/team/source/status/event filters to cached `WorldCupMarket` records.
+Read-only utility connector. Applies query/team/source/status filters to cached `WorldCupMarket` records and warns when served prices are stale.

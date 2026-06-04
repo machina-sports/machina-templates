@@ -136,7 +136,6 @@ class TestFilterCachedMarkets:
             "source": "kalshi",
             "title": "Will Brazil win the 2026 FIFA World Cup?",
             "status": "open",
-            "machina_event_urn": "",
             "volume": 100,
             "fetched_at": fetched_at,
         }

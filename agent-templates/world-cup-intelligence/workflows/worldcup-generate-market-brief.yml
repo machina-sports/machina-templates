@@ -43,14 +43,13 @@ workflow:
 
     - type: document
       name: lookup-markets
-      description: Load linked market cache for the event or query from same-pod state.
+      description: Load the normalized market cache from same-pod state for brief context.
       config:
         action: search
         search-limit: 50
         search-vector: false
       filters:
         name: "'worldcup:market-cache'"
-        value.machina_event_urn: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
       outputs:
         markets: "[d.get('value', {}) for d in $.get('documents', [])]"
 

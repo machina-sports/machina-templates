@@ -8,7 +8,7 @@ setup:
     - market-intelligence
   estimatedTime: 3 minutes
   features:
-    - API-Football fixture ingestion normalized to IPTC Sport Schema and Machina URNs.
+    - API-Football fixture ingestion normalized to IPTC Sport Schema with provider URNs.
     - World Cup market search across Kalshi and Polymarket.
     - Event context using Sports Skills, API-Football, and semantic-layer cache.
     - Google GenAI grounded reasoning for structured market briefs.
@@ -25,7 +25,6 @@ setup:
     - grok
     - pod-document-store
     - machina-search
-    - machina-urn-resolver
   status: available
   value: agent-templates/world-cup-intelligence
   version: 0.1.0
@@ -81,7 +80,5 @@ datasets:
     path: mappings/worldcup-iptc-event-to-api-response.yml
   - type: mappings
     path: mappings/worldcup-market-normalization.yml
-  - type: mappings
-    path: mappings/worldcup-market-entity-linking.yml
   - type: mappings
     path: mappings/worldcup-brief-response-envelope.yml
