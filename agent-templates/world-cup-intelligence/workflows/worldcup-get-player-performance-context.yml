@@ -1,0 +1,97 @@
+workflow:
+  name: worldcup-get-player-performance-context
+  title: World Cup Intelligence - Player Performance Context
+  description: Returns a player-level performance context package for a World Cup fixture, keeping official FIFA Power Ranking fields separate from Machina provisional 0-10 signals. API-Football player match stats are the provider-backed input; official FIFA fields remain pending unless explicitly supplied.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    fixture_id: "$.get('fixture_id', '')"
+    player_id: "$.get('player_id', '')"
+    team_id: "$.get('team_id', '')"
+    official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
+  outputs:
+    player_performance_context: "$.get('player_performance_context', {})"
+    workflow-status: "$.get('player_performance_context', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event
+      description: Resolve canonical event and API-Football fixture id from same-pod event state.
+      condition: "$.get('event_urn', '') != '' or $.get('fixture_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+        value.provider_ids.api_football_fixture_id: "$.get('fixture_id') if $.get('fixture_id') else {'$exists': True}"
+      outputs:
+        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
+        resolved_fixture_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_fixture_id') or $.get('fixture_id')"
+
+    - type: connector
+      name: fetch-player-stats-af
+      description: Provider-backed player statistics for the resolved fixture; optional player_id/team_id filters narrow the result.
+      condition: "($.get('resolved_fixture_id') or $.get('fixture_id')) not in (None, '')"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures/players
+      inputs:
+        fixture: "$.get('resolved_fixture_id') or $.get('fixture_id')"
+        player: "$.get('player_id') if $.get('player_id') else None"
+        team: "$.get('team_id') if $.get('team_id') else None"
+      outputs:
+        api_football_player_stats: "$"
+
+    - type: connector
+      name: normalize-player-match-stats
+      description: Normalize provider player statistics into the World Cup Intelligence player context schema.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_player_match_stats
+      inputs:
+        event_urn: "$.get('event_urn') or $.get('fixture_id')"
+        fixture_id: "$.get('resolved_fixture_id') or $.get('fixture_id')"
+        player_id: "$.get('player_id')"
+        team_id: "$.get('team_id')"
+        player_stats: "$.get('api_football_player_stats', {})"
+      outputs:
+        normalized_players: "$.get('players', [])"
+        normalized_player_count: "$.get('count', 0)"
+        normalize_warnings: "$.get('warnings', [])"
+
+    - type: connector
+      name: score-provisional-performance
+      description: Calculate the Machina provisional 0-10 signal for the selected player. This is not an official FIFA/Aramco Power Ranking.
+      condition: "len($.get('normalized_players', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: score_provisional_player_performance
+      inputs:
+        player: "($.get('normalized_players', []) or [{}])[0]"
+      outputs:
+        machina_provisional_performance_signal: "$.get('machina_provisional_performance_signal', {})"
+
+    - type: connector
+      name: merge-player-performance-context
+      description: Return the final API package with official FIFA fields and Machina provisional fields labeled separately.
+      condition: "len($.get('normalized_players', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: merge_official_and_provisional_performance
+      inputs:
+        event: "$.get('event_document', {})"
+        player: "($.get('normalized_players', []) or [{}])[0]"
+        provisional_signal: "$.get('machina_provisional_performance_signal', {})"
+        official_fifa_power_ranking: "$.get('official_fifa_power_ranking', {})"
+        fallback_path: "['api-football']"
+        missing_info_flags: "$.get('normalize_warnings', [])"
+        freshness: "{'provider_stats_fetched': $.get('api_football_player_stats', {}) != {}, 'official_fifa_expected_lag_hours': 4}"
+      outputs:
+        player_performance_context: "$.get('player_performance_context', {})"

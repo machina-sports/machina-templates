@@ -1221,3 +1221,327 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
     out = out[:limit]
     warnings = [] if out else ["No events matched the schedule filters."]
     return {"status": True, "data": {"events": out, "count": len(out), "warnings": warnings}}
+
+
+FIFA_POWER_SCORE_KEYS = ["attacking", "creativity", "defending", "in_possession", "defending_goal"]
+OUTFIELD_POWER_CATEGORIES = ["attacking", "creativity", "defending"]
+GOALKEEPER_POWER_CATEGORIES = ["in_possession", "defending_goal"]
+FIFA_POWER_MIN_MINUTES = 20
+
+
+def _clean_percent(value: Any) -> float:
+    if isinstance(value, str) and value.strip().endswith("%"):
+        return _to_float(value.strip().rstrip("%")) / 100
+    numeric = _to_float(value)
+    return numeric / 100 if numeric > 1 else numeric
+
+
+def _stat_section(stat: dict[str, Any], name: str) -> dict[str, Any]:
+    section = stat.get(name)
+    return section if isinstance(section, dict) else {}
+
+
+def _is_goalkeeper_position(position: Any) -> bool:
+    p = _lower(position).replace(".", "")
+    return p in {"g", "gk", "goalkeeper", "keeper", "portero", "guardameta"}
+
+
+def _score(value: float, maximum: float) -> float:
+    if maximum <= 0:
+        return 0.0
+    return round(max(0.0, min(10.0, (value / maximum) * 10)), 2)
+
+
+def _empty_scores() -> dict[str, float | None]:
+    return {key: None for key in FIFA_POWER_SCORE_KEYS}
+
+
+def classify_fifa_power_categories(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Return FIFA public Power Ranking category set for a position.
+
+    This mirrors FIFA's public taxonomy only: outfield players have attacking,
+    creativity, defending; goalkeepers have in-possession and defending-goal.
+    """
+    params = _params(request_data)
+    position = params.get("position") or params.get("player", {}).get("position")
+    is_goalkeeper = bool(params.get("is_goalkeeper")) or _is_goalkeeper_position(position)
+    categories = GOALKEEPER_POWER_CATEGORIES if is_goalkeeper else OUTFIELD_POWER_CATEGORIES
+    return {
+        "status": True,
+        "data": {
+            "is_goalkeeper": is_goalkeeper,
+            "categories": categories,
+            "score_scale": {"min": 0, "max": 10},
+            "minimum_minutes": FIFA_POWER_MIN_MINUTES,
+        },
+    }
+
+
+def apply_power_ranking_eligibility(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Apply FIFA's public 20-minute minimum eligibility rule."""
+    params = _params(request_data)
+    min_minutes = int(params.get("min_minutes") or FIFA_POWER_MIN_MINUTES)
+    minutes = int(_to_float(params.get("minutes_played") or params.get("minutes") or 0))
+    eligible = minutes >= min_minutes
+    warnings = [] if eligible else [
+        f"Player minutes ({minutes}) below FIFA minimum ({min_minutes}) for Power Ranking score eligibility."
+    ]
+    return {
+        "status": True,
+        "data": {
+            "minutes_played": minutes,
+            "minimum_minutes": min_minutes,
+            "eligible_for_power_ranking": eligible,
+            "warnings": warnings,
+        },
+    }
+
+
+def normalize_player_match_stats(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize provider player-match statistics into a stable API shape.
+
+    Accepts API-Football-style player entries, optionally wrapped in response
+    arrays. The output is deliberately provider-backed and does not infer FIFA
+    official scores.
+    """
+    params = _params(request_data)
+    requested_player_id = _text(params.get("player_id"))
+    requested_team_id = _text(params.get("team_id"))
+    event_urn = _text(params.get("event_urn") or params.get("fixture_id")) or None
+    team = params.get("team") if isinstance(params.get("team"), dict) else {}
+    team_id = _text(params.get("team_id") or team.get("id")) or None
+    team_name = _text(params.get("team_name") or team.get("name")) or None
+
+    raw_players = params.get("players")
+    if raw_players is None:
+        payload = _unwrap(params.get("player_stats") or params.get("api_football_player_stats"))
+        raw_players = []
+        if isinstance(payload, dict):
+            response = payload.get("response", [])
+            for entry in response if isinstance(response, list) else []:
+                if isinstance(entry, dict):
+                    entry_team = entry.get("team") if isinstance(entry.get("team"), dict) else {}
+                    for player in entry.get("players", []) or []:
+                        if isinstance(player, dict):
+                            clone = dict(player)
+                            clone.setdefault("team", entry_team)
+                            raw_players.append(clone)
+
+    players: list[dict[str, Any]] = []
+    for raw in _as_list(raw_players):
+        if not isinstance(raw, dict):
+            continue
+        player_info = raw.get("player") if isinstance(raw.get("player"), dict) else raw
+        stat = {}
+        stats = raw.get("statistics")
+        if isinstance(stats, list) and stats:
+            stat = stats[0] if isinstance(stats[0], dict) else {}
+        elif isinstance(raw.get("stats"), dict):
+            stat = raw.get("stats", {})
+
+        raw_team = raw.get("team") if isinstance(raw.get("team"), dict) else team
+        games = _stat_section(stat, "games")
+        goals = _stat_section(stat, "goals")
+        shots = _stat_section(stat, "shots")
+        passes = _stat_section(stat, "passes")
+        tackles = _stat_section(stat, "tackles")
+        duels = _stat_section(stat, "duels")
+        cards = _stat_section(stat, "cards")
+
+        position = _text(games.get("position") or raw.get("position") or player_info.get("position"))
+        minutes = int(_to_float(games.get("minutes") or raw.get("minutes") or 0))
+        is_goalkeeper = _is_goalkeeper_position(position)
+        player = {
+            "player_id": _text(player_info.get("id") or raw.get("player_id")),
+            "name": _text(player_info.get("name") or raw.get("name")),
+            "team_id": _text(raw_team.get("id") or team_id) or None,
+            "team_name": _text(raw_team.get("name") or team_name) or None,
+            "event_urn": event_urn,
+            "position": position,
+            "is_goalkeeper": is_goalkeeper,
+            "minutes_played": minutes,
+            "eligible_for_power_ranking": minutes >= FIFA_POWER_MIN_MINUTES,
+            "source_quality": "provider",
+            "stats": {
+                "rating": _to_float(games.get("rating")),
+                "goals": int(_to_float(goals.get("total"))),
+                "assists": int(_to_float(goals.get("assists"))),
+                "saves": int(_to_float(goals.get("saves"))),
+                "shots_total": int(_to_float(shots.get("total"))),
+                "shots_on": int(_to_float(shots.get("on"))),
+                "passes_total": int(_to_float(passes.get("total"))),
+                "key_passes": int(_to_float(passes.get("key"))),
+                "pass_accuracy": _clean_percent(passes.get("accuracy")),
+                "tackles": int(_to_float(tackles.get("total"))),
+                "interceptions": int(_to_float(tackles.get("interceptions"))),
+                "duels_total": int(_to_float(duels.get("total"))),
+                "duels_won": int(_to_float(duels.get("won"))),
+                "yellow_cards": int(_to_float(cards.get("yellow"))),
+                "red_cards": int(_to_float(cards.get("red"))),
+            },
+        }
+        if requested_player_id and player["player_id"] != requested_player_id:
+            continue
+        if requested_team_id and _text(player.get("team_id")) != requested_team_id:
+            continue
+        player["warnings"] = [] if player["eligible_for_power_ranking"] else [
+            f"Player minutes ({minutes}) below FIFA minimum ({FIFA_POWER_MIN_MINUTES}) for Power Ranking score eligibility."
+        ]
+        players.append(player)
+
+    warnings = [] if players else ["No provider player match statistics supplied."]
+    return {"status": True, "data": {"players": players, "count": len(players), "warnings": warnings}}
+
+
+def score_provisional_player_performance(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Create a source-labeled Machina provisional 0-10 performance signal.
+
+    These scores are not FIFA/Aramco rankings. They are transparent, provider-
+    backed estimates with drivers, confidence, and warnings.
+    """
+    params = _params(request_data)
+    player = params.get("player") if isinstance(params.get("player"), dict) else params
+    stats = player.get("stats") if isinstance(player.get("stats"), dict) else {}
+    minutes = int(_to_float(player.get("minutes_played")))
+    eligibility = apply_power_ranking_eligibility({"params": {"minutes_played": minutes}})["data"]
+    scores = _empty_scores()
+    warnings = list(player.get("warnings") or []) + list(eligibility.get("warnings") or [])
+    drivers: list[dict[str, Any]] = []
+
+    if not eligibility["eligible_for_power_ranking"]:
+        signal = {
+            "status": "unavailable",
+            "source_quality": player.get("source_quality") or "unavailable",
+            "confidence": 0.0,
+            "scores_0_10": scores,
+            "drivers": drivers,
+            "warnings": warnings,
+            "disclaimer": "Machina provisional signal only; not an official FIFA Power Ranking.",
+        }
+        return {"status": True, "data": {"machina_provisional_performance_signal": signal}}
+
+    source_quality = player.get("source_quality") or "provider"
+    rating = stats.get("rating") or 0
+    completeness = 0.35
+    if rating:
+        completeness += 0.15
+    if stats:
+        completeness += 0.25
+    if minutes >= 60:
+        completeness += 0.15
+    confidence = round(max(0.2, min(0.9, completeness)), 2)
+
+    if player.get("is_goalkeeper"):
+        defending_goal_raw = (
+            _to_float(stats.get("saves")) * 1.4
+            + (1 if int(_to_float(stats.get("goals"))) == 0 else 0)
+            + _to_float(rating) * 0.6
+        )
+        in_possession_raw = _clean_percent(stats.get("pass_accuracy")) * 6 + _to_float(stats.get("passes_total")) / 25
+        scores["defending_goal"] = _score(defending_goal_raw, 10)
+        scores["in_possession"] = _score(in_possession_raw, 8)
+        drivers.extend([
+            {"category": "defending_goal", "signal": "saves/rating", "direction": "positive", "weight": round(defending_goal_raw, 2), "source": source_quality},
+            {"category": "in_possession", "signal": "distribution volume/accuracy", "direction": "positive", "weight": round(in_possession_raw, 2), "source": source_quality},
+        ])
+    else:
+        attacking_raw = (
+            _to_float(stats.get("goals")) * 3.0
+            + _to_float(stats.get("assists")) * 1.8
+            + _to_float(stats.get("shots_on")) * 0.7
+            + _to_float(stats.get("shots_total")) * 0.25
+            + _to_float(rating) * 0.35
+        )
+        creativity_raw = (
+            _to_float(stats.get("assists")) * 2.0
+            + _to_float(stats.get("key_passes")) * 0.9
+            + _clean_percent(stats.get("pass_accuracy")) * 2
+            + _to_float(rating) * 0.3
+        )
+        defending_raw = (
+            _to_float(stats.get("tackles")) * 0.8
+            + _to_float(stats.get("interceptions")) * 0.9
+            + _to_float(stats.get("duels_won")) * 0.35
+            - _to_float(stats.get("yellow_cards")) * 0.5
+            - _to_float(stats.get("red_cards")) * 2.0
+            + _to_float(rating) * 0.25
+        )
+        scores["attacking"] = _score(attacking_raw, 10)
+        scores["creativity"] = _score(creativity_raw, 9)
+        scores["defending"] = _score(defending_raw, 9)
+        drivers.extend([
+            {"category": "attacking", "signal": "goals/assists/shots/rating", "direction": "positive", "weight": round(attacking_raw, 2), "source": source_quality},
+            {"category": "creativity", "signal": "assists/key passes/pass accuracy", "direction": "positive", "weight": round(creativity_raw, 2), "source": source_quality},
+            {"category": "defending", "signal": "tackles/interceptions/duels/cards", "direction": "positive", "weight": round(defending_raw, 2), "source": source_quality},
+        ])
+
+    signal = {
+        "status": "available" if drivers else "partial",
+        "source_quality": source_quality,
+        "confidence": confidence,
+        "scores_0_10": scores,
+        "drivers": drivers,
+        "warnings": warnings,
+        "disclaimer": "Machina provisional signal only; not an official FIFA Power Ranking.",
+    }
+    return {"status": True, "data": {"machina_provisional_performance_signal": signal}}
+
+
+def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Merge official FIFA fields and Machina provisional signal without conflating them."""
+    params = _params(request_data)
+    event = params.get("event") if isinstance(params.get("event"), dict) else {}
+    player = params.get("player") if isinstance(params.get("player"), dict) else {}
+    provisional = params.get("provisional_signal") or params.get("machina_provisional_performance_signal") or {}
+    official = params.get("official_fifa_power_ranking") if isinstance(params.get("official_fifa_power_ranking"), dict) else {}
+
+    official_scores = _empty_scores()
+    for key, value in (official.get("scores") or {}).items():
+        if key in official_scores:
+            official_scores[key] = value
+
+    official_context = {
+        "status": official.get("status") or "pending",
+        "expected_available_at": official.get("expected_available_at"),
+        "source": official.get("source") or "fifa.com",
+        "scores": official_scores,
+        "classification": official.get("classification") or {
+            "match_rank": None,
+            "tournament_rank": None,
+            "category_rankings": [],
+        },
+    }
+    fallback_path = params.get("fallback_path")
+    if not fallback_path:
+        quality = provisional.get("source_quality") or player.get("source_quality") or "unavailable"
+        fallback_path = [] if quality == "unavailable" else [quality]
+
+    context = {
+        "event": event,
+        "player": {
+            "player_id": player.get("player_id"),
+            "name": player.get("name"),
+            "team_id": player.get("team_id"),
+            "team_name": player.get("team_name"),
+            "position": player.get("position"),
+            "is_goalkeeper": bool(player.get("is_goalkeeper")),
+            "minutes_played": int(_to_float(player.get("minutes_played"))),
+            "eligible_for_power_ranking": bool(player.get("eligible_for_power_ranking", int(_to_float(player.get("minutes_played"))) >= FIFA_POWER_MIN_MINUTES)),
+        },
+        "official_fifa_power_ranking": official_context,
+        "machina_provisional_performance_signal": provisional or {
+            "status": "unavailable",
+            "source_quality": "unavailable",
+            "confidence": 0.0,
+            "scores_0_10": _empty_scores(),
+            "drivers": [],
+            "warnings": ["No provisional signal supplied."],
+        },
+        "context_and_evidence": {
+            "fallback_path": fallback_path,
+            "citations": params.get("citations") or [],
+            "missing_info_flags": params.get("missing_info_flags") or [],
+            "freshness": params.get("freshness") or {},
+        },
+    }
+    return {"status": True, "data": {"player_performance_context": context}}

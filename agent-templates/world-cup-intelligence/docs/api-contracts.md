@@ -24,6 +24,7 @@ Secret lookup uses the literal name after `$` in a workflow's context-variables.
 - `worldcup-get-market-state`
 - `worldcup-get-event-context`
 - `worldcup-get-iptc-event-context`
+- `worldcup-get-player-performance-context`
 - `worldcup-compare-market-sources`
 - `worldcup-find-market-edges`
 - `worldcup-explain-market-move`
@@ -163,6 +164,87 @@ Notes:
 - Kalshi asks are implied from the opposite side's bids (ask_yes = 1 − bid_no); depth requires `sports-skills >= 0.25.3` and degrades with a warning below that.
 - Polymarket depth/history/trades are per outcome token; history covers the primary outcome.
 - Best bid/ask are computed by sorting levels — provider ordering is not trusted.
+
+## `worldcup-get-player-performance-context`
+
+Builds a player-level context package from API-Football fixture player stats and optional official FIFA Power Ranking data. Official FIFA/Aramco fields and Machina provisional signals are intentionally separate.
+
+Request:
+
+```json
+{
+  "event_urn": "urn:apifootball:sport_event:123",
+  "fixture_id": "123",
+  "player_id": "10",
+  "team_id": "7",
+  "official_fifa_power_ranking": {}
+}
+```
+
+Response:
+
+```json
+{
+  "player_performance_context": {
+    "event": {"_id": "urn:apifootball:sport_event:123"},
+    "player": {
+      "player_id": "10",
+      "name": "Alex Creator",
+      "team_id": "7",
+      "team_name": "Brazil",
+      "position": "M",
+      "is_goalkeeper": false,
+      "minutes_played": 87,
+      "eligible_for_power_ranking": true
+    },
+    "official_fifa_power_ranking": {
+      "status": "pending",
+      "expected_available_at": null,
+      "source": "fifa.com",
+      "scores": {
+        "attacking": null,
+        "creativity": null,
+        "defending": null,
+        "in_possession": null,
+        "defending_goal": null
+      },
+      "classification": {
+        "match_rank": null,
+        "tournament_rank": null,
+        "category_rankings": []
+      }
+    },
+    "machina_provisional_performance_signal": {
+      "status": "available",
+      "source_quality": "provider",
+      "confidence": 0.9,
+      "scores_0_10": {
+        "attacking": 7.0,
+        "creativity": 8.1,
+        "defending": 6.4,
+        "in_possession": null,
+        "defending_goal": null
+      },
+      "drivers": [],
+      "warnings": [],
+      "disclaimer": "Machina provisional signal only; not an official FIFA Power Ranking."
+    },
+    "context_and_evidence": {
+      "fallback_path": ["api-football"],
+      "citations": [],
+      "missing_info_flags": [],
+      "freshness": {"official_fifa_expected_lag_hours": 4}
+    }
+  }
+}
+```
+
+Notes:
+
+- Scale is 0-10.
+- FIFA public category taxonomy: outfield = attacking, creativity, defending; goalkeepers = in possession, defending goal.
+- Eligibility requires `minutes_played >= 20`.
+- The official ranking is usually pending for ~4 hours post-match; provisional scores are a faster context layer, not official FIFA data.
 
 ## `worldcup-find-market-edges`
 
