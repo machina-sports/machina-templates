@@ -139,10 +139,11 @@ workflow:
         command: "'get_order_book'"
         token_id: "$.get('token_item', '')"
       outputs:
-        # Foreach outputs see only the result payload; the book echoes its
-        # token_id, which is the correlation key back to the outcome.
+        # Foreach outputs see only the result payload — and for sports-skills
+        # that payload is the package's own envelope, so the book lives one
+        # level down under data. token_id correlates back to the outcome.
         poly_books: |
-          [{'token_id': $.get('token_id', ''), 'bids': $.get('bids', []), 'asks': $.get('asks', [])}]
+          [{'token_id': $.get('data', {}).get('token_id', ''), 'bids': $.get('data', {}).get('bids', []), 'asks': $.get('data', {}).get('asks', [])}] if $.get('status') else []
 
     - type: connector
       name: poly-history
