@@ -64,27 +64,33 @@ workflow:
     - type: document
       name: save-prematch-research
       description: Save grounded research onto the event documents so get-event-context serves it.
-      # Must guarantee non-empty items — the engine's bulk-update path
-      # crashes the workflow when items evaluates to [] (run_document falls
-      # through without a return). Same match predicate as items below.
-      condition: "any(isinstance(r, dict) and r.get('research') and any(isinstance(f, dict) and f.get('name') and r.get('query', '').startswith(f.get('name')) for f in $.get('fixtures', [])) for r in $.get('search_results', []))"
+      # Conditions cannot use comprehensions (the engine evals them with
+      # `context` in locals only; comprehension scopes see just globals) —
+      # keep this simple. Items below always include every fixture, so the
+      # engine's empty-bulk-update crash (run_document returns None when
+      # items is []) cannot trigger while fixtures exist.
+      condition: "len($.get('fixtures', [])) > 0 and len($.get('search_results', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "'worldcup:event'"
       documents:
-        # Failed foreach iterations can leave None entries in search_results;
-        # guard every access with isinstance checks. Correlate result→fixture
-        # by the fixture name embedded at the start of the search query.
+        # Correlate result→fixture by the fixture name embedded at the start
+        # of the echoed search query. Fixtures without a fresh match keep
+        # their existing prematch_research; failed foreach iterations can
+        # leave None entries, hence the isinstance guards.
         items: |
           [
             dict(f, **{
               'metadata': {'event_urn': f.get('_id', '')},
-              'prematch_research': next((r for r in $.get('search_results', []) if isinstance(r, dict) and r.get('research') and r.get('query', '').startswith(f.get('name'))), {})
+              'prematch_research': next(
+                (r for r in $.get('search_results', []) if isinstance(r, dict) and r.get('research') and f.get('name') and r.get('query', '').startswith(f.get('name'))),
+                f.get('prematch_research', {}) or {}
+              )
             })
             for f in $.get('fixtures', [])
-            if isinstance(f, dict) and f.get('_id') and f.get('name') and any(isinstance(r, dict) and r.get('research') and r.get('query', '').startswith(f.get('name')) for r in $.get('search_results', []))
+            if isinstance(f, dict) and f.get('_id')
           ]
       inputs:
         fixtures: "$.get('fixtures', [])"
