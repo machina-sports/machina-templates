@@ -72,4 +72,6 @@ workflow:
         league_id: "$.get('resolved_league') or $.get('league') or '1'"
         season: "$.get('resolved_year') or $.get('season') or '2026'"
       outputs:
-        standings: "$.get('data', {}) if $.get('status') else {}"
+        # worldcup-market-intelligence returns {status,data}; the runner strips
+        # that envelope, so $ is already the data dict (groups/warnings/...).
+        standings: "$"

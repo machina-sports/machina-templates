@@ -42,4 +42,5 @@ workflow:
         status: "$.get('status', '')"
         limit: "$.get('limit', 100)"
       outputs:
-        schedule: "$.get('data', {}) if $.get('status') else {}"
+        # runner strips our connector's {status,data} envelope -> $ is the data.
+        schedule: "$"
