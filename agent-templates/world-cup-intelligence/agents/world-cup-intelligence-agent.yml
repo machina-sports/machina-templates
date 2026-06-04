@@ -6,13 +6,13 @@ agent:
     config-frequency: 60
     status: "inactive"
   context-agent:
-    query: "$.get('query', 'FIFA World Cup 2026')"
+    query: "$.get('query', 'FIFA World Cup')"
     event_urn: "$.get('event_urn', '')"
   workflows:
     - name: worldcup-search-markets
       description: Search Kalshi/Polymarket World Cup markets by query/team text
       inputs:
-        query: "$.get('query', 'FIFA World Cup 2026')"
+        query: "$.get('query', 'FIFA World Cup')"
       outputs:
         markets: "$.get('markets', [])"
 
@@ -26,7 +26,7 @@ agent:
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
       inputs:
-        query: "$.get('query', 'FIFA World Cup 2026')"
+        query: "$.get('query', 'FIFA World Cup')"
       outputs:
         edge_candidates: "$.get('edge_candidates', [])"
         edge_analysis: "$.get('analysis', {})"
@@ -34,7 +34,7 @@ agent:
     - name: worldcup-generate-market-brief
       description: Generate a grounded World Cup market-intelligence brief
       inputs:
-        query: "$.get('query', 'FIFA World Cup 2026')"
+        query: "$.get('query', 'FIFA World Cup')"
         event_urn: "$.get('event_urn', '')"
       outputs:
         brief: "$.get('brief', {})"

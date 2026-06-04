@@ -7,7 +7,7 @@ workflow:
     debugger:
       enabled: true
   inputs:
-    query: "$.get('query', 'FIFA World Cup 2026')"
+    query: "$.get('query', 'FIFA World Cup')"
     team: "$.get('team', '')"
     source: "$.get('source', 'all')"
     status: "$.get('status', 'open')"
@@ -42,7 +42,7 @@ workflow:
         command: filter_cached_markets
       inputs:
         cached_markets: "$.get('cached_markets', [])"
-        query: "$.get('query', 'FIFA World Cup 2026')"
+        query: "$.get('query', 'FIFA World Cup')"
         team: "$.get('team', '')"
         source: "$.get('source', 'all')"
         status: "$.get('status', 'open')"
@@ -67,7 +67,7 @@ workflow:
         # (epl, fifwc, ...) — 'football' matches nothing. The normalization
         # connector's World Cup relevance gate filters the results instead.
         command: "'search_entity'"
-        query: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup'"
       outputs:
         sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
 
@@ -81,7 +81,7 @@ workflow:
         command: invoke_polymarket
       inputs:
         command: "'search_markets'"
-        query: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup'"
         limit: "$.get('limit', 20)"
       outputs:
         polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
@@ -96,7 +96,7 @@ workflow:
         command: invoke_kalshi
       inputs:
         command: "'search_markets'"
-        query: "$.get('query') or $.get('team') or 'FIFA World Cup 2026'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup'"
         status: "$.get('status', 'open')"
         limit: "$.get('limit', 20)"
       outputs:
@@ -113,7 +113,7 @@ workflow:
         sports_skills_markets: "$.get('sports_skills_markets', {})"
         polymarket_markets: "$.get('polymarket_markets', {})"
         kalshi_markets: "$.get('kalshi_markets', {})"
-        query: "$.get('query', 'FIFA World Cup 2026')"
+        query: "$.get('query', 'FIFA World Cup')"
         team: "$.get('team', '')"
         source: "$.get('source', 'all')"
         status: "$.get('status', 'open')"
