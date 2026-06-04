@@ -55,13 +55,19 @@ workflow:
         recency_days: 7
         timeout: 120
       outputs:
+        # Foreach task outputs evaluate against the connector's result payload
+        # (no fixture_item in scope) — invoke_search echoes the query, which
+        # embeds the fixture name, so that's the correlation key.
         search_results: |
-          [{'entity_id': $.get('fixture_item', {}).get('_id', ''), 'research': $.get('answer', ''), 'sources': $.get('search_results', [])}]
+          [{'query': $.get('query', ''), 'research': $.get('answer', ''), 'sources': $.get('search_results', [])}]
 
     - type: document
       name: save-prematch-research
       description: Save grounded research onto the event documents so get-event-context serves it.
-      condition: "len($.get('search_results', [])) > 0"
+      # Must guarantee non-empty items — the engine's bulk-update path
+      # crashes the workflow when items evaluates to [] (run_document falls
+      # through without a return). Same match predicate as items below.
+      condition: "any(isinstance(r, dict) and r.get('research') and any(isinstance(f, dict) and f.get('name') and r.get('query', '').startswith(f.get('name')) for f in $.get('fixtures', [])) for r in $.get('search_results', []))"
       config:
         action: bulk-update
         embed-vector: false
@@ -69,15 +75,16 @@ workflow:
       document_name: "'worldcup:event'"
       documents:
         # Failed foreach iterations can leave None entries in search_results;
-        # guard every access with isinstance checks.
+        # guard every access with isinstance checks. Correlate result→fixture
+        # by the fixture name embedded at the start of the search query.
         items: |
           [
             dict(f, **{
               'metadata': {'event_urn': f.get('_id', '')},
-              'prematch_research': next((r for r in $.get('search_results', []) if isinstance(r, dict) and r.get('entity_id') == f.get('_id') and r.get('research')), {})
+              'prematch_research': next((r for r in $.get('search_results', []) if isinstance(r, dict) and r.get('research') and r.get('query', '').startswith(f.get('name'))), {})
             })
             for f in $.get('fixtures', [])
-            if isinstance(f, dict) and f.get('_id') and any(isinstance(r, dict) and r.get('entity_id') == f.get('_id') and r.get('research') for r in $.get('search_results', []))
+            if isinstance(f, dict) and f.get('_id') and f.get('name') and any(isinstance(r, dict) and r.get('research') and r.get('query', '').startswith(f.get('name')) for r in $.get('search_results', []))
           ]
       inputs:
         fixtures: "$.get('fixtures', [])"
