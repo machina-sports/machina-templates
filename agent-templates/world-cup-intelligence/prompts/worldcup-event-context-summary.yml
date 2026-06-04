@@ -1,0 +1,26 @@
+prompts:
+  - type: prompt
+    name: worldcup-event-context-summary
+    title: World Cup Event Context Summary
+    description: Summarize canonical event context and match truth for agent/app consumption.
+    instruction: |
+      Summarize the provided World Cup event context using only the supplied IPTC, API-Football, Sports Skills, and cached research data. Do not invent unavailable facts.
+    schema:
+      title: WorldCupEventContextSummary
+      type: object
+      required: [summary, teams, competition, kickoff_context, evidence]
+      properties:
+        summary:
+          type: string
+        teams:
+          type: array
+          items:
+            type: object
+        competition:
+          type: string
+        kickoff_context:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: object

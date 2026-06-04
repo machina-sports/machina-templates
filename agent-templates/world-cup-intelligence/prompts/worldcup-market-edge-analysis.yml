@@ -1,0 +1,28 @@
+prompts:
+  - type: prompt
+    name: worldcup-market-edge-analysis
+    title: World Cup Market Edge Analysis
+    description: Explain informational arbitrage/edge candidates found across World Cup market sources.
+    instruction: |
+      Analyze the provided edge candidates. Explain why each may be a price dislocation or arbitrage-style candidate, what assumptions must hold, what fees/liquidity/settlement risks matter, and what data should be checked before any external action. Do not execute trades. Do not provide personalized financial advice.
+    schema:
+      title: WorldCupMarketEdgeAnalysis
+      type: object
+      required: [summary, edge_candidates, caveats, evidence, disclaimer]
+      properties:
+        summary:
+          type: string
+        edge_candidates:
+          type: array
+          items:
+            type: object
+        caveats:
+          type: array
+          items:
+            type: string
+        evidence:
+          type: array
+          items:
+            type: object
+        disclaimer:
+          type: string

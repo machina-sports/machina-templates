@@ -1,0 +1,18 @@
+mappings:
+  - type: mapping
+    name: worldcup-brief-response-envelope
+    title: World Cup | Brief Response Envelope
+    description: Standard product response envelope for reasoning endpoints.
+    outputs:
+      response: |
+        {
+          "status": True,
+          "data": $.get('brief', {}),
+          "meta": {
+            "product": "world_cup_market_intelligence",
+            "endpoint": $.get('endpoint', 'worldcup-generate-market-brief'),
+            "credits_class": $.get('credits_class', 'reasoning')
+          },
+          "evidence": $.get('evidence', []),
+          "disclaimer": "Informational sports market intelligence only. Not betting, trading, financial, or investment advice."
+        }

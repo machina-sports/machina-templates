@@ -1,0 +1,62 @@
+workflow:
+  name: worldcup-find-market-edges
+  title: World Cup Intelligence - Find Market Edges
+  description: Identify informational price dislocations, arbitrage candidates, and market-edge hypotheses across Kalshi/Polymarket. Does not execute trades.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+      api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
+  inputs:
+    query: "$.get('query', 'FIFA World Cup 2026')"
+    min_edge_bps: "$.get('min_edge_bps', 100)"
+    include_reasoning: "$.get('include_reasoning', True)"
+    limit: "$.get('limit', 50)"
+  outputs:
+    edge_candidates: "$.get('edge_candidates', [])"
+    analysis: "$.get('analysis', {})"
+    warnings: "$.get('edge_warnings', [])"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: load-market-cache
+      description: Load normalized markets for candidate edge detection from the same pod document store.
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 50))]"
+
+    - type: mapping
+      name: worldcup-market-normalization
+      title: World Cup | Market Edge Candidate Detection
+      description: Compute cross-source price dislocations and arbitrage-candidate gaps from normalized market data.
+      inputs:
+        markets: "$.get('markets', [])"
+        min_edge_bps: "$.get('min_edge_bps', 100)"
+      outputs:
+        edge_candidates: "$.get('edge_candidates', [])"
+        edge_warnings: "$.get('warnings', [])"
+
+    - type: prompt
+      name: worldcup-market-edge-analysis
+      description: Explain candidate market edges with caveats and source evidence.
+      condition: "$.get('include_reasoning', True) is True and len($.get('edge_candidates', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        query: "$.get('query')"
+        edge_candidates: "$.get('edge_candidates', [])"
+        markets: "$.get('markets', [])"
+      outputs:
+        analysis: "$"

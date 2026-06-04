@@ -1,0 +1,38 @@
+workflow:
+  name: worldcup-get-iptc-event-context
+  title: World Cup Intelligence - IPTC Event Context
+  description: Return canonical IPTC/Sportschema event context keyed by provider URN from the same pod document store.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
+    provider: "$.get('provider', 'api-football')"
+  outputs:
+    event: "$.get('event', {})"
+    workflow-status: "$.get('event', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-event
+      description: Lookup canonical event by provider URN/provider id. Requires an identifying input so an arbitrary event is never returned.
+      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+        value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
+      outputs:
+        event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: mapping
+      name: worldcup-iptc-event-to-api-response
+      title: World Cup | IPTC Event API Response
+      inputs:
+        event_document: "$.get('event_document', {})"
+      outputs:
+        event: "$.get('event', $.get('event_document', {}))"

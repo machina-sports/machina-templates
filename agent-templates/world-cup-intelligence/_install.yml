@@ -1,0 +1,84 @@
+setup:
+  title: World Cup Intelligence
+  description: Hosted World Cup market-intelligence workflows combining API-Football match truth, IPTC semantic mapping, Sports Skills context, Kalshi/Polymarket markets, Google GenAI reasoning/grounding, and xAI/Grok fan sentiment/news.
+  category:
+    - sports
+    - prediction-markets
+    - world-cup
+    - market-intelligence
+  estimatedTime: 3 minutes
+  features:
+    - API-Football fixture ingestion normalized to IPTC Sport Schema with provider URNs.
+    - World Cup market search across Kalshi and Polymarket.
+    - Event context using Sports Skills, API-Football, and semantic-layer cache.
+    - Google GenAI grounded reasoning for structured market briefs.
+    - xAI/Grok fan sentiment and live news pulse.
+    - Market edge and arbitrage-candidate analysis for agent workflows.
+    - Read-only workflows suitable for API/MCP productization.
+  integrations:
+    - api-football
+    - sports-skills
+    - kalshi
+    - polymarket
+    - google-genai
+    - xai
+    - grok
+    - pod-document-store
+    - machina-search
+  status: available
+  value: agent-templates/world-cup-intelligence
+  version: 0.1.0
+
+datasets:
+  - type: connector
+    path: worldcup-market-intelligence.yml
+
+  - type: agent
+    path: agents/world-cup-intelligence-agent.yml
+  - type: agent
+    path: agents/world-cup-market-analyst-agent.yml
+
+  - type: workflow
+    path: workflows/worldcup-health.yml
+  - type: workflow
+    path: workflows/worldcup-ingest-fixtures.yml
+  - type: workflow
+    path: workflows/worldcup-sync-market-sources.yml
+  - type: workflow
+    path: workflows/worldcup-search-markets.yml
+  - type: workflow
+    path: workflows/worldcup-get-iptc-event-context.yml
+  - type: workflow
+    path: workflows/worldcup-get-event-context.yml
+  - type: workflow
+    path: workflows/worldcup-compare-market-sources.yml
+  - type: workflow
+    path: workflows/worldcup-find-market-edges.yml
+  - type: workflow
+    path: workflows/worldcup-generate-market-brief.yml
+  - type: workflow
+    path: workflows/worldcup-fan-sentiment-context.yml
+  - type: workflow
+    path: workflows/worldcup-refresh-prematch-enrichment.yml
+  - type: workflow
+    path: _folders.yml
+
+  - type: prompts
+    path: prompts/worldcup-market-brief.yml
+  - type: prompts
+    path: prompts/worldcup-market-comparison.yml
+  - type: prompts
+    path: prompts/worldcup-market-edge-analysis.yml
+  - type: prompts
+    path: prompts/worldcup-event-context-summary.yml
+  - type: prompts
+    path: prompts/worldcup-fan-sentiment-extract.yml
+
+  - type: mappings
+    path: mappings/worldcup-api-football-event-to-iptc.yml
+  - type: mappings
+    path: mappings/worldcup-iptc-event-to-api-response.yml
+  - type: mappings
+    path: mappings/worldcup-market-normalization.yml
+  - type: mappings
+    path: mappings/worldcup-brief-response-envelope.yml

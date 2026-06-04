@@ -1,0 +1,101 @@
+workflow:
+  name: worldcup-sync-market-sources
+  title: World Cup Intelligence - Sync Market Sources
+  description: Refresh Kalshi and Polymarket World Cup market cache in the same pod document store.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    query: "$.get('query', 'FIFA World Cup')"
+    source: "$.get('source', 'all')"
+    status: "$.get('status', 'open')"
+    limit: "$.get('limit', 250)"
+  outputs:
+    markets_count: "len($.get('normalized_markets', []))"
+    sources: "$.get('sources', {})"
+    warnings: "$.get('warnings', [])"
+    workflow-status: "len($.get('normalized_markets', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-sports-skills-markets
+      description: Fetch football/FIFA markets using the Sports Skills market orchestrator.
+      connector:
+        name: sports-skills
+        command: invoke_markets
+      inputs:
+        # No sport scoping: Kalshi/Polymarket sport keys are league-level
+        # (epl, fifwc, ...) — 'football' matches nothing. The normalization
+        # connector's World Cup relevance gate filters the results instead.
+        command: "'search_entity'"
+        query: "$.get('query', 'FIFA World Cup')"
+      outputs:
+        sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: search-polymarket-fallback
+      description: Direct Polymarket fallback search for World Cup/FIFA markets.
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('query', 'FIFA World Cup')"
+        limit: "$.get('limit', 100)"
+      outputs:
+        polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    # Kalshi World Cup markets span 10 dedicated series; sports-skills
+    # >=0.25.1 fans out across all of them via sport='worldcup'. No query is
+    # passed — game titles ("France vs Senegal Winner?") carry no World Cup
+    # wording, so the normalization connector's relevance gate filters instead.
+    - type: connector
+      name: fetch-kalshi-worldcup
+      description: Kalshi World Cup markets across all dedicated series (sport=worldcup).
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'search_markets'"
+        sport: "'worldcup'"
+        status: "$.get('status', 'open')"
+        limit: "200"
+      outputs:
+        kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: normalize-market-sources
+      description: Normalize Sports Skills, Kalshi, and Polymarket market payloads into cacheable WorldCupMarket records.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_sources
+      inputs:
+        sports_skills_markets: "$.get('sports_skills_markets', {})"
+        polymarket_markets: "$.get('polymarket_markets', {})"
+        kalshi_markets: "$.get('kalshi_markets', {})"
+        query: "$.get('query', 'FIFA World Cup')"
+        source: "$.get('source', 'all')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 100)"
+      outputs:
+        # $ here is the connector's data payload (the engine strips the
+        # status/data envelope before task outputs are evaluated).
+        normalized_markets: "$.get('normalized_markets', [])"
+        sources: "$.get('sources', {})"
+        warnings: "$.get('warnings', [])"
+
+    - type: document
+      name: save-market-cache
+      description: Save the normalized market cache in the same pod document store, upserted by record id.
+      condition: "len($.get('normalized_markets', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:market-cache'"
+      documents:
+        items: "$.get('normalized_markets', [])"
+      inputs:
+        normalized_markets: "$.get('normalized_markets', [])"

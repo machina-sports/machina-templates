@@ -1,0 +1,131 @@
+workflow:
+  name: worldcup-search-markets
+  title: World Cup Intelligence - Search Markets
+  description: Fast read workflow for searching normalized World Cup markets across same-pod cache plus live Kalshi/Polymarket sources.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    query: "$.get('query', 'FIFA World Cup')"
+    team: "$.get('team', '')"
+    source: "$.get('source', 'all')"
+    status: "$.get('status', 'open')"
+    limit: "$.get('limit', 20)"
+    force_live: "$.get('force_live', False)"
+  outputs:
+    # Selection happens here: workflow outputs evaluate against full state,
+    # so cached vs live preference reads the task outputs directly.
+    markets: "($.get('live_normalized_markets', []) if $.get('force_live', False) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', [])))[:int($.get('limit', 20))]"
+    count: "len(($.get('live_normalized_markets', []) if $.get('force_live', False) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', [])))[:int($.get('limit', 20))])"
+    sources: "$.get('live_sources', {})"
+    warnings: "($.get('cached_warnings', []) if not $.get('force_live', False) and $.get('cached_filtered_markets', []) else []) + $.get('live_warnings', [])"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: lookup-market-cache
+      description: Search cached normalized World Cup markets in the same pod document store first.
+      config:
+        action: search
+        search-limit: 250
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.status: "{'$in': [$.get('status', 'open'), 'unknown']} if $.get('status', 'open') != 'all' else {'$exists': True}"
+      outputs:
+        cached_markets: "[d.get('value', {}) for d in $.get('documents', [])]"
+        cache_count: "len($.get('documents', []))"
+
+    - type: connector
+      name: filter-cached-markets
+      description: Apply query/team/source/status/limit filters to same-pod cached markets before any live calls.
+      connector:
+        name: worldcup-market-intelligence
+        command: filter_cached_markets
+      inputs:
+        cached_markets: "$.get('cached_markets', [])"
+        query: "$.get('query', 'FIFA World Cup')"
+        team: "$.get('team', '')"
+        source: "$.get('source', 'all')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 20)"
+      outputs:
+        # $ here is the connector's data payload (the engine strips the
+        # status/data envelope before task outputs are evaluated).
+        cached_filtered_markets: "$.get('markets', [])"
+        cached_filtered_count: "$.get('count', 0)"
+        cached_warnings: "$.get('warnings', [])"
+
+    - type: connector
+      name: live-sports-skills-search
+      description: Live cross-provider fallback through Sports Skills when cache misses or force_live is set.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_markets
+      inputs:
+        # No sport scoping: Kalshi/Polymarket sport keys are league-level
+        # (epl, fifwc, ...) — 'football' matches nothing. The normalization
+        # connector's World Cup relevance gate filters the results instead.
+        command: "'search_entity'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup'"
+      outputs:
+        sports_skills_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: live-polymarket-search
+      description: Direct Polymarket search fallback for World Cup/FIFA markets.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('query') or $.get('team') or 'FIFA World Cup'"
+        limit: "$.get('limit', 20)"
+      outputs:
+        polymarket_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    # Kalshi World Cup markets span 10 dedicated series; sports-skills
+    # >=0.25.1 fans out across all of them via sport='worldcup'. No query is
+    # passed — game titles carry no World Cup wording, so the normalization
+    # connector filters by query/team instead.
+    - type: connector
+      name: live-kalshi-worldcup
+      description: Kalshi World Cup markets across all dedicated series (sport=worldcup).
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      inputs:
+        command: "'search_markets'"
+        sport: "'worldcup'"
+        status: "$.get('status', 'open')"
+        limit: "200"
+      outputs:
+        kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
+
+    - type: connector
+      name: normalize-live-markets
+      description: Normalize live Sports Skills/Kalshi/Polymarket payloads into stable WorldCupMarket records.
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_market_sources
+      inputs:
+        sports_skills_markets: "$.get('sports_skills_markets', {})"
+        polymarket_markets: "$.get('polymarket_markets', {})"
+        kalshi_markets: "$.get('kalshi_markets', {})"
+        query: "$.get('query', 'FIFA World Cup')"
+        team: "$.get('team', '')"
+        source: "$.get('source', 'all')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 20)"
+      outputs:
+        # $ here is the connector's data payload (envelope already stripped).
+        live_normalized_markets: "$.get('markets', [])"
+        live_sources: "$.get('sources', {})"
+        live_warnings: "$.get('warnings', [])"

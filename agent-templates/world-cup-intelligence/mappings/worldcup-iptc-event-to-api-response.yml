@@ -1,0 +1,25 @@
+mappings:
+  - type: mapping
+    name: worldcup-iptc-event-to-api-response
+    title: World Cup | IPTC Event API Response
+    description: Convert canonical event document into stable API response envelope.
+    outputs:
+      event: |
+        {
+          "event_urn": $.get('event_document', {}).get('_id', $.get('event_document', {}).get('@id', '')),
+          "provider_ids": $.get('event_document', {}).get('provider_ids', {}),
+          "iptc": $.get('event_document', {}),
+          "name": $.get('event_document', {}).get('name', ''),
+          "competition": $.get('event_document', {}).get('competition_name', $.get('event_document', {}).get('sport:competition', {}).get('name', 'FIFA World Cup 2026')),
+          "start_date": $.get('event_document', {}).get('start_date', $.get('event_document', {}).get('schema:startDate', '')),
+          "status": $.get('event_document', {}).get('status', $.get('event_document', {}).get('sport:status', 'unknown')),
+          "teams": $.get('event_document', {}).get('teams', $.get('event_document', {}).get('sport:competitors', [])),
+          "venue": $.get('event_document', {}).get('venue', $.get('event_document', {}).get('sport:venue', {}))
+        }
+      event_context: |
+        {
+          "event": $.get('event', $.get('event_document', {})),
+          "sports_context": $.get('sports_context', {}),
+          "prematch_research": $.get('event_document', {}).get('prematch_research', {}),
+          "social_pulse": $.get('event_document', {}).get('prematch_social_pulse', {})
+        }

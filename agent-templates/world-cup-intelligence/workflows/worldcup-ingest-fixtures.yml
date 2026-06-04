@@ -1,0 +1,55 @@
+workflow:
+  name: worldcup-ingest-fixtures
+  title: World Cup Intelligence - Ingest Fixtures
+  description: Fetch World Cup fixtures from API-Football, normalize to IPTC Sport Schema with provider URNs, and save to the same pod document store.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+    force: "$.get('force', False)"
+  outputs:
+    fixtures_count: "$.get('fixtures_count', 0)"
+    saved_count: "len($.get('iptc_events', []))"
+    workflow-status: "$.get('fixtures_count', 0) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-fixtures
+      description: Fetch fixtures from API-Football for the configured league/season.
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league')"
+        season: "$.get('season')"
+      outputs:
+        raw_fixtures: "$.get('response', [])"
+        fixtures_count: "len($.get('response', []))"
+
+    - type: mapping
+      name: worldcup-api-football-event-to-iptc
+      title: World Cup | API-Football Event to IPTC
+      description: Normalize API-Football fixtures to IPTC/Sportschema event documents.
+      condition: "len($.get('raw_fixtures', [])) > 0"
+      inputs:
+        fixtures: "$.get('raw_fixtures', [])"
+      outputs:
+        iptc_events: "$.get('sport_schema_events', [])"
+
+    - type: document
+      name: save-worldcup-events
+      description: Save normalized World Cup events keyed by provider URN in the same pod document store.
+      condition: "len($.get('iptc_events', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:event'"
+      documents:
+        items: "$.get('iptc_events', [])"
+      inputs:
+        iptc_events: "$.get('iptc_events', [])"

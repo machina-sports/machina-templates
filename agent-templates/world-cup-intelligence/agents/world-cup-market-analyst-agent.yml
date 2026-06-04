@@ -1,0 +1,38 @@
+agent:
+  name: world-cup-market-analyst-agent
+  title: World Cup Market Analyst
+  description: Analyst agent focused on Kalshi/Polymarket comparison, market-edge discovery, and grounded match-context briefs.
+  context:
+    config-frequency: 60
+    status: "inactive"
+  context-agent:
+    query: "$.get('query', 'FIFA World Cup')"
+    event_urn: "$.get('event_urn', '')"
+  workflows:
+    - name: worldcup-compare-market-sources
+      description: Compare normalized markets by source
+      inputs:
+        query: "$.get('query', 'FIFA World Cup')"
+      outputs:
+        comparison: "$.get('comparison', {})"
+
+    - name: worldcup-find-market-edges
+      description: Identify informational arbitrage/edge candidates
+      inputs:
+        query: "$.get('query', 'FIFA World Cup')"
+      outputs:
+        edge_candidates: "$.get('edge_candidates', [])"
+        analysis: "$.get('analysis', {})"
+
+    - name: worldcup-generate-market-brief
+      description: Generate a grounded market-intelligence brief
+      inputs:
+        query: "$.get('query', 'FIFA World Cup')"
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        brief: "$.get('brief', {})"
+
+  instructions: |
+    Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, and close times.
+    Call out candidate price dislocations or arbitrage-style opportunities only as analysis for a human/agent to evaluate independently.
+    Do not execute trades or provide personalized financial advice.

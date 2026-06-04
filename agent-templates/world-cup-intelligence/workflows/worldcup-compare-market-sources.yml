@@ -1,0 +1,36 @@
+workflow:
+  name: worldcup-compare-market-sources
+  title: World Cup Intelligence - Compare Market Sources
+  description: Compare Kalshi and Polymarket market data without executing trades or giving personalized financial advice.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    query: "$.get('query', '')"
+    market_type: "$.get('market_type', 'all')"
+    include_reasoning: "$.get('include_reasoning', False)"
+  outputs:
+    comparison: "$.get('comparison', {})"
+    workflow-status: "$.get('comparison', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: lookup-markets
+      description: Load normalized markets for comparison from the same pod document store.
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: "[d.get('value', {}) for d in $.get('documents', [])]"
+
+    - type: mapping
+      name: worldcup-market-normalization
+      title: World Cup | Market Comparison Shape
+      inputs:
+        markets: "$.get('markets', [])"
+        market_type: "$.get('market_type', 'all')"
+      outputs:
+        comparison: "$.get('comparison', {'markets': $.get('markets', []), 'data_quality_notes': []})"
