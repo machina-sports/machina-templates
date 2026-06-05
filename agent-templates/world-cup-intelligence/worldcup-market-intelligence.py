@@ -2059,3 +2059,75 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
         "data": {"normalized_items": items, "count": len(items),
                  "provider_summary": summary, "warnings": warnings},
     }
+
+
+def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Attach sportradar + entain event ids to canonical WC event docs (matched by team pair).
+
+    Params:
+      - events: canonical worldcup:event values (each has sport:competitors[].@id team URNs)
+      - teams: team-crosswalk docs (for sportradar/entain provider-id -> team URN maps)
+      - sportradar_schedule: sportradar /seasons/{id}/schedules.json response(s)
+      - entain_fixtures: bwin fixtures response(s)
+    """
+    params = _params(request_data)
+    by_sr: dict[str, str] = {}
+    by_entain: dict[str, str] = {}
+    for t in _as_list(params.get("teams")):
+        if not isinstance(t, dict):
+            continue
+        pids = t.get("provider_ids") or {}
+        urn = _text(_first(t, "_id", "@id", "id"))
+        if pids.get("sportradar"):
+            by_sr[_text(pids["sportradar"])] = urn
+        if pids.get("entain"):
+            by_entain[_text(pids["entain"])] = urn
+
+    by_pair: dict[frozenset, dict[str, Any]] = {}
+    out: list[dict[str, Any]] = []
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        ev.setdefault("metadata", {"event_urn": _text(_first(ev, "_id", "@id", "id"))})
+        out.append(ev)
+        urns = [_text(c.get("@id")) for c in (ev.get("sport:competitors") or [])
+                if isinstance(c, dict) and c.get("@id")]
+        if len(urns) == 2:
+            by_pair[frozenset(urns)] = ev
+
+    summary = {"events": len(out), "sportradar": 0, "entain": 0}
+
+    for resp in _flatten_foreach(params.get("sportradar_schedule")):
+        data = _unwrap(resp)
+        for item in (data.get("schedules", []) if isinstance(data, dict) else []):
+            se = item.get("sport_event", {}) if isinstance(item, dict) else {}
+            sid = _text(se.get("id"))
+            urns = [by_sr.get(_text(c.get("id"))) for c in (se.get("competitors") or [])]
+            urns = [u for u in urns if u]
+            if not sid or len(urns) != 2:
+                continue
+            ev = by_pair.get(frozenset(urns))
+            if ev is not None and "sportradar_event_id" not in (ev.get("provider_ids") or {}):
+                ev.setdefault("provider_ids", {})["sportradar_event_id"] = sid
+                summary["sportradar"] += 1
+
+    for resp in _flatten_foreach(params.get("entain_fixtures")):
+        data = _unwrap(resp)
+        for fx in (data.get("items", []) if isinstance(data, dict) else []):
+            if not isinstance(fx, dict):
+                continue
+            fid = fx.get("id")
+            eid = _text(fid.get("entityId") if isinstance(fid, dict) else fid)
+            urns = [by_entain.get(_text(p.get("id"))) for p in (fx.get("participants") or [])]
+            urns = [u for u in urns if u]
+            if not eid or len(urns) != 2:
+                continue
+            ev = by_pair.get(frozenset(urns))
+            if ev is not None and "entain_event_id" not in (ev.get("provider_ids") or {}):
+                ev.setdefault("provider_ids", {})["entain_event_id"] = eid
+                summary["entain"] += 1
+
+    return {
+        "status": True,
+        "data": {"normalized_items": out, "count": len(out), "provider_summary": summary},
+    }

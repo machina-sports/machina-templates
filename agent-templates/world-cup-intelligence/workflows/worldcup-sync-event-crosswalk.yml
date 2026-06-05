@@ -1,0 +1,111 @@
+workflow:
+  name: worldcup-sync-event-crosswalk
+  title: World Cup Intelligence - Sync Event Identity Crosswalk
+  description: |
+    Attach sportradar + entain (bwin) event ids to the canonical worldcup:event docs,
+    matched by team pair via the team crosswalk. api-football remains the event source;
+    sportradar/entain contribute provider_ids only (for cross-provider exposure).
+
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+  inputs:
+    sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
+    bwin_country: "$.get('bwin_country', 'gb')"
+    bwin_competition_id: "$.get('bwin_competition_id', '102868')"
+  outputs:
+    saved_count: "len($.get('normalized_items', []))"
+    provider_summary: "$.get('provider_summary', {})"
+    workflow-status: "len($.get('normalized_items', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-teams
+      description: Load the team crosswalk for sportradar/entain provider-id maps.
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:team:"}
+      outputs:
+        teams: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-events
+      description: Load the canonical World Cup event docs to enrich with provider ids.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: fetch-sr-schedule
+      description: Sportradar full season schedule (sport_events for the World Cup season).
+      condition: "len($.get('events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/schedules.json
+        command_attribute:
+          season_id: "$.get('sr_season_id', 'sr:season:101177')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sportradar_schedule: "{'schedules': $.get('schedules', [])}"
+
+    - type: connector
+      name: fetch-bwin-wc
+      description: Entain/bwin fixtures for the World Cup competition (event id + participants).
+      condition: "len($.get('events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          sportId: "'4'"
+          country: "$.get('bwin_country', 'gb')"
+      inputs:
+        language: "'en'"
+        competitionIds: "$.get('bwin_competition_id', '102868')"
+        onlyMainMarkets: "'true'"
+      outputs:
+        entain_fixtures: "{'items': $.get('items', [])}"
+
+    - type: connector
+      name: build-event-crosswalk
+      description: Attach sportradar/entain event ids to events by team pair.
+      connector:
+        name: worldcup-market-intelligence
+        command: build_event_crosswalk
+      inputs:
+        teams: "$.get('teams', [])"
+        events: "$.get('events', [])"
+        sportradar_schedule: "$.get('sportradar_schedule', {})"
+        entain_fixtures: "$.get('entain_fixtures', {})"
+      outputs:
+        normalized_items: "$.get('normalized_items', [])"
+        provider_summary: "$.get('provider_summary', {})"
+
+    - type: document
+      name: save-events
+      description: Save the enriched event docs back to same-pod state.
+      condition: "len($.get('normalized_items', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:event'"
+      documents:
+        items: "$.get('normalized_items', [])"
+      inputs:
+        normalized_items: "$.get('normalized_items', [])"
