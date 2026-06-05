@@ -19,6 +19,7 @@ normalize_standings = _module.normalize_standings
 normalize_squads = _module.normalize_squads
 normalize_injuries = _module.normalize_injuries
 normalize_schedule = _module.normalize_schedule
+normalize_identity_crosswalk = _module.normalize_identity_crosswalk
 
 
 def _kalshi_record(**overrides):
@@ -702,3 +703,60 @@ class TestNormalizeSchedule:
         assert ev["venue"] == "Estadio Akron"
         assert ev["fixture_id"] == "1489417"
         assert {t["name"] for t in ev["teams"]} == {"Uruguay", "Spain"}
+
+
+class TestNormalizeIdentityCrosswalk:
+    def test_player_urn_uses_birth_date_and_country_to_avoid_same_name_collisions(self):
+        result = normalize_identity_crosswalk({"params": {"items": [
+            {
+                "type": "player",
+                "name": "Luis Suárez Jr.",
+                "birth_date": "1987-01-24",
+                "country": "Uruguay",
+                "provider_ids": {"api_football": "123", "entain": "p-9"},
+                "source_evidence": [{"provider": "api_football", "id": "123"}],
+            }
+        ]}})
+        doc = result["data"]["normalized_items"][0]
+        assert doc["@id"] == "urn:machina:sport:soccer:player:luis-suarez:19870124:ury"
+        assert doc["metadata"] == {"entity_urn": doc["@id"]}
+        assert doc["provider_ids"] == {"api_football": "123", "entain": "p-9"}
+        assert doc["mapping_status"]["verified_ids_only"] is True
+        assert doc["source_evidence"] == [{"provider": "api_football", "id": "123"}]
+
+    def test_same_team_names_are_country_scoped(self):
+        result = normalize_identity_crosswalk({"params": {"items": [
+            {"type": "team", "name": "Georgia", "country": "Georgia", "provider_ids": {"api_football": "1"}},
+            {"type": "team", "name": "Georgia", "country": "United States", "provider_ids": {"espn": "uga"}},
+        ]}})
+        urns = [d["@id"] for d in result["data"]["normalized_items"]]
+        assert urns == [
+            "urn:machina:sport:soccer:team:georgia:geo",
+            "urn:machina:sport:soccer:team:georgia:usa",
+        ]
+
+    def test_event_and_competition_documents_use_standard_metadata_keys(self):
+        result = normalize_identity_crosswalk({"params": {"items": [
+            {"type": "event", "home_team": "Brazil", "away_team": "Serbia", "date": "2026-06-15", "provider_ids": {"entain": "2:7811126"}},
+            {"type": "competition", "name": "FIFA World Cup 2026", "scope": "world", "provider_ids": {"entain": "102868"}},
+        ]}})
+        event, competition = result["data"]["normalized_items"]
+        assert event["@id"] == "urn:machina:sport:soccer:event:brazil-vs-serbia:20260615:wor"
+        assert event["metadata"] == {"event_urn": event["@id"]}
+        assert competition["@id"] == "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor"
+        assert competition["metadata"] == {"entity_urn": competition["@id"]}
+
+    def test_force_disambiguator_adds_verified_provider_hash_suffix(self):
+        result = normalize_identity_crosswalk({"params": {"items": [
+            {
+                "type": "player",
+                "name": "Same Name",
+                "birth_date": "2000-01-01",
+                "country": "Brazil",
+                "provider_ids": {"provider_a": "abc"},
+                "force_disambiguator": True,
+            }
+        ]}})
+        urn = result["data"]["normalized_items"][0]["@id"]
+        assert urn.startswith("urn:machina:sport:soccer:player:same-name:20000101:bra:")
+        assert len(urn.rsplit(":", 1)[-1]) == 8

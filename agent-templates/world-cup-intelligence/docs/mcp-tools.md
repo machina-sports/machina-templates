@@ -47,6 +47,23 @@ Backed by `worldcup-get-event-context`.
 
 Backed by `worldcup-get-iptc-event-context`.
 
+### `worldcup_get_player_performance_context`
+
+Backed by `worldcup-get-player-performance-context`.
+
+Inputs:
+
+- `event_urn` or `fixture_id`: fixture identifier; `event_urn` resolves same-pod event state
+- `player_id`: optional API-Football player id filter
+- `team_id`: optional API-Football team id filter
+- `official_fifa_power_ranking`: optional official FIFA payload when already available
+
+Returns:
+
+- `official_fifa_power_ranking`: source-labeled official FIFA fields, default `pending`
+- `machina_provisional_performance_signal`: provider-backed 0-10 provisional scores with confidence/drivers
+- 20-minute eligibility status and warnings
+
 ### `worldcup_compare_market_sources`
 
 Backed by `worldcup-compare-market-sources`.

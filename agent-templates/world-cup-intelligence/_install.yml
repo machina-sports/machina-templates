@@ -60,6 +60,10 @@ datasets:
   - type: workflow
     path: workflows/worldcup-get-schedule.yml
   - type: workflow
+    path: workflows/worldcup-get-player-performance-context.yml
+  - type: workflow
+    path: workflows/worldcup-sync-identity-crosswalk.yml
+  - type: workflow
     path: workflows/worldcup-compare-market-sources.yml
   - type: workflow
     path: workflows/worldcup-find-market-edges.yml
@@ -86,6 +90,8 @@ datasets:
     path: prompts/worldcup-event-context-summary.yml
   - type: prompts
     path: prompts/worldcup-fan-sentiment-extract.yml
+  - type: prompts
+    path: prompts/worldcup-player-performance-context-summary.yml
 
   - type: mappings
     path: mappings/worldcup-api-football-event-to-iptc.yml
