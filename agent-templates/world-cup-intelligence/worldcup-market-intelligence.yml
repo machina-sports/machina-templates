@@ -36,3 +36,5 @@ connector:
       value: "normalize_identity_crosswalk"
     - name: "Mint event identity"
       value: "mint_event_identity"
+    - name: "Merge provider entities"
+      value: "merge_provider_entities"
