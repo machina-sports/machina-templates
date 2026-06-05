@@ -1865,10 +1865,9 @@ def _name_tokens(name: Any) -> tuple[str, str]:
     return (toks[-1], toks[0][:1])
 
 
-def _team_maps(teams: list[Any]) -> tuple[dict, dict]:
-    """Build api_football_id -> teaminfo and opta_id -> teaminfo from team-crosswalk docs."""
-    by_af: dict[str, dict[str, Any]] = {}
-    by_opta: dict[str, dict[str, Any]] = {}
+def _team_maps(teams: list[Any]) -> dict[str, dict]:
+    """provider key -> {provider_id: teaminfo} from team-crosswalk docs."""
+    maps: dict[str, dict] = {"api_football": {}, "opta": {}, "espn": {}}
     for t in teams:
         if not isinstance(t, dict):
             continue
@@ -1878,11 +1877,20 @@ def _team_maps(teams: list[Any]) -> tuple[dict, dict]:
             "name": _text(t.get("name")),
             "iso3": _to_iso3(t.get("country") or t.get("name")),
         }
-        if pids.get("api_football"):
-            by_af[_text(pids["api_football"])] = info
-        if pids.get("opta"):
-            by_opta[_text(pids["opta"])] = info
-    return by_af, by_opta
+        for prov in maps:
+            if pids.get(prov):
+                maps[prov][_text(pids[prov])] = info
+    return maps
+
+
+def _flatten_foreach(raw: Any) -> list[Any]:
+    """Normalize a foreach output (single dict, list, or list-of-lists) to a flat list."""
+    if isinstance(raw, dict):
+        return [raw]
+    out: list[Any] = []
+    for r in raw or []:
+        out.extend(r) if isinstance(r, list) else out.append(r)
+    return out
 
 
 def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
@@ -1891,24 +1899,21 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
     Params:
       - teams: team-crosswalk docs (for team-id -> team URN/iso3 maps)
       - af_squads: list of api-football /players/squads responses (canonical player set)
-      - opta_squads: opta squads response (enrich opta ids by team + lastname + first-initial)
+      - af_players: list of api-football /players responses (birth date + nationality, joined by id)
+      - opta_squads: opta squads response (opta ids by team + lastname + first-initial)
+      - espn_rosters: list of sports-skills get_team_profile responses (espn ids, same match)
     """
     params = _params(request_data)
-    by_af, by_opta = _team_maps(_as_list(params.get("teams")))
+    maps = _team_maps(_as_list(params.get("teams")))
+    by_af, by_opta, by_espn = maps["api_football"], maps["opta"], maps["espn"]
     canon: dict[tuple, dict[str, Any]] = {}
     order: list[tuple] = []
-    summary = {"api_football": 0, "opta": 0}
+    summary = {"api_football": 0, "opta": 0, "espn": 0, "with_dob": 0}
 
-    raw_squads = params.get("af_squads")
-    if isinstance(raw_squads, dict):
-        raw_squads = [raw_squads]
-    flat_squads: list[Any] = []
-    for r in raw_squads or []:
-        flat_squads.extend(r) if isinstance(r, list) else flat_squads.append(r)
-    for resp in flat_squads:
+    # Canonical set + team link from api-football squads.
+    for resp in _flatten_foreach(params.get("af_squads")):
         data = _unwrap(resp)
-        response = data.get("response", []) if isinstance(data, dict) else []
-        for entry in response if isinstance(response, list) else []:
+        for entry in (data.get("response", []) if isinstance(data, dict) else []):
             if not isinstance(entry, dict):
                 continue
             tinfo = by_af.get(_text((entry.get("team") or {}).get("id")))
@@ -1917,8 +1922,7 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             for p in entry.get("players", []) or []:
                 if not isinstance(p, dict):
                     continue
-                name = _text(p.get("name"))
-                pid = _text(p.get("id"))
+                name, pid = _text(p.get("name")), _text(p.get("id"))
                 if not name or not pid:
                     continue
                 last, fi = _name_tokens(name)
@@ -1930,6 +1934,20 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
                 canon[key]["provider_ids"]["api_football"] = pid
                 summary["api_football"] += 1
 
+    # Birth date + nationality from api-football /players, joined by player id.
+    dob_by_id: dict[str, dict[str, Any]] = {}
+    for resp in _flatten_foreach(params.get("af_players")):
+        data = _unwrap(resp)
+        for entry in (data.get("response", []) if isinstance(data, dict) else []):
+            player = entry.get("player") if isinstance(entry, dict) else None
+            if not isinstance(player, dict) or not player.get("id"):
+                continue
+            dob_by_id[_text(player["id"])] = {
+                "dob": _text((player.get("birth") or {}).get("date")),
+                "nationality": _text(player.get("nationality")),
+            }
+
+    # Opta ids by team + lastname + first-initial.
     opta = _unwrap(params.get("opta_squads"))
     for sq in (opta.get("squad", []) if isinstance(opta, dict) else []):
         if not isinstance(sq, dict):
@@ -1940,18 +1958,34 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
         for person in sq.get("person", []) or []:
             if not isinstance(person, dict) or _lower(person.get("type")) not in ("player", ""):
                 continue
-            last = _slugify(person.get("lastName"))
-            fi = _slugify(person.get("firstName"))[:1]
-            key = (tinfo["iso3"], last, fi)
+            key = (tinfo["iso3"], _slugify(person.get("lastName")), _slugify(person.get("firstName"))[:1])
             if key in canon and _text(person.get("id")):
                 canon[key]["provider_ids"]["opta"] = _text(person.get("id"))
                 summary["opta"] += 1
 
+    # ESPN ids (sports-skills get_team_profile), same name match.
+    for resp in _flatten_foreach(params.get("espn_rosters")):
+        data = _unwrap(resp)
+        tinfo = by_espn.get(_text((data.get("team") or {}).get("id"))) if isinstance(data, dict) else None
+        if not tinfo:
+            continue
+        for p in data.get("players", []) or []:
+            if not isinstance(p, dict):
+                continue
+            last, fi = _name_tokens(_first(p, "name", "full_name", "display_name"))
+            key = (tinfo["iso3"], last, fi)
+            if key in canon and _text(p.get("id")):
+                canon[key]["provider_ids"]["espn"] = _text(p.get("id"))
+                summary["espn"] += 1
+
     items: list[dict[str, Any]] = []
     for k in order:
         c = canon[k]
-        slug = _slugify(c["name"])
-        urn = f"urn:machina:sport:soccer:player:{slug}:{_parse_birth_date(None)}:{c['team']['iso3']}"
+        meta = dob_by_id.get(c["provider_ids"].get("api_football", ""), {})
+        dob8 = _parse_birth_date(meta.get("dob"))
+        if dob8 != "00000000":
+            summary["with_dob"] += 1
+        urn = f"urn:machina:sport:soccer:player:{_slugify(c['name'])}:{dob8}:{c['team']['iso3']}"
         items.append({
             "metadata": {"entity_urn": urn},
             "@context": {
@@ -1965,6 +1999,8 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             "@type": ["sport:IdentityCrosswalk", "sport:Player"],
             "name": c["name"],
             "position": c["position"] or None,
+            "birth_date": meta.get("dob") or None,
+            "nationality": meta.get("nationality") or None,
             "team": {"@id": c["team"]["urn"], "name": c["team"]["name"]},
             "provider_ids": c["provider_ids"],
             "machina_competition_slug": "world-cup-2026",

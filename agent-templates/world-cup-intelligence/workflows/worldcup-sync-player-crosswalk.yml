@@ -3,9 +3,9 @@ workflow:
   title: World Cup Intelligence - Sync Player Identity Crosswalk
   description: |
     Build the squad-player identity crosswalk: urn:machina:sport:soccer:player URNs with
-    provider_ids from api-football + Opta, linked to the team URN. api-football squads are
-    the source; Opta ids attach by team + lastname + first-initial. Saves
-    worldcup:identity-crosswalk player docs.
+    provider_ids from api-football + Opta + ESPN, linked to the team URN. api-football squads
+    are the source; /players supplies birth date + nationality; Opta and ESPN ids attach by
+    team + lastname + first-initial. Saves worldcup:identity-crosswalk player docs.
 
   context-variables:
     debugger:
@@ -16,6 +16,7 @@ workflow:
       outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
       secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
   inputs:
+    season: "$.get('season', '2026')"
     opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
   outputs:
     saved_count: "len($.get('normalized_items', []))"
@@ -54,6 +55,46 @@ workflow:
         af_squads: "[$]"
 
     - type: connector
+      name: fetch-af-players
+      description: api-football /players (birth date + nationality), team x pages 1-2 via foreach.
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-players
+      foreach:
+        concurrent: false
+        name: player_page
+        expr: $
+        value: "[{'team': t.get('provider_ids', {}).get('api_football'), 'page': p} for t in $.get('teams', []) if t.get('provider_ids', {}).get('api_football') for p in [1, 2]]"
+      inputs:
+        team: "$.get('player_page', {}).get('team')"
+        season: "$.get('season', '2026')"
+        page: "$.get('player_page', {}).get('page')"
+      outputs:
+        af_players: "[$]"
+
+    - type: connector
+      name: fetch-espn-rosters
+      description: ESPN team rosters (player ids) per team via sports-skills get_team_profile.
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_football
+      foreach:
+        concurrent: false
+        name: espn_team
+        expr: $
+        value: "[t for t in $.get('teams', []) if t.get('provider_ids', {}).get('espn')]"
+      inputs:
+        command: "'get_team_profile'"
+        team_id: "$.get('espn_team', {}).get('provider_ids', {}).get('espn')"
+        season_id: "'world-cup-2026'"
+      outputs:
+        espn_rosters: "[$.get('data', {}) if $.get('status') else {}]"
+
+    - type: connector
       name: opta-auth
       description: Get an Opta OAuth access token.
       continue_on_error: true
@@ -87,7 +128,9 @@ workflow:
       inputs:
         teams: "$.get('teams', [])"
         af_squads: "$.get('af_squads', [])"
+        af_players: "$.get('af_players', [])"
         opta_squads: "$.get('opta_squads', {})"
+        espn_rosters: "$.get('espn_rosters', [])"
       outputs:
         normalized_items: "$.get('normalized_items', [])"
         provider_summary: "$.get('provider_summary', {})"
