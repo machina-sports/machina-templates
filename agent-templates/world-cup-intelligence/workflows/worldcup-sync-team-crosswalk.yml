@@ -16,11 +16,16 @@ workflow:
     opta:
       outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
       secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
   inputs:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
     sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
     opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
+    bwin_country: "$.get('bwin_country', 'gb')"
+    bwin_competition_id: "$.get('bwin_competition_id', '102868')"
   outputs:
     saved_count: "len($.get('normalized_items', []))"
     provider_summary: "$.get('provider_summary', {})"
@@ -92,6 +97,23 @@ workflow:
         opta_wc: "$.get('contestant', [])"
 
     - type: connector
+      name: fetch-bwin-wc
+      description: Entain/bwin teams for the World Cup competition (from two-participant match fixtures).
+      continue_on_error: true
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          sportId: "'4'"
+          country: "$.get('bwin_country', 'gb')"
+      inputs:
+        language: "'en'"
+        competitionIds: "$.get('bwin_competition_id', '102868')"
+        onlyMainMarkets: "'true'"
+      outputs:
+        entain_teams: "[{'id': p.get('id'), 'name': (p.get('name', {}).get('text') if isinstance(p.get('name'), dict) else p.get('name'))} for f in ($.get('items', []) or []) if isinstance(f, dict) and len(f.get('participants') or []) == 2 for p in (f.get('participants') or []) if p.get('id')]"
+
+    - type: connector
       name: merge-entities
       description: Join provider team lists by iso3 into crosswalk items.
       connector:
@@ -102,6 +124,7 @@ workflow:
         espn_teams: "$.get('espn_teams', [])"
         sportradar_teams: "$.get('sportradar_teams', [])"
         opta_teams: "$.get('opta_wc', [])"
+        entain_teams: "$.get('entain_teams', [])"
       outputs:
         items: "$.get('items', [])"
         provider_summary: "$.get('provider_summary', {})"
