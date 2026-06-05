@@ -25,7 +25,7 @@ workflow:
       filters:
         name: "'worldcup:event'"
         value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
+        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
         event_document: "($.get('documents', []) or [{}])[0].get('value', {})"
 

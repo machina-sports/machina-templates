@@ -639,7 +639,7 @@ def _event_doc(urn, name, start, status="NS", home="A", away="B", venue="Stadium
             {"name": away, "sport:qualifier": "away", "schema:logo": f"af://{away}.png"},
         ],
         "venue": {"name": venue, "schema:addressLocality": "City"},
-        "provider_ids": {"api_football_fixture_id": fixture},
+        "provider_ids": {"api_football": fixture},
     }
 
 
@@ -696,7 +696,7 @@ class TestNormalizeSchedule:
                 {"name": "Uruguay", "sport:qualifier": "home", "schema:logo": "u.png"},
                 {"name": "Spain", "sport:qualifier": "away", "schema:logo": "s.png"},
             ],
-            "provider_ids": {"api_football_fixture_id": "1489417"},
+            "provider_ids": {"api_football": "1489417"},
         }
         r = normalize_schedule({"params": {"events": [iptc], "team": "spain"}})
         ev = r["data"]["events"][0]
@@ -791,11 +791,7 @@ class TestMintEventIdentity:
         comps = {c["sport:qualifier"]: c["@id"] for c in d["sport:competitors"]}
         assert comps["home"] == "urn:machina:sport:soccer:team:uruguay:ury"
         assert comps["away"] == "urn:machina:sport:soccer:team:spain:esp"
-        assert d["provider_ids"] == {
-            "api_football_fixture_id": "1489417", "api_football_league_id": "1",
-            "api_football_home_team_id": "7", "api_football_away_team_id": "9",
-            "api_football_venue_id": "1076",
-        }
+        assert d["provider_ids"] == {"api_football": "1489417"}
         assert d["sport:status"] == "NS"
 
     def test_full_iso_date_not_degraded_to_year(self):
@@ -809,7 +805,7 @@ class TestMintEventIdentity:
         d = mint_event_identity({"params": {"fixtures": [fx]}})["data"]["events"][0]
         assert "@id" not in d["sport:venue"]
         assert "None" not in d["_id"]
-        assert d["provider_ids"]["api_football_venue_id"] == ""
+        assert "api_football_venue_id" not in d["provider_ids"]
 
     def test_idempotent_urn_for_same_fixture(self):
         a = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
@@ -830,10 +826,10 @@ class TestMintEventIdentity:
                                       "entain_event_id": "7722030"}}]
         d = mint_event_identity({"params": {"fixtures": [_af_fixture()],
                                             "existing_events": existing}})["data"]["events"][0]
-        assert d["provider_ids"]["sportradar_event_id"] == "sr:sport_event:123"
-        assert d["provider_ids"]["entain_event_id"] == "7722030"
-        # Ingest-owned ids are still freshly minted, not from the carry map.
-        assert d["provider_ids"]["api_football_home_team_id"] == "7"
+        assert d["provider_ids"]["sportradar"] == "sr:sport_event:123"
+        assert d["provider_ids"]["entain"] == "7722030"
+        # Ingest still owns the api_football (fixture) id.
+        assert d["provider_ids"]["api_football"] == "1489417"
 
 
 # -- Provider entity merge (identity crosswalk producer) ---------------------
@@ -1065,7 +1061,7 @@ class TestBuildEventCrosswalk:
                 {"@id": "urn:machina:sport:soccer:team:mexico:mex"},
                 {"@id": "urn:machina:sport:soccer:team:south-africa:zaf"},
             ],
-            "provider_ids": {"api_football_fixture_id": "1489369"},
+            "provider_ids": {"api_football": "1489369"},
         }]
 
     def test_attaches_sportradar_and_entain_event_ids(self):
@@ -1076,9 +1072,9 @@ class TestBuildEventCrosswalk:
         r = build_event_crosswalk({"params": {"teams": self._teams(), "events": self._events(),
                                               "sportradar_schedule": sr, "entain_fixtures": bwin}})["data"]
         ev = r["normalized_items"][0]
-        assert ev["provider_ids"]["api_football_fixture_id"] == "1489369"
-        assert ev["provider_ids"]["sportradar_event_id"] == "sr:sport_event:66456904"
-        assert ev["provider_ids"]["entain_event_id"] == "7722030"
+        assert ev["provider_ids"]["api_football"] == "1489369"
+        assert ev["provider_ids"]["sportradar"] == "sr:sport_event:66456904"
+        assert ev["provider_ids"]["entain"] == "7722030"
         assert ev["metadata"]["event_urn"] == "urn:machina:sport:soccer:event:mexico-vs-south-africa:20260611:wor"
         assert r["provider_summary"] == {"events": 1, "sportradar": 1, "entain": 1}
 

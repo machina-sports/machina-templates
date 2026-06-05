@@ -28,9 +28,10 @@ workflow:
       filters:
         name: "'worldcup:event'"
         value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
+        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
-        resolved_league: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_league_id')"
+        # League is the World Cup competition (api-football league 1); the fetch
+        # below defaults to '1', so no per-event league id is needed here.
         resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('schema:startDate') or '2026'))[:4]"
         resolved_season_slug: "(($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('machina_competition_slug')"
 
