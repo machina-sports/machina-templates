@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-ingest-fixtures
   title: World Cup Intelligence - Ingest Fixtures
-  description: Fetch World Cup fixtures from API-Football, build IPTC events with machina URNs + provider_ids, and save to the same pod document store.
+  description: Fetch World Cup fixtures from API-Football, build IPTC events with machina URNs + provider_ids, then attach sportradar/entain event ids (event crosswalk) and save to the same pod document store.
 
   context-variables:
     debugger:
@@ -10,13 +10,22 @@ workflow:
       # Match the existing pod vault secret used by the other World Cup
       # workflows; secret lookup uses the literal name after '$'.
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+    bwin:
+      Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
+      Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
   inputs:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
     force: "$.get('force', False)"
+    sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
+    bwin_country: "$.get('bwin_country', 'gb')"
+    bwin_competition_id: "$.get('bwin_competition_id', '102868')"
   outputs:
     fixtures_count: "$.get('fixtures_count', 0)"
-    saved_count: "len($.get('iptc_events', []))"
+    saved_count: "len($.get('normalized_items', []) or $.get('iptc_events', []))"
+    provider_summary: "$.get('provider_summary', {})"
     workflow-status: "$.get('fixtures_count', 0) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector
@@ -32,9 +41,21 @@ workflow:
         raw_fixtures: "$.get('response', [])"
         fixtures_count: "len($.get('response', []))"
 
+    - type: document
+      name: load-existing-events
+      description: Load existing event docs (provider_ids only) so crosswalk-added ids (sportradar/entain) carry forward across re-ingests.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        existing_events: "[{'provider_ids': d.get('value', {}).get('provider_ids', {})} for d in ($.get('documents', []) or [])]"
+
     - type: connector
       name: mint-event-identity
-      description: Build IPTC event docs with machina URNs + provider_ids from the raw fixtures.
+      description: Build IPTC event docs with machina URNs + provider_ids from the raw fixtures (carrying forward non-api-football ids).
       condition: "len($.get('raw_fixtures', [])) > 0"
       connector:
         name: worldcup-market-intelligence
@@ -42,20 +63,85 @@ workflow:
       inputs:
         fixtures: "$.get('raw_fixtures', [])"
         competition_slug: "'world-cup-2026'"
+        existing_events: "$.get('existing_events', [])"
       outputs:
         # runner strips our connector's {status,data} envelope -> $ is the data.
         iptc_events: "$.get('sport_schema_events', [])"
 
     - type: document
-      name: save-worldcup-events
-      description: Save normalized World Cup events keyed by provider URN in the same pod document store.
+      name: load-teams
+      description: Load the team crosswalk for sportradar/entain provider-id maps.
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:team:"}
+      outputs:
+        teams: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: fetch-sr-schedule
+      description: Sportradar full season schedule (sport_events for the World Cup season).
       condition: "len($.get('iptc_events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sportradar-soccer
+        command: get-seasons/{season_id}/schedules.json
+        command_attribute:
+          season_id: "$.get('sr_season_id', 'sr:season:101177')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sportradar_schedule: "{'schedules': $.get('schedules', [])}"
+
+    - type: connector
+      name: fetch-bwin-wc
+      description: Entain/bwin fixtures for the World Cup competition (event id + participants).
+      condition: "len($.get('iptc_events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: bwin
+        command: get-offer/api/{sportId}/{country}/fixtures
+        command_attribute:
+          sportId: "'4'"
+          country: "$.get('bwin_country', 'gb')"
+      inputs:
+        language: "'en'"
+        competitionIds: "$.get('bwin_competition_id', '102868')"
+        onlyMainMarkets: "'true'"
+      outputs:
+        entain_fixtures: "{'items': $.get('items', [])}"
+
+    - type: connector
+      name: build-event-crosswalk
+      description: Attach sportradar/entain event ids to the minted events by team pair.
+      condition: "len($.get('iptc_events', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: worldcup-market-intelligence
+        command: build_event_crosswalk
+      inputs:
+        teams: "$.get('teams', [])"
+        events: "$.get('iptc_events', [])"
+        sportradar_schedule: "$.get('sportradar_schedule', {})"
+        entain_fixtures: "$.get('entain_fixtures', {})"
+      outputs:
+        normalized_items: "$.get('normalized_items', [])"
+        provider_summary: "$.get('provider_summary', {})"
+
+    - type: document
+      name: save-worldcup-events
+      description: Save the cross-provider event docs keyed by machina URN in the same pod document store.
+      condition: "len($.get('normalized_items', []) or $.get('iptc_events', [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "'worldcup:event'"
       documents:
-        items: "$.get('iptc_events', [])"
+        items: "$.get('normalized_items', []) or $.get('iptc_events', [])"
       inputs:
+        normalized_items: "$.get('normalized_items', [])"
         iptc_events: "$.get('iptc_events', [])"

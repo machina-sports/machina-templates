@@ -823,6 +823,18 @@ class TestMintEventIdentity:
         assert r["data"]["events"] == []
         assert r["data"]["warnings"]
 
+    def test_carries_forward_crosswalk_event_ids(self):
+        # Existing event doc holds crosswalk-added ids; re-mint must preserve them.
+        existing = [{"provider_ids": {"api_football_fixture_id": "1489417",
+                                      "sportradar_event_id": "sr:sport_event:123",
+                                      "entain_event_id": "7722030"}}]
+        d = mint_event_identity({"params": {"fixtures": [_af_fixture()],
+                                            "existing_events": existing}})["data"]["events"][0]
+        assert d["provider_ids"]["sportradar_event_id"] == "sr:sport_event:123"
+        assert d["provider_ids"]["entain_event_id"] == "7722030"
+        # Ingest-owned ids are still freshly minted, not from the carry map.
+        assert d["provider_ids"]["api_football_home_team_id"] == "7"
+
 
 # -- Provider entity merge (identity crosswalk producer) ---------------------
 

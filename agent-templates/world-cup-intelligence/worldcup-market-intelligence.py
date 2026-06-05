@@ -1731,6 +1731,24 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     warnings: list[str] = []
 
+    # Carry forward provider ids not produced by ingest (e.g. sportradar_event_id,
+    # entain_event_id added by the event crosswalk) from existing event docs, keyed
+    # by api-football fixture id, so a force-update re-ingest preserves them.
+    ingest_keys = {"api_football_fixture_id", "api_football_league_id",
+                   "api_football_home_team_id", "api_football_away_team_id", "api_football_venue_id"}
+    carry: dict[str, dict[str, str]] = {}
+    for ev in _as_list(params.get("existing_events")):
+        d = _unwrap(ev)
+        pids = d.get("provider_ids") if isinstance(d, dict) else None
+        if not isinstance(pids, dict):
+            continue
+        fid = _text(pids.get("api_football_fixture_id"))
+        if not fid:
+            continue
+        keep = {k: _text(v) for k, v in pids.items() if k not in ingest_keys and _text(v)}
+        if keep:
+            carry[fid] = keep
+
     for f in fixtures:
         if not isinstance(f, dict):
             continue
@@ -1800,6 +1818,8 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
             "machina_competition_slug": comp_slug,
             "raw_provider": "api-football",
         }
+        for k, v in carry.get(fixture_id, {}).items():
+            doc["provider_ids"].setdefault(k, v)
         events.append(doc)
 
     if not events:
