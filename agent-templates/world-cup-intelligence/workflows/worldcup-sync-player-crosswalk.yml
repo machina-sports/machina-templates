@@ -56,21 +56,20 @@ workflow:
 
     - type: connector
       name: fetch-af-players
-      description: api-football /players (birth date + nationality), team x pages 1-2 via foreach.
-      condition: "len($.get('teams', [])) > 0"
+      description: api-football /players by player id (full name + birth date + nationality) for every squad player. /players?team requires recorded season stats, which most national teams lack pre-tournament; per-id resolves DOB reliably.
+      condition: "len($.get('af_squads', [])) > 0"
       continue_on_error: true
       connector:
         name: api-football
         command: get-players
       foreach:
         concurrent: false
-        name: player_page
+        name: af_player_item
         expr: $
-        value: "[{'team': t.get('provider_ids', {}).get('api_football'), 'page': p} for t in $.get('teams', []) if t.get('provider_ids', {}).get('api_football') for p in [1, 2]]"
+        value: "[{'id': p.get('id')} for resp in $.get('af_squads', []) if isinstance(resp, dict) for entry in (resp.get('response', []) or []) for p in (entry.get('players', []) or []) if p.get('id')]"
       inputs:
-        team: "$.get('player_page', {}).get('team')"
+        id: "$.get('af_player_item', {}).get('id')"
         season: "$.get('season', '2026')"
-        page: "$.get('player_page', {}).get('page')"
       outputs:
         af_players: "[{'response': $.get('response', [])}]"
 

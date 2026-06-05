@@ -1934,7 +1934,7 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
                 canon[key]["provider_ids"]["api_football"] = pid
                 summary["api_football"] += 1
 
-    # Birth date + nationality from api-football /players, joined by player id.
+    # Birth date + nationality + full name from api-football /players, joined by id.
     dob_by_id: dict[str, dict[str, Any]] = {}
     for resp in _flatten_foreach(params.get("af_players")):
         data = _unwrap(resp)
@@ -1942,9 +1942,11 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             player = entry.get("player") if isinstance(entry, dict) else None
             if not isinstance(player, dict) or not player.get("id"):
                 continue
+            first, last = _text(player.get("firstname")), _text(player.get("lastname"))
             dob_by_id[_text(player["id"])] = {
                 "dob": _text((player.get("birth") or {}).get("date")),
                 "nationality": _text(player.get("nationality")),
+                "name": _text(player.get("name")) or (first + " " + last).strip(),
             }
 
     # Opta ids by team + lastname + first-initial.
@@ -1985,7 +1987,9 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
         dob8 = _parse_birth_date(meta.get("dob"))
         if dob8 != "00000000":
             summary["with_dob"] += 1
-        urn = f"urn:machina:sport:soccer:player:{_slugify(c['name'])}:{dob8}:{c['team']['iso3']}"
+        # Prefer the /players full name over the (sometimes abbreviated) squad name.
+        display_name = meta.get("name") or c["name"]
+        urn = f"urn:machina:sport:soccer:player:{_slugify(display_name)}:{dob8}:{c['team']['iso3']}"
         items.append({
             "metadata": {"entity_urn": urn},
             "@context": {
@@ -1997,7 +2001,7 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             "id": urn,
             "_id": urn,
             "@type": ["sport:IdentityCrosswalk", "sport:Player"],
-            "name": c["name"],
+            "name": display_name,
             "position": c["position"] or None,
             "birth_date": meta.get("dob") or None,
             "nationality": meta.get("nationality") or None,

@@ -976,3 +976,19 @@ class TestBuildPlayerCrosswalk:
         assert d["birth_date"] == "2007-07-13"
         assert d["provider_ids"] == {"api_football": "386828", "espn": "espn-yamal"}
         assert r["provider_summary"]["with_dob"] == 1
+
+    def test_players_full_name_overrides_abbreviated_squad_name(self):
+        teams = [{"_id": "urn:machina:sport:soccer:team:uruguay:ury", "name": "Uruguay", "country": "Uruguay",
+                  "provider_ids": {"api_football": "7"}}]
+        # Squad name is abbreviated; /players carries the full name.
+        af_squads = [{"response": [{"team": {"id": 7}, "players": [
+            {"id": "429", "name": "F. Muslera", "position": "Goalkeeper"}]}]}]
+        af_players = [{"response": [{"player": {
+            "id": 429, "firstname": "Fernando", "lastname": "Muslera",
+            "name": "Fernando Muslera", "birth": {"date": "1986-06-16"}, "nationality": "Uruguay"}}]}]
+        r = build_player_crosswalk({"params": {"teams": teams, "af_squads": af_squads,
+                                               "af_players": af_players}})["data"]
+        d = r["normalized_items"][0]
+        assert d["_id"] == "urn:machina:sport:soccer:player:fernando-muslera:19860616:ury"
+        assert d["name"] == "Fernando Muslera"
+        assert d["birth_date"] == "1986-06-16"
