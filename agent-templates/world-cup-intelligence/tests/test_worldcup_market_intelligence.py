@@ -898,3 +898,31 @@ class TestMergeProviderEntities:
     def test_warns_when_empty(self):
         r = merge_provider_entities({"params": {}})["data"]
         assert r["count"] == 0 and r["warnings"]
+
+
+# -- iso3 accent normalization + Opta enrich convergence ---------------------
+
+_to_iso3 = _module._to_iso3
+
+
+class TestIso3AccentNormalization:
+    def test_accents_and_variants_converge(self):
+        assert _to_iso3("Cape Verde Islands") == _to_iso3("Cabo Verde") == "cpv"
+        assert _to_iso3("Ivory Coast") == _to_iso3("Côte d'Ivoire") == "civ"
+        assert _to_iso3("Türkiye") == _to_iso3("Turkey") == "tur"
+        assert _to_iso3("Korea Republic") == _to_iso3("South Korea") == "kor"
+
+    def test_opta_names_enrich_canonical_team_by_iso3(self):
+        # Opta's "Cabo Verde"/"Côte d'Ivoire" must attach to api-football's
+        # "Cape Verde Islands"/"Ivory Coast" — enrich-only, by iso3.
+        r = merge_provider_entities({"params": {
+            "api_football_teams": [{"id": "1533", "name": "Cape Verde Islands"},
+                                   {"id": "1501", "name": "Ivory Coast"}],
+            "opta_teams": [{"id": "opta-cpv", "name": "Cabo Verde"},
+                           {"id": "opta-civ", "name": "Côte d'Ivoire"},
+                           {"id": "opta-x", "name": "Kenya"}],  # not in 48 -> skipped
+        }})["data"]
+        by_name = {it["name"]: it for it in r["items"]}
+        assert r["count"] == 2
+        assert by_name["Cape Verde Islands"]["provider_ids"] == {"api_football": "1533", "opta": "opta-cpv"}
+        assert by_name["Ivory Coast"]["provider_ids"] == {"api_football": "1501", "opta": "opta-civ"}
