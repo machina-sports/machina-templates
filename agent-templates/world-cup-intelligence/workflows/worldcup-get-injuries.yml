@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-injuries
   title: World Cup Intelligence - Injuries
-  description: Injuries and suspensions for both teams in a World Cup fixture, from api-football /injuries (the only structured WC source; sports-skills get_missing_players is Premier-League-only). Resolve the two teams from an event_urn. Returns empty pre-tournament and populates closer to matchday.
+  description: Injuries and suspensions for both teams in a World Cup fixture, from api-football /injuries. Resolve the two teams from an event_urn or provider_event_id.
 
   context-variables:
     debugger:
@@ -19,7 +19,7 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Resolve home/away api-football team ids/names, league id and season from the cached event, by canonical machina event_urn OR api-football provider_event_id (fixture id).
+      description: Resolve home/away api-football team ids/names, league id and season from the cached event, by machina event_urn or api-football provider_event_id (fixture id).
       condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search

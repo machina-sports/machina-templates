@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-iptc-event-context
   title: World Cup Intelligence - IPTC Event Context
-  description: Return canonical IPTC/Sportschema event context keyed by provider URN from the same pod document store.
+  description: Return IPTC/Sportschema event context keyed by provider URN from the same pod document store.
 
   context-variables:
     debugger:
@@ -16,7 +16,7 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Lookup canonical event by provider URN/provider id. Requires an identifying input so an arbitrary event is never returned.
+      description: Lookup event by provider URN/provider id. Requires an identifying input so an arbitrary event is never returned.
       condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search

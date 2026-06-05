@@ -33,14 +33,14 @@ agent:
         event_context: "$.get('event_context', {})"
 
     - name: worldcup-get-standings
-      description: World Cup group tables / standings (api-football primary, sports-skills fallback)
+      description: World Cup group tables / standings
       inputs:
         event_urn: "$.get('event_urn', '')"
       outputs:
         standings: "$.get('standings', {})"
 
     - name: worldcup-get-squads
-      description: Official 26-man squads for both teams in a fixture (api-football)
+      description: Squads for both teams in a fixture
       inputs:
         event_urn: "$.get('event_urn', '')"
       outputs:
@@ -63,7 +63,7 @@ agent:
         schedule: "$.get('schedule', {})"
 
     - name: worldcup-get-player-performance-context
-      description: Player performance context for a fixture (official FIFA Power Ranking fields kept separate from Machina provisional 0-10 signals)
+      description: Player performance context for a fixture (FIFA Power Ranking + Machina provisional signals)
       inputs:
         event_urn: "$.get('event_urn', '')"
         player_id: "$.get('player_id', '')"
@@ -96,7 +96,7 @@ agent:
         brief: "$.get('brief', {})"
 
   instructions: |
-    Use canonical match truth from API-Football, IPTC mappings, and provider event URNs before reasoning over markets.
+    Use match truth from API-Football, IPTC mappings, and provider event URNs before reasoning over markets.
     Use Google GenAI for grounded structured briefs and xAI/Grok for social/news pulse.
     You may surface market-edge or arbitrage candidates as informational analysis, but do not place trades, execute bets, promise profit, or present personalized financial advice.
     Always include evidence, uncertainty, and source attribution when available.
