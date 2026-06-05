@@ -94,8 +94,6 @@ datasets:
     path: prompts/worldcup-player-performance-context-summary.yml
 
   - type: mappings
-    path: mappings/worldcup-api-football-event-to-iptc.yml
-  - type: mappings
     path: mappings/worldcup-iptc-event-to-api-response.yml
   - type: mappings
     path: mappings/worldcup-market-normalization.yml

@@ -20,6 +20,7 @@ normalize_squads = _module.normalize_squads
 normalize_injuries = _module.normalize_injuries
 normalize_schedule = _module.normalize_schedule
 normalize_identity_crosswalk = _module.normalize_identity_crosswalk
+mint_event_identity = _module.mint_event_identity
 
 
 def _kalshi_record(**overrides):
@@ -760,3 +761,61 @@ class TestNormalizeIdentityCrosswalk:
         urn = result["data"]["normalized_items"][0]["@id"]
         assert urn.startswith("urn:machina:sport:soccer:player:same-name:20000101:bra:")
         assert len(urn.rsplit(":", 1)[-1]) == 8
+
+
+# -- Canonical event identity (machina URN) ----------------------------------
+
+
+def _af_fixture(**overrides):
+    base = {
+        "fixture": {"id": 1489417, "date": "2026-06-27T00:00:00+00:00",
+                    "status": {"short": "NS"},
+                    "venue": {"id": 1076, "name": "Estadio Akron", "city": "Guadalajara"}},
+        "league": {"id": 1, "name": "World Cup"},
+        "teams": {"home": {"id": 7, "name": "Uruguay", "logo": "u.png"},
+                  "away": {"id": 9, "name": "Spain", "logo": "s.png"}},
+    }
+    base.update(overrides)
+    return base
+
+
+class TestMintEventIdentity:
+    def test_machina_urns_and_provider_ids(self):
+        d = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
+        assert d["_id"] == d["@id"] == d["metadata"]["event_urn"]
+        assert d["_id"] == "urn:machina:sport:soccer:event:uruguay-vs-spain:20260627:wor"
+        assert d["sport:competition"]["@id"] == "urn:machina:sport:soccer:competition:world-cup:wor"
+        comps = {c["sport:qualifier"]: c["@id"] for c in d["sport:competitors"]}
+        assert comps["home"] == "urn:machina:sport:soccer:team:uruguay:ury"
+        assert comps["away"] == "urn:machina:sport:soccer:team:spain:esp"
+        assert d["provider_ids"] == {
+            "api_football_fixture_id": "1489417", "api_football_league_id": "1",
+            "api_football_home_team_id": "7", "api_football_away_team_id": "9",
+            "api_football_venue_id": "1076",
+        }
+        assert d["sport:status"] == "NS"
+
+    def test_full_iso_date_not_degraded_to_year(self):
+        # Regression: trailing \b in _event_date dropped the day/month on ISO datetimes.
+        d = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
+        assert ":20260627:wor" in d["_id"]
+
+    def test_null_venue_omits_urn_no_none_string(self):
+        fx = _af_fixture()
+        fx["fixture"]["venue"] = {"id": None, "name": None}
+        d = mint_event_identity({"params": {"fixtures": [fx]}})["data"]["events"][0]
+        assert "@id" not in d["sport:venue"]
+        assert "None" not in d["_id"]
+        assert d["provider_ids"]["api_football_venue_id"] == ""
+
+    def test_idempotent_urn_for_same_fixture(self):
+        a = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
+        b = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
+        assert a["_id"] == b["_id"]
+
+    def test_skips_fixture_missing_ids(self):
+        fx = _af_fixture()
+        fx["teams"]["home"] = {}
+        r = mint_event_identity({"params": {"fixtures": [fx]}})
+        assert r["data"]["events"] == []
+        assert r["data"]["warnings"]

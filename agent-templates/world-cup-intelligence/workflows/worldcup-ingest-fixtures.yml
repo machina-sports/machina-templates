@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-ingest-fixtures
   title: World Cup Intelligence - Ingest Fixtures
-  description: Fetch World Cup fixtures from API-Football, normalize to IPTC Sport Schema with provider URNs, and save to the same pod document store.
+  description: Fetch World Cup fixtures from API-Football, mint canonical IPTC events with machina URNs (urn:machina:sport:soccer:event:…) + provider_ids, and save to the same pod document store.
 
   context-variables:
     debugger:
@@ -32,14 +32,18 @@ workflow:
         raw_fixtures: "$.get('response', [])"
         fixtures_count: "len($.get('response', []))"
 
-    - type: mapping
-      name: worldcup-api-football-event-to-iptc
-      title: World Cup | API-Football Event to IPTC
-      description: Normalize API-Football fixtures to IPTC/Sportschema event documents.
+    - type: connector
+      name: mint-event-identity
+      description: Mint canonical IPTC event docs with machina URNs + provider_ids from the raw fixtures.
       condition: "len($.get('raw_fixtures', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: mint_event_identity
       inputs:
         fixtures: "$.get('raw_fixtures', [])"
+        competition_slug: "'world-cup-2026'"
       outputs:
+        # runner strips our connector's {status,data} envelope -> $ is the data.
         iptc_events: "$.get('sport_schema_events', [])"
 
     - type: document

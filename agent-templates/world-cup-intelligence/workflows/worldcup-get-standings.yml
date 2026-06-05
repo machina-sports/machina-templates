@@ -10,6 +10,7 @@ workflow:
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
   inputs:
     event_urn: "$.get('event_urn', '')"
+    provider_event_id: "$.get('provider_event_id', '')"
     league: "$.get('league', '')"
     season: "$.get('season', '')"
   outputs:
@@ -18,18 +19,19 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Resolve api-football league id + season year and the sports-skills season slug from the cached event when an event_urn is given.
-      condition: "$.get('event_urn', '') != ''"
+      description: Resolve league id + season year + sports-skills season slug from the cached event, by canonical machina event_urn OR api-football provider_event_id (fixture id).
+      condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search
         search-limit: 1
         search-vector: false
       filters:
         name: "'worldcup:event'"
-        value._id: "$.get('event_urn')"
+        value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
+        value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
         resolved_league: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_league_id')"
-        resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('start_date') or '2026'))[:4]"
+        resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('schema:startDate') or '2026'))[:4]"
         resolved_season_slug: "(($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('machina_competition_slug')"
 
     - type: connector

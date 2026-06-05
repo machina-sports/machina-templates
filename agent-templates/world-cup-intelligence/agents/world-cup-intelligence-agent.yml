@@ -62,6 +62,15 @@ agent:
       outputs:
         schedule: "$.get('schedule', {})"
 
+    - name: worldcup-get-player-performance-context
+      description: Player performance context for a fixture (official FIFA Power Ranking fields kept separate from Machina provisional 0-10 signals)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        player_id: "$.get('player_id', '')"
+        team_id: "$.get('team_id', '')"
+      outputs:
+        player_performance_context: "$.get('player_performance_context', {})"
+
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
       inputs:

@@ -6,7 +6,16 @@ All public routes are read-only market intelligence. Execution, betting placemen
 
 ## Identifiers
 
-Events are keyed by provider URNs built deterministically from API-Football ids: `urn:apifootball:sport_event:{id}` (teams, leagues, and venues follow the same `urn:apifootball:{type}:{id}` pattern). Markets are keyed by `{source}:{source_market_id}` (e.g. `polymarket:2415458`).
+Events, teams, and competitions use **canonical machina URNs** minted deterministically from intrinsic attributes (so they are stable across providers):
+
+- event: `urn:machina:sport:soccer:event:{home-slug}-vs-{away-slug}:{YYYYMMDD}:wor`
+- team: `urn:machina:sport:soccer:team:{name-slug}:{iso3}`
+- competition: `urn:machina:sport:soccer:competition:{name-slug}:wor`
+- venue: `urn:machina:sport:soccer:venue:{name-slug}:{iso3}` (omitted when the provider gives no venue)
+
+Every event doc also carries `provider_ids` (`api_football_fixture_id|home_team_id|away_team_id|league_id|venue_id`, plus entain/sportradar/opta/espn ids when mapped). **API-Football is the data source; sports-skills (ESPN/Transfermarkt) is fallback/enrichment; entain/sportradar/opta supply ids only (never their match data).**
+
+**Alternate key:** reads accept the canonical `event_urn` OR `provider_event_id` (the API-Football fixture id, e.g. `1489417`) — the latter is the stable, simple handle for clients. Markets are keyed by `{source}:{source_market_id}` (e.g. `polymarket:2415458`).
 
 Market-to-event entity linking (matching a Kalshi/Polymarket market to a specific fixture) is **planned, not implemented**. Markets are discovered by `query`/`team` text search, not by event id.
 
@@ -173,7 +182,7 @@ Request:
 
 ```json
 {
-  "event_urn": "urn:apifootball:sport_event:123",
+  "event_urn": "urn:machina:sport:soccer:event:brazil-vs-serbia:20260615:wor",
   "fixture_id": "123",
   "player_id": "10",
   "team_id": "7",
@@ -186,7 +195,7 @@ Response:
 ```json
 {
   "player_performance_context": {
-    "event": {"_id": "urn:apifootball:sport_event:123"},
+    "event": {"_id": "urn:machina:sport:soccer:event:brazil-vs-serbia:20260615:wor"},
     "player": {
       "player_id": "10",
       "name": "Alex Creator",
