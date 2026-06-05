@@ -1865,6 +1865,12 @@ def _name_tokens(name: Any) -> tuple[str, str]:
     return (toks[-1], toks[0][:1])
 
 
+def _is_full_name(name: Any) -> bool:
+    """True if name reads as a full name, not an initial form like 'N. de la Cruz'."""
+    parts = _text(name).split()
+    return len(parts) >= 2 and "." not in parts[0] and len(parts[0]) > 1
+
+
 def _team_maps(teams: list[Any]) -> dict[str, dict]:
     """provider key -> {provider_id: teaminfo} from team-crosswalk docs."""
     maps: dict[str, dict] = {"api_football": {}, "opta": {}, "espn": {}}
@@ -1948,7 +1954,8 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             dob_by_id[_text(player["id"])] = {
                 "dob": _text((player.get("birth") or {}).get("date")),
                 "nationality": _text(player.get("nationality")),
-                "name": _text(player.get("name")) or (first + " " + last).strip(),
+                "name": _text(player.get("name")),
+                "full": (first + " " + last).strip(),
             }
 
     # Opta ids by team + lastname + first-initial.
@@ -2017,8 +2024,12 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             summary["excluded_no_dob"] += 1
             continue
         summary["with_dob"] += 1
-        # Prefer the /players full name over the (sometimes abbreviated) squad name.
-        display_name = meta.get("name") or c["name"]
+        # Pick the fullest available name: a non-abbreviated squad/profile name,
+        # else firstname+lastname (profiles abbreviates the `name` field).
+        display_name = next(
+            (n for n in (c["name"], meta.get("name")) if _is_full_name(n)),
+            meta.get("full") or meta.get("name") or c["name"],
+        )
         urn = f"urn:machina:sport:soccer:player:{_slugify(display_name)}:{dob8}:{c['team']['iso3']}"
         items.append({
             "metadata": {"entity_urn": urn},
