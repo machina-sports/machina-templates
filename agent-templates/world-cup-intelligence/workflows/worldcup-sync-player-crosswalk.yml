@@ -15,6 +15,8 @@ workflow:
     opta:
       outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
       secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+    sportradar-soccer:
+      api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
     season: "$.get('season', '2026')"
     opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
@@ -109,6 +111,26 @@ workflow:
         espn_rosters: "[$.get('data', {}) if $.get('status') else {}]"
 
     - type: connector
+      name: fetch-sr-rosters
+      description: Sportradar competitor squads (sr:player ids) per team via competitor profile.
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sportradar-soccer
+        command: get-competitors/{competitor_id}/profile.json
+        command_attribute:
+          competitor_id: "$.get('sr_team', {}).get('provider_ids', {}).get('sportradar')"
+      foreach:
+        concurrent: false
+        name: sr_team
+        expr: $
+        value: "[t for t in $.get('teams', []) if t.get('provider_ids', {}).get('sportradar')]"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        sportradar_rosters: "[{'competitor': $.get('competitor', {}), 'players': $.get('players', [])}]"
+
+    - type: connector
       name: opta-auth
       description: Get an Opta OAuth access token.
       continue_on_error: true
@@ -145,6 +167,7 @@ workflow:
         af_players: "$.get('af_players', [])"
         opta_squads: "$.get('opta_squads', {})"
         espn_rosters: "$.get('espn_rosters', [])"
+        sportradar_rosters: "$.get('sportradar_rosters', [])"
         existing_players: "$.get('existing_players', [])"
       outputs:
         normalized_items: "$.get('normalized_items', [])"

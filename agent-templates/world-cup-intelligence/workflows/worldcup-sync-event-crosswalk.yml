@@ -14,10 +14,14 @@ workflow:
     bwin:
       Bwin-AccessId: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID
       Bwin-AccessIdToken: $TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID_TOKEN
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
   inputs:
     sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
     bwin_country: "$.get('bwin_country', 'gb')"
     bwin_competition_id: "$.get('bwin_competition_id', '102868')"
+    opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
   outputs:
     saved_count: "len($.get('normalized_items', []))"
     provider_summary: "$.get('provider_summary', {})"
@@ -82,8 +86,33 @@ workflow:
         entain_fixtures: "{'items': $.get('items', [])}"
 
     - type: connector
+      name: opta-auth
+      description: Get an Opta OAuth access token.
+      continue_on_error: true
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        opta_token: "$.get('access_token')"
+
+    - type: connector
+      name: fetch-opta-schedule
+      description: Opta tournament schedule (match ids + contestant ids) for the World Cup.
+      condition: "$.get('opta_token') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+        access_token: "$.get('opta_token')"
+        endpoint: "'tournamentschedule'"
+        query_params: "{'tmcl': $.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')}"
+      outputs:
+        opta_schedule: "{'matchDate': $.get('matchDate', [])}"
+
+    - type: connector
       name: build-event-crosswalk
-      description: Attach sportradar/entain event ids to events by team pair.
+      description: Attach sportradar/entain/opta event ids to events by team pair.
       connector:
         name: worldcup-market-intelligence
         command: build_event_crosswalk
@@ -92,6 +121,7 @@ workflow:
         events: "$.get('events', [])"
         sportradar_schedule: "$.get('sportradar_schedule', {})"
         entain_fixtures: "$.get('entain_fixtures', {})"
+        opta_schedule: "$.get('opta_schedule', {})"
       outputs:
         normalized_items: "$.get('normalized_items', [])"
         provider_summary: "$.get('provider_summary', {})"
