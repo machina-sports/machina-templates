@@ -2686,6 +2686,53 @@
     }
    }
   },
+  "/players/profiles": {
+   "get": {
+    "summary": "Get player profiles",
+    "description": "Season-independent player profile (incl. birth date + nationality + full name) by player id or search. Paginated.",
+    "operationId": "get-players/profiles",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "player",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "search",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "page",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/teams": {
    "get": {
     "summary": "Get teams",

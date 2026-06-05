@@ -1910,7 +1910,7 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
     by_af, by_opta, by_espn = maps["api_football"], maps["opta"], maps["espn"]
     canon: dict[tuple, dict[str, Any]] = {}
     order: list[tuple] = []
-    summary = {"api_football": 0, "opta": 0, "espn": 0, "with_dob": 0}
+    summary = {"api_football": 0, "opta": 0, "espn": 0, "with_dob": 0, "excluded_no_dob": 0}
 
     # Canonical set + team link from api-football squads.
     for resp in _flatten_foreach(params.get("af_squads")):
@@ -2011,8 +2011,12 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             c["provider_ids"].setdefault(nk, v)
         meta = dob_by_id.get(c["provider_ids"].get("api_football", ""), {})
         dob8 = _parse_birth_date(meta.get("dob"))
-        if dob8 != "00000000":
-            summary["with_dob"] += 1
+        # A player URN's disambiguator is the birth date — without one the URN is
+        # ambiguous, so skip the player rather than mint a 00000000 placeholder.
+        if dob8 == "00000000":
+            summary["excluded_no_dob"] += 1
+            continue
+        summary["with_dob"] += 1
         # Prefer the /players full name over the (sometimes abbreviated) squad name.
         display_name = meta.get("name") or c["name"]
         urn = f"urn:machina:sport:soccer:player:{_slugify(display_name)}:{dob8}:{c['team']['iso3']}"
