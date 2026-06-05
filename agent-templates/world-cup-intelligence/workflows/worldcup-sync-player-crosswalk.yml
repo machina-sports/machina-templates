@@ -52,7 +52,7 @@ workflow:
       inputs:
         team: "$.get('team_item', {}).get('provider_ids', {}).get('api_football')"
       outputs:
-        af_squads: "[$]"
+        af_squads: "[{'response': $.get('response', [])}]"
 
     - type: connector
       name: fetch-af-players
@@ -72,7 +72,7 @@ workflow:
         season: "$.get('season', '2026')"
         page: "$.get('player_page', {}).get('page')"
       outputs:
-        af_players: "[$]"
+        af_players: "[{'response': $.get('response', [])}]"
 
     - type: connector
       name: fetch-espn-rosters
