@@ -1,0 +1,41 @@
+workflow:
+  name: worldcup-sync-identity-crosswalk
+  title: World Cup Intelligence - Sync Identity Crosswalk
+  description: Normalize and resolve player, team, or event identities to standard URNs and provider mappings, saving them directly to the pod document store.
+
+  context-variables:
+    debugger:
+      enabled: true
+
+  inputs:
+    items: "$.get('items', [])"
+
+  outputs:
+    saved_count: "len($.get('normalized_items', []))"
+    workflow-status: "len($.get('normalized_items', [])) > 0 and 'executed' or 'skipped'"
+
+  tasks:
+    - type: connector
+      name: normalize-identity-crosswalk
+      description: Normalize input items to standard identity crosswalk documents with deterministic URNs.
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_identity_crosswalk
+      inputs:
+        items: "$.get('items')"
+      outputs:
+        normalized_items: "$.get('normalized_items', [])"
+
+    - type: document
+      name: save-identity-crosswalks
+      description: Save the normalized identity crosswalk documents to the built-in document collection.
+      condition: "len($.get('normalized_items', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:identity-crosswalk'"
+      documents:
+        items: "$.get('normalized_items', [])"
+      inputs:
+        normalized_items: "$.get('normalized_items', [])"

@@ -32,3 +32,5 @@ connector:
       value: "score_provisional_player_performance"
     - name: "Merge official and provisional performance"
       value: "merge_official_and_provisional_performance"
+    - name: "Normalize identity crosswalk"
+      value: "normalize_identity_crosswalk"

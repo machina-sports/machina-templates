@@ -1545,3 +1545,170 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
         },
     }
     return {"status": True, "data": {"player_performance_context": context}}
+
+
+def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize identity crosswalk rows into MCP document-store values.
+
+    The connector only reshapes caller-provided provider ids; it never invents
+    missing provider ids. Provider mappings must come from verified upstream
+    payloads (API-Football, Entain, Sportradar, Opta, ESPN, Transfermarkt, etc.).
+    """
+    import hashlib
+    import re
+    import unicodedata
+
+    iso_mapping = {
+        "ARG": "arg", "ARGENTINA": "arg", "AUS": "aus", "AUSTRALIA": "aus",
+        "AUT": "aut", "AUSTRIA": "aut", "BEL": "bel", "BELGIUM": "bel",
+        "BRA": "bra", "BRASIL": "bra", "BRAZIL": "bra", "CAN": "can", "CANADA": "can",
+        "CHE": "che", "SWITZERLAND": "che", "CH": "che", "COL": "col", "COLOMBIA": "col",
+        "CIV": "civ", "COTE D IVOIRE": "civ", "CÔTE D’IVOIRE": "civ", "IVORY COAST": "civ",
+        "DEU": "deu", "GERMANY": "deu", "ECU": "ecu", "ECUADOR": "ecu",
+        "EGY": "egy", "EGYPT": "egy", "ENG": "eng", "ENGLAND": "eng",
+        "ESP": "esp", "SPAIN": "esp", "FRA": "fra", "FRANCE": "fra",
+        "GHA": "gha", "GHANA": "gha", "HRV": "hrv", "CROATIA": "hrv",
+        "IRN": "irn", "IR IRAN": "irn", "IRAN": "irn", "IRQ": "irq", "IRAQ": "irq",
+        "ITA": "ita", "ITALY": "ita", "JPN": "jpn", "JAPAN": "jpn",
+        "KOR": "kor", "KOREA REPUBLIC": "kor", "SOUTH KOREA": "kor",
+        "MAR": "mar", "MOROCCO": "mar", "MEX": "mex", "MEXICO": "mex",
+        "NLD": "nld", "NETHERLANDS": "nld", "NZL": "nzl", "NEW ZEALAND": "nzl",
+        "PRY": "pry", "PARAGUAY": "pry", "QAT": "qat", "QATAR": "qat",
+        "SAU": "sau", "SAUDI ARABIA": "sau", "SCO": "sco", "SCOTLAND": "sco",
+        "SEN": "sen", "SENEGAL": "sen", "TUN": "tun", "TUNISIA": "tun",
+        "TUR": "tur", "TURKIYE": "tur", "TÜRKIYE": "tur", "TURKEY": "tur",
+        "URY": "ury", "URUGUAY": "ury", "USA": "usa", "UNITED STATES": "usa",
+        "WAL": "wal", "WALES": "wal", "ZAF": "zaf", "SOUTH AFRICA": "zaf",
+    }
+
+    def _clean_text(value: Any) -> str:
+        return str(value or "").strip()
+
+    def _to_iso3(country: Any) -> str:
+        cleaned = re.sub(r"[^A-Z ]", " ", _clean_text(country).upper())
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
+        if cleaned in iso_mapping:
+            return iso_mapping[cleaned]
+        compact = cleaned.replace(" ", "")
+        if compact in iso_mapping:
+            return iso_mapping[compact]
+        fallback = re.sub(r"[^A-Z]", "", cleaned)[:3].lower()
+        return fallback if len(fallback) == 3 else "unk"
+
+    def _slugify(name: Any) -> str:
+        normalized = unicodedata.normalize("NFKD", _clean_text(name))
+        ascii_str = normalized.encode("ascii", "ignore").decode("ascii").lower()
+        # Remove suffixes from the stable slug; keep suffix/alias metadata in input.
+        ascii_str = re.sub(r"\b(jr|junior|sr|senior|neto|filho|ii|iii|iv|v)\b\.?", "", ascii_str)
+        ascii_str = re.sub(r"[^a-z0-9\s-]", " ", ascii_str)
+        slug = re.sub(r"[\s-]+", "-", ascii_str).strip("-")
+        return slug or "unknown"
+
+    def _parse_birth_date(value: Any) -> str:
+        raw = _clean_text(value)
+        match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
+        if match:
+            return "".join(match.groups())
+        year = re.search(r"\b(19\d{2}|20\d{2})\b", raw)
+        return f"{year.group(1)}0000" if year else "00000000"
+
+    def _event_date(value: Any) -> str:
+        raw = _clean_text(value)
+        match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
+        if match:
+            return "".join(match.groups())
+        year = _clean_text(value) or "2026"
+        return year[:4]
+
+    def _stable_disambiguator(provider_ids: dict[str, Any]) -> str:
+        verified = [(k, str(v)) for k, v in sorted((provider_ids or {}).items()) if v not in (None, "", [], {})]
+        if not verified:
+            return ""
+        seed = "|".join(f"{k}:{v}" for k, v in verified[:2])
+        return hashlib.sha1(seed.encode()).hexdigest()[:8]
+
+    params = _params(request_data)
+    items = _as_list(params.get("items"))
+    normalized_items: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        entity_type = _clean_text(item.get("type") or item.get("entity_type") or "team").lower()
+        sport = _slugify(item.get("sport") or "soccer")
+        name = _clean_text(item.get("name") or item.get("title"))
+        provider_ids = dict(item.get("provider_ids") or {})
+        disambiguator = _clean_text(item.get("disambiguator")) or _stable_disambiguator(provider_ids)
+
+        if entity_type == "team":
+            name_clean = re.sub(r"\b(FC|CF|SC|CD|Football Club)\b", "", name, flags=re.IGNORECASE).strip()
+            urn = f"urn:machina:sport:{sport}:team:{_slugify(name_clean)}:{_to_iso3(item.get('country') or item.get('nationality'))}"
+        elif entity_type == "player":
+            urn = (
+                f"urn:machina:sport:{sport}:player:{_slugify(name)}:"
+                f"{_parse_birth_date(item.get('birth_date') or item.get('date_of_birth'))}:"
+                f"{_to_iso3(item.get('country') or item.get('nationality'))}"
+            )
+        elif entity_type == "event":
+            date_part = _event_date(item.get("date") or item.get("start_time") or item.get("year") or "2026")
+            urn = (
+                f"urn:machina:sport:{sport}:event:"
+                f"{_slugify(item.get('home_team'))}-vs-{_slugify(item.get('away_team'))}:"
+                f"{date_part}:wor"
+            )
+        elif entity_type == "competition":
+            scope = _to_iso3(item.get("scope") or item.get("country") or "world")
+            if scope == "wor" or _clean_text(item.get("scope")).lower() in {"world", "global"}:
+                scope = "wor"
+            urn = f"urn:machina:sport:{sport}:competition:{_slugify(name)}:{scope}"
+        else:
+            urn = _clean_text(item.get("urn") or item.get("@id"))
+            if not urn:
+                warnings.append(f"skipped item with unknown entity type and no urn: {entity_type}")
+                continue
+
+        # True same-name/DOB/country collisions can opt into a deterministic suffix.
+        if item.get("force_disambiguator") and disambiguator and not urn.endswith(f":{disambiguator}"):
+            urn = f"{urn}:{disambiguator}"
+
+        metadata_key = "event_urn" if entity_type == "event" else "entity_urn"
+        doc: dict[str, Any] = {
+            "metadata": {metadata_key: urn},
+            "@context": {
+                "sport": "https://www.sportschema.org/ontologies/sport#",
+                "schema": "https://schema.org/",
+                "machina": "https://schema.machina.gg/sports#",
+            },
+            "@id": urn,
+            "@type": ["sport:IdentityCrosswalk", f"sport:{entity_type.title()}"],
+            "id": urn,
+            "_id": urn,
+            "name": name,
+            "provider_ids": provider_ids,
+            "machina_competition_slug": item.get("machina_competition_slug", "world-cup-2026"),
+            "raw_provider": item.get("raw_provider", "multi-provider"),
+            "mapping_status": {
+                "verified_ids_only": True,
+                "notes": item.get("mapping_notes", []),
+            },
+        }
+        for key in (
+            "aliases", "birth_date", "nationality", "country", "source_evidence",
+            "teams", "sport:competitors", "competition_urn", "start_time",
+        ):
+            if key in item and item[key] not in (None, "", [], {}):
+                doc[key] = item[key]
+        if entity_type == "competition" and "scope" not in doc:
+            doc["scope"] = item.get("scope", "global")
+        normalized_items.append(doc)
+
+    return {
+        "status": True,
+        "data": {
+            "normalized_items": normalized_items,
+            "count": len(normalized_items),
+            "warnings": warnings,
+        },
+    }

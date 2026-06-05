@@ -62,6 +62,8 @@ datasets:
   - type: workflow
     path: workflows/worldcup-get-player-performance-context.yml
   - type: workflow
+    path: workflows/worldcup-sync-identity-crosswalk.yml
+  - type: workflow
     path: workflows/worldcup-compare-market-sources.yml
   - type: workflow
     path: workflows/worldcup-find-market-edges.yml
