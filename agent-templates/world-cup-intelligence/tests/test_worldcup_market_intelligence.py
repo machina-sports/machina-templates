@@ -1076,7 +1076,7 @@ class TestBuildEventCrosswalk:
         assert ev["provider_ids"]["sportradar"] == "sr:sport_event:66456904"
         assert ev["provider_ids"]["entain"] == "7722030"
         assert ev["metadata"]["event_urn"] == "urn:machina:sport:soccer:event:mexico-vs-south-africa:20260611:wor"
-        assert r["provider_summary"] == {"events": 1, "sportradar": 1, "entain": 1}
+        assert r["provider_summary"] == {"events": 1, "sportradar": 1, "entain": 1, "opta": 0}
 
     def test_unmatched_pair_is_left_untouched(self):
         # sportradar event for a different pair (one unknown competitor) → no attach.
@@ -1086,3 +1086,33 @@ class TestBuildEventCrosswalk:
                                               "sportradar_schedule": sr}})["data"]
         assert "sportradar_event_id" not in r["normalized_items"][0]["provider_ids"]
         assert r["provider_summary"]["sportradar"] == 0
+
+
+def test_build_event_crosswalk_opta():
+    teams = [
+        {"_id": "urn:machina:sport:soccer:team:mexico:mex", "provider_ids": {"opta": "4vofb84dzb5fyc81n2ssws6ah"}},
+        {"_id": "urn:machina:sport:soccer:team:south-africa:zaf", "provider_ids": {"opta": "xmip8t9f2kefltjkraxzsxl9"}},
+    ]
+    events = [{"_id": "urn:machina:sport:soccer:event:mexico-vs-south-africa:20260611:wor",
+               "sport:competitors": [{"@id": "urn:machina:sport:soccer:team:mexico:mex"},
+                                     {"@id": "urn:machina:sport:soccer:team:south-africa:zaf"}],
+               "provider_ids": {"api_football": "1489369"}}]
+    opta = {"matchDate": [{"match": [{"id": "4tcpns1nwyc0jtpucgzj9dp90",
+            "homeContestantId": "4vofb84dzb5fyc81n2ssws6ah", "awayContestantId": "xmip8t9f2kefltjkraxzsxl9"}]}]}
+    r = build_event_crosswalk({"params": {"teams": teams, "events": events, "opta_schedule": opta}})["data"]
+    assert r["normalized_items"][0]["provider_ids"]["opta"] == "4tcpns1nwyc0jtpucgzj9dp90"
+    assert r["provider_summary"]["opta"] == 1
+
+
+def test_build_player_crosswalk_sportradar():
+    teams = [{"_id": "urn:machina:sport:soccer:team:belgium:bel", "name": "Belgium", "country": "Belgium",
+              "provider_ids": {"api_football": "1", "sportradar": "sr:competitor:4717"}}]
+    af_squads = [{"response": [{"team": {"id": 1}, "players": [{"id": "100", "name": "Axel Witsel"}]}]}]
+    af_players = [{"response": [{"player": {"id": 100, "name": "Axel Witsel", "firstname": "Axel",
+                  "lastname": "Witsel", "birth": {"date": "1989-01-12"}}}]}]
+    sr = [{"competitor": {"id": "sr:competitor:4717"}, "players": [{"id": "sr:player:35612", "name": "Witsel, Axel"}]}]
+    r = build_player_crosswalk({"params": {"teams": teams, "af_squads": af_squads,
+            "af_players": af_players, "sportradar_rosters": sr}})["data"]
+    d = r["normalized_items"][0]
+    assert d["provider_ids"]["sportradar"] == "sr:player:35612"
+    assert d["provider_ids"]["api_football"] == "100"

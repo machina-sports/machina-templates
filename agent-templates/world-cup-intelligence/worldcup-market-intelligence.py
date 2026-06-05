@@ -1897,7 +1897,7 @@ def _is_full_name(name: Any) -> bool:
 
 def _team_maps(teams: list[Any]) -> dict[str, dict]:
     """provider key -> {provider_id: teaminfo} from team-crosswalk docs."""
-    maps: dict[str, dict] = {"api_football": {}, "opta": {}, "espn": {}}
+    maps: dict[str, dict] = {"api_football": {}, "opta": {}, "espn": {}, "sportradar": {}}
     for t in teams:
         if not isinstance(t, dict):
             continue
@@ -1938,9 +1938,11 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
     params = _params(request_data)
     maps = _team_maps(_as_list(params.get("teams")))
     by_af, by_opta, by_espn = maps["api_football"], maps["opta"], maps["espn"]
+    by_sr = maps["sportradar"]
     canon: dict[tuple, dict[str, Any]] = {}
     order: list[tuple] = []
-    summary = {"api_football": 0, "opta": 0, "espn": 0, "with_dob": 0, "excluded_no_dob": 0}
+    summary = {"api_football": 0, "opta": 0, "espn": 0, "sportradar": 0,
+               "with_dob": 0, "excluded_no_dob": 0}
 
     # Canonical set + team link from api-football squads.
     for resp in _flatten_foreach(params.get("af_squads")):
@@ -2013,10 +2015,30 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
                 canon[key]["provider_ids"]["espn"] = _text(p.get("id"))
                 summary["espn"] += 1
 
+    # Sportradar ids (competitor profile squads). Names are "Lastname, Firstname".
+    for resp in _flatten_foreach(params.get("sportradar_rosters")):
+        data = _unwrap(resp)
+        tinfo = by_sr.get(_text((data.get("competitor") or {}).get("id"))) if isinstance(data, dict) else None
+        if not tinfo:
+            continue
+        for p in data.get("players", []) or []:
+            if not isinstance(p, dict):
+                continue
+            nm = _text(p.get("name"))
+            if "," in nm:
+                last_raw, first_raw = nm.split(",", 1)
+                last, fi = _slugify(last_raw), _slugify(first_raw)[:1]
+            else:
+                last, fi = _name_tokens(nm)
+            key = (tinfo["iso3"], last, fi)
+            if key in canon and _text(p.get("id")):
+                canon[key]["provider_ids"]["sportradar"] = _text(p.get("id"))
+                summary["sportradar"] += 1
+
     # Carry forward provider ids this build does not itself produce (e.g. entain,
     # transfermarkt) from existing crosswalk docs, joined by api-football id, so a
     # force-update re-sync preserves them instead of dropping them.
-    produced = {"api_football", "opta", "espn"}
+    produced = {"api_football", "opta", "espn", "sportradar"}
     key_alias = {"api_football_player_id": "api_football",
                  "entain_player_id": "entain",
                  "transfermarkt_player_id": "transfermarkt"}
@@ -2090,13 +2112,15 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
 
     Params:
       - events: canonical worldcup:event values (each has sport:competitors[].@id team URNs)
-      - teams: team-crosswalk docs (for sportradar/entain provider-id -> team URN maps)
+      - teams: team-crosswalk docs (for sportradar/entain/opta provider-id -> team URN maps)
       - sportradar_schedule: sportradar /seasons/{id}/schedules.json response(s)
       - entain_fixtures: bwin fixtures response(s)
+      - opta_schedule: opta tournamentschedule response(s) (matchDate[].match[])
     """
     params = _params(request_data)
     by_sr: dict[str, str] = {}
     by_entain: dict[str, str] = {}
+    by_opta: dict[str, str] = {}
     for t in _as_list(params.get("teams")):
         if not isinstance(t, dict):
             continue
@@ -2106,6 +2130,8 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             by_sr[_text(pids["sportradar"])] = urn
         if pids.get("entain"):
             by_entain[_text(pids["entain"])] = urn
+        if pids.get("opta"):
+            by_opta[_text(pids["opta"])] = urn
 
     by_pair: dict[frozenset, dict[str, Any]] = {}
     out: list[dict[str, Any]] = []
@@ -2119,7 +2145,24 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
         if len(urns) == 2:
             by_pair[frozenset(urns)] = ev
 
-    summary = {"events": len(out), "sportradar": 0, "entain": 0}
+    summary = {"events": len(out), "sportradar": 0, "entain": 0, "opta": 0}
+
+    for resp in _flatten_foreach(params.get("opta_schedule")):
+        data = _unwrap(resp)
+        for md in (data.get("matchDate", []) if isinstance(data, dict) else []):
+            for m in (md.get("match", []) if isinstance(md, dict) else []):
+                if not isinstance(m, dict):
+                    continue
+                mid = _text(m.get("id"))
+                urns = [by_opta.get(_text(m.get("homeContestantId"))),
+                        by_opta.get(_text(m.get("awayContestantId")))]
+                urns = [u for u in urns if u]
+                if not mid or len(urns) != 2:
+                    continue
+                ev = by_pair.get(frozenset(urns))
+                if ev is not None and "opta" not in (ev.get("provider_ids") or {}):
+                    ev.setdefault("provider_ids", {})["opta"] = mid
+                    summary["opta"] += 1
 
     for resp in _flatten_foreach(params.get("sportradar_schedule")):
         data = _unwrap(resp)
