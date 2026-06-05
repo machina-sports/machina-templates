@@ -1021,3 +1021,16 @@ class TestBuildPlayerCrosswalk:
         d = r["normalized_items"][0]
         assert d["_id"] == "urn:machina:sport:soccer:player:lionel-messi:19870624:arg"
         assert d["provider_ids"] == {"api_football": "154", "entain": "223306", "transfermarkt": "28003"}
+
+    def test_profiles_abbreviated_name_falls_back_to_firstlast(self):
+        teams = [{"_id": "urn:machina:sport:soccer:team:uruguay:ury", "name": "Uruguay", "country": "Uruguay",
+                  "provider_ids": {"api_football": "7"}}]
+        af = [{"response": [{"team": {"id": 7}, "players": [{"id": "5995", "name": "N. de la Cruz"}]}]}]
+        # /players/profiles abbreviates `name` but carries full firstname/lastname.
+        afp = [{"response": [{"player": {"id": 5995, "name": "N. de la Cruz",
+                                          "firstname": "Diego Nicolás", "lastname": "de la Cruz Arcosa",
+                                          "birth": {"date": "1997-06-01"}}}]}]
+        r = build_player_crosswalk({"params": {"teams": teams, "af_squads": af, "af_players": afp}})["data"]
+        d = r["normalized_items"][0]
+        assert d["name"] == "Diego Nicolás de la Cruz Arcosa"
+        assert d["_id"] == "urn:machina:sport:soccer:player:diego-nicolas-de-la-cruz-arcosa:19970601:ury"
