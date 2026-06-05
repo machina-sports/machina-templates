@@ -1833,3 +1833,69 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
         "status": True,
         "data": {"sport_schema_events": events, "events": events, "count": len(events), "warnings": warnings},
     }
+
+
+# Provider id sources for the team identity crosswalk. api_football is the
+# canonical NAME authority (it is the data source); every other provider
+# contributes ONLY its id, matched to the same national team by country (iso3).
+# espn/transfermarkt come via sports-skills; sportradar/opta/entain via their
+# own connectors (populate once their keys are configured).
+_CROSSWALK_PROVIDERS = ["api_football", "espn", "transfermarkt", "sportradar", "opta", "entain"]
+# Only these define the canonical entity SET (both list exactly the 48 WC teams).
+# Everyone else is enrich-only: they attach their id to an existing team but never
+# create new entities (e.g. Sportradar's season list is a 100+ qualifying-pool
+# superset; we don't want the extras polluting the crosswalk).
+_CANONICAL_CROSSWALK_PROVIDERS = {"api_football", "espn"}
+
+
+def merge_provider_entities(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Merge per-provider national-team lists into identity-crosswalk items.
+
+    Each `{provider}_teams` param is a list of {id, name}. Teams are joined
+    across providers by iso3 (so "Korea Republic"/"South Korea" converge), with
+    api_football's name as the canonical slug source. Output `items` feed
+    normalize_identity_crosswalk, which mints the canonical urn:machina team URN
+    and stores provider_ids = {api_football, espn, sportradar, opta, entain, …}.
+
+    api_football/espn define the canonical 48-team set; sportradar/opta/entain are
+    enrich-only (attach ids to existing teams; never create new ones).
+    """
+    params = _params(request_data)
+    canon: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    summary: dict[str, int] = {}
+
+    for provider in _CROSSWALK_PROVIDERS:
+        teams = _as_list(params.get(f"{provider}_teams"))
+        count = 0
+        for t in teams:
+            if not isinstance(t, dict):
+                continue
+            name = _text(t.get("name"))
+            tid = _text(t.get("id"))
+            if not name or not tid:
+                continue
+            iso = _to_iso3(name)
+            key = iso if iso != "unk" else _slugify(name)  # avoid unk-collisions
+            if key not in canon:
+                if provider not in _CANONICAL_CROSSWALK_PROVIDERS:
+                    continue  # enrich-only: skip teams not in the canonical set
+                canon[key] = {"name": name, "provider_ids": {}}
+                order.append(key)
+            if provider == "api_football":
+                canon[key]["name"] = name  # canonical name authority
+            canon[key]["provider_ids"][provider] = tid
+            count += 1
+        if teams:
+            summary[provider] = count
+
+    items = [
+        {"type": "team", "name": canon[k]["name"], "country": canon[k]["name"],
+         "provider_ids": canon[k]["provider_ids"]}
+        for k in order
+    ]
+    warnings = [] if items else ["No provider team lists supplied."]
+    return {
+        "status": True,
+        "data": {"items": items, "count": len(items), "provider_summary": summary, "warnings": warnings},
+    }

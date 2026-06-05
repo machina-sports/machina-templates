@@ -21,6 +21,7 @@ normalize_injuries = _module.normalize_injuries
 normalize_schedule = _module.normalize_schedule
 normalize_identity_crosswalk = _module.normalize_identity_crosswalk
 mint_event_identity = _module.mint_event_identity
+merge_provider_entities = _module.merge_provider_entities
 
 
 def _kalshi_record(**overrides):
@@ -819,3 +820,81 @@ class TestMintEventIdentity:
         r = mint_event_identity({"params": {"fixtures": [fx]}})
         assert r["data"]["events"] == []
         assert r["data"]["warnings"]
+
+
+# -- Provider entity merge (identity crosswalk producer) ---------------------
+
+
+class TestMergeProviderEntities:
+    def test_iso3_join_converges_name_variants(self):
+        r = merge_provider_entities({"params": {
+            "api_football_teams": [{"id": "17", "name": "Korea Republic"}, {"id": "7", "name": "Uruguay"}],
+            "espn_teams": [{"id": "451", "name": "South Korea"}, {"id": "212", "name": "Uruguay"}],
+        }})["data"]
+        assert r["count"] == 2
+        by_name = {it["name"]: it for it in r["items"]}
+        # canonical name comes from api_football ("Korea Republic", not "South Korea")
+        assert "Korea Republic" in by_name
+        assert by_name["Korea Republic"]["provider_ids"] == {"api_football": "17", "espn": "451"}
+        assert by_name["Uruguay"]["provider_ids"] == {"api_football": "7", "espn": "212"}
+        assert r["provider_summary"] == {"api_football": 2, "espn": 2}
+
+    def test_only_id_provider_creates_entity_when_api_football_missing(self):
+        r = merge_provider_entities({"params": {"espn_teams": [{"id": "99", "name": "Wales"}]}})["data"]
+        assert r["items"][0]["provider_ids"] == {"espn": "99"}
+        assert r["items"][0]["name"] == "Wales"
+
+    def test_unmapped_names_do_not_collide(self):
+        # Two distinct names that fall back to "unk" must not merge into one.
+        r = merge_provider_entities({"params": {"api_football_teams": [
+            {"id": "1", "name": "Zzzland"}, {"id": "2", "name": "Qqqstan"},
+        ]}})["data"]
+        assert r["count"] == 2
+
+    def test_skips_incomplete_rows_and_warns_when_empty(self):
+        r = merge_provider_entities({"params": {"api_football_teams": [{"id": "", "name": "X"}, {"name": "NoId"}]}})["data"]
+        assert r["count"] == 0
+        assert r["warnings"]
+
+
+# -- Provider entity merge (identity crosswalk producer) ---------------------
+
+
+class TestMergeProviderEntities:
+    def test_iso3_join_converges_name_variants(self):
+        r = merge_provider_entities({"params": {
+            "api_football_teams": [{"id": "17", "name": "Korea Republic"}, {"id": "7", "name": "Uruguay"}],
+            "espn_teams": [{"id": "451", "name": "South Korea"}, {"id": "212", "name": "Uruguay"}],
+        }})["data"]
+        by_name = {it["name"]: it for it in r["items"]}
+        assert r["count"] == 2
+        # canonical name from api_football ("Korea Republic", not ESPN's "South Korea")
+        assert by_name["Korea Republic"]["provider_ids"] == {"api_football": "17", "espn": "451"}
+        assert by_name["Uruguay"]["provider_ids"] == {"api_football": "7", "espn": "212"}
+
+    def test_enrich_only_provider_attaches_but_never_creates(self):
+        # Sportradar lists a superset (incl. teams not in the 48). It should only
+        # attach to existing canonical teams, never add new ones.
+        r = merge_provider_entities({"params": {
+            "api_football_teams": [{"id": "7", "name": "Uruguay"}],
+            "sportradar_teams": [
+                {"id": "sr:competitor:1", "name": "Uruguay"},      # matches -> attaches
+                {"id": "sr:competitor:9", "name": "Scotland"},     # not in 48 -> skipped
+            ],
+        }})["data"]
+        assert r["count"] == 1
+        assert r["items"][0]["provider_ids"] == {"api_football": "7", "sportradar": "sr:competitor:1"}
+
+    def test_canonical_provider_creates_entity(self):
+        r = merge_provider_entities({"params": {"espn_teams": [{"id": "99", "name": "Wales"}]}})["data"]
+        assert r["count"] == 1 and r["items"][0]["provider_ids"] == {"espn": "99"}
+
+    def test_unmapped_names_do_not_collide(self):
+        r = merge_provider_entities({"params": {"api_football_teams": [
+            {"id": "1", "name": "Zzzland"}, {"id": "2", "name": "Qqqstan"},
+        ]}})["data"]
+        assert r["count"] == 2
+
+    def test_warns_when_empty(self):
+        r = merge_provider_entities({"params": {}})["data"]
+        assert r["count"] == 0 and r["warnings"]
