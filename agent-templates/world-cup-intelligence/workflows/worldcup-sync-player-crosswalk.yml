@@ -1,0 +1,107 @@
+workflow:
+  name: worldcup-sync-player-crosswalk
+  title: World Cup Intelligence - Sync Player Identity Crosswalk
+  description: |
+    Build the squad-player identity crosswalk: urn:machina:sport:soccer:player URNs with
+    provider_ids from api-football + Opta, linked to the team URN. api-football squads are
+    the source; Opta ids attach by team + lastname + first-initial. Saves
+    worldcup:identity-crosswalk player docs.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
+  inputs:
+    opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
+  outputs:
+    saved_count: "len($.get('normalized_items', []))"
+    provider_summary: "$.get('provider_summary', {})"
+    workflow-status: "len($.get('normalized_items', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-teams
+      description: Load the team crosswalk for team-id maps + canonical team URNs.
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:team:"}
+      outputs:
+        teams: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: fetch-af-squads
+      description: api-football squad per team (one call per team via foreach).
+      condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-players/squads
+      foreach:
+        concurrent: false
+        name: team_item
+        expr: $
+        value: "$.get('teams', [])"
+      inputs:
+        team: "$.get('team_item', {}).get('provider_ids', {}).get('api_football')"
+      outputs:
+        af_squads: "[$]"
+
+    - type: connector
+      name: opta-auth
+      description: Get an Opta OAuth access token.
+      continue_on_error: true
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        opta_token: "$.get('access_token')"
+
+    - type: connector
+      name: fetch-opta-squads
+      description: Opta squads for the World Cup tournament (players per team).
+      condition: "$.get('opta_token') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+        access_token: "$.get('opta_token')"
+        endpoint: "'squads'"
+        query_params: "{'tmcl': $.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo'), 'detailed': 'yes'}"
+      outputs:
+        opta_squads: "$"
+
+    - type: connector
+      name: build-players
+      description: Build player crosswalk docs (api-football source; Opta ids by team + name).
+      connector:
+        name: worldcup-market-intelligence
+        command: build_player_crosswalk
+      inputs:
+        teams: "$.get('teams', [])"
+        af_squads: "$.get('af_squads', [])"
+        opta_squads: "$.get('opta_squads', {})"
+      outputs:
+        normalized_items: "$.get('normalized_items', [])"
+        provider_summary: "$.get('provider_summary', {})"
+
+    - type: document
+      name: save-players
+      description: Save the player identity crosswalk to same-pod document state.
+      condition: "len($.get('normalized_items', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:identity-crosswalk'"
+      documents:
+        items: "$.get('normalized_items', [])"
+      inputs:
+        normalized_items: "$.get('normalized_items', [])"

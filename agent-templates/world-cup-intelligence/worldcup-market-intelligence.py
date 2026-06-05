@@ -1855,3 +1855,126 @@ def merge_provider_entities(request_data: dict[str, Any]) -> dict[str, Any]:
         "status": True,
         "data": {"items": items, "count": len(items), "provider_summary": summary, "warnings": warnings},
     }
+
+
+def _name_tokens(name: Any) -> tuple[str, str]:
+    """(lastname_slug, first_initial) from a free-form player name."""
+    toks = [t for t in _slugify(name).split("-") if t]
+    if not toks:
+        return ("", "")
+    return (toks[-1], toks[0][:1])
+
+
+def _team_maps(teams: list[Any]) -> tuple[dict, dict]:
+    """Build api_football_id -> teaminfo and opta_id -> teaminfo from team-crosswalk docs."""
+    by_af: dict[str, dict[str, Any]] = {}
+    by_opta: dict[str, dict[str, Any]] = {}
+    for t in teams:
+        if not isinstance(t, dict):
+            continue
+        pids = t.get("provider_ids") or {}
+        info = {
+            "urn": _first(t, "_id", "@id", "id"),
+            "name": _text(t.get("name")),
+            "iso3": _to_iso3(t.get("country") or t.get("name")),
+        }
+        if pids.get("api_football"):
+            by_af[_text(pids["api_football"])] = info
+        if pids.get("opta"):
+            by_opta[_text(pids["opta"])] = info
+    return by_af, by_opta
+
+
+def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Build WC squad-player crosswalk docs (api-football is the source; other providers add ids).
+
+    Params:
+      - teams: team-crosswalk docs (for team-id -> team URN/iso3 maps)
+      - af_squads: list of api-football /players/squads responses (canonical player set)
+      - opta_squads: opta squads response (enrich opta ids by team + lastname + first-initial)
+    """
+    params = _params(request_data)
+    by_af, by_opta = _team_maps(_as_list(params.get("teams")))
+    canon: dict[tuple, dict[str, Any]] = {}
+    order: list[tuple] = []
+    summary = {"api_football": 0, "opta": 0}
+
+    raw_squads = params.get("af_squads")
+    if isinstance(raw_squads, dict):
+        raw_squads = [raw_squads]
+    flat_squads: list[Any] = []
+    for r in raw_squads or []:
+        flat_squads.extend(r) if isinstance(r, list) else flat_squads.append(r)
+    for resp in flat_squads:
+        data = _unwrap(resp)
+        response = data.get("response", []) if isinstance(data, dict) else []
+        for entry in response if isinstance(response, list) else []:
+            if not isinstance(entry, dict):
+                continue
+            tinfo = by_af.get(_text((entry.get("team") or {}).get("id")))
+            if not tinfo:
+                continue
+            for p in entry.get("players", []) or []:
+                if not isinstance(p, dict):
+                    continue
+                name = _text(p.get("name"))
+                pid = _text(p.get("id"))
+                if not name or not pid:
+                    continue
+                last, fi = _name_tokens(name)
+                key = (tinfo["iso3"], last, fi)
+                if key not in canon:
+                    canon[key] = {"name": name, "team": tinfo,
+                                  "position": _text(p.get("position")), "provider_ids": {}}
+                    order.append(key)
+                canon[key]["provider_ids"]["api_football"] = pid
+                summary["api_football"] += 1
+
+    opta = _unwrap(params.get("opta_squads"))
+    for sq in (opta.get("squad", []) if isinstance(opta, dict) else []):
+        if not isinstance(sq, dict):
+            continue
+        tinfo = by_opta.get(_text(sq.get("contestantId")))
+        if not tinfo:
+            continue
+        for person in sq.get("person", []) or []:
+            if not isinstance(person, dict) or _lower(person.get("type")) not in ("player", ""):
+                continue
+            last = _slugify(person.get("lastName"))
+            fi = _slugify(person.get("firstName"))[:1]
+            key = (tinfo["iso3"], last, fi)
+            if key in canon and _text(person.get("id")):
+                canon[key]["provider_ids"]["opta"] = _text(person.get("id"))
+                summary["opta"] += 1
+
+    items: list[dict[str, Any]] = []
+    for k in order:
+        c = canon[k]
+        slug = _slugify(c["name"])
+        urn = f"urn:machina:sport:soccer:player:{slug}:{_parse_birth_date(None)}:{c['team']['iso3']}"
+        items.append({
+            "metadata": {"entity_urn": urn},
+            "@context": {
+                "sport": "https://www.sportschema.org/ontologies/sport#",
+                "schema": "https://schema.org/",
+                "machina": "https://schema.machina.gg/sports#",
+            },
+            "@id": urn,
+            "id": urn,
+            "_id": urn,
+            "@type": ["sport:IdentityCrosswalk", "sport:Player"],
+            "name": c["name"],
+            "position": c["position"] or None,
+            "team": {"@id": c["team"]["urn"], "name": c["team"]["name"]},
+            "provider_ids": c["provider_ids"],
+            "machina_competition_slug": "world-cup-2026",
+            "raw_provider": "api-football",
+            "mapping_status": {"verified_ids_only": True},
+        })
+
+    warnings = [] if items else ["No api-football squad players supplied."]
+    return {
+        "status": True,
+        "data": {"normalized_items": items, "count": len(items),
+                 "provider_summary": summary, "warnings": warnings},
+    }

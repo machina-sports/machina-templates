@@ -38,3 +38,5 @@ connector:
       value: "mint_event_identity"
     - name: "Merge provider entities"
       value: "merge_provider_entities"
+    - name: "Build player crosswalk"
+      value: "build_player_crosswalk"

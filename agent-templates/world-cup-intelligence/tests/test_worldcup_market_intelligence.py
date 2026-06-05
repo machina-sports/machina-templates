@@ -22,6 +22,7 @@ normalize_schedule = _module.normalize_schedule
 normalize_identity_crosswalk = _module.normalize_identity_crosswalk
 mint_event_identity = _module.mint_event_identity
 merge_provider_entities = _module.merge_provider_entities
+build_player_crosswalk = _module.build_player_crosswalk
 
 
 def _kalshi_record(**overrides):
@@ -926,3 +927,36 @@ class TestIso3AccentNormalization:
         assert r["count"] == 2
         assert by_name["Cape Verde Islands"]["provider_ids"] == {"api_football": "1533", "opta": "opta-cpv"}
         assert by_name["Ivory Coast"]["provider_ids"] == {"api_football": "1501", "opta": "opta-civ"}
+
+
+# -- Player crosswalk (api-football canonical, others enrich by team+name) ----
+
+
+class TestBuildPlayerCrosswalk:
+    def _teams(self):
+        return [{"_id": "urn:machina:sport:soccer:team:spain:esp", "name": "Spain", "country": "Spain",
+                 "provider_ids": {"api_football": "9", "opta": "o-esp"}}]
+
+    def test_af_canonical_plus_opta_enrich(self):
+        af = [{"response": [{"team": {"id": 9}, "players": [
+            {"id": 386828, "name": "Lamine Yamal", "position": "Attacker"}]}]}]
+        opta = {"squad": [{"contestantId": "o-esp", "person": [
+            {"id": "o-yamal", "firstName": "Lamine", "lastName": "Yamal", "type": "player"}]}]}
+        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af, "opta_squads": opta}})["data"]
+        d = r["normalized_items"][0]
+        assert r["count"] == 1
+        assert d["_id"] == "urn:machina:sport:soccer:player:lamine-yamal:00000000:esp"
+        assert d["provider_ids"] == {"api_football": "386828", "opta": "o-yamal"}
+        assert d["team"]["@id"] == "urn:machina:sport:soccer:team:spain:esp"
+        assert "sport:Player" in d["@type"]
+
+    def test_unmatched_opta_name_leaves_af_only(self):
+        af = [{"response": [{"team": {"id": 9}, "players": [{"id": "44", "name": "Rodri"}]}]}]
+        opta = {"squad": [{"contestantId": "o-esp", "person": [
+            {"id": "o-r", "firstName": "Rodrigo", "lastName": "Hernandez", "type": "player"}]}]}
+        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af, "opta_squads": opta}})["data"]
+        assert r["normalized_items"][0]["provider_ids"] == {"api_football": "44"}
+
+    def test_empty_warns(self):
+        r = build_player_crosswalk({"params": {}})["data"]
+        assert r["count"] == 0 and r["warnings"]
