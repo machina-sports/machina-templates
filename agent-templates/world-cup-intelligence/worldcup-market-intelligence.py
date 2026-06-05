@@ -1602,7 +1602,6 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
             "name": name,
             "provider_ids": provider_ids,
             "machina_competition_slug": item.get("machina_competition_slug", "world-cup-2026"),
-            "raw_provider": item.get("raw_provider", "multi-provider"),
             "mapping_status": {
                 "verified_ids_only": True,
                 "notes": item.get("mapping_notes", []),
@@ -1820,7 +1819,6 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
                 "api_football": fixture_id,
             },
             "machina_competition_slug": comp_slug,
-            "raw_provider": "api-football",
         }
         for k, v in carry.get(fixture_id, {}).items():
             doc["provider_ids"].setdefault(k, v)
@@ -2095,7 +2093,6 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             "team": {"@id": c["team"]["urn"], "name": c["team"]["name"]},
             "provider_ids": c["provider_ids"],
             "machina_competition_slug": "world-cup-2026",
-            "raw_provider": "api-football",
             "mapping_status": {"verified_ids_only": True},
         })
 
