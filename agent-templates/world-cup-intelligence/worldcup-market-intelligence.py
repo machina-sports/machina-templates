@@ -7,6 +7,9 @@ Kalshi/Polymarket market records into a stable shape for API/MCP/x402 exposure.
 
 from __future__ import annotations
 
+import hashlib
+import re
+import unicodedata
 from datetime import datetime, timezone
 from typing import Any
 
@@ -1554,79 +1557,6 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
     missing provider ids. Provider mappings must come from verified upstream
     payloads (API-Football, Entain, Sportradar, Opta, ESPN, Transfermarkt, etc.).
     """
-    import hashlib
-    import re
-    import unicodedata
-
-    iso_mapping = {
-        "ARG": "arg", "ARGENTINA": "arg", "AUS": "aus", "AUSTRALIA": "aus",
-        "AUT": "aut", "AUSTRIA": "aut", "BEL": "bel", "BELGIUM": "bel",
-        "BRA": "bra", "BRASIL": "bra", "BRAZIL": "bra", "CAN": "can", "CANADA": "can",
-        "CHE": "che", "SWITZERLAND": "che", "CH": "che", "COL": "col", "COLOMBIA": "col",
-        "CIV": "civ", "COTE D IVOIRE": "civ", "CÔTE D’IVOIRE": "civ", "IVORY COAST": "civ",
-        "DEU": "deu", "GERMANY": "deu", "ECU": "ecu", "ECUADOR": "ecu",
-        "EGY": "egy", "EGYPT": "egy", "ENG": "eng", "ENGLAND": "eng",
-        "ESP": "esp", "SPAIN": "esp", "FRA": "fra", "FRANCE": "fra",
-        "GHA": "gha", "GHANA": "gha", "HRV": "hrv", "CROATIA": "hrv",
-        "IRN": "irn", "IR IRAN": "irn", "IRAN": "irn", "IRQ": "irq", "IRAQ": "irq",
-        "ITA": "ita", "ITALY": "ita", "JPN": "jpn", "JAPAN": "jpn",
-        "KOR": "kor", "KOREA REPUBLIC": "kor", "SOUTH KOREA": "kor",
-        "MAR": "mar", "MOROCCO": "mar", "MEX": "mex", "MEXICO": "mex",
-        "NLD": "nld", "NETHERLANDS": "nld", "NZL": "nzl", "NEW ZEALAND": "nzl",
-        "PRY": "pry", "PARAGUAY": "pry", "QAT": "qat", "QATAR": "qat",
-        "SAU": "sau", "SAUDI ARABIA": "sau", "SCO": "sco", "SCOTLAND": "sco",
-        "SEN": "sen", "SENEGAL": "sen", "TUN": "tun", "TUNISIA": "tun",
-        "TUR": "tur", "TURKIYE": "tur", "TÜRKIYE": "tur", "TURKEY": "tur",
-        "URY": "ury", "URUGUAY": "ury", "USA": "usa", "UNITED STATES": "usa",
-        "WAL": "wal", "WALES": "wal", "ZAF": "zaf", "SOUTH AFRICA": "zaf",
-    }
-
-    def _clean_text(value: Any) -> str:
-        return str(value or "").strip()
-
-    def _to_iso3(country: Any) -> str:
-        cleaned = re.sub(r"[^A-Z ]", " ", _clean_text(country).upper())
-        cleaned = re.sub(r"\s+", " ", cleaned).strip()
-        if cleaned in iso_mapping:
-            return iso_mapping[cleaned]
-        compact = cleaned.replace(" ", "")
-        if compact in iso_mapping:
-            return iso_mapping[compact]
-        fallback = re.sub(r"[^A-Z]", "", cleaned)[:3].lower()
-        return fallback if len(fallback) == 3 else "unk"
-
-    def _slugify(name: Any) -> str:
-        normalized = unicodedata.normalize("NFKD", _clean_text(name))
-        ascii_str = normalized.encode("ascii", "ignore").decode("ascii").lower()
-        # Remove suffixes from the stable slug; keep suffix/alias metadata in input.
-        ascii_str = re.sub(r"\b(jr|junior|sr|senior|neto|filho|ii|iii|iv|v)\b\.?", "", ascii_str)
-        ascii_str = re.sub(r"[^a-z0-9\s-]", " ", ascii_str)
-        slug = re.sub(r"[\s-]+", "-", ascii_str).strip("-")
-        return slug or "unknown"
-
-    def _parse_birth_date(value: Any) -> str:
-        raw = _clean_text(value)
-        match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
-        if match:
-            return "".join(match.groups())
-        year = re.search(r"\b(19\d{2}|20\d{2})\b", raw)
-        return f"{year.group(1)}0000" if year else "00000000"
-
-    def _event_date(value: Any) -> str:
-        raw = _clean_text(value)
-        match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
-        if match:
-            return "".join(match.groups())
-        year = _clean_text(value) or "2026"
-        return year[:4]
-
-    def _stable_disambiguator(provider_ids: dict[str, Any]) -> str:
-        verified = [(k, str(v)) for k, v in sorted((provider_ids or {}).items()) if v not in (None, "", [], {})]
-        if not verified:
-            return ""
-        seed = "|".join(f"{k}:{v}" for k, v in verified[:2])
-        return hashlib.sha1(seed.encode()).hexdigest()[:8]
-
     params = _params(request_data)
     items = _as_list(params.get("items"))
     normalized_items: list[dict[str, Any]] = []
@@ -1711,4 +1641,195 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
             "count": len(normalized_items),
             "warnings": warnings,
         },
+    }
+
+
+# -- Canonical machina identity helpers (shared by crosswalk + event minting) --
+#
+# These were lifted out of normalize_identity_crosswalk so mint_event_identity
+# mints the SAME urn:machina:sport:soccer:... scheme from API-Football fixtures.
+
+_ISO3_MAP = {
+    "ARG": "arg", "ARGENTINA": "arg", "AUS": "aus", "AUSTRALIA": "aus",
+    "AUT": "aut", "AUSTRIA": "aut", "BEL": "bel", "BELGIUM": "bel",
+    "BRA": "bra", "BRASIL": "bra", "BRAZIL": "bra", "CAN": "can", "CANADA": "can",
+    "CHE": "che", "SWITZERLAND": "che", "CH": "che", "COL": "col", "COLOMBIA": "col",
+    "CIV": "civ", "COTE D IVOIRE": "civ", "CÔTE D’IVOIRE": "civ", "IVORY COAST": "civ",
+    "DEU": "deu", "GERMANY": "deu", "ECU": "ecu", "ECUADOR": "ecu",
+    "EGY": "egy", "EGYPT": "egy", "ENG": "eng", "ENGLAND": "eng",
+    "ESP": "esp", "SPAIN": "esp", "FRA": "fra", "FRANCE": "fra",
+    "GHA": "gha", "GHANA": "gha", "HRV": "hrv", "CROATIA": "hrv",
+    "IRN": "irn", "IR IRAN": "irn", "IRAN": "irn", "IRQ": "irq", "IRAQ": "irq",
+    "ITA": "ita", "ITALY": "ita", "JPN": "jpn", "JAPAN": "jpn",
+    "KOR": "kor", "KOREA REPUBLIC": "kor", "SOUTH KOREA": "kor",
+    "MAR": "mar", "MOROCCO": "mar", "MEX": "mex", "MEXICO": "mex",
+    "NLD": "nld", "NETHERLANDS": "nld", "NZL": "nzl", "NEW ZEALAND": "nzl",
+    "PRY": "pry", "PARAGUAY": "pry", "QAT": "qat", "QATAR": "qat",
+    "SAU": "sau", "SAUDI ARABIA": "sau", "SCO": "sco", "SCOTLAND": "sco",
+    "SEN": "sen", "SENEGAL": "sen", "TUN": "tun", "TUNISIA": "tun",
+    "TUR": "tur", "TURKIYE": "tur", "TÜRKIYE": "tur", "TURKEY": "tur",
+    "URY": "ury", "URUGUAY": "ury", "USA": "usa", "UNITED STATES": "usa",
+    "WAL": "wal", "WALES": "wal", "ZAF": "zaf", "SOUTH AFRICA": "zaf",
+    "CAPE VERDE": "cpv", "CAPE VERDE ISLANDS": "cpv", "CURACAO": "cuw", "CURAÇAO": "cuw",
+    "UZBEKISTAN": "uzb", "CONGO DR": "cod", "DR CONGO": "cod", "JORDAN": "jor",
+    "BOSNIA HERZEGOVINA": "bih", "BOSNIA AND HERZEGOVINA": "bih", "BOSNIA  HERZEGOVINA": "bih",
+    "PANAMA": "pan", "NORWAY": "nor", "SWEDEN": "swe", "PORTUGAL": "por",
+    "SERBIA": "srb", "SOUTH KOREA REPUBLIC": "kor",
+}
+
+# Backwards-compatible alias for normalize_identity_crosswalk's body.
+iso_mapping = _ISO3_MAP
+
+
+def _clean_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _to_iso3(country: Any) -> str:
+    cleaned = re.sub(r"[^A-Z ]", " ", _clean_text(country).upper())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if cleaned in _ISO3_MAP:
+        return _ISO3_MAP[cleaned]
+    compact = cleaned.replace(" ", "")
+    if compact in _ISO3_MAP:
+        return _ISO3_MAP[compact]
+    fallback = re.sub(r"[^A-Z]", "", cleaned)[:3].lower()
+    return fallback if len(fallback) == 3 else "unk"
+
+
+def _slugify(name: Any) -> str:
+    normalized = unicodedata.normalize("NFKD", _clean_text(name))
+    ascii_str = normalized.encode("ascii", "ignore").decode("ascii").lower()
+    # Remove suffixes from the stable slug; keep suffix/alias metadata in input.
+    ascii_str = re.sub(r"\b(jr|junior|sr|senior|neto|filho|ii|iii|iv|v)\b\.?", "", ascii_str)
+    ascii_str = re.sub(r"[^a-z0-9\s-]", " ", ascii_str)
+    slug = re.sub(r"[\s-]+", "-", ascii_str).strip("-")
+    return slug or "unknown"
+
+
+def _parse_birth_date(value: Any) -> str:
+    raw = _clean_text(value)
+    match = re.search(r"\b(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})\b", raw)
+    if match:
+        return "".join(match.groups())
+    year = re.search(r"\b(19\d{2}|20\d{2})\b", raw)
+    return f"{year.group(1)}0000" if year else "00000000"
+
+
+def _event_date(value: Any) -> str:
+    raw = _clean_text(value)
+    # No \b anchors: API-Football dates are full ISO ("2026-06-11T19:00:00+00:00"),
+    # where the digits abut a "T" (no word boundary) — \b would drop the day/month.
+    match = re.search(r"(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})", raw)
+    if match:
+        return "".join(match.groups())
+    year = re.search(r"(19\d{2}|20\d{2})", raw)
+    return f"{year.group(1)}0000" if year else "00000000"
+
+
+def _stable_disambiguator(provider_ids: dict[str, Any]) -> str:
+    verified = [(k, str(v)) for k, v in sorted((provider_ids or {}).items()) if v not in (None, "", [], {})]
+    if not verified:
+        return ""
+    seed = "|".join(f"{k}:{v}" for k, v in verified[:2])
+    return hashlib.sha1(seed.encode()).hexdigest()[:8]
+
+
+def _machina_team_urn(name: Any) -> str:
+    # National-team country == team name for the World Cup.
+    return f"urn:machina:sport:soccer:team:{_slugify(name)}:{_to_iso3(name)}"
+
+
+def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Mint canonical IPTC World Cup event docs with machina URNs from API-Football fixtures.
+
+    API-Football is the data source; the canonical id is the machina URN
+    (urn:machina:sport:soccer:event:{home}-vs-{away}:{YYYYMMDD}:wor) — the SAME
+    scheme normalize_identity_crosswalk mints, so events and the crosswalk agree.
+    provider_ids carry every provider key (incl. api_football_venue_id) so the
+    exposed API can join by the api-football fixture id (provider_event_id) — the
+    stable alternate key. Venue URN is null-safe (no urn:...:venue:None).
+    """
+    params = _params(request_data)
+    fixtures = _as_list(params.get("fixtures"))
+    comp_slug = _text(params.get("competition_slug")) or "world-cup-2026"
+    events: list[dict[str, Any]] = []
+    warnings: list[str] = []
+
+    for f in fixtures:
+        if not isinstance(f, dict):
+            continue
+        fixture = f.get("fixture", {}) if isinstance(f.get("fixture"), dict) else {}
+        league = f.get("league", {}) if isinstance(f.get("league"), dict) else {}
+        teams = f.get("teams", {}) if isinstance(f.get("teams"), dict) else {}
+        home = teams.get("home", {}) if isinstance(teams.get("home"), dict) else {}
+        away = teams.get("away", {}) if isinstance(teams.get("away"), dict) else {}
+        venue = fixture.get("venue", {}) if isinstance(fixture.get("venue"), dict) else {}
+
+        fixture_id = _text(fixture.get("id"))
+        home_name = _text(home.get("name"))
+        away_name = _text(away.get("name"))
+        if not fixture_id or not home_name or not away_name:
+            warnings.append("skipped fixture missing id/home/away")
+            continue
+
+        date_iso = _text(fixture.get("date"))
+        event_urn = (
+            f"urn:machina:sport:soccer:event:"
+            f"{_slugify(home_name)}-vs-{_slugify(away_name)}:{_event_date(date_iso)}:wor"
+        )
+        comp_name = _text(league.get("name")) or "World Cup"
+        comp_urn = f"urn:machina:sport:soccer:competition:{_slugify(comp_name)}:wor"
+
+        venue_name = _text(venue.get("name"))
+        venue_block: dict[str, Any] = {
+            "@type": "sport:Venue",
+            "name": venue_name or None,
+            "schema:addressLocality": _text(venue.get("city")) or None,
+        }
+        if venue_name:
+            venue_block["@id"] = (
+                f"urn:machina:sport:soccer:venue:{_slugify(venue_name)}:"
+                f"{_to_iso3(venue.get('city') or venue.get('country') or '')}"
+            )
+
+        doc = {
+            "metadata": {"event_urn": event_urn},
+            "@context": {
+                "sport": "https://www.sportschema.org/ontologies/sport#",
+                "schema": "https://schema.org/",
+                "machina": "https://schema.machina.gg/sports#",
+            },
+            "@id": event_urn,
+            "id": event_urn,
+            "_id": event_urn,
+            "@type": ["sport:Event", "schema:SportsEvent"],
+            "name": f"{home_name} vs {away_name} - {comp_name}",
+            "schema:startDate": date_iso or None,
+            "sport:status": _text((fixture.get("status") or {}).get("short")) or None,
+            "sport:competition": {"@id": comp_urn, "@type": "sport:Competition", "name": comp_name},
+            "sport:venue": venue_block,
+            "sport:competitors": [
+                {"@type": "sport:Team", "@id": _machina_team_urn(home_name), "name": home_name,
+                 "sport:qualifier": "home", "schema:logo": _text(home.get("logo")) or None},
+                {"@type": "sport:Team", "@id": _machina_team_urn(away_name), "name": away_name,
+                 "sport:qualifier": "away", "schema:logo": _text(away.get("logo")) or None},
+            ],
+            "provider_ids": {
+                "api_football_fixture_id": fixture_id,
+                "api_football_league_id": _text(league.get("id")),
+                "api_football_home_team_id": _text(home.get("id")),
+                "api_football_away_team_id": _text(away.get("id")),
+                "api_football_venue_id": _text(venue.get("id")),
+            },
+            "machina_competition_slug": comp_slug,
+            "raw_provider": "api-football",
+        }
+        events.append(doc)
+
+    if not events:
+        warnings.append("No fixtures supplied.")
+    return {
+        "status": True,
+        "data": {"sport_schema_events": events, "events": events, "count": len(events), "warnings": warnings},
     }

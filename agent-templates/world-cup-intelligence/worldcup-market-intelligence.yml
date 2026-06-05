@@ -34,3 +34,5 @@ connector:
       value: "merge_official_and_provisional_performance"
     - name: "Normalize identity crosswalk"
       value: "normalize_identity_crosswalk"
+    - name: "Mint event identity"
+      value: "mint_event_identity"
