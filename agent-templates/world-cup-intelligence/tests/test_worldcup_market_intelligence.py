@@ -940,26 +940,37 @@ class TestBuildPlayerCrosswalk:
     def test_af_canonical_plus_opta_enrich(self):
         af = [{"response": [{"team": {"id": 9}, "players": [
             {"id": 386828, "name": "Lamine Yamal", "position": "Attacker"}]}]}]
+        afp = [{"response": [{"player": {"id": 386828, "name": "Lamine Yamal",
+                                          "birth": {"date": "2007-07-13"}}}]}]
         opta = {"squad": [{"contestantId": "o-esp", "person": [
             {"id": "o-yamal", "firstName": "Lamine", "lastName": "Yamal", "type": "player"}]}]}
-        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af, "opta_squads": opta}})["data"]
+        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af,
+                                               "af_players": afp, "opta_squads": opta}})["data"]
         d = r["normalized_items"][0]
         assert r["count"] == 1
-        assert d["_id"] == "urn:machina:sport:soccer:player:lamine-yamal:00000000:esp"
+        assert d["_id"] == "urn:machina:sport:soccer:player:lamine-yamal:20070713:esp"
         assert d["provider_ids"] == {"api_football": "386828", "opta": "o-yamal"}
         assert d["team"]["@id"] == "urn:machina:sport:soccer:team:spain:esp"
         assert "sport:Player" in d["@type"]
 
     def test_unmatched_opta_name_leaves_af_only(self):
         af = [{"response": [{"team": {"id": 9}, "players": [{"id": "44", "name": "Rodri"}]}]}]
+        afp = [{"response": [{"player": {"id": 44, "name": "Rodri", "birth": {"date": "1996-06-22"}}}]}]
         opta = {"squad": [{"contestantId": "o-esp", "person": [
             {"id": "o-r", "firstName": "Rodrigo", "lastName": "Hernandez", "type": "player"}]}]}
-        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af, "opta_squads": opta}})["data"]
+        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af,
+                                               "af_players": afp, "opta_squads": opta}})["data"]
         assert r["normalized_items"][0]["provider_ids"] == {"api_football": "44"}
 
     def test_empty_warns(self):
         r = build_player_crosswalk({"params": {}})["data"]
         assert r["count"] == 0 and r["warnings"]
+
+    def test_player_without_dob_is_excluded(self):
+        af = [{"response": [{"team": {"id": 9}, "players": [{"id": "44", "name": "Rodri"}]}]}]
+        r = build_player_crosswalk({"params": {"teams": self._teams(), "af_squads": af}})["data"]
+        assert r["count"] == 0
+        assert r["provider_summary"]["excluded_no_dob"] == 1
 
     def test_dob_from_af_players_plus_espn_id(self):
         teams = [{"_id": "urn:machina:sport:soccer:team:spain:esp", "name": "Spain", "country": "Spain",

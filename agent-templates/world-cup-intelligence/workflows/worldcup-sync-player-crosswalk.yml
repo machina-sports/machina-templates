@@ -69,20 +69,19 @@ workflow:
 
     - type: connector
       name: fetch-af-players
-      description: api-football /players by player id (full name + birth date + nationality) for every squad player. /players?team requires recorded season stats, which most national teams lack pre-tournament; per-id resolves DOB reliably.
+      description: api-football /players/profiles by player id (season-independent full name + birth date + nationality) for every squad player. /players?team requires recorded season stats which national teams lack pre-tournament; the profile endpoint resolves DOB for everyone.
       condition: "len($.get('af_squads', [])) > 0"
       continue_on_error: true
       connector:
         name: api-football
-        command: get-players
+        command: get-players/profiles
       foreach:
         concurrent: false
         name: af_player_item
         expr: $
         value: "[{'id': p.get('id')} for resp in $.get('af_squads', []) if isinstance(resp, dict) for entry in (resp.get('response', []) or []) for p in (entry.get('players', []) or []) if p.get('id')]"
       inputs:
-        id: "$.get('af_player_item', {}).get('id')"
-        season: "$.get('season', '2026')"
+        player: "$.get('af_player_item', {}).get('id')"
       outputs:
         # Keep only identity fields — the full /players body carries large
         # per-competition statistics arrays that OOM the sync when held in
