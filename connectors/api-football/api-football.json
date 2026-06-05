@@ -2618,6 +2618,74 @@
     }
    }
   },
+  "/players": {
+   "get": {
+    "summary": "Get players",
+    "description": "Player profiles (incl. birth date + nationality) for a team/league/season or by id/search. Paginated.",
+    "operationId": "get-players",
+    "security": [
+     {
+      "x-apisports-key": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "team",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "league",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "season",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "page",
+      "in": "query",
+      "schema": {
+       "type": "integer"
+      }
+     },
+     {
+      "name": "search",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApiResponse"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/teams": {
    "get": {
     "summary": "Get teams",

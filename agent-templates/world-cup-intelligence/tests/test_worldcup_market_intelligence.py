@@ -960,3 +960,19 @@ class TestBuildPlayerCrosswalk:
     def test_empty_warns(self):
         r = build_player_crosswalk({"params": {}})["data"]
         assert r["count"] == 0 and r["warnings"]
+
+    def test_dob_from_af_players_plus_espn_id(self):
+        teams = [{"_id": "urn:machina:sport:soccer:team:spain:esp", "name": "Spain", "country": "Spain",
+                  "provider_ids": {"api_football": "9", "opta": "o-esp", "espn": "e-esp"}}]
+        af_squads = [{"response": [{"team": {"id": 9}, "players": [
+            {"id": "386828", "name": "Lamine Yamal", "position": "Attacker"}]}]}]
+        af_players = [{"response": [{"player": {
+            "id": 386828, "name": "Lamine Yamal", "birth": {"date": "2007-07-13"}, "nationality": "Spain"}}]}]
+        espn = {"team": {"id": "e-esp"}, "players": [{"id": "espn-yamal", "name": "Lamine Yamal"}]}
+        r = build_player_crosswalk({"params": {"teams": teams, "af_squads": af_squads,
+                                               "af_players": af_players, "espn_rosters": [espn]}})["data"]
+        d = r["normalized_items"][0]
+        assert d["_id"] == "urn:machina:sport:soccer:player:lamine-yamal:20070713:esp"
+        assert d["birth_date"] == "2007-07-13"
+        assert d["provider_ids"] == {"api_football": "386828", "espn": "espn-yamal"}
+        assert r["provider_summary"]["with_dob"] == 1
