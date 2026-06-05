@@ -36,6 +36,19 @@ workflow:
       outputs:
         teams: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
 
+    - type: document
+      name: load-existing-players
+      description: Load existing player docs (provider_ids only) so non-api-football ids (entain, transfermarkt) carry forward across re-syncs.
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: {"$regex": "^urn:machina:sport:soccer:player:"}
+      outputs:
+        existing_players: "[{'provider_ids': d.get('value', {}).get('provider_ids', {})} for d in ($.get('documents', []) or [])]"
+
     - type: connector
       name: fetch-af-squads
       description: api-football squad per team (one call per team via foreach).
@@ -133,6 +146,7 @@ workflow:
         af_players: "$.get('af_players', [])"
         opta_squads: "$.get('opta_squads', {})"
         espn_rosters: "$.get('espn_rosters', [])"
+        existing_players: "$.get('existing_players', [])"
       outputs:
         normalized_items: "$.get('normalized_items', [])"
         provider_summary: "$.get('provider_summary', {})"

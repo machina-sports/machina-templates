@@ -992,3 +992,21 @@ class TestBuildPlayerCrosswalk:
         assert d["_id"] == "urn:machina:sport:soccer:player:fernando-muslera:19860616:ury"
         assert d["name"] == "Fernando Muslera"
         assert d["birth_date"] == "1986-06-16"
+
+    def test_carry_forward_entain_transfermarkt_by_af_id(self):
+        teams = [{"_id": "urn:machina:sport:soccer:team:argentina:arg", "name": "Argentina", "country": "Argentina",
+                  "provider_ids": {"api_football": "26"}}]
+        af_squads = [{"response": [{"team": {"id": 26}, "players": [
+            {"id": "154", "name": "L. Messi", "position": "Attacker"}]}]}]
+        af_players = [{"response": [{"player": {
+            "id": 154, "firstname": "Lionel", "lastname": "Messi", "name": "Lionel Messi",
+            "birth": {"date": "1987-06-24"}, "nationality": "Argentina"}}]}]
+        # Legacy doc uses the *_player_id key style; ids must be inherited + renamed.
+        existing = [{"provider_ids": {"api_football_player_id": "154",
+                                      "entain_player_id": "223306",
+                                      "transfermarkt_player_id": "28003"}}]
+        r = build_player_crosswalk({"params": {"teams": teams, "af_squads": af_squads,
+                                               "af_players": af_players, "existing_players": existing}})["data"]
+        d = r["normalized_items"][0]
+        assert d["_id"] == "urn:machina:sport:soccer:player:lionel-messi:19870624:arg"
+        assert d["provider_ids"] == {"api_football": "154", "entain": "223306", "transfermarkt": "28003"}
