@@ -4,14 +4,14 @@ workflow:
   description: |
     Build the national-team identity crosswalk: canonical urn:machina:sport:soccer:team
     URNs with provider_ids from api-football (canonical name authority) + ESPN
-    (sports-skills) + Sportradar, joined by country (iso3). Saves worldcup:identity-crosswalk
-    docs so the exposed API can resolve any provider's team id to the canonical URN.
+    (sports-skills) + Sportradar + Opta, joined by country (iso3). Saves
+    worldcup:identity-crosswalk docs so the exposed API can resolve any provider's team
+    id to the canonical URN.
 
-    api-football + ESPN define the 48-team set; Sportradar is enrich-only (its season
-    list is a 100+ qualifying-pool superset — only matches to the 48 attach). Opta/Entain
-    and Transfermarkt slots exist in the merge connector and fill in once their team-id
-    sources are wired (Opta connector not yet deployed; Entain/bwin has no team-list
-    endpoint; Transfermarkt is player-level only).
+    api-football + ESPN define the 48-team set; Sportradar (season competitors) and Opta
+    (FIFA World Cup 2026 tournament contestants) are enrich-only — they attach ids to the
+    48 but never create new teams. Entain/bwin has no team-list endpoint; Transfermarkt is
+    player-level only (both still available as provider_ids slots in the merge connector).
 
   context-variables:
     debugger:
@@ -27,10 +27,9 @@ workflow:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
     sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
-    # Opta is licensed AFC+CAF only -> the WC-qualifier calendars supply Asian +
-    # African national-team Opta ids (enrich-only). Other confederations absent.
-    opta_caf_tmcl: "$.get('opta_caf_tmcl', '9ghm6cuz03lcz4fg8jl3n1uz8')"
-    opta_afc_tmcl: "$.get('opta_afc_tmcl', '8rlm9tgxmr9acaidre79xsjdg')"
+    # Opta FIFA World Cup 2026 tournament calendar (comp 70excpe… -> tmcl
+    # 873cbl…): the actual 48 contestants, all confederations (enrich-only).
+    opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
   outputs:
     saved_count: "len($.get('normalized_items', []))"
     provider_summary: "$.get('provider_summary', {})"
@@ -87,8 +86,8 @@ workflow:
         opta_token: "$.get('access_token')"
 
     - type: connector
-      name: fetch-opta-caf
-      description: Opta contestants (team ids) for the CAF World Cup Qualifiers 2026 calendar (African teams).
+      name: fetch-opta-wc
+      description: Opta contestants (team ids) for the FIFA World Cup 2026 tournament calendar — the actual 48 teams, all confederations.
       condition: "$.get('opta_token') is not None"
       continue_on_error: true
       connector:
@@ -97,24 +96,9 @@ workflow:
       inputs:
         access_token: "$.get('opta_token')"
         endpoint: "'team'"
-        query_params: "{'tmcl': $.get('opta_caf_tmcl', '9ghm6cuz03lcz4fg8jl3n1uz8')}"
+        query_params: "{'tmcl': $.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')}"
       outputs:
-        opta_caf: "$.get('contestant', [])"
-
-    - type: connector
-      name: fetch-opta-afc
-      description: Opta contestants (team ids) for the AFC World Cup Qualifiers 2026 calendar (Asian teams).
-      condition: "$.get('opta_token') is not None"
-      continue_on_error: true
-      connector:
-        name: opta
-        command: invoke_request
-      inputs:
-        access_token: "$.get('opta_token')"
-        endpoint: "'team'"
-        query_params: "{'tmcl': $.get('opta_afc_tmcl', '8rlm9tgxmr9acaidre79xsjdg')}"
-      outputs:
-        opta_afc: "$.get('contestant', [])"
+        opta_wc: "$.get('contestant', [])"
 
     - type: connector
       name: merge-entities
@@ -126,7 +110,7 @@ workflow:
         api_football_teams: "$.get('af_teams', [])"
         espn_teams: "$.get('espn_teams', [])"
         sportradar_teams: "$.get('sportradar_teams', [])"
-        opta_teams: "($.get('opta_caf', []) or []) + ($.get('opta_afc', []) or [])"
+        opta_teams: "$.get('opta_wc', [])"
       outputs:
         items: "$.get('items', [])"
         provider_summary: "$.get('provider_summary', {})"
