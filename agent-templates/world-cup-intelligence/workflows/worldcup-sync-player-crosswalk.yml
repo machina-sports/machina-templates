@@ -71,7 +71,10 @@ workflow:
         id: "$.get('af_player_item', {}).get('id')"
         season: "$.get('season', '2026')"
       outputs:
-        af_players: "[{'response': $.get('response', [])}]"
+        # Keep only identity fields — the full /players body carries large
+        # per-competition statistics arrays that OOM the sync when held in
+        # state for every squad player.
+        af_players: "[{'response': [{'player': {'id': (p.get('player') or {}).get('id'), 'name': (p.get('player') or {}).get('name'), 'firstname': (p.get('player') or {}).get('firstname'), 'lastname': (p.get('player') or {}).get('lastname'), 'birth': {'date': ((p.get('player') or {}).get('birth') or {}).get('date')}, 'nationality': (p.get('player') or {}).get('nationality')}} for p in ($.get('response', []) or [])]}]"
 
     - type: connector
       name: fetch-espn-rosters
