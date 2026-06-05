@@ -1902,6 +1902,8 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
       - af_players: list of api-football /players responses (birth date + nationality, joined by id)
       - opta_squads: opta squads response (opta ids by team + lastname + first-initial)
       - espn_rosters: list of sports-skills get_team_profile responses (espn ids, same match)
+      - existing_players: existing crosswalk player docs; provider ids not produced here
+        (entain, transfermarkt) are carried forward by api-football id across re-syncs
     """
     params = _params(request_data)
     maps = _team_maps(_as_list(params.get("teams")))
@@ -1980,9 +1982,33 @@ def build_player_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
                 canon[key]["provider_ids"]["espn"] = _text(p.get("id"))
                 summary["espn"] += 1
 
+    # Carry forward provider ids this build does not itself produce (e.g. entain,
+    # transfermarkt) from existing crosswalk docs, joined by api-football id, so a
+    # force-update re-sync preserves them instead of dropping them.
+    produced = {"api_football", "opta", "espn"}
+    key_alias = {"api_football_player_id": "api_football",
+                 "entain_player_id": "entain",
+                 "transfermarkt_player_id": "transfermarkt"}
+    carry: dict[str, dict[str, str]] = {}
+    for doc in _flatten_foreach(params.get("existing_players")):
+        d = _unwrap(doc)
+        pids = d.get("provider_ids") if isinstance(d, dict) else None
+        if not isinstance(pids, dict):
+            continue
+        af = _text(pids.get("api_football") or pids.get("api_football_player_id"))
+        if not af:
+            continue
+        for k, v in pids.items():
+            nk = key_alias.get(k, k)
+            if nk not in produced and _text(v):
+                carry.setdefault(af, {})[nk] = _text(v)
+
     items: list[dict[str, Any]] = []
     for k in order:
         c = canon[k]
+        af_id = c["provider_ids"].get("api_football", "")
+        for nk, v in carry.get(af_id, {}).items():
+            c["provider_ids"].setdefault(nk, v)
         meta = dob_by_id.get(c["provider_ids"].get("api_football", ""), {})
         dob8 = _parse_birth_date(meta.get("dob"))
         if dob8 != "00000000":
