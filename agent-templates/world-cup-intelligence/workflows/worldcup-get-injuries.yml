@@ -28,14 +28,28 @@ workflow:
       filters:
         name: "'worldcup:event'"
         value._id: "$.get('event_urn') if $.get('event_urn') else {'$exists': True}"
-        value.provider_ids.api_football_fixture_id: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
+        value.provider_ids.api_football: "$.get('provider_event_id') if $.get('provider_event_id') else {'$exists': True}"
       outputs:
-        home_team_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_home_team_id')"
-        away_team_id: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_away_team_id')"
+        home_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
+        away_team_urn: "([t.get('@id') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
         home_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'home'] or [''])[0]"
         away_team_name: "([t.get('name') for t in (($.get('documents', []) or [{}])[0].get('value', {}).get('sport:competitors', []) or []) if t.get('sport:qualifier') == 'away'] or [''])[0]"
-        resolved_league: "(($.get('documents', []) or [{}])[0].get('value', {}).get('provider_ids', {}) or {}).get('api_football_league_id')"
         resolved_year: "((($.get('documents', []) or [{}])[0].get('value', {}).get('schema:startDate') or '2026'))[:4]"
+
+    - type: document
+      name: lookup-teams
+      description: Resolve api-football team ids from the event's competitor team URNs via the team crosswalk.
+      condition: "($.get('home_team_urn') or '') != '' or ($.get('away_team_urn') or '') != ''"
+      config:
+        action: search
+        search-limit: 2
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: "{'$in': [u for u in [$.get('home_team_urn'), $.get('away_team_urn')] if u]}"
+      outputs:
+        home_team_id: "([d.get('value', {}).get('provider_ids', {}).get('api_football') for d in ($.get('documents', []) or []) if d.get('value', {}).get('_id') == $.get('home_team_urn')] or [None])[0]"
+        away_team_id: "([d.get('value', {}).get('provider_ids', {}).get('api_football') for d in ($.get('documents', []) or []) if d.get('value', {}).get('_id') == $.get('away_team_urn')] or [None])[0]"
 
     - type: connector
       name: fetch-injuries-af

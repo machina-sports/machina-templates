@@ -1206,7 +1206,7 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
                 for t in competitors if isinstance(t, dict)
             ],
             "venue": _text(venue.get("name")) or None,
-            "fixture_id": (ev.get("provider_ids") or {}).get("api_football_fixture_id"),
+            "fixture_id": (ev.get("provider_ids") or {}).get("api_football"),
         })
 
     out.sort(key=lambda e: e.get("start_date") or "")
@@ -1731,21 +1731,26 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     warnings: list[str] = []
 
-    # Carry forward provider ids not produced by ingest (e.g. sportradar_event_id,
-    # entain_event_id added by the event crosswalk) from existing event docs, keyed
-    # by api-football fixture id, so a force-update re-ingest preserves them.
-    ingest_keys = {"api_football_fixture_id", "api_football_league_id",
-                   "api_football_home_team_id", "api_football_away_team_id", "api_football_venue_id"}
+    # Carry forward provider ids not produced by ingest (sportradar, opta, entain,
+    # espn — added by the event crosswalk) from existing event docs, keyed by the
+    # api-football fixture id, so a force-update re-ingest preserves them.
+    event_alias = {"sportradar_event_id": "sportradar", "entain_event_id": "entain",
+                   "opta_event_id": "opta", "espn_event_id": "espn"}
+    event_providers = {"sportradar", "opta", "entain", "espn"}
     carry: dict[str, dict[str, str]] = {}
     for ev in _as_list(params.get("existing_events")):
         d = _unwrap(ev)
         pids = d.get("provider_ids") if isinstance(d, dict) else None
         if not isinstance(pids, dict):
             continue
-        fid = _text(pids.get("api_football_fixture_id"))
+        fid = _text(pids.get("api_football") or pids.get("api_football_fixture_id"))
         if not fid:
             continue
-        keep = {k: _text(v) for k, v in pids.items() if k not in ingest_keys and _text(v)}
+        keep = {}
+        for k, v in pids.items():
+            nk = event_alias.get(k, k)
+            if nk in event_providers and _text(v):
+                keep[nk] = _text(v)
         if keep:
             carry[fid] = keep
 
@@ -1808,12 +1813,11 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
                 {"@type": "sport:Team", "@id": _machina_team_urn(away_name), "name": away_name,
                  "sport:qualifier": "away", "schema:logo": _text(away.get("logo")) or None},
             ],
+            # provider_ids holds ONLY each provider's id for THIS object (the event):
+            # api_football = the fixture id. Team/league/venue ids are resolved
+            # relationally (competitors -> team crosswalk, competition).
             "provider_ids": {
-                "api_football_fixture_id": fixture_id,
-                "api_football_league_id": _text(league.get("id")),
-                "api_football_home_team_id": _text(home.get("id")),
-                "api_football_away_team_id": _text(away.get("id")),
-                "api_football_venue_id": _text(venue.get("id")),
+                "api_football": fixture_id,
             },
             "machina_competition_slug": comp_slug,
             "raw_provider": "api-football",
@@ -2127,8 +2131,8 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             if not sid or len(urns) != 2:
                 continue
             ev = by_pair.get(frozenset(urns))
-            if ev is not None and "sportradar_event_id" not in (ev.get("provider_ids") or {}):
-                ev.setdefault("provider_ids", {})["sportradar_event_id"] = sid
+            if ev is not None and "sportradar" not in (ev.get("provider_ids") or {}):
+                ev.setdefault("provider_ids", {})["sportradar"] = sid
                 summary["sportradar"] += 1
 
     for resp in _flatten_foreach(params.get("entain_fixtures")):
@@ -2143,8 +2147,8 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
             if not eid or len(urns) != 2:
                 continue
             ev = by_pair.get(frozenset(urns))
-            if ev is not None and "entain_event_id" not in (ev.get("provider_ids") or {}):
-                ev.setdefault("provider_ids", {})["entain_event_id"] = eid
+            if ev is not None and "entain" not in (ev.get("provider_ids") or {}):
+                ev.setdefault("provider_ids", {})["entain"] = eid
                 summary["entain"] += 1
 
     return {
