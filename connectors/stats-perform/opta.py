@@ -152,6 +152,12 @@ def invoke_request(request_data):
             # For matchstats and matchexpectedgoals, match ID goes in the URL path
             match_id = query_params.pop("matchId")
             base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}/{match_id}"
+        elif endpoint.endswith("/authorized"):
+            # Opta "authorized" feeds put the suffix AFTER the outlet, e.g.
+            # soccerdata/tournamentcalendar/{outlet}/authorized — lists the
+            # competitions/calendars this outlet is actually entitled to.
+            feed = endpoint.rsplit("/authorized", 1)[0]
+            base_url = f"https://api.performfeeds.com/soccerdata/{feed}/{outlet}/authorized"
         else:
             base_url = f"https://api.performfeeds.com/soccerdata/{endpoint}/{outlet}"
         

@@ -1670,7 +1670,7 @@ _ISO3_MAP = {
     "TUR": "tur", "TURKIYE": "tur", "TÜRKIYE": "tur", "TURKEY": "tur",
     "URY": "ury", "URUGUAY": "ury", "USA": "usa", "UNITED STATES": "usa",
     "WAL": "wal", "WALES": "wal", "ZAF": "zaf", "SOUTH AFRICA": "zaf",
-    "CAPE VERDE": "cpv", "CAPE VERDE ISLANDS": "cpv", "CURACAO": "cuw", "CURAÇAO": "cuw",
+    "CAPE VERDE": "cpv", "CAPE VERDE ISLANDS": "cpv", "CABO VERDE": "cpv", "CURACAO": "cuw", "CURAÇAO": "cuw",
     "UZBEKISTAN": "uzb", "CONGO DR": "cod", "DR CONGO": "cod", "JORDAN": "jor",
     "BOSNIA HERZEGOVINA": "bih", "BOSNIA AND HERZEGOVINA": "bih", "BOSNIA  HERZEGOVINA": "bih",
     "PANAMA": "pan", "NORWAY": "nor", "SWEDEN": "swe", "PORTUGAL": "por",
@@ -1686,7 +1686,10 @@ def _clean_text(value: Any) -> str:
 
 
 def _to_iso3(country: Any) -> str:
-    cleaned = re.sub(r"[^A-Z ]", " ", _clean_text(country).upper())
+    # Strip accents first (NFKD) so cross-provider spellings converge:
+    # "Côte d'Ivoire" -> "COTE D IVOIRE", "Türkiye" -> "TURKIYE".
+    ascii_src = unicodedata.normalize("NFKD", _clean_text(country)).encode("ascii", "ignore").decode("ascii")
+    cleaned = re.sub(r"[^A-Z ]", " ", ascii_src.upper())
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if cleaned in _ISO3_MAP:
         return _ISO3_MAP[cleaned]

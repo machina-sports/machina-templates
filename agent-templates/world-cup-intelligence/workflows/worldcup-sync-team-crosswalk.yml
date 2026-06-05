@@ -20,10 +20,17 @@ workflow:
       x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
     sportradar-soccer:
       api_key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+    opta:
+      outlet: $MACHINA_CONTEXT_VARIABLE_OPTA_OUTLET
+      secret: $MACHINA_CONTEXT_VARIABLE_OPTA_SECRET
   inputs:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
     sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
+    # Opta is licensed AFC+CAF only -> the WC-qualifier calendars supply Asian +
+    # African national-team Opta ids (enrich-only). Other confederations absent.
+    opta_caf_tmcl: "$.get('opta_caf_tmcl', '9ghm6cuz03lcz4fg8jl3n1uz8')"
+    opta_afc_tmcl: "$.get('opta_afc_tmcl', '8rlm9tgxmr9acaidre79xsjdg')"
   outputs:
     saved_count: "len($.get('normalized_items', []))"
     provider_summary: "$.get('provider_summary', {})"
@@ -70,8 +77,48 @@ workflow:
         sportradar_teams: "$.get('season_competitors', [])"
 
     - type: connector
+      name: opta-auth
+      description: Get an Opta OAuth access token (outlet licensed AFC + CAF only).
+      continue_on_error: true
+      connector:
+        name: opta
+        command: authorization
+      outputs:
+        opta_token: "$.get('access_token')"
+
+    - type: connector
+      name: fetch-opta-caf
+      description: Opta contestants (team ids) for the CAF World Cup Qualifiers 2026 calendar (African teams).
+      condition: "$.get('opta_token') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+        access_token: "$.get('opta_token')"
+        endpoint: "'team'"
+        query_params: "{'tmcl': $.get('opta_caf_tmcl', '9ghm6cuz03lcz4fg8jl3n1uz8')}"
+      outputs:
+        opta_caf: "$.get('contestant', [])"
+
+    - type: connector
+      name: fetch-opta-afc
+      description: Opta contestants (team ids) for the AFC World Cup Qualifiers 2026 calendar (Asian teams).
+      condition: "$.get('opta_token') is not None"
+      continue_on_error: true
+      connector:
+        name: opta
+        command: invoke_request
+      inputs:
+        access_token: "$.get('opta_token')"
+        endpoint: "'team'"
+        query_params: "{'tmcl': $.get('opta_afc_tmcl', '8rlm9tgxmr9acaidre79xsjdg')}"
+      outputs:
+        opta_afc: "$.get('contestant', [])"
+
+    - type: connector
       name: merge-entities
-      description: Join provider team lists by iso3 into crosswalk items (api-football/ESPN canonical, Sportradar enrich-only).
+      description: Join provider team lists by iso3 into crosswalk items (api-football/ESPN canonical; Sportradar + Opta enrich-only).
       connector:
         name: worldcup-market-intelligence
         command: merge_provider_entities
@@ -79,6 +126,7 @@ workflow:
         api_football_teams: "$.get('af_teams', [])"
         espn_teams: "$.get('espn_teams', [])"
         sportradar_teams: "$.get('sportradar_teams', [])"
+        opta_teams: "($.get('opta_caf', []) or []) + ($.get('opta_afc', []) or [])"
       outputs:
         items: "$.get('items', [])"
         provider_summary: "$.get('provider_summary', {})"
