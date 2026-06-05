@@ -40,3 +40,5 @@ connector:
       value: "merge_provider_entities"
     - name: "Build player crosswalk"
       value: "build_player_crosswalk"
+    - name: "Build event crosswalk"
+      value: "build_event_crosswalk"

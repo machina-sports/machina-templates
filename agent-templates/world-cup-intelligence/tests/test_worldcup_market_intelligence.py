@@ -23,6 +23,7 @@ normalize_identity_crosswalk = _module.normalize_identity_crosswalk
 mint_event_identity = _module.mint_event_identity
 merge_provider_entities = _module.merge_provider_entities
 build_player_crosswalk = _module.build_player_crosswalk
+build_event_crosswalk = _module.build_event_crosswalk
 
 
 def _kalshi_record(**overrides):
@@ -1034,3 +1035,46 @@ class TestBuildPlayerCrosswalk:
         d = r["normalized_items"][0]
         assert d["name"] == "Diego Nicolás de la Cruz Arcosa"
         assert d["_id"] == "urn:machina:sport:soccer:player:diego-nicolas-de-la-cruz-arcosa:19970601:ury"
+
+
+class TestBuildEventCrosswalk:
+    def _teams(self):
+        return [
+            {"_id": "urn:machina:sport:soccer:team:mexico:mex", "name": "Mexico",
+             "provider_ids": {"sportradar": "sr:competitor:4781", "entain": "234216"}},
+            {"_id": "urn:machina:sport:soccer:team:south-africa:zaf", "name": "South Africa",
+             "provider_ids": {"sportradar": "sr:competitor:4736", "entain": "201277"}},
+        ]
+
+    def _events(self):
+        return [{
+            "_id": "urn:machina:sport:soccer:event:mexico-vs-south-africa:20260611:wor",
+            "sport:competitors": [
+                {"@id": "urn:machina:sport:soccer:team:mexico:mex"},
+                {"@id": "urn:machina:sport:soccer:team:south-africa:zaf"},
+            ],
+            "provider_ids": {"api_football_fixture_id": "1489369"},
+        }]
+
+    def test_attaches_sportradar_and_entain_event_ids(self):
+        sr = {"schedules": [{"sport_event": {"id": "sr:sport_event:66456904", "competitors": [
+            {"id": "sr:competitor:4781"}, {"id": "sr:competitor:4736"}]}}]}
+        bwin = {"items": [{"id": {"entityId": 7722030, "full": "2:7722030"},
+                           "participants": [{"id": 201277}, {"id": 234216}]}]}
+        r = build_event_crosswalk({"params": {"teams": self._teams(), "events": self._events(),
+                                              "sportradar_schedule": sr, "entain_fixtures": bwin}})["data"]
+        ev = r["normalized_items"][0]
+        assert ev["provider_ids"]["api_football_fixture_id"] == "1489369"
+        assert ev["provider_ids"]["sportradar_event_id"] == "sr:sport_event:66456904"
+        assert ev["provider_ids"]["entain_event_id"] == "7722030"
+        assert ev["metadata"]["event_urn"] == "urn:machina:sport:soccer:event:mexico-vs-south-africa:20260611:wor"
+        assert r["provider_summary"] == {"events": 1, "sportradar": 1, "entain": 1}
+
+    def test_unmatched_pair_is_left_untouched(self):
+        # sportradar event for a different pair (one unknown competitor) → no attach.
+        sr = {"schedules": [{"sport_event": {"id": "sr:sport_event:999", "competitors": [
+            {"id": "sr:competitor:4781"}, {"id": "sr:competitor:0000"}]}}]}
+        r = build_event_crosswalk({"params": {"teams": self._teams(), "events": self._events(),
+                                              "sportradar_schedule": sr}})["data"]
+        assert "sportradar_event_id" not in r["normalized_items"][0]["provider_ids"]
+        assert r["provider_summary"]["sportradar"] == 0
