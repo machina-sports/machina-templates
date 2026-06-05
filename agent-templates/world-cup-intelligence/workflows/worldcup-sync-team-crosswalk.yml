@@ -2,16 +2,9 @@ workflow:
   name: worldcup-sync-team-crosswalk
   title: World Cup Intelligence - Sync Team Identity Crosswalk
   description: |
-    Build the national-team identity crosswalk: canonical urn:machina:sport:soccer:team
-    URNs with provider_ids from api-football (canonical name authority) + ESPN
-    (sports-skills) + Sportradar + Opta, joined by country (iso3). Saves
-    worldcup:identity-crosswalk docs so the exposed API can resolve any provider's team
-    id to the canonical URN.
-
-    api-football + ESPN define the 48-team set; Sportradar (season competitors) and Opta
-    (FIFA World Cup 2026 tournament contestants) are enrich-only — they attach ids to the
-    48 but never create new teams. Entain/bwin has no team-list endpoint; Transfermarkt is
-    player-level only (both still available as provider_ids slots in the merge connector).
+    Build the national-team identity crosswalk: urn:machina:sport:soccer:team URNs with
+    provider_ids from api-football + ESPN + Sportradar + Opta, joined by country (iso3).
+    Saves worldcup:identity-crosswalk docs.
 
   context-variables:
     debugger:
@@ -27,8 +20,6 @@ workflow:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
     sr_season_id: "$.get('sr_season_id', 'sr:season:101177')"
-    # Opta FIFA World Cup 2026 tournament calendar (comp 70excpe… -> tmcl
-    # 873cbl…): the actual 48 contestants, all confederations (enrich-only).
     opta_wc_tmcl: "$.get('opta_wc_tmcl', '873cbl9cd9butm4air0mugxzo')"
   outputs:
     saved_count: "len($.get('normalized_items', []))"
@@ -37,7 +28,7 @@ workflow:
   tasks:
     - type: connector
       name: fetch-af-teams
-      description: Canonical World Cup teams from api-football (name authority + api_football id).
+      description: World Cup teams from api-football.
       continue_on_error: true
       connector:
         name: api-football
@@ -63,7 +54,7 @@ workflow:
 
     - type: connector
       name: fetch-sr-competitors
-      description: Sportradar competitors (sr:competitor ids) for the World Cup 2026 season (enrich-only).
+      description: Sportradar competitors for the World Cup 2026 season.
       continue_on_error: true
       connector:
         name: sportradar-soccer
@@ -77,7 +68,7 @@ workflow:
 
     - type: connector
       name: opta-auth
-      description: Get an Opta OAuth access token (outlet licensed AFC + CAF only).
+      description: Get an Opta OAuth access token.
       continue_on_error: true
       connector:
         name: opta
@@ -87,7 +78,7 @@ workflow:
 
     - type: connector
       name: fetch-opta-wc
-      description: Opta contestants (team ids) for the FIFA World Cup 2026 tournament calendar — the actual 48 teams, all confederations.
+      description: Opta contestants for the FIFA World Cup 2026 tournament calendar.
       condition: "$.get('opta_token') is not None"
       continue_on_error: true
       connector:
@@ -102,7 +93,7 @@ workflow:
 
     - type: connector
       name: merge-entities
-      description: Join provider team lists by iso3 into crosswalk items (api-football/ESPN canonical; Sportradar + Opta enrich-only).
+      description: Join provider team lists by iso3 into crosswalk items.
       connector:
         name: worldcup-market-intelligence
         command: merge_provider_entities
@@ -117,7 +108,7 @@ workflow:
 
     - type: connector
       name: normalize-crosswalk
-      description: Mint canonical urn:machina team URNs + provider_ids for each merged item.
+      description: Mint urn:machina team URNs + provider_ids for each merged item.
       connector:
         name: worldcup-market-intelligence
         command: normalize_identity_crosswalk

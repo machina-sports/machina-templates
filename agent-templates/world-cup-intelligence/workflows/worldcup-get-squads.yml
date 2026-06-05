@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-squads
   title: World Cup Intelligence - Squads
-  description: Squads for both teams in a World Cup fixture. api-football is primary (official 26-man lists); sports-skills get_team_profile is the fallback (full player pool) when api-football is empty. Resolve the two teams from an event_urn, or pass api-football team ids directly.
+  description: Squads for both teams in a World Cup fixture from api-football, with sports-skills get_team_profile as fallback. Resolve from an event_urn or api-football team ids.
 
   context-variables:
     debugger:
@@ -19,7 +19,7 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Resolve home/away api-football team ids and names from the cached event, by canonical machina event_urn OR api-football provider_event_id (fixture id).
+      description: Resolve home/away api-football team ids and names from the cached event, by machina event_urn or api-football provider_event_id (fixture id).
       condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search
@@ -37,7 +37,7 @@ workflow:
 
     - type: connector
       name: fetch-home-squad-af
-      description: Official home-team squad from api-football (primary).
+      description: Home-team squad from api-football.
       condition: "($.get('home_team_id') or $.get('home_team')) not in (None, '')"
       continue_on_error: true
       connector:
@@ -51,7 +51,7 @@ workflow:
 
     - type: connector
       name: fetch-away-squad-af
-      description: Official away-team squad from api-football (primary).
+      description: Away-team squad from api-football.
       condition: "($.get('away_team_id') or $.get('away_team')) not in (None, '')"
       continue_on_error: true
       connector:
@@ -65,7 +65,7 @@ workflow:
 
     - type: connector
       name: resolve-home-ss
-      description: Resolve the home team's sports-skills id by name (fallback path only).
+      description: Resolve the home team's sports-skills id by name.
       condition: "$.get('home_af_count', 0) == 0 and ($.get('home_team_name') or '') != ''"
       continue_on_error: true
       connector:
@@ -80,7 +80,7 @@ workflow:
 
     - type: connector
       name: resolve-away-ss
-      description: Resolve the away team's sports-skills id by name (fallback path only).
+      description: Resolve the away team's sports-skills id by name.
       condition: "$.get('away_af_count', 0) == 0 and ($.get('away_team_name') or '') != ''"
       continue_on_error: true
       connector:
@@ -95,7 +95,7 @@ workflow:
 
     - type: connector
       name: fetch-home-squad-ss
-      description: Sports Skills home-team roster fallback when api-football is empty.
+      description: Sports Skills home-team roster (used when api-football is empty).
       condition: "$.get('home_af_count', 0) == 0 and ($.get('home_ss_id') or '') != ''"
       continue_on_error: true
       connector:
@@ -110,7 +110,7 @@ workflow:
 
     - type: connector
       name: fetch-away-squad-ss
-      description: Sports Skills away-team roster fallback when api-football is empty.
+      description: Sports Skills away-team roster (used when api-football is empty).
       condition: "$.get('away_af_count', 0) == 0 and ($.get('away_ss_id') or '') != ''"
       continue_on_error: true
       connector:
@@ -125,7 +125,7 @@ workflow:
 
     - type: connector
       name: normalize-squads
-      description: Unify api-football (primary) + sports-skills (fallback) squads into a stable shape.
+      description: Normalize api-football and sports-skills squads.
       connector:
         name: worldcup-market-intelligence
         command: normalize_squads

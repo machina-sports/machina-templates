@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-get-standings
   title: World Cup Intelligence - Standings
-  description: World Cup group tables / standings. api-football is primary (official points/GD); sports-skills is the fallback and backfills ESPN crests. Resolve by event_urn or league/season.
+  description: World Cup group tables / standings from api-football, with sports-skills fallback. Resolve by event_urn or league/season.
 
   context-variables:
     debugger:
@@ -19,7 +19,7 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Resolve league id + season year + sports-skills season slug from the cached event, by canonical machina event_urn OR api-football provider_event_id (fixture id).
+      description: Resolve league id + season year + sports-skills season slug from the cached event, by machina event_urn or api-football provider_event_id (fixture id).
       condition: "$.get('event_urn', '') != '' or $.get('provider_event_id', '') != ''"
       config:
         action: search
@@ -36,7 +36,7 @@ workflow:
 
     - type: connector
       name: fetch-standings-af
-      description: Official standings from api-football (primary).
+      description: Standings from api-football.
       continue_on_error: true
       connector:
         name: api-football
@@ -50,7 +50,7 @@ workflow:
 
     - type: connector
       name: fetch-standings-ss
-      description: Sports Skills (ESPN) standings fallback when api-football returns nothing.
+      description: Sports Skills (ESPN) standings fallback.
       condition: "$.get('af_group_count', 0) == 0"
       continue_on_error: true
       connector:

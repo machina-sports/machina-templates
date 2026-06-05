@@ -858,12 +858,7 @@ def detect_price_move(request_data):
     }
 
 
-# -- Canonical reads: standings + squads -------------------------------------
-#
-# These pair api-football (official, authoritative) with sports-skills (ESPN,
-# crests, fallback) per the "both strengths where needed" split:
-#   - standings: api-football primary, sports-skills fallback + crest backfill
-#   - squads:    api-football only (official 26-man lists)
+# -- Standings + squads ------------------------------------------------------
 
 
 def _std_rows_af(af: Any) -> list[dict[str, Any]]:
@@ -937,14 +932,12 @@ def _std_rows_ss(ss: Any) -> list[dict[str, Any]]:
 
 
 def normalize_standings(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Unify api-football (primary) + sports-skills (fallback) WC standings.
+    """Merge api-football and sports-skills standings into stable group tables.
 
     Params:
       - af: raw api-football /standings response
       - ss: raw sports-skills get_season_standings response
       - league_id, season: passthrough labels for the envelope
-    api-football carries official points/GD; sports-skills is the fallback and
-    backfills crests when api-football rows lack a logo.
     """
     params = _params(request_data)
     warnings: list[str] = []
@@ -1040,14 +1033,12 @@ def _squad_players_ss(ss: Any) -> list[dict[str, Any]]:
 
 
 def normalize_squads(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Unify api-football (primary) + sports-skills (fallback) squads.
+    """Merge api-football and sports-skills squads.
 
     Params per side ("home"/"away"):
-      - {side}_af: raw api-football /players/squads response (official 26-man)
-      - {side}_ss: raw sports-skills get_team_profile response (full pool fallback)
+      - {side}_af: raw api-football /players/squads response
+      - {side}_ss: raw sports-skills get_team_profile response
       - {side}_team_id, {side}_team: resolved labels (optional; backfilled)
-    api-football is the official trimmed list; sports-skills is the fallback when
-    api-football is empty (e.g. unauthenticated or squad not yet published).
     """
     params = _params(request_data)
     teams: list[dict[str, Any]] = []
@@ -1103,8 +1094,6 @@ def normalize_injuries(request_data: dict[str, Any]) -> dict[str, Any]:
     Params:
       - af: api-football /injuries response (league-wide; body or list)
       - home_team_id, away_team_id, home_team, away_team
-    api-football is the only structured World Cup injury source — sports-skills
-    get_missing_players is Premier-League-only — so this read is af-backed.
     """
     params = _params(request_data)
     items = _injuries_items(params.get("af"))
@@ -1551,12 +1540,7 @@ def merge_official_and_provisional_performance(request_data: dict[str, Any]) -> 
 
 
 def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Normalize identity crosswalk rows into MCP document-store values.
-
-    The connector only reshapes caller-provided provider ids; it never invents
-    missing provider ids. Provider mappings must come from verified upstream
-    payloads (API-Football, Entain, Sportradar, Opta, ESPN, Transfermarkt, etc.).
-    """
+    """Normalize identity crosswalk rows into document-store values."""
     params = _params(request_data)
     items = _as_list(params.get("items"))
     normalized_items: list[dict[str, Any]] = []
@@ -1644,10 +1628,7 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
     }
 
 
-# -- Canonical machina identity helpers (shared by crosswalk + event minting) --
-#
-# These were lifted out of normalize_identity_crosswalk so mint_event_identity
-# mints the SAME urn:machina:sport:soccer:... scheme from API-Football fixtures.
+# -- Identity helpers --------------------------------------------------------
 
 _ISO3_MAP = {
     "ARG": "arg", "ARGENTINA": "arg", "AUS": "aus", "AUSTRALIA": "aus",
@@ -1739,20 +1720,11 @@ def _stable_disambiguator(provider_ids: dict[str, Any]) -> str:
 
 
 def _machina_team_urn(name: Any) -> str:
-    # National-team country == team name for the World Cup.
     return f"urn:machina:sport:soccer:team:{_slugify(name)}:{_to_iso3(name)}"
 
 
 def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Mint canonical IPTC World Cup event docs with machina URNs from API-Football fixtures.
-
-    API-Football is the data source; the canonical id is the machina URN
-    (urn:machina:sport:soccer:event:{home}-vs-{away}:{YYYYMMDD}:wor) — the SAME
-    scheme normalize_identity_crosswalk mints, so events and the crosswalk agree.
-    provider_ids carry every provider key (incl. api_football_venue_id) so the
-    exposed API can join by the api-football fixture id (provider_event_id) — the
-    stable alternate key. Venue URN is null-safe (no urn:...:venue:None).
-    """
+    """Build IPTC World Cup event docs with machina URNs from API-Football fixtures."""
     params = _params(request_data)
     fixtures = _as_list(params.get("fixtures"))
     comp_slug = _text(params.get("competition_slug")) or "world-cup-2026"
@@ -1838,31 +1810,12 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-# Provider id sources for the team identity crosswalk. api_football is the
-# canonical NAME authority (it is the data source); every other provider
-# contributes ONLY its id, matched to the same national team by country (iso3).
-# espn/transfermarkt come via sports-skills; sportradar/opta/entain via their
-# own connectors (populate once their keys are configured).
 _CROSSWALK_PROVIDERS = ["api_football", "espn", "transfermarkt", "sportradar", "opta", "entain"]
-# Only these define the canonical entity SET (both list exactly the 48 WC teams).
-# Everyone else is enrich-only: they attach their id to an existing team but never
-# create new entities (e.g. Sportradar's season list is a 100+ qualifying-pool
-# superset; we don't want the extras polluting the crosswalk).
 _CANONICAL_CROSSWALK_PROVIDERS = {"api_football", "espn"}
 
 
 def merge_provider_entities(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Merge per-provider national-team lists into identity-crosswalk items.
-
-    Each `{provider}_teams` param is a list of {id, name}. Teams are joined
-    across providers by iso3 (so "Korea Republic"/"South Korea" converge), with
-    api_football's name as the canonical slug source. Output `items` feed
-    normalize_identity_crosswalk, which mints the canonical urn:machina team URN
-    and stores provider_ids = {api_football, espn, sportradar, opta, entain, …}.
-
-    api_football/espn define the canonical 48-team set; sportradar/opta/entain are
-    enrich-only (attach ids to existing teams; never create new ones).
-    """
+    """Merge per-provider national-team lists ({provider}_teams) into crosswalk items, joined by iso3."""
     params = _params(request_data)
     canon: dict[str, dict[str, Any]] = {}
     order: list[str] = []
@@ -1879,14 +1832,14 @@ def merge_provider_entities(request_data: dict[str, Any]) -> dict[str, Any]:
             if not name or not tid:
                 continue
             iso = _to_iso3(name)
-            key = iso if iso != "unk" else _slugify(name)  # avoid unk-collisions
+            key = iso if iso != "unk" else _slugify(name)
             if key not in canon:
                 if provider not in _CANONICAL_CROSSWALK_PROVIDERS:
-                    continue  # enrich-only: skip teams not in the canonical set
+                    continue
                 canon[key] = {"name": name, "provider_ids": {}}
                 order.append(key)
             if provider == "api_football":
-                canon[key]["name"] = name  # canonical name authority
+                canon[key]["name"] = name
             canon[key]["provider_ids"][provider] = tid
             count += 1
         if teams:

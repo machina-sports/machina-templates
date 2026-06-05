@@ -20,7 +20,7 @@ workflow:
   tasks:
     - type: document
       name: lookup-event
-      description: Resolve canonical event and API-Football fixture id from same-pod event state.
+      description: Resolve event and API-Football fixture id from same-pod event state.
       condition: "$.get('event_urn', '') != '' or $.get('fixture_id', '') != ''"
       config:
         action: search
