@@ -1629,32 +1629,108 @@ def normalize_identity_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]
 
 # -- Identity helpers --------------------------------------------------------
 
+# Country name + ISO-3166 alpha-3 + common FIFA/IOC code variants -> canonical
+# lowercase ISO-3166 alpha-3 (FIFA codes used for the UK home nations, which
+# have no ISO alpha-3). Covers all 48 men's World Cup 2026 nations.
 _ISO3_MAP = {
-    "ARG": "arg", "ARGENTINA": "arg", "AUS": "aus", "AUSTRALIA": "aus",
-    "AUT": "aut", "AUSTRIA": "aut", "BEL": "bel", "BELGIUM": "bel",
-    "BRA": "bra", "BRASIL": "bra", "BRAZIL": "bra", "CAN": "can", "CANADA": "can",
-    "CHE": "che", "SWITZERLAND": "che", "CH": "che", "COL": "col", "COLOMBIA": "col",
-    "CIV": "civ", "COTE D IVOIRE": "civ", "CÔTE D’IVOIRE": "civ", "IVORY COAST": "civ",
-    "DEU": "deu", "GERMANY": "deu", "ECU": "ecu", "ECUADOR": "ecu",
-    "EGY": "egy", "EGYPT": "egy", "ENG": "eng", "ENGLAND": "eng",
-    "ESP": "esp", "SPAIN": "esp", "FRA": "fra", "FRANCE": "fra",
-    "GHA": "gha", "GHANA": "gha", "HRV": "hrv", "CROATIA": "hrv",
-    "IRN": "irn", "IR IRAN": "irn", "IRAN": "irn", "IRQ": "irq", "IRAQ": "irq",
-    "ITA": "ita", "ITALY": "ita", "JPN": "jpn", "JAPAN": "jpn",
+    # Argentina
+    "ARG": "arg", "ARGENTINA": "arg",
+    # Australia
+    "AUS": "aus", "AUSTRALIA": "aus",
+    # Austria
+    "AUT": "aut", "AUSTRIA": "aut",
+    # Belgium
+    "BEL": "bel", "BELGIUM": "bel",
+    # Bosnia & Herzegovina
+    "BIH": "bih", "BOSNIA HERZEGOVINA": "bih", "BOSNIA AND HERZEGOVINA": "bih",
+    # Brazil
+    "BRA": "bra", "BRAZIL": "bra", "BRASIL": "bra",
+    # Canada
+    "CAN": "can", "CANADA": "can",
+    # Cape Verde
+    "CPV": "cpv", "CAPE VERDE": "cpv", "CAPE VERDE ISLANDS": "cpv", "CABO VERDE": "cpv",
+    # Colombia
+    "COL": "col", "COLOMBIA": "col",
+    # Congo DR
+    "COD": "cod", "CONGO DR": "cod", "DR CONGO": "cod", "DEMOCRATIC REPUBLIC OF THE CONGO": "cod",
+    # Croatia
+    "HRV": "hrv", "CRO": "hrv", "CROATIA": "hrv",
+    # Curaçao
+    "CUW": "cuw", "CURACAO": "cuw",
+    # Czech Republic
+    "CZE": "cze", "CZECH REPUBLIC": "cze", "CZECHIA": "cze",
+    # Côte d'Ivoire
+    "CIV": "civ", "COTE D IVOIRE": "civ", "IVORY COAST": "civ",
+    # Ecuador
+    "ECU": "ecu", "ECUADOR": "ecu",
+    # Egypt
+    "EGY": "egy", "EGYPT": "egy",
+    # England (FIFA code; no ISO alpha-3)
+    "ENG": "eng", "ENGLAND": "eng",
+    # France
+    "FRA": "fra", "FRANCE": "fra",
+    # Germany
+    "DEU": "deu", "GER": "deu", "GERMANY": "deu",
+    # Ghana
+    "GHA": "gha", "GHANA": "gha",
+    # Haiti
+    "HTI": "hti", "HAI": "hti", "HAITI": "hti",
+    # Iran
+    "IRN": "irn", "IR IRAN": "irn", "IRAN": "irn",
+    # Iraq
+    "IRQ": "irq", "IRAQ": "irq",
+    # Japan
+    "JPN": "jpn", "JAPAN": "jpn",
+    # Jordan
+    "JOR": "jor", "JORDAN": "jor",
+    # Morocco
+    "MAR": "mar", "MOROCCO": "mar",
+    # Mexico
+    "MEX": "mex", "MEXICO": "mex",
+    # Netherlands
+    "NLD": "nld", "NED": "nld", "NETHERLANDS": "nld",
+    # New Zealand
+    "NZL": "nzl", "NEW ZEALAND": "nzl",
+    # Norway
+    "NOR": "nor", "NORWAY": "nor",
+    # Panama
+    "PAN": "pan", "PANAMA": "pan",
+    # Paraguay
+    "PRY": "pry", "PAR": "pry", "PARAGUAY": "pry",
+    # Portugal
+    "PRT": "prt", "POR": "prt", "PORTUGAL": "prt",
+    # Qatar
+    "QAT": "qat", "QATAR": "qat",
+    # Saudi Arabia
+    "SAU": "sau", "KSA": "sau", "SAUDI ARABIA": "sau",
+    # Scotland (FIFA code; no ISO alpha-3)
+    "SCO": "sco", "SCOTLAND": "sco",
+    # Senegal
+    "SEN": "sen", "SENEGAL": "sen",
+    # South Africa
+    "ZAF": "zaf", "RSA": "zaf", "SOUTH AFRICA": "zaf",
+    # South Korea
     "KOR": "kor", "KOREA REPUBLIC": "kor", "SOUTH KOREA": "kor",
-    "MAR": "mar", "MOROCCO": "mar", "MEX": "mex", "MEXICO": "mex",
-    "NLD": "nld", "NETHERLANDS": "nld", "NZL": "nzl", "NEW ZEALAND": "nzl",
-    "PRY": "pry", "PARAGUAY": "pry", "QAT": "qat", "QATAR": "qat",
-    "SAU": "sau", "SAUDI ARABIA": "sau", "SCO": "sco", "SCOTLAND": "sco",
-    "SEN": "sen", "SENEGAL": "sen", "TUN": "tun", "TUNISIA": "tun",
-    "TUR": "tur", "TURKIYE": "tur", "TÜRKIYE": "tur", "TURKEY": "tur",
-    "URY": "ury", "URUGUAY": "ury", "USA": "usa", "UNITED STATES": "usa",
-    "WAL": "wal", "WALES": "wal", "ZAF": "zaf", "SOUTH AFRICA": "zaf",
-    "CAPE VERDE": "cpv", "CAPE VERDE ISLANDS": "cpv", "CABO VERDE": "cpv", "CURACAO": "cuw", "CURAÇAO": "cuw",
-    "UZBEKISTAN": "uzb", "CONGO DR": "cod", "DR CONGO": "cod", "JORDAN": "jor",
-    "BOSNIA HERZEGOVINA": "bih", "BOSNIA AND HERZEGOVINA": "bih", "BOSNIA  HERZEGOVINA": "bih",
-    "PANAMA": "pan", "NORWAY": "nor", "SWEDEN": "swe", "PORTUGAL": "por",
-    "SERBIA": "srb", "SOUTH KOREA REPUBLIC": "kor",
+    # Spain
+    "ESP": "esp", "SPAIN": "esp",
+    # Sweden
+    "SWE": "swe", "SWEDEN": "swe",
+    # Switzerland
+    "CHE": "che", "SUI": "che", "SWITZERLAND": "che",
+    # Tunisia
+    "TUN": "tun", "TUNISIA": "tun",
+    # Türkiye
+    "TUR": "tur", "TURKIYE": "tur", "TURKEY": "tur",
+    # Uruguay
+    "URY": "ury", "URU": "ury", "URUGUAY": "ury",
+    # USA
+    "USA": "usa", "UNITED STATES": "usa", "UNITED STATES OF AMERICA": "usa",
+    # Uzbekistan
+    "UZB": "uzb", "UZBEKISTAN": "uzb",
+    # Algeria
+    "DZA": "dza", "ALG": "dza", "ALGERIA": "dza",
+    # Non-WC but kept for cross-provider robustness
+    "ITA": "ita", "ITALY": "ita", "SRB": "srb", "SERBIA": "srb", "WAL": "wal", "WALES": "wal",
 }
 
 # Backwards-compatible alias for normalize_identity_crosswalk's body.
