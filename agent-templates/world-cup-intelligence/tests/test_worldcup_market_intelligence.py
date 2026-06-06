@@ -1597,6 +1597,17 @@ class TestMarketDataQuality:
         r = detect_market_edges({"params": {"cached_markets": cached}})["data"]
         assert r["count"] == 0
 
+    def test_snapshots_skip_unreliable(self):
+        markets = [
+            {"cache_id": "kalshi:JP", "source": "kalshi", "price_quality": "unreliable",
+             "fetched_at": "2026-06-06T20:00:00Z", "outcomes": [{"name": "Yes", "price": 1.0}]},
+            {"cache_id": "kalshi:G", "source": "kalshi", "price_quality": "ok",
+             "fetched_at": "2026-06-06T20:00:00Z", "outcomes": [{"name": "Brazil", "price": 0.6}]},
+        ]
+        r = build_market_snapshots({"params": {"markets": markets}})["data"]
+        cids = [s["cache_id"] for s in r["snapshots"]]
+        assert cids == ["kalshi:G"]
+
 
 def test_standings_separates_third_place_ranking():
     af = {"response": [{"league": {"standings": [
