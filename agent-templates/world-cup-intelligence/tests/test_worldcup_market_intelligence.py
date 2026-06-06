@@ -36,6 +36,8 @@ compute_model_vs_market_edge = _module.compute_model_vs_market_edge
 compute_forecast_audit = _module.compute_forecast_audit
 detect_market_edges = _module.detect_market_edges
 normalize_fifa_seed = _module.normalize_fifa_seed
+select_prematch_fixtures = _module.select_prematch_fixtures
+_match_team_urns = _module._match_team_urns
 
 
 def _kalshi_record(**overrides):
@@ -1481,6 +1483,73 @@ def test_normalize_fifa_seed_resolves_canonical_urn_from_teams():
                   {"team_name": "Japan", "team_urn": "urn:machina:sport:soccer:team:japan:jpn"}]}})["data"]
     urns = {s["team_name"]: s["team_urn"] for s in r["seed_ratings"]}
     assert urns["South Korea"] == "urn:machina:sport:soccer:team:korea-republic:kor"
+
+
+NOW = "2026-06-13T12:00:00Z"
+
+
+def _ev_pm(urn, start, status="NS", enriched=None):
+    d = {"_id": urn, "schema:startDate": start, "sport:status": status}
+    if enriched:
+        d["prematch_research_at"] = enriched
+    return d
+
+
+class TestSelectPrematchFixtures:
+    def test_finished_and_long_past_excluded(self):
+        events = [
+            _ev_pm("a", "2026-06-13T14:00:00Z"),                 # +2h upcoming
+            _ev_pm("b", "2026-06-12T12:00:00Z", status="FT"),   # finished
+            _ev_pm("c", "2026-06-13T00:00:00Z"),                 # kicked off 12h ago
+        ]
+        r = select_prematch_fixtures({"params": {"events": events, "now_iso": NOW}})["data"]
+        urns = [f["_id"] for f in r["fixtures"]]
+        assert urns == ["a"]
+
+    def test_nearest_kickoff_first(self):
+        events = [
+            _ev_pm("far", "2026-06-20T12:00:00Z"),
+            _ev_pm("near", "2026-06-13T15:00:00Z"),
+            _ev_pm("mid", "2026-06-15T12:00:00Z"),
+        ]
+        r = select_prematch_fixtures({"params": {"events": events, "now_iso": NOW}})["data"]
+        assert [f["_id"] for f in r["fixtures"]] == ["near", "mid", "far"]
+
+    def test_countdown_tier_staleness(self):
+        # Imminent (+2h, <24h tier -> 2h interval): enriched 1h ago = not due; 3h ago = due.
+        fresh = _ev_pm("fresh", "2026-06-13T14:00:00Z", enriched="2026-06-13T11:00:00Z")  # 1h ago
+        stale = _ev_pm("stale", "2026-06-13T14:00:00Z", enriched="2026-06-13T08:00:00Z")  # 4h ago
+        r = select_prematch_fixtures({"params": {"events": [fresh, stale], "now_iso": NOW}})["data"]
+        assert [f["_id"] for f in r["fixtures"]] == ["stale"]
+
+    def test_far_fixture_longer_interval(self):
+        # +8d (>168h tier -> 72h interval): enriched 2 days ago = NOT due.
+        ev = _ev_pm("x", "2026-06-21T12:00:00Z", enriched="2026-06-11T12:00:00Z")
+        r = select_prematch_fixtures({"params": {"events": [ev], "now_iso": NOW}})["data"]
+        assert r["count"] == 0
+
+    def test_force_and_limit(self):
+        events = [_ev_pm(str(i), "2026-06-1%dT12:00:00Z" % (4 + i), enriched=NOW) for i in range(5)]
+        # All enriched "now" -> none due normally; force overrides; limit caps.
+        r = select_prematch_fixtures({"params": {"events": events, "now_iso": NOW, "force": True, "limit": 2}})["data"]
+        assert r["count"] == 2
+
+
+class TestFuzzyTeamMatch:
+    INDEX = [("brazil", "u:bra"), ("morocco", "u:mar"), ("iran", "u:irn"),
+             ("iraq", "u:irq"), ("england", "u:eng"), ("croatia", "u:cro")]
+
+    def test_exact_pair_unchanged(self):
+        assert _match_team_urns("brazil-vs-morocco-winner", self.INDEX) == ["u:bra", "u:mar"]
+
+    def test_iran_does_not_match_iraq(self):
+        # Exact finds iran; fuzzy must NOT add iraq (ratio 0.75 < 0.88).
+        assert _match_team_urns("iran-winner", self.INDEX) == ["u:irn"]
+
+    def test_fuzzy_fills_typo(self):
+        # "ngland" misses exact; fuzzy fills england alongside exact croatia.
+        out = _match_team_urns("ngland-vs-croatia", self.INDEX)
+        assert set(out) == {"u:eng", "u:cro"}
 
 
 def test_build_event_forecasts_skips_unknown_team():

@@ -18,18 +18,31 @@ workflow:
     workflow-status: "len($.get('search_results', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: document
-      name: find-fixtures-for-research
-      description: Find upcoming World Cup fixtures requiring fresh prematch research in same-pod state.
+      name: load-events
+      description: Load all World Cup event docs for countdown-aware staleness selection.
       config:
         action: search
-        search-limit: 10
+        search-limit: 500
         search-vector: false
       filters:
         name: "'worldcup:event'"
         value.machina_competition_slug: "$.get('competition_slug', 'world-cup-2026')"
       outputs:
-        fixtures: "[d.get('value', {}) for d in $.get('documents', [])][:int($.get('limit', 10))]"
-        has_fixtures: "len($.get('documents', [])) > 0"
+        all_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: select-fixtures
+      description: Pick fixtures due for enrichment — nearest kickoff first, refresh interval tightens as kickoff nears.
+      connector:
+        name: worldcup-market-intelligence
+        command: select_prematch_fixtures
+      inputs:
+        events: "$.get('all_events', [])"
+        limit: "$.get('limit', 10)"
+        force: "$.get('force', False)"
+      outputs:
+        fixtures: "$.get('fixtures', [])"
+        has_fixtures: "len($.get('fixtures', [])) > 0"
 
     # Grounded Google Search via google-genai invoke_search (sportingbot
     # coverage pattern) — one grounded answer + source links per fixture.
@@ -89,7 +102,8 @@ workflow:
               'prematch_research': next(
                 (r for r in $.get('search_results', []) if isinstance(r, dict) and r.get('research') and f.get('name') and r.get('query', '').startswith(f.get('name'))),
                 f.get('prematch_research', {}) or {}
-              )
+              ),
+              'prematch_research_at': datetime.utcnow().isoformat() + 'Z'
             })
             for f in $.get('fixtures', [])
             if isinstance(f, dict) and f.get('_id')

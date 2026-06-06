@@ -7,6 +7,7 @@ Kalshi/Polymarket market records into a stable shape for API/MCP/x402 exposure.
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import math
 import re
@@ -2324,11 +2325,43 @@ def _market_team_index(teams: list[Any]) -> list[tuple]:
     return index
 
 
+def _fuzzy_slug_in_text(slug: str, text_slug: str, threshold: float = 0.88) -> bool:
+    """True if `slug` closely matches an n-gram window of the dashed text.
+
+    Conservative (default 0.88) so near-but-distinct nations do NOT cross-match
+    (iran/iraq=0.75, niger/nigeria=0.83) while real typos do (england/ngland=0.92).
+    """
+    words = [w for w in slug.split("-") if w]
+    tokens = [t for t in text_slug.split("-") if t]
+    n = len(words)
+    if n == 0 or len(tokens) < n:
+        return False
+    best = 0.0
+    for i in range(len(tokens) - n + 1):
+        window = "-".join(tokens[i:i + n])
+        ratio = difflib.SequenceMatcher(None, slug, window).ratio()
+        if ratio > best:
+            best = ratio
+    return best >= threshold
+
+
 def _match_team_urns(text_slug: str, index: list[tuple]) -> list[str]:
     found: list[str] = []
+    # Primary: exact, word-boundary substring match (unchanged).
     for slug, urn in index:
         if slug and urn not in found and re.search(r"(^|-)" + re.escape(slug) + r"($|-)", text_slug):
             found.append(urn)
+    # Fallback: only to fill a likely 2-team market the exact pass missed (e.g. a
+    # minor spelling variant not in the alias map). Adds at most up to 2 total,
+    # never removes, so existing exact matches are untouched.
+    if len(found) < 2:
+        for slug, urn in index:
+            if urn in found:
+                continue
+            if _fuzzy_slug_in_text(slug, text_slug):
+                found.append(urn)
+                if len(found) >= 2:
+                    break
     return found
 
 
@@ -3274,3 +3307,72 @@ def compute_forecast_audit(request_data: dict[str, Any]) -> dict[str, Any]:
     if not forecast or hg is None or ag is None:
         return {"status": False, "data": {"error": "single mode needs forecast + actual_result {home_goals, away_goals}"}}
     return {"status": True, "data": {"audit_result": _single_audit(forecast, int(hg), int(ag)), "disclaimer": DISCLAIMER}}
+
+
+# -- Prematch enrichment scheduling ------------------------------------------
+# Countdown-aware refresh tiers: (countdown < N hours) -> refresh every M hours.
+# Closer to kickoff = fresher. Beyond the last tier -> 72h.
+_PREMATCH_TIERS = [(24.0, 2.0), (72.0, 6.0), (168.0, 48.0)]
+
+
+def _parse_iso(value: Any) -> datetime | None:
+    raw = _text(value)
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def select_prematch_fixtures(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Pick upcoming fixtures due for prematch enrichment, nearest kickoff first.
+
+    Replaces the flat "first N events" selection with a countdown-aware staleness
+    rule: a fixture is due when it has never been enriched OR its last enrichment
+    is older than the tier interval for its kickoff countdown (see _PREMATCH_TIERS).
+    Finished fixtures and those kicked off > 6h ago are skipped.
+
+    Params: events (worldcup:event docs), limit (default 10), force (ignore
+    staleness), now_iso (optional, for testing).
+    """
+    params = _params(request_data)
+    try:
+        limit = max(1, int(params.get("limit") or 10))
+    except (TypeError, ValueError):
+        limit = 10
+    force = bool(params.get("force", False))
+    now = _parse_iso(params.get("now_iso")) or datetime.now(timezone.utc)
+
+    selected: list[tuple[datetime, dict[str, Any]]] = []
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        if _text(ev.get("sport:status")).upper() in _FINAL_STATUS:
+            continue
+        ko = _parse_iso(ev.get("schema:startDate"))
+        if ko is None:
+            continue
+        countdown_h = (ko - now).total_seconds() / 3600.0
+        if countdown_h < -6:  # already kicked off long ago (and not flagged final) — skip
+            continue
+        cd = countdown_h if countdown_h > 0 else 0.0
+        interval_h = 72.0
+        for max_h, iv in _PREMATCH_TIERS:
+            if cd < max_h:
+                interval_h = iv
+                break
+        last = _parse_iso(ev.get("prematch_research_at"))
+        due = force or last is None or (now - last).total_seconds() / 3600.0 >= interval_h
+        if due:
+            selected.append((ko, ev))
+
+    selected.sort(key=lambda x: x[0])
+    fixtures = [ev for _, ev in selected[:limit]]
+    return {
+        "status": True,
+        "data": {"fixtures": fixtures, "count": len(fixtures), "considered": len(_as_list(params.get("events")))},
+    }
