@@ -50,10 +50,14 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - `worldcup-get-market-state` — current price + order-book depth + price history + trades (live)
 - `worldcup-market-movers` — biggest price moves over a lookback window
 - `worldcup-compare-market-sources` — cross-venue price comparison
-- `worldcup-find-market-edges` — informational edge/arb candidates (AI)
+- `worldcup-find-market-edges` — informational edge/arb candidates (AI); edge types `within_venue_book_sum`, `cross_venue_draw`, and (when forecasts exist) `model_vs_market`
 - `worldcup-explain-market-move` — why a price moved, grounded (AI)
 - `worldcup-generate-market-brief` — grounded market-intelligence brief (AI)
 - `worldcup-fan-sentiment-context` — social/news pulse (AI, grok)
+
+**Forecast & accuracy**
+- `worldcup-get-match-forecast` — model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + the live model-vs-market gap. Informational only.
+- `worldcup-backtest-forecasts` — post-match Brier/calibration audit; publishes the `worldcup:forecast-audit:aggregate` track record (read the aggregate doc to surface accuracy).
 
 **Agents (conversational)** — `world-cup-intelligence-agent` (full read+market), `world-cup-market-analyst-agent` (market-focused). Activate before exposing.
 
@@ -63,6 +67,8 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - `worldcup-sync-market-sources` — refresh market cache + entity links + hourly snapshots (cron `*/30 * * * *`)
 - `worldcup-sync-player-crosswalk` — rebuild player crosswalk (cron `0 6 * * *`)
 - `worldcup-sync-team-crosswalk`, `worldcup-sync-event-crosswalk`, `worldcup-sync-identity-crosswalk` — identity sync
+- `worldcup-seed-fifa-ranking` — bootstrap FIFA-ranking seed prior (occasional; grounded)
+- `worldcup-sync-model-forecasts` — precompute model forecasts for upcoming events (daily/cold)
 - `worldcup-refresh-prematch-enrichment` — grounded prematch research onto event docs
 - `worldcup-health` — ops health check
 
@@ -72,12 +78,15 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - **Market cache** (`search-markets`) — refreshed every 30 min; responses carry a staleness warning past 15 min.
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
+- **`get-match-forecast`** — probabilities from the daily `worldcup:model-forecast`; the model-vs-market gap is recomputed live against the market cache on every read.
+- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = event URN), `worldcup:forecast-audit` (`_id` = event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN).
 
 ## AI models
 
 - Grounded search steps (`invoke_search`: prematch enrichment, brief context, move news) → **`gemini-3.1-flash-lite`** (fast; Google grounding carries factual quality).
 - Reasoning/synthesis steps (`invoke_prompt`: brief synthesis, move explanation, edge analysis) → **`gemini-3.5-flash`**.
 - Fan sentiment / live social (`grok` `post-responses`) → **`grok-4.3`**.
+- **Forecast layer** (`worldcup-get-match-forecast` / `-sync-model-forecasts` / `-backtest-forecasts`) is **pure-stdlib math, no AI** — only the optional `worldcup-match-forecast-explain` (reasoning, gemini-3.5-flash) and the `worldcup-seed-fifa-ranking` bootstrap (grounded lite + flash extract) call models.
 
 ## Connector and secret requirements
 
@@ -179,6 +188,26 @@ Request: `{ "window_hours": 24, "limit": 20 }`
 Response: `{ "movers": [{cache_id, title, source, outcome, price_now, price_then, delta, abs_delta, since, volume, event_urn, related_team_urns}], "count": 20 }`
 
 Ranked by absolute price move vs the earliest snapshot in the window. Needs ≥2 hourly snapshots to surface movement.
+
+## `worldcup-get-match-forecast`
+
+Serve the precomputed model forecast for one event + the live model-vs-market gap.
+
+Request: `{ "event_urn": "urn:…event:brazil-vs-haiti:20260620:wor", "include_reasoning": false, "min_gap_bps": 100 }`
+
+Response: `{ forecast {home_team, away_team, home_expected_goals, away_expected_goals, probabilities{home_win,draw,away_win,over_2_5,under_2_5}, most_likely_score, exact_scorelines, confidence, data_source, flags, model, caveats, disclaimer}, model_vs_market {gaps[{outcome,model_prob,market_price,gap,gap_bps,model_richer}], max_gap_bps, caveats, disclaimer}, analysis?, warnings }`
+
+- The forecast is a **Dixon-Coles** statistical estimate (deterministic, stdlib): power ranking (team form, min-max normalized) blended with a FIFA-ranking seed → expected goals → 1X2/O-U/scoreline probabilities. `data_source` ∈ `results|blend|seed`; pre-tournament it is `seed` with low `confidence` (`flags: ["bootstrap_seeded"]`).
+- Probabilities come from the cached `worldcup:model-forecast`; the **gap is computed at read time** against `worldcup:market-cache` (markets move intraday).
+- **Informational only.** A gap is not a value/bet signal — fields are `gap`/`model_prob`/`market_price` (never stake/EV/Kelly). Missing forecast → empty `forecast` + a warning to run `worldcup-sync-model-forecasts`.
+
+## `worldcup-backtest-forecasts` (accuracy track record)
+
+Post-match audit. Compares each `worldcup:model-forecast` to the actual result (api-football finished fixture) → per-event `worldcup:forecast-audit` (Brier + calibration) → rolled into the singleton `worldcup:forecast-audit:aggregate`:
+
+`backtesting_report { brier_scores{avg_1x2, avg_over_2_5, baseline_random: 0.25, is_better_than_random}, accuracy{correct,total,accuracy_percent}, calibration{avg_calibration_error, curve[10 bins]}, sample_size_sufficient (≥50), recommendation }`
+
+Read the aggregate doc to surface the model's published accuracy. `sample_size_sufficient` gates over-reading early-tournament numbers.
 
 ## `worldcup-find-market-edges`
 

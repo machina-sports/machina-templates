@@ -1,0 +1,88 @@
+workflow:
+  name: worldcup-get-match-forecast
+  title: World Cup Intelligence - Get Match Forecast
+  description: |
+    Serve the precomputed model forecast for one event and compute the live
+    model-vs-market gap (model 1X2 probability vs current market price). The gap is
+    computed at read time because markets move intraday; the probabilities come from
+    the cached worldcup:model-forecast. Read-only and informational — gaps are not
+    value/bet signals.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    include_reasoning: "$.get('include_reasoning', False)"
+    min_gap_bps: "$.get('min_gap_bps', 100)"
+  outputs:
+    forecast: "$.get('forecast', {})"
+    model_vs_market: "$.get('model_vs_market', {})"
+    analysis: "$.get('analysis', {})"
+    warnings: "$.get('forecast_warnings', [])"
+    workflow-status: "$.get('forecast', {}) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-forecast
+      description: Load the cached model forecast for this event.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+        value._id: "$.get('event_urn', '')"
+      outputs:
+        forecast: "($.get('documents', []) or [{}])[0].get('value', {})"
+        forecast_warnings: "[] if ($.get('documents', []) or []) else ['No model forecast for this event -- run worldcup-sync-model-forecasts.']"
+
+    - type: document
+      name: load-event-markets
+      description: Cached markets linked to this event (for the model-vs-market gap).
+      condition: "$.get('forecast', {}) != {}"
+      config:
+        action: search
+        search-limit: 200
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.event_urn: "$.get('event_urn', '')"
+      outputs:
+        market_outcomes: "[o for d in ($.get('documents', []) or []) for o in (d.get('value', {}).get('outcomes') or [])]"
+
+    - type: connector
+      name: compute-gap
+      description: Model 1X2 probability vs current market price (informational).
+      condition: "$.get('forecast', {}) != {}"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_model_vs_market_edge
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        model_probabilities: "$.get('forecast', {}).get('probabilities', {})"
+        market_outcomes: "$.get('market_outcomes', [])"
+        home_team: "$.get('forecast', {}).get('home_team', {}).get('name', '')"
+        away_team: "$.get('forecast', {}).get('away_team', {}).get('name', '')"
+        min_gap_bps: "$.get('min_gap_bps', 100)"
+      outputs:
+        model_vs_market: "$"
+
+    - type: prompt
+      name: worldcup-match-forecast-explain
+      description: Explain the model probabilities and any model-vs-market gaps (informational).
+      condition: "$.get('forecast', {}) != {} and $.get('include_reasoning', False) is True"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        forecast: "$.get('forecast', {})"
+        model_vs_market: "$.get('model_vs_market', {})"
+        timeout: 120
+      outputs:
+        analysis: "$"

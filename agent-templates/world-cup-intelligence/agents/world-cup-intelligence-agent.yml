@@ -71,6 +71,14 @@ agent:
       outputs:
         player_performance_context: "$.get('player_performance_context', {})"
 
+    - name: worldcup-get-match-forecast
+      description: Model-implied match probabilities (Dixon-Coles) + model-vs-market gaps for a fixture (informational)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        forecast: "$.get('forecast', {})"
+        model_vs_market: "$.get('model_vs_market', {})"
+
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
       inputs:

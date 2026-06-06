@@ -32,6 +32,14 @@ agent:
       outputs:
         brief: "$.get('brief', {})"
 
+    - name: worldcup-get-match-forecast
+      description: Model-implied probabilities (Dixon-Coles) + model-vs-market gaps for a fixture (informational)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        forecast: "$.get('forecast', {})"
+        model_vs_market: "$.get('model_vs_market', {})"
+
   instructions: |
     Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, and close times.
     Call out candidate price dislocations or arbitrage-style opportunities only as analysis for a human/agent to evaluate independently.

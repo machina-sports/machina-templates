@@ -29,6 +29,13 @@ build_market_snapshots = _module.build_market_snapshots
 compute_market_movers = _module.compute_market_movers
 compute_coverage_signals = _module.compute_coverage_signals
 apply_live_status = _module.apply_live_status
+compute_power_ranking = _module.compute_power_ranking
+compute_match_probabilities = _module.compute_match_probabilities
+build_event_forecasts = _module.build_event_forecasts
+compute_model_vs_market_edge = _module.compute_model_vs_market_edge
+compute_forecast_audit = _module.compute_forecast_audit
+detect_market_edges = _module.detect_market_edges
+normalize_fifa_seed = _module.normalize_fifa_seed
 
 
 def _kalshi_record(**overrides):
@@ -1247,3 +1254,202 @@ class TestCoverageCadence:
         assert d["sport:status"] == "2H"
         assert d["live_score"] == {"home": 2, "away": 0, "elapsed": 67}
         assert d["metadata"]["event_urn"].endswith("brazil-vs-haiti:20260620:wor")
+
+
+def _ranking(power, gpg=1.4, conf=0.8, source="results"):
+    return {"power_score": power, "breakdown": {"attack_score": power, "defense_score": power},
+            "metrics": {"goals_per_game": gpg}, "confidence": conf, "data_source": source}
+
+
+class TestComputeMatchProbabilities:
+    def test_probabilities_sum_to_one(self):
+        r = compute_match_probabilities({"params": {
+            "home_ranking": _ranking(0.6), "away_ranking": _ranking(0.6),
+            "xg_params": {"home_advantage": 0.0}}})["data"]
+        p = r["probabilities"]
+        assert abs(p["home_win"] + p["draw"] + p["away_win"] - 1.0) < 1e-3
+        assert abs(p["over_2_5"] + p["under_2_5"] - 1.0) < 1e-3
+        assert r["disclaimer"]
+
+    def test_symmetry_equal_rankings_no_home_adv(self):
+        p = compute_match_probabilities({"params": {
+            "home_ranking": _ranking(0.6), "away_ranking": _ranking(0.6),
+            "xg_params": {"home_advantage": 0.0}}})["data"]["probabilities"]
+        assert abs(p["home_win"] - p["away_win"]) < 1e-9
+
+    def test_favorite_ordering(self):
+        r = compute_match_probabilities({"params": {
+            "home_ranking": _ranking(0.95, gpg=2.2, conf=1.0),
+            "away_ranking": _ranking(0.1, gpg=0.6, conf=1.0)}})["data"]
+        assert r["probabilities"]["home_win"] > r["probabilities"]["away_win"]
+        assert r["home_expected_goals"] > r["away_expected_goals"]
+
+    def test_rho_raises_draw_mass(self):
+        base = {"home_ranking": _ranking(0.6), "away_ranking": _ranking(0.6),
+                "xg_params": {"home_advantage": 0.0}}
+        d0 = compute_match_probabilities({"params": dict(base, rho=0.0)})["data"]["probabilities"]["draw"]
+        dn = compute_match_probabilities({"params": dict(base, rho=-0.15)})["data"]["probabilities"]["draw"]
+        assert dn > d0
+
+    def test_rho_clamped(self):
+        r = compute_match_probabilities({"params": {
+            "home_ranking": _ranking(0.6), "away_ranking": _ranking(0.6), "rho": -5.0}})["data"]
+        assert r["correlation_rho"] == -0.20
+
+
+class TestComputePowerRanking:
+    FIX = [
+        {"fixture": {"id": "1", "status": {"short": "FT"}},
+         "teams": {"home": {"name": "Aland"}, "away": {"name": "Bland"}}, "goals": {"home": 3, "away": 0}},
+        {"fixture": {"id": "2", "status": {"short": "FT"}},
+         "teams": {"home": {"name": "Aland"}, "away": {"name": "Cland"}}, "goals": {"home": 2, "away": 1}},
+        {"fixture": {"id": "3", "status": {"short": "FT"}},
+         "teams": {"home": {"name": "Bland"}, "away": {"name": "Cland"}}, "goals": {"home": 0, "away": 2}},
+    ]
+
+    def test_winner_outranks_loser(self):
+        rk = compute_power_ranking({"params": {"finished_fixtures": self.FIX,
+                                               "min_games_full_confidence": 2}})["data"]["rankings"]
+        order = [r["team_name"] for r in rk]
+        assert order.index("Aland") < order.index("Bland")
+        for r in rk:
+            assert 0.0 <= r["power_score"] <= 1.0
+        assert [r["rank"] for r in rk] == list(range(1, len(rk) + 1))
+
+    def test_degenerate_single_team(self):
+        one = [self.FIX[0]]
+        rk = compute_power_ranking({"params": {"finished_fixtures": one}})["data"]["rankings"]
+        for r in rk:
+            assert 0.0 <= r["power_score"] <= 1.0  # no divide-by-zero
+
+    def test_bootstrap_blend(self):
+        seed = [{"team_urn": _module._machina_team_urn("Aland"), "team_name": "Aland", "seed_rating": 0.9}]
+        rk = compute_power_ranking({"params": {"finished_fixtures": [self.FIX[0]],
+                                               "min_games_full_confidence": 5, "seed_ratings": seed}})["data"]
+        aland = [r for r in rk["rankings"] if r["team_name"] == "Aland"][0]
+        assert aland["data_source"] == "blend"
+        assert aland["confidence"] < 1.0
+
+    def test_seed_only_team_when_no_games(self):
+        seed = [{"team_urn": "urn:machina:sport:soccer:team:dland:dla", "team_name": "Dland", "seed_rating": 0.7}]
+        rk = compute_power_ranking({"params": {"finished_fixtures": self.FIX, "seed_ratings": seed}})["data"]
+        dland = [r for r in rk["rankings"] if r["team_name"] == "Dland"][0]
+        assert dland["data_source"] == "seed"
+        assert dland["power_score"] == 0.7
+
+
+class TestForecastAudit:
+    PERFECT = {"probabilities": {"home_win": 1, "draw": 0, "away_win": 0, "over_2_5": 1, "under_2_5": 0},
+               "most_likely_score": "2-0", "_id": "e1"}
+    WORST = {"probabilities": {"home_win": 0, "draw": 0, "away_win": 1}, "most_likely_score": "0-2", "_id": "e2"}
+
+    def test_perfect_prediction(self):
+        a = compute_forecast_audit({"params": {"mode": "single", "forecast": self.PERFECT,
+                                               "actual_result": {"home_goals": 2, "away_goals": 0}}})["data"]["audit_result"]
+        assert a["brier_scores"]["combined_1x2"] == 0.0
+        assert a["calibration"]["prediction_correct"] is True
+        assert a["exact_score_correct"] is True
+
+    def test_worst_prediction(self):
+        a = compute_forecast_audit({"params": {"mode": "single", "forecast": self.WORST,
+                                               "actual_result": {"home_goals": 2, "away_goals": 0}}})["data"]["audit_result"]
+        assert abs(a["brier_scores"]["combined_1x2"] - (1 + 0 + 1) / 3) < 1e-3
+        assert a["calibration"]["prediction_correct"] is False
+
+    def test_calibration_bin(self):
+        fc = {"probabilities": {"home_win": 0.55, "draw": 0.25, "away_win": 0.20}, "most_likely_score": "1-0", "_id": "e3"}
+        a = compute_forecast_audit({"params": {"mode": "single", "forecast": fc,
+                                               "actual_result": {"home_goals": 1, "away_goals": 0}}})["data"]["audit_result"]
+        assert a["calibration"]["calibration_bin"] == 5
+        assert a["calibration"]["calibration_bin_label"] == "50-60%"
+
+    def test_batch_matches_by_fixture_id(self):
+        fc = dict(self.PERFECT, provider_ids={"api_football": "111"})
+        fixtures = [{"fixture": {"id": 111, "status": {"short": "FT"}}, "goals": {"home": 2, "away": 0}}]
+        r = compute_forecast_audit({"params": {"mode": "batch", "forecasts": [fc],
+                                               "finished_fixtures": fixtures}})["data"]
+        assert r["count"] == 1
+
+    def test_aggregate_baseline_and_sample_gate(self):
+        audits = []
+        for _ in range(3):
+            audits.append(compute_forecast_audit({"params": {"mode": "single", "forecast": self.PERFECT,
+                                                             "actual_result": {"home_goals": 2, "away_goals": 0}}})["data"]["audit_result"])
+        rep = compute_forecast_audit({"params": {"mode": "aggregate", "audit_results": audits}})["data"]["backtesting_report"]
+        assert rep["brier_scores"]["is_better_than_random"] is True
+        assert rep["sample_size_sufficient"] is False  # only 3 < 50
+
+
+class TestModelVsMarketEdge:
+    def test_gap_math(self):
+        r = compute_model_vs_market_edge({"params": {
+            "model_probabilities": {"home_win": 0.60, "draw": 0.25, "away_win": 0.15},
+            "market_outcomes": [{"name": "Aland", "price": 0.50}, {"name": "Draw", "price": 0.25}],
+            "home_team": "Aland", "away_team": "Bland", "min_gap_bps": 100}})["data"]
+        hw = [g for g in r["gaps"] if g["outcome"] == "home_win"][0]
+        assert hw["gap_bps"] == 1000
+        assert hw["model_richer"] is True
+        assert r["disclaimer"]
+
+    def test_zero_price_skipped_and_threshold(self):
+        r = compute_model_vs_market_edge({"params": {
+            "model_probabilities": {"home_win": 0.51, "away_win": 0.49},
+            "market_outcomes": [{"name": "Aland", "price": 0.0}, {"name": "Bland", "price": 0.50}],
+            "home_team": "Aland", "away_team": "Bland", "min_gap_bps": 100}})["data"]
+        # Aland skipped (price 0); Bland gap = |0.49-0.50| = 100 bps -> below threshold filtered
+        assert all(g["outcome"] != "home_win" for g in r["gaps"])
+
+
+class TestDetectMarketEdgesBackwardCompat:
+    def test_no_forecasts_param_unchanged(self):
+        r = detect_market_edges({"params": {"cached_markets": []}})["data"]
+        assert "edge_candidates" in r and r["count"] == 0
+
+    def test_forecasts_append_model_vs_market(self):
+        cached = [{"cache_id": "kalshi:x", "event_urn": "urn:ev:1", "source": "kalshi",
+                   "source_event_id": "x", "title": "Aland vs Bland",
+                   "outcomes": [{"name": "Aland", "price": 0.50}]}]
+        forecasts = [{"_id": "urn:ev:1", "probabilities": {"home_win": 0.70, "draw": 0.2, "away_win": 0.1},
+                      "home_team": {"name": "Aland"}, "away_team": {"name": "Bland"}}]
+        r = detect_market_edges({"params": {"cached_markets": cached, "forecasts": forecasts,
+                                            "min_edge_bps": 100}})["data"]
+        mvm = [c for c in r["edge_candidates"] if c["candidate_type"] == "model_vs_market"]
+        assert len(mvm) == 1 and mvm[0]["edge_bps"] == 2000
+
+
+def test_build_event_forecasts_from_index():
+    event = {"_id": "urn:machina:sport:soccer:event:aland-vs-bland:20260612:wor",
+             "schema:startDate": "2026-06-12T18:00:00+00:00",
+             "provider_ids": {"api_football": "555"},
+             "sport:competitors": [
+                 {"@id": "urn:machina:sport:soccer:team:aland:ala", "name": "Aland", "sport:qualifier": "home"},
+                 {"@id": "urn:machina:sport:soccer:team:bland:bla", "name": "Bland", "sport:qualifier": "away"}]}
+    team_index = {"urn:machina:sport:soccer:team:aland:ala": _ranking(0.8, conf=1.0),
+                  "urn:machina:sport:soccer:team:bland:bla": _ranking(0.3, conf=1.0)}
+    r = build_event_forecasts({"params": {"events": [event], "team_index": team_index}})["data"]
+    assert r["count"] == 1
+    fc = r["forecasts"][0]
+    assert fc["_id"] == event["_id"]
+    assert fc["metadata"]["event_urn"] == event["_id"]
+    assert abs(sum([fc["probabilities"]["home_win"], fc["probabilities"]["draw"],
+                    fc["probabilities"]["away_win"]]) - 1.0) < 1e-3
+    assert fc["disclaimer"]
+
+
+def test_normalize_fifa_seed_band_and_order():
+    r = normalize_fifa_seed({"params": {"rankings": [
+        {"team_name": "Strongland", "points": 2000},
+        {"team_name": "Midland", "points": 1500},
+        {"team_name": "Weakland", "points": 1000}]}})["data"]
+    seeds = {s["team_name"]: s["seed_rating"] for s in r["seed_ratings"]}
+    assert seeds["Strongland"] == 0.8 and seeds["Weakland"] == 0.2  # [0.2, 0.8] band
+    assert seeds["Strongland"] > seeds["Midland"] > seeds["Weakland"]
+    assert r["count"] == 3
+
+
+def test_build_event_forecasts_skips_unknown_team():
+    event = {"_id": "urn:ev:z", "sport:competitors": [
+        {"@id": "urn:unknown:a", "name": "A", "sport:qualifier": "home"},
+        {"@id": "urn:unknown:b", "name": "B", "sport:qualifier": "away"}]}
+    r = build_event_forecasts({"params": {"events": [event], "team_index": {}}})["data"]
+    assert r["count"] == 0 and "urn:ev:z" in r["skipped"]
