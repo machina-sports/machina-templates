@@ -1558,3 +1558,52 @@ def test_build_event_forecasts_skips_unknown_team():
         {"@id": "urn:unknown:b", "name": "B", "sport:qualifier": "away"}]}
     r = build_event_forecasts({"params": {"events": [event], "team_index": {}}})["data"]
     assert r["count"] == 0 and "urn:ev:z" in r["skipped"]
+
+
+class TestMarketDataQuality:
+    def test_degenerate_kalshi_outright_flagged(self):
+        # Sparse outright payload (yes_bid 100c / no_bid 98c) -> Yes 1.0 / No 0.98 (sum 1.98).
+        rec = {"ticker": "KXMENWORLDCUP-26-JP", "title": "Will the Japan win the 2026 Men's World Cup?",
+               "event_ticker": "KXMENWORLDCUP-26", "yes_bid": 100, "no_bid": 98, "volume": 123}
+        m = _module._normalize_record("kalshi", rec, "2026-06-06T00:00:00Z")
+        assert m["price_quality"] == "unreliable"
+        assert any("unreliable" in n.lower() for n in m["resolution_risk_notes"])
+
+    def test_normal_binary_ok_and_spread_computed(self):
+        rec = {"ticker": "KXWCGAME-X-ENG", "title": "England vs Croatia Winner?",
+               "yes_sub_title": "England", "yes_bid_dollars": "0.56",
+               "yes_ask_dollars": "0.57", "no_bid_dollars": "0.43"}
+        m = _module._normalize_record("kalshi", rec, "2026-06-06T00:00:00Z")
+        assert m["price_quality"] == "ok"
+        assert m["spread"] == 0.01
+
+    def test_movers_skips_unreliable(self):
+        markets = [
+            {"cache_id": "kalshi:JP", "source": "kalshi", "price_quality": "unreliable",
+             "outcomes": [{"name": "Yes", "price": 1.0}], "title": "Japan win WC"},
+            {"cache_id": "kalshi:G", "source": "kalshi", "price_quality": "ok",
+             "outcomes": [{"name": "Brazil", "price": 0.6}], "title": "Brazil vs X"},
+        ]
+        snaps = [{"cache_id": "kalshi:JP", "ts": "2026-06-06T10:00:00", "primary_price": 0.02},
+                 {"cache_id": "kalshi:G", "ts": "2026-06-06T10:00:00", "primary_price": 0.5}]
+        r = compute_market_movers({"params": {"markets": markets, "snapshots": snaps, "limit": 10}})["data"]
+        cids = [m["cache_id"] for m in r["movers"]]
+        assert "kalshi:JP" not in cids and "kalshi:G" in cids
+
+    def test_edges_exclude_unreliable(self):
+        cached = [{"cache_id": "kalshi:JP", "source": "kalshi", "source_event_id": "KXMENWORLDCUP-26",
+                   "price_quality": "unreliable", "title": "Japan win WC",
+                   "outcomes": [{"name": "Yes", "price": 1.0}]}]
+        r = detect_market_edges({"params": {"cached_markets": cached}})["data"]
+        assert r["count"] == 0
+
+
+def test_standings_separates_third_place_ranking():
+    af = {"response": [{"league": {"standings": [
+        [{"rank": 1, "group": "Group A", "team": {"id": 1, "name": "Mexico"}, "all": {}, "points": 0}],
+        [{"rank": 1, "group": "Ranking of third-placed teams", "team": {"id": 2, "name": "Foo"}, "all": {}, "points": 0}],
+    ]}}]}
+    r = normalize_standings({"params": {"af": af, "league_id": "1", "season": "2026"}})["data"]
+    assert r["group_count"] == 1
+    assert len(r["groups"]) == 1 and r["groups"][0]["group"] == "Group A"
+    assert len(r["third_place_ranking"]) == 1

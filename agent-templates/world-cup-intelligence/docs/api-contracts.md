@@ -155,6 +155,7 @@ Accepts: a machina URN (`urn:machina:…`), a fixture id (`1489389` → the even
   "volume": 10818.56,
   "liquidity": null,
   "spread": null,
+  "price_quality": "ok",
   "competition_urn": "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor",
   "related_team_urns": ["urn:machina:sport:soccer:team:brazil:bra", "urn:machina:sport:soccer:team:haiti:hti"],
   "event_urn": "urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor",
@@ -164,6 +165,8 @@ Accepts: a machina URN (`urn:machina:…`), a fixture id (`1489389` → the even
 ```
 
 **Market entity linking is implemented**: every cached market carries `competition_urn` (always the canonical WC competition), `related_team_urns` (team-name match against the crosswalk, with nation aliases), and `event_urn` for two-team markets matched to a fixture by team pair. Outright markets (winner/top-scorer/group) have ≤1 team and no `event_urn`.
+
+`price_quality` is `ok` or `unreliable` — a binary market whose two sides don't sum to ~1.0 (thin/stale book, e.g. some illiquid outright series) is flagged `unreliable`; such markets are excluded from `worldcup-market-movers` and `worldcup-find-market-edges` and carry a price caveat. `worldcup-get-standings` returns the 12 real groups in `groups` (`group_count: 12`) and the WC best-third-placed table separately in `third_place_ranking`.
 
 ## `worldcup-search-markets`
 
