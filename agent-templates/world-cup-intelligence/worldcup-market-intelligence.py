@@ -185,6 +185,21 @@ def _polymarket_outcomes(record: dict[str, Any]) -> list[dict[str, Any]]:
     return normalized
 
 
+def _binary_price_quality(outcomes: list[dict[str, Any]]) -> str:
+    """Flag binary markets whose two sides don't sum to ~1.0 as 'unreliable'.
+
+    Thin/stale Kalshi outright series (e.g. KXMENWORLDCUP-26-*) return crossed or
+    placeholder quotes that normalize to e.g. Yes 1.0 / No 0.98 (sum 1.98) — an
+    impossible book. Real binaries sum within a small overround of 1.0.
+    """
+    priced = [o for o in outcomes if isinstance(o, dict) and o.get("price") is not None]
+    if len(priced) == 2:
+        total = _to_float(priced[0].get("price")) + _to_float(priced[1].get("price"))
+        if abs(total - 1.0) > 0.12:
+            return "unreliable"
+    return "ok"
+
+
 def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> dict[str, Any] | None:
     if not isinstance(record, dict):
         return None
@@ -213,6 +228,25 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
             cache_key = f"{cache_key}:{_text(source_event_id)}"
     cache_id = f"{source}:{cache_key}"
 
+    # Spread fallback: many Kalshi list payloads omit a `spread` field but carry
+    # yes_bid/yes_ask (cents or dollar strings) — derive it.
+    spread = _first(record, "spread", "bid_ask_spread")
+    if spread is None:
+        yes_ask = _normalize_probability(_first(record, "yes_ask", "yes_ask_dollars"))
+        yes_bid = _normalize_probability(_first(record, "yes_bid", "yes_bid_dollars"))
+        if yes_ask is not None and yes_bid is not None:
+            spread = round(abs(yes_ask - yes_bid), 6)
+
+    price_quality = _binary_price_quality(outcomes)
+    notes = [
+        "Read-only market intelligence. Verify provider resolution rules, fees, liquidity, and freshness before acting."
+    ]
+    if price_quality == "unreliable":
+        notes.append(
+            "Quoted prices look unreliable (the two sides don't sum to ~1.0) -- likely a thin or stale book. "
+            "Treat the price as indicative only."
+        )
+
     return {
         # `metadata` is the document-store bulk-update upsert key (the engine
         # filters on {metadata, name}), so re-syncs overwrite the same cache
@@ -229,16 +263,15 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
         "status": status,
         "market_type": _text(_first(record, "sports_market_type", "type", "category", "market_type")) or None,
         "outcomes": outcomes,
+        "price_quality": price_quality,
         "volume": _first(record, "volume", "volume_24h", "dollar_volume", "volume_fp"),
         "liquidity": _first(record, "liquidity", "open_interest", "liquidity_dollars", "open_interest_fp"),
-        "spread": _first(record, "spread", "bid_ask_spread"),
+        "spread": spread,
         "start_time": _first(record, "start_date", "start_time", "open_time"),
         "end_time": _first(record, "end_date", "close_time", "expiration_time", "expected_expiration_time"),
         "updated_at": _first(record, "updated_at", "last_update_time", "last_updated") or fetched_at,
         "fetched_at": fetched_at,
-        "resolution_risk_notes": [
-            "Read-only market intelligence. Verify provider resolution rules, fees, liquidity, and freshness before acting."
-        ],
+        "resolution_risk_notes": notes,
         "source_payload_keys": sorted(record.keys()),
     }
 
@@ -598,6 +631,8 @@ def normalize_market_state(request_data: dict[str, Any]) -> dict[str, Any]:
 
     if not market:
         warnings.append("Market not found in cache and no live record returned.")
+    if isinstance(market, dict) and market.get("price_quality") == "unreliable":
+        warnings.append("Quoted prices look unreliable (the two sides don't sum to ~1.0) -- thin/stale book; treat as indicative only.")
     if not book:
         warnings.append("No order-book depth available for this market.")
     if not history:
@@ -669,7 +704,10 @@ def detect_market_edges(request_data):
       - limit: max candidates (default 50)
     """
     params = _params(request_data)
-    cached = [m for m in _as_list(params.get("cached_markets")) if isinstance(m, dict)]
+    # Drop markets with unreliable quotes (thin/stale books) so they can't throw
+    # fake within-venue/cross-venue/model edges.
+    cached = [m for m in _as_list(params.get("cached_markets"))
+              if isinstance(m, dict) and m.get("price_quality") != "unreliable"]
     try:
         min_edge_bps = int(params.get("min_edge_bps") or 50)
     except (TypeError, ValueError):
@@ -979,14 +1017,21 @@ def normalize_standings(request_data: dict[str, Any]) -> dict[str, Any]:
     for grp in groups:
         grp["table"].sort(key=lambda r: (r.get("rank") is None, r.get("rank") or 0))
 
+    # api-football returns the WC "Ranking of third-placed teams" as an extra
+    # standings table; it's not a 13th group. Split it out so group_count is the
+    # real number of groups (12) and the ranking is its own field.
+    real_groups = [g for g in groups if "third" not in _lower(g.get("group"))]
+    third_place = next((g for g in groups if "third" in _lower(g.get("group"))), None)
+
     return {
         "status": True,
         "data": {
             "source": source,
             "season": params.get("season"),
             "league_id": _text(params.get("league_id")) or None,
-            "group_count": len(groups),
-            "groups": groups,
+            "group_count": len(real_groups),
+            "groups": real_groups,
+            "third_place_ranking": (third_place or {}).get("table", []),
             "warnings": warnings,
         },
     }
@@ -2481,6 +2526,10 @@ def compute_market_movers(request_data: dict[str, Any]) -> dict[str, Any]:
     movers: list[dict[str, Any]] = []
     for m in _as_list(params.get("markets")):
         if not isinstance(m, dict):
+            continue
+        # Skip thin/stale books with unreliable quotes (e.g. degenerate outright
+        # series) so they don't surface as fake movers.
+        if m.get("price_quality") == "unreliable":
             continue
         cid = _text(m.get("cache_id") or m.get("id"))
         outs = m.get("outcomes") or []
