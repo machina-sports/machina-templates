@@ -64,3 +64,5 @@ connector:
       value: "compute_model_vs_market_edge"
     - name: "Compute forecast audit"
       value: "compute_forecast_audit"
+    - name: "Select prematch fixtures"
+      value: "select_prematch_fixtures"
