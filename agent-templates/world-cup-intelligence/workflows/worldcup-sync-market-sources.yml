@@ -138,3 +138,29 @@ workflow:
         items: "$.get('normalized_markets', [])"
       inputs:
         normalized_markets: "$.get('normalized_markets', [])"
+
+    - type: connector
+      name: build-market-snapshots
+      description: Build hourly price snapshots (append-only time series) from the linked markets.
+      condition: "len($.get('normalized_markets', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: build_market_snapshots
+      inputs:
+        markets: "$.get('normalized_markets', [])"
+      outputs:
+        snapshots: "$.get('snapshots', [])"
+
+    - type: document
+      name: save-market-snapshots
+      description: Append hourly market snapshots (unique per market per hour) to the price-history store.
+      condition: "len($.get('snapshots', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:market-snapshot'"
+      documents:
+        items: "$.get('snapshots', [])"
+      inputs:
+        snapshots: "$.get('snapshots', [])"

@@ -48,6 +48,8 @@ datasets:
   - type: workflow
     path: workflows/worldcup-get-market-state.yml
   - type: workflow
+    path: workflows/worldcup-market-movers.yml
+  - type: workflow
     path: workflows/worldcup-get-iptc-event-context.yml
   - type: workflow
     path: workflows/worldcup-get-event-context.yml
