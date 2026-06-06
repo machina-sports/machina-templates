@@ -28,6 +28,15 @@ prompts:
           type: string
         performance_signals:
           type: object
+          properties:
+            role:
+              type: string
+            recent_contributions:
+              type: string
+            status:
+              type: string
+            note:
+              type: string
         fixture_context:
           type: string
         disclaimer:

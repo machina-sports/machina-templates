@@ -22,10 +22,32 @@ prompts:
           type: string
         probabilities:
           type: object
+          properties:
+            home_win:
+              type: number
+            draw:
+              type: number
+            away_win:
+              type: number
+            over_2_5:
+              type: number
+            under_2_5:
+              type: number
         model_vs_market_gaps:
           type: array
           items:
             type: object
+            properties:
+              outcome:
+                type: string
+              model_prob:
+                type: number
+              market_price:
+                type: number
+              gap_bps:
+                type: number
+              note:
+                type: string
         confidence_note:
           type: string
         caveats:

@@ -36,9 +36,25 @@ prompts:
         forecast_scorecard:
           type: object
           description: Optional. Compares the pre-match model probabilities to the result.
+          properties:
+            predicted_outcome:
+              type: string
+            actual_outcome:
+              type: string
+            predicted_score:
+              type: string
+            hit:
+              type: boolean
+            note:
+              type: string
         market_reaction:
           type: array
           items:
             type: object
+            properties:
+              market:
+                type: string
+              note:
+                type: string
         disclaimer:
           type: string

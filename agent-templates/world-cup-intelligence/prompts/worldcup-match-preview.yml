@@ -39,11 +39,33 @@ prompts:
           type: string
         model_forecast:
           type: object
-          description: Optional. Model-implied probabilities when a forecast exists.
+          description: Optional. Copy from `forecast` when present; omit otherwise.
+          properties:
+            home_win:
+              type: number
+            draw:
+              type: number
+            away_win:
+              type: number
+            most_likely_score:
+              type: string
+            confidence:
+              type: number
+            note:
+              type: string
         market_snapshot:
           type: array
           items:
             type: object
+            properties:
+              market:
+                type: string
+              outcome:
+                type: string
+              price:
+                type: number
+              source:
+                type: string
         watch_items:
           type: array
           items:
