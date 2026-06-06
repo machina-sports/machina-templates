@@ -2466,6 +2466,10 @@ def build_market_snapshots(request_data: dict[str, Any]) -> dict[str, Any]:
     for m in _as_list(params.get("markets")):
         if not isinstance(m, dict):
             continue
+        # Never snapshot an unreliable quote — a degenerate baseline (e.g. a thin
+        # outright series stuck at 1.0) would otherwise produce a fake mover later.
+        if m.get("price_quality") == "unreliable":
+            continue
         cid = _text(m.get("cache_id") or m.get("id"))
         if not cid:
             continue
