@@ -28,8 +28,11 @@ was a full collection scan. These indexes turn the hot paths into `IXSCAN`.
 time series). Partial scoping is mandatory: the `document` collection is shared,
 so an unscoped TTL would expire identity/event/market docs too.
 
-## Not covered (string timestamps)
-Execution-log collections (`workflow_tasks` ~10k, `workflow_run`, `agent_run`)
-store `timestamp` as a **string**, not a BSON Date, so Mongo TTL cannot apply.
-Retain those via an app-level cleanup (a scheduled workflow that bulk-deletes by
-string timestamp `$lt`) — TODO, not in this script.
+## Execution-log retention (CronJob)
+Execution-log collections (`workflow_tasks`, `workflow_run`, `agent_run`) store
+`timestamp` as a **string**, not a BSON Date, so Mongo TTL cannot apply. They are
+pruned by `execution-log-cleanup-cronjob.yaml` — a k8s CronJob (daily 04:30 UTC)
+that runs `mongosh` against the `world-cup-2` db and `deleteMany`s rows older than
+`RETENTION_DAYS` (default 14) via lexicographic ISO-string comparison. The
+doc-store API only reaches the `document` collection, so this is a CronJob rather
+than a workflow. Apply: `kubectl apply -f execution-log-cleanup-cronjob.yaml`.
