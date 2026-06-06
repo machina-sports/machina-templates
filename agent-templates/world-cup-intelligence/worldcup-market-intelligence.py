@@ -3055,15 +3055,24 @@ def _gap_candidates(probs: dict[str, Any], outcomes: list[Any],
 
 def _model_vs_market_candidates(cached: list[dict[str, Any]], forecasts: list[Any],
                                 min_edge_bps: int) -> list[dict[str, Any]]:
-    """Build model_vs_market edge candidates for detect_market_edges."""
+    """Build model_vs_market edge candidates for detect_market_edges.
+
+    Markets are joined to forecasts by event_urn when present, and otherwise by the
+    team-pair (related_team_urns) — so the gap works even when the market sync has
+    not stamped an event_urn onto a cached market yet.
+    """
     by_event: dict[str, list[Any]] = {}
+    by_pair: dict[frozenset, list[Any]] = {}
     for m in cached:
         if not isinstance(m, dict):
             continue
+        outs = m.get("outcomes") or []
         eu = _text(m.get("event_urn"))
-        if not eu:
-            continue
-        by_event.setdefault(eu, []).extend(m.get("outcomes") or [])
+        if eu:
+            by_event.setdefault(eu, []).extend(outs)
+        pair = frozenset(_text(u) for u in (m.get("related_team_urns") or []) if _text(u))
+        if len(pair) == 2:
+            by_pair.setdefault(pair, []).extend(outs)
 
     candidates = []
     for fc in forecasts:
@@ -3071,12 +3080,18 @@ def _model_vs_market_candidates(cached: list[dict[str, Any]], forecasts: list[An
             continue
         eu = _text(_first(fc, "_id", "@id", "id")) or _text((fc.get("metadata") or {}).get("event_urn"))
         probs = fc.get("probabilities") or {}
-        outcomes = by_event.get(eu)
-        if not eu or not probs or not outcomes:
+        if not probs:
             continue
-        home = (fc.get("home_team") or {}).get("name")
-        away = (fc.get("away_team") or {}).get("name")
-        for g in _gap_candidates(probs, outcomes, home, away, min_edge_bps):
+        home = (fc.get("home_team") or {})
+        away = (fc.get("away_team") or {})
+        outcomes = by_event.get(eu)
+        if not outcomes:
+            pair = frozenset(x for x in (_text(home.get("urn")), _text(away.get("urn"))) if x)
+            if len(pair) == 2:
+                outcomes = by_pair.get(pair)
+        if not outcomes:
+            continue
+        for g in _gap_candidates(probs, outcomes, home.get("name"), away.get("name"), min_edge_bps):
             candidates.append({
                 "candidate_type": "model_vs_market",
                 "event_urn": eu,

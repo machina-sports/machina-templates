@@ -1416,6 +1416,19 @@ class TestDetectMarketEdgesBackwardCompat:
         mvm = [c for c in r["edge_candidates"] if c["candidate_type"] == "model_vs_market"]
         assert len(mvm) == 1 and mvm[0]["edge_bps"] == 2000
 
+    def test_model_vs_market_matches_by_team_pair_without_event_urn(self):
+        # Market has NO event_urn, only related_team_urns -> still joins by pair.
+        cached = [{"cache_id": "kalshi:y", "source": "kalshi", "source_event_id": "y",
+                   "title": "Aland vs Bland", "related_team_urns": ["urn:t:bla", "urn:t:ala"],
+                   "outcomes": [{"name": "Aland", "price": 0.50}]}]
+        forecasts = [{"_id": "urn:ev:2", "probabilities": {"home_win": 0.70, "draw": 0.2, "away_win": 0.1},
+                      "home_team": {"name": "Aland", "urn": "urn:t:ala"},
+                      "away_team": {"name": "Bland", "urn": "urn:t:bla"}}]
+        r = detect_market_edges({"params": {"cached_markets": cached, "forecasts": forecasts,
+                                            "min_edge_bps": 100}})["data"]
+        mvm = [c for c in r["edge_candidates"] if c["candidate_type"] == "model_vs_market"]
+        assert len(mvm) == 1 and mvm[0]["edge_bps"] == 2000
+
 
 def test_build_event_forecasts_from_index():
     event = {"_id": "urn:machina:sport:soccer:event:aland-vs-bland:20260612:wor",
