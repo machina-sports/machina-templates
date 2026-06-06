@@ -45,7 +45,7 @@ workflow:
       inputs:
         body: |
           {
-            "model": "grok-4-fast",
+            "model": "grok-4.3",
             "stream": False,
             "input": [
               {
