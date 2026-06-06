@@ -24,6 +24,15 @@ prompts:
           type: array
           items:
             type: object
+            properties:
+              market:
+                type: string
+              outcome:
+                type: string
+              move:
+                type: string
+              note:
+                type: string
         cross_venue_notes:
           type: array
           items:
@@ -32,11 +41,25 @@ prompts:
           type: array
           items:
             type: object
+            properties:
+              type:
+                type: string
+              market:
+                type: string
+              note:
+                type: string
         price_vs_model:
           type: array
+          description: Optional. Model-vs-market gaps when forecasts exist.
           items:
             type: object
-          description: Optional. Model-vs-market gaps when forecasts exist.
+            properties:
+              fixture:
+                type: string
+              outcome:
+                type: string
+              note:
+                type: string
         resolution_caveats:
           type: array
           items:
