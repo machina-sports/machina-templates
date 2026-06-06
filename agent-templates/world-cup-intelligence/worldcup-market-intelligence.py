@@ -2197,3 +2197,90 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
         "status": True,
         "data": {"normalized_items": out, "count": len(out), "provider_summary": summary},
     }
+
+
+WC_COMPETITION_URN = "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor"
+
+# Market team-name variants -> canonical team name slug (as used in team URNs).
+_MARKET_TEAM_ALIASES = {
+    "czechia": "czech-republic",
+    "korea": "south-korea", "korea-republic": "south-korea",
+    "turkey": "turkiye",
+    "cote-d-ivoire": "ivory-coast", "cote-divoire": "ivory-coast",
+    "dr-congo": "congo-dr", "drc": "congo-dr", "democratic-republic-of-congo": "congo-dr",
+    "united-states": "usa", "united-states-of-america": "usa",
+    "bosnia": "bosnia-herzegovina", "bosnia-and-herzegovina": "bosnia-herzegovina",
+    "cape-verde": "cape-verde-islands",
+}
+
+
+def _market_team_index(teams: list[Any]) -> list[tuple]:
+    """(match_slug, team_urn) pairs, longest-first, including name aliases."""
+    canon_to_urn: dict[str, str] = {}
+    index: list[tuple] = []
+    for t in teams:
+        if not isinstance(t, dict):
+            continue
+        urn = _text(_first(t, "_id", "@id", "id"))
+        name_slug = _slugify(t.get("name"))
+        if not urn or not name_slug:
+            continue
+        canon_to_urn[name_slug] = urn
+        index.append((name_slug, urn))
+    for alias, canon in _MARKET_TEAM_ALIASES.items():
+        if canon in canon_to_urn:
+            index.append((alias, canon_to_urn[canon]))
+    index.sort(key=lambda x: len(x[0]), reverse=True)
+    return index
+
+
+def _match_team_urns(text_slug: str, index: list[tuple]) -> list[str]:
+    found: list[str] = []
+    for slug, urn in index:
+        if slug and urn not in found and re.search(r"(^|-)" + re.escape(slug) + r"($|-)", text_slug):
+            found.append(urn)
+    return found
+
+
+def link_market_entities(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Attach competition_urn + related_team_urns + event_urn to normalized markets.
+
+    Params:
+      - markets: normalized market records (from normalize_market_sources)
+      - teams: team-crosswalk docs (name -> URN, with aliases)
+      - events: worldcup:event docs (team-pair -> event_urn)
+    All markets here have already passed the World Cup relevance gate, so the
+    competition is always the canonical WC competition.
+    """
+    params = _params(request_data)
+    index = _market_team_index(_as_list(params.get("teams")))
+    by_pair: dict[frozenset, str] = {}
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        urns = [_text(c.get("@id")) for c in (ev.get("sport:competitors") or [])
+                if isinstance(c, dict) and c.get("@id")]
+        if len(urns) == 2:
+            by_pair[frozenset(urns)] = _text(_first(ev, "_id", "@id", "id"))
+
+    markets = _as_list(params.get("markets"))
+    summary = {"markets": len(markets), "with_team": 0, "with_event": 0}
+    for m in markets:
+        if not isinstance(m, dict):
+            continue
+        text = " ".join([
+            _text(m.get("title")), _text(m.get("slug")),
+            " ".join(_text(o.get("name")) for o in (m.get("outcomes") or []) if isinstance(o, dict)),
+        ])
+        related = _match_team_urns(_slugify(text), index)
+        m["competition_urn"] = WC_COMPETITION_URN
+        m["related_team_urns"] = related
+        m["event_urn"] = by_pair.get(frozenset(related)) if len(related) == 2 else None
+        if related:
+            summary["with_team"] += 1
+        if m["event_urn"]:
+            summary["with_event"] += 1
+    return {
+        "status": True,
+        "data": {"normalized_markets": markets, "count": len(markets), "provider_summary": summary},
+    }

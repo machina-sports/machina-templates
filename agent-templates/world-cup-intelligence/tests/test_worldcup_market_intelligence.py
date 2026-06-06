@@ -24,6 +24,7 @@ mint_event_identity = _module.mint_event_identity
 merge_provider_entities = _module.merge_provider_entities
 build_player_crosswalk = _module.build_player_crosswalk
 build_event_crosswalk = _module.build_event_crosswalk
+link_market_entities = _module.link_market_entities
 
 
 def _kalshi_record(**overrides):
@@ -1116,3 +1117,45 @@ def test_build_player_crosswalk_sportradar():
     d = r["normalized_items"][0]
     assert d["provider_ids"]["sportradar"] == "sr:player:35612"
     assert d["provider_ids"]["api_football"] == "100"
+
+
+class TestLinkMarketEntities:
+    def _teams(self):
+        return [
+            {"_id": "urn:machina:sport:soccer:team:brazil:bra", "name": "Brazil"},
+            {"_id": "urn:machina:sport:soccer:team:haiti:hti", "name": "Haiti"},
+            {"_id": "urn:machina:sport:soccer:team:czech-republic:cze", "name": "Czech Republic"},
+            {"_id": "urn:machina:sport:soccer:team:south-africa:zaf", "name": "South Africa"},
+        ]
+
+    def _events(self):
+        return [{"_id": "urn:machina:sport:soccer:event:brazil-vs-haiti:20260619:wor",
+                 "sport:competitors": [{"@id": "urn:machina:sport:soccer:team:brazil:bra"},
+                                       {"@id": "urn:machina:sport:soccer:team:haiti:hti"}]}]
+
+    def test_game_market_links_teams_and_event(self):
+        markets = [{"cache_id": "kalshi:x", "title": "Brazil vs Haiti Winner?",
+                    "slug": "KXWCGAME-26JUN19BRAHTI-BRA", "outcomes": [{"name": "Brazil"}, {"name": "No"}]}]
+        r = link_market_entities({"params": {"markets": markets, "teams": self._teams(), "events": self._events()}})["data"]
+        m = r["normalized_markets"][0]
+        assert m["competition_urn"] == "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor"
+        assert set(m["related_team_urns"]) == {"urn:machina:sport:soccer:team:brazil:bra", "urn:machina:sport:soccer:team:haiti:hti"}
+        assert m["event_urn"] == "urn:machina:sport:soccer:event:brazil-vs-haiti:20260619:wor"
+
+    def test_outright_market_single_team_no_event(self):
+        markets = [{"cache_id": "poly:y", "title": "Will Brazil win the 2026 FIFA World Cup?", "slug": "", "outcomes": []}]
+        r = link_market_entities({"params": {"markets": markets, "teams": self._teams(), "events": self._events()}})["data"]
+        m = r["normalized_markets"][0]
+        assert m["related_team_urns"] == ["urn:machina:sport:soccer:team:brazil:bra"]
+        assert m["event_urn"] is None
+
+    def test_alias_czechia_matches_czech_republic(self):
+        markets = [{"cache_id": "k:z", "title": "Will Czechia advance?", "slug": "", "outcomes": []}]
+        r = link_market_entities({"params": {"markets": markets, "teams": self._teams(), "events": self._events()}})["data"]
+        assert r["normalized_markets"][0]["related_team_urns"] == ["urn:machina:sport:soccer:team:czech-republic:cze"]
+
+    def test_no_team_market_empty(self):
+        markets = [{"cache_id": "k:w", "title": "2026 World Cup - Top Goalscorer", "slug": "", "outcomes": []}]
+        r = link_market_entities({"params": {"markets": markets, "teams": self._teams(), "events": self._events()}})["data"]
+        assert r["normalized_markets"][0]["related_team_urns"] == []
+        assert r["normalized_markets"][0]["event_urn"] is None

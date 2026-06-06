@@ -42,3 +42,5 @@ connector:
       value: "build_player_crosswalk"
     - name: "Build event crosswalk"
       value: "build_event_crosswalk"
+    - name: "Link market entities"
+      value: "link_market_entities"
