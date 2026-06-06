@@ -41,7 +41,9 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
-        model: gemini-3.5-flash
+        # Fast tier: grounded search summarisation runs per-fixture in bulk;
+        # Google grounding carries factual quality, so use the lite model.
+        model: gemini-3.1-flash-lite
         provider: vertex_ai
         location: global
       foreach:
