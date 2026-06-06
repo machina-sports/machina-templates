@@ -1445,6 +1445,19 @@ def test_normalize_fifa_seed_band_and_order():
     assert seeds["Strongland"] == 0.8 and seeds["Weakland"] == 0.2  # [0.2, 0.8] band
     assert seeds["Strongland"] > seeds["Midland"] > seeds["Weakland"]
     assert r["count"] == 3
+    assert r["basis"] == "points"
+
+
+def test_normalize_fifa_seed_rank_fallback():
+    # No points -> fall back to rank (1 = strongest -> top of band).
+    r = normalize_fifa_seed({"params": {"rankings": [
+        {"team_name": "Topland", "rank": 1},
+        {"team_name": "Midland", "rank": 25},
+        {"team_name": "Lowland", "rank": 50}]}})["data"]
+    seeds = {s["team_name"]: s["seed_rating"] for s in r["seed_ratings"]}
+    assert r["basis"] == "rank"
+    assert seeds["Topland"] == 0.8 and seeds["Lowland"] == 0.2
+    assert seeds["Topland"] > seeds["Midland"] > seeds["Lowland"]
 
 
 def test_build_event_forecasts_skips_unknown_team():

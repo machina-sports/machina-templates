@@ -30,7 +30,7 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        search_query: "'Current FIFA men\\'s world ranking points by nation for the 2026 FIFA World Cup qualified teams (numeric total ranking points per team).'"
+        search_query: "'Latest FIFA men\\'s world ranking table: list as many nations as possible with their world ranking position number (and points if shown), including all 2026 FIFA World Cup qualified teams.'"
         recency_days: 30
         timeout: 120
       outputs:

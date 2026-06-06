@@ -2783,34 +2783,57 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_fifa_seed(request_data: dict[str, Any]) -> dict[str, Any]:
-    """Normalize FIFA/qualifier ranking points into 0-1 seed ratings per team URN.
+    """Normalize FIFA/qualifier ranking into 0-1 seed ratings per team URN.
 
-    Params: rankings [{team_name, points}]. Points are min-max normalized into a
-    [0.2, 0.8] band (so the weakest team is not a degenerate 0.0 that zeroes xG).
+    Params: rankings [{team_name, points?, rank?}]. Prefers `points` (higher =
+    stronger); falls back to `rank` (1 = strongest, inverted) when points are
+    mostly absent — ranking positions are far more reliably grounded than points.
+    Scores are min-max normalized into a [0.2, 0.8] band (so the weakest team is
+    not a degenerate 0.0 that would zero out xG).
     """
     params = _params(request_data)
-    rows = []
+    rows = []  # (name, points|None, rank|None)
     for r in _as_list(params.get("rankings")):
         if not isinstance(r, dict):
             continue
         name = _text(r.get("team_name") or r.get("name"))
-        pts = r.get("points", r.get("fifa_points"))
-        if not name or pts is None:
+        if not name:
             continue
-        rows.append((name, _to_float(pts)))
+        pts = r.get("points", r.get("fifa_points"))
+        rnk = r.get("rank", r.get("position"))
+        pts = _to_float(pts) if pts is not None else None
+        try:
+            rnk = int(rnk) if rnk is not None else None
+        except (TypeError, ValueError):
+            rnk = None
+        if pts is None and rnk is None:
+            continue
+        rows.append((name, pts, rnk))
     if not rows:
         return {"status": True, "data": {"seed_ratings": [], "count": 0,
                                          "warnings": ["No rankings supplied."], "disclaimer": DISCLAIMER}}
-    norm = _minmax([p for _, p in rows])
+
+    have_points = [r for r in rows if r[1] is not None]
+    use_points = len(have_points) >= max(1, len(rows) // 2)
+    scored = []  # (name, score) — higher score = stronger
+    for name, pts, rnk in rows:
+        if use_points:
+            if pts is None:
+                continue
+            scored.append((name, pts))
+        elif rnk is not None:
+            scored.append((name, -float(rnk)))  # rank 1 -> highest score
+    norm = _minmax([s for _, s in scored])
     seen: dict[str, dict[str, Any]] = {}
-    for (name, _pts), n in zip(rows, norm):
+    for (name, _s), n in zip(scored, norm):
         urn = _machina_team_urn(name)
         rating = round(0.2 + 0.6 * n, 4)
         prev = seen.get(urn)
         if prev is None or rating > prev["seed_rating"]:
             seen[urn] = {"team_urn": urn, "team_name": name, "seed_rating": rating}
     seeds = list(seen.values())
-    return {"status": True, "data": {"seed_ratings": seeds, "count": len(seeds), "disclaimer": DISCLAIMER}}
+    return {"status": True, "data": {"seed_ratings": seeds, "count": len(seeds),
+                                     "basis": "points" if use_points else "rank", "disclaimer": DISCLAIMER}}
 
 
 def _match_probabilities(home_ranking: dict[str, Any], away_ranking: dict[str, Any],
