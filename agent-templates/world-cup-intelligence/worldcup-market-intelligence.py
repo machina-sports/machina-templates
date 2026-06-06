@@ -1757,7 +1757,6 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(f, dict):
             continue
         fixture = f.get("fixture", {}) if isinstance(f.get("fixture"), dict) else {}
-        league = f.get("league", {}) if isinstance(f.get("league"), dict) else {}
         teams = f.get("teams", {}) if isinstance(f.get("teams"), dict) else {}
         home = teams.get("home", {}) if isinstance(teams.get("home"), dict) else {}
         away = teams.get("away", {}) if isinstance(teams.get("away"), dict) else {}
@@ -1775,8 +1774,11 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
             f"urn:machina:sport:soccer:event:"
             f"{_slugify(home_name)}-vs-{_slugify(away_name)}:{_event_date(date_iso)}:wor"
         )
-        comp_name = _text(league.get("name")) or "World Cup"
-        comp_urn = f"urn:machina:sport:soccer:competition:{_slugify(comp_name)}:wor"
+        # Canonical competition URN — must match the competition crosswalk doc and
+        # the market cache (api-football's league name "World Cup" would mint a
+        # different, dangling slug).
+        comp_name = "FIFA World Cup 2026"
+        comp_urn = "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor"
 
         venue_name = _text(venue.get("name"))
         venue_block: dict[str, Any] = {
