@@ -1,0 +1,52 @@
+prompts:
+  - type: prompt
+    name: worldcup-match-preview
+    title: World Cup Match Preview
+    description: Author a structured, grounded match-preview card for a World Cup fixture.
+    instruction: |
+      Write a concise, factual match-preview card for the fixture in `event` (IPTC event
+      doc with competitors, date, venue). Ground it in `research` (grounded web search:
+      team news, form, injuries) and, when present, `forecast` (a form-based statistical
+      model: probabilities + expected goals) and `markets` (current Kalshi/Polymarket
+      prices). Use ONLY facts present in the inputs — never invent stats, lineups, or
+      results. If `forecast` is empty, omit model-probability claims (do not fabricate
+      probabilities). If `markets` is empty, omit the market snapshot. Keep it neutral and
+      informational: this is match intelligence, NOT betting advice. Never use "guaranteed",
+      "value bet", or "bet this" language. Always include the disclaimer.
+    schema:
+      title: WorldCupMatchPreview
+      type: object
+      required: [headline, summary, watch_items, disclaimer]
+      properties:
+        headline:
+          type: string
+        summary:
+          type: string
+        team_form:
+          type: object
+          properties:
+            home:
+              type: string
+            away:
+              type: string
+        key_players:
+          type: array
+          items:
+            type: string
+        tactical_angle:
+          type: string
+        injuries_note:
+          type: string
+        model_forecast:
+          type: object
+          description: Optional. Model-implied probabilities when a forecast exists.
+        market_snapshot:
+          type: array
+          items:
+            type: object
+        watch_items:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string

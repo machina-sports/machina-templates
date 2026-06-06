@@ -103,6 +103,35 @@ agent:
       outputs:
         brief: "$.get('brief', {})"
 
+    - name: worldcup-match-preview
+      description: Composite match-preview card for a fixture (cached, grounded)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        skill_card: "$.get('skill_card', {})"
+
+    - name: worldcup-match-recap
+      description: Composite post-match recap card (final fixtures only, cached evergreen)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        skill_card: "$.get('skill_card', {})"
+
+    - name: worldcup-player-spotlight
+      description: Composite player-spotlight card (cached, grounded)
+      inputs:
+        player_urn: "$.get('player_urn', '')"
+      outputs:
+        skill_card: "$.get('skill_card', {})"
+
+    - name: worldcup-fan-pulse
+      description: Composite fan-pulse card (social/news sentiment, cached)
+      inputs:
+        query: "$.get('query', 'FIFA World Cup')"
+        event_urn: "$.get('event_urn', '')"
+      outputs:
+        skill_card: "$.get('skill_card', {})"
+
   instructions: |
     Use match truth from API-Football, IPTC mappings, and provider event URNs before reasoning over markets.
     Use Google GenAI for grounded structured briefs and xAI/Grok for social/news pulse.

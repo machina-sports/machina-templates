@@ -1,0 +1,45 @@
+prompts:
+  - type: prompt
+    name: worldcup-market-watch
+    title: World Cup Market Watch
+    description: Author a structured market-watch card summarizing movers and informational edges.
+    instruction: |
+      Write a concise market-watch card from `movers` (biggest recent price moves) and
+      `edge_candidates` (informational dislocations: within-venue book sums, cross-venue
+      draw gaps, and model-vs-market gaps). Summarize what is moving and where venues
+      disagree. Treat every edge strictly as an INFORMATIONAL candidate to investigate —
+      NOT a value bet or recommendation. Never use "guaranteed", "value bet", or "bet this"
+      language; always attach resolution/liquidity/freshness caveats. Use ONLY the supplied
+      data. Always include the disclaimer.
+    schema:
+      title: WorldCupMarketWatch
+      type: object
+      required: [headline, summary, resolution_caveats, disclaimer]
+      properties:
+        headline:
+          type: string
+        summary:
+          type: string
+        top_movers:
+          type: array
+          items:
+            type: object
+        cross_venue_notes:
+          type: array
+          items:
+            type: string
+        edge_hypotheses:
+          type: array
+          items:
+            type: object
+        price_vs_model:
+          type: array
+          items:
+            type: object
+          description: Optional. Model-vs-market gaps when forecasts exist.
+        resolution_caveats:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string

@@ -1,0 +1,34 @@
+prompts:
+  - type: prompt
+    name: worldcup-player-spotlight
+    title: World Cup Player Spotlight
+    description: Author a structured, grounded spotlight card for a World Cup player.
+    instruction: |
+      Write a factual spotlight card for the player in `player` (identity-crosswalk doc:
+      name, country/team, provider ids). Ground it in `research` (grounded web search:
+      recent form, role, status) and, when present, `fixture` (their team's next/last
+      fixture context). Use ONLY facts present in the inputs — never invent stats,
+      transfers, or quotes. Neutral, informational tone. Always include the disclaimer.
+    schema:
+      title: WorldCupPlayerSpotlight
+      type: object
+      required: [headline, player_name, narrative, disclaimer]
+      properties:
+        headline:
+          type: string
+        player_name:
+          type: string
+        team:
+          type: string
+        position:
+          type: string
+        narrative:
+          type: string
+        recent_form:
+          type: string
+        performance_signals:
+          type: object
+        fixture_context:
+          type: string
+        disclaimer:
+          type: string

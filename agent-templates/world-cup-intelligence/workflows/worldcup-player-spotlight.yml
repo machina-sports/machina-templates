@@ -1,0 +1,111 @@
+workflow:
+  name: worldcup-player-spotlight
+  title: World Cup Intelligence - Player Spotlight (Skill)
+  description: |
+    Composite Skill: a grounded spotlight card for a player. Serves a cached candidate
+    when fresh; otherwise authors one (gemini-3.5-flash over the player crosswalk doc +
+    grounded form research) and caches it (24h TTL). Read-only, informational.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    player_urn: "$.get('player_urn', '')"
+    force_regen: "$.get('force_regen', False)"
+  outputs:
+    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})"
+    served_from: "'cache' if $.get('cached') else 'generated'"
+    workflow-status: "($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-cached
+      description: Serve a still-fresh cached spotlight unless force_regen.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:skill-player-spotlight'"
+        value.subject_urn: "$.get('player_urn', '')"
+        value.expires_at: "{'$gte': datetime.utcnow().isoformat() + 'Z'}"
+      outputs:
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+
+    - type: document
+      name: load-player
+      description: Player identity-crosswalk doc.
+      condition: "not $.get('cached')"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        value._id: "$.get('player_urn', '')"
+      outputs:
+        player: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: connector
+      name: grounded-player-research
+      description: Grounded recent-form/role/status research for the player.
+      condition: "not $.get('cached') and $.get('player', {}) != {}"
+      continue_on_error: true
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.1-flash-lite
+        location: global
+        provider: vertex_ai
+      inputs:
+        search_query: "$.get('player', {}).get('name', '') + ' ' + $.get('player', {}).get('country', '') + ' footballer recent form World Cup 2026 role status'"
+        recency_days: 21
+        timeout: 120
+      outputs:
+        research: "$.get('answer', '')"
+
+    - type: prompt
+      name: worldcup-player-spotlight
+      description: Author the structured player-spotlight card.
+      condition: "not $.get('cached') and $.get('player', {}) != {}"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        player: "$.get('player', {})"
+        research: "$.get('research', '')"
+        timeout: 120
+      outputs:
+        spotlight: "$"
+
+    - type: document
+      name: save-candidate
+      description: Cache the authored spotlight as a 24h TTL candidate.
+      condition: "not $.get('cached') and $.get('spotlight', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:skill-player-spotlight'"
+      documents:
+        items: |
+          [{
+            '_id': 'player-spotlight:' + $.get('player_urn', ''),
+            'metadata': {'skill': 'player-spotlight', 'subject_urn': $.get('player_urn', '')},
+            'skill': 'player-spotlight',
+            'subject_urn': $.get('player_urn', ''),
+            'freshness': 'FRESH',
+            'body': $.get('spotlight', {}),
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'expires_at': (datetime.utcnow() + timedelta(hours=24)).isoformat() + 'Z',
+            'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-player-spotlight'},
+            'disclaimer': 'Informational sports market intelligence only. Not betting, trading, financial, or investment advice.'
+          }]
+      inputs:
+        player_urn: "$.get('player_urn', '')"
+        spotlight: "$.get('spotlight', {})"

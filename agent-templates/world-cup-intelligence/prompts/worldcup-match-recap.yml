@@ -1,0 +1,44 @@
+prompts:
+  - type: prompt
+    name: worldcup-match-recap
+    title: World Cup Match Recap
+    description: Author a structured, grounded post-match recap card for a finished World Cup fixture.
+    instruction: |
+      Write a factual post-match recap for the FINISHED fixture in `event` (IPTC event doc;
+      `live_score` / `sport:status` show the final result). Ground it in `research`
+      (grounded web search: match report, goals, key moments) and, when present,
+      `forecast` (the pre-match model probabilities, for a "how the model did" scorecard)
+      and `market_move` (how the market priced it). Use ONLY facts present in the inputs —
+      never invent goals, scorers, or events. State the final score from `event.live_score`.
+      If `forecast` is empty, omit the forecast scorecard. Neutral, informational tone —
+      NOT betting advice. Always include the disclaimer.
+    schema:
+      title: WorldCupMatchRecap
+      type: object
+      required: [headline, final_score, summary, disclaimer]
+      properties:
+        headline:
+          type: string
+        final_score:
+          type: string
+        summary:
+          type: string
+        turning_points:
+          type: array
+          items:
+            type: string
+        standout_players:
+          type: array
+          items:
+            type: string
+        what_it_means:
+          type: string
+        forecast_scorecard:
+          type: object
+          description: Optional. Compares the pre-match model probabilities to the result.
+        market_reaction:
+          type: array
+          items:
+            type: object
+        disclaimer:
+          type: string

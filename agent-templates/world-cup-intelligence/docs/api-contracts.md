@@ -59,6 +59,15 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - `worldcup-get-match-forecast` — model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + the live model-vs-market gap. Informational only.
 - `worldcup-backtest-forecasts` — post-match Brier/calibration audit; publishes the `worldcup:forecast-audit:aggregate` track record (read the aggregate doc to surface accuracy).
 
+**Composite Skills (cached editorial cards)** — each serves a fresh cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`, then caches it with a TTL. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
+- `worldcup-match-preview` (`event_urn`) — grounded preview; composes event + grounded news + optional model forecast + market snapshot. TTL 6h (FRESH).
+- `worldcup-match-recap` (`event_urn`) — grounded recap; authored ONLY once `sport:status` ∈ FT/AET/PEN, then cached EVERGREEN (once per match).
+- `worldcup-player-spotlight` (`player_urn`) — grounded player card. TTL 24h.
+- `worldcup-fan-pulse` (`query`/`event_urn`) — wraps `worldcup-fan-sentiment-context` (grok); caches the structured pulse. TTL 1h (HOT_SYNC).
+- `worldcup-market-watch` (global) — composes movers + informational edges into a summary card. TTL ~20min (HOT_SYNC).
+
+Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, subject_urn}`; `subject_urn` = event/player URN or `global`). The cron agent `worldcup-content-author` keeps the two global hot cards (market-watch, fan-pulse) warm when matches are live/upcoming; per-event/player cards are authored on first request and served from cache after.
+
 **Agents (conversational)** — `world-cup-intelligence-agent` (full read+market), `world-cup-market-analyst-agent` (market-focused). Activate before exposing.
 
 ## Internal/admin workflow set (cron-driven, not exposed)

@@ -1,0 +1,80 @@
+workflow:
+  name: worldcup-fan-pulse
+  title: World Cup Intelligence - Fan Pulse (Skill)
+  description: |
+    Composite Skill: a cached fan-pulse card (social/news sentiment). Serves a fresh
+    cached candidate (~1h); otherwise composes worldcup-fan-sentiment-context (grok-4.3
+    live X/web search) and caches the structured pulse. Read-only, informational. Subject
+    is the event_urn when supplied, else a tournament-wide 'global' pulse.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    query: "$.get('query', 'FIFA World Cup')"
+    event_urn: "$.get('event_urn', '')"
+    force_regen: "$.get('force_regen', False)"
+    subject_urn: "$.get('event_urn', '') or 'global'"
+  outputs:
+    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('pulse_body', {})"
+    served_from: "'cache' if $.get('cached') else 'generated'"
+    workflow-status: "($.get('cached') or $.get('pulse_body', {})) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-cached
+      description: Serve a still-fresh cached fan-pulse card unless force_regen.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:skill-fan-pulse'"
+        value.subject_urn: "$.get('event_urn', '') or 'global'"
+        value.expires_at: "{'$gte': datetime.utcnow().isoformat() + 'Z'}"
+      outputs:
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+
+    - type: workflow
+      name: get-sentiment
+      description: Live social/news sentiment via the fan-sentiment-context workflow (grok).
+      condition: "not $.get('cached')"
+      workflow:
+        name: worldcup-fan-sentiment-context
+      inputs:
+        query: "$.get('query', 'FIFA World Cup')"
+        event_urn: "$.get('event_urn', '')"
+        force_live: true
+      outputs:
+        fan_sentiment: "$.get('fan_sentiment', {})"
+        citations: "$.get('citations', [])"
+
+    - type: document
+      name: save-candidate
+      description: Cache the fan-pulse card (~1h TTL).
+      condition: "not $.get('cached') and $.get('fan_sentiment', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:skill-fan-pulse'"
+      documents:
+        items: |
+          [{
+            '_id': 'fan-pulse:' + ($.get('event_urn', '') or 'global'),
+            'metadata': {'skill': 'fan-pulse', 'subject_urn': $.get('event_urn', '') or 'global'},
+            'skill': 'fan-pulse',
+            'subject_urn': $.get('event_urn', '') or 'global',
+            'event_urn': $.get('event_urn', ''),
+            'freshness': 'HOT_SYNC',
+            'body': dict($.get('fan_sentiment', {}), citations=$.get('citations', [])),
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'expires_at': (datetime.utcnow() + timedelta(hours=1)).isoformat() + 'Z',
+            'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-fan-pulse'},
+            'disclaimer': 'Informational sports market intelligence only. Not betting, trading, financial, or investment advice.'
+          }]
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        fan_sentiment: "$.get('fan_sentiment', {})"
+        citations: "$.get('citations', [])"
+      outputs:
+        pulse_body: "dict($.get('fan_sentiment', {}), citations=$.get('citations', []))"
