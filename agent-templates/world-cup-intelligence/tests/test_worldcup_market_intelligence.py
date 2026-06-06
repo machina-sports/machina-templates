@@ -1460,6 +1460,16 @@ def test_normalize_fifa_seed_rank_fallback():
     assert seeds["Topland"] > seeds["Midland"] > seeds["Lowland"]
 
 
+def test_normalize_fifa_seed_resolves_canonical_urn_from_teams():
+    # A name variant resolves to the canonical crosswalk URN, not a re-derived one.
+    r = normalize_fifa_seed({"params": {
+        "rankings": [{"team_name": "South Korea", "rank": 1}, {"team_name": "Japan", "rank": 2}],
+        "teams": [{"team_name": "South Korea", "team_urn": "urn:machina:sport:soccer:team:korea-republic:kor"},
+                  {"team_name": "Japan", "team_urn": "urn:machina:sport:soccer:team:japan:jpn"}]}})["data"]
+    urns = {s["team_name"]: s["team_urn"] for s in r["seed_ratings"]}
+    assert urns["South Korea"] == "urn:machina:sport:soccer:team:korea-republic:kor"
+
+
 def test_build_event_forecasts_skips_unknown_team():
     event = {"_id": "urn:ev:z", "sport:competitors": [
         {"@id": "urn:unknown:a", "name": "A", "sport:qualifier": "home"},

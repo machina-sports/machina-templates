@@ -2792,6 +2792,17 @@ def normalize_fifa_seed(request_data: dict[str, Any]) -> dict[str, Any]:
     not a degenerate 0.0 that would zero out xG).
     """
     params = _params(request_data)
+    # Optional canonical team list ({name, team_urn}/{_id}) so seed URNs match the
+    # event/crosswalk URNs exactly (avoids name-variant URN drift, e.g. "USA").
+    team_urn_by_slug: dict[str, str] = {}
+    for t in _as_list(params.get("teams")):
+        if not isinstance(t, dict):
+            continue
+        turn = _text(t.get("team_urn") or t.get("_id") or t.get("@id"))
+        tname = _text(t.get("team_name") or t.get("name"))
+        if turn and tname:
+            team_urn_by_slug[_slugify(tname)] = turn
+
     rows = []  # (name, points|None, rank|None)
     for r in _as_list(params.get("rankings")):
         if not isinstance(r, dict):
@@ -2826,7 +2837,7 @@ def normalize_fifa_seed(request_data: dict[str, Any]) -> dict[str, Any]:
     norm = _minmax([s for _, s in scored])
     seen: dict[str, dict[str, Any]] = {}
     for (name, _s), n in zip(scored, norm):
-        urn = _machina_team_urn(name)
+        urn = team_urn_by_slug.get(_slugify(name)) or _machina_team_urn(name)
         rating = round(0.2 + 0.6 * n, 4)
         prev = seen.get(urn)
         if prev is None or rating > prev["seed_rating"]:
