@@ -3,9 +3,9 @@ workflow:
   title: World Cup Intelligence - Market Watch (Skill)
   description: |
     Composite Skill: a tournament-wide market-watch card. Serves a cached candidate when
-    fresh (~20 min); otherwise composes the movers + informational edges workflows and
-    authors a summary (gemini-3.5-flash), then caches it. Read-only, informational — every
-    edge is a candidate to investigate, NOT a bet.
+    fresh (~20 min); otherwise computes movers + informational edges (inline connectors)
+    and authors a summary (gemini-3.5-flash), then caches it. Read-only, informational —
+    every edge is a candidate to investigate, NOT a bet.
 
   context-variables:
     debugger:
@@ -34,27 +34,75 @@ workflow:
       outputs:
         cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
 
-    - type: workflow
-      name: get-movers
-      description: Biggest recent price moves.
+    - type: document
+      name: load-markets
+      description: Current market-cache records.
       condition: "not $.get('cached')"
-      workflow:
-        name: worldcup-market-movers
+      config:
+        action: search
+        search-limit: 1000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-snapshots
+      description: Price snapshots within the lookback window (baseline for movers).
+      condition: "not $.get('cached')"
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-snapshot'"
+        value.ts: "{'$gte': (datetime.utcnow() - timedelta(hours=24)).isoformat()}"
+      outputs:
+        snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-forecasts
+      description: Model forecasts (optional) for model-vs-market edges.
+      condition: "not $.get('cached')"
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+      outputs:
+        forecasts: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: compute-movers
+      description: Rank markets by price move vs the earliest snapshot in the window.
+      condition: "not $.get('cached')"
+      continue_on_error: true
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_market_movers
       inputs:
-        window_hours: 24
+        markets: "$.get('markets', [])"
+        snapshots: "$.get('snapshots', [])"
         limit: 15
       outputs:
         movers: "$.get('movers', [])"
 
-    - type: workflow
-      name: get-edges
-      description: Informational edge candidates (book-sum, cross-venue, model-vs-market).
+    - type: connector
+      name: detect-edges
+      description: Within-venue + cross-venue + model-vs-market informational edges.
       condition: "not $.get('cached')"
-      workflow:
-        name: worldcup-find-market-edges
+      continue_on_error: true
+      connector:
+        name: worldcup-market-intelligence
+        command: detect_market_edges
       inputs:
+        cached_markets: "$.get('markets', [])"
+        forecasts: "$.get('forecasts', [])"
         min_edge_bps: 150
-        include_reasoning: false
         limit: 25
       outputs:
         edge_candidates: "$.get('edge_candidates', [])"
