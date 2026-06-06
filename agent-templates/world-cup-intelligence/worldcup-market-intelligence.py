@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
@@ -2460,3 +2460,94 @@ def compute_market_movers(request_data: dict[str, Any]) -> dict[str, Any]:
     movers.sort(key=lambda x: x["abs_delta"], reverse=True)
     movers = movers[:limit]
     return {"status": True, "data": {"movers": movers, "count": len(movers)}}
+
+
+# Live status set — fixtures considered in-play for coverage cadence.
+_LIVE_STATUS = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
+
+
+def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Match-phase signals from event docs (no API calls) for the coverage cadence.
+
+    Live is detected by the SCHEDULE window [kickoff, kickoff+150min] (robust even
+    when stored sport:status is stale) OR an explicit in-play sport:status.
+
+    Params: events (worldcup:event values)
+    """
+    params = _params(request_data)
+    now = datetime.now(timezone.utc)
+    live: list[str] = []
+    upcoming_24h = 0
+    recent_done = 0
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        urn = _text(_first(ev, "_id", "@id", "id"))
+        sd = _text(ev.get("schema:startDate"))
+        status = _text(ev.get("sport:status")).upper()
+        ko = None
+        if sd:
+            try:
+                ko = datetime.fromisoformat(sd.replace("Z", "+00:00"))
+            except ValueError:
+                ko = None
+            if ko is not None and ko.tzinfo is None:
+                ko = ko.replace(tzinfo=timezone.utc)
+        in_window = ko is not None and ko <= now <= ko + timedelta(minutes=150)
+        if status in _LIVE_STATUS or in_window:
+            live.append(urn)
+        elif ko is not None and now < ko <= now + timedelta(hours=24):
+            upcoming_24h += 1
+        elif ko is not None and ko + timedelta(minutes=150) < now <= ko + timedelta(hours=6):
+            recent_done += 1
+    return {
+        "status": True,
+        "data": {
+            "has_live": len(live) > 0,
+            "live_event_urns": live,
+            "live_count": len(live),
+            "upcoming_24h": upcoming_24h,
+            "recent_done": recent_done,
+        },
+    }
+
+
+def apply_live_status(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Merge live api-football fixture status + score onto matching event docs.
+
+    Params: events (worldcup:event values), live_fixtures (api-football get-fixtures
+    response(s), e.g. live=all). Returns only the events that have a live match,
+    as full docs (status + live_score updated) ready for bulk-update.
+    """
+    params = _params(request_data)
+    by_fid: dict[str, dict[str, Any]] = {}
+    for resp in _flatten_foreach(params.get("live_fixtures")):
+        data = _unwrap(resp)
+        for f in (data.get("response", []) if isinstance(data, dict) else []):
+            if not isinstance(f, dict):
+                continue
+            fixture = f.get("fixture") or {}
+            fid = _text(fixture.get("id"))
+            if not fid:
+                continue
+            goals = f.get("goals") or {}
+            by_fid[fid] = {
+                "status": _text((fixture.get("status") or {}).get("short")),
+                "elapsed": (fixture.get("status") or {}).get("elapsed"),
+                "home": goals.get("home"),
+                "away": goals.get("away"),
+            }
+    out: list[dict[str, Any]] = []
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        fid = _text((ev.get("provider_ids") or {}).get("api_football"))
+        info = by_fid.get(fid)
+        if not info:
+            continue
+        ev.setdefault("metadata", {"event_urn": _text(_first(ev, "_id", "@id", "id"))})
+        if info["status"]:
+            ev["sport:status"] = info["status"]
+        ev["live_score"] = {"home": info["home"], "away": info["away"], "elapsed": info["elapsed"]}
+        out.append(ev)
+    return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
