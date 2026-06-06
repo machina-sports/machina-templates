@@ -1,0 +1,101 @@
+workflow:
+  name: worldcup-sync-model-forecasts
+  title: World Cup Intelligence - Sync Model Forecasts
+  description: |
+    Precompute model-implied match probabilities for upcoming fixtures. Fetches
+    finished fixtures (for form), computes a group-relative power ranking blended
+    with the FIFA seed, then derives a Dixon-Coles forecast per upcoming event and
+    saves worldcup:model-forecast docs. Daily/cold cadence — probabilities only
+    change as results land. Read-only, informational.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+    min_games_full_confidence: "$.get('min_games_full_confidence', 5)"
+  outputs:
+    forecasts_count: "len($.get('forecasts', []))"
+    field_size: "$.get('field_size', 0)"
+    workflow-status: "len($.get('forecasts', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-finished-fixtures
+      description: All World Cup fixtures; finished ones drive the power ranking.
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league', '1')"
+        season: "$.get('season', '2026')"
+      outputs:
+        finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
+
+    - type: document
+      name: load-seed-ratings
+      description: FIFA-ranking seed prior (optional — power ranking falls back to 0.5).
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:fifa-ranking'"
+      outputs:
+        seed_ratings: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: compute-power-ranking
+      description: Group-relative power ranking blended with the FIFA seed.
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_power_ranking
+      inputs:
+        finished_fixtures: "$.get('finished_fixtures', [])"
+        seed_ratings: "$.get('seed_ratings', [])"
+        min_games_full_confidence: "$.get('min_games_full_confidence', 5)"
+      outputs:
+        team_index: "$.get('team_index', {})"
+        field_size: "$.get('field_size', 0)"
+
+    - type: document
+      name: load-upcoming-events
+      description: Event docs that have not finished — forecast targets.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or []) if (d.get('value', {}).get('sport:status') or 'NS') not in ('FT', 'AET', 'PEN')]"
+
+    - type: connector
+      name: build-forecasts
+      description: Derive a Dixon-Coles forecast per upcoming event from the team index.
+      condition: "len($.get('events', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: build_event_forecasts
+      inputs:
+        events: "$.get('events', [])"
+        team_index: "$.get('team_index', {})"
+      outputs:
+        forecasts: "$.get('forecasts', [])"
+
+    - type: document
+      name: save-forecasts
+      description: Persist the model forecasts keyed by event URN.
+      condition: "len($.get('forecasts', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:model-forecast'"
+      documents:
+        items: "$.get('forecasts', [])"
+      inputs:
+        forecasts: "$.get('forecasts', [])"

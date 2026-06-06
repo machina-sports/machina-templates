@@ -1,0 +1,78 @@
+workflow:
+  name: worldcup-seed-fifa-ranking
+  title: World Cup Intelligence - Seed FIFA Ranking
+  description: |
+    Bootstrap prior for the forecast model. Grounded-search the current FIFA world
+    ranking points for the World Cup nations, extract them to a structured list, and
+    normalize into 0-1 seed_ratings saved as worldcup:fifa-ranking. compute_power_ranking
+    blends these seeds with results until enough group-stage matches have been played.
+    Read-only. Occasional/manual sync (ranking points change slowly).
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    as_of: "$.get('as_of', '')"
+  outputs:
+    seed_count: "len($.get('seed_ratings', []))"
+    workflow-status: "len($.get('seed_ratings', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: grounded-fifa-ranking
+      description: Grounded search for the current FIFA men's world ranking points.
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.1-flash-lite
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt: "'Current FIFA men\\'s world ranking: list every nation that qualified for the 2026 FIFA World Cup with its current FIFA ranking points (the numeric total points). Return all qualified teams.'"
+        timeout: 120
+      outputs:
+        fifa_research: "$.get('answer', $.get('text', ''))"
+
+    - type: prompt
+      name: worldcup-fifa-ranking-extract
+      description: Extract a structured list of {team_name, points} from the grounded answer.
+      condition: "len($.get('fifa_research', '')) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        fifa_research: "$.get('fifa_research', '')"
+        timeout: 120
+      outputs:
+        rankings: "$.get('rankings', [])"
+
+    - type: connector
+      name: normalize-seed
+      description: Normalize FIFA points into 0-1 seed ratings keyed by team URN.
+      condition: "len($.get('rankings', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_fifa_seed
+      inputs:
+        rankings: "$.get('rankings', [])"
+      outputs:
+        seed_ratings: "$.get('seed_ratings', [])"
+
+    - type: document
+      name: save-fifa-ranking
+      description: Persist the seed ratings as worldcup:fifa-ranking docs.
+      condition: "len($.get('seed_ratings', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:fifa-ranking'"
+      documents:
+        items: "[dict(s, _id=s.get('team_urn'), metadata={'team_urn': s.get('team_urn')}) for s in $.get('seed_ratings', [])]"
+      inputs:
+        seed_ratings: "$.get('seed_ratings', [])"

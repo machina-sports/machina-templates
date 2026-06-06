@@ -1,0 +1,105 @@
+workflow:
+  name: worldcup-backtest-forecasts
+  title: World Cup Intelligence - Backtest Forecasts
+  description: |
+    Post-match accuracy audit. Compares each model forecast to the actual result
+    (Brier score + calibration), saves a per-event worldcup:forecast-audit doc, and
+    rolls them up into the worldcup:forecast-audit:aggregate track-record (Brier vs
+    0.25 random baseline + calibration curve). Read-only. The aggregate gates on
+    sample_size_sufficient (>=50) so early numbers are not over-read.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+  outputs:
+    audited_count: "len($.get('audits', []))"
+    track_record: "$.get('backtesting_report', {})"
+    workflow-status: "len($.get('audits', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-finished-fixtures
+      description: Finished fixtures supply the actual results.
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league', '1')"
+        season: "$.get('season', '2026')"
+      outputs:
+        finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
+
+    - type: document
+      name: load-forecasts
+      description: All model forecasts (matched to finished fixtures by api-football id).
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+      outputs:
+        forecasts: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: build-audits
+      description: Brier + calibration per forecast whose fixture is now final.
+      condition: "len($.get('finished_fixtures', [])) > 0 and len($.get('forecasts', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_forecast_audit
+      inputs:
+        mode: "'batch'"
+        forecasts: "$.get('forecasts', [])"
+        finished_fixtures: "$.get('finished_fixtures', [])"
+      outputs:
+        audits: "$.get('audits', [])"
+
+    - type: document
+      name: save-audits
+      description: Persist per-event audit docs.
+      condition: "len($.get('audits', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:forecast-audit'"
+      documents:
+        items: "$.get('audits', [])"
+      inputs:
+        audits: "$.get('audits', [])"
+
+    - type: connector
+      name: aggregate-audit
+      description: Roll up audits into the Brier/calibration track record.
+      condition: "len($.get('audits', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_forecast_audit
+      inputs:
+        mode: "'aggregate'"
+        audit_results: "$.get('audits', [])"
+      outputs:
+        backtesting_report: "$.get('backtesting_report', {})"
+        aggregate_id: "$.get('_id', 'worldcup:forecast-audit:aggregate')"
+        aggregate_metadata: "$.get('metadata', {})"
+
+    - type: document
+      name: save-aggregate
+      description: Persist the singleton aggregate track-record doc.
+      condition: "$.get('backtesting_report', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:forecast-audit'"
+      documents:
+        items: "[{'_id': $.get('aggregate_id', 'worldcup:forecast-audit:aggregate'), 'metadata': $.get('aggregate_metadata', {'event_urn': 'worldcup:forecast-audit:aggregate'}), 'backtesting_report': $.get('backtesting_report', {})}]"
+      inputs:
+        backtesting_report: "$.get('backtesting_report', {})"
+        aggregate_id: "$.get('aggregate_id', 'worldcup:forecast-audit:aggregate')"
+        aggregate_metadata: "$.get('aggregate_metadata', {})"

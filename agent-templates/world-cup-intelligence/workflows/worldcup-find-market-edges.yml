@@ -45,15 +45,29 @@ workflow:
       outputs:
         matches: "$.get('data', {}).get('matches', []) if $.get('status') else []"
 
+    - type: document
+      name: load-model-forecasts
+      description: Model forecasts (optional) -- enable the model_vs_market edge type.
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+      outputs:
+        forecasts: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
     - type: connector
       name: detect-edges
-      description: Compute within-venue book-sum and cross-venue draw dislocations.
+      description: Within-venue book-sum + cross-venue draw + (optional) model-vs-market dislocations.
       connector:
         name: worldcup-market-intelligence
         command: detect_market_edges
       inputs:
         cached_markets: "$.get('markets', [])"
         matches: "$.get('matches', [])"
+        forecasts: "$.get('forecasts', [])"
         min_edge_bps: "$.get('min_edge_bps', 100)"
         limit: "$.get('limit', 50)"
       outputs:

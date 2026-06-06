@@ -1,0 +1,26 @@
+prompts:
+  - type: prompt
+    name: worldcup-fifa-ranking-extract
+    title: World Cup FIFA Ranking Extract
+    description: Extract a structured list of nations and FIFA ranking points from grounded search text.
+    instruction: |
+      From the grounded search text in `fifa_research`, extract every nation and its
+      current FIFA men's world ranking points as a list of {team_name, points}. Use
+      only numbers present in the text — do NOT invent or estimate points. If a nation
+      is mentioned without a points figure, omit it. team_name should be the common
+      English nation name (e.g. "Brazil", "United States", "South Korea").
+    schema:
+      title: WorldCupFifaRanking
+      type: object
+      required: [rankings]
+      properties:
+        rankings:
+          type: array
+          items:
+            type: object
+            required: [team_name, points]
+            properties:
+              team_name:
+                type: string
+              points:
+                type: number

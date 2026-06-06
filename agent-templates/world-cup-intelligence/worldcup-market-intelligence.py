@@ -8,6 +8,7 @@ Kalshi/Polymarket market records into a stable shape for API/MCP/x402 exposure.
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -654,9 +655,15 @@ def detect_market_edges(request_data):
          Kalshi tie price (joined from cache by ticker) to the Polymarket draw
          price. edge_bps = |delta| * 10000.
 
+      3. model_vs_market (optional): when `forecasts` (worldcup:model-forecast
+         docs) are supplied, compare each event's model-implied 1X2 probability
+         to the market price for that outcome. gap_bps = |model_prob - price| *
+         10000. Informational ONLY — a gap is not a value/bet signal.
+
     Params:
       - cached_markets: normalized WorldCupMarket[] (worldcup:market-cache)
       - matches: match_markets output (optional; enables cross-venue)
+      - forecasts: worldcup:model-forecast docs (optional; enables model_vs_market)
       - min_edge_bps: minimum edge to report (default 50)
       - limit: max candidates (default 50)
     """
@@ -769,6 +776,13 @@ def detect_market_edges(request_data):
                 "Fee- and liquidity-blind; cross-venue execution carries transfer/settlement risk.",
             ],
         })
+
+    # 3. Model-vs-market gaps (only when forecasts are supplied). Appended to the
+    # same list; when `forecasts` is absent this block is a no-op and the two
+    # legacy detectors above are byte-identical.
+    forecasts = _as_list(params.get("forecasts"))
+    if forecasts:
+        candidates.extend(_model_vs_market_candidates(cached, forecasts, min_edge_bps))
 
     candidates.sort(key=lambda c: c["edge_bps"], reverse=True)
     candidates = candidates[:limit]
@@ -2551,3 +2565,663 @@ def apply_live_status(request_data: dict[str, Any]) -> dict[str, Any]:
         ev["live_score"] = {"home": info["home"], "away": info["away"], "elapsed": info["elapsed"]}
         out.append(ev)
     return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
+
+
+# -- Quantitative forecast layer ---------------------------------------------
+# Pure-stdlib, deterministic statistical models. Read-only and INFORMATIONAL:
+# probabilities are form-based estimates, gaps are not value/bet signals.
+
+DISCLAIMER = (
+    "Informational sports market intelligence only. "
+    "Not betting, trading, financial, or investment advice."
+)
+MODEL_CAVEATS = [
+    "Model probability is a form-based statistical estimate, not a market-calibrated forecast.",
+    "Pre-tournament confidence is low: seeded from FIFA/qualifier form until group results land.",
+]
+GAP_CAVEATS = [
+    "Gap is informational only, not a value or bet signal.",
+    "Fee-, liquidity-, and resolution-rule-blind. Verify settlement terms before acting.",
+]
+_FINAL_STATUS = {"FT", "AET", "PEN"}
+_DEFAULT_RANK_WEIGHTS = {
+    "outcome": 0.40, "attack": 0.32, "defense": 0.28,
+    "win_rate": 0.60, "points_per_game": 0.40,
+    "goals_per_game_norm": 0.70, "scoring_rate": 0.30,
+    "concede_rate_inverted": 0.60, "clean_sheet_rate": 0.40,
+}
+_DEFAULT_XG_PARAMS = {
+    "power_score_multiplier": 2.5,
+    "goals_per_game_weight": 0.7,
+    "defensive_impact_factor": 0.4,
+    "home_advantage": 0.15,  # neutral-site tournament: much lower than club ~0.3
+    "xg_min": 0.3,
+    "xg_max": 4.0,
+}
+
+
+def _num(value: Any, default: float) -> float:
+    """Float coercion that honors a default when value is None/non-numeric."""
+    try:
+        if value is None:
+            return float(default)
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _minmax(values: list[float]) -> list[float]:
+    if not values:
+        return []
+    lo, hi = min(values), max(values)
+    if hi == lo:
+        return [0.5] * len(values)
+    return [(v - lo) / (hi - lo) for v in values]
+
+
+def _poisson_pmf(k: int, lam: float) -> float:
+    if lam <= 0:
+        return 1.0 if k == 0 else 0.0
+    return (lam ** k) * math.exp(-lam) / math.factorial(k)
+
+
+def _dc_tau(h: int, a: int, lh: float, la: float, rho: float) -> float:
+    """Dixon-Coles low-score correlation adjustment."""
+    if rho == 0:
+        return 1.0
+    if h == 0 and a == 0:
+        return 1 - lh * la * rho
+    if h == 0 and a == 1:
+        return 1 + lh * rho
+    if h == 1 and a == 0:
+        return 1 + la * rho
+    if h == 1 and a == 1:
+        return 1 - rho
+    return 1.0
+
+
+def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Group-relative team power ranking (0-1) from finished fixtures + seed blend.
+
+    Params:
+      - finished_fixtures: api-football fixture objects (status FT/AET/PEN)
+      - seed_ratings: [{team_urn, team_name, seed_rating(0-1)}] FIFA/qualifier prior
+      - weights: optional override of _DEFAULT_RANK_WEIGHTS
+      - min_games_full_confidence: games for full results confidence (default 5)
+    Bootstrap blend: power = w*results + (1-w)*seed, w = games/min_games. With 0
+    games a team is 100% seed (data_source "seed", low confidence).
+    """
+    params = _params(request_data)
+    w = dict(_DEFAULT_RANK_WEIGHTS)
+    w.update(params.get("weights") or {})
+    try:
+        min_games = max(1, int(params.get("min_games_full_confidence") or 5))
+    except (TypeError, ValueError):
+        min_games = 5
+
+    seed_map: dict[str, float] = {}
+    seed_names: dict[str, str] = {}
+    for s in _as_list(params.get("seed_ratings")):
+        if not isinstance(s, dict):
+            continue
+        urn = _text(s.get("team_urn")) or _machina_team_urn(s.get("team_name"))
+        if not urn:
+            continue
+        seed_map[urn] = _num(s.get("seed_rating"), 0.5)
+        if _text(s.get("team_name")):
+            seed_names[urn] = _text(s.get("team_name"))
+
+    stats: dict[str, dict[str, Any]] = {}
+    names: dict[str, str] = {}
+    for f in _as_list(params.get("finished_fixtures")):
+        if not isinstance(f, dict):
+            continue
+        if _text(((f.get("fixture") or {}).get("status") or {}).get("short")).upper() not in _FINAL_STATUS:
+            continue
+        teams = f.get("teams") or {}
+        goals = f.get("goals") or {}
+        hg, ag = goals.get("home"), goals.get("away")
+        if hg is None or ag is None:
+            continue
+        hg, ag = int(hg), int(ag)
+        for side, own, opp in (("home", hg, ag), ("away", ag, hg)):
+            team = (teams.get(side) or {})
+            name = _text(team.get("name"))
+            if not name:
+                continue
+            urn = _machina_team_urn(name)
+            names[urn] = name
+            s = stats.setdefault(urn, {"games": 0, "wins": 0, "draws": 0, "losses": 0,
+                                       "gf": 0, "ga": 0, "clean": 0, "scored": 0})
+            s["games"] += 1
+            s["gf"] += own
+            s["ga"] += opp
+            if own > opp:
+                s["wins"] += 1
+            elif own == opp:
+                s["draws"] += 1
+            else:
+                s["losses"] += 1
+            if opp == 0:
+                s["clean"] += 1
+            if own > 0:
+                s["scored"] += 1
+
+    played = []
+    for urn, s in stats.items():
+        g = s["games"]
+        played.append({
+            "team_urn": urn, "team_name": names.get(urn, urn), "games": g,
+            "win_rate": s["wins"] / g, "points_per_game": (s["wins"] * 3 + s["draws"]) / g,
+            "goals_per_game": s["gf"] / g, "concede_rate": s["ga"] / g,
+            "clean_sheet_rate": s["clean"] / g, "scoring_rate": s["scored"] / g,
+            "_raw": s,
+        })
+
+    gpg_norm = _minmax([t["goals_per_game"] for t in played])
+    concede_norm = _minmax([t["concede_rate"] for t in played])
+
+    rankings: list[dict[str, Any]] = []
+    for i, t in enumerate(played):
+        outcome = w["win_rate"] * t["win_rate"] + w["points_per_game"] * (t["points_per_game"] / 3.0)
+        attack = w["goals_per_game_norm"] * gpg_norm[i] + w["scoring_rate"] * t["scoring_rate"]
+        defense = w["concede_rate_inverted"] * (1 - concede_norm[i]) + w["clean_sheet_rate"] * t["clean_sheet_rate"]
+        results_score = w["outcome"] * outcome + w["attack"] * attack + w["defense"] * defense
+        urn = t["team_urn"]
+        g = t["games"]
+        blend_w = min(1.0, g / min_games)
+        seed = seed_map.get(urn, 0.5)
+        power = blend_w * results_score + (1 - blend_w) * seed
+        rankings.append({
+            "team_urn": urn, "team_name": t["team_name"],
+            "power_score": round(power, 4),
+            "breakdown": {"outcome_score": round(outcome, 4), "attack_score": round(attack, 4),
+                          "defense_score": round(defense, 4)},
+            "metrics": {k: round(t[k], 4) for k in ("win_rate", "points_per_game", "goals_per_game",
+                                                    "concede_rate", "clean_sheet_rate", "scoring_rate")},
+            "games": g,
+            "confidence": round(max(0.15, min(1.0, g / min_games)), 3),
+            "data_source": "results" if g >= min_games else "blend",
+        })
+
+    ranked_urns = {r["team_urn"] for r in rankings}
+    seeded_only = 0
+    for urn, rating in seed_map.items():
+        if urn in ranked_urns:
+            continue
+        seeded_only += 1
+        rankings.append({
+            "team_urn": urn, "team_name": seed_names.get(urn, urn),
+            "power_score": round(rating, 4),
+            "breakdown": {"outcome_score": round(rating, 4), "attack_score": round(rating, 4),
+                          "defense_score": round(rating, 4)},
+            "metrics": {"win_rate": 0.0, "points_per_game": 0.0, "goals_per_game": 0.0,
+                        "concede_rate": 0.0, "clean_sheet_rate": 0.0, "scoring_rate": 0.0},
+            "games": 0, "confidence": 0.15, "data_source": "seed",
+        })
+
+    rankings.sort(key=lambda r: r["power_score"], reverse=True)
+    for idx, r in enumerate(rankings, 1):
+        r["rank"] = idx
+    team_index = {r["team_urn"]: r for r in rankings}
+
+    warnings = []
+    if not played:
+        warnings.append("No finished fixtures -- ranking is 100% seed (pre-tournament cold start).")
+    if not seed_map:
+        warnings.append("No seed_ratings supplied -- teams without results default to 0.5.")
+
+    return {
+        "status": True,
+        "data": {
+            "rankings": rankings, "team_index": team_index,
+            "field_size": len(rankings), "seeded_only": seeded_only,
+            "min_games_full_confidence": min_games,
+            "warnings": warnings, "disclaimer": DISCLAIMER,
+        },
+    }
+
+
+def normalize_fifa_seed(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Normalize FIFA/qualifier ranking points into 0-1 seed ratings per team URN.
+
+    Params: rankings [{team_name, points}]. Points are min-max normalized into a
+    [0.2, 0.8] band (so the weakest team is not a degenerate 0.0 that zeroes xG).
+    """
+    params = _params(request_data)
+    rows = []
+    for r in _as_list(params.get("rankings")):
+        if not isinstance(r, dict):
+            continue
+        name = _text(r.get("team_name") or r.get("name"))
+        pts = r.get("points", r.get("fifa_points"))
+        if not name or pts is None:
+            continue
+        rows.append((name, _to_float(pts)))
+    if not rows:
+        return {"status": True, "data": {"seed_ratings": [], "count": 0,
+                                         "warnings": ["No rankings supplied."], "disclaimer": DISCLAIMER}}
+    norm = _minmax([p for _, p in rows])
+    seen: dict[str, dict[str, Any]] = {}
+    for (name, _pts), n in zip(rows, norm):
+        urn = _machina_team_urn(name)
+        rating = round(0.2 + 0.6 * n, 4)
+        prev = seen.get(urn)
+        if prev is None or rating > prev["seed_rating"]:
+            seen[urn] = {"team_urn": urn, "team_name": name, "seed_rating": rating}
+    seeds = list(seen.values())
+    return {"status": True, "data": {"seed_ratings": seeds, "count": len(seeds), "disclaimer": DISCLAIMER}}
+
+
+def _match_probabilities(home_ranking: dict[str, Any], away_ranking: dict[str, Any],
+                         xg_params: dict[str, Any] | None = None,
+                         rho: float = -0.12, max_goals: int = 10) -> dict[str, Any]:
+    """Analytic Dixon-Coles 1X2/O-U/scoreline probabilities (deterministic, no sampling)."""
+    xg = dict(_DEFAULT_XG_PARAMS)
+    xg.update(xg_params or {})
+    try:
+        rho = max(-0.20, min(0.0, float(rho)))
+    except (TypeError, ValueError):
+        rho = -0.12
+    try:
+        max_goals = max(4, min(int(max_goals), 15))
+    except (TypeError, ValueError):
+        max_goals = 10
+
+    hp = _num((home_ranking or {}).get("power_score"), 0.5)
+    ap = _num((away_ranking or {}).get("power_score"), 0.5)
+    hb = (home_ranking or {}).get("breakdown") or {}
+    ab = (away_ranking or {}).get("breakdown") or {}
+    h_attack = _num(hb.get("attack_score"), hp)
+    h_def = _num(hb.get("defense_score"), hp)
+    a_attack = _num(ab.get("attack_score"), ap)
+    a_def = _num(ab.get("defense_score"), ap)
+    h_gpg = _num(((home_ranking or {}).get("metrics") or {}).get("goals_per_game"), 0.0)
+    a_gpg = _num(((away_ranking or {}).get("metrics") or {}).get("goals_per_game"), 0.0)
+
+    mult, gpgw, deffac = xg["power_score_multiplier"], xg["goals_per_game_weight"], xg["defensive_impact_factor"]
+    home_xg = (hp * mult + h_gpg * gpgw) * max(h_attack, 0.2) * (1 - a_def * deffac) + xg["home_advantage"]
+    away_xg = (ap * mult + a_gpg * gpgw) * max(a_attack, 0.2) * (1 - h_def * deffac)
+    home_xg = max(xg["xg_min"], min(xg["xg_max"], home_xg))
+    away_xg = max(xg["xg_min"], min(xg["xg_max"], away_xg))
+
+    hp_probs = [_poisson_pmf(k, home_xg) for k in range(max_goals + 1)]
+    ap_probs = [_poisson_pmf(k, away_xg) for k in range(max_goals + 1)]
+    cells = []
+    total = 0.0
+    for h in range(max_goals + 1):
+        for a in range(max_goals + 1):
+            p = hp_probs[h] * ap_probs[a] * _dc_tau(h, a, home_xg, away_xg, rho)
+            total += p
+            cells.append((h, a, p))
+    if total > 0:
+        cells = [(h, a, p / total) for h, a, p in cells]
+
+    hw = dw = aw = over = 0.0
+    for h, a, p in cells:
+        if h > a:
+            hw += p
+        elif h == a:
+            dw += p
+        else:
+            aw += p
+        if h + a > 2:  # integer goals: total > 2.5 == >= 3
+            over += p
+
+    top = sorted(cells, key=lambda c: c[2], reverse=True)
+    most_likely = top[0]
+    confidence = round(min(_num((home_ranking or {}).get("confidence"), 0.15),
+                           _num((away_ranking or {}).get("confidence"), 0.15)), 3)
+    return {
+        "home_expected_goals": round(home_xg, 3),
+        "away_expected_goals": round(away_xg, 3),
+        "expected_total_goals": round(home_xg + away_xg, 3),
+        "probabilities": {
+            "home_win": round(hw, 4), "draw": round(dw, 4), "away_win": round(aw, 4),
+            "over_2_5": round(over, 4), "under_2_5": round(1 - over, 4),
+        },
+        "most_likely_score": f"{most_likely[0]}-{most_likely[1]}",
+        "exact_scorelines": {f"{h}-{a}": round(p, 4) for h, a, p in top[:8]},
+        "confidence": confidence,
+        "correlation_rho": rho,
+        "method": "dixon_coles_analytic_stdlib",
+    }
+
+
+def compute_match_probabilities(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Command wrapper around _match_probabilities (one fixture).
+
+    Params: home_ranking, away_ranking (compute_power_ranking entries), xg_params?,
+    rho? (default -0.12), max_goals? (default 10).
+    """
+    params = _params(request_data)
+    result = _match_probabilities(
+        params.get("home_ranking") or {},
+        params.get("away_ranking") or {},
+        params.get("xg_params"),
+        _num(params.get("rho"), -0.12),
+        int(params.get("max_goals") or 10),
+    )
+    result["caveats"] = list(MODEL_CAVEATS)
+    result["disclaimer"] = DISCLAIMER
+    return {"status": True, "data": result}
+
+
+def build_event_forecasts(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Build worldcup:model-forecast docs for upcoming events from a team_index.
+
+    Params: events (worldcup:event docs), team_index ({team_urn: ranking} from
+    compute_power_ranking), xg_params?, rho?, max_goals?.
+    """
+    params = _params(request_data)
+    team_index = params.get("team_index") or {}
+    xg_params = params.get("xg_params")
+    rho = _num(params.get("rho"), -0.12)
+    max_goals = int(params.get("max_goals") or 10)
+
+    docs: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        event_urn = _text(_first(ev, "_id", "@id", "id"))
+        home = away = None
+        for c in ev.get("sport:competitors") or []:
+            q = _lower(c.get("sport:qualifier"))
+            if q == "home":
+                home = c
+            elif q == "away":
+                away = c
+        if not home or not away or not event_urn:
+            skipped.append(event_urn or "unknown")
+            continue
+        hr = team_index.get(_text(home.get("@id")))
+        ar = team_index.get(_text(away.get("@id")))
+        if not hr or not ar:
+            skipped.append(event_urn)
+            continue
+        probs = _match_probabilities(hr, ar, xg_params, rho, max_goals)
+        sources = {hr.get("data_source"), ar.get("data_source")}
+        data_source = "results" if sources == {"results"} else ("seed" if "seed" in sources else "blend")
+        confidence = probs["confidence"]
+        flags = []
+        if data_source != "results":
+            flags.append("bootstrap_seeded")
+        if confidence < 0.5:
+            flags.append("low_sample_size")
+        docs.append({
+            "metadata": {"event_urn": event_urn},
+            "_id": event_urn, "@id": event_urn, "id": event_urn,
+            "provider_ids": {"api_football": _text((ev.get("provider_ids") or {}).get("api_football"))},
+            "schema:startDate": ev.get("schema:startDate"),
+            "home_team": {"urn": _text(home.get("@id")), "name": _text(home.get("name"))},
+            "away_team": {"urn": _text(away.get("@id")), "name": _text(away.get("name"))},
+            "home_expected_goals": probs["home_expected_goals"],
+            "away_expected_goals": probs["away_expected_goals"],
+            "probabilities": probs["probabilities"],
+            "most_likely_score": probs["most_likely_score"],
+            "exact_scorelines": probs["exact_scorelines"],
+            "confidence": confidence,
+            "data_source": data_source,
+            "flags": flags,
+            "model": {"method": probs["method"], "rho": probs["correlation_rho"], "computed_at": _now_iso()},
+            "caveats": list(MODEL_CAVEATS),
+            "disclaimer": DISCLAIMER,
+        })
+
+    return {
+        "status": True,
+        "data": {"forecasts": docs, "count": len(docs), "skipped": skipped, "disclaimer": DISCLAIMER},
+    }
+
+
+def _gap_candidates(probs: dict[str, Any], outcomes: list[Any],
+                    home_name: Any, away_name: Any, min_gap_bps: int) -> list[dict[str, Any]]:
+    """Per-1X2-bucket model-vs-market gaps. Informational only."""
+    home_slug = _slugify(home_name) if home_name else ""
+    away_slug = _slugify(away_name) if away_name else ""
+    buckets: dict[str, float] = {}
+    for o in outcomes:
+        if not isinstance(o, dict):
+            continue
+        name = _lower(o.get("outcome_name") or o.get("name"))
+        if o.get("price") is None:
+            continue
+        price = _to_float(o.get("price"))
+        if price == 0.0:
+            continue
+        name_slug = _slugify(name)
+        if "draw" in name or "tie" in name:
+            bucket = "draw"
+        elif home_slug and home_slug in name_slug:
+            bucket = "home_win"
+        elif away_slug and away_slug in name_slug:
+            bucket = "away_win"
+        else:
+            continue
+        buckets.setdefault(bucket, price)
+
+    gaps = []
+    for bucket, price in buckets.items():
+        model_prob = probs.get(bucket)
+        if model_prob is None:
+            continue
+        model_prob = _to_float(model_prob)
+        gap = round(model_prob - price, 4)
+        gap_bps = round(abs(gap) * 10000)
+        if gap_bps < min_gap_bps:
+            continue
+        gaps.append({
+            "outcome": bucket, "model_prob": round(model_prob, 4), "market_price": round(price, 4),
+            "gap": gap, "gap_bps": gap_bps, "model_richer": gap > 0,
+        })
+    gaps.sort(key=lambda g: g["gap_bps"], reverse=True)
+    return gaps
+
+
+def _model_vs_market_candidates(cached: list[dict[str, Any]], forecasts: list[Any],
+                                min_edge_bps: int) -> list[dict[str, Any]]:
+    """Build model_vs_market edge candidates for detect_market_edges."""
+    by_event: dict[str, list[Any]] = {}
+    for m in cached:
+        if not isinstance(m, dict):
+            continue
+        eu = _text(m.get("event_urn"))
+        if not eu:
+            continue
+        by_event.setdefault(eu, []).extend(m.get("outcomes") or [])
+
+    candidates = []
+    for fc in forecasts:
+        if not isinstance(fc, dict):
+            continue
+        eu = _text(_first(fc, "_id", "@id", "id")) or _text((fc.get("metadata") or {}).get("event_urn"))
+        probs = fc.get("probabilities") or {}
+        outcomes = by_event.get(eu)
+        if not eu or not probs or not outcomes:
+            continue
+        home = (fc.get("home_team") or {}).get("name")
+        away = (fc.get("away_team") or {}).get("name")
+        for g in _gap_candidates(probs, outcomes, home, away, min_edge_bps):
+            candidates.append({
+                "candidate_type": "model_vs_market",
+                "event_urn": eu,
+                "outcome": g["outcome"],
+                "model_prob": g["model_prob"],
+                "market_price": g["market_price"],
+                "gap": g["gap"],
+                "edge_bps": g["gap_bps"],
+                "model_richer": g["model_richer"],
+                "caveats": MODEL_CAVEATS + GAP_CAVEATS,
+            })
+    return candidates
+
+
+def compute_model_vs_market_edge(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Compare model 1X2 probabilities to market prices for ONE event.
+
+    Params: model_probabilities {home_win,draw,away_win}, market_outcomes
+    [{name|outcome_name, price}], home_team, away_team, min_gap_bps (default 100),
+    event_urn.
+    """
+    params = _params(request_data)
+    try:
+        min_gap_bps = int(params.get("min_gap_bps") or 100)
+    except (TypeError, ValueError):
+        min_gap_bps = 100
+    gaps = _gap_candidates(
+        params.get("model_probabilities") or {},
+        _as_list(params.get("market_outcomes")),
+        params.get("home_team"), params.get("away_team"), min_gap_bps,
+    )
+    return {
+        "status": True,
+        "data": {
+            "gaps": gaps,
+            "max_gap_bps": max((g["gap_bps"] for g in gaps), default=0),
+            "count": len(gaps),
+            "event_urn": _text(params.get("event_urn")),
+            "min_gap_bps": min_gap_bps,
+            "caveats": MODEL_CAVEATS + GAP_CAVEATS,
+            "disclaimer": DISCLAIMER,
+        },
+    }
+
+
+def _single_audit(forecast: dict[str, Any], home_goals: int, away_goals: int) -> dict[str, Any]:
+    probs = forecast.get("probabilities") or {}
+    hw, dw, aw = _to_float(probs.get("home_win")), _to_float(probs.get("draw")), _to_float(probs.get("away_win"))
+    ov, un = _to_float(probs.get("over_2_5")), _to_float(probs.get("under_2_5"))
+    total = home_goals + away_goals
+    a_home = 1 if home_goals > away_goals else 0
+    a_draw = 1 if home_goals == away_goals else 0
+    a_away = 1 if home_goals < away_goals else 0
+    a_over = 1 if total > 2.5 else 0
+    brier_home = (hw - a_home) ** 2
+    brier_draw = (dw - a_draw) ** 2
+    brier_away = (aw - a_away) ** 2
+    brier_over = (ov - a_over) ** 2
+    combined = (brier_home + brier_draw + brier_away) / 3
+    probs3 = {"home_win": hw, "draw": dw, "away_win": aw}
+    predicted = max(probs3, key=probs3.get)
+    predicted_prob = probs3[predicted]
+    actual_outcome = "home_win" if a_home else ("draw" if a_draw else "away_win")
+    cbin = min(int(predicted_prob * 10), 9)
+    return {
+        "metadata": {"event_urn": _text(_first(forecast, "_id", "@id", "id"))},
+        "_id": _text(_first(forecast, "_id", "@id", "id")),
+        "event_urn": _text(_first(forecast, "_id", "@id", "id")),
+        "fixture_id": _text((forecast.get("provider_ids") or {}).get("api_football")),
+        "predicted_probabilities": {"home_win": round(hw, 4), "draw": round(dw, 4),
+                                    "away_win": round(aw, 4), "over_2_5": round(ov, 4), "under_2_5": round(un, 4)},
+        "actual_result": {"home_goals": home_goals, "away_goals": away_goals,
+                          "total_goals": total, "outcome": actual_outcome},
+        "brier_scores": {"home_win": round(brier_home, 4), "draw": round(brier_draw, 4),
+                         "away_win": round(brier_away, 4), "combined_1x2": round(combined, 4),
+                         "over_2_5": round(brier_over, 4)},
+        "calibration": {"predicted_outcome": predicted, "predicted_probability": round(predicted_prob, 4),
+                        "actual_outcome": actual_outcome, "prediction_correct": predicted == actual_outcome,
+                        "calibration_bin": cbin, "calibration_bin_label": f"{cbin * 10}-{(cbin + 1) * 10}%"},
+        "exact_score_correct": _text(forecast.get("most_likely_score")) == f"{home_goals}-{away_goals}",
+        "audited_at": _now_iso(),
+        "disclaimer": DISCLAIMER,
+    }
+
+
+def _aggregate_audit(audits: list[dict[str, Any]]) -> dict[str, Any]:
+    audits = [a for a in audits if isinstance(a, dict) and a.get("brier_scores")]
+    n = len(audits)
+    if n == 0:
+        return {"sample_size": 0, "sample_size_sufficient": False,
+                "recommendation": "No audited forecasts yet.", "disclaimer": DISCLAIMER}
+    avg_1x2 = sum(a["brier_scores"].get("combined_1x2", 0.25) for a in audits) / n
+    avg_over = sum(a["brier_scores"].get("over_2_5", 0.25) for a in audits) / n
+    correct = sum(1 for a in audits if (a.get("calibration") or {}).get("prediction_correct"))
+    bins = [{"count": 0, "correct": 0, "sum_pred": 0.0} for _ in range(10)]
+    for a in audits:
+        cal = a.get("calibration") or {}
+        b = int(cal.get("calibration_bin", 0))
+        b = max(0, min(9, b))
+        bins[b]["count"] += 1
+        bins[b]["correct"] += 1 if cal.get("prediction_correct") else 0
+        bins[b]["sum_pred"] += _to_float(cal.get("predicted_probability"))
+    curve = []
+    cal_error_num = 0.0
+    for i, bk in enumerate(bins):
+        if bk["count"] == 0:
+            continue
+        pred_avg = bk["sum_pred"] / bk["count"]
+        actual_rate = bk["correct"] / bk["count"]
+        curve.append({"bin": i, "label": f"{i * 10}-{(i + 1) * 10}%", "count": bk["count"],
+                      "predicted_avg": round(pred_avg, 4), "actual_rate": round(actual_rate, 4)})
+        cal_error_num += bk["count"] * abs(pred_avg - actual_rate)
+    avg_cal_error = round(cal_error_num / n, 4)
+    better = avg_1x2 < 0.25
+    rec = ("Brier %.4f vs 0.25 random (%s); calibration error %.4f (target <0.05)."
+           % (avg_1x2, "better than random" if better else "not better than random", avg_cal_error))
+    return {
+        "sample_size": n,
+        "sample_size_sufficient": n >= 50,
+        "brier_scores": {"avg_1x2": round(avg_1x2, 4), "avg_over_2_5": round(avg_over, 4),
+                         "baseline_random": 0.25, "is_better_than_random": better},
+        "accuracy": {"correct": correct, "total": n, "accuracy_percent": round(100 * correct / n, 2)},
+        "calibration": {"avg_calibration_error": avg_cal_error, "curve": curve},
+        "recommendation": rec,
+        "disclaimer": DISCLAIMER,
+    }
+
+
+def compute_forecast_audit(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Brier + calibration audit. Modes: single | batch | aggregate (inferred if absent).
+
+    single: forecast + actual_result {home_goals, away_goals}
+    batch: forecasts[] + finished_fixtures[] (matched by api-football fixture id)
+    aggregate: audit_results[] -> backtesting_report
+    """
+    params = _params(request_data)
+    mode = _text(params.get("mode")).lower()
+    if not mode:
+        if params.get("audit_results") is not None:
+            mode = "aggregate"
+        elif params.get("forecasts") is not None:
+            mode = "batch"
+        else:
+            mode = "single"
+
+    if mode == "aggregate":
+        report = _aggregate_audit(_as_list(params.get("audit_results")))
+        return {"status": True, "data": {"backtesting_report": report,
+                                         "_id": "worldcup:forecast-audit:aggregate",
+                                         "metadata": {"event_urn": "worldcup:forecast-audit:aggregate"},
+                                         "name_hint": "aggregate"}}
+
+    if mode == "batch":
+        by_fid: dict[str, tuple[int, int]] = {}
+        for f in _as_list(params.get("finished_fixtures")):
+            if not isinstance(f, dict):
+                continue
+            if _text(((f.get("fixture") or {}).get("status") or {}).get("short")).upper() not in _FINAL_STATUS:
+                continue
+            fid = _text((f.get("fixture") or {}).get("id"))
+            goals = f.get("goals") or {}
+            if fid and goals.get("home") is not None and goals.get("away") is not None:
+                by_fid[fid] = (int(goals["home"]), int(goals["away"]))
+        audits = []
+        for fc in _as_list(params.get("forecasts")):
+            if not isinstance(fc, dict):
+                continue
+            fid = _text((fc.get("provider_ids") or {}).get("api_football"))
+            res = by_fid.get(fid)
+            if not res:
+                continue
+            audits.append(_single_audit(fc, res[0], res[1]))
+        return {"status": True, "data": {"audits": audits, "count": len(audits), "disclaimer": DISCLAIMER}}
+
+    # single
+    forecast = params.get("forecast") or {}
+    actual = params.get("actual_result") or {}
+    hg = actual.get("home_goals", (actual.get("goals") or {}).get("home"))
+    ag = actual.get("away_goals", (actual.get("goals") or {}).get("away"))
+    if not forecast or hg is None or ag is None:
+        return {"status": False, "data": {"error": "single mode needs forecast + actual_result {home_goals, away_goals}"}}
+    return {"status": True, "data": {"audit_result": _single_audit(forecast, int(hg), int(ag)), "disclaimer": DISCLAIMER}}

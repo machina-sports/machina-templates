@@ -14,6 +14,7 @@ setup:
     - Google GenAI grounded reasoning for structured market briefs.
     - xAI/Grok fan sentiment and live news pulse.
     - Market edge and arbitrage-candidate analysis for agent workflows.
+    - Statistical match forecasts (Dixon-Coles) with model-vs-market gaps + Brier/calibration backtesting.
     - Read-only workflows suitable for API/MCP productization.
   integrations:
     - api-football
@@ -26,7 +27,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.1.0
+  version: 0.2.0
 
 datasets:
   - type: connector
@@ -90,6 +91,14 @@ datasets:
   - type: workflow
     path: workflows/worldcup-refresh-prematch-enrichment.yml
   - type: workflow
+    path: workflows/worldcup-seed-fifa-ranking.yml
+  - type: workflow
+    path: workflows/worldcup-sync-model-forecasts.yml
+  - type: workflow
+    path: workflows/worldcup-get-match-forecast.yml
+  - type: workflow
+    path: workflows/worldcup-backtest-forecasts.yml
+  - type: workflow
     path: _folders.yml
 
   - type: prompts
@@ -106,6 +115,10 @@ datasets:
     path: prompts/worldcup-fan-sentiment-extract.yml
   - type: prompts
     path: prompts/worldcup-player-performance-context-summary.yml
+  - type: prompts
+    path: prompts/worldcup-fifa-ranking-extract.yml
+  - type: prompts
+    path: prompts/worldcup-match-forecast-explain.yml
 
   - type: mappings
     path: mappings/worldcup-iptc-event-to-api-response.yml

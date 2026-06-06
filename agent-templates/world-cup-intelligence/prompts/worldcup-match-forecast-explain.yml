@@ -1,0 +1,36 @@
+prompts:
+  - type: prompt
+    name: worldcup-match-forecast-explain
+    title: World Cup Match Forecast Explanation
+    description: Explain a statistical match forecast and any model-vs-market gaps, strictly informational.
+    instruction: |
+      Explain the model forecast in `forecast` (a Dixon-Coles statistical estimate from
+      team form blended with a FIFA-ranking seed) and any gaps in `model_vs_market`
+      (model 1X2 probability minus current market price). State clearly that these are
+      form-based statistical estimates, NOT market-calibrated forecasts, and that
+      pre-tournament confidence is low. Describe what a gap could mean and what to verify
+      (resolution rules, liquidity, fees) before any external action. A gap is
+      informational only — it is NOT a value bet or a recommendation. Never use
+      "guaranteed", "value bet", "edge to bet", or "bet this" language. Do not give
+      personalized financial advice or execute trades.
+    schema:
+      title: WorldCupMatchForecastExplanation
+      type: object
+      required: [summary, probabilities, confidence_note, caveats, disclaimer]
+      properties:
+        summary:
+          type: string
+        probabilities:
+          type: object
+        model_vs_market_gaps:
+          type: array
+          items:
+            type: object
+        confidence_note:
+          type: string
+        caveats:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string
