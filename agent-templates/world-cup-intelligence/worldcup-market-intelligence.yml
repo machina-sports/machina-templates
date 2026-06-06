@@ -48,3 +48,7 @@ connector:
       value: "build_market_snapshots"
     - name: "Compute market movers"
       value: "compute_market_movers"
+    - name: "Compute coverage signals"
+      value: "compute_coverage_signals"
+    - name: "Apply live status"
+      value: "apply_live_status"

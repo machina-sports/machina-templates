@@ -1,0 +1,47 @@
+workflow:
+  name: worldcup-coverage-gateway
+  title: World Cup Intelligence - Coverage Gateway
+  description: |
+    Cheap, API-free phase detector for the match-phase coverage cadence. Reads
+    the event cache and emits signals (has_live, live_event_urns, upcoming_24h,
+    recent_done) so the hot/warm coverage agents only do expensive refreshes
+    when there is something to cover. Live = schedule window [kickoff, +150min]
+    or an in-play sport:status.
+
+  context-variables:
+    debugger:
+      enabled: true
+  outputs:
+    has_live: "$.get('has_live', False)"
+    live_event_urns: "$.get('live_event_urns', [])"
+    live_count: "$.get('live_count', 0)"
+    upcoming_24h: "$.get('upcoming_24h', 0)"
+    recent_done: "$.get('recent_done', 0)"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: load-events
+      description: Load event docs (schedule + status) for phase detection.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: compute-signals
+      description: Derive match-phase signals from the events (no API calls).
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_coverage_signals
+      inputs:
+        events: "$.get('events', [])"
+      outputs:
+        has_live: "$.get('has_live', False)"
+        live_event_urns: "$.get('live_event_urns', [])"
+        live_count: "$.get('live_count', 0)"
+        upcoming_24h: "$.get('upcoming_24h', 0)"
+        recent_done: "$.get('recent_done', 0)"

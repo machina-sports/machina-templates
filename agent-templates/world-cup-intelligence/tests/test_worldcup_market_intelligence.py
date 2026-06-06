@@ -27,6 +27,8 @@ build_event_crosswalk = _module.build_event_crosswalk
 link_market_entities = _module.link_market_entities
 build_market_snapshots = _module.build_market_snapshots
 compute_market_movers = _module.compute_market_movers
+compute_coverage_signals = _module.compute_coverage_signals
+apply_live_status = _module.apply_live_status
 
 
 def _kalshi_record(**overrides):
@@ -1196,3 +1198,52 @@ class TestMarketSnapshotsAndMovers:
         markets = [{"cache_id": "new", "title": "N", "source": "kalshi", "outcomes": [{"name": "Yes", "price": 0.5}]}]
         r = compute_market_movers({"params": {"markets": markets, "snapshots": [], "limit": 10}})["data"]
         assert r["movers"] == []
+
+
+class TestCoverageCadence:
+    def _ev(self, urn, start, status="NS", fid=None):
+        d = {"_id": urn, "schema:startDate": start, "sport:status": status}
+        if fid:
+            d["provider_ids"] = {"api_football": fid}
+        return d
+
+    def test_coverage_signals_phases(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        iso = lambda dt: dt.isoformat()
+        events = [
+            self._ev("urn:live-window", iso(now - timedelta(minutes=30))),     # kicked off 30m ago → live
+            self._ev("urn:live-status", iso(now - timedelta(hours=5)), "2H"),  # status in-play → live
+            self._ev("urn:upcoming", iso(now + timedelta(hours=2))),           # upcoming 24h
+            self._ev("urn:done", iso(now - timedelta(hours=4))),               # finished window
+            self._ev("urn:far", iso(now + timedelta(days=3))),                 # neither
+        ]
+        r = compute_coverage_signals({"params": {"events": events}})["data"]
+        assert r["has_live"] is True
+        assert set(r["live_event_urns"]) == {"urn:live-window", "urn:live-status"}
+        assert r["live_count"] == 2
+        assert r["upcoming_24h"] == 1
+        assert r["recent_done"] == 1
+
+    def test_coverage_signals_none_live(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        events = [self._ev("urn:far", (now + timedelta(days=5)).isoformat())]
+        r = compute_coverage_signals({"params": {"events": events}})["data"]
+        assert r["has_live"] is False and r["live_event_urns"] == []
+
+    def test_apply_live_status_merges_score(self):
+        events = [
+            self._ev("urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor",
+                     "2026-06-20T00:30:00+00:00", "NS", fid="1489389"),
+            self._ev("urn:other", "2026-06-21T00:00:00+00:00", "NS", fid="999"),
+        ]
+        live = {"response": [{"fixture": {"id": 1489389, "status": {"short": "2H", "elapsed": 67}},
+                              "goals": {"home": 2, "away": 0}}]}
+        r = apply_live_status({"params": {"events": events, "live_fixtures": live}})["data"]
+        assert r["count"] == 1
+        d = r["normalized_items"][0]
+        assert d["_id"].endswith("brazil-vs-haiti:20260620:wor")
+        assert d["sport:status"] == "2H"
+        assert d["live_score"] == {"home": 2, "away": 0, "elapsed": 67}
+        assert d["metadata"]["event_urn"].endswith("brazil-vs-haiti:20260620:wor")

@@ -1,0 +1,73 @@
+workflow:
+  name: worldcup-refresh-live-status
+  title: World Cup Intelligence - Refresh Live Status
+  description: |
+    Refresh in-play fixture status + score onto the cached event docs from
+    api-football live fixtures. Driven by the hot coverage agent during matches
+    so get-event-context / standings reflect live scores between daily ingests.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+  outputs:
+    updated_count: "len($.get('normalized_items', []))"
+    workflow-status: "len($.get('normalized_items', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: fetch-live-fixtures
+      description: api-football live fixtures for the World Cup league.
+      continue_on_error: true
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league', '1')"
+        season: "$.get('season', '2026')"
+        live: "'all'"
+      outputs:
+        live_fixtures: "{'response': $.get('response', [])}"
+
+    - type: document
+      name: load-events
+      description: Load event docs to merge live status/score onto.
+      condition: "len(($.get('live_fixtures', {}) or {}).get('response', [])) > 0"
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: apply-live-status
+      description: Merge live status + score onto matching event docs (by fixture id).
+      condition: "len($.get('events', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: apply_live_status
+      inputs:
+        events: "$.get('events', [])"
+        live_fixtures: "$.get('live_fixtures', {})"
+      outputs:
+        normalized_items: "$.get('normalized_items', [])"
+
+    - type: document
+      name: save-live-events
+      description: Persist the updated (live) event docs.
+      condition: "len($.get('normalized_items', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:event'"
+      documents:
+        items: "$.get('normalized_items', [])"
+      inputs:
+        normalized_items: "$.get('normalized_items', [])"

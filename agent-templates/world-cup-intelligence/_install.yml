@@ -64,6 +64,10 @@ datasets:
   - type: workflow
     path: workflows/worldcup-get-schedule.yml
   - type: workflow
+    path: workflows/worldcup-coverage-gateway.yml
+  - type: workflow
+    path: workflows/worldcup-refresh-live-status.yml
+  - type: workflow
     path: workflows/worldcup-get-player-performance-context.yml
   - type: workflow
     path: workflows/worldcup-sync-identity-crosswalk.yml
