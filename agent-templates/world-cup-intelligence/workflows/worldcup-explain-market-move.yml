@@ -82,7 +82,8 @@ workflow:
       connector:
         name: google-genai
         command: invoke_search
-        model: gemini-3.5-flash
+        # Fast tier: news grounding only; the move reasoning below stays smart.
+        model: gemini-3.1-flash-lite
         provider: vertex_ai
         location: global
       inputs:
