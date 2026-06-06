@@ -25,6 +25,8 @@ merge_provider_entities = _module.merge_provider_entities
 build_player_crosswalk = _module.build_player_crosswalk
 build_event_crosswalk = _module.build_event_crosswalk
 link_market_entities = _module.link_market_entities
+build_market_snapshots = _module.build_market_snapshots
+compute_market_movers = _module.compute_market_movers
 
 
 def _kalshi_record(**overrides):
@@ -1159,3 +1161,38 @@ class TestLinkMarketEntities:
         r = link_market_entities({"params": {"markets": markets, "teams": self._teams(), "events": self._events()}})["data"]
         assert r["normalized_markets"][0]["related_team_urns"] == []
         assert r["normalized_markets"][0]["event_urn"] is None
+
+
+class TestMarketSnapshotsAndMovers:
+    def test_snapshot_id_is_hourly_and_slim(self):
+        markets = [{"cache_id": "kalshi:x", "source": "kalshi", "title": "Brazil vs Haiti Winner?",
+                    "fetched_at": "2026-06-06T15:17:27.989043Z",
+                    "outcomes": [{"name": "Brazil", "price": 0.9}, {"name": "No", "price": 0.1}],
+                    "volume": 100, "event_urn": "urn:e", "related_team_urns": ["urn:t"]}]
+        r = build_market_snapshots({"params": {"markets": markets}})["data"]
+        s = r["snapshots"][0]
+        assert s["metadata"]["snapshot_id"] == "kalshi:x:2026-06-06T15"
+        assert s["primary_name"] == "Brazil" and s["primary_price"] == 0.9
+        assert s["ts"] == "2026-06-06T15:17:27.989043Z"
+
+    def test_movers_rank_by_abs_delta(self):
+        markets = [
+            {"cache_id": "m1", "title": "A", "source": "kalshi", "outcomes": [{"name": "Yes", "price": 0.90}]},
+            {"cache_id": "m2", "title": "B", "source": "poly", "outcomes": [{"name": "Yes", "price": 0.50}]},
+        ]
+        snaps = [
+            {"cache_id": "m1", "ts": "2026-06-06T10:00:00Z", "primary_price": 0.88},
+            {"cache_id": "m1", "ts": "2026-06-06T08:00:00Z", "primary_price": 0.70},  # earliest = baseline
+            {"cache_id": "m2", "ts": "2026-06-06T09:00:00Z", "primary_price": 0.49},
+        ]
+        r = compute_market_movers({"params": {"markets": markets, "snapshots": snaps, "limit": 10}})["data"]
+        assert r["movers"][0]["cache_id"] == "m1"
+        assert r["movers"][0]["price_then"] == 0.70
+        assert r["movers"][0]["delta"] == 0.2
+        assert r["movers"][1]["cache_id"] == "m2"
+        assert r["movers"][1]["delta"] == 0.01
+
+    def test_movers_skips_markets_without_baseline(self):
+        markets = [{"cache_id": "new", "title": "N", "source": "kalshi", "outcomes": [{"name": "Yes", "price": 0.5}]}]
+        r = compute_market_movers({"params": {"markets": markets, "snapshots": [], "limit": 10}})["data"]
+        assert r["movers"] == []

@@ -1,0 +1,56 @@
+workflow:
+  name: worldcup-market-movers
+  title: World Cup Intelligence - Market Movers
+  description: |
+    Biggest price moves across cached World Cup markets over a lookback window,
+    computed from the worldcup:market-snapshot price-history store. Each mover is
+    linked to its team/event/competition URNs. Read-only.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    window_hours: "$.get('window_hours', 24)"
+    limit: "$.get('limit', 20)"
+  outputs:
+    movers: "$.get('movers', [])"
+    count: "len($.get('movers', []))"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: load-current-markets
+      description: Current market-cache records (latest prices).
+      config:
+        action: search
+        search-limit: 1000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-snapshots
+      description: Price snapshots within the lookback window (baseline for the delta).
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-snapshot'"
+        value.ts: "{'$gte': (datetime.utcnow() - timedelta(hours=int($.get('window_hours', 24)))).isoformat()}"
+      outputs:
+        snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: compute-movers
+      description: Rank markets by absolute price move vs the earliest snapshot in the window.
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_market_movers
+      inputs:
+        markets: "$.get('markets', [])"
+        snapshots: "$.get('snapshots', [])"
+        limit: "$.get('limit', 20)"
+      outputs:
+        movers: "$.get('movers', [])"

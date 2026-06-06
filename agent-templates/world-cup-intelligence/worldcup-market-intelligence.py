@@ -2360,3 +2360,103 @@ def link_market_entities(request_data: dict[str, Any]) -> dict[str, Any]:
         "status": True,
         "data": {"normalized_markets": markets, "count": len(markets), "provider_summary": summary},
     }
+
+
+def build_market_snapshots(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Build append-only price snapshots from linked markets (one per market per hour).
+
+    Snapshot id = "{cache_id}:{YYYY-MM-DDTHH}" so the 30-min market sync writes at
+    most one row per market per hour (last write in the hour wins) — a bounded
+    hourly price/volume time series for movement detection.
+    """
+    params = _params(request_data)
+    snapshots: list[dict[str, Any]] = []
+    for m in _as_list(params.get("markets")):
+        if not isinstance(m, dict):
+            continue
+        cid = _text(m.get("cache_id") or m.get("id"))
+        if not cid:
+            continue
+        ts = _text(m.get("fetched_at")) or _now_iso()
+        hour = ts[:13]  # "2026-06-06T15"
+        snap_id = f"{cid}:{hour}"
+        outs = [{"name": _text(o.get("name")), "price": o.get("price")}
+                for o in (m.get("outcomes") or []) if isinstance(o, dict)]
+        primary = outs[0] if outs else {}
+        snapshots.append({
+            "metadata": {"snapshot_id": snap_id},
+            "_id": snap_id, "id": snap_id,
+            "cache_id": cid,
+            "source": _text(m.get("source")),
+            "title": _text(m.get("title")),
+            "ts": ts,
+            "hour": hour,
+            "primary_name": primary.get("name"),
+            "primary_price": primary.get("price"),
+            "outcomes": outs,
+            "volume": m.get("volume"),
+            "liquidity": m.get("liquidity"),
+            "event_urn": m.get("event_urn"),
+            "competition_urn": m.get("competition_urn"),
+            "related_team_urns": m.get("related_team_urns") or [],
+        })
+    return {"status": True, "data": {"snapshots": snapshots, "count": len(snapshots)}}
+
+
+def compute_market_movers(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Rank markets by price movement vs the earliest snapshot in the window.
+
+    Params:
+      - markets: current market-cache records
+      - snapshots: market-snapshot rows already filtered to the lookback window
+      - limit: max movers to return
+    Baseline = oldest snapshot per cache_id in the supplied window; delta =
+    current primary-outcome price - baseline price.
+    """
+    params = _params(request_data)
+    try:
+        limit = int(params.get("limit") or 20)
+    except (TypeError, ValueError):
+        limit = 20
+
+    baseline: dict[str, dict[str, Any]] = {}
+    for s in _as_list(params.get("snapshots")):
+        if not isinstance(s, dict):
+            continue
+        cid = _text(s.get("cache_id"))
+        ts = _text(s.get("ts"))
+        if not cid or s.get("primary_price") is None:
+            continue
+        cur = baseline.get(cid)
+        if cur is None or (ts and ts < cur["ts"]):
+            baseline[cid] = {"ts": ts, "price": _to_float(s.get("primary_price"))}
+
+    movers: list[dict[str, Any]] = []
+    for m in _as_list(params.get("markets")):
+        if not isinstance(m, dict):
+            continue
+        cid = _text(m.get("cache_id") or m.get("id"))
+        outs = m.get("outcomes") or []
+        base = baseline.get(cid)
+        if not cid or not outs or not base:
+            continue
+        price_now = _to_float((outs[0] or {}).get("price"))
+        delta = round(price_now - base["price"], 4)
+        movers.append({
+            "cache_id": cid,
+            "title": _text(m.get("title")),
+            "source": _text(m.get("source")),
+            "outcome": _text((outs[0] or {}).get("name")),
+            "price_now": price_now,
+            "price_then": base["price"],
+            "delta": delta,
+            "abs_delta": abs(delta),
+            "since": base["ts"],
+            "volume": m.get("volume"),
+            "event_urn": m.get("event_urn"),
+            "related_team_urns": m.get("related_team_urns") or [],
+        })
+
+    movers.sort(key=lambda x: x["abs_delta"], reverse=True)
+    movers = movers[:limit]
+    return {"status": True, "data": {"movers": movers, "count": len(movers)}}

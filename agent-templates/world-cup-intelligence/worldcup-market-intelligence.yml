@@ -44,3 +44,7 @@ connector:
       value: "build_event_crosswalk"
     - name: "Link market entities"
       value: "link_market_entities"
+    - name: "Build market snapshots"
+      value: "build_market_snapshots"
+    - name: "Compute market movers"
+      value: "compute_market_movers"
