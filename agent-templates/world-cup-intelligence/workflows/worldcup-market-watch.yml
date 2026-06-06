@@ -1,0 +1,103 @@
+workflow:
+  name: worldcup-market-watch
+  title: World Cup Intelligence - Market Watch (Skill)
+  description: |
+    Composite Skill: a tournament-wide market-watch card. Serves a cached candidate when
+    fresh (~20 min); otherwise composes the movers + informational edges workflows and
+    authors a summary (gemini-3.5-flash), then caches it. Read-only, informational — every
+    edge is a candidate to investigate, NOT a bet.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    force_regen: "$.get('force_regen', False)"
+  outputs:
+    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('market_watch', {})"
+    served_from: "'cache' if $.get('cached') else 'generated'"
+    workflow-status: "($.get('cached') or $.get('market_watch', {})) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-cached
+      description: Serve a still-fresh cached market-watch card unless force_regen.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:skill-market-watch'"
+        value.subject_urn: "'global'"
+        value.expires_at: "{'$gte': datetime.utcnow().isoformat() + 'Z'}"
+      outputs:
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+
+    - type: workflow
+      name: get-movers
+      description: Biggest recent price moves.
+      condition: "not $.get('cached')"
+      workflow:
+        name: worldcup-market-movers
+      inputs:
+        window_hours: 24
+        limit: 15
+      outputs:
+        movers: "$.get('movers', [])"
+
+    - type: workflow
+      name: get-edges
+      description: Informational edge candidates (book-sum, cross-venue, model-vs-market).
+      condition: "not $.get('cached')"
+      workflow:
+        name: worldcup-find-market-edges
+      inputs:
+        min_edge_bps: 150
+        include_reasoning: false
+        limit: 25
+      outputs:
+        edge_candidates: "$.get('edge_candidates', [])"
+
+    - type: prompt
+      name: worldcup-market-watch
+      description: Author the structured market-watch card.
+      condition: "not $.get('cached')"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        movers: "$.get('movers', [])"
+        edge_candidates: "$.get('edge_candidates', [])"
+        timeout: 120
+      outputs:
+        market_watch: "$"
+
+    - type: document
+      name: save-candidate
+      description: Cache the market-watch card (~20 min TTL).
+      condition: "not $.get('cached') and $.get('market_watch', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:skill-market-watch'"
+      documents:
+        items: |
+          [{
+            '_id': 'market-watch:global',
+            'metadata': {'skill': 'market-watch', 'subject_urn': 'global'},
+            'skill': 'market-watch',
+            'subject_urn': 'global',
+            'freshness': 'HOT_SYNC',
+            'body': $.get('market_watch', {}),
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'expires_at': (datetime.utcnow() + timedelta(minutes=20)).isoformat() + 'Z',
+            'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-market-watch'},
+            'disclaimer': 'Informational sports market intelligence only. Not betting, trading, financial, or investment advice.'
+          }]
+      inputs:
+        market_watch: "$.get('market_watch', {})"

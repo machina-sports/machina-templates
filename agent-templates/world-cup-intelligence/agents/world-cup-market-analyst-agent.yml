@@ -40,6 +40,13 @@ agent:
         forecast: "$.get('forecast', {})"
         model_vs_market: "$.get('model_vs_market', {})"
 
+    - name: worldcup-market-watch
+      description: Composite market-watch card — movers + informational edges (cached, read-only)
+      inputs:
+        force_regen: "$.get('force_regen', False)"
+      outputs:
+        skill_card: "$.get('skill_card', {})"
+
   instructions: |
     Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, and close times.
     Call out candidate price dislocations or arbitrage-style opportunities only as analysis for a human/agent to evaluate independently.

@@ -1,0 +1,131 @@
+workflow:
+  name: worldcup-match-recap
+  title: World Cup Intelligence - Match Recap (Skill)
+  description: |
+    Composite Skill: a grounded post-match recap card. Only authors once the fixture is
+    FINAL (sport:status FT/AET/PEN); then caches it EVERGREEN (generated once per match).
+    Serves the cached candidate on subsequent calls. Read-only, informational.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    force_regen: "$.get('force_regen', False)"
+  outputs:
+    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})"
+    served_from: "'cache' if $.get('cached') else 'generated'"
+    workflow-status: "($.get('cached') or $.get('recap', {})) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-cached
+      description: Serve the cached (evergreen) recap if present, unless force_regen.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:skill-match-recap'"
+        value.subject_urn: "$.get('event_urn', '')"
+        value.expires_at: "{'$gte': datetime.utcnow().isoformat() + 'Z'}"
+      outputs:
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+
+    - type: document
+      name: load-event
+      description: Event doc (final status + score live merged).
+      condition: "not $.get('cached')"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn', '')"
+      outputs:
+        event: "($.get('documents', []) or [{}])[0].get('value', {})"
+        is_final: "($.get('documents', []) or [{}])[0].get('value', {}).get('sport:status') in ('FT', 'AET', 'PEN')"
+
+    - type: document
+      name: load-forecast
+      description: Pre-match model forecast (for the scorecard).
+      condition: "not $.get('cached') and $.get('is_final') is True"
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+        value._id: "$.get('event_urn', '')"
+      outputs:
+        forecast: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: connector
+      name: grounded-recap-research
+      description: Grounded match-report research (only when final).
+      condition: "not $.get('cached') and $.get('is_final') is True"
+      continue_on_error: true
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.1-flash-lite
+        location: global
+        provider: vertex_ai
+      inputs:
+        search_query: "$.get('event', {}).get('name', 'FIFA World Cup 2026') + ' result match report goals key moments'"
+        recency_days: 3
+        timeout: 120
+      outputs:
+        research: "$.get('answer', '')"
+
+    - type: prompt
+      name: worldcup-match-recap
+      description: Author the structured recap card (final fixtures only).
+      condition: "not $.get('cached') and $.get('is_final') is True"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        event: "$.get('event', {})"
+        forecast: "$.get('forecast', {})"
+        research: "$.get('research', '')"
+        timeout: 120
+      outputs:
+        recap: "$"
+
+    - type: document
+      name: save-candidate
+      description: Cache the recap EVERGREEN (one per match).
+      condition: "not $.get('cached') and $.get('recap', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:skill-match-recap'"
+      documents:
+        items: |
+          [{
+            '_id': 'match-recap:' + $.get('event_urn', ''),
+            'metadata': {'skill': 'match-recap', 'subject_urn': $.get('event_urn', '')},
+            'skill': 'match-recap',
+            'subject_urn': $.get('event_urn', ''),
+            'event_urn': $.get('event_urn', ''),
+            'freshness': 'EVERGREEN',
+            'body': $.get('recap', {}),
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'expires_at': (datetime.utcnow() + timedelta(days=365)).isoformat() + 'Z',
+            'source_freshness': {'model_forecast_available': bool($.get('forecast', {}))},
+            'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-match-recap'},
+            'disclaimer': 'Informational sports market intelligence only. Not betting, trading, financial, or investment advice.'
+          }]
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        recap: "$.get('recap', {})"
+        forecast: "$.get('forecast', {})"

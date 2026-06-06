@@ -1,0 +1,148 @@
+workflow:
+  name: worldcup-match-preview
+  title: World Cup Intelligence - Match Preview (Skill)
+  description: |
+    Composite Skill: a grounded, structured match-preview card for a fixture. Serves a
+    cached candidate when one is still fresh (idle cost = one doc search); authors a new
+    one (gemini-3.5-flash over event context + grounded research + optional model forecast
+    + market snapshot) on a cache miss or force_regen, and caches it with a TTL. Read-only,
+    informational — not betting advice.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    force_regen: "$.get('force_regen', False)"
+  outputs:
+    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('preview', {})"
+    served_from: "'cache' if $.get('cached') else 'generated'"
+    workflow-status: "($.get('cached') or $.get('preview', {})) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-cached
+      description: Serve a still-fresh cached candidate (skips authoring) unless force_regen.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:skill-match-preview'"
+        value.subject_urn: "$.get('event_urn', '')"
+        value.expires_at: "{'$gte': datetime.utcnow().isoformat() + 'Z'}"
+      outputs:
+        cached: "(($.get('documents', []) or [{}])[0].get('value', {})) if not $.get('force_regen', False) else {}"
+
+    - type: document
+      name: load-event
+      description: Event doc (competitors, date, venue, live status).
+      condition: "not $.get('cached')"
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+        value._id: "$.get('event_urn', '')"
+      outputs:
+        event: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: document
+      name: load-forecast
+      description: Optional model forecast for the fixture.
+      condition: "not $.get('cached')"
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+        value._id: "$.get('event_urn', '')"
+      outputs:
+        forecast: "($.get('documents', []) or [{}])[0].get('value', {})"
+
+    - type: document
+      name: load-markets
+      description: Cached markets linked to the fixture (snapshot for the card).
+      condition: "not $.get('cached')"
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 50
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.event_urn: "$.get('event_urn', '')"
+      outputs:
+        markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: grounded-preview-research
+      description: Grounded team-news/form/injuries research for the fixture.
+      condition: "not $.get('cached') and $.get('event', {}) != {}"
+      continue_on_error: true
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.1-flash-lite
+        location: global
+        provider: vertex_ai
+      inputs:
+        search_query: "$.get('event', {}).get('name', 'FIFA World Cup 2026') + ' match preview team news injuries form lineup'"
+        recency_days: 10
+        timeout: 120
+      outputs:
+        research: "$.get('answer', '')"
+
+    - type: prompt
+      name: worldcup-match-preview
+      description: Author the structured match-preview card.
+      condition: "not $.get('cached') and $.get('event', {}) != {}"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        event: "$.get('event', {})"
+        forecast: "$.get('forecast', {})"
+        markets: "$.get('markets', [])"
+        research: "$.get('research', '')"
+        timeout: 120
+      outputs:
+        preview: "$"
+
+    - type: document
+      name: save-candidate
+      description: Cache the authored preview as a TTL candidate (upsert per fixture).
+      condition: "not $.get('cached') and $.get('preview', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:skill-match-preview'"
+      documents:
+        items: |
+          [{
+            '_id': 'match-preview:' + $.get('event_urn', ''),
+            'metadata': {'skill': 'match-preview', 'subject_urn': $.get('event_urn', '')},
+            'skill': 'match-preview',
+            'subject_urn': $.get('event_urn', ''),
+            'event_urn': $.get('event_urn', ''),
+            'freshness': 'FRESH',
+            'body': $.get('preview', {}),
+            'generated_at': datetime.utcnow().isoformat() + 'Z',
+            'expires_at': (datetime.utcnow() + timedelta(hours=6)).isoformat() + 'Z',
+            'source_freshness': {'model_forecast_available': bool($.get('forecast', {}))},
+            'version_control': {'processing': False, 'finished': True, 'source': 'worldcup-match-preview'},
+            'disclaimer': 'Informational sports market intelligence only. Not betting, trading, financial, or investment advice.'
+          }]
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        preview: "$.get('preview', {})"
+        forecast: "$.get('forecast', {})"
