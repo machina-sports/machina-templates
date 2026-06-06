@@ -1,0 +1,34 @@
+workflow:
+  name: worldcup-resolve
+  title: World Cup Intelligence - Resolve Entity
+  description: |
+    Resolve ANY provider id (api_football, sportradar, opta, entain, espn,
+    transfermarkt) OR a canonical machina URN to the entity it identifies —
+    team, player, event, or competition — with all cross-provider ids attached.
+    One key for your whole stack: feed in whatever id you have, get the
+    canonical urn:machina identity back. Read-only.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    id: "$.get('id', '')"
+  outputs:
+    entity: "($.get('entities', [{}]) or [{}])[0]"
+    entities: "$.get('entities', [])"
+    count: "len($.get('entities', []))"
+    workflow-status: "len($.get('entities', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: resolve-entity
+      description: Match the id against the canonical _id or any provider_ids across the identity-crosswalk (teams/players/competition) + event stores.
+      condition: "$.get('id', '') != ''"
+      config:
+        action: search
+        search-limit: 10
+        search-vector: false
+      filters:
+        name: {"$in": ["worldcup:identity-crosswalk", "worldcup:event"]}
+        "$or": "[{'value._id': $.get('id')}, {'value.provider_ids.api_football': $.get('id')}, {'value.provider_ids.sportradar': $.get('id')}, {'value.provider_ids.opta': $.get('id')}, {'value.provider_ids.entain': $.get('id')}, {'value.provider_ids.espn': $.get('id')}, {'value.provider_ids.transfermarkt': $.get('id')}]"
+      outputs:
+        entities: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"

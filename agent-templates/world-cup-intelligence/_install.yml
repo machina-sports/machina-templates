@@ -44,6 +44,8 @@ datasets:
   - type: workflow
     path: workflows/worldcup-sync-market-sources.yml
   - type: workflow
+    path: workflows/worldcup-resolve.yml
+  - type: workflow
     path: workflows/worldcup-search-markets.yml
   - type: workflow
     path: workflows/worldcup-get-market-state.yml
