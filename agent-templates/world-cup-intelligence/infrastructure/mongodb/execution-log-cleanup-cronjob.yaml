@@ -1,0 +1,55 @@
+# Execution-log retention for the World Cup pod's `world-cup-2` database.
+# The log collections (workflow_tasks / workflow_run / agent_run) store
+# `timestamp` as an ISO STRING (not a BSON Date), so MongoDB TTL cannot apply.
+# This CronJob prunes them by lexicographic ISO-string comparison instead.
+# Scoped to the world-cup-2 db only (the mongo service is shared across tenants).
+#
+# Apply: kubectl apply -f execution-log-cleanup-cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: world-cup-2-execution-log-cleanup
+  namespace: tenant-machina-drops
+  labels:
+    app: world-cup-2
+    role: execution-log-cleanup
+spec:
+  schedule: "30 4 * * *"          # daily 04:30 UTC (before the 05:00 fixture ingest)
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: prune
+              image: mongo:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: RETENTION_DAYS
+                  value: "14"
+                - name: MONGO_URI
+                  value: "mongodb://tenant-machina-drops-mongodb:27017/world-cup-2"
+              command: ["mongosh"]
+              args:
+                - "$(MONGO_URI)"
+                - "--quiet"
+                - "--eval"
+                - |
+                  const days = parseInt(process.env.RETENTION_DAYS || '14');
+                  const cutoff = new Date(Date.now() - days*24*3600*1000).toISOString().replace('Z','');
+                  let total = 0;
+                  ['workflow_tasks','workflow_run','agent_run'].forEach(c => {
+                    const r = db[c].deleteMany({timestamp: {$lt: cutoff}});
+                    total += r.deletedCount;
+                    print(c + ': deleted ' + r.deletedCount + ' (timestamp < ' + cutoff + ')');
+                  });
+                  print('total deleted: ' + total);
+              resources:
+                requests: {memory: "64Mi", cpu: "50m"}
+                limits: {memory: "256Mi", cpu: "200m"}
