@@ -30,7 +30,8 @@ workflow:
         location: global
         provider: vertex_ai
       inputs:
-        prompt: "'Current FIFA men\\'s world ranking: list every nation that qualified for the 2026 FIFA World Cup with its current FIFA ranking points (the numeric total points). Return all qualified teams.'"
+        search_query: "'Current FIFA men\\'s world ranking points by nation for the 2026 FIFA World Cup qualified teams (numeric total ranking points per team).'"
+        recency_days: 30
         timeout: 120
       outputs:
         fifa_research: "$.get('answer', $.get('text', ''))"
