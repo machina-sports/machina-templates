@@ -787,7 +787,7 @@ class TestMintEventIdentity:
         d = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
         assert d["_id"] == d["@id"] == d["metadata"]["event_urn"]
         assert d["_id"] == "urn:machina:sport:soccer:event:uruguay-vs-spain:20260627:wor"
-        assert d["sport:competition"]["@id"] == "urn:machina:sport:soccer:competition:world-cup:wor"
+        assert d["sport:competition"]["@id"] == "urn:machina:sport:soccer:competition:fifa-world-cup-2026:wor"
         comps = {c["sport:qualifier"]: c["@id"] for c in d["sport:competitors"]}
         assert comps["home"] == "urn:machina:sport:soccer:team:uruguay:ury"
         assert comps["away"] == "urn:machina:sport:soccer:team:spain:esp"
