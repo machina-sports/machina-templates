@@ -3320,6 +3320,7 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(m, dict) or m.get("price_quality") == "unreliable":
             continue
         source = _text(m.get("source"))
+        cache_id = _text(m.get("cache_id") or m.get("id"))
         liquidity = m.get("liquidity")
         spread = m.get("spread")
         for o in (m.get("outcomes") or []):
@@ -3334,6 +3335,7 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
             cur = best.get(bucket)
             if cur is None or price < cur["best_price"]:
                 best[bucket] = {"best_price": price, "best_venue": source,
+                                "cache_id": cache_id, "outcome_name": _text(o.get("name")),
                                 "liquidity": liquidity, "spread": spread}
 
     if not best:
@@ -3383,6 +3385,8 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
             "fee_bps": fee_bps,
             "market_american": _prob_to_american(price),
             "best_venue": info["best_venue"],
+            "cache_id": info.get("cache_id"),
+            "outcome_name": info.get("outcome_name"),
             "fair_market_prob": fair_market,
             "edge": edge,
             "gross_edge": gross_edge,
@@ -3461,7 +3465,7 @@ def _single_audit(forecast: dict[str, Any], home_goals: int, away_goals: int) ->
     probs3 = {"home_win": hw, "draw": dw, "away_win": aw}
     predicted = max(probs3, key=probs3.get)
     predicted_prob = probs3[predicted]
-    actual_outcome = "home_win" if a_home else ("draw" if a_draw else "away_win")
+    actual_outcome = _result_outcome(home_goals, away_goals)
     cbin = min(int(predicted_prob * 10), 9)
     return {
         "metadata": {"event_urn": _text(_first(forecast, "_id", "@id", "id"))},
@@ -3581,6 +3585,278 @@ def compute_forecast_audit(request_data: dict[str, Any]) -> dict[str, Any]:
     if not forecast or hg is None or ag is None:
         return {"status": False, "data": {"error": "single mode needs forecast + actual_result {home_goals, away_goals}"}}
     return {"status": True, "data": {"audit_result": _single_audit(forecast, int(hg), int(ag)), "disclaimer": DISCLAIMER}}
+
+
+# -- Closing Line Value (CLV) tracking ---------------------------------------
+# CLV = closing_price - entry_price (in cents) — did our signal's entry beat the
+# market's closing line? The betting-native proof-of-skill that pairs with the
+# Brier/calibration audit above. Pipeline: log value picks at signal time (entry)
+# -> capture the last pre-kickoff snapshot once the fixture is final (closing) ->
+# two-proportion Z-test on CLV+ vs CLV- win rates.
+
+_CLV_NEUTRAL_CENTS = 0.5  # |CLV| <= 0.5c -> neutral bucket, excluded from the Z-test
+_CLV_MIN_BUCKET = 30      # per-bucket sample needed before the Z-test is trustworthy
+
+
+def _result_outcome(home_goals: int, away_goals: int) -> str:
+    """1X2 outcome from a final score."""
+    if home_goals > away_goals:
+        return "home_win"
+    if home_goals < away_goals:
+        return "away_win"
+    return "draw"
+
+
+def _normal_cdf(z: float) -> float:
+    """Standard-normal CDF via math.erf (stdlib)."""
+    return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+
+
+def build_signal_ledger_rows(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Log each value signal as a CLV ledger entry (insert-only).
+
+    For every forecast with linked markets, run compute_signal and emit one row per
+    value leg: the entry price + model prob + edge + the source market (cache_id /
+    outcome_name) needed to later capture the closing line. Insert-only -- rows whose
+    _id ("{event_urn}:{outcome}") already exists are skipped, so entry_price stays the
+    FIRST time we flagged value (the true entry).
+
+    Params: forecasts[], markets[], existing_ids[] (already-logged row ids), now_iso
+      (optional), min_edge_bps / kelly_fraction / fee_bps (passed through to compute_signal).
+    """
+    params = _params(request_data)
+    existing = {_text(x) for x in _as_list(params.get("existing_ids")) if _text(x)}
+    now_iso = _text(params.get("now_iso")) or _now_iso()
+
+    by_urn: dict[str, list[dict[str, Any]]] = {}
+    for m in _as_list(params.get("markets")):
+        if not isinstance(m, dict):
+            continue
+        urn = _text(m.get("event_urn"))
+        if urn:
+            by_urn.setdefault(urn, []).append(m)
+
+    sig_params = {k: params.get(k) for k in ("min_edge_bps", "kelly_fraction", "fee_bps")
+                  if params.get(k) is not None}
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for fc in _as_list(params.get("forecasts")):
+        if not isinstance(fc, dict):
+            continue
+        event_urn = _text(_first(fc, "_id", "@id", "id"))
+        evt_markets = by_urn.get(event_urn) or []
+        if not event_urn or not evt_markets:
+            continue
+        sig = compute_signal({"params": dict(sig_params, forecast=fc, markets=evt_markets,
+                                             event_urn=event_urn)}).get("data", {}).get("signal", {})
+        fixture_id = _text((fc.get("provider_ids") or {}).get("api_football"))
+        kickoff = fc.get("schema:startDate")
+        for leg in (sig.get("legs") or []):
+            if leg.get("recommendation") != "value":
+                continue
+            rid = "%s:%s" % (event_urn, leg.get("outcome"))
+            if rid in existing or rid in seen:
+                continue
+            seen.add(rid)
+            rows.append({
+                "_id": rid,
+                "metadata": {"event_urn": event_urn, "outcome": leg.get("outcome")},
+                "event_urn": event_urn,
+                "outcome": leg.get("outcome"),
+                "label": leg.get("label"),
+                "outcome_name": leg.get("outcome_name"),
+                "cache_id": leg.get("cache_id"),
+                "best_venue": leg.get("best_venue"),
+                "entry_price": leg.get("best_price"),
+                "model_prob": leg.get("model_prob"),
+                "edge_bps": leg.get("edge_bps"),
+                "confidence_tier": leg.get("confidence_tier"),
+                "fixture_id": fixture_id,
+                "kickoff": kickoff,
+                "logged_at": now_iso,
+                "status": "pending",
+                "disclaimer": DISCLAIMER,
+            })
+    return {"status": True, "data": {"ledger_rows": rows, "count": len(rows)}}
+
+
+def _closing_price(snaps: list[dict[str, Any]], kickoff: Any, outcome_name: str) -> float | None:
+    """Latest pre-kickoff snapshot price for an outcome (fallback: primary_price)."""
+    ko = _parse_iso(kickoff)
+    best_ts: datetime | None = None
+    best_price: float | None = None
+    for s in snaps:
+        if not isinstance(s, dict):
+            continue
+        ts = _parse_iso(s.get("ts"))
+        if ts is None or (ko is not None and ts >= ko):
+            continue
+        if best_ts is not None and ts <= best_ts:
+            continue
+        price = None
+        for o in (s.get("outcomes") or []):
+            if isinstance(o, dict) and _text(o.get("name")) == outcome_name and o.get("price") is not None:
+                price = _to_float(o.get("price"))
+                break
+        if price is None and s.get("primary_price") is not None:
+            price = _to_float(s.get("primary_price"))
+        if price is None:
+            continue
+        best_ts, best_price = ts, price
+    return best_price
+
+
+def compute_clv(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Settle CLV for ledger rows whose fixture is now final.
+
+    For each pending row: derive the actual 1X2 result and the closing line (latest
+    pre-kickoff snapshot for the row's market/outcome), then CLV = (closing - entry)
+    * 100 cents, bucketed CLV+/=/- at +/-0.5c, and won = (row outcome == actual).
+    Already-settled rows carry forward unchanged so the first-captured closing line
+    survives even after hourly snapshots age out. Rows with no pre-kickoff snapshot
+    stay pending (unmeasured).
+
+    Params: ledger_rows[], snapshots[] (worldcup:market-snapshot), finished_fixtures[],
+      now_iso (optional).
+    """
+    params = _params(request_data)
+
+    by_fid: dict[str, tuple[int, int]] = {}
+    for f in _as_list(params.get("finished_fixtures")):
+        if not isinstance(f, dict):
+            continue
+        if _text(((f.get("fixture") or {}).get("status") or {}).get("short")).upper() not in _FINAL_STATUS:
+            continue
+        fid = _text((f.get("fixture") or {}).get("id"))
+        goals = f.get("goals") or {}
+        if fid and goals.get("home") is not None and goals.get("away") is not None:
+            by_fid[fid] = (int(goals["home"]), int(goals["away"]))
+
+    snaps_by_cid: dict[str, list[dict[str, Any]]] = {}
+    for s in _as_list(params.get("snapshots")):
+        if not isinstance(s, dict):
+            continue
+        cid = _text(s.get("cache_id"))
+        if cid:
+            snaps_by_cid.setdefault(cid, []).append(s)
+
+    now_iso = _text(params.get("now_iso")) or _now_iso()
+    ledger: list[dict[str, Any]] = []
+    settled_rows: list[dict[str, Any]] = []
+    for row in _as_list(params.get("ledger_rows")):
+        if not isinstance(row, dict):
+            continue
+        if row.get("clv_bucket"):           # already settled -> carry forward
+            ledger.append(row)
+            continue
+        res = by_fid.get(_text(row.get("fixture_id")))
+        if not res:                         # fixture not final yet
+            ledger.append(row)
+            continue
+        snaps = snaps_by_cid.get(_text(row.get("cache_id"))) or []
+        closing = _closing_price(snaps, row.get("kickoff"), _text(row.get("outcome_name")))
+        if closing is None:                 # no pre-kickoff snapshot -> unmeasured, stays pending
+            ledger.append(row)
+            continue
+        entry = _to_float(row.get("entry_price"))
+        clv_cents = round((closing - entry) * 100.0, 1)
+        bucket = ("CLV+" if clv_cents > _CLV_NEUTRAL_CENTS
+                  else ("CLV-" if clv_cents < -_CLV_NEUTRAL_CENTS else "CLV="))
+        actual = _result_outcome(res[0], res[1])
+        updated = dict(row)
+        updated.update({
+            "closing_price": round(closing, 4),
+            "clv_cents": clv_cents,
+            "clv_bucket": bucket,
+            "won": 1 if _text(row.get("outcome")) == actual else 0,
+            "actual_outcome": actual,
+            "status": "settled",
+            "settled_at": now_iso,
+        })
+        ledger.append(updated)
+        settled_rows.append(updated)
+    return {"status": True, "data": {"ledger": ledger, "settled_rows": settled_rows,
+                                     "settled_count": len(settled_rows)}}
+
+
+def compute_clv_report(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Two-proportion Z-test on CLV+ vs CLV- win rates -- the CLV track record.
+
+    Settled rows split into CLV+ (entry beat the close) and CLV- (close beat entry);
+    the gap between their win rates, with a pooled-variance Z-test, is the skill
+    signal -- a model with real edge wins far more often when it also beat the close.
+    Gated on >=30 settled rows per bucket before the gap is read as meaningful.
+
+    Params: clv_rows[] (settled ledger rows). Saves to worldcup:clv-report:aggregate.
+    """
+    params = _params(request_data)
+    rows = [r for r in _as_list(params.get("clv_rows"))
+            if isinstance(r, dict) and r.get("clv_bucket") and r.get("won") is not None]
+
+    plus = [r for r in rows if r.get("clv_bucket") == "CLV+"]
+    minus = [r for r in rows if r.get("clv_bucket") == "CLV-"]
+    neutral = [r for r in rows if r.get("clv_bucket") == "CLV="]
+    n_plus, n_minus = len(plus), len(minus)
+    wins_plus = sum(1 for r in plus if r.get("won"))
+    wins_minus = sum(1 for r in minus if r.get("won"))
+
+    measured = [r for r in rows if r.get("clv_cents") is not None]
+    avg_clv = round(sum(_to_float(r.get("clv_cents")) for r in measured) / len(measured), 2) if measured else None
+    clv_positive_rate = round(100.0 * n_plus / (n_plus + n_minus), 1) if (n_plus + n_minus) else None
+
+    wr_plus = round(100.0 * wins_plus / n_plus, 1) if n_plus else None
+    wr_minus = round(100.0 * wins_minus / n_minus, 1) if n_minus else None
+    z = p_value = gap_pp = None
+    if n_plus and n_minus:
+        p1, p2 = wins_plus / n_plus, wins_minus / n_minus
+        pooled = (wins_plus + wins_minus) / (n_plus + n_minus)
+        se = math.sqrt(pooled * (1.0 - pooled) * (1.0 / n_plus + 1.0 / n_minus))
+        if se > 0:
+            z = round((p1 - p2) / se, 3)
+            p_value = round(2.0 * (1.0 - _normal_cdf(abs(z))), 5)
+        gap_pp = round((p1 - p2) * 100.0, 1)
+
+    by_tier: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        t = _text(r.get("confidence_tier")) or "unknown"
+        d = by_tier.setdefault(t, {"count": 0, "clv_positive": 0, "wins": 0, "sum_clv": 0.0})
+        d["count"] += 1
+        d["clv_positive"] += 1 if r.get("clv_bucket") == "CLV+" else 0
+        d["wins"] += 1 if r.get("won") else 0
+        d["sum_clv"] += _to_float(r.get("clv_cents"))
+    tier_breakdown = {t: {"count": d["count"], "clv_positive": d["clv_positive"],
+                          "win_rate": round(100.0 * d["wins"] / d["count"], 1) if d["count"] else None,
+                          "avg_clv_cents": round(d["sum_clv"] / d["count"], 2) if d["count"] else None}
+                      for t, d in by_tier.items()}
+
+    sample_size = n_plus + n_minus
+    sufficient = n_plus >= _CLV_MIN_BUCKET and n_minus >= _CLV_MIN_BUCKET
+    if not sample_size:
+        rec = "No settled signals yet -- CLV accrues once matches finish."
+    elif not sufficient:
+        rec = ("CLV sample insufficient (CLV+ %d / CLV- %d; need >=%d each). Avg CLV %s c."
+               % (n_plus, n_minus, _CLV_MIN_BUCKET, avg_clv))
+    else:
+        rec = ("CLV+ signals win %.1f%% vs CLV- %.1f%% (gap %.1fpp, z=%s, p=%s); avg CLV %s c."
+               % (wr_plus, wr_minus, gap_pp, z, p_value, avg_clv))
+
+    report = {
+        "sample_size": sample_size,
+        "sample_size_sufficient": sufficient,
+        "counts": {"clv_positive": n_plus, "clv_negative": n_minus, "clv_neutral": len(neutral),
+                   "settled_total": len(rows)},
+        "win_rates": {"clv_positive": wr_plus, "clv_negative": wr_minus, "gap_pp": gap_pp},
+        "z_test": {"z": z, "p_value": p_value, "method": "two-proportion pooled Z-test"},
+        "avg_clv_cents": avg_clv,
+        "clv_positive_rate": clv_positive_rate,
+        "by_confidence_tier": tier_breakdown,
+        "recommendation": rec,
+        "disclaimer": DISCLAIMER,
+    }
+    return {"status": True, "data": {"clv_report": report,
+                                     "_id": "worldcup:clv-report:aggregate",
+                                     "metadata": {"event_urn": "worldcup:clv-report:aggregate"}}}
 
 
 # -- Prematch enrichment scheduling ------------------------------------------

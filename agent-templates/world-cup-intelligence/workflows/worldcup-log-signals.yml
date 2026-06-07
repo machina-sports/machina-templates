@@ -1,0 +1,84 @@
+workflow:
+  name: worldcup-log-signals
+  title: World Cup Intelligence - Log Signal Ledger
+  description: |
+    Append-only CLV ledger writer. For every model forecast with linked markets it
+    recomputes the betting signal and logs one ledger row per value pick -- the entry
+    price + model prob + edge + the source market needed to later capture the closing
+    line. Insert-only (keyed by "{event_urn}:{outcome}"), so entry_price stays the FIRST
+    time we flagged value. Closing-line capture + CLV scoring happen later in
+    worldcup-backtest-forecasts once the fixture is final.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    min_edge_bps: "$.get('min_edge_bps', 200)"
+  outputs:
+    logged_count: "len($.get('ledger_rows', []))"
+    workflow-status: "len($.get('ledger_rows', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-forecasts
+      description: All model forecasts (one signal computed per event with markets).
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+      outputs:
+        forecasts: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-markets
+      description: Cached markets linked to events (for best-price line-shopping).
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-existing-ledger
+      description: Already-logged ledger ids (insert-only dedup).
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:signal-ledger'"
+      outputs:
+        existing_ids: "[d.get('value', {}).get('_id') for d in ($.get('documents', []) or []) if d.get('value', {}).get('_id')]"
+
+    - type: connector
+      name: build-ledger-rows
+      description: Recompute signals; emit a row per new value pick (insert-only).
+      condition: "len($.get('forecasts', [])) > 0 and len($.get('markets', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: build_signal_ledger_rows
+      inputs:
+        forecasts: "$.get('forecasts', [])"
+        markets: "$.get('markets', [])"
+        existing_ids: "$.get('existing_ids', [])"
+        min_edge_bps: "$.get('min_edge_bps', 200)"
+      outputs:
+        ledger_rows: "$.get('ledger_rows', [])"
+
+    - type: document
+      name: save-ledger
+      description: Persist new signal-ledger rows (entries).
+      condition: "len($.get('ledger_rows', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:signal-ledger'"
+      documents:
+        items: "$.get('ledger_rows', [])"
+      inputs:
+        ledger_rows: "$.get('ledger_rows', [])"

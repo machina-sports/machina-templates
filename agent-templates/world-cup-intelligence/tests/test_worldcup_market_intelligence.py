@@ -39,6 +39,10 @@ normalize_fifa_seed = _module.normalize_fifa_seed
 select_prematch_fixtures = _module.select_prematch_fixtures
 _match_team_urns = _module._match_team_urns
 compute_signal = _module.compute_signal
+build_signal_ledger_rows = _module.build_signal_ledger_rows
+compute_clv = _module.compute_clv
+compute_clv_report = _module.compute_clv_report
+_result_outcome = _module._result_outcome
 
 
 def _kalshi_record(**overrides):
@@ -1726,3 +1730,143 @@ def test_signal_noise_edge_tier_low():
     fc = _sig_forecast(probs={"home_win": 0.90, "draw": 0.07, "away_win": 0.03}, confidence=0.15, data_source="seed")
     leg = compute_signal({"params": {"forecast": fc, "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]["signal"]["legs"][0]
     assert "edge_likely_model_noise" in leg["risk_flags"] and leg["confidence_tier"] == "low"
+
+
+# -- CLV tracker --------------------------------------------------------------
+
+def _mkt(source, name, price, *, cache_id, event_urn="urn:ev:1"):
+    m = _ok(source, name, price)
+    m.update({"cache_id": cache_id, "event_urn": event_urn})
+    return m
+
+
+def _ledger_forecast():
+    fc = _sig_forecast()
+    fc["provider_ids"] = {"api_football": "100"}
+    fc["schema:startDate"] = "2026-06-19T18:00:00+00:00"
+    return fc
+
+
+def _snap(cache_id, ts, name, price):
+    return {"cache_id": cache_id, "ts": ts, "primary_name": name, "primary_price": price,
+            "outcomes": [{"name": name, "price": price}]}
+
+
+def _clv_row(bucket, won, tier="high"):
+    clv = 3.0 if bucket == "CLV+" else (-3.0 if bucket == "CLV-" else 0.0)
+    return {"clv_bucket": bucket, "won": won, "confidence_tier": tier, "clv_cents": clv}
+
+
+class TestResultOutcome:
+    def test_outcomes(self):
+        assert _result_outcome(2, 0) == "home_win"
+        assert _result_outcome(1, 1) == "draw"
+        assert _result_outcome(0, 2) == "away_win"
+
+
+class TestBuildSignalLedger:
+    def test_value_legs_become_rows(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra"),
+                   _mkt("kalshi", "Draw", 0.30, cache_id="c-tie"),
+                   _mkt("kalshi", "Morocco", 0.22, cache_id="c-mar")]
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()],
+                                                    "markets": markets, "existing_ids": []}})["data"]
+        rows = {r["_id"]: r for r in out["ledger_rows"]}
+        assert "urn:ev:1:home_win" in rows  # model 0.60 vs 0.50 -> value
+        row = rows["urn:ev:1:home_win"]
+        assert row["entry_price"] == 0.50 and row["cache_id"] == "c-bra"
+        assert row["outcome_name"] == "Brazil" and row["fixture_id"] == "100"
+        assert row["kickoff"] == "2026-06-19T18:00:00+00:00" and row["status"] == "pending"
+        assert row["metadata"] == {"event_urn": "urn:ev:1", "outcome": "home_win"}
+
+    def test_insert_only_skips_existing(self):
+        markets = [_mkt("kalshi", "Brazil", 0.50, cache_id="c-bra")]
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": markets,
+                                                    "existing_ids": ["urn:ev:1:home_win"]}})["data"]
+        assert out["ledger_rows"] == []  # already logged -> not re-emitted
+
+    def test_no_markets_no_rows(self):
+        out = build_signal_ledger_rows({"params": {"forecasts": [_ledger_forecast()], "markets": [],
+                                                    "existing_ids": []}})["data"]
+        assert out["ledger_rows"] == []
+
+
+class TestComputeClv:
+    def _row(self, **over):
+        row = {"_id": "urn:ev:1:home_win", "event_urn": "urn:ev:1", "outcome": "home_win",
+               "outcome_name": "Brazil", "cache_id": "c-bra", "entry_price": 0.28,
+               "fixture_id": "100", "kickoff": "2026-06-19T18:00:00+00:00",
+               "confidence_tier": "high", "status": "pending"}
+        row.update(over)
+        return row
+
+    def _final(self, h, a):
+        return [{"fixture": {"id": "100", "status": {"short": "FT"}}, "goals": {"home": h, "away": a}}]
+
+    def test_clv_positive_and_won(self):
+        snaps = [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.34),
+                 _snap("c-bra", "2026-06-19T19:00:00+00:00", "Brazil", 0.40)]  # post-kickoff, ignored
+        out = compute_clv({"params": {"ledger_rows": [self._row()], "snapshots": snaps,
+                                      "finished_fixtures": self._final(2, 0)}})["data"]
+        row = out["settled_rows"][0]
+        assert row["closing_price"] == 0.34 and row["clv_cents"] == 6.0
+        assert row["clv_bucket"] == "CLV+" and row["won"] == 1 and row["status"] == "settled"
+
+    def test_clv_neutral_bucket(self):
+        snaps = [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.498)]
+        out = compute_clv({"params": {"ledger_rows": [self._row(entry_price=0.50)], "snapshots": snaps,
+                                      "finished_fixtures": self._final(0, 1)}})["data"]
+        row = out["settled_rows"][0]
+        assert row["clv_cents"] == -0.2 and row["clv_bucket"] == "CLV="  # within +/-0.5c band
+        assert row["won"] == 0  # home_win pick, away_win result
+
+    def test_no_pre_kickoff_snapshot_stays_pending(self):
+        snaps = [_snap("c-bra", "2026-06-19T19:00:00+00:00", "Brazil", 0.40)]  # only post-kickoff
+        out = compute_clv({"params": {"ledger_rows": [self._row()], "snapshots": snaps,
+                                      "finished_fixtures": self._final(2, 0)}})["data"]
+        assert out["settled_rows"] == []
+        assert out["ledger"][0].get("clv_bucket") is None and out["ledger"][0]["status"] == "pending"
+
+    def test_fixture_not_final_stays_pending(self):
+        snaps = [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.34)]
+        out = compute_clv({"params": {"ledger_rows": [self._row()], "snapshots": snaps,
+                                      "finished_fixtures": []}})["data"]
+        assert out["settled_rows"] == [] and out["ledger"][0].get("clv_bucket") is None
+
+    def test_already_settled_carried_forward(self):
+        settled = self._row(clv_bucket="CLV+", clv_cents=6.0, won=1, closing_price=0.34, status="settled")
+        out = compute_clv({"params": {"ledger_rows": [settled],
+                                      "snapshots": [_snap("c-bra", "2026-06-19T17:00:00+00:00", "Brazil", 0.99)],
+                                      "finished_fixtures": self._final(2, 0)}})["data"]
+        assert out["settled_rows"] == []                 # not re-settled
+        assert out["ledger"][0]["closing_price"] == 0.34  # first capture preserved
+
+
+class TestComputeClvReport:
+    def test_significant_gap_and_sufficiency(self):
+        rows = ([_clv_row("CLV+", 1) for _ in range(27)] + [_clv_row("CLV+", 0) for _ in range(3)]
+                + [_clv_row("CLV-", 1) for _ in range(3)] + [_clv_row("CLV-", 0) for _ in range(27)])
+        rep = compute_clv_report({"params": {"clv_rows": rows}})["data"]["clv_report"]
+        assert rep["sample_size"] == 60 and rep["sample_size_sufficient"] is True
+        assert rep["win_rates"]["clv_positive"] == 90.0 and rep["win_rates"]["clv_negative"] == 10.0
+        assert rep["win_rates"]["gap_pp"] == 80.0
+        assert rep["z_test"]["z"] > 5 and rep["z_test"]["p_value"] < 0.001
+        assert "high" in rep["by_confidence_tier"]
+
+    def test_small_sample_insufficient(self):
+        rows = [_clv_row("CLV+", 1) for _ in range(10)] + [_clv_row("CLV-", 0) for _ in range(10)]
+        rep = compute_clv_report({"params": {"clv_rows": rows}})["data"]["clv_report"]
+        assert rep["sample_size"] == 20 and rep["sample_size_sufficient"] is False
+        assert "insufficient" in rep["recommendation"]
+
+    def test_empty(self):
+        rep = compute_clv_report({"params": {"clv_rows": []}})["data"]["clv_report"]
+        assert rep["sample_size"] == 0 and rep["z_test"]["z"] is None
+        assert rep["sample_size_sufficient"] is False
+
+    def test_z_test_parity_small_sample(self):
+        # CLV+ 8/10, CLV- 2/10: p1=.8 p2=.2 pooled=.5 se=sqrt(.05) -> z=0.6/0.223607=2.683
+        rows = ([_clv_row("CLV+", 1) for _ in range(8)] + [_clv_row("CLV+", 0) for _ in range(2)]
+                + [_clv_row("CLV-", 1) for _ in range(2)] + [_clv_row("CLV-", 0) for _ in range(8)])
+        rep = compute_clv_report({"params": {"clv_rows": rows}})["data"]["clv_report"]
+        assert rep["z_test"]["z"] == 2.683 and rep["win_rates"]["gap_pp"] == 60.0

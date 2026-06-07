@@ -57,7 +57,7 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 
 **Forecast & accuracy**
 - `worldcup-get-match-forecast` — model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + the live model-vs-market gap. Informational only.
-- `worldcup-backtest-forecasts` — post-match Brier/calibration audit; publishes the `worldcup:forecast-audit:aggregate` track record (read the aggregate doc to surface accuracy).
+- `worldcup-backtest-forecasts` — post-match Brier/calibration audit; publishes the `worldcup:forecast-audit:aggregate` track record (read the aggregate doc to surface accuracy). Also settles **CLV** (closing line value) for logged signals and publishes `worldcup:clv-report:aggregate`.
 
 **Signals (decision support)**
 - `worldcup-get-signal` — structured betting signal for one fixture (1X2). Fuses the model forecast
@@ -93,6 +93,7 @@ Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, sub
 - `worldcup-sync-team-crosswalk`, `worldcup-sync-event-crosswalk`, `worldcup-sync-identity-crosswalk` — identity sync
 - `worldcup-seed-fifa-ranking` — bootstrap FIFA-ranking seed prior (occasional; grounded)
 - `worldcup-sync-model-forecasts` — precompute model forecasts for upcoming events (daily/cold)
+- `worldcup-log-signals` — append-only CLV ledger writer: logs each value pick's entry price/model prob/edge (insert-only, keyed `{event_urn}:{outcome}`) so the closing line can be scored later (daily, after the forecast sync)
 - `worldcup-refresh-prematch-enrichment` — grounded prematch research onto event docs
 - `worldcup-health` — ops health check
 
@@ -103,7 +104,7 @@ Candidate docs live in `worldcup:skill-<skill>` (upsert key `metadata{skill, sub
 - **`get-market-state`** — live from the source (current price, order book, history, trades).
 - **`market-movers`** — computed from the hourly `worldcup:market-snapshot` time series; needs ≥2 hourly buckets to show movement.
 - **`get-match-forecast`** — probabilities from the daily `worldcup:model-forecast`; the model-vs-market gap is recomputed live against the market cache on every read.
-- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = event URN), `worldcup:forecast-audit` (`_id` = event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN).
+- **Stores added by this layer:** `worldcup:model-forecast` (`_id` = event URN), `worldcup:forecast-audit` (`_id` = event URN; `…:aggregate` singleton), `worldcup:fifa-ranking` (`_id` = team URN), `worldcup:signal-ledger` (`_id` = `{event_urn}:{outcome}`; one row per logged value pick), `worldcup:clv-report` (`…:aggregate` singleton).
 
 ## AI models
 
@@ -235,6 +236,29 @@ Post-match audit. Compares each `worldcup:model-forecast` to the actual result (
 `backtesting_report { brier_scores{avg_1x2, avg_over_2_5, baseline_random: 0.25, is_better_than_random}, accuracy{correct,total,accuracy_percent}, calibration{avg_calibration_error, curve[10 bins]}, sample_size_sufficient (≥50), recommendation }`
 
 Read the aggregate doc to surface the model's published accuracy. `sample_size_sufficient` gates over-reading early-tournament numbers.
+
+## CLV (closing line value) — `worldcup-log-signals` + `worldcup-backtest-forecasts`
+
+The betting-native proof-of-skill: did a signal's entry price beat the market's **closing line**?
+Two stages, both pure-stdlib:
+
+1. **Log (entry)** — `worldcup-log-signals` recomputes signals for every forecast with markets and writes one
+   `worldcup:signal-ledger` row per **value** pick (insert-only, `_id = {event_urn}:{outcome}` — `entry_price`
+   is the first time we flagged value). Each row carries `entry_price`, `model_prob`, `edge_bps`,
+   `confidence_tier`, `cache_id`/`outcome_name` (the source market for closing-line lookup), `fixture_id`, `kickoff`.
+2. **Settle (closing)** — `worldcup-backtest-forecasts` finds, for each ledger row whose fixture is final, the
+   **latest pre-kickoff** `worldcup:market-snapshot` for that market/outcome → `closing_price`, then
+   `clv_cents = (closing − entry) × 100`, bucketed **CLV+** (>+0.5c) / **CLV=** (±0.5c) / **CLV−** (<−0.5c), and
+   `won` from the actual 1X2 result. Already-settled rows carry forward (first-captured close preserved). Rows
+   with no pre-kickoff snapshot stay `pending` (unmeasured).
+
+The singleton `worldcup:clv-report:aggregate`:
+
+`clv_report { sample_size, sample_size_sufficient (≥30/bucket), counts{clv_positive,clv_negative,clv_neutral,settled_total}, win_rates{clv_positive,clv_negative,gap_pp}, z_test{z,p_value, method:"two-proportion pooled Z-test"}, avg_clv_cents, clv_positive_rate, by_confidence_tier, recommendation }`
+
+The Z-test compares CLV+ vs CLV− win rates — a model with real edge wins far more often when it also beat the
+close. **Pre-tournament there are 0 settled signals** (the singleton reads `sample_size: 0` / insufficient); CLV
+accrues from match 1 as the hourly snapshot series captures closing lines.
 
 ## `worldcup-find-market-edges`
 
