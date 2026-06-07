@@ -47,6 +47,16 @@ agent:
       outputs:
         skill_card: "$.get('skill_card', {})"
 
+    - name: worldcup-get-signal
+      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        bankroll: "$.get('bankroll', '')"
+      outputs:
+        signal: "$.get('signal', {})"
+        recommendation: "$.get('recommendation', '')"
+        top_pick: "$.get('top_pick', {})"
+
   instructions: |
     Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, and close times.
     Call out candidate price dislocations or arbitrage-style opportunities only as analysis for a human/agent to evaluate independently.

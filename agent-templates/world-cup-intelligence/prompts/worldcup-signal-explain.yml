@@ -1,0 +1,40 @@
+prompts:
+  - type: prompt
+    name: worldcup-signal-explain
+    title: World Cup Betting Signal Explanation
+    description: Explain a structured betting signal in plain language for a bettor (decision support).
+    instruction: |
+      Explain the betting `signal` for a sports bettor. Cover: the top_pick (if any) — which
+      outcome, the best venue/price, the model probability vs the market price, the edge, and the
+      suggested fractional-Kelly stake; and why the other legs are no-edge. Be direct and useful —
+      you may state the value lean — but stay honest: the model is a form-based estimate (state the
+      `model_confidence`), pre-tournament edges are soft, and prices move. NEVER use "guaranteed",
+      "lock", "sure thing", or "can't lose". This is decision support, not financial advice. Use only
+      the data in `signal`; do not invent prices or probabilities. Always include the disclaimer and
+      surface the risk_flags.
+    schema:
+      title: WorldCupSignalExplanation
+      type: object
+      required: [summary, risk_notes, disclaimer]
+      properties:
+        summary:
+          type: string
+        top_pick:
+          type: object
+          properties:
+            outcome:
+              type: string
+            rationale:
+              type: string
+            suggested_stake:
+              type: string
+        other_legs:
+          type: array
+          items:
+            type: string
+        risk_notes:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string

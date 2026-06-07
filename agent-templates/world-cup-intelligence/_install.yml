@@ -16,6 +16,7 @@ setup:
     - Market edge and arbitrage-candidate analysis for agent workflows.
     - Statistical match forecasts (Dixon-Coles) with model-vs-market gaps + Brier/calibration backtesting.
     - Composite editorial Skills (match-preview, match-recap, player-spotlight, fan-pulse, market-watch) as TTL-cached cards.
+    - Structured betting signal (recommendation + edge% + EV + Kelly stake + risk flags), line-shopped + de-vigged.
     - Read-only workflows suitable for API/MCP productization.
   integrations:
     - api-football
@@ -28,7 +29,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.3.0
+  version: 0.4.0
 
 datasets:
   - type: connector
@@ -100,6 +101,8 @@ datasets:
   - type: workflow
     path: workflows/worldcup-backtest-forecasts.yml
   - type: workflow
+    path: workflows/worldcup-get-signal.yml
+  - type: workflow
     path: workflows/worldcup-match-preview.yml
   - type: workflow
     path: workflows/worldcup-match-recap.yml
@@ -130,6 +133,8 @@ datasets:
     path: prompts/worldcup-fifa-ranking-extract.yml
   - type: prompts
     path: prompts/worldcup-match-forecast-explain.yml
+  - type: prompts
+    path: prompts/worldcup-signal-explain.yml
   - type: prompts
     path: prompts/worldcup-match-preview.yml
   - type: prompts

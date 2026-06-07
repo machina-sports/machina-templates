@@ -62,6 +62,8 @@ connector:
       value: "build_event_forecasts"
     - name: "Compute model-vs-market edge"
       value: "compute_model_vs_market_edge"
+    - name: "Compute betting signal"
+      value: "compute_signal"
     - name: "Compute forecast audit"
       value: "compute_forecast_audit"
     - name: "Select prematch fixtures"

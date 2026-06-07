@@ -3095,6 +3095,19 @@ def build_event_forecasts(request_data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _bucket_of(name: Any, home_slug: str, away_slug: str) -> str | None:
+    """Map a market outcome name to a 1X2 bucket (home_win/draw/away_win), else None."""
+    low = _lower(name)
+    if "draw" in low or "tie" in low:
+        return "draw"
+    name_slug = _slugify(low)
+    if home_slug and home_slug in name_slug:
+        return "home_win"
+    if away_slug and away_slug in name_slug:
+        return "away_win"
+    return None
+
+
 def _gap_candidates(probs: dict[str, Any], outcomes: list[Any],
                     home_name: Any, away_name: Any, min_gap_bps: int) -> list[dict[str, Any]]:
     """Per-1X2-bucket model-vs-market gaps. Informational only."""
@@ -3104,20 +3117,13 @@ def _gap_candidates(probs: dict[str, Any], outcomes: list[Any],
     for o in outcomes:
         if not isinstance(o, dict):
             continue
-        name = _lower(o.get("outcome_name") or o.get("name"))
         if o.get("price") is None:
             continue
         price = _to_float(o.get("price"))
         if price == 0.0:
             continue
-        name_slug = _slugify(name)
-        if "draw" in name or "tie" in name:
-            bucket = "draw"
-        elif home_slug and home_slug in name_slug:
-            bucket = "home_win"
-        elif away_slug and away_slug in name_slug:
-            bucket = "away_win"
-        else:
+        bucket = _bucket_of(o.get("outcome_name") or o.get("name"), home_slug, away_slug)
+        if not bucket:
             continue
         buckets.setdefault(bucket, price)
 
@@ -3221,6 +3227,174 @@ def compute_model_vs_market_edge(request_data: dict[str, Any]) -> dict[str, Any]
             "disclaimer": DISCLAIMER,
         },
     }
+
+
+_OUTCOME_LABELS = {"home_win": "home", "draw": "Draw", "away_win": "away"}
+SIGNAL_STAKE_CAVEAT = (
+    "Suggested stake is fractional-Kelly position sizing for decision support, not financial "
+    "advice -- size to your own bankroll and risk tolerance."
+)
+
+
+def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Fuse the model forecast + best market price into a structured 1X2 betting signal.
+
+    Per outcome: best (lowest) back price line-shopped across venues, de-vigged fair market
+    prob, edge (model_prob - price), EV per $1, full + fractional Kelly stake, and risk flags.
+    Read-only decision support -- recommends value + a suggested stake, never a guarantee.
+
+    Params:
+      - forecast: a worldcup:model-forecast value (probabilities, home_team, away_team,
+        confidence, data_source, flags)
+      - markets: worldcup:market-cache docs for the event (outcomes, source, price_quality,
+        liquidity, spread)
+      - event_urn, min_edge_bps (default 200), kelly_fraction (default 0.25), bankroll (optional)
+    """
+    params = _params(request_data)
+    forecast = params.get("forecast") if isinstance(params.get("forecast"), dict) else {}
+    probs = forecast.get("probabilities") or {}
+    home = (forecast.get("home_team") or {})
+    away = (forecast.get("away_team") or {})
+    home_name = _text(home.get("name"))
+    away_name = _text(away.get("name"))
+    confidence = _num(forecast.get("confidence"), 0.15)
+    data_source = _text(forecast.get("data_source")) or "seed"
+    forecast_flags = [f for f in _as_list(forecast.get("flags")) if _text(f)]
+
+    try:
+        min_edge_bps = int(params.get("min_edge_bps") or 200)
+    except (TypeError, ValueError):
+        min_edge_bps = 200
+    kelly_fraction = _num(params.get("kelly_fraction"), 0.25)
+    kelly_fraction = max(0.0, min(1.0, kelly_fraction))
+    bankroll = params.get("bankroll")
+    bankroll = _num(bankroll, 0.0) if bankroll not in (None, "", []) else None
+
+    warnings: list[str] = []
+    if not probs or not (home_name or away_name):
+        warnings.append("No model forecast for this event -- run worldcup-sync-model-forecasts.")
+        return {"status": True, "data": {"signal": {}, "recommendation": "No forecast available.",
+                                         "top_pick": None, "warnings": warnings, "disclaimer": DISCLAIMER}}
+
+    home_slug = _slugify(home_name) if home_name else ""
+    away_slug = _slugify(away_name) if away_name else ""
+
+    # Best (lowest) back price per 1X2 bucket, line-shopped across reliable venues.
+    best: dict[str, dict[str, Any]] = {}
+    for m in _as_list(params.get("markets")):
+        if not isinstance(m, dict) or m.get("price_quality") == "unreliable":
+            continue
+        source = _text(m.get("source"))
+        liquidity = m.get("liquidity")
+        spread = m.get("spread")
+        for o in (m.get("outcomes") or []):
+            if not isinstance(o, dict) or o.get("price") is None:
+                continue
+            price = _to_float(o.get("price"))
+            if price <= 0.0:
+                continue
+            bucket = _bucket_of(o.get("name"), home_slug, away_slug)
+            if not bucket or bucket not in probs:
+                continue
+            cur = best.get(bucket)
+            if cur is None or price < cur["best_price"]:
+                best[bucket] = {"best_price": price, "best_venue": source,
+                                "liquidity": liquidity, "spread": spread}
+
+    if not best:
+        warnings.append("No reliable linked market prices for this event.")
+
+    overround = sum(b["best_price"] for b in best.values())
+    legs: list[dict[str, Any]] = []
+    for bucket in ("home_win", "draw", "away_win"):
+        info = best.get(bucket)
+        if not info or bucket not in probs:
+            continue
+        price = info["best_price"]
+        model_prob = _to_float(probs.get(bucket))
+        fair_market = round(price / overround, 4) if overround > 0 else None
+        edge = round(model_prob - price, 4)
+        edge_bps = round(edge * 10000)
+        ev_per_dollar = round(model_prob / price - 1.0, 4) if price > 0 else 0.0
+        kelly_full = round((model_prob - price) / (1.0 - price), 4) if price < 1.0 else 0.0
+        if kelly_full < 0:
+            kelly_full = 0.0
+        kelly_stake = round(kelly_full * kelly_fraction, 4)
+
+        flags = list(forecast_flags)
+        if data_source != "results":
+            flags.append("model_low_confidence")
+        if _to_float(info.get("liquidity")) and _to_float(info.get("liquidity")) < 100:
+            flags.append("low_liquidity")
+        if info.get("spread") is not None and _to_float(info.get("spread")) > 0.05:
+            flags.append("wide_spread")
+        if abs(edge_bps) >= 1500 and confidence < 0.5:
+            flags.append("edge_likely_model_noise")
+        flags = sorted(set(flags))
+
+        is_value = edge_bps >= min_edge_bps and kelly_full > 0
+        leg = {
+            "outcome": bucket,
+            "label": home_name if bucket == "home_win" else (away_name if bucket == "away_win" else "Draw"),
+            "model_prob": round(model_prob, 4),
+            "best_price": round(price, 4),
+            "best_venue": info["best_venue"],
+            "fair_market_prob": fair_market,
+            "edge": edge,
+            "edge_bps": edge_bps,
+            "edge_pct": round(edge * 100, 2),
+            "ev_per_dollar": ev_per_dollar,
+            "kelly_full": kelly_full,
+            "kelly_stake": kelly_stake,
+            "stake_pct": round(kelly_stake * 100, 2),
+            "recommendation": "value" if is_value else "no_edge",
+            "risk_flags": flags,
+        }
+        if bankroll is not None:
+            leg["stake_amount"] = round(bankroll * kelly_stake, 2)
+        legs.append(leg)
+
+    if len(legs) < 3:
+        warnings.append("Incomplete 1X2 market (fewer than 3 outcomes priced).")
+
+    # top_pick = best +EV value leg that isn't flagged as model noise.
+    eligible = [l for l in legs if l["recommendation"] == "value"
+                and "edge_likely_model_noise" not in l["risk_flags"]]
+    eligible.sort(key=lambda l: l["ev_per_dollar"], reverse=True)
+    top_pick = eligible[0] if eligible else None
+
+    conf_word = "low" if confidence < 0.4 else ("moderate" if confidence < 0.7 else "solid")
+    if top_pick:
+        recommendation = (
+            "Value: back %s at %s @%.2f -- model %.0f%% vs market %.0f%%, edge %.1f%%, "
+            "suggested stake %.2f%% of bankroll (quarter-Kelly). Model confidence: %s."
+            % (top_pick["label"], top_pick["best_venue"], top_pick["best_price"],
+               top_pick["model_prob"] * 100, top_pick["best_price"] * 100, top_pick["edge_pct"],
+               top_pick["stake_pct"], conf_word)
+        )
+    elif legs:
+        recommendation = "No actionable edge -- model and market broadly agree; pass."
+    else:
+        recommendation = "No reliable market prices to assess; pass."
+
+    caveats = MODEL_CAVEATS + GAP_CAVEATS + [SIGNAL_STAKE_CAVEAT]
+    signal = {
+        "event_urn": _text(params.get("event_urn")) or _text(_first(forecast, "_id", "@id", "id")),
+        "home_team": home_name,
+        "away_team": away_name,
+        "kickoff": forecast.get("schema:startDate"),
+        "model_confidence": round(confidence, 3),
+        "data_source": data_source,
+        "kelly_fraction": kelly_fraction,
+        "vig_pct": round((overround - 1.0) * 100, 2) if overround > 0 else None,
+        "legs": legs,
+        "top_pick": top_pick,
+        "recommendation": recommendation,
+        "caveats": caveats,
+        "disclaimer": DISCLAIMER,
+    }
+    return {"status": True, "data": {"signal": signal, "recommendation": recommendation,
+                                     "top_pick": top_pick, "warnings": warnings, "disclaimer": DISCLAIMER}}
 
 
 def _single_audit(forecast: dict[str, Any], home_goals: int, away_goals: int) -> dict[str, Any]:
