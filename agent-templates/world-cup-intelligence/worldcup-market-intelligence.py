@@ -159,10 +159,14 @@ def _kalshi_outcomes(record: dict[str, Any]) -> list[dict[str, Any]]:
     )
     if no_price is None and yes_price is not None:
         no_price = round(1 - yes_price, 6)
-    # Kalshi binary markets describe the strike via yes_sub_title (e.g.
-    # "Uzbekistan" for "Congo DR vs Uzbekistan Winner?"). no_sub_title repeats
-    # the strike, so the No side keeps its literal name.
-    yes_name = _text(record.get("yes_sub_title")) or "Yes"
+    # Kalshi binary markets name the YES strike via yes_sub_title (e.g.
+    # "Uzbekistan" for "Congo DR vs Uzbekistan Winner?"). The thinner search
+    # payload drops yes_sub_title but carries the same label in `subtitle`; the
+    # tie leg has no team label, so fall back to the ticker suffix (...-TIE).
+    yes_name = _text(record.get("yes_sub_title")) or _text(record.get("subtitle"))
+    if not yes_name:
+        ticker = _lower(_first(record, "ticker", "market_ticker", "market_id", "id"))
+        yes_name = "Tie" if ticker.endswith("-tie") else "Yes"
     results = []
     if yes_price is not None:
         results.append({"name": yes_name, "price": yes_price, "token_id": None, "source_outcome_id": "yes"})

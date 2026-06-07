@@ -1676,3 +1676,31 @@ class TestComputeSignal:
         r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]
         leg = r["signal"]["legs"][0]
         assert leg["kelly_full"] == round((0.60 - 0.50) / (1 - 0.50), 4)
+
+    def test_signal_buckets_sparse_kalshi_legs(self):
+        # End-to-end: sparse Kalshi legs (team in subtitle, "-TIE" ticker) normalize so
+        # compute_signal buckets home/draw/away by the team-named YES outcome.
+        recs = [
+            {"ticker": "KXWCGAME-X-BRA", "title": "Brazil vs Morocco Winner?", "subtitle": "Brazil", "yes_bid": 50, "no_bid": 49},
+            {"ticker": "KXWCGAME-X-MAR", "title": "Brazil vs Morocco Winner?", "subtitle": "Morocco", "yes_bid": 22, "no_bid": 77},
+            {"ticker": "KXWCGAME-X-TIE", "title": "Brazil vs Morocco Winner?", "yes_bid": 28, "no_bid": 71},
+        ]
+        markets = [_module._normalize_record("kalshi", r, "2026-06-06T00:00:00Z") for r in recs]
+        r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": markets}})["data"]
+        buckets = {l["outcome"]: l["best_price"] for l in r["signal"]["legs"]}
+        assert buckets == {"home_win": 0.50, "away_win": 0.22, "draw": 0.28}
+        assert r["top_pick"]["outcome"] == "home_win"
+
+
+def test_kalshi_sparse_payload_names_team_from_subtitle():
+    rec = {"ticker": "KXWCGAME-26JUN19SCOMAR-MAR", "title": "Scotland vs Morocco Winner?",
+           "subtitle": "Morocco", "yes_bid": 49, "no_bid": 50}
+    m = _module._normalize_record("kalshi", rec, "2026-06-06T00:00:00Z")
+    assert "Morocco" in [o["name"] for o in m["outcomes"]]
+
+
+def test_kalshi_tie_leg_named_tie():
+    rec = {"ticker": "KXWCGAME-26JUN19SCOMAR-TIE", "title": "Scotland vs Morocco Winner?",
+           "yes_bid": 28, "no_bid": 71}
+    m = _module._normalize_record("kalshi", rec, "2026-06-06T00:00:00Z")
+    assert m["outcomes"][0]["name"] == "Tie"
