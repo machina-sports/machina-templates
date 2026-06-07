@@ -79,6 +79,16 @@ agent:
         forecast: "$.get('forecast', {})"
         model_vs_market: "$.get('model_vs_market', {})"
 
+    - name: worldcup-get-signal
+      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support)
+      inputs:
+        event_urn: "$.get('event_urn', '')"
+        bankroll: "$.get('bankroll', '')"
+      outputs:
+        signal: "$.get('signal', {})"
+        recommendation: "$.get('recommendation', '')"
+        top_pick: "$.get('top_pick', {})"
+
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
       inputs:

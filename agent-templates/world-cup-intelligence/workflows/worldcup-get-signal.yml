@@ -1,0 +1,92 @@
+workflow:
+  name: worldcup-get-signal
+  title: World Cup Intelligence - Betting Signal
+  description: |
+    Structured betting signal for one fixture: fuses the model forecast with the best
+    (line-shopped) Kalshi/Polymarket price per 1X2 outcome into recommendation + edge% +
+    EV + Kelly stake + risk flags. Read-only decision support — suggests value and a
+    fractional-Kelly stake, never a guaranteed bet.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    event_urn: "$.get('event_urn', '')"
+    min_edge_bps: "$.get('min_edge_bps', 200)"
+    kelly_fraction: "$.get('kelly_fraction', 0.25)"
+    bankroll: "$.get('bankroll', '')"
+    include_reasoning: "$.get('include_reasoning', False)"
+  outputs:
+    signal: "$.get('signal', {})"
+    recommendation: "$.get('recommendation', '')"
+    top_pick: "$.get('top_pick', {})"
+    analysis: "$.get('analysis', {})"
+    warnings: "$.get('signal_warnings', [])"
+    workflow-status: "$.get('signal', {}) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-forecast
+      description: Load the cached model forecast for this event.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:model-forecast'"
+        value._id: "$.get('event_urn', '')"
+      outputs:
+        forecast: "($.get('documents', []) or [{}])[0].get('value', {})"
+        forecast_warnings: "[] if ($.get('documents', []) or []) else ['No model forecast for this event -- run worldcup-sync-model-forecasts.']"
+
+    - type: document
+      name: load-event-markets
+      description: Cached markets linked to this event (for price line-shopping).
+      condition: "$.get('forecast', {}) != {}"
+      config:
+        action: search
+        search-limit: 200
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+        value.event_urn: "$.get('event_urn', '')"
+      outputs:
+        markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: compute-signal
+      description: Fuse forecast + best market price into the structured signal.
+      condition: "$.get('forecast', {}) != {}"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_signal
+      inputs:
+        forecast: "$.get('forecast', {})"
+        markets: "$.get('markets', [])"
+        event_urn: "$.get('event_urn', '')"
+        min_edge_bps: "$.get('min_edge_bps', 200)"
+        kelly_fraction: "$.get('kelly_fraction', 0.25)"
+        bankroll: "$.get('bankroll', '')"
+      outputs:
+        signal: "$.get('signal', {})"
+        recommendation: "$.get('recommendation', '')"
+        top_pick: "$.get('top_pick', {})"
+        signal_warnings: "$.get('warnings', [])"
+
+    - type: prompt
+      name: worldcup-signal-explain
+      description: Plain-language rationale for the signal (informational, optional).
+      condition: "$.get('signal', {}) != {} and $.get('include_reasoning', False) is True"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        signal: "$.get('signal', {})"
+        timeout: 120
+      outputs:
+        analysis: "$"

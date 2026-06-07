@@ -38,6 +38,7 @@ detect_market_edges = _module.detect_market_edges
 normalize_fifa_seed = _module.normalize_fifa_seed
 select_prematch_fixtures = _module.select_prematch_fixtures
 _match_team_urns = _module._match_team_urns
+compute_signal = _module.compute_signal
 
 
 def _kalshi_record(**overrides):
@@ -1618,3 +1619,60 @@ def test_standings_separates_third_place_ranking():
     assert r["group_count"] == 1
     assert len(r["groups"]) == 1 and r["groups"][0]["group"] == "Group A"
     assert len(r["third_place_ranking"]) == 1
+
+
+def _sig_forecast(probs=None, confidence=0.8, data_source="results", flags=None):
+    return {"_id": "urn:ev:1", "schema:startDate": "2026-06-13T22:00:00+00:00",
+            "home_team": {"name": "Brazil", "urn": "u:bra"},
+            "away_team": {"name": "Morocco", "urn": "u:mar"},
+            "probabilities": probs or {"home_win": 0.60, "draw": 0.25, "away_win": 0.15},
+            "confidence": confidence, "data_source": data_source, "flags": flags or []}
+
+
+def _ok(source, name, price, liquidity=5000, spread=0.01):
+    return {"source": source, "price_quality": "ok", "liquidity": liquidity, "spread": spread,
+            "outcomes": [{"name": name, "price": price}]}
+
+
+class TestComputeSignal:
+    def test_value_pick_line_shop_devig_and_bankroll(self):
+        markets = [_ok("kalshi", "Brazil", 0.55), _ok("polymarket", "Brazil", 0.50),
+                   _ok("kalshi", "Draw", 0.30), _ok("kalshi", "Morocco", 0.22),
+                   {"source": "kalshi", "price_quality": "unreliable", "outcomes": [{"name": "Brazil", "price": 0.01}]}]
+        r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": markets,
+                                       "event_urn": "urn:ev:1", "bankroll": 1000}})["data"]
+        sig = r["signal"]
+        home = [l for l in sig["legs"] if l["outcome"] == "home_win"][0]
+        assert home["best_price"] == 0.50 and home["best_venue"] == "polymarket"  # line-shop + unreliable ignored
+        assert home["edge"] == 0.10 and home["ev_per_dollar"] == 0.20 and home["kelly_full"] == 0.20
+        assert home["stake_pct"] == 5.0 and home["stake_amount"] == 50.0  # quarter-Kelly * 1000
+        assert home["recommendation"] == "value"
+        assert sig["vig_pct"] == 2.0  # 0.50+0.30+0.22 = 1.02
+        assert r["top_pick"]["outcome"] == "home_win"
+        assert "Value: back Brazil" in r["recommendation"]
+
+    def test_no_edge(self):
+        fc = _sig_forecast(probs={"home_win": 0.50, "draw": 0.27, "away_win": 0.23})
+        r = compute_signal({"params": {"forecast": fc, "markets": [_ok("kalshi", "Brazil", 0.52)]}})["data"]
+        leg = r["signal"]["legs"][0]
+        assert leg["recommendation"] == "no_edge" and leg["kelly_full"] == 0.0
+        assert r["top_pick"] is None
+
+    def test_low_confidence_huge_edge_suppressed(self):
+        fc = _sig_forecast(probs={"home_win": 0.90, "draw": 0.07, "away_win": 0.03},
+                           confidence=0.15, data_source="seed")
+        r = compute_signal({"params": {"forecast": fc, "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]
+        leg = r["signal"]["legs"][0]
+        assert "edge_likely_model_noise" in leg["risk_flags"]
+        assert "model_low_confidence" in leg["risk_flags"]
+        assert r["top_pick"] is None  # noise leg never becomes the pick
+
+    def test_empty_forecast_graceful(self):
+        r = compute_signal({"params": {"forecast": {}, "markets": [_ok("kalshi", "Brazil", 0.5)]}})["data"]
+        assert r["signal"] == {} and r["top_pick"] is None and r["warnings"]
+
+    def test_kelly_matches_betting_formula(self):
+        # (p - price)/(1 - price) — parity with the sports-skills betting skill.
+        r = compute_signal({"params": {"forecast": _sig_forecast(), "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]
+        leg = r["signal"]["legs"][0]
+        assert leg["kelly_full"] == round((0.60 - 0.50) / (1 - 0.50), 4)

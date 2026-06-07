@@ -59,6 +59,18 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
 - `worldcup-get-match-forecast` — model-implied 1X2/O-U/scoreline probabilities (Dixon-Coles) for one event + the live model-vs-market gap. Informational only.
 - `worldcup-backtest-forecasts` — post-match Brier/calibration audit; publishes the `worldcup:forecast-audit:aggregate` track record (read the aggregate doc to surface accuracy).
 
+**Signals (decision support)**
+- `worldcup-get-signal` — structured betting signal for one fixture (1X2). Fuses the model forecast
+  with the best **line-shopped** Kalshi/Polymarket price per outcome → per-leg `model_prob`,
+  `best_price`+`best_venue`, de-vigged `fair_market_prob`, `edge`/`edge_pct`/`edge_bps`,
+  `ev_per_dollar`, `kelly_full` + `kelly_stake` (default **quarter-Kelly**; `kelly_fraction`
+  overridable; `bankroll` → `stake_amount`), and `risk_flags`. Returns a `top_pick` (best +EV value
+  leg, suppressed when flagged `edge_likely_model_noise`) + a plain `recommendation` string + `vig_pct`.
+  Unreliable/degenerate markets are excluded. Read-only **decision support** — recommends value + a
+  suggested stake, never "guaranteed/lock". Set `include_reasoning:true` for a grounded rationale.
+  Intended **STRATEGY tier** for the future metered gateway. Inputs: `{event_urn, min_edge_bps?:200,
+  kelly_fraction?:0.25, bankroll?, include_reasoning?:false}`.
+
 **Composite Skills (cached editorial cards)** — each serves a fresh cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`, then caches it with a TTL. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
 - `worldcup-match-preview` (`event_urn`) — grounded preview; composes event + grounded news + optional model forecast + market snapshot. TTL 6h (FRESH).
 - `worldcup-match-recap` (`event_urn`) — grounded recap; authored ONLY once `sport:status` ∈ FT/AET/PEN, then cached EVERGREEN (once per match).
