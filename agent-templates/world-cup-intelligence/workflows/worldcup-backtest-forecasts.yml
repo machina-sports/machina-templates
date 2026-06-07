@@ -8,6 +8,11 @@ workflow:
     0.25 random baseline + calibration curve). Read-only. The aggregate gates on
     sample_size_sufficient (>=50) so early numbers are not over-read.
 
+    Also settles Closing Line Value (CLV): for each logged signal-ledger entry whose
+    fixture is now final, it captures the last pre-kickoff market snapshot (the closing
+    line), computes CLV = closing - entry (cents), and rolls a two-proportion Z-test on
+    CLV+ vs CLV- win rates into worldcup:clv-report:aggregate (gated on >=30/bucket).
+
   context-variables:
     debugger:
       enabled: true
@@ -19,6 +24,8 @@ workflow:
   outputs:
     audited_count: "len($.get('audits', []))"
     track_record: "$.get('backtesting_report', {})"
+    clv_settled_count: "len($.get('clv_settled', []))"
+    clv_report: "$.get('clv_report', {})"
     workflow-status: "len($.get('audits', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector
@@ -103,3 +110,87 @@ workflow:
         backtesting_report: "$.get('backtesting_report', {})"
         aggregate_id: "$.get('aggregate_id', 'worldcup:forecast-audit:aggregate')"
         aggregate_metadata: "$.get('aggregate_metadata', {})"
+
+    - type: document
+      name: load-signal-ledger
+      description: Logged signal entries to settle for CLV.
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:signal-ledger'"
+      outputs:
+        ledger_rows: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-snapshots
+      description: Hourly market snapshots (closing-line source).
+      condition: "len($.get('ledger_rows', [])) > 0"
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-snapshot'"
+      outputs:
+        snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: settle-clv
+      description: Capture the closing line + compute CLV for newly-final entries.
+      condition: "len($.get('ledger_rows', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_clv
+      inputs:
+        ledger_rows: "$.get('ledger_rows', [])"
+        snapshots: "$.get('snapshots', [])"
+        finished_fixtures: "$.get('finished_fixtures', [])"
+      outputs:
+        clv_ledger: "$.get('ledger', [])"
+        clv_settled: "$.get('settled_rows', [])"
+
+    - type: document
+      name: save-clv-settled
+      description: Persist newly-settled ledger rows (closing line + CLV).
+      condition: "len($.get('clv_settled', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:signal-ledger'"
+      documents:
+        items: "$.get('clv_settled', [])"
+      inputs:
+        clv_settled: "$.get('clv_settled', [])"
+
+    - type: connector
+      name: aggregate-clv
+      description: Two-proportion Z-test on CLV+ vs CLV- win rates.
+      condition: "len($.get('ledger_rows', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_clv_report
+      inputs:
+        clv_rows: "$.get('clv_ledger', [])"
+      outputs:
+        clv_report: "$.get('clv_report', {})"
+        clv_report_id: "$.get('_id', 'worldcup:clv-report:aggregate')"
+        clv_report_metadata: "$.get('metadata', {})"
+
+    - type: document
+      name: save-clv-report
+      description: Persist the singleton CLV track-record doc.
+      condition: "$.get('clv_report', {}) != {}"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:clv-report'"
+      documents:
+        items: "[{'_id': $.get('clv_report_id', 'worldcup:clv-report:aggregate'), 'metadata': $.get('clv_report_metadata', {'event_urn': 'worldcup:clv-report:aggregate'}), 'clv_report': $.get('clv_report', {})}]"
+      inputs:
+        clv_report: "$.get('clv_report', {})"
+        clv_report_id: "$.get('clv_report_id', 'worldcup:clv-report:aggregate')"
+        clv_report_metadata: "$.get('clv_report_metadata', {})"
