@@ -69,7 +69,10 @@ No secondary ids (team/league/venue) live in `provider_ids` — those are resolv
   Unreliable/degenerate markets are excluded. Read-only **decision support** — recommends value + a
   suggested stake, never "guaranteed/lock". Set `include_reasoning:true` for a grounded rationale.
   Intended **STRATEGY tier** for the future metered gateway. Inputs: `{event_urn, min_edge_bps?:200,
-  kelly_fraction?:0.25, bankroll?, include_reasoning?:false}`.
+  kelly_fraction?:0.25, bankroll?, fee_bps?:0, include_reasoning?:false}`.
+  Each leg also carries `fair_decimal`/`fair_american` (model-implied odds) + `market_american`, a
+  `confidence_tier` (high ≥12c / medium 6–12c / low; forced low when `edge_likely_model_noise`), and —
+  when `fee_bps` is supplied — `effective_price`, `gross_edge`, and net-of-fee `edge`/`ev_per_dollar`/`kelly_*`.
 
 **Composite Skills (cached editorial cards)** — each serves a fresh cached candidate (idle cost = one doc search) or authors a new one on a cache miss / `force_regen`, then caches it with a TTL. Output is `skill_card` (the structured `body`) + `served_from` (`cache`|`generated`). All read-only/informational with the standard disclaimer; market-bearing cards keep resolution/liquidity/freshness caveats.
 - `worldcup-match-preview` (`event_urn`) — grounded preview; composes event + grounded news + optional model forecast + market snapshot. TTL 6h (FRESH).
