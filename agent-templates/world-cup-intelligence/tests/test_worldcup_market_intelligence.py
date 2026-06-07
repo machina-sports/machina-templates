@@ -1704,3 +1704,25 @@ def test_kalshi_tie_leg_named_tie():
            "yes_bid": 28, "no_bid": 71}
     m = _module._normalize_record("kalshi", rec, "2026-06-06T00:00:00Z")
     assert m["outcomes"][0]["name"] == "Tie"
+
+
+def test_signal_net_of_fees():
+    fc, mk = _sig_forecast(), [_ok("kalshi", "Brazil", 0.50)]
+    gross = compute_signal({"params": {"forecast": fc, "markets": mk}})["data"]["signal"]["legs"][0]
+    net = compute_signal({"params": {"forecast": fc, "markets": mk, "fee_bps": 200}})["data"]["signal"]["legs"][0]
+    assert gross["edge"] == 0.10 and net["gross_edge"] == 0.10        # gross unchanged
+    assert net["edge"] == 0.08 and net["effective_price"] == 0.52     # net of 200bps fee
+    assert net["ev_per_dollar"] < gross["ev_per_dollar"] and net["fee_bps"] == 200
+
+
+def test_signal_confidence_tier_and_fair_odds():
+    # ~1000bps edge, results-confidence -> medium; fair odds for p=0.60 -> -150 / 1.67.
+    leg = compute_signal({"params": {"forecast": _sig_forecast(), "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]["signal"]["legs"][0]
+    assert leg["confidence_tier"] == "medium"
+    assert leg["fair_american"] == -150 and leg["fair_decimal"] == 1.67
+
+
+def test_signal_noise_edge_tier_low():
+    fc = _sig_forecast(probs={"home_win": 0.90, "draw": 0.07, "away_win": 0.03}, confidence=0.15, data_source="seed")
+    leg = compute_signal({"params": {"forecast": fc, "markets": [_ok("kalshi", "Brazil", 0.50)]}})["data"]["signal"]["legs"][0]
+    assert "edge_likely_model_noise" in leg["risk_flags"] and leg["confidence_tier"] == "low"

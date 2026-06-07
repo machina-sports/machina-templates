@@ -3240,19 +3240,45 @@ SIGNAL_STAKE_CAVEAT = (
 )
 
 
+def _prob_to_decimal(p: float) -> float | None:
+    """Fair decimal odds for a 0-1 probability (1/p)."""
+    return round(1.0 / p, 2) if p and p > 0 else None
+
+
+def _prob_to_american(p: float) -> int | None:
+    """Fair American odds for a 0-1 probability."""
+    if not p or p <= 0 or p >= 1:
+        return None
+    return round(-(p / (1 - p)) * 100) if p >= 0.5 else round(((1 - p) / p) * 100)
+
+
+def _confidence_tier(edge_bps: int, flags: list[str]) -> str:
+    """Signal quality by edge magnitude (cents); a likely-noise edge is forced low."""
+    if "edge_likely_model_noise" in flags:
+        return "low"
+    e = abs(edge_bps)
+    if e >= 1200:   # >= 12c
+        return "high"
+    if e >= 600:    # 6-12c
+        return "medium"
+    return "low"
+
+
 def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
     """Fuse the model forecast + best market price into a structured 1X2 betting signal.
 
     Per outcome: best (lowest) back price line-shopped across venues, de-vigged fair market
-    prob, edge (model_prob - price), EV per $1, full + fractional Kelly stake, and risk flags.
-    Read-only decision support -- recommends value + a suggested stake, never a guarantee.
+    prob, fair odds (decimal + American), net-of-fees edge, EV per $1, full + fractional Kelly
+    stake, a confidence tier, and risk flags. Read-only decision support -- recommends value +
+    a suggested stake, never a guarantee.
 
     Params:
       - forecast: a worldcup:model-forecast value (probabilities, home_team, away_team,
         confidence, data_source, flags)
       - markets: worldcup:market-cache docs for the event (outcomes, source, price_quality,
         liquidity, spread)
-      - event_urn, min_edge_bps (default 200), kelly_fraction (default 0.25), bankroll (optional)
+      - event_urn, min_edge_bps (default 200), kelly_fraction (default 0.25), bankroll (optional),
+        fee_bps (optional venue fee/slippage in bps; edge/EV/Kelly are computed net of it)
     """
     params = _params(request_data)
     forecast = params.get("forecast") if isinstance(params.get("forecast"), dict) else {}
@@ -3273,6 +3299,11 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
     kelly_fraction = max(0.0, min(1.0, kelly_fraction))
     bankroll = params.get("bankroll")
     bankroll = _num(bankroll, 0.0) if bankroll not in (None, "", []) else None
+    try:
+        fee_bps = max(0, int(params.get("fee_bps") or 0))
+    except (TypeError, ValueError):
+        fee_bps = 0
+    fee_fraction = fee_bps / 10000.0
 
     warnings: list[str] = []
     if not probs or not (home_name or away_name):
@@ -3317,10 +3348,13 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         price = info["best_price"]
         model_prob = _to_float(probs.get(bucket))
         fair_market = round(price / overround, 4) if overround > 0 else None
-        edge = round(model_prob - price, 4)
+        # Net-of-fees: entry cost = price + venue fee/slippage (fee_bps, default 0 -> net == gross).
+        effective_price = min(0.999, round(price + fee_fraction, 6))
+        gross_edge = round(model_prob - price, 4)
+        edge = round(model_prob - effective_price, 4)
         edge_bps = round(edge * 10000)
-        ev_per_dollar = round(model_prob / price - 1.0, 4) if price > 0 else 0.0
-        kelly_full = round((model_prob - price) / (1.0 - price), 4) if price < 1.0 else 0.0
+        ev_per_dollar = round(model_prob / effective_price - 1.0, 4) if effective_price > 0 else 0.0
+        kelly_full = round((model_prob - effective_price) / (1.0 - effective_price), 4) if effective_price < 1.0 else 0.0
         if kelly_full < 0:
             kelly_full = 0.0
         kelly_stake = round(kelly_full * kelly_fraction, 4)
@@ -3335,22 +3369,30 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         if abs(edge_bps) >= 1500 and confidence < 0.5:
             flags.append("edge_likely_model_noise")
         flags = sorted(set(flags))
+        tier = _confidence_tier(edge_bps, flags)
 
         is_value = edge_bps >= min_edge_bps and kelly_full > 0
         leg = {
             "outcome": bucket,
             "label": home_name if bucket == "home_win" else (away_name if bucket == "away_win" else "Draw"),
             "model_prob": round(model_prob, 4),
+            "fair_decimal": _prob_to_decimal(model_prob),
+            "fair_american": _prob_to_american(model_prob),
             "best_price": round(price, 4),
+            "effective_price": effective_price,
+            "fee_bps": fee_bps,
+            "market_american": _prob_to_american(price),
             "best_venue": info["best_venue"],
             "fair_market_prob": fair_market,
             "edge": edge,
+            "gross_edge": gross_edge,
             "edge_bps": edge_bps,
             "edge_pct": round(edge * 100, 2),
             "ev_per_dollar": ev_per_dollar,
             "kelly_full": kelly_full,
             "kelly_stake": kelly_stake,
             "stake_pct": round(kelly_stake * 100, 2),
+            "confidence_tier": tier,
             "recommendation": "value" if is_value else "no_edge",
             "risk_flags": flags,
         }
@@ -3390,6 +3432,7 @@ def compute_signal(request_data: dict[str, Any]) -> dict[str, Any]:
         "model_confidence": round(confidence, 3),
         "data_source": data_source,
         "kelly_fraction": kelly_fraction,
+        "fee_bps": fee_bps,
         "vig_pct": round((overround - 1.0) * 100, 2) if overround > 0 else None,
         "legs": legs,
         "top_pick": top_pick,
