@@ -84,6 +84,7 @@ agent:
       inputs:
         event_urn: "$.get('event_urn', '')"
         bankroll: "$.get('bankroll', '')"
+        fee_bps: "$.get('fee_bps', 0)"
       outputs:
         signal: "$.get('signal', {})"
         recommendation: "$.get('recommendation', '')"

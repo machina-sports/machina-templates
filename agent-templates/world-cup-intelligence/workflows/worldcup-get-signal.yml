@@ -18,6 +18,7 @@ workflow:
     min_edge_bps: "$.get('min_edge_bps', 200)"
     kelly_fraction: "$.get('kelly_fraction', 0.25)"
     bankroll: "$.get('bankroll', '')"
+    fee_bps: "$.get('fee_bps', 0)"
     include_reasoning: "$.get('include_reasoning', False)"
   outputs:
     signal: "$.get('signal', {})"
@@ -69,6 +70,7 @@ workflow:
         min_edge_bps: "$.get('min_edge_bps', 200)"
         kelly_fraction: "$.get('kelly_fraction', 0.25)"
         bankroll: "$.get('bankroll', '')"
+        fee_bps: "$.get('fee_bps', 0)"
       outputs:
         signal: "$.get('signal', {})"
         recommendation: "$.get('recommendation', '')"
