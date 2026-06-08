@@ -1,0 +1,12 @@
+setup:
+  title: "World Cup 2026 Intelligence"
+  description: "Fuses predictive modeling, real-time betting lines, and social sentiment into high-value market insights for the FIFA World Cup 2026."
+  category:
+    - sports-intelligence
+  status: available
+  value: "skills/world-cup-intelligence"
+  version: 1.1.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
