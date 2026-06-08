@@ -9,12 +9,6 @@ skill:
   status: "available"
   domain: "https://github.com/machina-sports/machina-templates"
 
-  manifest_version: "1.1"
-  visibility: "public"
-  tier: "free"
-  install_mode: "hybrid"
-  runtime: "client-api"
-
   references:
     - name: "skill-guide"
       title: "World Cup Intelligence Guide"
@@ -46,24 +40,9 @@ skill:
         event_urn: "$.get('event_urn', '')"
         bankroll: "$.get('bankroll', '')"
         kelly_fraction: "$.get('kelly_fraction', 0.25)"
+        min_edge_bps: "$.get('min_edge_bps', 200)"
+        fee_bps: "$.get('fee_bps', 0)"
       outputs:
         signal: "$.get('signal', {})"
         recommendation: "$.get('recommendation', '')"
         top_pick: "$.get('top_pick', {})"
-
-  agents:
-    - name: "world-cup-intelligence-agent"
-      description: "Read-only assistant for semantic fixture, market search, and grounded briefs."
-
-  dependencies:
-    connectors:
-      - "worldcup-market-intelligence"
-      - "google-genai"
-      - "sports-skills"
-    workflows:
-      - "worldcup-market-watch"
-      - "worldcup-fan-pulse"
-      - "worldcup-get-signal"
-      - "worldcup-sync-market-sources"
-      - "worldcup-sync-model-forecasts"
-      - "worldcup-log-signals"

@@ -31,7 +31,7 @@ Extracts real-time public sentiment, trending news storylines, and fan pulse for
 
 *   **Runtime Semantics:** Relies on xAI Grok search to query the live Web/X index, summarizing results into a structured card. Cache TTL is 1 hour.
 *   **Inputs:**
-    *   `event_urn` (string, optional): The canonical Machina URN of the event (e.g., `urn:machina:sport:soccer:event:123`). If omitted, generates a global tournament pulse.
+    *   `event_urn` (string, optional): The canonical Machina URN of the event (e.g., `urn:machina:sport:soccer:event:scotland-vs-morocco:20260619:wor`). If omitted, generates a global tournament pulse.
     *   `query` (string, optional): Custom search parameters. Defaults to `"FIFA World Cup 2026"`.
 *   **Outputs:**
     *   `skill_card` (object): The structured pulse card containing sentiment dials, key themes, and source attribution links.
@@ -43,13 +43,15 @@ Fuses our proprietary Dixon-Coles mathematical model's probabilities with the be
 
 *   **Runtime Semantics:** Strictly read-only, informational decision support. Evaluates the model-implied probabilities against the line-shopped price per 1X2 outcome, outputting edge, EV, and Kelly recommendations.
 *   **Inputs:**
-    *   `event_urn` (string, required): The target fixture's URN.
-    *   `bankroll` (string, optional): Simulated bankroll size.
+    *   `event_urn` (string, required): The target fixture's URN (e.g., `urn:machina:sport:soccer:event:scotland-vs-morocco:20260619:wor`).
+    *   `bankroll` (string, optional): Simulated bankroll size; when supplied, each leg also returns a `stake_amount`.
     *   `kelly_fraction` (number, optional): Kelly criterion scaling factor. Defaults to `0.25` (quarter-Kelly).
+    *   `min_edge_bps` (number, optional): Minimum net edge (basis points) for a leg to be flagged as value. Defaults to `200` (2%).
+    *   `fee_bps` (number, optional): Venue fee/slippage in basis points; edge, EV, and Kelly are computed net of it. Defaults to `0`.
 *   **Outputs:**
-    *   `signal` (object): Calculated values per outcome (prob, odds, edge%, EV).
-    *   `recommendation` (string): Standardized plain-text directive (e.g., `"No Edge Found"`, `"Value on Home (Dragons) @ 1.85 (12% Edge)"`).
-    *   `top_pick` (object): The single highest-EV opportunity.
+    *   `signal` (object): Per outcome — `model_prob`, fair odds (`fair_decimal`/`fair_american`), `best_price`+`best_venue`, `edge`/`edge_pct`, `ev_per_dollar`, `kelly_full`+`kelly_stake`, `confidence_tier`, and `risk_flags`.
+    *   `recommendation` (string): Standardized plain-text directive — e.g. `"No actionable edge -- model and market broadly agree; pass."` or `"Value: back Draw at kalshi @0.28 -- model 35% vs market 28%, edge 7.1%, suggested stake 2.46% of bankroll (quarter-Kelly). Model confidence: low."`
+    *   `top_pick` (object): The single highest-EV value leg (suppressed when flagged `edge_likely_model_noise`).
 
 ---
 
@@ -78,7 +80,7 @@ You can run these workflows directly via the Machina CLI:
 machina workflow run worldcup-market-watch force_regen=true
 
 # Get betting signal for a specific match
-machina workflow run worldcup-get-signal event_urn="urn:machina:sport:soccer:event:6a20c"
+machina workflow run worldcup-get-signal event_urn="urn:machina:sport:soccer:event:scotland-vs-morocco:20260619:wor"
 ```
 
 ---
