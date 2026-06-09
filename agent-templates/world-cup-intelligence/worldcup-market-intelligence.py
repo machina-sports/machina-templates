@@ -1216,15 +1216,18 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
 
     Serves our own normalized/IPTC-derived event data from the same-pod cache —
     not a raw upstream proxy. Filters by date range (YYYY-MM-DD, inclusive),
-    team-name substring, and status.
+    team-name substring, opponent-name substring, and status.
 
     Params:
       - events: list of worldcup:event doc values
-      - date_from, date_to, team, status, limit
+      - date_from, date_to, team, opponent, status, limit
+    `team` + `opponent` together pin a single fixture (both names must appear
+    among the competitors), which is how callers resolve "X vs Y" to an event_urn.
     """
     params = _params(request_data)
     events = _as_list(params.get("events"))
     team = _lower(params.get("team"))
+    opponent = _lower(params.get("opponent"))
     status = _lower(params.get("status"))
     date_from = _text(params.get("date_from"))[:10]
     date_to = _text(params.get("date_to"))[:10]
@@ -1246,6 +1249,8 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
         if status and status != st:
             continue
         if team and not any(team in _lower(n) for n in names):
+            continue
+        if opponent and not any(opponent in _lower(n) for n in names):
             continue
         if date_from and start_day and start_day < date_from:
             continue

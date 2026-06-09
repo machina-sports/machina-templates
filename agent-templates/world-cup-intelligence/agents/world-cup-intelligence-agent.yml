@@ -54,9 +54,10 @@ agent:
         injuries: "$.get('injuries', {})"
 
     - name: worldcup-get-schedule
-      description: List World Cup fixtures from the event cache, filtered by date/team/status
+      description: List World Cup fixtures (with their event_urn) from the event cache, filtered by date/team/opponent/status. Use this to resolve "Team A vs Team B" to an event_urn for get-signal/fan-pulse.
       inputs:
         team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
         date_from: "$.get('date_from', '')"
         date_to: "$.get('date_to', '')"
       outputs:
@@ -80,15 +81,20 @@ agent:
         model_vs_market: "$.get('model_vs_market', {})"
 
     - name: worldcup-get-signal
-      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support)
+      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support). Pass event_urn, OR team (+ optional opponent/date) to auto-resolve the fixture.
       inputs:
         event_urn: "$.get('event_urn', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
         bankroll: "$.get('bankroll', '')"
         fee_bps: "$.get('fee_bps', 0)"
       outputs:
         signal: "$.get('signal', {})"
         recommendation: "$.get('recommendation', '')"
         top_pick: "$.get('top_pick', {})"
+        event_urn: "$.get('event_urn', '')"
+        warnings: "$.get('warnings', [])"
 
     - name: worldcup-find-market-edges
       description: Identify informational market-edge and arbitrage candidates
@@ -136,12 +142,16 @@ agent:
         skill_card: "$.get('skill_card', {})"
 
     - name: worldcup-fan-pulse
-      description: Composite fan-pulse card (social/news sentiment, cached)
+      description: Composite fan-pulse card (social/news sentiment, cached). Pass event_urn, OR team (+ optional opponent/date) to scope and resolve the fixture; the card echoes the resolved event_urn.
       inputs:
         query: "$.get('query', 'FIFA World Cup')"
         event_urn: "$.get('event_urn', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
       outputs:
         skill_card: "$.get('skill_card', {})"
+        event_urn: "$.get('event_urn', '')"
 
   instructions: |
     Use match truth from API-Football, IPTC mappings, and provider event URNs before reasoning over markets.

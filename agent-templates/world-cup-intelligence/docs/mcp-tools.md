@@ -2,6 +2,25 @@
 
 Public tools should call allowlisted workflows only. Do not expose raw connector execution or provider-specific trading/order commands.
 
+## Resolving a fixture to an `event_urn`
+
+`worldcup_get_signal`, `worldcup_get_event_context`, and the scoped skill cards
+key off a fixture `event_urn`. Callers rarely have one in hand, so every
+fixture-scoped tool now accepts human identifiers and resolves internally:
+
+- Pass `team` (and optionally `opponent` + `date` as `YYYY-MM-DD`) instead of
+  `event_urn`. `team` + `opponent` pin a single fixture.
+- The tool echoes the resolved `event_urn` (and `resolved_fixture`) so it can be
+  reused across calls.
+- If nothing resolves, the tool returns an explicit `recommendation` /
+  `warnings` message ("No fixture resolved …") rather than an empty payload.
+
+To discover URNs directly, expose **`worldcup_get_schedule`** (filter by
+`team`/`opponent`/`date_from`/`date_to`; returns fixtures with `event_urn`) and
+**`worldcup_resolve`** (any provider id or canonical URN → entity). Keep at
+least one of these on every deployed MCP surface — without a discovery primitive
+`worldcup_get_signal` is unreachable.
+
 ## Public tools
 
 ### `worldcup_search_markets`

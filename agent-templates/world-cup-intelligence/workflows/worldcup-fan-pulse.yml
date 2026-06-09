@@ -15,13 +15,49 @@ workflow:
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
     event_urn: "$.get('event_urn', '')"
+    team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
     lookback_hours: "$.get('lookback_hours', 48)"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('pulse_body', {})"
+    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('pulse_body', {})), event_urn=$.get('event_urn', ''), subject_urn=($.get('event_urn', '') or 'global'))"
+    event_urn: "$.get('event_urn', '')"
+    resolved_fixture: "$.get('resolved_fixture', {})"
     served_from: "'cache' if $.get('cached') else 'generated'"
     workflow-status: "($.get('cached') or $.get('fan_sentiment', {})) and 'executed' or 'skipped'"
   tasks:
+    - type: document
+      name: resolve-load-events
+      description: When no event_urn is supplied, load cached events to resolve the fixture from team/opponent/date.
+      condition: "$.get('event_urn', '') == '' and $.get('team', '') != ''"
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: resolve-fixture
+      description: Filter cached events by team/opponent/date, then pin the matching event_urn so the pulse is scoped (and its cache key correct).
+      condition: "$.get('event_urn', '') == '' and $.get('team', '') != ''"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_schedule
+      inputs:
+        events: "$.get('resolve_events', [])"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date_from: "$.get('date', '')"
+        date_to: "$.get('date', '')"
+        limit: 10
+      outputs:
+        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
+        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
+
     - type: document
       name: load-cached
       description: Serve a still-fresh cached fan-pulse card unless force_regen.

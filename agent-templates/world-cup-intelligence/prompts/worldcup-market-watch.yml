@@ -11,6 +11,8 @@ prompts:
       NOT a value bet or recommendation. Never use "guaranteed", "value bet", or "bet this"
       language; always attach resolution/liquidity/freshness caveats. Use ONLY the supplied
       data. Always include the disclaimer.
+      When an item carries an `event_urn`, copy it verbatim into the matching output field
+      so callers can pass it to worldcup-get-signal / worldcup-fan-pulse. Never invent one.
     schema:
       title: WorldCupMarketWatch
       type: object
@@ -31,6 +33,9 @@ prompts:
                 type: string
               move:
                 type: string
+              event_urn:
+                type: string
+                description: Fixture URN for this market when supplied; copy verbatim, pass to get-signal/fan-pulse.
               note:
                 type: string
         cross_venue_notes:
@@ -56,6 +61,9 @@ prompts:
             properties:
               fixture:
                 type: string
+              event_urn:
+                type: string
+                description: Fixture URN when supplied; copy verbatim, pass to get-signal/fan-pulse.
               outcome:
                 type: string
               note:

@@ -685,6 +685,17 @@ class TestNormalizeSchedule:
         r = normalize_schedule({"params": {"events": self._events(), "team": "spain"}})
         assert [e["event_urn"] for e in r["data"]["events"]] == ["urn:x:1"]
 
+    def test_team_and_opponent_pin_single_fixture(self):
+        # "Uruguay vs Spain" resolves uniquely; same team without the opponent would
+        # match nothing extra here, but team+opponent is how callers resolve "X vs Y".
+        r = normalize_schedule({"params": {"events": self._events(),
+                                           "team": "uruguay", "opponent": "spain"}})
+        assert [e["event_urn"] for e in r["data"]["events"]] == ["urn:x:1"]
+        # Opponent that doesn't share a fixture with the team yields nothing.
+        r2 = normalize_schedule({"params": {"events": self._events(),
+                                            "team": "uruguay", "opponent": "serbia"}})
+        assert r2["data"]["events"] == []
+
     def test_date_range_inclusive(self):
         r = normalize_schedule({"params": {"events": self._events(),
                                            "date_from": "2026-06-15", "date_to": "2026-06-16"}})

@@ -10,6 +10,7 @@ workflow:
     date_from: "$.get('date_from', '')"
     date_to: "$.get('date_to', '')"
     team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
     status: "$.get('status', '')"
     limit: "$.get('limit', 100)"
   outputs:
@@ -39,6 +40,7 @@ workflow:
         date_from: "$.get('date_from', '')"
         date_to: "$.get('date_to', '')"
         team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
         status: "$.get('status', '')"
         limit: "$.get('limit', 100)"
       outputs:
