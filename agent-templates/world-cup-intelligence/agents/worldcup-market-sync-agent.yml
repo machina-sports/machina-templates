@@ -27,9 +27,12 @@ agent:
       description: Refresh the market cache + entity links (skipped while live — the hot agent covers that cadence).
       condition: "$.get('has_live') is not True"
       inputs:
-        query: "$.get('query', 'FIFA World Cup')"
-        status: "$.get('status', 'open')"
-        limit: "$.get('limit', 400)"
+        # LITERALS on purpose: the agent's own context carries status="active"
+        # (its lifecycle field), so "$.get('status', 'open')" resolves to
+        # "active" here and the market status filter then matches nothing.
+        query: "'FIFA World Cup'"
+        status: "'open'"
+        limit: 400
       outputs:
         markets_count: "$.get('markets_count', 0)"
         warnings: "$.get('warnings', [])"
