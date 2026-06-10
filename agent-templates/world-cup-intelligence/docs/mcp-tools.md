@@ -147,3 +147,22 @@ Read-only utility connector. Normalizes Sports Skills/Kalshi/Polymarket payloads
 ### `worldcup-market-intelligence.filter_cached_markets`
 
 Read-only utility connector. Applies query/team/source/status filters to cached `WorldCupMarket` records and warns when served prices are stale.
+
+## Pod schedule topology (ops)
+
+Scheduling is agent-based (cron `jobs` on pod agents, not in this template):
+
+| Agent | Cadence | Runs |
+|---|---|---|
+| `worldcup-coverage-hot` | `*/2 * * * *` | gateway always; market sync + live status **only when `has_live`** |
+| `worldcup-sync-market-sources-cron` | `7,37 * * * *` | unconditional market sync |
+| `worldcup-content-author` | `*/15 * * * *` | market-watch + fan-pulse when live/upcoming/recent |
+| `worldcup-coverage-prematch-warm` | `0 */6 * * *` | prematch enrichment |
+| `worldcup-forecasts-daily` | `0 7 * * *` | model forecasts + signal ledger + backtest |
+| `worldcup-ingest-fixtures-cron` | `0 5 * * *` | fixture ingest |
+
+**Never schedule two agents that target the same workflow on coinciding
+minutes.** The dispatcher dedups concurrent dispatches of the same workflow
+and one agent's run is silently discarded — the 30-min sync originally fired
+at :00/:30, always colliding with the 2-min hot tick, and **never executed
+once**. That's why it now fires at :07/:37.

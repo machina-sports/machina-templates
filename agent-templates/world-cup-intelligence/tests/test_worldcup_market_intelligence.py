@@ -112,6 +112,18 @@ class TestNormalizeMarketSources:
         sources = {m["source"] for m in result["data"]["markets"]}
         assert sources == {"kalshi", "polymarket"}
 
+    def test_placeholder_wide_spread_book_flagged_unreliable(self):
+        # Just-listed props quote 0.50/0.50 (sums to 1.0 -> passes the binary
+        # check) with a ~0.96 spread — meaningless midpoint, must be flagged.
+        record = _poly_record(outcomes=[{"name": "Yes", "price": 0.5}, {"name": "No", "price": 0.5}],
+                              spread=0.96, volume=0)
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [record]}}})
+        assert result["data"]["markets"][0]["price_quality"] == "unreliable"
+        # A normal tight book stays ok.
+        tight = _poly_record(spread=0.01)
+        result2 = normalize_market_sources({"params": {"polymarket_markets": {"markets": [tight]}}})
+        assert result2["data"]["markets"][0]["price_quality"] == "ok"
+
     def test_foreach_accumulated_kalshi_payloads(self):
         # The sync workflow's per-fixture sweep passes a LIST of payload
         # wrappers ([bulk] + one {'markets': [...]} per foreach iteration);
@@ -276,6 +288,31 @@ class TestNormalizeMarketState:
         assert yes_book["spread"] == 0.02
         assert [h["price"] for h in d["history"]] == [0.7, 0.69]
         assert d["trades"] and d["warnings"] == []
+
+    def test_state_refresh_preserves_entity_links(self):
+        # The live re-normalization can't know entity links — they must be
+        # carried forward from the cached record, or a state read unlinks the
+        # market from its fixture and get-signal loses the leg.
+        result = normalize_market_state({"params": {
+            "market_id": "kalshi:KXWCGAME-26JUN13BRAMAR-MAR",
+            "cached": {
+                "cache_id": "kalshi:KXWCGAME-26JUN13BRAMAR-MAR", "source": "kalshi",
+                "event_urn": "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor",
+                "related_team_urns": ["urn:t:bra", "urn:t:mar"],
+                "competition_urn": "urn:c:wc2026",
+            },
+            "kalshi_market": {
+                "ticker": "KXWCGAME-26JUN13BRAMAR-MAR", "title": "Brazil vs Morocco Winner?",
+                "yes_sub_title": "Morocco", "status": "active",
+                "yes_bid_dollars": "0.1700", "no_bid_dollars": "0.8200",
+            },
+        }})
+        m = result["data"]["market"]
+        assert m["event_urn"] == "urn:machina:sport:soccer:event:brazil-vs-morocco:20260613:wor"
+        assert m["related_team_urns"] == ["urn:t:bra", "urn:t:mar"]
+        assert m["competition_urn"] == "urn:c:wc2026"
+        # And the refreshed price still comes from the live record.
+        assert m["outcomes"][0]["price"] == 0.17
 
     def test_polymarket_state_full(self):
         # Shapes captured live from Polymarket (Belgium R16, token 7804...).

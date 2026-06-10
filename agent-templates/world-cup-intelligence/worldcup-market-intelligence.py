@@ -242,13 +242,19 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
             spread = round(abs(yes_ask - yes_bid), 6)
 
     price_quality = _binary_price_quality(outcomes)
+    # Placeholder books (e.g. just-listed Polymarket player props at 0.50/0.50
+    # with a ~0.96 spread and zero volume) sum to 1.0 and pass the binary
+    # check, but the quote is meaningless — flag them so movers/edges/signals
+    # never treat the midpoint as a price.
+    if price_quality == "ok" and spread is not None and _to_float(spread) >= 0.3:
+        price_quality = "unreliable"
     notes = [
         "Read-only market intelligence. Verify provider resolution rules, fees, liquidity, and freshness before acting."
     ]
     if price_quality == "unreliable":
         notes.append(
-            "Quoted prices look unreliable (the two sides don't sum to ~1.0) -- likely a thin or stale book. "
-            "Treat the price as indicative only."
+            "Quoted prices look unreliable (the two sides don't sum to ~1.0, or the bid/ask spread is too wide "
+            "to imply a real price) -- likely a thin, stale, or just-listed book. Treat the price as indicative only."
         )
 
     return {
@@ -643,6 +649,15 @@ def normalize_market_state(request_data: dict[str, Any]) -> dict[str, Any]:
             "data": {},
             "message": f"market_id must be prefixed with a known source (kalshi:|polymarket:), got: {market_id!r}",
         }
+
+    # The live re-normalization can't know entity links (they are attached by
+    # link_market_entities during the sync) — carry them forward from the
+    # cached record so a state refresh never unlinks the market from its
+    # fixture (get-signal line-shops by value.event_urn).
+    if isinstance(market, dict) and market and market is not cached:
+        for key in ("event_urn", "related_team_urns", "competition_urn"):
+            if market.get(key) in (None, [], "") and cached.get(key) not in (None, [], ""):
+                market[key] = cached[key]
 
     if not market:
         warnings.append("Market not found in cache and no live record returned.")
