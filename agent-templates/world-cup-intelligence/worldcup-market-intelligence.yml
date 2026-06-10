@@ -22,6 +22,8 @@ connector:
       value: "normalize_injuries"
     - name: "Normalize schedule"
       value: "normalize_schedule"
+    - name: "Resolve player identity"
+      value: "resolve_player"
     - name: "Normalize player match stats"
       value: "normalize_player_match_stats"
     - name: "Classify FIFA Power Ranking categories"

@@ -48,15 +48,39 @@ agent:
         skill_card: "$.get('skill_card', {})"
 
     - name: worldcup-get-signal
-      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support)
+      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support). Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date) to auto-resolve the fixture.
       inputs:
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
         bankroll: "$.get('bankroll', '')"
         fee_bps: "$.get('fee_bps', 0)"
       outputs:
         signal: "$.get('signal', {})"
         recommendation: "$.get('recommendation', '')"
         top_pick: "$.get('top_pick', {})"
+        event_urn: "$.get('event_urn', '')"
+        warnings: "$.get('warnings', [])"
+
+    - name: worldcup-get-schedule
+      description: List World Cup fixtures (with their event_urn) from the event cache, filtered by date/team/opponent/status. Use this to resolve "Team A vs Team B" to an event_urn for get-signal.
+      inputs:
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date_from: "$.get('date_from', '')"
+        date_to: "$.get('date_to', '')"
+      outputs:
+        schedule: "$.get('schedule', {})"
+
+    - name: worldcup-resolve
+      description: Resolve any provider id (api_football, sportradar, opta, espn, …) or canonical URN to the entity it identifies (team/player/event), with all cross-provider ids attached.
+      inputs:
+        id: "$.get('id', '')"
+      outputs:
+        entity: "$.get('entity', {})"
+        entities: "$.get('entities', [])"
 
   instructions: |
     Compare market data across Kalshi and Polymarket using normalized prices, liquidity, volume, and close times.

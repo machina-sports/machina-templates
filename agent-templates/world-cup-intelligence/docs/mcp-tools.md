@@ -2,6 +2,46 @@
 
 Public tools should call allowlisted workflows only. Do not expose raw connector execution or provider-specific trading/order commands.
 
+## Resolving a fixture to an `event_urn`
+
+`worldcup_get_signal`, `worldcup_get_event_context`, and the scoped skill cards
+key off a fixture `event_urn`. Callers rarely have one in hand, so every
+fixture-scoped tool now accepts human identifiers and resolves internally:
+
+- Pass `event` free text ("Brazil vs Morocco" — also `v` / `x` / `-`
+  separators), or `team` (+ optionally `opponent` + `date` as `YYYY-MM-DD`).
+  This matches the public landing's own example payload
+  `{ "event": "Brazil vs Morocco" }`.
+- `worldcup_player_spotlight` likewise accepts `player` (name) + optional
+  `team` and resolves the `player_urn` via the identity crosswalk
+  (slug-based, accent/case-insensitive; ambiguity returned as `candidates`).
+- The tool echoes the resolved `event_urn`/`player_urn` (and
+  `resolved_fixture`/`resolved_player`) so it can be reused across calls, and
+  embeds it in the `skill_card` body.
+- If nothing resolves, the tool returns an explicit `recommendation` /
+  `warnings` message ("No fixture resolved …") rather than an empty payload.
+
+Resolution is deterministic (substring/slug matching over same-pod cached
+docs) — no LLM call, no extra credits, no hallucinated-URN risk.
+
+To discover URNs directly, expose **`worldcup_get_schedule`** (filter by
+`team`/`opponent`/`date_from`/`date_to`; returns fixtures with `event_urn`) and
+**`worldcup_resolve`** (any provider id or canonical URN → entity). Keep at
+least one of these on every deployed MCP surface — without a discovery primitive
+`worldcup_get_signal` is unreachable.
+
+## Recommended MCP surface (tiers)
+
+| Tier | Tools | Credit class |
+|------|-------|--------------|
+| Discover | `resolve`, `get_schedule`, `health` | data (1) / free |
+| Skills | `match_preview`, `match_recap`, `player_spotlight`, `fan_pulse`, `market_watch` | skill (25–60) |
+| Context & markets | `get_event_context`, `search_markets`, `get_market_state` | data (1) / market (3) |
+| Forecast & intelligence | `get_match_forecast`, `get_signal`, `find_market_edges`, `explain_market_move`, `backtest_forecasts` | intelligence (12) / edge (18) |
+
+Internal-only (never expose): `sync-*`, `ingest-*`, `seed-*`, `refresh-*`,
+`log-signals`, `coverage-gateway`.
+
 ## Public tools
 
 ### `worldcup_search_markets`

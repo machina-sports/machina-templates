@@ -14,12 +14,51 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_urn: "$.get('event_urn', '')"
+    event: "$.get('event', '')"
+    team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})"
+    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('recap', {})), event_urn=$.get('event_urn', ''))"
+    event_urn: "$.get('event_urn', '')"
+    resolved_fixture: "$.get('resolved_fixture', {})"
     served_from: "'cache' if $.get('cached') else 'generated'"
+    warnings: "[] if $.get('event_urn', '') else ['No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
     workflow-status: "($.get('cached') or $.get('recap', {})) and 'executed' or 'skipped'"
   tasks:
+    - type: document
+      name: resolve-load-events
+      description: When no event_urn is supplied, load cached events to resolve the fixture from event/team/opponent/date.
+      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: resolve-fixture
+      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn (also keys the cache lookup).
+      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_schedule
+      inputs:
+        events: "$.get('resolve_events', [])"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date_from: "$.get('date', '')"
+        date_to: "$.get('date', '')"
+        limit: 10
+      outputs:
+        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
+        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
+
     - type: document
       name: load-cached
       description: Serve the cached (evergreen) recap if present, unless force_regen.

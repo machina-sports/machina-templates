@@ -1216,15 +1216,28 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
 
     Serves our own normalized/IPTC-derived event data from the same-pod cache —
     not a raw upstream proxy. Filters by date range (YYYY-MM-DD, inclusive),
-    team-name substring, and status.
+    team-name substring, opponent-name substring, and status.
 
     Params:
       - events: list of worldcup:event doc values
-      - date_from, date_to, team, status, limit
+      - date_from, date_to, team, opponent, status, limit
+      - event: free-text fixture label ("Brazil vs Morocco"); parsed into
+        team/opponent when those are not supplied
+    `team` + `opponent` together pin a single fixture (both names must appear
+    among the competitors), which is how callers resolve "X vs Y" to an event_urn.
     """
     params = _params(request_data)
     events = _as_list(params.get("events"))
     team = _lower(params.get("team"))
+    opponent = _lower(params.get("opponent"))
+    event_text = _lower(params.get("event"))
+    if event_text and not (team or opponent):
+        for sep in (" vs. ", " vs ", " v ", " x ", " - ", " – ", " — "):
+            if sep in event_text:
+                team, opponent = (s.strip() for s in event_text.split(sep, 1))
+                break
+        else:
+            team = event_text.strip()
     status = _lower(params.get("status"))
     date_from = _text(params.get("date_from"))[:10]
     date_to = _text(params.get("date_to"))[:10]
@@ -1246,6 +1259,8 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
         if status and status != st:
             continue
         if team and not any(team in _lower(n) for n in names):
+            continue
+        if opponent and not any(opponent in _lower(n) for n in names):
             continue
         if date_from and start_day and start_day < date_from:
             continue
@@ -1277,6 +1292,64 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
     out = out[:limit]
     warnings = [] if out else ["No events matched the schedule filters."]
     return {"status": True, "data": {"events": out, "count": len(out), "warnings": warnings}}
+
+
+def resolve_player(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Resolve a player name (+ optional team) to identity-crosswalk candidates.
+
+    Matching is slug-based (accent/case-insensitive): every token of the query
+    must appear in the player's slugified display name. Exact slug matches rank
+    first, then shorter names (fewer extra characters).
+
+    Params:
+      - players: worldcup:identity-crosswalk doc values (player docs)
+      - player: player-name text (required)
+      - team: optional team-name/nationality substring filter
+      - limit: max candidates (default 5)
+    """
+    params = _params(request_data)
+    query = _slugify(params.get("player"))
+    team = _lower(params.get("team"))
+    try:
+        limit = max(1, min(int(params.get("limit") or 5), 25))
+    except (TypeError, ValueError):
+        limit = 5
+    if not query:
+        return {"status": True, "data": {"player": {}, "candidates": [],
+                                         "warnings": ["No player name supplied."]}}
+
+    tokens = [t for t in query.split("-") if t]
+    ranked: list[tuple] = []
+    for doc in _as_list(params.get("players")):
+        if not isinstance(doc, dict):
+            continue
+        types = doc.get("@type") or []
+        if types and "sport:Player" not in types:
+            continue
+        name_slug = _slugify(doc.get("name"))
+        if not name_slug:
+            continue
+        team_doc = doc.get("team") if isinstance(doc.get("team"), dict) else {}
+        if team and team not in _lower(team_doc.get("name")) and team not in _lower(doc.get("nationality")):
+            continue
+        if not all(t in name_slug for t in tokens):
+            continue
+        ranked.append((name_slug != query, len(name_slug) - len(query), {
+            "player_urn": _text(_first(doc, "_id", "@id", "id")),
+            "name": _text(doc.get("name")),
+            "team": _text(team_doc.get("name")) or None,
+            "position": _text(doc.get("position")) or None,
+            "nationality": _text(doc.get("nationality")) or None,
+        }))
+
+    ranked.sort(key=lambda r: (r[0], r[1], r[2]["name"]))
+    candidates = [r[2] for r in ranked[:limit]]
+    warnings = [] if candidates else [
+        f"No crosswalk player matched '{_text(params.get('player'))}'"
+        + (f" for team '{_text(params.get('team'))}'" if team else "")
+        + " -- check spelling or run worldcup-sync-player-crosswalk."]
+    return {"status": True, "data": {"player": candidates[0] if candidates else {},
+                                     "candidates": candidates, "warnings": warnings}}
 
 
 FIFA_POWER_SCORE_KEYS = ["attacking", "creativity", "defending", "in_possession", "defending_goal"]

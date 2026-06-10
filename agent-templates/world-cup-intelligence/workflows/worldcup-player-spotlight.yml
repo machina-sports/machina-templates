@@ -14,12 +14,50 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     player_urn: "$.get('player_urn', '')"
+    player: "$.get('player', '')"
+    team: "$.get('team', '')"
     force_regen: "$.get('force_regen', False)"
   outputs:
-    skill_card: "$.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})"
+    skill_card: "dict(($.get('cached', {}).get('body', {}) if $.get('cached') else $.get('spotlight', {})), player_urn=$.get('player_urn', ''))"
+    player_urn: "$.get('player_urn', '')"
+    resolved_player: "$.get('resolved_player', {})"
+    candidates: "$.get('player_candidates', [])"
     served_from: "'cache' if $.get('cached') else 'generated'"
+    warnings: "([] if $.get('player_urn', '') else (($.get('resolve_warnings', []) or []) or ['No player resolved -- pass player_urn, or player (name) + optional team.']))"
     workflow-status: "($.get('cached') or $.get('spotlight', {})) and 'executed' or 'skipped'"
   tasks:
+    - type: document
+      name: resolve-load-players
+      description: When no player_urn is supplied, load crosswalk player docs to resolve the player by name (+ optional team).
+      condition: "$.get('player_urn', '') == '' and $.get('player', '') != ''"
+      config:
+        action: search
+        search-limit: 2000
+        search-vector: false
+      filters:
+        name: "'worldcup:identity-crosswalk'"
+        "value.@type": "'sport:Player'"
+      outputs:
+        resolve_players: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: resolve-player
+      description: Slug-based player-name match (accent/case-insensitive) over the crosswalk, pinning the player_urn.
+      condition: "$.get('player_urn', '') == '' and $.get('player', '') != ''"
+      connector:
+        name: worldcup-market-intelligence
+        command: resolve_player
+      inputs:
+        players: "$.get('resolve_players', [])"
+        player: "$.get('player', '')"
+        team: "$.get('team', '')"
+        limit: 5
+      outputs:
+        resolved_player: "$.get('player', {})"
+        player_urn: "$.get('player', {}).get('player_urn', '')"
+        player_candidates: "$.get('candidates', [])"
+        resolve_warnings: "$.get('warnings', [])"
+
     - type: document
       name: load-cached
       description: Serve a still-fresh cached spotlight unless force_regen.
