@@ -150,19 +150,26 @@ Read-only utility connector. Applies query/team/source/status filters to cached 
 
 ## Pod schedule topology (ops)
 
-Scheduling is agent-based (cron `jobs` on pod agents, not in this template):
+| Agent | Mechanism | Cadence | Runs |
+|---|---|---|---|
+| `worldcup-market-sync` | **template, `config-frequency: 15`** | 15 min | gateway, then market sync when no match is live |
+| `worldcup-coverage-hot` | pod `jobs` cron | `*/2 * * * *` | gateway always; market sync + live status **only when `has_live`** |
+| `worldcup-content-author` | pod `jobs` cron | `*/15 * * * *` | market-watch + fan-pulse when live/upcoming/recent |
+| `worldcup-coverage-prematch-warm` | pod `jobs` cron | `0 */6 * * *` | prematch enrichment |
+| `worldcup-forecasts-daily` | pod `jobs` cron | `0 7 * * *` | model forecasts + signal ledger + backtest |
+| `worldcup-ingest-fixtures-cron` | pod `jobs` cron | `0 5 * * *` | fixture ingest |
+| `worldcup-sync-market-sources-cron` | pod `jobs` cron | — | **RETIRED** (see below) |
 
-| Agent | Cadence | Runs |
-|---|---|---|
-| `worldcup-coverage-hot` | `*/2 * * * *` | gateway always; market sync + live status **only when `has_live`** |
-| `worldcup-sync-market-sources-cron` | `7,37 * * * *` | unconditional market sync |
-| `worldcup-content-author` | `*/15 * * * *` | market-watch + fan-pulse when live/upcoming/recent |
-| `worldcup-coverage-prematch-warm` | `0 */6 * * *` | prematch enrichment |
-| `worldcup-forecasts-daily` | `0 7 * * *` | model forecasts + signal ledger + backtest |
-| `worldcup-ingest-fixtures-cron` | `0 5 * * *` | fixture ingest |
+**Prefer the sportingbot idiom for recurring agents**: template YAML with
+`context.config-frequency` (minutes) + `status: "active"`, installed via
+import — the platform's native agent scheduler. The hand-registered
+`jobs[].cron` mechanism proved unreliable on this pod: the 30-min sync cron
+agent marked every fire "dispatched" but **never executed its workflow once**
+(at :00/:30 it also always collided with the 2-min hot tick), and `update_agent`
+changes to a jobs-based agent's workflow list were served stale by the
+dispatcher. `worldcup-market-sync` replaced it and verified live.
 
-**Never schedule two agents that target the same workflow on coinciding
-minutes.** The dispatcher dedups concurrent dispatches of the same workflow
-and one agent's run is silently discarded — the 30-min sync originally fired
-at :00/:30, always colliding with the 2-min hot tick, and **never executed
-once**. That's why it now fires at :07/:37.
+**Agent-context leak**: an agent's own `context` (e.g. its lifecycle
+`status: "active"`) is visible to its workflow-input expressions — an input
+like `"$.get('status', 'open')"` resolves to `"active"` and silently breaks
+downstream filters. Use literals (`"'open'"`) in agent workflow inputs.
