@@ -56,9 +56,11 @@ workflow:
     # >=0.25.1 fans out across all of them via sport='worldcup'. No query is
     # passed — game titles ("France vs Senegal Winner?") carry no World Cup
     # wording, so the normalization connector's relevance gate filters instead.
+    # limit 1000 requires sports-skills >=0.26.3 (cursor-paged /events; older
+    # versions clamp at 200 and drop the soonest matchdays).
     - type: connector
       name: fetch-kalshi-worldcup
-      description: Kalshi World Cup markets across all dedicated series (sport=worldcup).
+      description: Kalshi World Cup markets across all dedicated series (sport=worldcup, cursor-paged).
       continue_on_error: true
       connector:
         name: sports-skills
@@ -67,7 +69,7 @@ workflow:
         command: "'search_markets'"
         sport: "'worldcup'"
         status: "$.get('status', 'open')"
-        limit: "200"
+        limit: "1000"
       outputs:
         kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
 

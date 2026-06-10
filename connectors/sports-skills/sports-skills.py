@@ -30,8 +30,8 @@ import subprocess
 import sys
 
 
-_MIN_VERSION = (0, 26, 1)
-_PIP_PACKAGE = "sports-skills>=0.26.1,<1.0"
+_MIN_VERSION = (0, 26, 3)
+_PIP_PACKAGE = "sports-skills>=0.26.3,<1.0"
 # Writable install target for in-place upgrades. The pod runs as a non-root
 # user whose home dir is read-only (`pip install --user` fails with EACCES on
 # /home/machina), and system site-packages is root-owned — /tmp is the one
