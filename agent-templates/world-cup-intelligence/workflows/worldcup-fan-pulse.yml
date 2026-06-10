@@ -15,6 +15,7 @@ workflow:
   inputs:
     query: "$.get('query', 'FIFA World Cup 2026')"
     event_urn: "$.get('event_urn', '')"
+    event: "$.get('event', '')"
     team: "$.get('team', '')"
     opponent: "$.get('opponent', '')"
     date: "$.get('date', '')"
@@ -29,8 +30,8 @@ workflow:
   tasks:
     - type: document
       name: resolve-load-events
-      description: When no event_urn is supplied, load cached events to resolve the fixture from team/opponent/date.
-      condition: "$.get('event_urn', '') == '' and $.get('team', '') != ''"
+      description: When no event_urn is supplied, load cached events to resolve the fixture from event/team/opponent/date.
+      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
       config:
         action: search
         search-limit: 500
@@ -42,13 +43,14 @@ workflow:
 
     - type: connector
       name: resolve-fixture
-      description: Filter cached events by team/opponent/date, then pin the matching event_urn so the pulse is scoped (and its cache key correct).
-      condition: "$.get('event_urn', '') == '' and $.get('team', '') != ''"
+      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn so the pulse is scoped (and its cache key correct).
+      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
       connector:
         name: worldcup-market-intelligence
         command: normalize_schedule
       inputs:
         events: "$.get('resolve_events', [])"
+        event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
         date_from: "$.get('date', '')"

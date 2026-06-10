@@ -48,9 +48,10 @@ agent:
         skill_card: "$.get('skill_card', {})"
 
     - name: worldcup-get-signal
-      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support). Pass event_urn, OR team (+ optional opponent/date) to auto-resolve the fixture.
+      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support). Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date) to auto-resolve the fixture.
       inputs:
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
         date: "$.get('date', '')"

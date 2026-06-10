@@ -8,13 +8,52 @@ workflow:
       enabled: true
   inputs:
     event_urn: "$.get('event_urn', '')"
+    event: "$.get('event', '')"
+    team: "$.get('team', '')"
+    opponent: "$.get('opponent', '')"
+    date: "$.get('date', '')"
     provider_event_id: "$.get('provider_event_id', '')"
     include_prematch_research: "$.get('include_prematch_research', True)"
     include_social_pulse: "$.get('include_social_pulse', False)"
   outputs:
     event_context: "$.get('event_context', {})"
+    event_urn: "$.get('event_urn', '')"
+    resolved_fixture: "$.get('resolved_fixture', {})"
+    warnings: "[] if ($.get('event_urn', '') or $.get('provider_event_id', '')) else ['No fixture resolved -- pass event_urn, provider_event_id, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.']"
     workflow-status: "$.get('event_context', {}) != {} and 'executed' or 'skipped'"
   tasks:
+    - type: document
+      name: resolve-load-events
+      description: When no event_urn/provider_event_id is supplied, load cached events to resolve the fixture from event/team/opponent/date.
+      condition: "$.get('event_urn', '') == '' and $.get('provider_event_id', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        resolve_events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: resolve-fixture
+      description: Filter cached events by event/team/opponent/date, then pin the matching event_urn.
+      condition: "$.get('event_urn', '') == '' and $.get('provider_event_id', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
+      connector:
+        name: worldcup-market-intelligence
+        command: normalize_schedule
+      inputs:
+        events: "$.get('resolve_events', [])"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date_from: "$.get('date', '')"
+        date_to: "$.get('date', '')"
+        limit: 10
+      outputs:
+        resolved_fixture: "($.get('events', [{}]) or [{}])[0]"
+        event_urn: "($.get('events', [{}]) or [{}])[0].get('event_urn', '')"
+
     - type: document
       name: lookup-event
       description: Lookup event context from the same pod document store. Requires an identifying input so an arbitrary event is never returned.

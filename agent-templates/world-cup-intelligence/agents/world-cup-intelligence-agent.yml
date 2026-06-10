@@ -26,11 +26,16 @@ agent:
         history: "$.get('history', [])"
 
     - name: worldcup-get-event-context
-      description: Resolve enriched match context
+      description: Resolve enriched match context. Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date).
       inputs:
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
       outputs:
         event_context: "$.get('event_context', {})"
+        event_urn: "$.get('event_urn', '')"
 
     - name: worldcup-get-standings
       description: World Cup group tables / standings
@@ -81,9 +86,10 @@ agent:
         model_vs_market: "$.get('model_vs_market', {})"
 
     - name: worldcup-get-signal
-      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support). Pass event_urn, OR team (+ optional opponent/date) to auto-resolve the fixture.
+      description: Structured betting signal — recommendation + edge% + EV + Kelly stake + risk flags (decision support). Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date) to auto-resolve the fixture.
       inputs:
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
         date: "$.get('date', '')"
@@ -121,31 +127,46 @@ agent:
         brief: "$.get('brief', {})"
 
     - name: worldcup-match-preview
-      description: Composite match-preview card for a fixture (cached, grounded)
+      description: Composite match-preview card for a fixture (cached, grounded). Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date); card echoes the resolved event_urn.
       inputs:
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
       outputs:
         skill_card: "$.get('skill_card', {})"
+        event_urn: "$.get('event_urn', '')"
 
     - name: worldcup-match-recap
-      description: Composite post-match recap card (final fixtures only, cached evergreen)
+      description: Composite post-match recap card (final fixtures only, cached evergreen). Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date); card echoes the resolved event_urn.
       inputs:
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
+        team: "$.get('team', '')"
+        opponent: "$.get('opponent', '')"
+        date: "$.get('date', '')"
       outputs:
         skill_card: "$.get('skill_card', {})"
+        event_urn: "$.get('event_urn', '')"
 
     - name: worldcup-player-spotlight
-      description: Composite player-spotlight card (cached, grounded)
+      description: Composite player-spotlight card (cached, grounded). Pass player_urn, OR player (name) + optional team; card echoes the resolved player_urn and ambiguity candidates.
       inputs:
         player_urn: "$.get('player_urn', '')"
+        player: "$.get('player', '')"
+        team: "$.get('team', '')"
       outputs:
         skill_card: "$.get('skill_card', {})"
+        player_urn: "$.get('player_urn', '')"
+        candidates: "$.get('candidates', [])"
 
     - name: worldcup-fan-pulse
-      description: Composite fan-pulse card (social/news sentiment, cached). Pass event_urn, OR team (+ optional opponent/date) to scope and resolve the fixture; the card echoes the resolved event_urn.
+      description: Composite fan-pulse card (social/news sentiment, cached). Pass event_urn, OR event ("Brazil vs Morocco"), OR team (+ optional opponent/date) to scope and resolve the fixture; the card echoes the resolved event_urn.
       inputs:
         query: "$.get('query', 'FIFA World Cup')"
         event_urn: "$.get('event_urn', '')"
+        event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
         date: "$.get('date', '')"

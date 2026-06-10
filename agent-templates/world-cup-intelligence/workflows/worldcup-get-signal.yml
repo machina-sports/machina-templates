@@ -15,6 +15,7 @@ workflow:
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     event_urn: "$.get('event_urn', '')"
+    event: "$.get('event', '')"
     team: "$.get('team', '')"
     opponent: "$.get('opponent', '')"
     date: "$.get('date', '')"
@@ -25,7 +26,7 @@ workflow:
     include_reasoning: "$.get('include_reasoning', False)"
   outputs:
     signal: "$.get('signal', {})"
-    recommendation: "$.get('recommendation', '') or (('No fixture resolved -- pass event_urn, or team (+ opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.' if not $.get('event_urn', '') else 'No signal: ' + ', '.join(($.get('signal_warnings', []) or []) + ($.get('forecast_warnings', []) or []))) if not $.get('signal', {}) else '')"
+    recommendation: "$.get('recommendation', '') or (('No fixture resolved -- pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.' if not $.get('event_urn', '') else 'No signal: ' + ', '.join(($.get('signal_warnings', []) or []) + ($.get('forecast_warnings', []) or []))) if not $.get('signal', {}) else '')"
     top_pick: "$.get('top_pick', {})"
     analysis: "$.get('analysis', {})"
     event_urn: "$.get('event_urn', '')"
@@ -35,8 +36,8 @@ workflow:
   tasks:
     - type: document
       name: resolve-load-events
-      description: When no event_urn is supplied, load cached events to resolve the fixture from team/opponent/date.
-      condition: "$.get('event_urn', '') == '' and $.get('team', '') != ''"
+      description: When no event_urn is supplied, load cached events to resolve the fixture from event/team/opponent/date.
+      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
       config:
         action: search
         search-limit: 500
@@ -48,13 +49,14 @@ workflow:
 
     - type: connector
       name: resolve-fixture
-      description: Filter cached events by team/opponent/date into fixture candidates, then pin the matching event_urn.
-      condition: "$.get('event_urn', '') == '' and $.get('team', '') != ''"
+      description: Filter cached events by event/team/opponent/date into fixture candidates, then pin the matching event_urn.
+      condition: "$.get('event_urn', '') == '' and ($.get('team', '') != '' or $.get('event', '') != '')"
       connector:
         name: worldcup-market-intelligence
         command: normalize_schedule
       inputs:
         events: "$.get('resolve_events', [])"
+        event: "$.get('event', '')"
         team: "$.get('team', '')"
         opponent: "$.get('opponent', '')"
         date_from: "$.get('date', '')"
@@ -76,7 +78,7 @@ workflow:
         value._id: "$.get('event_urn', '')"
       outputs:
         forecast: "($.get('documents', []) or [{}])[0].get('value', {})"
-        forecast_warnings: "[] if ($.get('documents', []) or []) else (['No fixture resolved. Pass event_urn, or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.'] if not $.get('event_urn', '') else ['No model forecast for ' + $.get('event_urn', '') + ' -- run worldcup-sync-model-forecasts, or re-check the event_urn.'])"
+        forecast_warnings: "[] if ($.get('documents', []) or []) else (['No fixture resolved. Pass event_urn, event (e.g. \\'Brazil vs Morocco\\'), or team (+ optional opponent/date). Use worldcup-get-schedule to list fixtures with their event_urn.'] if not $.get('event_urn', '') else ['No model forecast for ' + $.get('event_urn', '') + ' -- run worldcup-sync-model-forecasts, or re-check the event_urn.'])"
 
     - type: document
       name: load-event-markets

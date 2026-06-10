@@ -19,6 +19,7 @@ normalize_standings = _module.normalize_standings
 normalize_squads = _module.normalize_squads
 normalize_injuries = _module.normalize_injuries
 normalize_schedule = _module.normalize_schedule
+resolve_player = _module.resolve_player
 normalize_identity_crosswalk = _module.normalize_identity_crosswalk
 mint_event_identity = _module.mint_event_identity
 merge_provider_entities = _module.merge_provider_entities
@@ -685,6 +686,21 @@ class TestNormalizeSchedule:
         r = normalize_schedule({"params": {"events": self._events(), "team": "spain"}})
         assert [e["event_urn"] for e in r["data"]["events"]] == ["urn:x:1"]
 
+    def test_event_free_text_resolves_fixture(self):
+        # The landing's contract: {"event": "Brazil vs Morocco"} must resolve.
+        r = normalize_schedule({"params": {"events": self._events(), "event": "Uruguay vs Spain"}})
+        assert [e["event_urn"] for e in r["data"]["events"]] == ["urn:x:1"]
+        # Alternate separators and reversed order also pin the fixture.
+        r2 = normalize_schedule({"params": {"events": self._events(), "event": "spain x uruguay"}})
+        assert [e["event_urn"] for e in r2["data"]["events"]] == ["urn:x:1"]
+        # Single-team text falls back to a team filter.
+        r3 = normalize_schedule({"params": {"events": self._events(), "event": "Brazil"}})
+        assert [e["event_urn"] for e in r3["data"]["events"]] == ["urn:x:2"]
+        # Explicit team/opponent take precedence over event text.
+        r4 = normalize_schedule({"params": {"events": self._events(),
+                                            "event": "Uruguay vs Spain", "team": "france"}})
+        assert [e["event_urn"] for e in r4["data"]["events"]] == ["urn:x:3"]
+
     def test_team_and_opponent_pin_single_fixture(self):
         # "Uruguay vs Spain" resolves uniquely; same team without the opponent would
         # match nothing extra here, but team+opponent is how callers resolve "X vs Y".
@@ -711,6 +727,51 @@ class TestNormalizeSchedule:
         assert len(r["data"]["events"]) == 1
         r2 = normalize_schedule({"params": {"events": [], "team": "nobody"}})
         assert r2["data"]["events"] == [] and r2["data"]["warnings"]
+
+
+# -- Identity resolution: player ----------------------------------------------
+
+
+def _player_doc(urn, name, team, nationality="", position="Attacker"):
+    return {"_id": urn, "@id": urn, "id": urn, "@type": ["sport:IdentityCrosswalk", "sport:Player"],
+            "name": name, "position": position, "nationality": nationality,
+            "team": {"@id": "urn:t:" + team.lower(), "name": team}, "provider_ids": {}}
+
+
+class TestResolvePlayer:
+    def _players(self):
+        return [
+            _player_doc("urn:p:vinicius", "Vinícius Júnior", "Brazil", "Brazil"),
+            _player_doc("urn:p:rodrygo", "Rodrygo", "Brazil", "Brazil"),
+            _player_doc("urn:p:hakimi", "Achraf Hakimi", "Morocco", "Morocco", position="Defender"),
+            _player_doc("urn:p:rodri", "Rodri", "Spain", "Spain", position="Midfielder"),
+        ]
+
+    def test_accent_insensitive_match(self):
+        r = resolve_player({"params": {"players": self._players(), "player": "vinicius junior"}})
+        assert r["data"]["player"]["player_urn"] == "urn:p:vinicius"
+        assert r["data"]["warnings"] == []
+
+    def test_partial_name_with_team_filter(self):
+        r = resolve_player({"params": {"players": self._players(), "player": "hakimi", "team": "morocco"}})
+        assert r["data"]["player"]["player_urn"] == "urn:p:hakimi"
+
+    def test_exact_slug_ranks_before_superstring(self):
+        # "rodri" is a substring of "rodrygo"'s slug? (no) but of nothing here;
+        # exact match must outrank any longer candidate that also contains it.
+        r = resolve_player({"params": {"players": self._players(), "player": "Rodri"}})
+        assert r["data"]["player"]["player_urn"] == "urn:p:rodri"
+
+    def test_no_match_warns_and_skips_non_players(self):
+        team_doc = {"_id": "urn:t:bra", "@type": ["sport:IdentityCrosswalk", "sport:Team"],
+                    "name": "Brazil", "team": {}}
+        r = resolve_player({"params": {"players": self._players() + [team_doc], "player": "Brazil"}})
+        assert r["data"]["player"] == {} and r["data"]["candidates"] == []
+        assert r["data"]["warnings"]
+
+    def test_empty_query_warns(self):
+        r = resolve_player({"params": {"players": self._players(), "player": ""}})
+        assert r["data"]["player"] == {} and r["data"]["warnings"]
 
     def test_real_iptc_doc_shape(self):
         # The actual worldcup:event value is raw IPTC: schema:startDate,
