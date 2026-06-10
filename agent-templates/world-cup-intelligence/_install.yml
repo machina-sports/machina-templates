@@ -39,6 +39,8 @@ datasets:
     path: agents/world-cup-intelligence-agent.yml
   - type: agent
     path: agents/world-cup-market-analyst-agent.yml
+  - type: agent
+    path: agents/worldcup-market-sync-agent.yml
 
   - type: workflow
     path: workflows/worldcup-health.yml

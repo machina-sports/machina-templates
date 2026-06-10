@@ -1,0 +1,35 @@
+agent:
+  name: worldcup-market-sync
+  title: World Cup - Market Sync (Warm)
+  description: >
+    Warm market-cache refresher: every 15 minutes, read the coverage gateway
+    and refresh the Kalshi/Polymarket market cache (with entity linking) when
+    no match is live — the live 2-min cadence is owned by the pod's
+    coverage-hot agent. Uses the platform-native config-frequency scheduler
+    (the sportingbot idiom): hand-registered jobs/cron agents on this pod
+    proved unreliable (same-minute dispatch dedup + stale config caching —
+    the 30-min jobs-based sync cron never executed once).
+  context:
+    config-frequency: 15
+    status: "active"
+
+  context-agent: {}
+
+  workflows:
+    - name: worldcup-coverage-gateway
+      description: Cheap match-phase signals (no API calls) — gates the sync.
+      inputs: {}
+      outputs:
+        has_live: "$.get('has_live', False)"
+        upcoming_24h: "$.get('upcoming_24h', 0)"
+
+    - name: worldcup-sync-market-sources
+      description: Refresh the market cache + entity links (skipped while live — the hot agent covers that cadence).
+      condition: "$.get('has_live') is not True"
+      inputs:
+        query: "$.get('query', 'FIFA World Cup')"
+        status: "$.get('status', 'open')"
+        limit: "$.get('limit', 400)"
+      outputs:
+        markets_count: "$.get('markets_count', 0)"
+        warnings: "$.get('warnings', [])"
