@@ -10,7 +10,8 @@ workflow:
     query: "$.get('query', 'FIFA World Cup')"
     source: "$.get('source', 'all')"
     status: "$.get('status', 'open')"
-    limit: "$.get('limit', 250)"
+    limit: "$.get('limit', 400)"
+    horizon_days: "$.get('horizon_days', 10)"
   outputs:
     markets_count: "len($.get('normalized_markets', []))"
     sources: "$.get('sources', {})"
@@ -65,6 +66,48 @@ workflow:
       outputs:
         kalshi_markets: "$.get('data', {}) if $.get('status') else {}"
 
+    - type: document
+      name: load-events
+      description: Load event docs — used both to target per-fixture Kalshi fetches and to link markets to fixtures by team pair.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+        # One Kalshi query per upcoming fixture (home-team name; titles always
+        # carry it), deduped. Covers kickoffs within the next horizon_days.
+        upcoming_team_queries: "sorted({t.get('name') for d in ($.get('documents', []) or []) for ev in [d.get('value', {})] for sd in [(ev.get('start_date') or ev.get('schema:startDate') or '')[:10]] if sd and sd >= datetime.utcnow().strftime('%Y-%m-%d') and sd <= (datetime.utcnow() + timedelta(days=int($.get('horizon_days', 10)))).strftime('%Y-%m-%d') for t in ((ev.get('teams') or ev.get('sport:competitors') or [])[:1]) if isinstance(t, dict) and t.get('name')})"
+
+    # The bulk sport=worldcup search above is hard-capped at 200 results by the
+    # provider client and (by its ordering) drops the SOONEST matchdays — i.e.
+    # exactly the next games users ask about (Brazil vs Morocco on JUN13 was
+    # missing while JUN17+ markets were cached). This targeted sweep fetches
+    # each upcoming fixture by team query, which is not subject to that cliff.
+    - type: connector
+      name: fetch-kalshi-upcoming
+      description: Per-fixture Kalshi fetch for upcoming matchdays (one team query per fixture via foreach).
+      condition: "len($.get('upcoming_team_queries', [])) > 0"
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_kalshi
+      foreach:
+        concurrent: false
+        name: team_query_item
+        expr: $
+        value: "$.get('upcoming_team_queries', [])"
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('team_query_item', '')"
+        sport: "'worldcup'"
+        status: "$.get('status', 'open')"
+        limit: "100"
+      outputs:
+        kalshi_upcoming: "[$.get('data', {})] if $.get('status') else []"
+
     - type: connector
       name: normalize-market-sources
       description: Normalize Sports Skills, Kalshi, and Polymarket market payloads into cacheable WorldCupMarket records.
@@ -74,7 +117,7 @@ workflow:
       inputs:
         sports_skills_markets: "$.get('sports_skills_markets', {})"
         polymarket_markets: "$.get('polymarket_markets', {})"
-        kalshi_markets: "$.get('kalshi_markets', {})"
+        kalshi_markets: "[$.get('kalshi_markets', {})] + ($.get('kalshi_upcoming', []) or [])"
         query: "$.get('query', 'FIFA World Cup')"
         source: "$.get('source', 'all')"
         status: "$.get('status', 'open')"
@@ -98,18 +141,6 @@ workflow:
         value._id: {"$regex": "^urn:machina:sport:soccer:team:"}
       outputs:
         teams: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
-
-    - type: document
-      name: load-events
-      description: Load event docs so per-game markets can link to a specific fixture by team pair.
-      config:
-        action: search
-        search-limit: 500
-        search-vector: false
-      filters:
-        name: "'worldcup:event'"
-      outputs:
-        events: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
 
     - type: connector
       name: link-market-entities

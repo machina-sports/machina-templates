@@ -112,6 +112,21 @@ class TestNormalizeMarketSources:
         sources = {m["source"] for m in result["data"]["markets"]}
         assert sources == {"kalshi", "polymarket"}
 
+    def test_foreach_accumulated_kalshi_payloads(self):
+        # The sync workflow's per-fixture sweep passes a LIST of payload
+        # wrappers ([bulk] + one {'markets': [...]} per foreach iteration);
+        # records inside every wrapper must be extracted and deduped by ticker.
+        bulk = {"markets": [_kalshi_record()]}
+        sweep1 = {"markets": [_kalshi_record(ticker="KXWCGAME-26JUN13BRAMAR-BRA",
+                                             title="Brazil vs Morocco Winner?",
+                                             yes_price=58, volume=157878)]}
+        sweep2 = {"markets": [_kalshi_record()]}  # duplicate of bulk record
+        result = normalize_market_sources(
+            {"params": {"kalshi_markets": [bulk, sweep1, sweep2], "status": "all"}}
+        )
+        ids = sorted(m["cache_id"] for m in result["data"]["markets"])
+        assert ids == ["kalshi:KXWC-BRA", "kalshi:KXWCGAME-26JUN13BRAMAR-BRA"]
+
     def test_dedup_same_market_across_payloads(self):
         result = normalize_market_sources(
             {
@@ -197,11 +212,13 @@ class TestFilterCachedMarkets:
         market.update(overrides)
         return market
 
-    def test_limit_clamped_to_250(self):
+    def test_limit_clamped_to_500(self):
+        # 500, not 250: the full tournament book exceeds 250 and the volume
+        # sort was silently dropping the thin tail (near-term draw legs).
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        cached = [self._cached(now, id=f"kalshi:{i}", cache_id=f"kalshi:{i}") for i in range(300)]
+        cached = [self._cached(now, id=f"kalshi:{i}", cache_id=f"kalshi:{i}") for i in range(600)]
         result = filter_cached_markets({"params": {"cached_markets": cached, "limit": 9999}})
-        assert result["data"]["count"] == 250
+        assert result["data"]["count"] == 500
 
     def test_fresh_cache_has_no_staleness_warning(self):
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

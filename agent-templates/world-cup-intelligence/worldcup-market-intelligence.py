@@ -285,7 +285,15 @@ def _extract_source_records(source: str, payloads: list[Any]) -> list[dict[str, 
     for payload in payloads:
         data = _unwrap(payload)
         if isinstance(data, list):
-            records.extend([item for item in data if isinstance(item, dict)])
+            # A list is either bare records OR foreach-accumulated payload
+            # wrappers ({'markets': [...]} per iteration) — recurse on wrappers.
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                if any(k in item for k in ("markets", "events", "kalshi", "polymarket")):
+                    records.extend(_extract_source_records(source, [item]))
+                else:
+                    records.append(item)
             continue
         if not isinstance(data, dict):
             continue
@@ -347,7 +355,10 @@ def _filter_markets(markets: list[dict[str, Any]], params: dict[str, Any]) -> li
         limit = int(params.get("limit") or 50)
     except (TypeError, ValueError):
         limit = 50
-    limit = max(1, min(limit, 250))
+    # 500, not 250: the full tournament book (104 games x 3 legs + outrights +
+    # props) exceeds 250, and the volume-desc sort below silently drops the
+    # thin tail (draw legs of near-term games) at lower caps.
+    limit = max(1, min(limit, 500))
 
     filtered = [
         market
