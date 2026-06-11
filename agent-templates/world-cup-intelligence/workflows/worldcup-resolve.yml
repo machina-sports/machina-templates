@@ -17,6 +17,7 @@ workflow:
     entity: "($.get('entities', [{}]) or [{}])[0]"
     entities: "$.get('entities', [])"
     count: "len($.get('entities', []))"
+    warnings: "([] if $.get('entities', []) else (['No id supplied -- pass any provider id (api_football, sportradar, opta, entain, espn, transfermarkt) or a canonical urn:machina identity.'] if not $.get('id', '') else ['No entity matched ' + repr($.get('id', '')) + ' -- resolve takes EXACT provider ids or canonical URNs, not names. To find a fixture by team name use worldcup-get-schedule (returns event_urn); for players by name, worldcup-player-spotlight accepts player + team.']))"
     workflow-status: "len($.get('entities', [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: document
