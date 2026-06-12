@@ -30,6 +30,7 @@ build_market_snapshots = _module.build_market_snapshots
 compute_market_movers = _module.compute_market_movers
 compute_coverage_signals = _module.compute_coverage_signals
 apply_live_status = _module.apply_live_status
+finalize_stale_live_events = getattr(_module, "finalize_stale_live_events", None)
 compute_power_ranking = _module.compute_power_ranking
 compute_match_probabilities = _module.compute_match_probabilities
 build_event_forecasts = _module.build_event_forecasts
@@ -1353,7 +1354,7 @@ class TestCoverageCadence:
         iso = lambda dt: dt.isoformat()
         events = [
             self._ev("urn:live-window", iso(now - timedelta(minutes=30))),     # kicked off 30m ago → live
-            self._ev("urn:live-status", iso(now - timedelta(hours=5)), "2H"),  # status in-play → live
+            self._ev("urn:live-status", iso(now - timedelta(minutes=160)), "ET"),  # explicit in-play → live
             self._ev("urn:upcoming", iso(now + timedelta(hours=2))),           # upcoming 24h
             self._ev("urn:done", iso(now - timedelta(hours=4))),               # finished window
             self._ev("urn:far", iso(now + timedelta(days=3))),                 # neither
@@ -1372,6 +1373,20 @@ class TestCoverageCadence:
         r = compute_coverage_signals({"params": {"events": events}})["data"]
         assert r["has_live"] is False and r["live_event_urns"] == []
 
+    def test_coverage_signals_demotes_stale_regular_time_status(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        events = [
+            {
+                **self._ev("urn:stale", (now - timedelta(hours=5)).isoformat(), "2H"),
+                "live_score": {"home": 1, "away": 1, "elapsed": 90},
+            }
+        ]
+        r = compute_coverage_signals({"params": {"events": events}})["data"]
+        assert r["has_live"] is False
+        assert r["live_event_urns"] == []
+        assert r["recent_done"] == 1
+
     def test_apply_live_status_merges_score(self):
         events = [
             self._ev("urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor",
@@ -1387,6 +1402,28 @@ class TestCoverageCadence:
         assert d["sport:status"] == "2H"
         assert d["live_score"] == {"home": 2, "away": 0, "elapsed": 67}
         assert d["metadata"]["event_urn"].endswith("brazil-vs-haiti:20260620:wor")
+
+    def test_finalize_stale_live_events_marks_regular_time_docs_ft(self):
+        assert callable(finalize_stale_live_events)
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        events = [
+            {
+                **self._ev("urn:stale", (now - timedelta(hours=5)).isoformat(), "2H", fid="1489389"),
+                "live_score": {"home": 1, "away": 1, "elapsed": 90},
+            },
+            {
+                **self._ev("urn:extra-time", (now - timedelta(minutes=160)).isoformat(), "ET", fid="1489390"),
+                "live_score": {"home": 1, "away": 1, "elapsed": 105},
+            },
+        ]
+        r = finalize_stale_live_events({"params": {"events": events}})["data"]
+        assert r["count"] == 1
+        d = r["normalized_items"][0]
+        assert d["_id"] == "urn:stale"
+        assert d["sport:status"] == "FT"
+        assert d["live_score"] == {"home": 1, "away": 1}
+        assert d["metadata"]["event_urn"] == "urn:stale"
 
 
 def _ranking(power, gpg=1.4, conf=0.8, source="results"):

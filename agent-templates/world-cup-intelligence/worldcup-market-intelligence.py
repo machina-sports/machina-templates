@@ -2667,13 +2667,16 @@ def compute_market_movers(request_data: dict[str, Any]) -> dict[str, Any]:
 
 # Live status set — fixtures considered in-play for coverage cadence.
 _LIVE_STATUS = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
+_FINAL_STATUS = {"FT", "AET", "PEN"}
+_REGULAR_TIME_STALE_STATUSES = {"2H", "LIVE"}
 
 
 def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
     """Match-phase signals from event docs (no API calls) for the coverage cadence.
 
-    Live is detected by the SCHEDULE window [kickoff, kickoff+150min] (robust even
-    when stored sport:status is stale) OR an explicit in-play sport:status.
+    Live is detected by the SCHEDULE window [kickoff, kickoff+150min] plus
+    explicit in-play sport:status for overtime/interruptions. Frozen regular-time
+    provider docs stuck at "2H 90'" are demoted after the realistic live window.
 
     Params: events (worldcup:event values)
     """
@@ -2697,7 +2700,20 @@ def compute_coverage_signals(request_data: dict[str, Any]) -> dict[str, Any]:
             if ko is not None and ko.tzinfo is None:
                 ko = ko.replace(tzinfo=timezone.utc)
         in_window = ko is not None and ko <= now <= ko + timedelta(minutes=150)
-        if status in _LIVE_STATUS or in_window:
+        elapsed = _first(ev.get("live_score") or {}, "elapsed")
+        stale_regular_time = (
+            status in _REGULAR_TIME_STALE_STATUSES
+            and (elapsed is None or (isinstance(elapsed, (int, float)) and elapsed >= 90))
+            and ko is not None
+            and now > ko + timedelta(minutes=150)
+        )
+        explicit_live = (
+            status in _LIVE_STATUS
+            and not stale_regular_time
+            and ko is not None
+            and now <= ko + timedelta(hours=6)
+        )
+        if in_window or explicit_live:
             live.append(urn)
         elif ko is not None and now < ko <= now + timedelta(hours=24):
             upcoming_24h += 1
@@ -2756,6 +2772,46 @@ def apply_live_status(request_data: dict[str, Any]) -> dict[str, Any]:
     return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
 
 
+def finalize_stale_live_events(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Mark stale regular-time live event docs as final.
+
+    Params: events (worldcup:event values). Returns full docs ready for bulk-update.
+    """
+    params = _params(request_data)
+    now = datetime.now(timezone.utc)
+    out: list[dict[str, Any]] = []
+    for ev in _as_list(params.get("events")):
+        if not isinstance(ev, dict):
+            continue
+        status = _text(ev.get("sport:status")).upper()
+        if status not in _REGULAR_TIME_STALE_STATUSES:
+            continue
+        ko = None
+        sd = _text(ev.get("schema:startDate"))
+        if sd:
+            try:
+                ko = datetime.fromisoformat(sd.replace("Z", "+00:00"))
+            except ValueError:
+                ko = None
+            if ko is not None and ko.tzinfo is None:
+                ko = ko.replace(tzinfo=timezone.utc)
+        elapsed = _first(ev.get("live_score") or {}, "elapsed")
+        is_stale = (
+            ko is not None
+            and now > ko + timedelta(minutes=150)
+            and (elapsed is None or (isinstance(elapsed, (int, float)) and elapsed >= 90))
+        )
+        if not is_stale:
+            continue
+        next_ev = dict(ev)
+        next_ev["sport:status"] = "FT"
+        score = next_ev.get("live_score") if isinstance(next_ev.get("live_score"), dict) else {}
+        next_ev["live_score"] = {k: score.get(k) for k in ("home", "away") if score.get(k) is not None}
+        next_ev.setdefault("metadata", {"event_urn": _text(_first(next_ev, "_id", "@id", "id"))})
+        out.append(next_ev)
+    return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
+
+
 # -- Quantitative forecast layer ---------------------------------------------
 # Pure-stdlib, deterministic statistical models. Read-only and INFORMATIONAL:
 # probabilities are form-based estimates, gaps are not value/bet signals.
@@ -2772,7 +2828,6 @@ GAP_CAVEATS = [
     "Gap is informational only, not a value or bet signal.",
     "Fee-, liquidity-, and resolution-rule-blind. Verify settlement terms before acting.",
 ]
-_FINAL_STATUS = {"FT", "AET", "PEN"}
 _DEFAULT_RANK_WEIGHTS = {
     "outcome": 0.40, "attack": 0.32, "defense": 0.28,
     "win_rate": 0.60, "points_per_game": 0.40,

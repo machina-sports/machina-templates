@@ -3,8 +3,9 @@ workflow:
   title: World Cup Intelligence - Refresh Live Status
   description: |
     Refresh in-play fixture status + score onto the cached event docs from
-    api-football live fixtures. Driven by the hot coverage agent during matches
-    so get-event-context / standings reflect live scores between daily ingests.
+    api-football live fixtures, and finalize stale regular-time docs that got
+    stuck at 90'. Driven by the hot coverage agent during matches so
+    get-event-context / standings reflect live scores between daily ingests.
 
   context-variables:
     debugger:
@@ -15,8 +16,8 @@ workflow:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
   outputs:
-    updated_count: "len($.get('normalized_items', []))"
-    workflow-status: "len($.get('normalized_items', [])) > 0 and 'executed' or 'skipped'"
+    updated_count: "len(($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or []))"
+    workflow-status: "len(($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])) > 0 and 'executed' or 'skipped'"
   tasks:
     - type: connector
       name: fetch-live-fixtures
@@ -34,8 +35,7 @@ workflow:
 
     - type: document
       name: load-events
-      description: Load event docs to merge live status/score onto.
-      condition: "len(($.get('live_fixtures', {}) or {}).get('response', [])) > 0"
+      description: Load event docs to merge live status/score onto and finalize stale live docs.
       config:
         action: search
         search-limit: 500
@@ -48,7 +48,7 @@ workflow:
     - type: connector
       name: apply-live-status
       description: Merge live status + score onto matching event docs (by fixture id).
-      condition: "len($.get('events', [])) > 0"
+      condition: "len($.get('events', [])) > 0 and len(($.get('live_fixtures', {}) or {}).get('response', [])) > 0"
       connector:
         name: worldcup-market-intelligence
         command: apply_live_status
@@ -58,16 +58,28 @@ workflow:
       outputs:
         normalized_items: "$.get('normalized_items', [])"
 
+    - type: connector
+      name: finalize-stale-live-events
+      description: Mark stale regular-time live docs as full-time.
+      condition: "len($.get('events', [])) > 0"
+      connector:
+        name: worldcup-market-intelligence
+        command: finalize_stale_live_events
+      inputs:
+        events: "$.get('events', [])"
+      outputs:
+        stale_final_items: "$.get('normalized_items', [])"
+
     - type: document
       name: save-live-events
-      description: Persist the updated (live) event docs.
-      condition: "len($.get('normalized_items', [])) > 0"
+      description: Persist the updated live/final event docs.
+      condition: "len(($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])) > 0"
       config:
         action: bulk-update
         embed-vector: false
         force-update: true
       document_name: "'worldcup:event'"
       documents:
-        items: "$.get('normalized_items', [])"
+        items: "($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])"
       inputs:
-        normalized_items: "$.get('normalized_items', [])"
+        normalized_items: "($.get('normalized_items', []) or []) + ($.get('stale_final_items', []) or [])"
