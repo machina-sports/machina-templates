@@ -6,7 +6,8 @@ workflow:
     the event cache and emits signals (has_live, live_event_urns, upcoming_24h,
     recent_done) so the hot/warm coverage agents only do expensive refreshes
     when there is something to cover. Live = schedule window [kickoff, +150min]
-    or an in-play sport:status.
+    or an in-play sport:status that has not gone stale after the realistic
+    match window.
 
   context-variables:
     debugger:
