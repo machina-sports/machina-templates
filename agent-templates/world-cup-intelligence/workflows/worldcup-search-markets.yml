@@ -16,10 +16,15 @@ workflow:
   outputs:
     # Selection happens here: workflow outputs evaluate against full state,
     # so cached vs live preference reads the task outputs directly.
-    markets: "($.get('live_normalized_markets', []) if $.get('force_live', False) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', [])))[:int($.get('limit', 20))]"
-    count: "len(($.get('live_normalized_markets', []) if $.get('force_live', False) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', [])))[:int($.get('limit', 20))])"
+    # Three branches: force_live -> live only (caller asked for it); stale cache
+    # -> live preferred, fall back to cache if live is empty; fresh cache ->
+    # cache preferred, fall back to live. cache_fresh comes from filter-cached-markets.
+    markets: "($.get('live_normalized_markets', []) if $.get('force_live', False) else (($.get('live_normalized_markets', []) or $.get('cached_filtered_markets', [])) if not $.get('cache_fresh', True) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', []))))[:int($.get('limit', 20))]"
+    count: "len(($.get('live_normalized_markets', []) if $.get('force_live', False) else (($.get('live_normalized_markets', []) or $.get('cached_filtered_markets', [])) if not $.get('cache_fresh', True) else ($.get('cached_filtered_markets', []) or $.get('live_normalized_markets', []))))[:int($.get('limit', 20))])"
     sources: "$.get('live_sources', {})"
-    warnings: "($.get('cached_warnings', []) if not $.get('force_live', False) and $.get('cached_filtered_markets', []) else []) + $.get('live_warnings', [])"
+    # Surface the cache-age warning only when we actually serve cached markets
+    # (not force_live, cache still fresh, and a cached match exists).
+    warnings: "($.get('cached_warnings', []) if (not $.get('force_live', False) and $.get('cache_fresh', True) and $.get('cached_filtered_markets', [])) else []) + $.get('live_warnings', [])"
     workflow-status: "'executed'"
   tasks:
     - type: document
@@ -55,11 +60,16 @@ workflow:
         cached_filtered_markets: "$.get('markets', [])"
         cached_filtered_count: "$.get('count', 0)"
         cached_warnings: "$.get('warnings', [])"
+        # Auto-fallback trigger: the cache is "fresh" only if the freshest served
+        # market was fetched within the connector's staleness TTL (STALE_CACHE_SECONDS
+        # = 900s / 15 min). When stale (or no matches), the live tasks below fire and
+        # the workflow outputs prefer live data. Mirrors _cache_age_warning's threshold.
+        cache_fresh: "(max([m.get('fetched_at', '') for m in $.get('markets', [])]) >= ((datetime.utcnow() - timedelta(seconds=900)).isoformat() + 'Z')) if $.get('markets', []) else False"
 
     - type: connector
       name: live-sports-skills-search
       description: Live cross-provider fallback through Sports Skills when cache misses or force_live is set.
-      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0 or not $.get('cache_fresh', True)"
       continue_on_error: true
       connector:
         name: sports-skills
@@ -76,7 +86,7 @@ workflow:
     - type: connector
       name: live-polymarket-search
       description: Direct Polymarket search fallback for World Cup/FIFA markets.
-      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0 or not $.get('cache_fresh', True)"
       continue_on_error: true
       connector:
         name: sports-skills
@@ -95,7 +105,7 @@ workflow:
     - type: connector
       name: live-kalshi-worldcup
       description: Kalshi World Cup markets across all dedicated series (sport=worldcup).
-      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0 or not $.get('cache_fresh', True)"
       continue_on_error: true
       connector:
         name: sports-skills
@@ -111,7 +121,7 @@ workflow:
     - type: connector
       name: normalize-live-markets
       description: Normalize live Sports Skills/Kalshi/Polymarket payloads into stable WorldCupMarket records.
-      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0"
+      condition: "$.get('force_live', False) is True or $.get('cached_filtered_count', 0) == 0 or not $.get('cache_fresh', True)"
       connector:
         name: worldcup-market-intelligence
         command: normalize_market_sources
