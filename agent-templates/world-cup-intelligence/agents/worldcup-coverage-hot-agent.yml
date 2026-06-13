@@ -1,0 +1,45 @@
+agent:
+  name: worldcup-coverage-hot
+  title: World Cup · Coverage · Hot (Live)
+  description: >
+    Every 2 minutes: run the coverage gateway, then refresh markets and live
+    status only when matches are in-play. Cheap (gateway only) when nothing is
+    live.
+  status: active
+
+  jobs:
+    - name: tick
+      type: agent
+      target: worldcup-coverage-hot
+      cron: "*/2 * * * *"
+      enabled: true
+
+  context: {}
+  context-variables: {}
+
+  workflows:
+    - name: worldcup-coverage-gateway
+      inputs: {}
+      outputs:
+        has_live: "$.get('has_live')"
+        live_count: "$.get('live_count')"
+
+    - name: worldcup-sync-market-sources
+      condition: "$.get('has_live') is True"
+      inputs:
+        # LITERALS on purpose: workflow inputs are expression-evaluated.
+        # Bare strings like "FIFA World Cup" / "open" are invalid expressions
+        # and break the live market-refresh path during in-play windows.
+        query: "'FIFA World Cup'"
+        status: "'open'"
+        limit: 250
+      outputs:
+        markets_count: "$.get('markets_count')"
+
+    - name: worldcup-refresh-live-status
+      condition: "$.get('has_live') is True"
+      inputs:
+        league: "1"
+        season: "2026"
+      outputs:
+        updated_count: "$.get('updated_count')"
