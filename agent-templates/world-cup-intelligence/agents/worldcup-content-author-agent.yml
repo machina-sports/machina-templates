@@ -1,0 +1,54 @@
+agent:
+  name: worldcup-content-author
+  title: World Cup · Content Author · Hot
+  description: >
+    Every 15 minutes: run the coverage gateway, refresh the market cache when no
+    match is live, and refresh global hot Skill cards when matches are live,
+    within 24h, or recently finished. Cheap (gateway only) otherwise.
+  status: active
+
+  jobs:
+    - name: tick
+      type: agent
+      target: worldcup-content-author
+      cron: "*/15 * * * *"
+      enabled: true
+
+  context: {}
+  context-variables: {}
+
+  workflows:
+    - name: worldcup-coverage-gateway
+      inputs: {}
+      outputs:
+        has_live: "$.get('has_live')"
+        recent_done: "$.get('recent_done')"
+        upcoming_24h: "$.get('upcoming_24h')"
+
+    - name: worldcup-sync-market-sources
+      condition: "$.get('has_live') is not True"
+      inputs:
+        # LITERALS on purpose: workflow inputs are expression-evaluated.
+        # Bare strings like "FIFA World Cup" / "open" are invalid expressions
+        # and make the market-cache warm path fail or skip stale.
+        query: "'FIFA World Cup'"
+        status: "'open'"
+        limit: 400
+      outputs:
+        markets_count: "$.get('markets_count')"
+        warnings: "$.get('warnings')"
+
+    - name: worldcup-market-watch
+      condition: "$.get('has_live') is True or $.get('upcoming_24h', 0) > 0 or $.get('recent_done', 0) > 0"
+      inputs:
+        force_regen: true
+      outputs:
+        served_from: "$.get('served_from')"
+
+    - name: worldcup-fan-pulse
+      condition: "$.get('has_live') is True or $.get('upcoming_24h', 0) > 0 or $.get('recent_done', 0) > 0"
+      inputs:
+        force_regen: true
+        query: "''"
+      outputs:
+        served_from: "$.get('served_from')"

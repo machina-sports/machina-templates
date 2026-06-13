@@ -29,7 +29,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.5.0
+  version: 0.5.1
 
 datasets:
   - type: connector
@@ -41,6 +41,10 @@ datasets:
     path: agents/world-cup-market-analyst-agent.yml
   - type: agent
     path: agents/worldcup-market-sync-agent.yml
+  - type: agent
+    path: agents/worldcup-coverage-hot-agent.yml
+  - type: agent
+    path: agents/worldcup-content-author-agent.yml
 
   - type: workflow
     path: workflows/worldcup-health.yml
