@@ -6,7 +6,10 @@ agent:
   entry-point: "betting-copilot-workflow"
   context-variables:
     kalshi:
-      bearerAuth: "$TEMP_CONTEXT_VARIABLE_KALSHI_API_KEY"
+      # Public Kalshi market data (events/markets) is keyless — no token
+      # needed for reads. A key is only required for trading/portfolio,
+      # which this agent never does.
+      bearerAuth: ""
     polymarket:
       # No API key needed for public endpoints
       bearerAuth: ""
