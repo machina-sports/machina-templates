@@ -9,13 +9,8 @@ connector:
       version: "v2"
     servers:
       - url: "https://trading-api.kalshi.com/v2"
-    security:
-      - bearerAuth: []
-    components:
-      securitySchemes:
-        bearerAuth:
-          type: http
-          scheme: Bearer
+    # Public market data (events/markets) is keyless — no security scheme.
+    # Trading/portfolio endpoints would need a key, but this agent only reads.
     paths:
       /events:
         get:
