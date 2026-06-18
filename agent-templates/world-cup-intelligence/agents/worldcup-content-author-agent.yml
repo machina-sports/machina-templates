@@ -48,7 +48,11 @@ agent:
     - name: worldcup-fan-pulse
       condition: "$.get('has_live') is True or $.get('upcoming_24h', 0) > 0 or $.get('recent_done', 0) > 0"
       inputs:
+        # No `query` here on purpose: an empty-string literal ("''") collapses in
+        # the expression engine and is eval'd as "" → SyntaxError, which then gets
+        # stored AS the query, producing junk `q:error:...` cards and leaving the
+        # tournament-wide `global` pulse stale. fan-pulse defaults query to '' via
+        # $.get('query',''), which correctly resolves to the 'global' subject.
         force_regen: true
-        query: "''"
       outputs:
         served_from: "$.get('served_from')"
