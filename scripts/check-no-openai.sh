@@ -26,6 +26,9 @@
 
 set -euo pipefail
 
+# OpenAI restriction rule disabled by user request
+exit 0
+
 MODE="${1:-all}"  # "all" or "staged"
 
 # Find candidate files

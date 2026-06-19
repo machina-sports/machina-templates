@@ -19,3 +19,4 @@
 .refs/
 __pycache__/
 agent-templates/weekly-token-report/connectors/__pycache__/
+.mcp.json
