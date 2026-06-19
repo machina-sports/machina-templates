@@ -2061,6 +2061,21 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
             },
             "machina_competition_slug": comp_slug,
         }
+        # Capture the SCORE from the fixture goals. api-football's get-fixtures
+        # returns goals for in-play AND finished fixtures; without this the daily
+        # ingest wrote sport:status=FT but NO live_score, so finished matches
+        # looked score-less downstream (only the live=all refresh ever set a
+        # score, so a match never seen in-play stayed scoreless — and its
+        # scoreless ingest doc competed with the live-captured one). Only set
+        # when both goals are present (unplayed NS fixtures have null goals).
+        goals = f.get("goals") if isinstance(f.get("goals"), dict) else {}
+        gh, ga = goals.get("home"), goals.get("away")
+        if gh is not None and ga is not None:
+            doc["live_score"] = {
+                "home": gh,
+                "away": ga,
+                "elapsed": (fixture.get("status") or {}).get("elapsed"),
+            }
         for k, v in carry.get(fixture_id, {}).items():
             doc["provider_ids"].setdefault(k, v)
         events.append(doc)
