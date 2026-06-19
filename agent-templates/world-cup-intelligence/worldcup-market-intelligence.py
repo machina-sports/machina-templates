@@ -2906,17 +2906,20 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
       - finished_fixtures: api-football fixture objects (status FT/AET/PEN)
       - seed_ratings: [{team_urn, team_name, seed_rating(0-1)}] FIFA/qualifier prior
       - weights: optional override of _DEFAULT_RANK_WEIGHTS
-      - min_games_full_confidence: games for full results confidence (default 5)
+      - min_games_full_confidence: games for full results confidence (default 8)
     Bootstrap blend: power = w*results + (1-w)*seed, w = games/min_games. With 0
-    games a team is 100% seed (data_source "seed", low confidence).
+    games a team is 100% seed (data_source "seed", low confidence). Default is 8
+    (not 5): in a 48-team World Cup a side plays ~3 group games, and 2-3 noisy
+    early results should not override a proven FIFA prior (a draw vs minnows is
+    not evidence Brazil is average) — only a full group + knockout run should.
     """
     params = _params(request_data)
     w = dict(_DEFAULT_RANK_WEIGHTS)
     w.update(params.get("weights") or {})
     try:
-        min_games = max(1, int(params.get("min_games_full_confidence") or 5))
+        min_games = max(1, int(params.get("min_games_full_confidence") or 8))
     except (TypeError, ValueError):
-        min_games = 5
+        min_games = 8
 
     seed_map: dict[str, float] = {}
     seed_names: dict[str, str] = {}
@@ -2991,11 +2994,22 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
         blend_w = min(1.0, g / min_games)
         seed = seed_map.get(urn, 0.5)
         power = blend_w * results_score + (1 - blend_w) * seed
+        # Blend attack/defense toward the seed too — NOT just power. The match
+        # model (_match_probabilities) multiplies expected goals by attack_score
+        # and (1 - opp defense_score), so leaving these as RAW small-sample
+        # results crushed elite teams after a couple of modest games: e.g. Brazil
+        # scored little in 1-2 games -> raw attack ~0.3 -> 0.9 xG / 49% vs Haiti,
+        # while a still-unplayed Germany (attack = seed ~0.85) sat at 4.0 xG/91%.
+        # Anchoring attack/defense to the seed (as power already is) keeps a
+        # proven-elite side strong until enough games actually prove otherwise.
+        attack_b = blend_w * attack + (1 - blend_w) * seed
+        defense_b = blend_w * defense + (1 - blend_w) * seed
         rankings.append({
             "team_urn": urn, "team_name": t["team_name"],
             "power_score": round(power, 4),
-            "breakdown": {"outcome_score": round(outcome, 4), "attack_score": round(attack, 4),
-                          "defense_score": round(defense, 4)},
+            "breakdown": {"outcome_score": round(outcome, 4), "attack_score": round(attack_b, 4),
+                          "defense_score": round(defense_b, 4),
+                          "attack_results_raw": round(attack, 4), "defense_results_raw": round(defense, 4)},
             "metrics": {k: round(t[k], 4) for k in ("win_rate", "points_per_game", "goals_per_game",
                                                     "concede_rate", "clean_sheet_rate", "scoring_rate")},
             "games": g,
