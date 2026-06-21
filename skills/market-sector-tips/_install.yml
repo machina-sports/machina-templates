@@ -1,0 +1,36 @@
+setup:
+  title: "Market Sector Tips"
+  description: "Organizes sports prediction markets by sector (sport, market type) and generates actionable market tips for each sector using AI analysis."
+  category:
+    - skills
+    - prediction-markets
+    - sports
+  estimatedTime: 2 minutes
+  features:
+    - "Fetches active sports markets from Polymarket"
+    - "Groups markets by sector (sport and market type)"
+    - "AI-powered analysis generates tips per sector"
+    - "Ranks sectors by opportunity strength"
+    - "Stores sector tips as searchable documents"
+  integrations:
+    - polymarket
+    - google-genai
+  status: available
+  value: "skills/market-sector-tips"
+  version: 1.0.0
+
+datasets:
+  - type: "skill"
+    path: "skill.yml"
+
+  - type: "prompts"
+    path: "prompts/sector-tips-analysis.yml"
+
+  - type: "mappings"
+    path: "mappings/sector-grouping.yml"
+
+  - type: "workflow"
+    path: "workflows/market-sector-tips.yml"
+
+  - type: "workflow"
+    path: "_folders.yml"
