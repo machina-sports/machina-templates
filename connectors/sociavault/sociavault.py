@@ -1,3 +1,20 @@
+def _sv_first_image_url(item):
+    # SociaVault returns image_versions2.candidates as a dict ({"0": {...}})
+    # OR a list depending on the account/endpoint. Normalize and guard the
+    # index so a dict-shaped response doesn't raise KeyError(0).
+    if not isinstance(item, dict):
+        return ""
+    iv = item.get("image_versions2")
+    cands = iv.get("candidates") if isinstance(iv, dict) else None
+    if isinstance(cands, dict):
+        cands = list(cands.values())
+    if isinstance(cands, list) and cands and isinstance(cands[0], dict):
+        url = cands[0].get("url", "")
+        if url:
+            return url
+    return item.get("thumbnail_url", "") or ""
+
+
 def get_credits(request_data):
     import json
     import urllib.request
@@ -273,7 +290,7 @@ def instagram_get_posts(request_data):
             "play_count": item.get("play_count", 0),
             "comment_count": item.get("comment_count", 0),
             "like_count": item.get("like_count", 0),
-            "image_url": item.get("image_versions2", {}).get("candidates", [{}])[0].get("url", "") if isinstance(item.get("image_versions2"), dict) else item.get("thumbnail_url", ""),
+            "image_url": _sv_first_image_url(item),
             "video_url": item.get("video_url", ""),
         }
 
@@ -400,7 +417,7 @@ def instagram_get_reels(request_data):
             "play_count": item.get("play_count", 0),
             "comment_count": item.get("comment_count", 0),
             "like_count": item.get("like_count", 0),
-            "image_url": item.get("image_versions2", {}).get("candidates", [{}])[0].get("url", "") if isinstance(item.get("image_versions2"), dict) else item.get("thumbnail_url", ""),
+            "image_url": _sv_first_image_url(item),
             "video_url": item.get("video_url", ""),
         }
 
