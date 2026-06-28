@@ -3,6 +3,7 @@ def get_credits(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -15,19 +16,29 @@ def get_credits(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     try:
         headers = request_data.get("headers", {})
@@ -59,6 +70,7 @@ def instagram_get_profile(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -71,19 +83,29 @@ def instagram_get_profile(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     def _check_error(response):
         if isinstance(response, dict) and response.get("error"):
@@ -188,6 +210,7 @@ def instagram_get_posts(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -200,19 +223,29 @@ def instagram_get_posts(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     def _check_error(response):
         if isinstance(response, dict) and response.get("error"):
@@ -304,6 +337,7 @@ def instagram_get_reels(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -316,19 +350,29 @@ def instagram_get_reels(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     def _check_error(response):
         if isinstance(response, dict) and response.get("error"):
@@ -414,6 +458,7 @@ def instagram_get_post_info(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -426,19 +471,29 @@ def instagram_get_post_info(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     def _check_error(response):
         if isinstance(response, dict) and response.get("error"):
@@ -505,6 +560,7 @@ def instagram_get_comments(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -517,19 +573,29 @@ def instagram_get_comments(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     def _check_error(response):
         if isinstance(response, dict) and response.get("error"):
@@ -603,6 +669,7 @@ def instagram_get_highlights(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
@@ -615,19 +682,29 @@ def instagram_get_highlights(request_data):
         req.add_header("Accept", "application/json")
         if api_key:
             req.add_header("X-API-Key", api_key)
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                raw = json.loads(resp.read().decode())
-            if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
-                if not raw.get("success"):
-                    return {"error": True, "message": raw.get("message", "API returned success=false")}
-                return raw.get("data", raw)
-            return raw
-        except urllib.error.HTTPError as e:
-            body = e.read().decode() if e.fp else ""
-            return {"error": True, "status_code": e.code, "message": body}
-        except Exception as e:
-            return {"error": True, "message": str(e)}
+        # Retry-with-backoff: SociaVault's scrape endpoints are flaky under
+        # sustained load (intermittent 404 "Account doesn't exist", empty/unknown
+        # errors, transient 5xx/429). Retry those; never retry 400/401.
+        last_err = None
+        for _attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    raw = json.loads(resp.read().decode())
+                if isinstance(raw, dict) and "success" in raw and "credits_used" in raw:
+                    if not raw.get("success"):
+                        return {"error": True, "message": raw.get("message", "API returned success=false")}
+                    return raw.get("data", raw)
+                return raw
+            except urllib.error.HTTPError as e:
+                body = e.read().decode() if e.fp else ""
+                last_err = {"error": True, "status_code": e.code, "message": body}
+                if e.code in (400, 401):
+                    return last_err
+            except Exception as e:
+                last_err = {"error": True, "message": str(e)}
+            if _attempt < 2:
+                time.sleep(1.5 * (2 ** _attempt))
+        return last_err
 
     def _check_error(response):
         if isinstance(response, dict) and response.get("error"):
@@ -696,6 +773,7 @@ def instagram_get_transcript(request_data):
     import urllib.request
     import urllib.error
     import urllib.parse
+    import time
     BASE_URL = "https://api.sociavault.com/v1"
 
     def _request(endpoint, params=None, api_key=None):
