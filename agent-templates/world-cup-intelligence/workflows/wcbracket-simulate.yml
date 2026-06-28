@@ -22,8 +22,10 @@ workflow:
     n_sims: "$.get('n_sims', 20000)"
     market_weight: "$.get('market_weight', 0.65)"
     min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
+    seed: "$.get('seed', 42)"
   outputs:
     champion: "$.get('simulation', {}).get('champion', {})"
+    leaderboard_top5: "[{'team': r['team'], 'champion_prob': r['champion_prob']} for r in ($.get('simulation', {}).get('champion_leaderboard', []) or [])[:5]]"
     field_size: "$.get('bracket', {}).get('field_size', 0)"
     bracket_simulation_id: "$.get('bracket_simulation_id')"
     workflow-status: "$.get('simulation', {}) and 'executed' or 'skipped'"
@@ -164,7 +166,7 @@ workflow:
           {
             'n_sims': $.get('n_sims', 20000),
             'market_weight': $.get('market_weight', 0.65),
-            'seed': 42
+            'seed': $.get('seed', 42)
           }
       outputs:
         simulation: "$.get('simulation', {})"
