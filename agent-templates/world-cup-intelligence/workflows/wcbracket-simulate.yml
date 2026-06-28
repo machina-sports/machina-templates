@@ -1,0 +1,205 @@
+workflow:
+  name: wcbracket-simulate
+  title: World Cup Bracket Sim - Simulate Perfect Bracket
+  description: |
+    Additive/exploration. Forward-simulates the World Cup knockout bracket from a
+    cutoff date (default today's first knockout game) through the Final and stores
+    a worldcup:bracket-simulation document. Reuses worldcup-market-intelligence's
+    power ranking (FIFA seed + group results), builds the knockout tree from cached
+    worldcup:event docs, and Monte Carlo simulates it with analytic Dixon-Coles
+    pairwise advance probabilities anchored to per-match Kalshi/Polymarket moneyline
+    where available. Read-only / informational -- not betting advice.
+
+  context-variables:
+    debugger:
+      enabled: true
+    api-football:
+      x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
+  inputs:
+    league: "$.get('league', '1')"
+    season: "$.get('season', '2026')"
+    from_date: "$.get('from_date', '2026-06-28')"
+    n_sims: "$.get('n_sims', 20000)"
+    market_weight: "$.get('market_weight', 0.65)"
+    min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
+  outputs:
+    champion: "$.get('simulation', {}).get('champion', {})"
+    field_size: "$.get('bracket', {}).get('field_size', 0)"
+    bracket_simulation_id: "$.get('bracket_simulation_id')"
+    workflow-status: "$.get('simulation', {}) and 'executed' or 'skipped'"
+  tasks:
+    # 1. All WC fixtures from api-football; finished ones drive the power ranking
+    #    and resolve completed knockout matches.
+    - type: connector
+      name: fetch-fixtures
+      description: All World Cup fixtures (finished + scheduled) from api-football.
+      connector:
+        name: api-football
+        command: get-fixtures
+      inputs:
+        league: "$.get('league', '1')"
+        season: "$.get('season', '2026')"
+      outputs:
+        finished_fixtures: "[f for f in $.get('response', []) if ((f.get('fixture', {}) or {}).get('status', {}) or {}).get('short') in ('FT', 'AET', 'PEN')]"
+        all_fixtures: "$.get('response', [])"
+
+    # 2. FIFA-ranking seed prior (optional).
+    - type: document
+      name: load-seed-ratings
+      description: FIFA-ranking seed prior for the power ranking.
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:fifa-ranking'"
+      outputs:
+        seed_ratings: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    # 3. Group-relative power ranking blended with the FIFA seed.
+    - type: connector
+      name: compute-power-ranking
+      description: Team strengths from finished fixtures + FIFA seed.
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_power_ranking
+      inputs:
+        finished_fixtures: "$.get('finished_fixtures', [])"
+        seed_ratings: "$.get('seed_ratings', [])"
+        min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
+      outputs:
+        team_index: "$.get('team_index', {})"
+        field_size_ranked: "$.get('field_size', 0)"
+
+    # 4. Knockout events (from cutoff date) shaped for the engine. Date filtering
+    #    is done in the output expression (in-workflow doc search ignores operator
+    #    filters).
+    - type: document
+      name: load-events
+      description: Cached worldcup:event docs (all); build_bracket filters to the cutoff date.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
+      outputs:
+        # Shape every event; the cutoff filter is applied in the engine
+        # (build_bracket from_date) — a `$.get('from_date')` reference inside this
+        # comprehension's if-clause would run in a scope that can't see `$`.
+        knockout_events: |
+          [
+            {
+              'event_urn': d.get('value', {}).get('_id'),
+              'af_id': str((d.get('value', {}).get('provider_ids', {}) or {}).get('api_football') or ''),
+              'start_date': d.get('value', {}).get('schema:startDate'),
+              'status': (d.get('value', {}).get('sport:status') or 'ns'),
+              'teams': [
+                {'name': c.get('name'), 'qualifier': c.get('sport:qualifier')}
+                for c in (d.get('value', {}).get('sport:competitors') or [])
+              ]
+            }
+            for d in ($.get('documents', []) or [])
+            if d.get('value', {}).get('_id')
+          ]
+
+    # 5. Per-match moneyline markets (Kalshi KXWCGAME + 3-way) for the anchor.
+    - type: document
+      name: load-markets
+      description: Cached moneyline markets; spreads/totals excluded.
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 1000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: |
+          [
+            {
+              'event_urn': d.get('value', {}).get('event_urn'),
+              'id': d.get('value', {}).get('id'),
+              'market_type': d.get('value', {}).get('market_type'),
+              'related_team_urns': d.get('value', {}).get('related_team_urns') or [],
+              'outcomes': d.get('value', {}).get('outcomes') or []
+            }
+            for d in ($.get('documents', []) or [])
+            if d.get('value', {}).get('event_urn')
+            and (
+              str(d.get('value', {}).get('id', '')).startswith('kalshi:KXWCGAME')
+              or (d.get('value', {}).get('market_type') in ('moneyline', 'h2h', 'match_winner', '1x2', '3way'))
+            )
+          ]
+
+    # 6. Build the knockout tree (resolves completed matches from finished fixtures).
+    - type: connector
+      name: build-bracket
+      description: Construct the R32 -> Final tree.
+      connector:
+        name: wcbracket-engine
+        command: build_bracket
+      inputs:
+        knockout_events: "$.get('knockout_events', [])"
+        finished_fixtures: "$.get('finished_fixtures', [])"
+        fixtures: "$.get('all_fixtures', [])"
+        from_date: "$.get('from_date', '2026-06-28')"
+      outputs:
+        bracket: "$.get('bracket', {})"
+
+    # 7. Monte Carlo the bracket forward.
+    - type: connector
+      name: simulate-bracket
+      description: Simulate the tournament, market-anchored where priced.
+      condition: "$.get('bracket', {}).get('rounds')"
+      connector:
+        name: wcbracket-engine
+        command: simulate_bracket
+      inputs:
+        bracket: "$.get('bracket', {})"
+        team_index: "$.get('team_index', {})"
+        markets: "$.get('markets', [])"
+        config: |
+          {
+            'n_sims': $.get('n_sims', 20000),
+            'market_weight': $.get('market_weight', 0.65),
+            'seed': 42
+          }
+      outputs:
+        simulation: "$.get('simulation', {})"
+
+    # 8. Persist the simulation snapshot.
+    - type: document
+      name: store-simulation
+      description: Store the bracket-simulation document.
+      condition: "$.get('simulation', {})"
+      config:
+        action: update
+        embed-vector: false
+        force-update: true
+      filters:
+        name: "'worldcup:bracket-simulation'"
+        metadata.from_date: "str($.get('from_date'))"
+      documents:
+        worldcup:bracket-simulation: |
+          {
+            'from_date': $.get('from_date'),
+            'season': $.get('season'),
+            'field_size': $.get('bracket', {}).get('field_size'),
+            'champion': $.get('simulation', {}).get('champion'),
+            'champion_leaderboard': $.get('simulation', {}).get('champion_leaderboard'),
+            'advancement': $.get('simulation', {}).get('advancement'),
+            'perfect_bracket': $.get('simulation', {}).get('perfect_bracket'),
+            'r32_matches': $.get('simulation', {}).get('r32_matches'),
+            'tree': $.get('bracket', {}).get('rounds'),
+            'config': $.get('simulation', {}).get('config'),
+            'bracket_warnings': $.get('bracket', {}).get('warnings'),
+            'n_sims': $.get('simulation', {}).get('n_sims'),
+            'disclaimer': $.get('simulation', {}).get('disclaimer')
+          }
+      metadata:
+        from_date: "str($.get('from_date'))"
+        season: "str($.get('season'))"
+      outputs:
+        bracket_simulation_id: "$.get('documents')[0].get('_id') if $.get('documents') else None"

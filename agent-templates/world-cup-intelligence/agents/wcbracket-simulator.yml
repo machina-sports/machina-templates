@@ -1,0 +1,30 @@
+agent:
+  name: wcbracket-simulator
+  title: World Cup Bracket Sim - Simulator
+  description: >
+    Additive/exploration agent. On demand, forward-simulates the World Cup
+    knockout bracket from a cutoff date (default today's first knockout game)
+    through the Final and stores a worldcup:bracket-simulation document with
+    champion odds, the per-team advancement matrix, and the single most-likely
+    "perfect" bracket. Ships INACTIVE (status below) so it never auto-schedules
+    or disrupts existing pod agents -- run it with execute_agent, or set status
+    "active" + add config-frequency to refresh after each match day. Read-only
+    on source data; informational, not betting advice.
+  status: "inactive"
+  context:
+    status: "inactive"
+  context-agent:
+    from_date: "$.get('from_date', '2026-06-28')"
+    n_sims: "$.get('n_sims', 20000)"
+    market_weight: "$.get('market_weight', 0.65)"
+  workflows:
+    - name: wcbracket-simulate
+      description: Build the knockout tree and Monte Carlo simulate the perfect bracket.
+      inputs:
+        from_date: "$.get('from_date', '2026-06-28')"
+        n_sims: "$.get('n_sims', 20000)"
+        market_weight: "$.get('market_weight', 0.65)"
+      outputs:
+        champion: "$.get('champion', {})"
+        field_size: "$.get('field_size', 0)"
+        bracket_simulation_id: "$.get('bracket_simulation_id')"

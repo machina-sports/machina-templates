@@ -1,0 +1,10 @@
+connector:
+  name: "wcbracket-engine"
+  description: "World Cup bracket-simulation engine (additive/exploration): builds the knockout tree from cached events and Monte Carlo simulates it forward to a perfect bracket, anchored to per-match Kalshi/Polymarket prices where available. Informational only."
+  filename: "wcbracket-engine.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Build knockout bracket"
+      value: "build_bracket"
+    - name: "Simulate bracket"
+      value: "simulate_bracket"
