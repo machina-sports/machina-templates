@@ -43,6 +43,7 @@ workflow:
       name: search-teams
       description: Grounded search for each team's injuries/suspensions/form.
       condition: "len($.get('teams', [])) > 0"
+      continue_on_error: true
       connector:
         name: google-genai
         command: invoke_search
@@ -50,7 +51,7 @@ workflow:
         provider: vertex_ai
         location: global
       foreach:
-        concurrent: false
+        concurrent: true
         name: team_item
         expr: $
         value: "$.get('teams', [])"
@@ -58,7 +59,7 @@ workflow:
         search_query: >
           $.get('team_item', '') + ' FIFA World Cup 2026 knockout stage current injuries suspensions key player availability and form'
         recency_days: "$.get('recency_days', 7)"
-        timeout: 120
+        timeout: 60
       outputs:
         # Foreach outputs eval against the connector result (no team_item in scope);
         # the echoed query starts with the team name, so it's the correlation key.
