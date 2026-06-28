@@ -2914,18 +2914,19 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
       - finished_fixtures: api-football fixture objects (status FT/AET/PEN)
       - seed_ratings: [{team_urn, team_name, seed_rating(0-1)}] FIFA/qualifier prior
       - weights: optional override of _DEFAULT_RANK_WEIGHTS
-      - min_games_full_confidence: games for full results confidence (default 8)
+      - min_games_full_confidence: games for full results confidence (default 3)
     Bootstrap blend: power = w*results + (1-w)*seed, w = games/min_games. With 0
-    games a team is 100% seed (data_source "seed", low confidence). Default is 8
-    (not 5): in a 48-team World Cup a side plays ~3 group games, and 2-3 noisy
-    early results should not override a proven FIFA prior (a draw vs minnows is
-    not evidence Brazil is average) — only a full group + knockout run should.
+    games a team is 100% seed (data_source "seed", low confidence). Default is 3:
+    a 48-team World Cup side plays 3 group games, so a COMPLETED group stage gives
+    full results confidence and the pre-tournament FIFA prior washes out for the
+    knockouts — by then the seed's pre-tournament view is increasingly stale and
+    the model should reflect actual tournament form, not where teams started.
     """
     params = _params(request_data)
     w = dict(_DEFAULT_RANK_WEIGHTS)
     w.update(params.get("weights") or {})
     try:
-        min_games = max(1, int(params.get("min_games_full_confidence") or 8))
+        min_games = max(1, int(params.get("min_games_full_confidence") or 3))
     except (TypeError, ValueError):
         min_games = 8
 
