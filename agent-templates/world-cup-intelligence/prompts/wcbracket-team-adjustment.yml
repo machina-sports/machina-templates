@@ -1,0 +1,47 @@
+prompts:
+  - type: prompt
+    name: wcbracket-team-adjustment
+    title: World Cup Bracket - Team Strength Adjustment
+    description: Infer a bounded per-team strength multiplier from grounded injury/news research for the knockout simulation.
+    instruction: |
+      You are given `team_names` (the knockout teams to assess) and `team_research`
+      (a list of {team, research} grounded web-search snippets about each team's
+      current World Cup 2026 injuries, suspensions, key-player availability, and form).
+
+      For EVERY team in `team_names`, return one adjustment object:
+        - team_name: the EXACT string from `team_names`.
+        - strength_multiplier: a number in [0.85, 1.10]. 1.0 = neutral (no material
+          news). LOWER it when the team is meaningfully weakened (a key starter
+          injured/suspended, multiple absences, turmoil); RAISE it slightly (up to
+          1.10) only when a key player returns or the team is in clearly strong form.
+          Calibrate magnitude to importance: a star/talisman out ~ 0.88-0.92; a
+          rotation player out ~ 0.97-0.99; several key absences ~ 0.85-0.88.
+        - key_absences: list of notable injured/suspended players named in the
+          research (empty if none).
+        - reason: one short sentence citing the basis (or "no material news").
+
+      Ground every adjustment ONLY in `team_research` — do NOT use prior knowledge of
+      squads (your training predates this tournament). If a team's research has no
+      injury/availability signal, return 1.0 with reason "no material news". Return an
+      entry for ALL teams so the list length equals `team_names`. Informational only.
+    schema:
+      title: WorldCupBracketTeamAdjustments
+      type: object
+      required: [adjustments]
+      properties:
+        adjustments:
+          type: array
+          items:
+            type: object
+            required: [team_name, strength_multiplier]
+            properties:
+              team_name:
+                type: string
+              strength_multiplier:
+                type: number
+              key_absences:
+                type: array
+                items:
+                  type: string
+              reason:
+                type: string

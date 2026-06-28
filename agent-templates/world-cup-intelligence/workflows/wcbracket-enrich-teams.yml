@@ -1,0 +1,112 @@
+workflow:
+  name: wcbracket-enrich-teams
+  title: World Cup Bracket Sim - Enrich Teams (web injuries/news)
+  description: |
+    Additive/exploration. For each knockout team in the latest bracket simulation,
+    grounded-web-searches current injuries / suspensions / key-player availability /
+    form, then infers a BOUNDED per-team strength multiplier (0.85-1.10) and stores
+    worldcup:team-adjustment docs. wcbracket-simulate applies them to the model so the
+    signal propagates into the unpriced deep rounds. api-football carries no injury
+    data for these teams yet, so grounded search is the source. Informational only.
+
+  context-variables:
+    debugger:
+      enabled: true
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    recency_days: "$.get('recency_days', 7)"
+  outputs:
+    teams_count: "len($.get('teams', []))"
+    adjustments_count: "len($.get('adjustments', []))"
+    workflow-status: "len($.get('adjustments', [])) > 0 and 'executed' or 'skipped'"
+  tasks:
+    # 1. The 32 knockout teams come from the latest stored bracket simulation tree.
+    - type: document
+      name: load-bracket
+      description: Latest bracket-simulation; its R32 tree lists the knockout teams.
+      config:
+        action: search
+        search-limit: 1
+        search-vector: false
+      filters:
+        name: "'worldcup:bracket-simulation'"
+      outputs:
+        teams: |
+          [m.get('home_name') for m in (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('tree', [{}]) or [{}])[0].get('matches', []) or []) if m.get('home_name')]
+          + [m.get('away_name') for m in (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('tree', [{}]) or [{}])[0].get('matches', []) or []) if m.get('away_name')]
+
+    # 2. Grounded web search per team (knowledge cutoff predates the tournament, so
+    #    grounding is required). Query starts with the team name for correlation.
+    - type: connector
+      name: search-teams
+      description: Grounded search for each team's injuries/suspensions/form.
+      condition: "len($.get('teams', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_search
+        model: gemini-3.1-flash-lite
+        provider: vertex_ai
+        location: global
+      foreach:
+        concurrent: false
+        name: team_item
+        expr: $
+        value: "$.get('teams', [])"
+      inputs:
+        search_query: >
+          $.get('team_item', '') + ' FIFA World Cup 2026 knockout stage current injuries suspensions key player availability and form'
+        recency_days: "$.get('recency_days', 7)"
+        timeout: 120
+      outputs:
+        # Foreach outputs eval against the connector result (no team_item in scope);
+        # the echoed query starts with the team name, so it's the correlation key.
+        search_results: |
+          [{'query': $.get('query', ''), 'research': $.get('answer', '')}]
+
+    # 3. Infer a bounded per-team strength multiplier from the research.
+    - type: prompt
+      name: wcbracket-team-adjustment
+      description: Per-team strength multiplier (0.85-1.10) grounded in the research.
+      condition: "len($.get('teams', [])) > 0 and len($.get('search_results', [])) > 0"
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-3.5-flash
+        provider: vertex_ai
+        location: global
+      inputs:
+        team_names: "$.get('teams', [])"
+        team_research: "$.get('search_results', [])"
+        timeout: 120
+      outputs:
+        adjustments: "$.get('adjustments', [])"
+
+    # 4. Persist per-team adjustment docs (upsert by team).
+    - type: document
+      name: save-adjustments
+      description: Save worldcup:team-adjustment docs consumed by wcbracket-simulate.
+      condition: "len($.get('adjustments', [])) > 0"
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'worldcup:team-adjustment'"
+      documents:
+        items: |
+          [
+            {
+              '_id': 'worldcup:team-adjustment:' + (a.get('team_name') or ''),
+              'metadata': {'team_adjustment': a.get('team_name') or ''},
+              'team_name': a.get('team_name'),
+              'strength_multiplier': a.get('strength_multiplier', 1.0),
+              'key_absences': a.get('key_absences') or [],
+              'reason': a.get('reason') or '',
+              'enriched_at': datetime.utcnow().isoformat() + 'Z'
+            }
+            for a in ($.get('adjustments', []) or [])
+            if isinstance(a, dict) and a.get('team_name')
+          ]
+      inputs:
+        adjustments: "$.get('adjustments', [])"

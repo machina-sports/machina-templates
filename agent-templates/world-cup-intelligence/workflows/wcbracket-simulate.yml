@@ -135,6 +135,30 @@ workflow:
             )
           ]
 
+    # 5b. Per-team web-enrichment multipliers (injuries/news), applied to the model.
+    - type: document
+      name: load-team-adjustments
+      description: Bounded per-team strength multipliers from wcbracket-enrich-teams.
+      continue_on_error: true
+      config:
+        action: search
+        search-limit: 100
+        search-vector: false
+      filters:
+        name: "'worldcup:team-adjustment'"
+      outputs:
+        team_adjustments: |
+          [
+            {
+              'team_name': d.get('value', {}).get('team_name'),
+              'strength_multiplier': d.get('value', {}).get('strength_multiplier', 1.0),
+              'key_absences': d.get('value', {}).get('key_absences') or [],
+              'reason': d.get('value', {}).get('reason') or ''
+            }
+            for d in ($.get('documents', []) or [])
+            if d.get('value', {}).get('team_name')
+          ]
+
     # 6. Build the knockout tree (resolves completed matches from finished fixtures).
     - type: connector
       name: build-bracket
@@ -162,6 +186,7 @@ workflow:
         bracket: "$.get('bracket', {})"
         team_index: "$.get('team_index', {})"
         markets: "$.get('markets', [])"
+        team_adjustments: "$.get('team_adjustments', [])"
         config: |
           {
             'n_sims': $.get('n_sims', 20000),
@@ -194,6 +219,7 @@ workflow:
             'advancement': $.get('simulation', {}).get('advancement'),
             'perfect_bracket': $.get('simulation', {}).get('perfect_bracket'),
             'r32_matches': $.get('simulation', {}).get('r32_matches'),
+            'team_adjustments_applied': $.get('simulation', {}).get('team_adjustments_applied'),
             'tree': $.get('bracket', {}).get('rounds'),
             'config': $.get('simulation', {}).get('config'),
             'bracket_warnings': $.get('bracket', {}).get('warnings'),

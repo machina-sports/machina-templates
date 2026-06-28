@@ -479,11 +479,38 @@ def simulate_bracket(request_data):
         xg = dict(_DEFAULT_XG)
         xg.update(cfg.get("xg_params") or {})
 
-        # Rankings indexed by slugified team name (robust to URN scheme).
+        # Per-team strength multipliers from web-enrichment (injuries/news), bounded.
+        adj_by_slug = {}
+        for a in (p.get("team_adjustments") or []):
+            if not isinstance(a, dict):
+                continue
+            s = _slug(a.get("team_name") or a.get("team_slug") or "")
+            mult = max(0.80, min(1.15, _num(a.get("strength_multiplier"), 1.0)))
+            if s and mult != 1.0:
+                adj_by_slug[s] = {"mult": mult, "reason": a.get("reason") or "",
+                                  "key_absences": a.get("key_absences") or []}
+
+        # Rankings indexed by slugified team name (robust to URN scheme), with the
+        # bounded enrichment multiplier applied to power/attack/defense.
         rank_by_slug = {}
+        adjustments_applied = []
         for r in team_index.values():
-            if isinstance(r, dict) and r.get("team_name"):
-                rank_by_slug[_slug(r["team_name"])] = r
+            if not (isinstance(r, dict) and r.get("team_name")):
+                continue
+            s = _slug(r["team_name"])
+            adj = adj_by_slug.get(s)
+            if adj:
+                r = dict(r)
+                m = adj["mult"]
+                r["power_score"] = max(0.02, min(0.99, _num(r.get("power_score"), 0.5) * m))
+                bd = dict(r.get("breakdown") or {})
+                for k in ("attack_score", "defense_score"):
+                    if bd.get(k) is not None:
+                        bd[k] = max(0.02, min(0.99, _num(bd.get(k)) * m))
+                r["breakdown"] = bd
+                adjustments_applied.append({"team": r["team_name"], "multiplier": round(m, 3),
+                                            "reason": adj["reason"], "key_absences": adj["key_absences"]})
+            rank_by_slug[s] = r
 
         def rank(slug):
             return rank_by_slug.get(slug, {"power_score": 0.5})
@@ -629,6 +656,7 @@ def simulate_bracket(request_data):
             "advancement": advancement,
             "perfect_bracket": perfect,
             "r32_matches": r32_report,
+            "team_adjustments_applied": adjustments_applied,
             "bracket_warnings": bracket.get("warnings", []),
             "disclaimer": DISCLAIMER,
         }

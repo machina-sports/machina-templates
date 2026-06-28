@@ -30,7 +30,7 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.6.0
+  version: 0.7.0
 
 datasets:
   - type: connector
@@ -130,6 +130,8 @@ datasets:
   - type: workflow
     path: workflows/wcbracket-get-bracket.yml
   - type: workflow
+    path: workflows/wcbracket-enrich-teams.yml
+  - type: workflow
     path: _folders.yml
 
   - type: prompts
@@ -160,6 +162,8 @@ datasets:
     path: prompts/worldcup-player-spotlight.yml
   - type: prompts
     path: prompts/worldcup-market-watch.yml
+  - type: prompts
+    path: prompts/wcbracket-team-adjustment.yml
 
   - type: mappings
     path: mappings/worldcup-iptc-event-to-api-response.yml
