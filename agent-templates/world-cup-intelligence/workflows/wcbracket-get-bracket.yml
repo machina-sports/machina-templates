@@ -1,0 +1,35 @@
+workflow:
+  name: wcbracket-get-bracket
+  title: World Cup Bracket Sim - Get Latest Bracket
+  description: |
+    Read-only. Serves the most recent worldcup:bracket-simulation document
+    (champion odds, advancement matrix, the most-likely bracket). Informational.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    from_date: "$.get('from_date', '')"
+  outputs:
+    simulation: "$.get('simulation', {})"
+    workflow-status: "$.get('simulation', {}) and 'executed' or 'skipped'"
+  tasks:
+    - type: document
+      name: load-simulation
+      description: Latest bracket-simulation snapshot (optionally by cutoff date).
+      config:
+        action: search
+        search-limit: 1
+        search-sorters: ["updated", -1]
+        search-vector: false
+      filters:
+        name: "'worldcup:bracket-simulation'"
+      outputs:
+        simulation: |
+          next(
+            (
+              d.get('value', {}) for d in ($.get('documents', []) or [])
+              if not $.get('from_date') or d.get('value', {}).get('from_date') == $.get('from_date')
+            ),
+            ($.get('documents', []) or [{}])[0].get('value', {}) if $.get('documents') else {}
+          )

@@ -17,6 +17,7 @@ setup:
     - Statistical match forecasts (Dixon-Coles) with model-vs-market gaps + Brier/calibration backtesting.
     - Composite editorial Skills (match-preview, match-recap, player-spotlight, fan-pulse, market-watch) as TTL-cached cards.
     - Structured betting signal (recommendation + edge% + EV + Kelly stake + risk flags), line-shopped + de-vigged.
+    - Perfect-bracket simulator (wcbracket-*) -- Monte Carlo of the knockout tree (R32 -> Final) with per-team advancement + champion odds, market-anchored where priced.
     - Read-only workflows suitable for API/MCP productization.
   integrations:
     - api-football
@@ -29,11 +30,13 @@ setup:
     - pod-document-store
   status: available
   value: agent-templates/world-cup-intelligence
-  version: 0.5.1
+  version: 0.6.0
 
 datasets:
   - type: connector
     path: worldcup-market-intelligence.yml
+  - type: connector
+    path: wcbracket-engine.yml
 
   - type: agent
     path: agents/world-cup-intelligence-agent.yml
@@ -45,6 +48,8 @@ datasets:
     path: agents/worldcup-coverage-hot-agent.yml
   - type: agent
     path: agents/worldcup-content-author-agent.yml
+  - type: agent
+    path: agents/wcbracket-simulator.yml
 
   - type: workflow
     path: workflows/worldcup-health.yml
@@ -120,6 +125,10 @@ datasets:
     path: workflows/worldcup-fan-pulse.yml
   - type: workflow
     path: workflows/worldcup-market-watch.yml
+  - type: workflow
+    path: workflows/wcbracket-simulate.yml
+  - type: workflow
+    path: workflows/wcbracket-get-bracket.yml
   - type: workflow
     path: _folders.yml
 
