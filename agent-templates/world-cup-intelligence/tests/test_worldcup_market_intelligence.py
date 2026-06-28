@@ -1425,6 +1425,28 @@ class TestCoverageCadence:
         assert d["live_score"] == {"home": 1, "away": 1}
         assert d["metadata"]["event_urn"] == "urn:stale"
 
+    def test_live_writers_overwrite_stray_metadata(self):
+        # Regression: a loaded value carrying a stray/empty `metadata` must be
+        # overwritten with the canonical {event_urn}, else the (metadata, name)
+        # upsert forks a duplicate event doc (observed: Colombia vs Portugal).
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        live_ev = self._ev("urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor",
+                            "2026-06-20T00:30:00+00:00", "NS", fid="1489389")
+        live_ev["metadata"] = {}
+        live = {"response": [{"fixture": {"id": 1489389, "status": {"short": "2H", "elapsed": 67}},
+                              "goals": {"home": 2, "away": 0}}]}
+        d = apply_live_status({"params": {"events": [live_ev], "live_fixtures": live}})["data"]["normalized_items"][0]
+        assert d["metadata"] == {"event_urn": "urn:machina:sport:soccer:event:brazil-vs-haiti:20260620:wor"}
+
+        stale_ev = {
+            **self._ev("urn:stale", (now - timedelta(hours=5)).isoformat(), "2H", fid="1489389"),
+            "live_score": {"home": 1, "away": 1, "elapsed": 90},
+            "metadata": {},
+        }
+        d = finalize_stale_live_events({"params": {"events": [stale_ev]}})["data"]["normalized_items"][0]
+        assert d["metadata"] == {"event_urn": "urn:stale"}
+
 
 def _ranking(power, gpg=1.4, conf=0.8, source="results"):
     return {"power_score": power, "breakdown": {"attack_score": power, "defense_score": power},

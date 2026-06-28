@@ -2391,7 +2391,10 @@ def build_event_crosswalk(request_data: dict[str, Any]) -> dict[str, Any]:
     for ev in _as_list(params.get("events")):
         if not isinstance(ev, dict):
             continue
-        ev.setdefault("metadata", {"event_urn": _text(_first(ev, "_id", "@id", "id"))})
+        # Overwrite (not setdefault): the doc-store upsert keys on (metadata, name),
+        # so every writer MUST emit the SAME metadata or a stray/empty metadata on
+        # the loaded value forks a duplicate event doc under a different key.
+        ev["metadata"] = {"event_urn": _text(_first(ev, "_id", "@id", "id"))}
         out.append(ev)
         urns = [_text(c.get("@id")) for c in (ev.get("sport:competitors") or [])
                 if isinstance(c, dict) and c.get("@id")]
@@ -2779,7 +2782,10 @@ def apply_live_status(request_data: dict[str, Any]) -> dict[str, Any]:
         info = by_fid.get(fid)
         if not info:
             continue
-        ev.setdefault("metadata", {"event_urn": _text(_first(ev, "_id", "@id", "id"))})
+        # Overwrite (not setdefault): the doc-store upsert keys on (metadata, name),
+        # so every writer MUST emit the SAME metadata or a stray/empty metadata on
+        # the loaded value forks a duplicate event doc under a different key.
+        ev["metadata"] = {"event_urn": _text(_first(ev, "_id", "@id", "id"))}
         if info["status"]:
             ev["sport:status"] = info["status"]
         ev["live_score"] = {"home": info["home"], "away": info["away"], "elapsed": info["elapsed"]}
@@ -2822,7 +2828,9 @@ def finalize_stale_live_events(request_data: dict[str, Any]) -> dict[str, Any]:
         next_ev["sport:status"] = "FT"
         score = next_ev.get("live_score") if isinstance(next_ev.get("live_score"), dict) else {}
         next_ev["live_score"] = {k: score.get(k) for k in ("home", "away") if score.get(k) is not None}
-        next_ev.setdefault("metadata", {"event_urn": _text(_first(next_ev, "_id", "@id", "id"))})
+        # Overwrite (not setdefault): see apply_live_status — consistent metadata
+        # keeps the bulk-update upsert idempotent instead of forking a duplicate.
+        next_ev["metadata"] = {"event_urn": _text(_first(next_ev, "_id", "@id", "id"))}
         out.append(next_ev)
     return {"status": True, "data": {"normalized_items": out, "count": len(out)}}
 
