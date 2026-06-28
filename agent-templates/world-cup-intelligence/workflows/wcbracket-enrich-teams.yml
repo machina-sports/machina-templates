@@ -37,11 +37,12 @@ workflow:
           [m.get('home_name') for m in (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('tree', [{}]) or [{}])[0].get('matches', []) or []) if m.get('home_name')]
           + [m.get('away_name') for m in (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('tree', [{}]) or [{}])[0].get('matches', []) or []) if m.get('away_name')]
 
-    # 2. Grounded web search per team (knowledge cutoff predates the tournament, so
-    #    grounding is required). Query starts with the team name for correlation.
+    # 2. ONE grounded web search across all knockout teams (knowledge cutoff predates
+    #    the tournament, so grounding is required). One call keeps it fast/reliable;
+    #    the extraction defaults teams with no signal to a neutral 1.0.
     - type: connector
       name: search-teams
-      description: Grounded search for each team's injuries/suspensions/form.
+      description: Grounded search for knockout-stage injuries/suspensions across all teams.
       condition: "len($.get('teams', [])) > 0"
       continue_on_error: true
       connector:
@@ -50,19 +51,13 @@ workflow:
         model: gemini-3.1-flash-lite
         provider: vertex_ai
         location: global
-      foreach:
-        concurrent: true
-        name: team_item
-        expr: $
-        value: "$.get('teams', [])"
       inputs:
         search_query: >
-          $.get('team_item', '') + ' FIFA World Cup 2026 knockout stage current injuries suspensions key player availability and form'
+          'FIFA World Cup 2026 knockout stage: current injuries, suspensions, and key
+          player availability for these teams: ' + ', '.join($.get('teams', []))
         recency_days: "$.get('recency_days', 7)"
-        timeout: 60
+        timeout: 120
       outputs:
-        # Foreach outputs eval against the connector result (no team_item in scope);
-        # the echoed query starts with the team name, so it's the correlation key.
         search_results: |
           [{'query': $.get('query', ''), 'research': $.get('answer', '')}]
 
