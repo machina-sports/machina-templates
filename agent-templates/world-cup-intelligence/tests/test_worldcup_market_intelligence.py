@@ -1529,6 +1529,22 @@ class TestComputePowerRanking:
         assert dland["data_source"] == "seed"
         assert dland["power_score"] == 0.7
 
+    def test_default_min_games_full_confidence_after_group_stage(self):
+        # Default min_games is 3: a COMPLETED group stage (3 games) yields full
+        # results confidence so the pre-tournament FIFA seed washes out
+        # (data_source "results", blend_w = 1.0) for the knockout phase.
+        fix = self.FIX + [
+            {"fixture": {"id": "4", "status": {"short": "FT"}},
+             "teams": {"home": {"name": "Aland"}, "away": {"name": "Dland"}}, "goals": {"home": 1, "away": 1}},
+        ]  # Aland now has 3 games (fixtures 1, 2, 4) — a full group stage.
+        seed = [{"team_urn": _module._machina_team_urn("Aland"), "team_name": "Aland", "seed_rating": 0.9}]
+        rk = compute_power_ranking({"params": {"finished_fixtures": fix, "seed_ratings": seed}})["data"]
+        assert rk["min_games_full_confidence"] == 3
+        aland = [r for r in rk["rankings"] if r["team_name"] == "Aland"][0]
+        assert aland["games"] == 3
+        assert aland["data_source"] == "results"
+        assert aland["confidence"] == 1.0
+
 
 class TestForecastAudit:
     PERFECT = {"probabilities": {"home_win": 1, "draw": 0, "away_win": 0, "over_2_5": 1, "under_2_5": 0},

@@ -16,7 +16,7 @@ workflow:
   inputs:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
-    min_games_full_confidence: "$.get('min_games_full_confidence', 8)"
+    min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
   outputs:
     forecasts_count: "len($.get('forecasts', []))"
     field_size: "$.get('field_size', 0)"
@@ -56,7 +56,7 @@ workflow:
       inputs:
         finished_fixtures: "$.get('finished_fixtures', [])"
         seed_ratings: "$.get('seed_ratings', [])"
-        min_games_full_confidence: "$.get('min_games_full_confidence', 8)"
+        min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
       outputs:
         team_index: "$.get('team_index', {})"
         field_size: "$.get('field_size', 0)"
