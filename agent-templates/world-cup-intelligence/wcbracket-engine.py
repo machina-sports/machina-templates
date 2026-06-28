@@ -105,8 +105,24 @@ def _expected_goals(home_rank, away_rank, xg):
     return home_xg, away_xg
 
 
-def _regulation_1x2(home_rank, away_rank, xg, rho=-0.12, max_goals=10):
-    """Analytic Dixon-Coles regulation 1X2."""
+def _sharpen_1x2(probs, gamma):
+    """Power-sharpen a 1X2 dict toward the favourite and renormalize. gamma>1
+    sharpens (favourites stronger), gamma==1 is a no-op. Calibrated to gamma~1.3
+    on 74 group games: the raw Dixon-Coles model under-rates favourites (teams it
+    gives 60-80% actually win ~85%), so a mild sharpen lowers Brier 0.1794->~0.176."""
+    if not gamma or gamma == 1.0:
+        return probs
+    keys = ("home_win", "draw", "away_win")
+    num = {k: max(_num(probs.get(k)), 1e-9) ** gamma for k in keys}
+    s = sum(num.values()) or 1.0
+    out = dict(probs)
+    for k in keys:
+        out[k] = num[k] / s
+    return out
+
+
+def _regulation_1x2(home_rank, away_rank, xg, rho=-0.12, max_goals=10, sharpen=1.0):
+    """Analytic Dixon-Coles regulation 1X2 (optionally calibration-sharpened)."""
     lam_h, lam_a = _expected_goals(home_rank, away_rank, xg)
     hp = [_poisson_pmf(k, lam_h) for k in range(max_goals + 1)]
     ap = [_poisson_pmf(k, lam_a) for k in range(max_goals + 1)]
@@ -124,14 +140,17 @@ def _regulation_1x2(home_rank, away_rank, xg, rho=-0.12, max_goals=10):
                 aw += p
     if total > 0:
         hw, dw, aw = hw / total, dw / total, aw / total
-    return {"home_win": hw, "draw": dw, "away_win": aw,
-            "home_xg": round(lam_h, 3), "away_xg": round(lam_a, 3)}
+    reg = {"home_win": hw, "draw": dw, "away_win": aw}
+    reg = _sharpen_1x2(reg, sharpen)
+    reg["home_xg"] = round(lam_h, 3)
+    reg["away_xg"] = round(lam_a, 3)
+    return reg
 
 
-def _advance_prob(home_rank, away_rank, xg, rho, tie_scale):
+def _advance_prob(home_rank, away_rank, xg, rho, tie_scale, sharpen=1.0):
     """P(home advances) in a knockout: regulation win + tied games resolved by a
     power-weighted coin (ET + penalties), clamped near 50/50."""
-    reg = _regulation_1x2(home_rank, away_rank, xg, rho)
+    reg = _regulation_1x2(home_rank, away_rank, xg, rho, sharpen=sharpen)
     hp = _num(home_rank.get("power_score") if isinstance(home_rank, dict) else None, 0.5)
     ap = _num(away_rank.get("power_score") if isinstance(away_rank, dict) else None, 0.5)
     edge = max(-0.15, min(0.15, (hp - ap) * tie_scale))
@@ -455,6 +474,7 @@ def simulate_bracket(request_data):
         market_weight = _num(cfg.get("market_weight"), 0.65)
         rho = _num(cfg.get("rho"), -0.12)
         tie_scale = _num(cfg.get("tie_break_scale"), 0.6)
+        prob_sharpen = _num(cfg.get("prob_sharpen"), 1.3)  # calibrated favourite-sharpen
         seed = int(cfg.get("seed") or 42)
         xg = dict(_DEFAULT_XG)
         xg.update(cfg.get("xg_params") or {})
@@ -474,7 +494,7 @@ def simulate_bracket(request_data):
             cached = _adv_memo.get(key)
             if cached is not None:
                 return cached
-            ph, _reg = _advance_prob(rank(a), rank(b), xg, rho, tie_scale)
+            ph, _reg = _advance_prob(rank(a), rank(b), xg, rho, tie_scale, prob_sharpen)
             _adv_memo[key] = ph
             _adv_memo[(b, a)] = 1.0 - ph
             return ph
@@ -497,7 +517,7 @@ def simulate_bracket(request_data):
                     "status": "completed", "winner": name_by_slug.get(m["winner_slug"]),
                     "home_advance_prob": p_home, "source": "result"})
                 continue
-            reg = _regulation_1x2(rank(hs), rank(as_), xg, rho)
+            reg = _regulation_1x2(rank(hs), rank(as_), xg, rho, sharpen=prob_sharpen)
             mkt = _market_1x2_for(markets, m.get("event_urn"), hs, as_)
             blended, used_mkt = _blend_market(reg, mkt, market_weight)
             php = _num(rank(hs).get("power_score"), 0.5)
@@ -602,7 +622,8 @@ def simulate_bracket(request_data):
         simulation = {
             "n_sims": n_sims,
             "config": {"market_weight": market_weight, "rho": rho,
-                       "tie_break_scale": tie_scale, "seed": seed, "xg_params": xg},
+                       "tie_break_scale": tie_scale, "prob_sharpen": prob_sharpen,
+                       "seed": seed, "xg_params": xg},
             "champion": champion,
             "champion_leaderboard": champion_leaderboard,
             "advancement": advancement,
