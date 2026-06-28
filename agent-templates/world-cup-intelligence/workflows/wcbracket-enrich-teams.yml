@@ -37,35 +37,37 @@ workflow:
           [m.get('home_name') for m in (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('tree', [{}]) or [{}])[0].get('matches', []) or []) if m.get('home_name')]
           + [m.get('away_name') for m in (((($.get('documents', []) or [{}])[0].get('value', {}) or {}).get('tree', [{}]) or [{}])[0].get('matches', []) or []) if m.get('away_name')]
 
-    # 2. ONE grounded web search across all knockout teams (knowledge cutoff predates
-    #    the tournament, so grounding is required). One call keeps it fast/reliable;
-    #    the extraction defaults teams with no signal to a neutral 1.0.
-    - type: connector
-      name: search-teams
-      description: Grounded search for knockout-stage injuries/suspensions across all teams.
-      condition: "len($.get('teams', [])) > 0"
-      continue_on_error: true
-      connector:
-        name: google-genai
-        command: invoke_search
-        model: gemini-3.1-flash-lite
-        provider: vertex_ai
-        location: global
-      inputs:
-        search_query: >
-          'FIFA World Cup 2026 knockout stage: current injuries, suspensions, and key
-          player availability for these teams: ' + ', '.join($.get('teams', []))
-        recency_days: "$.get('recency_days', 7)"
-        timeout: 120
+    # 2. Deep per-fixture grounded research already on the event docs (populated by
+    #    worldcup-refresh-prematch-enrichment) is the source — it names specific
+    #    injured/suspended players, far richer than one broad search. Run the prematch
+    #    enrichment for the R32 fixtures first so coverage is complete.
+    - type: document
+      name: load-events-research
+      description: Per-fixture prematch_research (injuries/news) from cached event docs.
+      config:
+        action: search
+        search-limit: 500
+        search-vector: false
+      filters:
+        name: "'worldcup:event'"
       outputs:
-        search_results: |
-          [{'query': $.get('query', ''), 'research': $.get('answer', '')}]
+        # Only loop-var references in the if/element (no `$` in inner comprehension scope).
+        team_research: |
+          [
+            {
+              'home': next((c.get('name') for c in (d.get('value', {}).get('sport:competitors') or []) if c.get('sport:qualifier') == 'home'), ''),
+              'away': next((c.get('name') for c in (d.get('value', {}).get('sport:competitors') or []) if c.get('sport:qualifier') == 'away'), ''),
+              'research': (d.get('value', {}).get('prematch_research') or {}).get('research', '')
+            }
+            for d in ($.get('documents', []) or [])
+            if (d.get('value', {}).get('prematch_research') or {}).get('research')
+          ]
 
     # 3. Infer a bounded per-team strength multiplier from the research.
     - type: prompt
       name: wcbracket-team-adjustment
       description: Per-team strength multiplier (0.85-1.10) grounded in the research.
-      condition: "len($.get('teams', [])) > 0 and len($.get('search_results', [])) > 0"
+      condition: "len($.get('teams', [])) > 0 and len($.get('team_research', [])) > 0"
       connector:
         name: google-genai
         command: invoke_prompt
@@ -74,7 +76,7 @@ workflow:
         location: global
       inputs:
         team_names: "$.get('teams', [])"
-        team_research: "$.get('search_results', [])"
+        team_research: "$.get('team_research', [])"
         timeout: 120
       outputs:
         adjustments: "$.get('adjustments', [])"

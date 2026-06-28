@@ -18,6 +18,7 @@ import json
 import math
 import random
 import re
+import unicodedata
 
 DISCLAIMER = ("Informational tournament simulation built from public model + "
               "market data. Probabilities are estimates, not betting advice.")
@@ -61,8 +62,31 @@ def _num(v, default=0.0):
 
 
 def _slug(name):
-    s = re.sub(r"[^a-z0-9]+", "-", str(name or "").strip().lower())
+    # Strip accents (Côte->Cote, Türkiye->Turkiye) so names slug consistently.
+    s = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-z0-9]+", "-", s.strip().lower())
     return s.strip("-")
+
+
+# Canonicalize common national-team name variants to the api-football slug used in
+# the bracket, so LLM-enrichment names (e.g. "United States", "Côte d'Ivoire") match.
+_TEAM_SLUG_ALIASES = {
+    "united-states": "usa", "usmnt": "usa", "united-states-of-america": "usa",
+    "cote-d-ivoire": "ivory-coast", "cote-divoire": "ivory-coast", "ivory-coast-civ": "ivory-coast",
+    "korea-republic": "south-korea", "republic-of-korea": "south-korea",
+    "ir-iran": "iran", "iran-islamic-republic": "iran",
+    "czechia": "czech-republic", "turkey": "turkiye",
+    "bosnia-and-herzegovina": "bosnia-herzegovina", "bosnia": "bosnia-herzegovina",
+    "cape-verde": "cape-verde-islands",
+    "dr-congo": "congo-dr", "democratic-republic-of-the-congo": "congo-dr",
+    "congo-democratic-republic": "congo-dr", "dr-congo-cod": "congo-dr",
+    "the-netherlands": "netherlands", "holland": "netherlands",
+}
+
+
+def _canon(name):
+    s = _slug(name)
+    return _TEAM_SLUG_ALIASES.get(s, s)
 
 
 def _poisson_pmf(k, lam):
@@ -484,7 +508,7 @@ def simulate_bracket(request_data):
         for a in (p.get("team_adjustments") or []):
             if not isinstance(a, dict):
                 continue
-            s = _slug(a.get("team_name") or a.get("team_slug") or "")
+            s = _canon(a.get("team_name") or a.get("team_slug") or "")
             mult = max(0.80, min(1.15, _num(a.get("strength_multiplier"), 1.0)))
             if s and mult != 1.0:
                 adj_by_slug[s] = {"mult": mult, "reason": a.get("reason") or "",
@@ -498,7 +522,7 @@ def simulate_bracket(request_data):
             if not (isinstance(r, dict) and r.get("team_name")):
                 continue
             s = _slug(r["team_name"])
-            adj = adj_by_slug.get(s)
+            adj = adj_by_slug.get(_canon(r["team_name"]))
             if adj:
                 r = dict(r)
                 m = adj["mult"]

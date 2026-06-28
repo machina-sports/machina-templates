@@ -5,8 +5,13 @@ prompts:
     description: Infer a bounded per-team strength multiplier from grounded injury/news research for the knockout simulation.
     instruction: |
       You are given `team_names` (the knockout teams to assess) and `team_research`
-      (a list of {team, research} grounded web-search snippets about each team's
-      current World Cup 2026 injuries, suspensions, key-player availability, and form).
+      (a list of {home, away, research} per-fixture grounded snippets; each `research`
+      is a deep preview covering BOTH teams of that fixture and frequently NAMES injured
+      or suspended players and availability/form). Read every snippet and attribute each
+      named absence/return to the correct team.
+
+      Use the EXACT team_name strings from `team_names` (do not rename, e.g. keep "USA",
+      not "United States"; keep "Ivory Coast", not "Côte d'Ivoire").
 
       For EVERY team in `team_names`, return one adjustment object:
         - team_name: the EXACT string from `team_names`.
