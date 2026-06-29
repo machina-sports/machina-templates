@@ -19,7 +19,7 @@ workflow:
     league: "$.get('league', '1')"
     season: "$.get('season', '2026')"
     from_date: "$.get('from_date', '2026-06-28')"
-    n_sims: "$.get('n_sims', 20000)"
+    n_sims: "$.get('n_sims', 100000)"
     market_weight: "$.get('market_weight', 0.65)"
     min_games_full_confidence: "$.get('min_games_full_confidence', 3)"
     seed: "$.get('seed', 42)"
@@ -191,7 +191,7 @@ workflow:
         team_adjustments: "$.get('team_adjustments', [])"
         config: |
           {
-            'n_sims': $.get('n_sims', 20000),
+            'n_sims': $.get('n_sims', 100000),
             'market_weight': $.get('market_weight', 0.65),
             'seed': $.get('seed', 42)
           }

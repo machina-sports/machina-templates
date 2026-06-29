@@ -15,14 +15,14 @@ agent:
     status: "inactive"
   context-agent:
     from_date: "$.get('from_date', '2026-06-28')"
-    n_sims: "$.get('n_sims', 20000)"
+    n_sims: "$.get('n_sims', 100000)"
     market_weight: "$.get('market_weight', 0.65)"
   workflows:
     - name: wcbracket-simulate
       description: Build the knockout tree and Monte Carlo simulate the perfect bracket.
       inputs:
         from_date: "$.get('from_date', '2026-06-28')"
-        n_sims: "$.get('n_sims', 20000)"
+        n_sims: "$.get('n_sims', 100000)"
         market_weight: "$.get('market_weight', 0.65)"
       outputs:
         champion: "$.get('champion', {})"
