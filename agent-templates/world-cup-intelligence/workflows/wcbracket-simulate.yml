@@ -218,6 +218,7 @@ workflow:
             'champion_leaderboard': $.get('simulation', {}).get('champion_leaderboard'),
             'advancement': $.get('simulation', {}).get('advancement'),
             'perfect_bracket': $.get('simulation', {}).get('perfect_bracket'),
+            'bracket_trace': $.get('simulation', {}).get('bracket_trace'),
             'r32_matches': $.get('simulation', {}).get('r32_matches'),
             'team_adjustments_applied': $.get('simulation', {}).get('team_adjustments_applied'),
             'tree': $.get('bracket', {}).get('rounds'),

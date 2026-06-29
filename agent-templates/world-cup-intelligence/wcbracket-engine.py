@@ -273,7 +273,8 @@ def _knockout_fixture_ids(fixtures):
     for f in fixtures or []:
         if not isinstance(f, dict):
             continue
-        fid = str(((f.get("fixture") or {}).get("id")) or "")
+        _fid = (f.get("fixture") or {}).get("id")
+        fid = str(_fid) if _fid is not None else ""
         rnd = str(((f.get("league") or {}).get("round")) or "").lower()
         if fid and rnd and "group" not in rnd:
             out.add(fid)
@@ -670,6 +671,50 @@ def simulate_bracket(request_data):
             perfect.append({"round": rnd["name"], "winners": picks})
         champion = perfect[-1]["winners"][0] if perfect and perfect[-1]["winners"] else None
 
+        # --- Decision trace: the single most-likely path with each H2H prob. ---
+        # R32 uses the reported model+market advance probs; deeper rounds pair the
+        # modal winners of the two feeder slots and show pair_adv between them.
+        def modal_slug(counts):
+            return max(counts, key=counts.get) if counts else None
+
+        reach_share = {}  # slug -> P(reach this round), for matchup-likelihood context
+        for slug, counts in reach.items():
+            reach_share[slug] = counts
+
+        bracket_trace = []
+        for ri, rnd in enumerate(rounds):
+            matches = []
+            for j, mt in enumerate(rnd["matches"]):
+                if ri == 0:
+                    a_slug, b_slug = mt["home_slug"], mt["away_slug"]
+                    p_a = r32_probs[j]
+                    decided = bool(mt.get("winner_slug"))
+                else:
+                    f0, f1 = mt["feeders"]
+                    a_slug = modal_slug(winner_counts[ri - 1][f0]) if f0 < len(winner_counts[ri - 1]) else None
+                    b_slug = modal_slug(winner_counts[ri - 1][f1]) if f1 < len(winner_counts[ri - 1]) else None
+                    if not a_slug or not b_slug:
+                        continue
+                    p_a = pair_adv(a_slug, b_slug)
+                    decided = False
+                win_slug = a_slug if p_a >= 0.5 else b_slug
+                entry = {
+                    "match": j + 1,
+                    "team_a": name_by_slug.get(a_slug, a_slug),
+                    "team_b": name_by_slug.get(b_slug, b_slug),
+                    "p_a_advance": round(p_a, 4),
+                    "p_b_advance": round(1.0 - p_a, 4),
+                    "pick": name_by_slug.get(win_slug, win_slug),
+                    "pick_advance_prob": round(max(p_a, 1.0 - p_a), 4),
+                    "status": "completed" if decided else "projected",
+                }
+                if ri > 0:  # how likely this exact matchup is to occur
+                    entry["matchup_likelihood"] = round(
+                        (reach_share.get(a_slug, {}).get(rnd["name"], 0) / n_sims)
+                        * (reach_share.get(b_slug, {}).get(rnd["name"], 0) / n_sims), 4)
+                matches.append(entry)
+            bracket_trace.append({"round": rnd["name"], "matches": matches})
+
         simulation = {
             "n_sims": n_sims,
             "config": {"market_weight": market_weight, "rho": rho,
@@ -679,6 +724,7 @@ def simulate_bracket(request_data):
             "champion_leaderboard": champion_leaderboard,
             "advancement": advancement,
             "perfect_bracket": perfect,
+            "bracket_trace": bracket_trace,
             "r32_matches": r32_report,
             "team_adjustments_applied": adjustments_applied,
             "bracket_warnings": bracket.get("warnings", []),
