@@ -2944,6 +2944,7 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
 
     stats: dict[str, dict[str, Any]] = {}
     names: dict[str, str] = {}
+    matches: list[tuple[str, str, int, int]] = []  # (home_urn, away_urn, hg, ag) for SoS fit
     for f in _as_list(params.get("finished_fixtures")):
         if not isinstance(f, dict):
             continue
@@ -2955,6 +2956,10 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
         if hg is None or ag is None:
             continue
         hg, ag = int(hg), int(ag)
+        _hn = _text((teams.get("home") or {}).get("name"))
+        _an = _text((teams.get("away") or {}).get("name"))
+        if _hn and _an:
+            matches.append((_machina_team_urn(_hn), _machina_team_urn(_an), hg, ag))
         for side, own, opp in (("home", hg, ag), ("away", ag, hg)):
             team = (teams.get(side) or {})
             name = _text(team.get("name"))
@@ -2992,11 +2997,45 @@ def compute_power_ranking(request_data: dict[str, Any]) -> dict[str, Any]:
     gpg_norm = _minmax([t["goals_per_game"] for t in played])
     concede_norm = _minmax([t["concede_rate"] for t in played])
 
+    # --- Opponent-adjusted (strength-of-schedule) attack/defense ---------------
+    # Iterative Poisson fit: goals(i vs j) ~ mu * att[i] * dfn[j]. Beating a stiff
+    # defense raises att; conceding to a weak attack hurts dfn — so 3-0 vs minnows
+    # no longer equals 3-0 vs a giant. Goals capped at 4 (blowout dampening) and
+    # the multipliers shrunk toward 1.0 by sample size, then min-max normalized.
+    GCAP = 4
+    gp = {t["team_urn"]: t["games"] for t in played}
+    gf_a = {u: 0 for u in gp}
+    ga_a = {u: 0 for u in gp}
+    opp_list: dict[str, list[str]] = {u: [] for u in gp}
+    for hu, au, hgl, agl in matches:
+        if hu not in gp or au not in gp:
+            continue
+        hgl, agl = min(hgl, GCAP), min(agl, GCAP)
+        gf_a[hu] += hgl; ga_a[hu] += agl; opp_list[hu].append(au)
+        gf_a[au] += agl; ga_a[au] += hgl; opp_list[au].append(hu)
+    mu_g = (sum(gf_a.values()) / (sum(gp.values()) or 1)) or 1.0
+    att_m = {u: 1.0 for u in gp}
+    dfn_m = {u: 1.0 for u in gp}
+    for _ in range(100):
+        na = {u: gf_a[u] / (sum(mu_g * dfn_m[o] for o in opp_list[u]) or 1e-9) for u in gp}
+        nd = {u: ga_a[u] / (sum(mu_g * att_m[o] for o in opp_list[u]) or 1e-9) for u in gp}
+        mean_a = (sum(na.values()) / len(na)) or 1.0
+        mean_d = (sum(nd.values()) / len(nd)) or 1.0
+        att_m = {u: na[u] / mean_a for u in gp}
+        dfn_m = {u: nd[u] / mean_d for u in gp}
+    _K = 4.0
+    for u in gp:
+        sw = gp[u] / (gp[u] + _K)
+        att_m[u] = sw * att_m[u] + (1 - sw)
+        dfn_m[u] = sw * dfn_m[u] + (1 - sw)
+    oadj_att_n = _minmax([att_m[t["team_urn"]] for t in played])           # higher = better attack
+    oadj_def_n = _minmax([1.0 / max(dfn_m[t["team_urn"]], 0.25) for t in played])  # higher = better defense
+
     rankings: list[dict[str, Any]] = []
     for i, t in enumerate(played):
         outcome = w["win_rate"] * t["win_rate"] + w["points_per_game"] * (t["points_per_game"] / 3.0)
-        attack = w["goals_per_game_norm"] * gpg_norm[i] + w["scoring_rate"] * t["scoring_rate"]
-        defense = w["concede_rate_inverted"] * (1 - concede_norm[i]) + w["clean_sheet_rate"] * t["clean_sheet_rate"]
+        attack = w["goals_per_game_norm"] * oadj_att_n[i] + w["scoring_rate"] * t["scoring_rate"]
+        defense = w["concede_rate_inverted"] * oadj_def_n[i] + w["clean_sheet_rate"] * t["clean_sheet_rate"]
         results_score = w["outcome"] * outcome + w["attack"] * attack + w["defense"] * defense
         urn = t["team_urn"]
         g = t["games"]
