@@ -179,6 +179,8 @@ def instagram_get_profile(request_data):
             video_edges = user.get("edge_felix_video_timeline", {})
             if isinstance(video_edges, dict):
                 edges = video_edges.get("edges", [])
+                if isinstance(edges, dict):  # SociaVault returns edges as {"0": {...}, ...}
+                    edges = list(edges.values())
                 if isinstance(edges, list):
                     for edge in edges[:10]:
                         if not isinstance(edge, dict):
@@ -190,6 +192,8 @@ def instagram_get_profile(request_data):
                         cap_edges = node.get("edge_media_to_caption", {})
                         if isinstance(cap_edges, dict):
                             cap_list = cap_edges.get("edges", [])
+                            if isinstance(cap_list, dict):
+                                cap_list = list(cap_list.values())
                             if isinstance(cap_list, list) and len(cap_list) > 0:
                                 cap_node = cap_list[0]
                                 if isinstance(cap_node, dict):
