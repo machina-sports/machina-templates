@@ -510,9 +510,13 @@ def simulate_bracket(request_data):
             if not isinstance(a, dict):
                 continue
             s = _canon(a.get("team_name") or a.get("team_slug") or "")
-            mult = max(0.80, min(1.15, _num(a.get("strength_multiplier"), 1.0)))
+            inj = max(0.80, min(1.15, _num(a.get("strength_multiplier"), 1.0)))    # injuries/news ±15%
+            coach = max(0.95, min(1.10, _num(a.get("coach_multiplier"), 1.0)))     # coach traits ±~5-10%
+            mult = max(0.78, min(1.18, inj * coach))
             if s and mult != 1.0:
-                adj_by_slug[s] = {"mult": mult, "reason": a.get("reason") or "",
+                adj_by_slug[s] = {"mult": mult, "inj": round(inj, 3), "coach": round(coach, 3),
+                                  "reason": a.get("reason") or "",
+                                  "coach_reason": a.get("coach_reason") or "",
                                   "key_absences": a.get("key_absences") or []}
 
         # Rankings indexed by slugified team name (robust to URN scheme), with the
@@ -534,7 +538,9 @@ def simulate_bracket(request_data):
                         bd[k] = max(0.02, min(0.99, _num(bd.get(k)) * m))
                 r["breakdown"] = bd
                 adjustments_applied.append({"team": r["team_name"], "multiplier": round(m, 3),
-                                            "reason": adj["reason"], "key_absences": adj["key_absences"]})
+                                            "injury_mult": adj.get("inj"), "coach_mult": adj.get("coach"),
+                                            "reason": adj["reason"], "coach_reason": adj.get("coach_reason", ""),
+                                            "key_absences": adj["key_absences"]})
             rank_by_slug[s] = r
 
         def rank(slug):

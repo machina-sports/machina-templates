@@ -153,6 +153,7 @@ workflow:
             {
               'team_name': d.get('value', {}).get('team_name'),
               'strength_multiplier': d.get('value', {}).get('strength_multiplier', 1.0),
+              'coach_multiplier': d.get('value', {}).get('coach_multiplier', 1.0),
               'key_absences': d.get('value', {}).get('key_absences') or [],
               'reason': d.get('value', {}).get('reason') or ''
             }

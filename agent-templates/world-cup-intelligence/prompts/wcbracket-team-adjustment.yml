@@ -29,6 +29,18 @@ prompts:
       squads (your training predates this tournament). If a team's research has no
       injury/availability signal, return 1.0 with reason "no material news". Return an
       entry for ALL teams so the list length equals `team_names`. Informational only.
+
+      ALSO return a SEPARATE `coach_multiplier` in [0.95, 1.10] for each team — a small
+      KNOCKOUT-coaching factor, independent of the injury multiplier:
+        - Identify the team's current manager from `team_research`, then judge their
+          KNOCKOUT pedigree (this is historical and fair to use your own knowledge):
+          big-tournament titles/finals, game-management in elimination ties, and
+          penalty-shootout record.
+        - 1.0 = average/unknown. Raise toward 1.05-1.10 for elite tournament winners
+          (e.g. a manager who has won a World Cup / major final); nudge to 0.95-0.98
+          for managers with thin knockout experience or poor shootout records.
+        - Keep it SMALL — this is a tiebreak nudge, not a main driver. Put the basis in
+          `coach_reason` (name the manager).
     schema:
       title: WorldCupBracketTeamAdjustments
       type: object
@@ -49,4 +61,8 @@ prompts:
                 items:
                   type: string
               reason:
+                type: string
+              coach_multiplier:
+                type: number
+              coach_reason:
                 type: string
