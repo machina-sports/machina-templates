@@ -26,6 +26,7 @@ workflow:
   outputs:
     champion: "$.get('simulation', {}).get('champion', {})"
     leaderboard_top5: "[{'team': r['team'], 'champion_prob': r['champion_prob']} for r in ($.get('simulation', {}).get('champion_leaderboard', []) or [])[:5]]"
+    team_ratings: "$.get('simulation', {}).get('team_ratings', [])"
     field_size: "$.get('bracket', {}).get('field_size', 0)"
     bracket_simulation_id: "$.get('bracket_simulation_id')"
     workflow-status: "$.get('simulation', {}) and 'executed' or 'skipped'"

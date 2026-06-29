@@ -725,6 +725,20 @@ def simulate_bracket(request_data):
             "advancement": advancement,
             "perfect_bracket": perfect,
             "bracket_trace": bracket_trace,
+            "team_ratings": sorted(
+                [{
+                    "team": r.get("team_name"),
+                    "power_score": round(_num(r.get("power_score"), 0.5), 4),
+                    "attack_score": round(_num((r.get("breakdown") or {}).get("attack_score"), 0), 4),
+                    "defense_score": round(_num((r.get("breakdown") or {}).get("defense_score"), 0), 4),
+                    "goals_per_game": round(_num((r.get("metrics") or {}).get("goals_per_game"), 0), 3),
+                    "games": r.get("games"),
+                    "data_source": r.get("data_source"),
+                    "confidence": r.get("confidence"),
+                } for r in team_index.values()
+                    if isinstance(r, dict) and r.get("team_name")
+                    and _slug(r["team_name"]) in set(bracket.get("field_slugs") or [])],
+                key=lambda x: x["power_score"], reverse=True),
             "r32_matches": r32_report,
             "team_adjustments_applied": adjustments_applied,
             "bracket_warnings": bracket.get("warnings", []),
