@@ -36,6 +36,49 @@ _DEFAULT_XG = {
     "home_adv": 0.0,       # neutral venues in the knockout stage
 }
 
+# Official FIFA World Cup 2026 knockout topology. R32 winners do NOT pair
+# sequentially -- the bracket is a fixed cross-over (e.g. the Brazil/Japan winner
+# meets the Ivory Coast/Norway winner in the R16, not the South Africa/Canada
+# winner). We encode the bracket by IDENTITY (each R32 matchup as a frozenset of
+# its two team slugs) in *in-order leaf* sequence, so that once R32 is reordered
+# to this layout the plain binary feeder tree [2j, 2j+1] reproduces every
+# official R16/QF/SF pairing. Source: FIFA / Wikipedia 2026 knockout bracket
+# (match numbers 73-88 -> R16 89-96 -> QF 97-100 -> SF 101-102 -> Final 104).
+WC2026_BRACKET_ORDER = [
+    frozenset(("germany", "paraguay")),          # M75  -> R16 M89 (top half, SF101)
+    frozenset(("france", "sweden")),             # M78  -> R16 M89
+    frozenset(("south-africa", "canada")),       # M73  -> R16 M90
+    frozenset(("netherlands", "morocco")),       # M76  -> R16 M90
+    frozenset(("portugal", "croatia")),          # M84  -> R16 M93
+    frozenset(("spain", "austria")),             # M83  -> R16 M93
+    frozenset(("usa", "bosnia-herzegovina")),    # M82  -> R16 M94
+    frozenset(("belgium", "senegal")),           # M81  -> R16 M94
+    frozenset(("brazil", "japan")),              # M74  -> R16 M91 (bottom half, SF102)
+    frozenset(("ivory-coast", "norway")),        # M77  -> R16 M91
+    frozenset(("mexico", "ecuador")),            # M79  -> R16 M92
+    frozenset(("england", "congo-dr")),          # M80  -> R16 M92
+    frozenset(("argentina", "cape-verde-islands")),  # M87 -> R16 M95
+    frozenset(("australia", "egypt")),           # M86  -> R16 M95
+    frozenset(("switzerland", "algeria")),       # M85  -> R16 M96
+    frozenset(("colombia", "ghana")),            # M88  -> R16 M96
+]
+
+
+def _apply_bracket_order(r32, order, warnings):
+    """Reorder R32 matches into the official bracket (in-order leaf) sequence,
+    matching by team-slug pair so it is robust to the input ordering. Falls back
+    to the given order (kickoff) if the matchups don't match the map."""
+    by_pair = {frozenset((m["home_slug"], m["away_slug"])): m for m in r32}
+    if not all(pair in by_pair for pair in order):
+        warnings.append(
+            "R32 matchups don't match the WC2026 bracket map; keeping kickoff "
+            "order with sequential pairing (bracket cross-overs NOT applied)")
+        return r32
+    reordered = [by_pair[pair] for pair in order]
+    for i, m in enumerate(reordered):
+        m["match_idx"] = i
+    return reordered
+
 
 # --------------------------------------------------------------------------- #
 # helpers
@@ -352,6 +395,12 @@ def build_bracket(request_data):
                 "winner_slug": winner,
                 "kickoff": ev.get("start_date"),
             })
+
+        # Apply the official FIFA 2026 cross-over topology (R32 winners do not
+        # pair sequentially). Identity-based, so it only fires when the 16 R32
+        # matchups are the real 2026 field; otherwise the sequential tree stands.
+        if len(r32) == 16:
+            r32 = _apply_bracket_order(r32, WC2026_BRACKET_ORDER, warnings)
 
         n = len(r32)
         if n < 2:
