@@ -12,14 +12,19 @@ workflow:
     include_reasoning: "$.get('include_reasoning', False)"
   outputs:
     comparison: "$.get('comparison', {})"
+    edge_candidates: "$.get('edge_candidates', [])"
+    count: "len($.get('edge_candidates', []))"
+    warnings: "$.get('pair_warnings', [])"
     workflow-status: "$.get('comparison', {}) != {} and 'executed' or 'skipped'"
   tasks:
     - type: document
       name: lookup-markets
       description: Load normalized markets for comparison from the same pod document store.
       config:
+        # 500, not 50: cross-source pairing needs the full tournament book (both
+        # venues across all fixtures + advance rounds), which exceeds 50.
         action: search
-        search-limit: 50
+        search-limit: 500
         search-vector: false
       filters:
         name: "'worldcup:market-cache'"
@@ -34,3 +39,16 @@ workflow:
         market_type: "$.get('market_type', 'all')"
       outputs:
         comparison: "$.get('comparison', {'markets': $.get('markets', []), 'data_quality_notes': []})"
+
+    - type: connector
+      name: pair-cross-source
+      description: Pair Kalshi/Polymarket markets on event_urn (games) or advance round, de-vig, and emit cross-source edges.
+      connector:
+        name: worldcup-market-intelligence
+        command: pair_cross_source
+      inputs:
+        markets: "$.get('markets', [])"
+      outputs:
+        # $ is the connector data payload (envelope already stripped).
+        edge_candidates: "$.get('pairs', [])"
+        pair_warnings: "$.get('warnings', [])"
