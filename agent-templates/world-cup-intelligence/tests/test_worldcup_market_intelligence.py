@@ -46,6 +46,7 @@ compute_clv = _module.compute_clv
 compute_clv_report = _module.compute_clv_report
 _result_outcome = _module._result_outcome
 pair_cross_source = _module.pair_cross_source
+compute_market_stability = _module.compute_market_stability
 
 
 def _kalshi_record(**overrides):
@@ -2373,3 +2374,128 @@ class TestCrossSourceEndToEnd:
         # every leg paired across both venues -> an edge on each
         assert all("edge_bps" in p for p in pairs)
         assert by_outcome["ecuador"]["cheaper_venue"] == "polymarket"
+
+
+class TestComputeMarketStability:
+    EV = "urn:machina:sport:soccer:team-event:mex-ecu"  # opaque; only identity matters here
+    MEX = "urn:machina:sport:soccer:team:mexico:mex"
+    ECU = "urn:machina:sport:soccer:team:ecuador:ecu"
+
+    def _mkt(self, cache_id, source, name, price, **kw):
+        m = {"cache_id": cache_id, "source": source, "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": [self.MEX, self.ECU],
+             "price_quality": "ok", "spread": 0.01, "volume": 5000,
+             "outcomes": [{"name": name, "price": price}, {"name": "No", "price": round(1 - price, 3)}]}
+        m.update(kw)
+        return m
+
+    def _snaps(self, cache_id, prices, start_hour=10):
+        # oldest -> newest hourly snapshots
+        return [{"cache_id": cache_id, "ts": f"2026-06-30T{start_hour + i:02d}:00:00Z",
+                 "primary_price": p} for i, p in enumerate(prices)]
+
+    def _run(self, markets, snapshots, **params):
+        p = {"markets": markets, "snapshots": snapshots}
+        p.update(params)
+        return compute_market_stability({"params": p})["data"]
+
+    def _by_id(self, data):
+        return {r["cache_id"]: r for r in data["stable_markets"]}
+
+    def test_stable_happy_path_with_drivers_and_since(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.44, 0.43, 0.43])
+        rows = self._by_id(self._run([m], snaps))
+        assert "kalshi:MEX" in rows
+        r = rows["kalshi:MEX"]
+        assert r["confidence"] == "stable"
+        assert r["stable_since"] == "2026-06-30T10:00:00Z"  # whole window is within band
+        assert set(["reliable", "spread_tight", "low_movement", "volume_present"]).issubset(set(r["drivers"]))
+
+    def test_corroborated_when_both_venues_agree(self):
+        # Full 3-way on both venues so pair_cross_source emits an in-agreement edge.
+        markets = [
+            self._mkt("kalshi:MEX", "kalshi", "Reg Time: Mexico", 0.43),
+            self._mkt("kalshi:ECU", "kalshi", "Reg Time: Ecuador", 0.23),
+            self._mkt("kalshi:TIE", "kalshi", "Tie", 0.33),
+            self._mkt("polymarket:mex", "polymarket", "Yes", 0.435, title="Will Mexico win on 2026-06-30?"),
+            self._mkt("polymarket:ecu", "polymarket", "Yes", 0.225, title="Will Ecuador win on 2026-06-30?"),
+            self._mkt("polymarket:draw", "polymarket", "Yes", 0.335, title="Will Mexico vs. Ecuador end in a draw?"),
+        ]
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        rows = self._by_id(self._run(markets, snaps, agreement_bps=150))
+        assert rows["kalshi:MEX"]["confidence"] == "corroborated"
+        assert "cross_venue_agree" in rows["kalshi:MEX"]["drivers"]
+
+    def test_single_venue_is_stable_not_corroborated(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        rows = self._by_id(self._run([m], snaps))
+        assert rows["kalshi:MEX"]["confidence"] == "stable"
+        assert "cross_venue_agree" not in rows["kalshi:MEX"]["drivers"]
+
+    def test_actively_moving_excluded(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.57)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.50, 0.57])  # latest pair diverges > band
+        rows = self._by_id(self._run([m], snaps))
+        assert "kalshi:MEX" not in rows
+
+    def test_stable_since_is_post_move_streak_start(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)
+        # moved early, then re-stabilized: stable_since must be the post-move point
+        snaps = self._snaps("kalshi:MEX", [0.60, 0.60, 0.43, 0.43])
+        r = self._by_id(self._run([m], snaps))["kalshi:MEX"]
+        assert r["confidence"] == "stable"
+        assert r["stable_since"] == "2026-06-30T12:00:00Z"  # 3rd snapshot (first 0.43)
+
+    def test_unreliable_excluded(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43, price_quality="unreliable")
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        assert "kalshi:MEX" not in self._by_id(self._run([m], snaps))
+
+    def test_wide_spread_excluded(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43, spread=0.30)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        assert "kalshi:MEX" not in self._by_id(self._run([m], snaps))
+
+    def test_low_volume_excluded(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43, volume=100)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        assert "kalshi:MEX" not in self._by_id(self._run([m], snaps, min_volume=1000))
+
+    def test_provisional_when_no_history(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)
+        r = self._by_id(self._run([m], []))["kalshi:MEX"]
+        assert r["confidence"] == "provisional"
+        assert r["stable_since"] is None
+        assert "insufficient_history" in r["drivers"]
+
+    def test_team_filter_and_sort(self):
+        a = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        # team filter that doesn't match -> excluded
+        assert "kalshi:MEX" not in self._by_id(self._run([a], snaps, team="Brazil"))
+        assert "kalshi:MEX" in self._by_id(self._run([a], snaps, team="Mexico"))
+
+    def test_threshold_tightening_flips_borderline(self):
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43, spread=0.018)
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
+        assert "kalshi:MEX" in self._by_id(self._run([m], snaps, spread_bps=200))   # 0.018 <= 0.02
+        assert "kalshi:MEX" not in self._by_id(self._run([m], snaps, spread_bps=150))  # 0.018 > 0.015
+
+    def test_workflow_contract_shapes(self):
+        # Guards the field-name contract the worldcup-stable-markets workflow relies
+        # on: market-cache fields and snapshot {cache_id, ts, primary_price}, and the
+        # output envelope keys the workflow maps to its outputs. (Covers S1.)
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)  # no spread arg -> uses default 0.01
+        m_nullspread = self._mkt("kalshi:ECU", "kalshi", "Yes", 0.23, spread=None)  # real Kalshi cache shape
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43]) + self._snaps("kalshi:ECU", [0.23, 0.23, 0.23])
+        data = self._run([m, m_nullspread], snaps)
+        assert set(["stable_markets", "count", "thresholds", "warnings"]).issubset(data.keys())
+        assert data["count"] == len(data["stable_markets"])
+        # null-spread Kalshi market is NOT excluded (spread gate is conditional)
+        rows = self._by_id(data)
+        assert "kalshi:ECU" in rows and "spread_tight" not in rows["kalshi:ECU"]["drivers"]
+        row = rows["kalshi:MEX"]
+        assert set(["cache_id", "confidence", "stable_since", "drivers", "outcome", "price"]).issubset(row.keys())
+        assert any("latency is not benchmarked" in w for w in data["warnings"])

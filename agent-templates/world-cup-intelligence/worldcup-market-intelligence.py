@@ -2945,6 +2945,178 @@ def pair_cross_source(request_data: dict[str, Any]) -> dict[str, Any]:
     return {"status": True, "data": {"pairs": pairs, "count": len(pairs), "warnings": warnings}}
 
 
+def _stable_suffix(snaps_for_cid: list[Any], band: float) -> list[tuple]:
+    """Longest run of snapshots ending at the latest one whose prices stay within
+    `band`. Detects when a market has *just* settled even if it moved earlier in
+    the window. Returns [(ts, price), ...] oldest->newest for the run (len 0/1 =
+    insufficient history; len < 2 after a real series = actively moving)."""
+    prices = [(_text(s.get("ts")), _to_float(s.get("primary_price")))
+              for s in sorted(_as_list(snaps_for_cid), key=lambda s: _text(s.get("ts")))
+              if isinstance(s, dict) and s.get("primary_price") is not None]
+    if len(prices) < 2:
+        return prices
+    run = [prices[-1]]
+    for point in reversed(prices[:-1]):
+        candidate = [point] + run
+        vals = [p for _, p in candidate]
+        if max(vals) - min(vals) <= band:
+            run = candidate
+        else:
+            break
+    return run
+
+
+def compute_market_stability(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Flag markets whose cross-source quote has settled into a stable state — the
+    explainable inverse of the price_quality 'unreliable' flag. Stateless: derived
+    each call from market-cache records + windowed market-snapshot rows. Read-only.
+
+    A market is gated on: price_quality == 'ok' (reliability), spread within
+    `spread_bps` when a spread is quoted (gross-spread books are already flagged
+    unreliable), volume/liquidity >= `min_volume`, and a stable price suffix in
+    the snapshot window (no movement beyond `movement_bps` across the latest run).
+    Confidence tiers: provisional (insufficient history) < stable (one venue) <
+    corroborated (both venues agree within `agreement_bps`, via pair_cross_source).
+    Each result carries stable_since (start of the stable run) and explainable
+    drivers. Sorted most-recently-stabilized first; provisional last.
+
+    Params: markets, snapshots, spread_bps (200), movement_bps (150),
+    agreement_bps (150), min_volume (1000), team, query, limit (50).
+    """
+    params = _params(request_data)
+
+    def _int(key, default):
+        try:
+            return int(params.get(key) or default)
+        except (TypeError, ValueError):
+            return default
+
+    spread_band = _int("spread_bps", 200) / 10000.0
+    movement_band = _int("movement_bps", 150) / 10000.0
+    agreement_bps = _int("agreement_bps", 150)
+    min_volume = _to_float(params.get("min_volume")) if params.get("min_volume") is not None else 1000.0
+    limit = max(1, min(_int("limit", 50), 500))
+    team = _lower(params.get("team"))
+    query = _lower(params.get("query"))
+
+    markets = [m for m in _as_list(params.get("markets"))
+               if isinstance(m, dict) and m.get("price_quality") != "unreliable"]
+    if team or query:
+        def _match(m):
+            hay = " ".join(_lower(v) for v in (m.get("title"), m.get("slug"), m.get("market_type"),
+                                               " ".join(m.get("related_team_urns") or [])))
+            return (not team or team in hay) and (not query or query in hay)
+        markets = [m for m in markets if _match(m)]
+
+    # Cross-venue agreement map: (group_key, outcome) -> abs(edge_bps). pair_cross_source
+    # only emits an edge when both venues priced a complete book, so presence in this
+    # map already means corroboration is possible.
+    agree: dict[tuple, int] = {}
+    for row in pair_cross_source({"params": {"markets": markets}})["data"]["pairs"]:
+        if row.get("edge_bps") is not None:
+            agree[(_text(row.get("group_key")), _text(row.get("outcome")))] = abs(row["edge_bps"])
+
+    # Snapshots grouped by cache_id.
+    snaps_by_cid: dict[str, list] = {}
+    for s in _as_list(params.get("snapshots")):
+        if isinstance(s, dict):
+            snaps_by_cid.setdefault(_text(s.get("cache_id")), []).append(s)
+
+    results = []
+    for m in markets:
+        cid = _text(m.get("cache_id") or m.get("id"))
+        outs = m.get("outcomes") or []
+        if not cid or not outs:
+            continue
+        price_now = (outs[0] or {}).get("price")
+        if price_now is None:
+            continue
+        volume = _to_float(m.get("volume"))
+        if volume < min_volume:
+            continue
+        spread = m.get("spread")
+        spread_known = spread is not None
+        if spread_known and _to_float(spread) > spread_band:
+            continue
+
+        drivers = ["reliable"]
+        if spread_known:
+            drivers.append("spread_tight")
+        drivers.append("volume_present")
+
+        run = _stable_suffix(snaps_by_cid.get(cid, []), movement_band)
+        if len(run) < 1:
+            # No usable history at all -> provisional.
+            confidence, stable_since = "provisional", None
+            drivers.append("insufficient_history")
+        elif len(run) == 1:
+            # Only one snapshot (or latest pair already diverged). One data point =
+            # not enough to confirm; a diverged latest pair = actively moving.
+            total = len([s for s in snaps_by_cid.get(cid, []) if isinstance(s, dict)
+                         and s.get("primary_price") is not None])
+            if total >= 2:
+                continue  # actively moving -> exclude (S3)
+            confidence, stable_since = "provisional", None
+            drivers.append("insufficient_history")
+        else:
+            confidence, stable_since = "stable", run[0][0]
+            drivers.append("low_movement")
+            bucket = _pair_bucket(m)
+            if bucket:
+                gk = _text(m.get("event_urn")) or _lower(m.get("market_type"))
+                outcome = "DRAW" if bucket == "DRAW" else _team_slug_from_urn(bucket)
+                edge = agree.get((gk, outcome))
+                if edge is not None and edge <= agreement_bps:
+                    confidence = "corroborated"
+                    drivers.append("cross_venue_agree")
+
+        results.append({
+            "cache_id": cid,
+            "title": _text(m.get("title")),
+            "source": _text(m.get("source")),
+            "event_urn": m.get("event_urn"),
+            "related_team_urns": m.get("related_team_urns") or [],
+            "outcome": _text((outs[0] or {}).get("name")),
+            "price": _to_float(price_now),
+            "confidence": confidence,
+            "stable_since": stable_since,
+            "drivers": drivers,
+            "spread": spread,
+            "volume": m.get("volume"),
+            "resolution_risk_notes": [
+                "Read-only stabilization signal. Verify book depth, fees, and resolution rules before acting.",
+            ],
+        })
+
+    # Most-recently-stabilized first; provisional (no stable_since) last.
+    tier_rank = {"corroborated": 0, "stable": 0, "provisional": 1}
+    results.sort(key=lambda r: (tier_rank.get(r["confidence"], 1), r["stable_since"] is None,
+                                "" if r["stable_since"] is None else r["stable_since"]),
+                 reverse=False)
+    # within the stable tier we want newest stable_since first
+    stable_rows = [r for r in results if r["confidence"] != "provisional"]
+    stable_rows.sort(key=lambda r: r["stable_since"] or "", reverse=True)
+    provisional_rows = [r for r in results if r["confidence"] == "provisional"]
+    ordered = (stable_rows + provisional_rows)[:limit]
+
+    warnings = [
+        "Detection-vs-feed latency is not benchmarked here (no suspension/feed baseline available).",
+    ]
+    if not markets:
+        warnings.append("No reliable markets supplied -- run worldcup-sync-market-sources first.")
+
+    return {
+        "status": True,
+        "data": {
+            "stable_markets": ordered,
+            "count": len(ordered),
+            "thresholds": {"spread_bps": _int("spread_bps", 200), "movement_bps": _int("movement_bps", 150),
+                           "agreement_bps": agreement_bps, "min_volume": min_volume},
+            "warnings": warnings,
+        },
+    }
+
+
 # Live status set — fixtures considered in-play for coverage cadence.
 _LIVE_STATUS = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
 _FINAL_STATUS = {"FT", "AET", "PEN"}

@@ -1,0 +1,76 @@
+workflow:
+  name: worldcup-stable-markets
+  title: World Cup Intelligence - Stabilized Markets
+  description: |
+    Read-only worklist of World Cup markets whose cross-source (Kalshi/Polymarket)
+    quote has settled into a stable, reliable state — the explainable inverse of
+    the unreliable-quote flag. Computed from the worldcup:market-cache plus the
+    worldcup:market-snapshot price history; each result carries stable_since,
+    a confidence tier (provisional/stable/corroborated) and explainable drivers.
+    Not pricing or execution advice; detection-vs-feed latency is not benchmarked.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    window_hours: "$.get('window_hours', 24)"
+    spread_bps: "$.get('spread_bps', 200)"
+    movement_bps: "$.get('movement_bps', 150)"
+    agreement_bps: "$.get('agreement_bps', 150)"
+    min_volume: "$.get('min_volume', 1000)"
+    team: "$.get('team', '')"
+    query: "$.get('query', '')"
+    limit: "$.get('limit', 50)"
+  outputs:
+    stable_markets: "$.get('stable_markets', [])"
+    count: "len($.get('stable_markets', []))"
+    thresholds: "$.get('thresholds', {})"
+    warnings: "$.get('stable_warnings', [])"
+    workflow-status: "'executed'"
+  tasks:
+    - type: document
+      name: load-current-markets
+      description: Current market-cache records (latest prices, price_quality, spread, volume).
+      config:
+        action: search
+        search-limit: 1000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-cache'"
+      outputs:
+        markets: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: document
+      name: load-snapshots
+      description: Price snapshots within the lookback window (the stable-streak history).
+      config:
+        action: search
+        search-limit: 5000
+        search-vector: false
+      filters:
+        name: "'worldcup:market-snapshot'"
+        value.ts: "{'$gte': (datetime.utcnow() - timedelta(hours=int($.get('window_hours', 24)))).isoformat()}"
+      outputs:
+        snapshots: "[d.get('value', {}) for d in ($.get('documents', []) or [])]"
+
+    - type: connector
+      name: compute-stability
+      description: Classify which markets have stabilized, with confidence tier and drivers.
+      connector:
+        name: worldcup-market-intelligence
+        command: compute_market_stability
+      inputs:
+        markets: "$.get('markets', [])"
+        snapshots: "$.get('snapshots', [])"
+        spread_bps: "$.get('spread_bps', 200)"
+        movement_bps: "$.get('movement_bps', 150)"
+        agreement_bps: "$.get('agreement_bps', 150)"
+        min_volume: "$.get('min_volume', 1000)"
+        team: "$.get('team', '')"
+        query: "$.get('query', '')"
+        limit: "$.get('limit', 50)"
+      outputs:
+        # $ is the connector data payload (envelope already stripped).
+        stable_markets: "$.get('stable_markets', [])"
+        thresholds: "$.get('thresholds', {})"
+        stable_warnings: "$.get('warnings', [])"
