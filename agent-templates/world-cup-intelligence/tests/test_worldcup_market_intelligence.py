@@ -425,6 +425,35 @@ class TestDetectMarketEdges:
         assert cands[0]["edge_bps"] == 300
         assert cands[0]["direction"] == "buy_all_no"
 
+    def test_cross_venue_moneyline_from_event_urn(self):
+        # Both venues priced for one game, paired on event_urn (no match_markets).
+        EV = "urn:machina:sport:soccer:event:mexico-vs-ecuador:20260701:wor"
+        rel = ["urn:machina:sport:soccer:team:mexico:mex", "urn:machina:sport:soccer:team:ecuador:ecu"]
+
+        def k(cid, name, price):
+            return {"cache_id": cid, "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+                    "event_urn": EV, "related_team_urns": rel, "price_quality": "ok",
+                    "outcomes": [{"name": name, "price": price}, {"name": "No", "price": round(1 - price, 2)}]}
+
+        def p(cid, title, price):
+            return {"cache_id": cid, "source": "polymarket", "title": title,
+                    "event_urn": EV, "related_team_urns": rel, "price_quality": "ok",
+                    "outcomes": [{"name": "Yes", "price": price}, {"name": "No", "price": round(1 - price, 2)}]}
+
+        cached = [
+            k("kalshi:MEX", "Reg Time: Mexico", 0.50), k("kalshi:ECU", "Reg Time: Ecuador", 0.30),
+            k("kalshi:TIE", "Tie", 0.20),
+            p("polymarket:mex", "Will Mexico win on 2026-06-30?", 0.55),
+            p("polymarket:ecu", "Will Ecuador win on 2026-06-30?", 0.25),
+            p("polymarket:draw", "Will Mexico vs. Ecuador end in a draw?", 0.20),
+        ]
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 50}})
+        cv = [c for c in r["data"]["edge_candidates"] if c["candidate_type"] == "cross_venue_moneyline"]
+        mex = next(c for c in cv if c["outcome"] == "mexico")
+        assert mex["edge_bps"] == 500
+        assert mex["cheaper_venue"] == "kalshi"
+        assert mex["kalshi_price"] == 0.50 and mex["polymarket_price"] == 0.55
+
     def test_efficient_book_no_edge(self):
         cached = [
             _leg("kalshi:G-A", "G", "A", 0.50),

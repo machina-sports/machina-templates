@@ -875,6 +875,31 @@ def detect_market_edges(request_data):
             ],
         })
 
+    # 2b. Cross-venue full 3-way moneyline + advance lines, paired on the
+    # canonical event_urn / advance round already stamped on each market — no
+    # dependency on match_markets. Generalizes the draw-only detector above to
+    # every outcome; both may fire on the draw line, callers dedupe by edge_bps.
+    for row in pair_cross_source({"params": {"markets": cached, "min_edge_bps": min_edge_bps}})["data"]["pairs"]:
+        if row.get("edge_bps") is None:
+            continue
+        candidates.append({
+            "candidate_type": "cross_venue_moneyline",
+            "group_key": row.get("group_key"),
+            "kind": row.get("kind"),
+            "outcome": row.get("outcome"),
+            "team_urn": row.get("team_urn"),
+            "kalshi_price": row.get("kalshi_yes"),
+            "polymarket_price": row.get("poly_yes"),
+            "kalshi_fair": row.get("kalshi_fair"),
+            "polymarket_fair": row.get("poly_fair"),
+            "edge_bps": abs(row["edge_bps"]),
+            "cheaper_venue": row.get("cheaper_venue"),
+            "caveats": [
+                "Fair prices are de-vigged within each venue; compare net of fees, liquidity, and resolution rules.",
+                "Draw/advance lines may differ in resolution rules (90-min vs incl. extra time) across venues.",
+            ],
+        })
+
     # 3. Model-vs-market gaps (only when forecasts are supplied). Appended to the
     # same list; when `forecasts` is absent this block is a no-op and the two
     # legacy detectors above are byte-identical.
@@ -889,7 +914,8 @@ def detect_market_edges(request_data):
     if not cached:
         warnings.append("No cached markets supplied -- run worldcup-sync-market-sources first.")
     if not params.get("matches"):
-        warnings.append("No match pairs supplied -- cross-venue draw detection skipped (within-venue only).")
+        warnings.append("No match_markets pairs supplied -- legacy cross_venue_draw skipped; "
+                        "cross_venue_moneyline still runs via canonical event_urn pairing.")
     if not candidates:
         warnings.append("No dislocations >= " + str(min_edge_bps) + " bps found. Markets look efficiently priced.")
 
