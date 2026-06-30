@@ -17,7 +17,3 @@ mappings:
           },
           "data_quality_notes": []
         }
-      edge_candidates: |
-        []
-      warnings: |
-        ["Edge detection is not yet implemented: cross-source outcome pairing is pending, so no edge candidates are produced."]

@@ -1,7 +1,7 @@
 workflow:
   name: worldcup-find-market-edges
   title: World Cup Intelligence - Find Market Edges
-  description: Identify informational price dislocations and arbitrage candidates across Kalshi/Polymarket (within-venue book sums + cross-venue draw lines). Does not execute trades.
+  description: Identify informational price dislocations and arbitrage candidates across Kalshi/Polymarket (within-venue book sums + full 3-way cross-venue moneyline/advance lines, paired on canonical event_urn). Does not execute trades.
 
   context-variables:
     debugger:

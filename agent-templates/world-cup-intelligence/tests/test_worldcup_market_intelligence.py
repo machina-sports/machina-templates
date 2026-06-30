@@ -45,6 +45,7 @@ build_signal_ledger_rows = _module.build_signal_ledger_rows
 compute_clv = _module.compute_clv
 compute_clv_report = _module.compute_clv_report
 _result_outcome = _module._result_outcome
+pair_cross_source = _module.pair_cross_source
 
 
 def _kalshi_record(**overrides):
@@ -96,6 +97,68 @@ class TestNormalizeMarketSources:
         markets = result["data"]["markets"]
         assert len(markets) == 1
         assert [o["token_id"] for o in markets[0]["outcomes"]] == ["tok-yes", "tok-no"]
+
+    def test_polymarket_game_moneyline_passes_relevance_via_fifwc_slug(self):
+        # Game markets are titled by team with no "World Cup" wording; the
+        # fifwc-* slug is the only relevance signal (regression for U1).
+        record = _poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
+                              slug="fifwc-mex-ecu-2026-06-30-mex",
+                              outcomes=[{"name": "Yes", "price": 0.435}, {"name": "No", "price": 0.565}],
+                              clob_token_ids=["t-yes", "t-no"])
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [record]}}})
+        markets = result["data"]["markets"]
+        assert len(markets) == 1 and markets[0]["source"] == "polymarket"
+        assert markets[0]["title"] == "Will Mexico win on 2026-06-30?"
+
+    def test_foreach_accumulated_polymarket_payloads(self):
+        # The per-fixture sweep passes [bulk] + one {'markets': [...]} per
+        # foreach iteration; records in every wrapper must be extracted.
+        bulk = {"markets": [_poly_record()]}  # futures via "FIFA World Cup" wording
+        sweep = {"markets": [_poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
+                                          slug="fifwc-mex-ecu-2026-06-30-mex")]}
+        result = normalize_market_sources({"params": {"polymarket_markets": [bulk, sweep]}})
+        ids = {m["cache_id"] for m in result["data"]["markets"]}
+        assert "polymarket:2735826" in ids and "polymarket:2415458" in ids
+
+    def test_advance_market_tagged_by_round(self):
+        # Per-nation 'reach round X' binaries carry no sportsMarketType; the
+        # round is detected from the question/slug so pairing can bucket them.
+        r16 = _poly_record(id="2415420", question="Will Mexico reach the Round of 16 at the 2026 FIFA World Cup?",
+                           slug="will-mexico-reach-the-round-of-16-at-the-2026-fifa-world-cup")
+        sf = _poly_record(id="9001", question="Will Brazil reach the Semifinals at the 2026 FIFA World Cup?",
+                          slug="will-brazil-reach-the-semifinals")
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [r16, sf]}}})
+        by_id = {m["cache_id"]: m for m in result["data"]["markets"]}
+        assert by_id["polymarket:2415420"]["market_type"] == "advance_r16"
+        assert by_id["polymarket:9001"]["market_type"] == "advance_sf"
+
+    def test_advance_round_qf_and_final_and_gating(self):
+        qf = _poly_record(id="9002", question="Will France reach the Quarterfinals at the 2026 FIFA World Cup?",
+                          slug="will-france-reach-the-quarterfinals")
+        fin = _poly_record(id="9003", question="Will Spain reach the Final at the 2026 FIFA World Cup?",
+                           slug="will-spain-reach-the-final")
+        # A knockout moneyline that mentions a round but is NOT a "reach" market
+        # must stay a moneyline (advance tag is gated on "reach").
+        final_game = _poly_record(id="9004", question="Will Argentina win the Final on 2026-07-19?",
+                                  slug="fifwc-arg-fra-2026-07-19-arg", sports_market_type="moneyline")
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [qf, fin, final_game]}}})
+        by_id = {m["cache_id"]: m for m in result["data"]["markets"]}
+        assert by_id["polymarket:9002"]["market_type"] == "advance_qf"
+        assert by_id["polymarket:9003"]["market_type"] == "advance_final"
+        assert by_id["polymarket:9004"]["market_type"] == "moneyline"
+
+    def test_moneyline_market_type_preserved_over_advance(self):
+        # A plain game moneyline keeps its provider market type (no false advance tag).
+        ml = _poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
+                          slug="fifwc-mex-ecu-2026-06-30-mex", sports_market_type="moneyline")
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [ml]}}})
+        assert result["data"]["markets"][0]["market_type"] == "moneyline"
+
+    def test_warns_when_one_venue_returns_no_records(self):
+        # Kalshi-only sync -> warn that cross-source pairing is unavailable.
+        result = normalize_market_sources(
+            {"params": {"kalshi_markets": {"markets": [_kalshi_record()]}, "status": "all"}})
+        assert any("Polymarket returned no records" in w for w in result["data"]["warnings"])
 
     def test_metadata_is_upsert_key(self):
         result = normalize_market_sources(
@@ -382,6 +445,35 @@ class TestDetectMarketEdges:
         assert cands[0]["book_sum"] == 0.97
         assert cands[0]["edge_bps"] == 300
         assert cands[0]["direction"] == "buy_all_no"
+
+    def test_cross_venue_moneyline_from_event_urn(self):
+        # Both venues priced for one game, paired on event_urn (no match_markets).
+        EV = "urn:machina:sport:soccer:event:mexico-vs-ecuador:20260701:wor"
+        rel = ["urn:machina:sport:soccer:team:mexico:mex", "urn:machina:sport:soccer:team:ecuador:ecu"]
+
+        def k(cid, name, price):
+            return {"cache_id": cid, "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+                    "event_urn": EV, "related_team_urns": rel, "price_quality": "ok",
+                    "outcomes": [{"name": name, "price": price}, {"name": "No", "price": round(1 - price, 2)}]}
+
+        def p(cid, title, price):
+            return {"cache_id": cid, "source": "polymarket", "title": title,
+                    "event_urn": EV, "related_team_urns": rel, "price_quality": "ok",
+                    "outcomes": [{"name": "Yes", "price": price}, {"name": "No", "price": round(1 - price, 2)}]}
+
+        cached = [
+            k("kalshi:MEX", "Reg Time: Mexico", 0.50), k("kalshi:ECU", "Reg Time: Ecuador", 0.30),
+            k("kalshi:TIE", "Tie", 0.20),
+            p("polymarket:mex", "Will Mexico win on 2026-06-30?", 0.55),
+            p("polymarket:ecu", "Will Ecuador win on 2026-06-30?", 0.25),
+            p("polymarket:draw", "Will Mexico vs. Ecuador end in a draw?", 0.20),
+        ]
+        r = detect_market_edges({"params": {"cached_markets": cached, "min_edge_bps": 50}})
+        cv = [c for c in r["data"]["edge_candidates"] if c["candidate_type"] == "cross_venue_moneyline"]
+        mex = next(c for c in cv if c["outcome"] == "mexico")
+        assert mex["edge_bps"] == 500
+        assert mex["cheaper_venue"] == "kalshi"
+        assert mex["kalshi_price"] == 0.50 and mex["polymarket_price"] == 0.55
 
     def test_efficient_book_no_edge(self):
         cached = [
@@ -2071,3 +2163,213 @@ class TestComputeClvReport:
                 + [_clv_row("CLV-", 1) for _ in range(2)] + [_clv_row("CLV-", 0) for _ in range(8)])
         rep = compute_clv_report({"params": {"clv_rows": rows}})["data"]["clv_report"]
         assert rep["z_test"]["z"] == 2.683 and rep["win_rates"]["gap_pp"] == 60.0
+
+
+MEX_ECU = ("urn:machina:sport:soccer:team:mexico:mex",
+           "urn:machina:sport:soccer:team:ecuador:ecu")
+
+
+class TestPairCrossSource:
+    MEX = "urn:machina:sport:soccer:team:mexico:mex"
+    ECU = "urn:machina:sport:soccer:team:ecuador:ecu"
+    EV = "urn:machina:sport:soccer:event:mexico-vs-ecuador:20260701:wor"
+
+    def _game_markets(self):
+        rel = [MEX_ECU[0], MEX_ECU[1]]
+        return [
+            {"cache_id": "kalshi:MEX", "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Reg Time: Mexico", "price": 0.43}, {"name": "No", "price": 0.56}]},
+            {"cache_id": "kalshi:ECU", "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Reg Time: Ecuador", "price": 0.23}, {"name": "No", "price": 0.76}]},
+            {"cache_id": "kalshi:TIE", "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Tie", "price": 0.33}, {"name": "No", "price": 0.66}]},
+            {"cache_id": "polymarket:mex", "source": "polymarket", "title": "Will Mexico win on 2026-06-30?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.435}, {"name": "No", "price": 0.565}]},
+            {"cache_id": "polymarket:ecu", "source": "polymarket", "title": "Will Ecuador win on 2026-06-30?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.225}, {"name": "No", "price": 0.775}]},
+            {"cache_id": "polymarket:draw", "source": "polymarket", "title": "Will Mexico vs. Ecuador end in a draw?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.335}, {"name": "No", "price": 0.665}]},
+        ]
+
+    def _rows_by_outcome(self, markets):
+        r = pair_cross_source({"params": {"markets": markets}})["data"]
+        return {row["outcome"]: row for row in r["pairs"]}, r
+
+    def test_pairs_game_moneyline_three_outcomes(self):
+        rows, r = self._rows_by_outcome(self._game_markets())
+        assert set(rows) == {"mexico", "ecuador", "DRAW"}
+        assert rows["mexico"]["kalshi_yes"] == 0.43 and rows["mexico"]["poly_yes"] == 0.435
+        assert rows["ecuador"]["edge_bps"] == -62
+        assert rows["mexico"]["edge_bps"] == 29
+        assert rows["DRAW"]["edge_bps"] == 34
+        # sorted by absolute edge, largest first
+        assert abs(r["pairs"][0]["edge_bps"]) >= abs(r["pairs"][-1]["edge_bps"])
+
+    def test_devig_fair_probs_sum_to_one_per_source(self):
+        # De-vig normalizes each source's 3-way to sum to 1.0; displayed fair
+        # values are rounded to 4dp, so allow sub-bps rounding drift.
+        rows, _ = self._rows_by_outcome(self._game_markets())
+        k = sum(rows[o]["kalshi_fair"] for o in rows)
+        p = sum(rows[o]["poly_fair"] for o in rows)
+        assert abs(k - 1.0) <= 0.001 and abs(p - 1.0) <= 0.001
+
+    def test_cheaper_venue_marked(self):
+        rows, _ = self._rows_by_outcome(self._game_markets())
+        # Ecuador YES is cheaper on Polymarket (0.2261 fair) than Kalshi (0.2323)
+        assert rows["ecuador"]["cheaper_venue"] == "polymarket"
+
+    def test_single_source_yields_no_edge(self):
+        kalshi_only = [m for m in self._game_markets() if m["source"] == "kalshi"]
+        rows, _ = self._rows_by_outcome(kalshi_only)
+        assert rows["mexico"]["poly_yes"] is None
+        assert "edge_bps" not in rows["mexico"]
+
+    def test_skips_unreliable_leg(self):
+        markets = self._game_markets()
+        markets[0]["price_quality"] = "unreliable"  # kalshi mexico
+        rows, _ = self._rows_by_outcome(markets)
+        # mexico bucket still present (poly side), but no kalshi price / edge
+        assert rows["mexico"]["kalshi_yes"] is None
+        assert "edge_bps" not in rows["mexico"]
+        # Dropping one leg leaves Kalshi's book incomplete (ecu+tie=0.56); its
+        # surviving legs must NOT be de-vigged against that short total and
+        # must NOT manufacture an edge on ecuador/DRAW.
+        assert rows["ecuador"]["kalshi_fair"] is None
+        assert "edge_bps" not in rows["ecuador"]
+        assert "edge_bps" not in rows["DRAW"]
+
+    def test_incomplete_book_does_not_fabricate_edge(self):
+        # Kalshi carries only the Mexico leg; Polymarket has the full 3-way.
+        # De-vigging the lone Kalshi leg to 1.0 would fabricate a huge edge.
+        markets = [m for m in self._game_markets()
+                   if m["cache_id"] in ("kalshi:MEX", "polymarket:mex", "polymarket:ecu", "polymarket:draw")]
+        rows, _ = self._rows_by_outcome(markets)
+        assert rows["mexico"]["kalshi_yes"] == 0.43      # raw price still shown
+        assert rows["mexico"]["kalshi_fair"] is None     # but not de-vigged
+        assert "edge_bps" not in rows["mexico"]          # and no fabricated edge
+
+    def test_fuzzy_fallback_matches_typo(self):
+        # "ngland" is not an exact/substring/iso3 match for "england" but the
+        # difflib ratio is >= 0.85, so the fuzzy fallback should resolve it.
+        EV = "urn:machina:sport:soccer:event:england-vs-wales:20260615:wor"
+        eng = "urn:machina:sport:soccer:team:england:eng"
+        wal = "urn:machina:sport:soccer:team:wales:wal"
+        m = {"cache_id": "polymarket:x", "source": "polymarket",
+             "title": "Will Ngland win on 2026-06-15?", "event_urn": EV,
+             "related_team_urns": [eng, wal], "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.5}, {"name": "No", "price": 0.5}]}
+        rows, _ = self._rows_by_outcome([m])
+        assert "england" in rows and "wales" not in rows
+
+    def test_fuzzy_does_not_collide_near_distinct_nations(self):
+        # Iran/Iraq differ by one char (ratio 0.75 < 0.85): a Kalshi leg whose
+        # only discriminator is the iso3 ticker suffix must bucket to exactly
+        # one nation, never cross-match the other.
+        EV = "urn:machina:sport:soccer:event:iran-vs-iraq:20260615:wor"
+        iran = "urn:machina:sport:soccer:team:iran:irn"
+        iraq = "urn:machina:sport:soccer:team:iraq:irq"
+
+        def kalshi(cid, suffix, price):
+            return {"cache_id": cid, "source": "kalshi", "title": "Iran vs Iraq Winner?",
+                    "slug": f"KXWCGAME-26JUN15IRNIRQ-{suffix}", "event_urn": EV,
+                    "related_team_urns": [iran, iraq], "price_quality": "ok",
+                    "outcomes": [{"name": "Yes", "price": price}, {"name": "No", "price": round(1 - price, 3)}]}
+        rows, _ = self._rows_by_outcome([kalshi("kalshi:IRN", "IRN", 0.6), kalshi("kalshi:IRQ", "IRQ", 0.4)])
+        assert rows["iran"]["kalshi_yes"] == 0.6
+        assert rows["iraq"]["kalshi_yes"] == 0.4
+
+    def test_advance_pairs_by_team_and_round(self):
+        markets = [
+            {"cache_id": "polymarket:adv-mex", "source": "polymarket", "market_type": "advance_r16",
+             "title": "Will Mexico reach the Round of 16 at the 2026 FIFA World Cup?",
+             "event_urn": None, "related_team_urns": [MEX_ECU[0]], "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.63}, {"name": "No", "price": 0.37}]},
+            {"cache_id": "kalshi:adv-mex", "source": "kalshi", "market_type": "advance_r16",
+             "title": "Mexico to reach Round of 16?",
+             "event_urn": None, "related_team_urns": [MEX_ECU[0]], "price_quality": "ok",
+             "outcomes": [{"name": "Mexico", "price": 0.60}, {"name": "No", "price": 0.40}]},
+        ]
+        rows, _ = self._rows_by_outcome(markets)
+        assert "mexico" in rows
+        row = rows["mexico"]
+        assert row["kind"] == "advance"
+        # advance markets are independent binaries -> not de-vigged, fair == raw
+        assert row["kalshi_yes"] == 0.60 and row["poly_yes"] == 0.63
+        assert row["kalshi_fair"] == 0.60 and row["poly_fair"] == 0.63
+        assert row["edge_bps"] == 300
+
+    def test_outright_futures_unpairable_skipped(self):
+        markets = [
+            {"cache_id": "polymarket:win", "source": "polymarket", "title": "Will Mexico win the 2026 World Cup?",
+             "event_urn": None, "related_team_urns": [MEX_ECU[0]], "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.05}]},
+        ]
+        r = pair_cross_source({"params": {"markets": markets}})["data"]
+        assert r["pairs"] == []
+
+
+class TestCrossSourceEndToEnd:
+    """Full chain on realistic payloads: normalize -> link -> pair.
+
+    Guards the production-shape gotcha: cached Kalshi game legs name the YES
+    side "Yes" (not the team), so pairing must discriminate via the ticker
+    suffix / iso3, not the outcome name.
+    """
+    TEAMS = [
+        {"_id": "urn:machina:sport:soccer:team:mexico:mex", "name": "Mexico"},
+        {"_id": "urn:machina:sport:soccer:team:ecuador:ecu", "name": "Ecuador"},
+    ]
+    EVENTS = [{"_id": "urn:machina:sport:soccer:event:mexico-vs-ecuador:20260701:wor",
+               "sport:competitors": [{"@id": "urn:machina:sport:soccer:team:mexico:mex"},
+                                     {"@id": "urn:machina:sport:soccer:team:ecuador:ecu"}]}]
+
+    def _kalshi_payload(self):
+        # Shape returned by sports-skills invoke_kalshi search_markets (no
+        # yes_sub_title -> normalized YES name becomes "Yes").
+        def leg(suffix, last_price):
+            return {"ticker": f"KXWCGAME-26JUN30MEXECU-{suffix}",
+                    "event_ticker": "KXWCGAME-26JUN30MEXECU",
+                    "title": "Mexico vs Ecuador Winner?", "status": "active",
+                    "last_price": last_price, "volume": 1000}
+        return {"markets": [leg("MEX", 43), leg("ECU", 23), leg("TIE", 33)]}
+
+    def _poly_payload(self):
+        # Shape returned by sports-skills invoke_polymarket search_markets.
+        def mk(mid, q, slug, price):
+            return {"id": mid, "question": q, "slug": slug, "sports_market_type": "moneyline",
+                    "outcomes": [{"name": "Yes", "price": price}, {"name": "No", "price": round(1 - price, 3)}],
+                    "clob_token_ids": [f"{mid}-y", f"{mid}-n"], "volume": "100000", "spread": 0.01}
+        return {"markets": [
+            mk("1", "Will Mexico win on 2026-06-30?", "fifwc-mex-ecu-2026-06-30-mex", 0.435),
+            mk("2", "Will Ecuador win on 2026-06-30?", "fifwc-mex-ecu-2026-06-30-ecu", 0.225),
+            mk("3", "Will Mexico vs. Ecuador end in a draw?", "fifwc-mex-ecu-2026-06-30-draw", 0.335),
+        ]}
+
+    def test_normalize_link_pair_produces_cross_source_edges(self):
+        norm = normalize_market_sources({"params": {
+            "kalshi_markets": self._kalshi_payload(),
+            "polymarket_markets": self._poly_payload(),
+            "status": "all"}})["data"]["markets"]
+        # both venues, all three legs each
+        assert sum(1 for m in norm if m["source"] == "kalshi") == 3
+        assert sum(1 for m in norm if m["source"] == "polymarket") == 3
+
+        linked = link_market_entities({"params": {
+            "markets": norm, "teams": self.TEAMS, "events": self.EVENTS}})["data"]["normalized_markets"]
+        assert all(m["event_urn"] == self.EVENTS[0]["_id"] for m in linked)
+
+        pairs = pair_cross_source({"params": {"markets": linked}})["data"]["pairs"]
+        by_outcome = {p["outcome"]: p for p in pairs}
+        assert set(by_outcome) == {"mexico", "ecuador", "DRAW"}
+        # Kalshi YES leg discriminated by ticker suffix despite "Yes" outcome name
+        assert by_outcome["mexico"]["kalshi_yes"] == 0.43
+        assert by_outcome["mexico"]["poly_yes"] == 0.435
+        # every leg paired across both venues -> an edge on each
+        assert all("edge_bps" in p for p in pairs)
+        assert by_outcome["ecuador"]["cheaper_venue"] == "polymarket"
