@@ -98,6 +98,28 @@ class TestNormalizeMarketSources:
         assert len(markets) == 1
         assert [o["token_id"] for o in markets[0]["outcomes"]] == ["tok-yes", "tok-no"]
 
+    def test_polymarket_game_moneyline_passes_relevance_via_fifwc_slug(self):
+        # Game markets are titled by team with no "World Cup" wording; the
+        # fifwc-* slug is the only relevance signal (regression for U1).
+        record = _poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
+                              slug="fifwc-mex-ecu-2026-06-30-mex",
+                              outcomes=[{"name": "Yes", "price": 0.435}, {"name": "No", "price": 0.565}],
+                              clob_token_ids=["t-yes", "t-no"])
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [record]}}})
+        markets = result["data"]["markets"]
+        assert len(markets) == 1 and markets[0]["source"] == "polymarket"
+        assert markets[0]["title"] == "Will Mexico win on 2026-06-30?"
+
+    def test_foreach_accumulated_polymarket_payloads(self):
+        # The per-fixture sweep passes [bulk] + one {'markets': [...]} per
+        # foreach iteration; records in every wrapper must be extracted.
+        bulk = {"markets": [_poly_record()]}  # futures via "FIFA World Cup" wording
+        sweep = {"markets": [_poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
+                                          slug="fifwc-mex-ecu-2026-06-30-mex")]}
+        result = normalize_market_sources({"params": {"polymarket_markets": [bulk, sweep]}})
+        ids = {m["cache_id"] for m in result["data"]["markets"]}
+        assert "polymarket:2735826" in ids and "polymarket:2415458" in ids
+
     def test_metadata_is_upsert_key(self):
         result = normalize_market_sources(
             {"params": {"polymarket_markets": {"markets": [_poly_record()]}}}

@@ -26,6 +26,10 @@ WORLD_CUP_TERMS = (
     # carry no World Cup wording — the ticker in the haystack is the signal.
     "kxwc",
     "worldcup",
+    # Polymarket World Cup game event slugs (e.g. fifwc-mex-ecu-2026-06-30-mex).
+    # Game-market titles ("Will Mexico win on 2026-06-30?") carry no World Cup
+    # wording — the slug prefix is the signal.
+    "fifwc",
 )
 
 
