@@ -114,6 +114,29 @@ Backed by `worldcup-find-market-edges`.
 
 Returns research candidates only; no execution advice.
 
+### `worldcup_stable_markets`
+
+Backed by `worldcup-stable-markets`.
+
+Read-only worklist of markets whose cross-source quote has **stabilized** — the
+explainable inverse of the unreliable-quote flag. Useful as a faster "safe to
+re-enable" candidate signal than waiting on a traditional pricing feed.
+
+Inputs:
+
+- `window_hours`: snapshot lookback for the stable-streak history (default `24`)
+- `spread_bps`, `movement_bps`, `agreement_bps`, `min_volume`: stability thresholds (defaults `200` / `150` / `150` / `1000`)
+- `team`, `query`: optional filters
+- `limit`: result cap (default `50`)
+
+Returns:
+
+- `stable_markets`: worklist sorted most-recently-stabilized first, each with `stable_since`, `confidence` (`provisional` | `stable` | `corroborated`), and an explainable `drivers` list
+- `thresholds`: the thresholds applied
+- `warnings`: caveats, incl. that detection-vs-feed latency is not benchmarked
+
+Read-only; no pricing or execution advice.
+
 ### `worldcup_generate_market_brief`
 
 Backed by `worldcup-generate-market-brief`.

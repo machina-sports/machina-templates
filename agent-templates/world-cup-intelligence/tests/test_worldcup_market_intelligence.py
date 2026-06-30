@@ -2482,3 +2482,20 @@ class TestComputeMarketStability:
         snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43])
         assert "kalshi:MEX" in self._by_id(self._run([m], snaps, spread_bps=200))   # 0.018 <= 0.02
         assert "kalshi:MEX" not in self._by_id(self._run([m], snaps, spread_bps=150))  # 0.018 > 0.015
+
+    def test_workflow_contract_shapes(self):
+        # Guards the field-name contract the worldcup-stable-markets workflow relies
+        # on: market-cache fields and snapshot {cache_id, ts, primary_price}, and the
+        # output envelope keys the workflow maps to its outputs. (Covers S1.)
+        m = self._mkt("kalshi:MEX", "kalshi", "Yes", 0.43)  # no spread arg -> uses default 0.01
+        m_nullspread = self._mkt("kalshi:ECU", "kalshi", "Yes", 0.23, spread=None)  # real Kalshi cache shape
+        snaps = self._snaps("kalshi:MEX", [0.43, 0.43, 0.43]) + self._snaps("kalshi:ECU", [0.23, 0.23, 0.23])
+        data = self._run([m, m_nullspread], snaps)
+        assert set(["stable_markets", "count", "thresholds", "warnings"]).issubset(data.keys())
+        assert data["count"] == len(data["stable_markets"])
+        # null-spread Kalshi market is NOT excluded (spread gate is conditional)
+        rows = self._by_id(data)
+        assert "kalshi:ECU" in rows and "spread_tight" not in rows["kalshi:ECU"]["drivers"]
+        row = rows["kalshi:MEX"]
+        assert set(["cache_id", "confidence", "stable_since", "drivers", "outcome", "price"]).issubset(row.keys())
+        assert any("latency is not benchmarked" in w for w in data["warnings"])
