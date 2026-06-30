@@ -2598,6 +2598,14 @@ def link_market_entities(request_data: dict[str, Any]) -> dict[str, Any]:
     """
     params = _params(request_data)
     index = _market_team_index(_as_list(params.get("teams")))
+    # iso3 -> urn, to resolve Polymarket game slugs (fifwc-<a>-<b>-<date>) whose
+    # titles name only one team (the other is an abbreviated iso3 code).
+    iso3_to_urn: dict[str, str] = {}
+    for t in _as_list(params.get("teams")):
+        if isinstance(t, dict):
+            urn = _text(_first(t, "_id", "@id", "id"))
+            if urn:
+                iso3_to_urn[urn.split(":")[-1]] = urn
     by_pair: dict[frozenset, str] = {}
     for ev in _as_list(params.get("events")):
         if not isinstance(ev, dict):
@@ -2617,6 +2625,15 @@ def link_market_entities(request_data: dict[str, Any]) -> dict[str, Any]:
             " ".join(_text(o.get("name")) for o in (m.get("outcomes") or []) if isinstance(o, dict)),
         ])
         related = _match_team_urns(_slugify(text), index)
+        # Polymarket game legs name only one team; recover the pair from the
+        # fifwc-<a>-<b>-<date> slug's two iso3 codes so event_urn resolves.
+        if len(related) < 2:
+            slug_match = re.match(r"fifwc-([a-z]{3})-([a-z]{3})-\d", _lower(m.get("slug")))
+            if slug_match:
+                pair = [iso3_to_urn.get(slug_match.group(1)), iso3_to_urn.get(slug_match.group(2))]
+                pair = [u for u in pair if u]
+                if len(pair) == 2:
+                    related = pair
         m["competition_urn"] = WC_COMPETITION_URN
         m["related_team_urns"] = related
         m["event_urn"] = by_pair.get(frozenset(related)) if len(related) == 2 else None
@@ -2784,9 +2801,13 @@ def _pair_bucket(market: dict[str, Any]) -> str | None:
     best, best_ratio = None, 0.0
     for urn in related:
         team_slug = _team_slug_from_urn(urn)
+        # iso3 is the trailing URN segment (…:team:mexico:mex). Cached Kalshi
+        # game legs name the YES side "Yes", so the only discriminator is the
+        # ticker suffix (…-MEX) the slug carries — match it against the iso3.
+        iso3 = _text(urn).split(":")[-1]
         if not team_slug:
             continue
-        if team_slug == subj_slug or team_slug in subj_slug:
+        if subj_slug in (team_slug, iso3) or team_slug in subj_slug:
             return urn
         ratio = difflib.SequenceMatcher(None, team_slug, subj_slug).ratio()
         if ratio > best_ratio:

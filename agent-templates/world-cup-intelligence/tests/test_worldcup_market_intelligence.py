@@ -2245,3 +2245,64 @@ class TestPairCrossSource:
 
 MEX_ECU = ("urn:machina:sport:soccer:team:mexico:mex",
            "urn:machina:sport:soccer:team:ecuador:ecu")
+
+
+class TestCrossSourceEndToEnd:
+    """Full chain on realistic payloads: normalize -> link -> pair.
+
+    Guards the production-shape gotcha: cached Kalshi game legs name the YES
+    side "Yes" (not the team), so pairing must discriminate via the ticker
+    suffix / iso3, not the outcome name.
+    """
+    TEAMS = [
+        {"_id": "urn:machina:sport:soccer:team:mexico:mex", "name": "Mexico"},
+        {"_id": "urn:machina:sport:soccer:team:ecuador:ecu", "name": "Ecuador"},
+    ]
+    EVENTS = [{"_id": "urn:machina:sport:soccer:event:mexico-vs-ecuador:20260701:wor",
+               "sport:competitors": [{"@id": "urn:machina:sport:soccer:team:mexico:mex"},
+                                     {"@id": "urn:machina:sport:soccer:team:ecuador:ecu"}]}]
+
+    def _kalshi_payload(self):
+        # Shape returned by sports-skills invoke_kalshi search_markets (no
+        # yes_sub_title -> normalized YES name becomes "Yes").
+        def leg(suffix, last_price):
+            return {"ticker": f"KXWCGAME-26JUN30MEXECU-{suffix}",
+                    "event_ticker": "KXWCGAME-26JUN30MEXECU",
+                    "title": "Mexico vs Ecuador Winner?", "status": "active",
+                    "last_price": last_price, "volume": 1000}
+        return {"markets": [leg("MEX", 43), leg("ECU", 23), leg("TIE", 33)]}
+
+    def _poly_payload(self):
+        # Shape returned by sports-skills invoke_polymarket search_markets.
+        def mk(mid, q, slug, price):
+            return {"id": mid, "question": q, "slug": slug, "sports_market_type": "moneyline",
+                    "outcomes": [{"name": "Yes", "price": price}, {"name": "No", "price": round(1 - price, 3)}],
+                    "clob_token_ids": [f"{mid}-y", f"{mid}-n"], "volume": "100000", "spread": 0.01}
+        return {"markets": [
+            mk("1", "Will Mexico win on 2026-06-30?", "fifwc-mex-ecu-2026-06-30-mex", 0.435),
+            mk("2", "Will Ecuador win on 2026-06-30?", "fifwc-mex-ecu-2026-06-30-ecu", 0.225),
+            mk("3", "Will Mexico vs. Ecuador end in a draw?", "fifwc-mex-ecu-2026-06-30-draw", 0.335),
+        ]}
+
+    def test_normalize_link_pair_produces_cross_source_edges(self):
+        norm = normalize_market_sources({"params": {
+            "kalshi_markets": self._kalshi_payload(),
+            "polymarket_markets": self._poly_payload(),
+            "status": "all"}})["data"]["markets"]
+        # both venues, all three legs each
+        assert sum(1 for m in norm if m["source"] == "kalshi") == 3
+        assert sum(1 for m in norm if m["source"] == "polymarket") == 3
+
+        linked = link_market_entities({"params": {
+            "markets": norm, "teams": self.TEAMS, "events": self.EVENTS}})["data"]["normalized_markets"]
+        assert all(m["event_urn"] == self.EVENTS[0]["_id"] for m in linked)
+
+        pairs = pair_cross_source({"params": {"markets": linked}})["data"]["pairs"]
+        by_outcome = {p["outcome"]: p for p in pairs}
+        assert set(by_outcome) == {"mexico", "ecuador", "DRAW"}
+        # Kalshi YES leg discriminated by ticker suffix despite "Yes" outcome name
+        assert by_outcome["mexico"]["kalshi_yes"] == 0.43
+        assert by_outcome["mexico"]["poly_yes"] == 0.435
+        # every leg paired across both venues -> an edge on each
+        assert all("edge_bps" in p for p in pairs)
+        assert by_outcome["ecuador"]["cheaper_venue"] == "polymarket"
