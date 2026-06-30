@@ -45,6 +45,7 @@ build_signal_ledger_rows = _module.build_signal_ledger_rows
 compute_clv = _module.compute_clv
 compute_clv_report = _module.compute_clv_report
 _result_outcome = _module._result_outcome
+pair_cross_source = _module.pair_cross_source
 
 
 def _kalshi_record(**overrides):
@@ -2071,3 +2072,106 @@ class TestComputeClvReport:
                 + [_clv_row("CLV-", 1) for _ in range(2)] + [_clv_row("CLV-", 0) for _ in range(8)])
         rep = compute_clv_report({"params": {"clv_rows": rows}})["data"]["clv_report"]
         assert rep["z_test"]["z"] == 2.683 and rep["win_rates"]["gap_pp"] == 60.0
+
+
+class TestPairCrossSource:
+    MEX = "urn:machina:sport:soccer:team:mexico:mex"
+    ECU = "urn:machina:sport:soccer:team:ecuador:ecu"
+    EV = "urn:machina:sport:soccer:event:mexico-vs-ecuador:20260701:wor"
+
+    def _game_markets(self):
+        rel = [MEX_ECU[0], MEX_ECU[1]]
+        return [
+            {"cache_id": "kalshi:MEX", "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Reg Time: Mexico", "price": 0.43}, {"name": "No", "price": 0.56}]},
+            {"cache_id": "kalshi:ECU", "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Reg Time: Ecuador", "price": 0.23}, {"name": "No", "price": 0.76}]},
+            {"cache_id": "kalshi:TIE", "source": "kalshi", "title": "Mexico vs Ecuador Winner?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Tie", "price": 0.33}, {"name": "No", "price": 0.66}]},
+            {"cache_id": "polymarket:mex", "source": "polymarket", "title": "Will Mexico win on 2026-06-30?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.435}, {"name": "No", "price": 0.565}]},
+            {"cache_id": "polymarket:ecu", "source": "polymarket", "title": "Will Ecuador win on 2026-06-30?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.225}, {"name": "No", "price": 0.775}]},
+            {"cache_id": "polymarket:draw", "source": "polymarket", "title": "Will Mexico vs. Ecuador end in a draw?",
+             "event_urn": self.EV, "related_team_urns": rel, "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.335}, {"name": "No", "price": 0.665}]},
+        ]
+
+    def _rows_by_outcome(self, markets):
+        r = pair_cross_source({"params": {"markets": markets}})["data"]
+        return {row["outcome"]: row for row in r["pairs"]}, r
+
+    def test_pairs_game_moneyline_three_outcomes(self):
+        rows, r = self._rows_by_outcome(self._game_markets())
+        assert set(rows) == {"mexico", "ecuador", "DRAW"}
+        assert rows["mexico"]["kalshi_yes"] == 0.43 and rows["mexico"]["poly_yes"] == 0.435
+        assert rows["ecuador"]["edge_bps"] == -62
+        assert rows["mexico"]["edge_bps"] == 29
+        assert rows["DRAW"]["edge_bps"] == 34
+        # sorted by absolute edge, largest first
+        assert abs(r["pairs"][0]["edge_bps"]) >= abs(r["pairs"][-1]["edge_bps"])
+
+    def test_devig_fair_probs_sum_to_one_per_source(self):
+        # De-vig normalizes each source's 3-way to sum to 1.0; displayed fair
+        # values are rounded to 4dp, so allow sub-bps rounding drift.
+        rows, _ = self._rows_by_outcome(self._game_markets())
+        k = sum(rows[o]["kalshi_fair"] for o in rows)
+        p = sum(rows[o]["poly_fair"] for o in rows)
+        assert abs(k - 1.0) <= 0.001 and abs(p - 1.0) <= 0.001
+
+    def test_cheaper_venue_marked(self):
+        rows, _ = self._rows_by_outcome(self._game_markets())
+        # Ecuador YES is cheaper on Polymarket (0.2261 fair) than Kalshi (0.2323)
+        assert rows["ecuador"]["cheaper_venue"] == "polymarket"
+
+    def test_single_source_yields_no_edge(self):
+        kalshi_only = [m for m in self._game_markets() if m["source"] == "kalshi"]
+        rows, _ = self._rows_by_outcome(kalshi_only)
+        assert rows["mexico"]["poly_yes"] is None
+        assert "edge_bps" not in rows["mexico"]
+
+    def test_skips_unreliable_leg(self):
+        markets = self._game_markets()
+        markets[0]["price_quality"] = "unreliable"  # kalshi mexico
+        rows, _ = self._rows_by_outcome(markets)
+        # mexico bucket still present (poly side), but no kalshi price / edge
+        assert rows["mexico"]["kalshi_yes"] is None
+        assert "edge_bps" not in rows["mexico"]
+
+    def test_advance_pairs_by_team_and_round(self):
+        markets = [
+            {"cache_id": "polymarket:adv-mex", "source": "polymarket", "market_type": "advance_r16",
+             "title": "Will Mexico reach the Round of 16 at the 2026 FIFA World Cup?",
+             "event_urn": None, "related_team_urns": [MEX_ECU[0]], "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.63}, {"name": "No", "price": 0.37}]},
+            {"cache_id": "kalshi:adv-mex", "source": "kalshi", "market_type": "advance_r16",
+             "title": "Mexico to reach Round of 16?",
+             "event_urn": None, "related_team_urns": [MEX_ECU[0]], "price_quality": "ok",
+             "outcomes": [{"name": "Mexico", "price": 0.60}, {"name": "No", "price": 0.40}]},
+        ]
+        rows, _ = self._rows_by_outcome(markets)
+        assert "mexico" in rows
+        row = rows["mexico"]
+        assert row["kind"] == "advance"
+        # advance markets are independent binaries -> not de-vigged, fair == raw
+        assert row["kalshi_yes"] == 0.60 and row["poly_yes"] == 0.63
+        assert row["kalshi_fair"] == 0.60 and row["poly_fair"] == 0.63
+        assert row["edge_bps"] == 300
+
+    def test_outright_futures_unpairable_skipped(self):
+        markets = [
+            {"cache_id": "polymarket:win", "source": "polymarket", "title": "Will Mexico win the 2026 World Cup?",
+             "event_urn": None, "related_team_urns": [MEX_ECU[0]], "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.05}]},
+        ]
+        r = pair_cross_source({"params": {"markets": markets}})["data"]
+        assert r["pairs"] == []
+
+
+MEX_ECU = ("urn:machina:sport:soccer:team:mexico:mex",
+           "urn:machina:sport:soccer:team:ecuador:ecu")

@@ -2683,6 +2683,162 @@ def compute_market_movers(request_data: dict[str, Any]) -> dict[str, Any]:
     return {"status": True, "data": {"movers": movers, "count": len(movers)}}
 
 
+def _team_slug_from_urn(urn: Any) -> str:
+    """Team slug segment of a canonical team URN (…:team:<slug>:<iso3>)."""
+    parts = _text(urn).split(":")
+    return parts[-2] if len(parts) >= 2 else ""
+
+
+def _market_subject(market: dict[str, Any]) -> str:
+    """Discriminating subject of a market: a team name, or 'draw'.
+
+    Kalshi game legs carry the team in the first outcome name ("Reg Time:
+    Mexico" / "Tie"); Polymarket legs carry it in the question ("Will Mexico
+    win …" / "… end in a draw?"). Both reduce to the subject the YES side bets.
+    """
+    name0 = _lower((market.get("outcomes") or [{}])[0].get("name")).replace("reg time:", "").strip()
+    if name0 and name0 not in ("yes", "no"):
+        return name0
+    title = _lower(market.get("title"))
+    if "draw" in title or "tie" in title:
+        return "draw"
+    m = re.search(r"will\s+(.+?)\s+(?:win|reach|advance)", title)
+    if m:
+        return m.group(1).strip()
+    slug = _lower(market.get("slug"))
+    return slug.rsplit("-", 1)[-1] if slug else ""
+
+
+def _pair_bucket(market: dict[str, Any]) -> str | None:
+    """Canonical pairing bucket: a related team URN, 'DRAW', or None (unpairable).
+
+    Buckets come from related_team_urns (already alias-resolved by
+    link_market_entities), so this only has to pick WHICH related team the
+    market's YES refers to — by the discriminating subject text.
+    """
+    subject = _market_subject(market)
+    if "draw" in subject or "tie" in subject:
+        return "DRAW"
+    related = [u for u in (market.get("related_team_urns") or []) if u]
+    if not related:
+        return None
+    if len(related) == 1:
+        return related[0]
+    subj_slug = _slugify(subject)
+    subj_slug = _MARKET_TEAM_ALIASES.get(subj_slug, subj_slug)
+    best, best_ratio = None, 0.0
+    for urn in related:
+        team_slug = _team_slug_from_urn(urn)
+        if not team_slug:
+            continue
+        if team_slug == subj_slug or team_slug in subj_slug:
+            return urn
+        ratio = difflib.SequenceMatcher(None, team_slug, subj_slug).ratio()
+        if ratio > best_ratio:
+            best_ratio, best = ratio, urn
+    return best if best_ratio >= 0.85 else None
+
+
+def pair_cross_source(request_data: dict[str, Any]) -> dict[str, Any]:
+    """Pair normalized markets across Kalshi/Polymarket and report cross-source edges.
+
+    Pairs on the canonical event_urn (games) or market_type round (advance
+    markets) already stamped by link_market_entities — no dependency on
+    sports-skills match_markets. Game groups (mutually exclusive home/away/draw)
+    are de-vigged so each source's YES prices sum to 1.0 before comparison;
+    advance markets are independent binaries and are NOT de-vigged (fair == raw).
+    Unreliable quotes are dropped so thin/stale books can't throw fake edges.
+    edge_bps = (poly_fair - kalshi_fair) * 10000, computed from the displayed
+    (4dp) fair probabilities. Read-only / informational — not betting advice.
+
+    Params:
+      - markets: linked WorldCupMarket[] (carry event_urn / related_team_urns)
+      - min_edge_bps: floor for reporting a row that HAS an edge (default 0)
+      - limit: max pairs (default 100)
+    """
+    params = _params(request_data)
+    try:
+        min_edge_bps = int(params.get("min_edge_bps") or 0)
+    except (TypeError, ValueError):
+        min_edge_bps = 0
+    try:
+        limit = max(1, min(int(params.get("limit") or 100), 500))
+    except (TypeError, ValueError):
+        limit = 100
+
+    markets = [m for m in _as_list(params.get("markets"))
+               if isinstance(m, dict) and m.get("price_quality") != "unreliable"]
+
+    # group_key -> {"kind", "by_source": {source: {bucket: yes_price}}}
+    groups: dict[tuple, dict[str, Any]] = {}
+    for m in markets:
+        bucket = _pair_bucket(m)
+        if bucket is None:
+            continue
+        event_urn = _text(m.get("event_urn"))
+        mtype = _lower(m.get("market_type"))
+        if event_urn:
+            group_key, kind = ("game", event_urn), "game"
+        elif mtype.startswith("advance"):
+            group_key, kind = ("advance", mtype), "advance"
+        else:
+            continue  # outright futures / props — no cross-source counterpart
+        price = _yes_price(m)
+        if price is None:
+            continue
+        g = groups.setdefault(group_key, {"kind": kind, "by_source": {}})
+        g["by_source"].setdefault(_text(m.get("source")), {})[bucket] = price
+
+    pairs: list[dict[str, Any]] = []
+    for group_key, g in groups.items():
+        kind = g["kind"]
+        by_source = g["by_source"]
+        # De-vig only mutually-exclusive game books; advance binaries stay raw.
+        fair_by_source: dict[str, dict[str, float]] = {}
+        for source, buckets in by_source.items():
+            if kind == "game":
+                total = sum(buckets.values())
+                fair_by_source[source] = {b: (p / total if total else None) for b, p in buckets.items()}
+            else:
+                fair_by_source[source] = dict(buckets)
+        for bucket in sorted({b for buckets in by_source.values() for b in buckets}):
+            k_yes = by_source.get("kalshi", {}).get(bucket)
+            p_yes = by_source.get("polymarket", {}).get(bucket)
+            k_fair = fair_by_source.get("kalshi", {}).get(bucket)
+            p_fair = fair_by_source.get("polymarket", {}).get(bucket)
+            k_fair = round(k_fair, 4) if k_fair is not None else None
+            p_fair = round(p_fair, 4) if p_fair is not None else None
+            row = {
+                "group_key": group_key[1],
+                "kind": kind,
+                "outcome": "DRAW" if bucket == "DRAW" else _team_slug_from_urn(bucket),
+                "team_urn": None if bucket == "DRAW" else bucket,
+                "kalshi_yes": round(k_yes, 6) if k_yes is not None else None,
+                "poly_yes": round(p_yes, 6) if p_yes is not None else None,
+                "kalshi_fair": k_fair,
+                "poly_fair": p_fair,
+            }
+            if k_fair is not None and p_fair is not None:
+                row["edge_bps"] = round((p_fair - k_fair) * 10000)
+                row["cheaper_venue"] = "kalshi" if k_fair < p_fair else "polymarket"
+            pairs.append(row)
+
+    if min_edge_bps > 0:
+        pairs = [r for r in pairs if "edge_bps" not in r or abs(r["edge_bps"]) >= min_edge_bps]
+    pairs.sort(key=lambda r: abs(r.get("edge_bps", 0)), reverse=True)
+    pairs = pairs[:limit]
+
+    warnings = []
+    if not markets:
+        warnings.append("No reliable markets supplied -- run worldcup-sync-market-sources first.")
+    elif not any("edge_bps" in r for r in pairs):
+        warnings.append(
+            "No cross-source pairs found -- both Kalshi and Polymarket must cover the same fixture/outcome."
+        )
+
+    return {"status": True, "data": {"pairs": pairs, "count": len(pairs), "warnings": warnings}}
+
+
 # Live status set — fixtures considered in-play for coverage cadence.
 _LIVE_STATUS = {"1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"}
 _FINAL_STATUS = {"FT", "AET", "PEN"}
