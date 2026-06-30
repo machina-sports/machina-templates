@@ -141,6 +141,30 @@ workflow:
       outputs:
         polymarket_games: "[$.get('data', {})] if $.get('status') else []"
 
+    # Tournament advance markets (reach Round of 16 / QF / SF / Final) live as
+    # per-nation binaries under a few Polymarket events; the keyword search
+    # above catches them only sparsely. Query each round's event title for
+    # comprehensive per-nation coverage. Normalization tags market_type
+    # advance_<round> so cross-source pairing can bucket nation-vs-nation.
+    - type: connector
+      name: fetch-polymarket-advance
+      description: Polymarket tournament advance markets (reach Round of 16 / QF / SF / Final).
+      continue_on_error: true
+      connector:
+        name: sports-skills
+        command: invoke_polymarket
+      foreach:
+        concurrent: false
+        name: poly_advance_query_item
+        expr: $
+        value: "['Reach Round of 16', 'Reach Quarterfinals', 'Reach Semifinals', 'Reach Final']"
+      inputs:
+        command: "'search_markets'"
+        query: "$.get('poly_advance_query_item', '')"
+        limit: "60"
+      outputs:
+        polymarket_advance: "[$.get('data', {})] if $.get('status') else []"
+
     - type: connector
       name: normalize-market-sources
       description: Normalize Sports Skills, Kalshi, and Polymarket market payloads into cacheable WorldCupMarket records.
@@ -149,7 +173,7 @@ workflow:
         command: normalize_market_sources
       inputs:
         sports_skills_markets: "$.get('sports_skills_markets', {})"
-        polymarket_markets: "[$.get('polymarket_markets', {})] + ($.get('polymarket_games', []) or [])"
+        polymarket_markets: "[$.get('polymarket_markets', {})] + ($.get('polymarket_games', []) or []) + ($.get('polymarket_advance', []) or [])"
         kalshi_markets: "[$.get('kalshi_markets', {})] + ($.get('kalshi_upcoming', []) or [])"
         query: "$.get('search_query', 'FIFA World Cup')"
         source: "$.get('source', 'all')"

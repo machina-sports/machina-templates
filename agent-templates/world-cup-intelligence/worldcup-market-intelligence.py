@@ -208,6 +208,26 @@ def _binary_price_quality(outcomes: list[dict[str, Any]]) -> str:
     return "ok"
 
 
+def _advance_round(record: dict[str, Any]) -> str | None:
+    """Tag tournament 'reach round X' markets so cross-source pairing can bucket
+    them by round. Polymarket carries these as per-nation binaries under events
+    like world-cup-nation-to-reach-round-of-16 (sportsMarketType is null), so we
+    detect from the slug/title rather than a market-type field.
+    """
+    text = _lower(_first(record, "slug", "ticker", "market_ticker")) + " " + _lower(
+        _first(record, "title", "question")
+    )
+    if "round of 16" in text or "round-of-16" in text:
+        return "advance_r16"
+    if "quarterfinal" in text or "quarter-final" in text or "quarter final" in text:
+        return "advance_qf"
+    if "semifinal" in text or "semi-final" in text or "semi final" in text:
+        return "advance_sf"
+    if "reach the final" in text or "reach-the-final" in text or "to-reach-final" in text or "nation-to-reach-final" in text:
+        return "advance_final"
+    return None
+
+
 def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> dict[str, Any] | None:
     if not isinstance(record, dict):
         return None
@@ -275,7 +295,12 @@ def _normalize_record(source: str, record: dict[str, Any], fetched_at: str) -> d
         "description": _text(_first(record, "description", "rules", "subtitle")) or None,
         "slug": _text(_first(record, "slug", "ticker", "market_ticker")) or None,
         "status": status,
-        "market_type": _text(_first(record, "sports_market_type", "type", "category", "market_type")) or None,
+        # Advance-round tag (advance_r16 / _qf / _sf / _final) takes precedence
+        # so cross-source pairing can group per-nation 'reach round X' binaries;
+        # otherwise the provider's own market type (e.g. moneyline) carries.
+        "market_type": _advance_round(record)
+        or _text(_first(record, "sports_market_type", "type", "category", "market_type"))
+        or None,
         "outcomes": outcomes,
         "price_quality": price_quality,
         "volume": _first(record, "volume", "volume_24h", "dollar_volume", "volume_fp"),

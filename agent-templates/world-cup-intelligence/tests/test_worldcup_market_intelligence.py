@@ -120,6 +120,25 @@ class TestNormalizeMarketSources:
         ids = {m["cache_id"] for m in result["data"]["markets"]}
         assert "polymarket:2735826" in ids and "polymarket:2415458" in ids
 
+    def test_advance_market_tagged_by_round(self):
+        # Per-nation 'reach round X' binaries carry no sportsMarketType; the
+        # round is detected from the question/slug so pairing can bucket them.
+        r16 = _poly_record(id="2415420", question="Will Mexico reach the Round of 16 at the 2026 FIFA World Cup?",
+                           slug="will-mexico-reach-the-round-of-16-at-the-2026-fifa-world-cup")
+        sf = _poly_record(id="9001", question="Will Brazil reach the Semifinals at the 2026 FIFA World Cup?",
+                          slug="will-brazil-reach-the-semifinals")
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [r16, sf]}}})
+        by_id = {m["cache_id"]: m for m in result["data"]["markets"]}
+        assert by_id["polymarket:2415420"]["market_type"] == "advance_r16"
+        assert by_id["polymarket:9001"]["market_type"] == "advance_sf"
+
+    def test_moneyline_market_type_preserved_over_advance(self):
+        # A plain game moneyline keeps its provider market type (no false advance tag).
+        ml = _poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
+                          slug="fifwc-mex-ecu-2026-06-30-mex", sports_market_type="moneyline")
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [ml]}}})
+        assert result["data"]["markets"][0]["market_type"] == "moneyline"
+
     def test_metadata_is_upsert_key(self):
         result = normalize_market_sources(
             {"params": {"polymarket_markets": {"markets": [_poly_record()]}}}
