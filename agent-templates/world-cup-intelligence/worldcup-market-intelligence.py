@@ -217,6 +217,12 @@ def _advance_round(record: dict[str, Any]) -> str | None:
     text = _lower(_first(record, "slug", "ticker", "market_ticker")) + " " + _lower(
         _first(record, "title", "question")
     )
+    # Advance markets are always phrased "... reach the <round>" / slugged
+    # "...-to-reach-...". Gate on that so a knockout-game moneyline that merely
+    # mentions a round ("Will Argentina win the final?") is NOT mis-tagged as an
+    # advance market and stays a moneyline.
+    if "reach" not in text:
+        return None
     if "round of 16" in text or "round-of-16" in text:
         return "advance_r16"
     if "quarterfinal" in text or "quarter-final" in text or "quarter final" in text:
@@ -2799,7 +2805,10 @@ def _pair_bucket(market: dict[str, Any]) -> str | None:
     subj_slug = _slugify(subject)
     subj_slug = _MARKET_TEAM_ALIASES.get(subj_slug, subj_slug)
     best, best_ratio = None, 0.0
-    for urn in related:
+    # Longest team slug first so a team whose slug is a prefix of another in the
+    # same fixture (guinea / guinea-bissau, congo / congo-dr) can't shadow the
+    # more specific match in the `team_slug in subj_slug` substring branch.
+    for urn in sorted(related, key=lambda u: len(_team_slug_from_urn(u)), reverse=True):
         team_slug = _team_slug_from_urn(urn)
         # iso3 is the trailing URN segment (…:team:mexico:mex). Cached Kalshi
         # game legs name the YES side "Yes", so the only discriminator is the
@@ -2874,7 +2883,18 @@ def pair_cross_source(request_data: dict[str, Any]) -> dict[str, Any]:
         for source, buckets in by_source.items():
             if kind == "game":
                 total = sum(buckets.values())
-                fair_by_source[source] = {b: (p / total if total else None) for b, p in buckets.items()}
+                # De-vig ONLY a complete mutually-exclusive book. An incomplete
+                # book — a leg never ingested, dropped as unreliable, or a
+                # partial continue_on_error fetch — sums well below 1.0; dividing
+                # the survivors by that short total inflates them past their true
+                # probability and manufactures a large false cross-source edge.
+                # A complete 2-/3-way book sums to ~1.0 plus a small overround,
+                # so gate on a sane band; outside it, fair is unknown (None) and
+                # no edge is emitted for that source's legs.
+                if 0.90 <= total <= 1.20:
+                    fair_by_source[source] = {b: p / total for b, p in buckets.items()}
+                else:
+                    fair_by_source[source] = {b: None for b in buckets}
             else:
                 fair_by_source[source] = dict(buckets)
         for bucket in sorted({b for buckets in by_source.values() for b in buckets}):

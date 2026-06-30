@@ -132,6 +132,21 @@ class TestNormalizeMarketSources:
         assert by_id["polymarket:2415420"]["market_type"] == "advance_r16"
         assert by_id["polymarket:9001"]["market_type"] == "advance_sf"
 
+    def test_advance_round_qf_and_final_and_gating(self):
+        qf = _poly_record(id="9002", question="Will France reach the Quarterfinals at the 2026 FIFA World Cup?",
+                          slug="will-france-reach-the-quarterfinals")
+        fin = _poly_record(id="9003", question="Will Spain reach the Final at the 2026 FIFA World Cup?",
+                           slug="will-spain-reach-the-final")
+        # A knockout moneyline that mentions a round but is NOT a "reach" market
+        # must stay a moneyline (advance tag is gated on "reach").
+        final_game = _poly_record(id="9004", question="Will Argentina win the Final on 2026-07-19?",
+                                  slug="fifwc-arg-fra-2026-07-19-arg", sports_market_type="moneyline")
+        result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [qf, fin, final_game]}}})
+        by_id = {m["cache_id"]: m for m in result["data"]["markets"]}
+        assert by_id["polymarket:9002"]["market_type"] == "advance_qf"
+        assert by_id["polymarket:9003"]["market_type"] == "advance_final"
+        assert by_id["polymarket:9004"]["market_type"] == "moneyline"
+
     def test_moneyline_market_type_preserved_over_advance(self):
         # A plain game moneyline keeps its provider market type (no false advance tag).
         ml = _poly_record(id="2735826", question="Will Mexico win on 2026-06-30?",
@@ -2144,6 +2159,10 @@ class TestComputeClvReport:
         assert rep["z_test"]["z"] == 2.683 and rep["win_rates"]["gap_pp"] == 60.0
 
 
+MEX_ECU = ("urn:machina:sport:soccer:team:mexico:mex",
+           "urn:machina:sport:soccer:team:ecuador:ecu")
+
+
 class TestPairCrossSource:
     MEX = "urn:machina:sport:soccer:team:mexico:mex"
     ECU = "urn:machina:sport:soccer:team:ecuador:ecu"
@@ -2212,6 +2231,52 @@ class TestPairCrossSource:
         # mexico bucket still present (poly side), but no kalshi price / edge
         assert rows["mexico"]["kalshi_yes"] is None
         assert "edge_bps" not in rows["mexico"]
+        # Dropping one leg leaves Kalshi's book incomplete (ecu+tie=0.56); its
+        # surviving legs must NOT be de-vigged against that short total and
+        # must NOT manufacture an edge on ecuador/DRAW.
+        assert rows["ecuador"]["kalshi_fair"] is None
+        assert "edge_bps" not in rows["ecuador"]
+        assert "edge_bps" not in rows["DRAW"]
+
+    def test_incomplete_book_does_not_fabricate_edge(self):
+        # Kalshi carries only the Mexico leg; Polymarket has the full 3-way.
+        # De-vigging the lone Kalshi leg to 1.0 would fabricate a huge edge.
+        markets = [m for m in self._game_markets()
+                   if m["cache_id"] in ("kalshi:MEX", "polymarket:mex", "polymarket:ecu", "polymarket:draw")]
+        rows, _ = self._rows_by_outcome(markets)
+        assert rows["mexico"]["kalshi_yes"] == 0.43      # raw price still shown
+        assert rows["mexico"]["kalshi_fair"] is None     # but not de-vigged
+        assert "edge_bps" not in rows["mexico"]          # and no fabricated edge
+
+    def test_fuzzy_fallback_matches_typo(self):
+        # "ngland" is not an exact/substring/iso3 match for "england" but the
+        # difflib ratio is >= 0.85, so the fuzzy fallback should resolve it.
+        EV = "urn:machina:sport:soccer:event:england-vs-wales:20260615:wor"
+        eng = "urn:machina:sport:soccer:team:england:eng"
+        wal = "urn:machina:sport:soccer:team:wales:wal"
+        m = {"cache_id": "polymarket:x", "source": "polymarket",
+             "title": "Will Ngland win on 2026-06-15?", "event_urn": EV,
+             "related_team_urns": [eng, wal], "price_quality": "ok",
+             "outcomes": [{"name": "Yes", "price": 0.5}, {"name": "No", "price": 0.5}]}
+        rows, _ = self._rows_by_outcome([m])
+        assert "england" in rows and "wales" not in rows
+
+    def test_fuzzy_does_not_collide_near_distinct_nations(self):
+        # Iran/Iraq differ by one char (ratio 0.75 < 0.85): a Kalshi leg whose
+        # only discriminator is the iso3 ticker suffix must bucket to exactly
+        # one nation, never cross-match the other.
+        EV = "urn:machina:sport:soccer:event:iran-vs-iraq:20260615:wor"
+        iran = "urn:machina:sport:soccer:team:iran:irn"
+        iraq = "urn:machina:sport:soccer:team:iraq:irq"
+
+        def kalshi(cid, suffix, price):
+            return {"cache_id": cid, "source": "kalshi", "title": "Iran vs Iraq Winner?",
+                    "slug": f"KXWCGAME-26JUN15IRNIRQ-{suffix}", "event_urn": EV,
+                    "related_team_urns": [iran, iraq], "price_quality": "ok",
+                    "outcomes": [{"name": "Yes", "price": price}, {"name": "No", "price": round(1 - price, 3)}]}
+        rows, _ = self._rows_by_outcome([kalshi("kalshi:IRN", "IRN", 0.6), kalshi("kalshi:IRQ", "IRQ", 0.4)])
+        assert rows["iran"]["kalshi_yes"] == 0.6
+        assert rows["iraq"]["kalshi_yes"] == 0.4
 
     def test_advance_pairs_by_team_and_round(self):
         markets = [
@@ -2241,10 +2306,6 @@ class TestPairCrossSource:
         ]
         r = pair_cross_source({"params": {"markets": markets}})["data"]
         assert r["pairs"] == []
-
-
-MEX_ECU = ("urn:machina:sport:soccer:team:mexico:mex",
-           "urn:machina:sport:soccer:team:ecuador:ecu")
 
 
 class TestCrossSourceEndToEnd:
