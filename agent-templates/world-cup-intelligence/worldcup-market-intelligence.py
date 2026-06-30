@@ -451,6 +451,16 @@ def normalize_market_sources(request_data: dict[str, Any]) -> dict[str, Any]:
         warnings.append("Kalshi returned records, but none matched the World Cup/status/source filters.")
     if poly_records and not any(m.get("source") == "polymarket" for m in markets):
         warnings.append("Polymarket returned records, but none matched the World Cup/status/source filters.")
+    # Asymmetric ingestion is the common failure mode: each fetch task runs
+    # under continue_on_error, so one venue can silently come back empty and
+    # leave a single-venue cache. Cross-source pairing needs both venues, so
+    # surface the gap rather than letting it look like a clean sync.
+    if kalshi_records and not poly_records:
+        warnings.append("Polymarket returned no records this sync (fetch may have failed); "
+                        "cache will be Kalshi-only and cross-source pairing is unavailable.")
+    if poly_records and not kalshi_records:
+        warnings.append("Kalshi returned no records this sync (fetch may have failed); "
+                        "cache will be Polymarket-only and cross-source pairing is unavailable.")
 
     return {
         "status": True,

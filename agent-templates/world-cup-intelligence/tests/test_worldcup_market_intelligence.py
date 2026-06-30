@@ -154,6 +154,12 @@ class TestNormalizeMarketSources:
         result = normalize_market_sources({"params": {"polymarket_markets": {"markets": [ml]}}})
         assert result["data"]["markets"][0]["market_type"] == "moneyline"
 
+    def test_warns_when_one_venue_returns_no_records(self):
+        # Kalshi-only sync -> warn that cross-source pairing is unavailable.
+        result = normalize_market_sources(
+            {"params": {"kalshi_markets": {"markets": [_kalshi_record()]}, "status": "all"}})
+        assert any("Polymarket returned no records" in w for w in result["data"]["warnings"])
+
     def test_metadata_is_upsert_key(self):
         result = normalize_market_sources(
             {"params": {"polymarket_markets": {"markets": [_poly_record()]}}}
