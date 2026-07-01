@@ -29,6 +29,325 @@ import time
 import uuid
 
 import wave
+import re
+
+
+OMNI_VIDEO_MODEL_PREFIX = "gemini-omni"
+OMNI_DEFAULT_VIDEO_MODEL = "gemini-omni-flash-preview"
+
+
+def _as_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return bool(value)
+
+
+def _is_omni_video_model(model_name):
+    return str(model_name or "").startswith(OMNI_VIDEO_MODEL_PREFIX)
+
+
+def _guess_mime_type(path_or_url, fallback="image/jpeg"):
+    lowered = str(path_or_url or "").split("?")[0].lower()
+    if lowered.endswith(".png"):
+        return "image/png"
+    if lowered.endswith(".gif"):
+        return "image/gif"
+    if lowered.endswith(".webp"):
+        return "image/webp"
+    if lowered.endswith(".jpg") or lowered.endswith(".jpeg"):
+        return "image/jpeg"
+    if lowered.endswith(".mp4"):
+        return "video/mp4"
+    return fallback
+
+
+def _load_image_part(image_path=None, image_base64=None, mime_type=None):
+    """Return an Interactions API image input part from a URL/path or base64 payload."""
+    if image_base64:
+        return {
+            "type": "image",
+            "data": image_base64,
+            "mime_type": mime_type or "image/jpeg",
+        }
+
+    if not image_path:
+        return None
+
+    image_bytes = None
+    if str(image_path).startswith(("http://", "https://")):
+        response = requests.get(image_path, timeout=120)
+        response.raise_for_status()
+        image_bytes = response.content
+        detected_mime = response.headers.get("content-type", "").split(";")[0] or None
+    elif os.path.exists(image_path):
+        with open(image_path, "rb") as image_file:
+            image_bytes = image_file.read()
+        detected_mime = None
+    else:
+        raise FileNotFoundError(f"Input image not found: {image_path}")
+
+    return {
+        "type": "image",
+        "data": base64.b64encode(image_bytes).decode("utf-8"),
+        "mime_type": mime_type or detected_mime or _guess_mime_type(image_path),
+    }
+
+
+def _extract_omni_video_outputs(interaction):
+    """Extract video output objects from Interactions API SDK-like and raw REST shapes."""
+    outputs = []
+    if not isinstance(interaction, dict):
+        return outputs
+
+    for key in ("output_video", "outputVideo"):
+        value = interaction.get(key)
+        if isinstance(value, dict):
+            outputs.append(value)
+
+    for step in interaction.get("steps", []) or []:
+        if not isinstance(step, dict):
+            continue
+        for content in step.get("content", []) or []:
+            if isinstance(content, dict) and content.get("type") == "video":
+                outputs.append(content)
+
+    # Some SDK/REST revisions may put model output under output/content directly.
+    for content in interaction.get("content", []) or []:
+        if isinstance(content, dict) and content.get("type") == "video":
+            outputs.append(content)
+
+    return outputs
+
+
+def _extract_file_id_from_uri(uri):
+    if not uri:
+        return None
+    match = re.search(r"files/([^/:?]+)", uri)
+    return match.group(1) if match else None
+
+
+def _download_omni_video_uri(uri, api_key, poll_interval=5, max_poll_attempts=120):
+    """Poll a Gemini File API URI until active, then download the MP4 bytes."""
+    file_id = _extract_file_id_from_uri(uri)
+    base_url = "https://generativelanguage.googleapis.com/v1beta"
+
+    if file_id:
+        for attempt in range(max_poll_attempts):
+            status_url = f"{base_url}/files/{file_id}?key={api_key}"
+            status_response = requests.get(status_url, timeout=60)
+            if status_response.status_code == 200:
+                status_payload = status_response.json()
+                state = status_payload.get("state")
+                if isinstance(state, dict):
+                    state = state.get("name")
+                if state in {"ACTIVE", "SUCCEEDED"}:
+                    break
+                if state == "FAILED":
+                    raise RuntimeError(f"Gemini Omni video file failed: {json.dumps(status_payload)[:500]}")
+            # If the status endpoint is unavailable but we have a download URI, try the download below.
+            elif status_response.status_code in {400, 404} and ":download" in uri:
+                break
+
+            if attempt == max_poll_attempts - 1:
+                raise TimeoutError(f"Timed out waiting for Gemini Omni video file {file_id} to become ACTIVE")
+            time.sleep(float(poll_interval or 5))
+
+    if uri.startswith("http"):
+        download_url = uri
+        if file_id and ":download" not in download_url:
+            download_url = f"{base_url}/files/{file_id}:download?alt=media"
+    elif file_id:
+        download_url = f"{base_url}/files/{file_id}:download?alt=media"
+    else:
+        download_url = uri
+
+    if "generativelanguage.googleapis.com" in download_url and "key=" not in download_url:
+        separator = "&" if "?" in download_url else "?"
+        download_url = f"{download_url}{separator}key={api_key}"
+
+    video_response = requests.get(download_url, timeout=300)
+    video_response.raise_for_status()
+    return video_response.content
+
+
+def _save_video_results(video_payloads, output_path=None):
+    video_results = []
+    for idx, video_bytes in enumerate(video_payloads):
+        if not video_bytes:
+            continue
+        if output_path and len(video_payloads) == 1:
+            video_output_path = output_path
+        elif output_path:
+            base, ext = os.path.splitext(output_path)
+            video_output_path = f"{base}_{idx + 1}{ext or '.mp4'}"
+        else:
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            video_output_path = temp_file.name
+            temp_file.close()
+
+        with open(video_output_path, "wb") as f:
+            f.write(video_bytes)
+        video_results.append({
+            "video_path": video_output_path,
+            "filename": os.path.basename(video_output_path),
+        })
+    return video_results
+
+
+def _invoke_omni_video(request_data, params, headers, prompt, model_name, poll_interval, output_path):
+    """Generate/edit video through Gemini Omni Flash Interactions API."""
+    api_key = headers.get("api_key") or params.get("api_key")
+    if not api_key:
+        return {"status": False, "message": "API key is required for Gemini Omni video generation."}
+    if not prompt:
+        return {"status": False, "message": "Prompt is required for Gemini Omni video generation."}
+
+    model_name = model_name or OMNI_DEFAULT_VIDEO_MODEL
+    aspect_ratio = params.get("aspect_ratio")
+    delivery = params.get("delivery") or "uri"
+    task = params.get("task")
+    negative_prompt = params.get("negative_prompt")
+    if negative_prompt:
+        # Omni does not support a separate negative_prompt field; docs recommend writing negatives in the prompt.
+        prompt = f"{prompt}\nDo not include: {negative_prompt}."
+
+    input_parts = []
+    image_specs = []
+
+    # Backward-compatible single-image inputs.
+    if params.get("image_base64") or params.get("image_path"):
+        image_specs.append({
+            "image_path": params.get("image_path"),
+            "image_base64": params.get("image_base64"),
+            "mime_type": params.get("image_mime_type") or params.get("mime_type"),
+        })
+
+    # Optional multi-reference inputs for Omni prompt-guide tags (<IMAGE_REF_N>, <FIRST_FRAME>).
+    for key in ("image_paths", "reference_image_paths"):
+        value = params.get(key)
+        if isinstance(value, str):
+            value = [item.strip() for item in value.split(",") if item.strip()]
+        if isinstance(value, list):
+            for path in value:
+                image_specs.append({"image_path": path, "mime_type": None})
+
+    try:
+        for spec in image_specs:
+            part = _load_image_part(**spec)
+            if part:
+                input_parts.append(part)
+    except Exception as e:
+        return {"status": False, "message": f"Failed to prepare Gemini Omni image input: {e}"}
+
+    if input_parts:
+        input_parts.append({"type": "text", "text": prompt})
+        interaction_input = input_parts
+        task = task or "image_to_video"
+    else:
+        interaction_input = prompt
+        task = task or "text_to_video"
+
+    response_format = {"type": "video", "delivery": delivery}
+    if aspect_ratio:
+        response_format["aspect_ratio"] = aspect_ratio
+
+    request_body = {
+        "model": model_name,
+        "input": interaction_input,
+        "response_format": response_format,
+        "generation_config": {"video_config": {"task": task}},
+        "background": _as_bool(params.get("background"), False),
+        "store": _as_bool(params.get("store"), False),
+        "stream": _as_bool(params.get("stream"), False),
+    }
+    previous_interaction_id = params.get("previous_interaction_id")
+    if previous_interaction_id:
+        request_body["previous_interaction_id"] = previous_interaction_id
+
+    print(f"🎬 Starting Gemini Omni video generation with model: {model_name}")
+    print(f"🎯 Omni task={task}, delivery={delivery}, aspect_ratio={aspect_ratio or 'default'}")
+    print(f"📝 Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"📝 Prompt: {prompt}")
+
+    try:
+        response = requests.post(
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+            json=request_body,
+            timeout=600,
+        )
+        if response.status_code != 200:
+            return {
+                "status": False,
+                "message": f"Gemini Omni API error: {response.status_code} - {response.text[:1000]}",
+            }
+
+        interaction = response.json()
+        raw_response_json = json.dumps(interaction, indent=2, default=str)
+        video_outputs = _extract_omni_video_outputs(interaction)
+        if not video_outputs:
+            return {
+                "status": False,
+                "message": "Gemini Omni completed but returned no video output.",
+                "raw_api_response": raw_response_json,
+            }
+
+        video_payloads = []
+        max_poll_attempts = int(params.get("max_poll_attempts", 120))
+        for output in video_outputs:
+            if output.get("data"):
+                video_payloads.append(base64.b64decode(output["data"]))
+            elif output.get("uri"):
+                video_payloads.append(_download_omni_video_uri(output["uri"], api_key, poll_interval, max_poll_attempts))
+
+        video_results = _save_video_results(video_payloads, output_path)
+        if not video_results:
+            return {
+                "status": False,
+                "message": "Gemini Omni returned video outputs, but no videos could be downloaded/saved.",
+                "raw_api_response": raw_response_json,
+            }
+
+        if len(video_results) == 1:
+            return {
+                "status": True,
+                "data": {
+                    "video_path": video_results[0]["video_path"],
+                    "filename": video_results[0]["filename"],
+                    "video_format": "MP4",
+                    "prompt": prompt,
+                    "model": model_name,
+                    "interaction_id": interaction.get("id"),
+                    "raw_api_response": raw_response_json,
+                },
+                "message": "Video generated successfully with Gemini Omni.",
+            }
+
+        return {
+            "status": True,
+            "data": {
+                "videos": video_results,
+                "video_count": len(video_results),
+                "video_format": "MP4",
+                "prompt": prompt,
+                "model": model_name,
+                "interaction_id": interaction.get("id"),
+                "raw_api_response": raw_response_json,
+            },
+            "message": f"{len(video_results)} videos generated successfully with Gemini Omni.",
+        }
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ Exception during Gemini Omni video generation: {error_trace}")
+        return {
+            "status": False,
+            "message": f"Exception when generating Gemini Omni video: {e}",
+            "raw_api_response": error_trace,
+        }
 
 
 def invoke_prompt(params):
@@ -743,12 +1062,13 @@ def invoke_search(request_data):
 
 def invoke_video(request_data):
     """
-    Generate videos using Google's Veo model via direct REST API.
+    Generate videos using Google's Gemini Omni or Veo APIs via direct REST calls.
     
     Uses direct HTTP calls to the Generative Language API, bypassing SDK version issues.
     
     Parameters:
     - model_name: Model name. Available models:
+        - "gemini-omni-flash-preview" (Gemini Omni Flash Interactions API - multimodal video)
         - "veo-3.1-generate-preview" (Veo 3.1 Preview - 720p/1080p, 8s/6s/4s)
         - "veo-3.1-fast-generate-preview" (Veo 3.1 Fast Preview - optimized for speed)
         - "veo-3.0-generate-001" (Veo 3 - 720p/1080p 16:9 only, 8s)
@@ -783,8 +1103,11 @@ def invoke_video(request_data):
     - home_animal: Optional - Home team animal to substitute for {{home_animal}} in prompt
     - away_animal: Optional - Away team animal to substitute for {{away_animal}} in prompt
     - speaker_animal: Optional - Current speaker's animal to substitute for {{speaker_animal}} in prompt
-    - aspect_ratio: Optional - Video aspect ratio (e.g., "16:9", "9:16", "1:1"). Defaults to model default.
-    - negative_prompt: Optional - Text describing what to avoid in the video (e.g., "cartoon, drawing, low quality")
+    - aspect_ratio: Optional - Video aspect ratio. Omni supports "16:9" and "9:16"; Veo support varies by model.
+    - delivery: Optional Omni delivery mode, "uri" (default) or inline base64.
+    - task: Optional Omni video_config task: "text_to_video", "image_to_video", "reference_to_video", or "edit".
+    - previous_interaction_id: Optional Omni interaction ID for iterative editing (requires stored prior interaction).
+    - negative_prompt: Optional - Text describing what to avoid; Omni folds this into the regular prompt.
     
     Note: Request latency varies from 11 seconds to 6 minutes during peak hours.
     Generated videos are stored on server for 2 days before removal.
@@ -798,7 +1121,7 @@ def invoke_video(request_data):
     # Get parameters
     prompt = params.get("prompt")
     # Use 'or' instead of default to handle None values
-    model_name = params.get("model_name") or "veo-3.1-fast-generate-preview"
+    model_name = params.get("model_name") or OMNI_DEFAULT_VIDEO_MODEL
     poll_interval = params.get("poll_interval", 10)  # seconds
     output_path = params.get("output_path")  # Optional custom output path
     max_retries = params.get("max_retries", 3)  # Maximum retry attempts
@@ -858,6 +1181,9 @@ def invoke_video(request_data):
         prompt = prompt.replace("{{speaker_animal}}", str(speaker_animal))
         print(f"🔄 Template variables substituted in prompt")
     
+    if _is_omni_video_model(model_name):
+        return _invoke_omni_video(request_data, params, headers, prompt, model_name, poll_interval, output_path)
+
     # Retry loop for handling empty video responses
     video_results = None  # Initialize outside loop
     raw_response_json = None  # Initialize outside loop
