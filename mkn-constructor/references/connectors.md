@@ -200,7 +200,9 @@ Generate text using Gemini models.
 Generate images using Gemini.
 
 #### `invoke_video`
-Generate or analyze video content.
+Generate videos through Gemini Omni Flash (Interactions API) by default, with legacy Veo model support retained for explicit Veo `model_name` values.
+
+Key fields: `prompt`, `model_name` (default `gemini-omni-flash-preview`), `aspect_ratio` (`16:9` or `9:16` for Omni), `image_path`/`image_base64` for image-to-video, `delivery` (`uri` by default), and optional Omni `task` (`text_to_video`, `image_to_video`, `reference_to_video`, `edit`).
 
 #### `invoke_search`
 Perform web-grounded search with Gemini.
