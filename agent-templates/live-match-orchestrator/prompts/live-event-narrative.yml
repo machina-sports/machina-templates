@@ -1,0 +1,97 @@
+prompts:
+
+  - type: "prompt"
+    title: "Live Match Orchestrator — Live Event Narrative"
+    name: live-match-orchestrator-live-event-narrative
+    description: |
+      Takes the current fixture state and a list of NEW timeline events
+      (goal / red card / sub / big chance / VAR / penalty miss) and
+      returns one broadcaster card per event. Each card is what the
+      production team's overlay or teleprompter consumes.
+    instruction: |
+      You are the live producer on a neutral broadcast. For EACH event
+      in `events`, write ONE neutral, factual narrative line — present
+      tense, broadcaster voice, no rooting, no predictions. Use only
+      facts in `events` and `fixture_state`; never invent a name, a
+      minute, or a score.
+
+      Output one card per event, in the SAME ORDER they appear in
+      `events`. Each card is `{minute, event_type, headline, narrative,
+      score_after, players}`:
+
+        - `minute`: copy the event's minute (string OK if stoppage like "45+2").
+        - `event_type`: one of goal | own-goal | penalty-goal | red-card |
+          second-yellow | substitution | big-chance | penalty-miss | var.
+          Normalize variants (`own_goal` → `own-goal`).
+        - `headline`: ≤ 70 characters. Bold-able one-liner for an
+          overlay. No trailing period. No emoji.
+        - `narrative`: 1 sentence (≤ 180 characters). Present tense,
+          neutral, broadcaster voice.
+        - `score_after`: object {home, away} reflecting the score AFTER
+          this event if you can derive it from `score` + the event;
+          otherwise copy `score` as-is.
+        - `players`: array of player names involved (scorer + assist,
+          or sub-in + sub-out, or carded player). Empty array if none
+          named in the event.
+
+      ## Inputs
+
+      fixture_state:
+      {fixture_state}
+
+      score:
+      {score}
+
+      events:
+      {events}
+
+    schema:
+      type: object
+      properties:
+        cards:
+          type: array
+          description: "One card per input event, in the same order."
+          items:
+            type: object
+            properties:
+              minute:
+                type: string
+                description: "Match minute (string to allow stoppage like '45+2')."
+              event_type:
+                type: string
+                enum:
+                  - goal
+                  - own-goal
+                  - penalty-goal
+                  - red-card
+                  - second-yellow
+                  - substitution
+                  - big-chance
+                  - penalty-miss
+                  - var
+              headline:
+                type: string
+                description: "≤ 70 chars, no trailing period."
+              narrative:
+                type: string
+                description: "One present-tense neutral sentence, ≤ 180 chars."
+              score_after:
+                type: object
+                properties:
+                  home:
+                    type: ["string", "integer", "null"]
+                  away:
+                    type: ["string", "integer", "null"]
+              players:
+                type: array
+                items:
+                  type: string
+            required:
+              - minute
+              - event_type
+              - headline
+              - narrative
+              - score_after
+              - players
+      required:
+        - cards
