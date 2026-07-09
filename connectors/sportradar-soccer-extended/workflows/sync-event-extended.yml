@@ -1,0 +1,73 @@
+workflow:
+
+  # sportradar-soccer-extended-sync-event
+  name: "sportradar-soccer-extended-sync-event"
+  title: "Sportradar Soccer Extended - Sync Event"
+  description: "Enrich a synced match with Sportradar Soccer Extended data: per-shot xG and pitch coordinates from the extended timeline. Requires a Soccer Extended subscription and an event already synced via the base sportradar-soccer connector. Accepts either a raw Sportradar id (sr:sport_event:...) or its IPTC URN (urn:sportradar:sport_event:...)."
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer-extended:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    sport_event_id: "$.get('sport_event_id')"
+  outputs:
+    workflow-status: "'executed'"
+    shots-count: "$.get('shots-count', 0)"
+  tasks:
+
+    # sportradar-soccer-extended-get-timeline
+    - type: "connector"
+      name: "sportradar-soccer-extended-get-timeline"
+      description: "Get the extended match timeline (per-shot xG + event coordinates)."
+      condition: |
+        (
+          $.get('sport_event_id') is not None
+          and $.get('sport_event_id') != ''
+        )
+      connector:
+        name: "sportradar-soccer-extended"
+        command: "get-sport_events/{sport_event_id}/timeline.json"
+        command_attribute:
+          sport_event_id: "$.get('sport_event_id', '').replace('urn:sportradar:sport_event:', '')"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        extended-timeline: "$.get('timeline', [])"
+        extended-sport-event: "$.get('sport_event', {})"
+        generated-at: "$.get('generated_at')"
+
+    # mapping-soccer-extended-shots
+    - type: mapping
+      name: mapping-soccer-extended-shots
+      title: "Sportradar Soccer Extended - Shot & xG Mapping"
+      description: "Extract shot events with coordinates and xG from the extended timeline."
+      condition: "len($.get('extended-timeline', [])) > 0"
+      inputs:
+        extended_timeline: "$.get('extended-timeline', [])"
+      outputs:
+        extended-shots: "$.get('extended_shots', [])"
+        shots-count: "len($.get('extended_shots', []))"
+
+    # task-update-event-extended
+    - type: "document"
+      name: "task-update-event-extended"
+      description: "Store the extended shot/xG enrichment document."
+      condition: "$.get('generated-at') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        event-extended: |
+          {
+            'data': {
+              'shots': $.get('extended-shots', []),
+              'sport_event': $.get('extended-sport-event', {}),
+            },
+            'title': f"Event {$.get('sport_event_id')} - Extended xG/Shot Map ({$.get('shots-count', 0)} shots)",
+            'summary': f"Sportradar Soccer Extended shot map for event {$.get('sport_event_id')}: per-shot xG and pitch coordinates."
+          }
+      metadata:
+        document_type: "'fixture-extended'"
+        event_code: "$.get('sport_event_id') if $.get('sport_event_id', '').startswith('urn:sportradar:') else f\"urn:sportradar:sport_event:{$.get('sport_event_id')}\""

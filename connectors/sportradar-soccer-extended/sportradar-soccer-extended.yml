@@ -1,0 +1,5 @@
+connector:
+  name: "sportradar-soccer-extended"
+  description: "Sportradar Soccer Extended API v4 — event coordinates, 100+ extended player/team stats, period splits, momentum, insights, and probabilities. Complements sportradar-soccer; requires a Soccer Extended subscription."
+  filename: "sportradar-soccer-extended.json"
+  filetype: "restapi"

@@ -1,0 +1,31 @@
+mappings:
+
+  # mapping-soccer-extended-shots
+  - type: "mapping"
+    title: "Sportradar Soccer Extended - Shot & xG Mapping"
+    name: "mapping-soccer-extended-shots"
+    description: "Extract shot events (pitch coordinates + per-shot xG) from the Sportradar extended timeline. Field names follow the Sportradar Soccer Extended shot-map docs (type, x, y, xg_value, outcome, body_type, type_of_play, goalface_x/y). Every access is guarded so a response-shape change degrades to an empty list rather than failing."
+    outputs:
+      extended_shots: |
+        [
+          {
+            "id": event.get('id'),
+            "type": event.get('type'),
+            "competitor": event.get('competitor'),
+            "match_time": event.get('match_time'),
+            "period": event.get('period'),
+            "x": event.get('x'),
+            "y": event.get('y'),
+            "xg_value": event.get('xg_value'),
+            "outcome": event.get('outcome'),
+            "body_type": event.get('body_type'),
+            "type_of_play": event.get('type_of_play'),
+            "goalface_x": event.get('goalface_x'),
+            "goalface_y": event.get('goalface_y'),
+            "players": event.get('players', [])
+          }
+          for event in $.get('extended_timeline', [])
+          if event.get('xg_value') is not None
+          or 'shot' in (event.get('type') or '')
+          or event.get('type') == 'score_change'
+        ]

@@ -1,0 +1,531 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sportradar Soccer Extended v4",
+    "description": "Sportradar Soccer Extended API v4 — advanced live/editorial soccer data: event coordinates, 100+ extended player/team stats, period splits, momentum, insights, and probabilities. Complements the base sportradar-soccer connector; requires a Soccer Extended subscription.",
+    "version": "4"
+  },
+  "servers": [
+    {
+      "url": "https://api.sportradar.com/soccer-extended/production/v4/en"
+    }
+  ],
+  "paths": {
+    "/sport_events/{sport_event_id}/summary.json": {
+      "get": {
+        "summary": "Extended match summary — player and team stats by period (100+ data points)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The sport event ID (e.g. sr:sport_event:123456)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sport_events/{sport_event_id}/timeline.json": {
+      "get": {
+        "summary": "Extended timeline — passes, tackles, dribbles, interceptions, event coordinates, and xG",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The sport event ID (e.g. sr:sport_event:123456)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sport_events/{sport_event_id}/momentum.json": {
+      "get": {
+        "summary": "Sport event momentum — minute-by-minute team momentum values",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The sport event ID (e.g. sr:sport_event:123456)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sport_events/{sport_event_id}/{data_type}": {
+      "get": {
+        "summary": "Generic extended sport-event feed — pass data_type such as insights.json, probabilities.json, timeline_probabilities.json",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sport_event_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The sport event ID (e.g. sr:sport_event:123456)"
+          },
+          {
+            "in": "path",
+            "name": "data_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The feed to retrieve, including .json (e.g. insights.json, probabilities.json)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/competitors/{competitor_id}/statistics.json": {
+      "get": {
+        "summary": "Seasonal competitor extended statistics — season-level player and team stats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The season ID (e.g. sr:season:123456)"
+          },
+          {
+            "in": "path",
+            "name": "competitor_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The competitor ID (e.g. sr:competitor:1646)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/seasons/{season_id}/{data_type}": {
+      "get": {
+        "summary": "Generic extended season feed — pass data_type such as probabilities.json, outright_probabilities.json",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "season_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The season ID (e.g. sr:season:123456)"
+          },
+          {
+            "in": "path",
+            "name": "data_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The feed to retrieve, including .json (e.g. probabilities.json, outright_probabilities.json)"
+          },
+          {
+            "in": "query",
+            "name": "api_key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "params",
+        "in": "query",
+        "name": "api_key"
+      }
+    }
+  }
+}
