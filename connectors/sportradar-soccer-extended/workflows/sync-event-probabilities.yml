@@ -1,0 +1,61 @@
+workflow:
+
+  # sportradar-soccer-extended-sync-probabilities
+  name: "sportradar-soccer-extended-sync-probabilities"
+  title: "Sportradar Soccer Extended - Sync Probabilities"
+  description: "Store Sportradar Soccer Extended pre-match and live win/draw/loss probabilities for a match. Requires the Soccer Extended probabilities plan and an event already synced via the base sportradar-soccer connector. Accepts a raw Sportradar id (sr:sport_event:...) or its IPTC URN."
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer-extended:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    sport_event_id: "$.get('sport_event_id')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # sportradar-soccer-extended-get-probabilities
+    - type: "connector"
+      name: "sportradar-soccer-extended-get-probabilities"
+      description: "Get pre-match and live match probabilities."
+      condition: |
+        (
+          $.get('sport_event_id') is not None
+          and $.get('sport_event_id') != ''
+        )
+      connector:
+        name: "sportradar-soccer-extended"
+        command: "get-sport_events/{sport_event_id}/{data_type}"
+        command_attribute:
+          sport_event_id: "$.get('sport_event_id', '').replace('urn:sportradar:sport_event:', '')"
+          data_type: "'probabilities.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        probabilities: "$.get('probabilities', {})"
+        probabilities-sport-event: "$.get('sport_event', {})"
+        generated-at: "$.get('generated_at')"
+
+    # task-update-event-probabilities
+    - type: "document"
+      name: "task-update-event-probabilities"
+      description: "Store the probabilities enrichment document."
+      condition: "$.get('generated-at') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        event-probabilities: |
+          {
+            'data': {
+              'probabilities': $.get('probabilities', {}),
+              'sport_event': $.get('probabilities-sport-event', {}),
+            },
+            'title': f"Event {$.get('sport_event_id')} - Probabilities",
+            'summary': f"Sportradar Soccer Extended win/draw/loss probabilities for event {$.get('sport_event_id')}."
+          }
+      metadata:
+        document_type: "'fixture-probabilities'"
+        event_code: "$.get('sport_event_id') if $.get('sport_event_id', '').startswith('urn:sportradar:') else f\"urn:sportradar:sport_event:{$.get('sport_event_id')}\""

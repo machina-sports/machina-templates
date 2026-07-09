@@ -1,6 +1,6 @@
 connector:
   name: "sports-skills"
-  description: "Aggregator over 19 sports-data domains via the machina-sports/sports-skills Python package. Each command dispatches to one module; pass `command=<function_name>` in workflow inputs plus the function's kwargs. Most public-data modules (football, NBA, NFL, NHL, MLB, tennis, golf, F1) need no API keys; betting markets (kalshi, polymarket) need their own."
+  description: "Aggregator over 21 sports-data domains via the machina-sports/sports-skills Python package. Each command dispatches to one module; pass `command=<function_name>` in workflow inputs plus the function's kwargs. Most public-data modules (football, NBA, NFL, NHL, MLB, tennis, golf, F1, cricket, esports) need no API keys; betting markets (kalshi, polymarket) need their own."
   filename: "sports-skills.py"
   filetype: "pyscript"
   commands:
@@ -30,6 +30,10 @@ connector:
       value: "invoke_volleyball"
     - name: "Cross-country / Track & Field"
       value: "invoke_xctf"
+    - name: "Cricket"
+      value: "invoke_cricket"
+    - name: "Esports"
+      value: "invoke_esports"
     - name: "Polymarket"
       value: "invoke_polymarket"
     - name: "Kalshi"

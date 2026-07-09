@@ -1,0 +1,51 @@
+setup:
+  title: Sportradar Soccer Extended v4
+  description: Connect to the Sportradar Soccer Extended API for advanced live and editorial soccer data. Complements the base sportradar-soccer connector and reuses the same Sportradar API key; requires a Soccer Extended subscription.
+  category:
+    - data-acquisition
+    - soccer
+  estimatedTime: 1 minute
+  features:
+    - Event coordinates (x, y) for shots, passes, and on-ball actions
+    - 100+ extended player and team statistics with period splits
+    - Passes, tackles, dribbles, interceptions, crosses, blocks, and chances created
+    - Minute-by-minute team momentum values
+    - AI-generated pre-match and live match insights
+    - Pre-match, live, timeline, and season probabilities (probabilities plan)
+    - Seasonal competitor extended statistics for scouting/radar pages
+  integrations:
+    - sportradar
+  status: available
+  value: connectors/sportradar-soccer-extended
+  version: 4.0.0
+
+datasets:
+
+  # connectors
+
+  - type: "connector"
+    path: "sportradar-soccer-extended.yml"
+
+  # test credentials
+
+  - type: "workflow"
+    path: "test-credentials.yml"
+
+  # mappings
+
+  - type: "mappings"
+    path: "mappings/event-extended.yml"
+
+  # sync workflows
+
+  - type: "workflow"
+    path: "workflows/sync-event-extended.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-event-momentum.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-event-insights.yml"
+
+  - type: "workflow"
+    path: "workflows/sync-event-probabilities.yml"

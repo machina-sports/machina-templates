@@ -1,0 +1,61 @@
+workflow:
+
+  # sportradar-soccer-extended-sync-insights
+  name: "sportradar-soccer-extended-sync-insights"
+  title: "Sportradar Soccer Extended - Sync Insights"
+  description: "Store Sportradar Soccer Extended AI-generated pre-match and live match insights for a match. Requires a Soccer Extended subscription and an event already synced via the base sportradar-soccer connector. Accepts a raw Sportradar id (sr:sport_event:...) or its IPTC URN."
+  context-variables:
+    debugger:
+      enabled: false
+    sportradar-soccer-extended:
+      api_key: "$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY"
+  inputs:
+    sport_event_id: "$.get('sport_event_id')"
+  outputs:
+    workflow-status: "'executed'"
+  tasks:
+
+    # sportradar-soccer-extended-get-insights
+    - type: "connector"
+      name: "sportradar-soccer-extended-get-insights"
+      description: "Get AI-generated pre-match and live insights."
+      condition: |
+        (
+          $.get('sport_event_id') is not None
+          and $.get('sport_event_id') != ''
+        )
+      connector:
+        name: "sportradar-soccer-extended"
+        command: "get-sport_events/{sport_event_id}/{data_type}"
+        command_attribute:
+          sport_event_id: "$.get('sport_event_id', '').replace('urn:sportradar:sport_event:', '')"
+          data_type: "'insights.json'"
+      inputs:
+        api_key: "$.get('api_key')"
+      outputs:
+        insights: "$.get('insights', {})"
+        insights-sport-event: "$.get('sport_event', {})"
+        generated-at: "$.get('generated_at')"
+
+    # task-update-event-insights
+    - type: "document"
+      name: "task-update-event-insights"
+      description: "Store the insights enrichment document."
+      condition: "$.get('generated-at') is not None"
+      config:
+        action: "update"
+        embed-vector: false
+        force-update: true
+      documents:
+        event-insights: |
+          {
+            'data': {
+              'insights': $.get('insights', {}),
+              'sport_event': $.get('insights-sport-event', {}),
+            },
+            'title': f"Event {$.get('sport_event_id')} - Insights",
+            'summary': f"Sportradar Soccer Extended AI insights for event {$.get('sport_event_id')}."
+          }
+      metadata:
+        document_type: "'fixture-insights'"
+        event_code: "$.get('sport_event_id') if $.get('sport_event_id', '').startswith('urn:sportradar:') else f\"urn:sportradar:sport_event:{$.get('sport_event_id')}\""

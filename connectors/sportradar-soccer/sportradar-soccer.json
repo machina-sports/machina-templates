@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.sportradar.com/soccer/trial/v4/en"
+      "url": "https://api.sportradar.com/soccer/production/v4/en"
     }
   ],
   "paths": {

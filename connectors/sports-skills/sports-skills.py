@@ -6,7 +6,7 @@ Design:
 - One `invoke_<module>` per registered sports-skills module (football,
   nba, nfl, ...). Each forwards a `command` param (the function name on
   that module) plus arbitrary kwargs.
-- 19 modules × ~13 commands each ≈ 241 underlying functions, kept off
+- 21 modules × ~13 commands each ≈ 270 underlying functions, kept off
   the connector's flat command surface. The agent picks a module via
   the connector command, then names the specific function in `inputs`.
 - Most modules wrap public providers (ESPN, Understat, FPL, openfootball,
@@ -30,8 +30,8 @@ import subprocess
 import sys
 
 
-_MIN_VERSION = (0, 26, 3)
-_PIP_PACKAGE = "sports-skills>=0.26.3,<1.0"
+_MIN_VERSION = (0, 28, 0)
+_PIP_PACKAGE = "sports-skills>=0.28.0,<1.0"
 # Writable install target for in-place upgrades. The pod runs as a non-root
 # user whose home dir is read-only (`pip install --user` fails with EACCES on
 # /home/machina), and system site-packages is root-owned — /tmp is the one
@@ -297,6 +297,27 @@ def invoke_volleyball(request_data):
 def invoke_xctf(request_data):
     """Cross-country / Track & Field — ESPN."""
     return _dispatch("xctf", request_data)
+
+
+def invoke_cricket(request_data):
+    """Cricket — ESPN (live/schedules/standings) + Cricsheet (ball-by-ball).
+
+    Commands: get_series, get_scoreboard, get_standings, get_game_summary,
+    get_news, get_competitions, get_matches, get_match_deliveries,
+    get_player_stats, find_player.
+    """
+    return _dispatch("cricket", request_data)
+
+
+def invoke_esports(request_data):
+    """Esports — OpenDota (Dota 2) + Leaguepedia (LoL).
+
+    Commands: get_pro_matches, get_leagues, get_pro_teams, get_match,
+    lol_cargo_query, get_lol_tournaments. For esports betting/probability
+    signals use invoke_kalshi (get_esports_odds) / invoke_polymarket
+    (get_esports_events).
+    """
+    return _dispatch("esports", request_data)
 
 
 def invoke_polymarket(request_data):
