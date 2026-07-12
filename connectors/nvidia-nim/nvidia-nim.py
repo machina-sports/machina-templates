@@ -92,22 +92,28 @@ def invoke_chat(params):
             "timeout": timeout,
         }
 
-        max_tokens = params.get("max_tokens")
-        if max_tokens is None:
-            max_tokens = params.get("params", {}).get("max_tokens")
-        cap = os.environ.get("NVIDIA_NIM_MAX_OUTPUT_TOKENS")
-        if max_tokens is not None and cap:
-            kwargs["max_tokens"] = min(int(max_tokens), int(cap))
-        elif max_tokens is not None:
-            kwargs["max_tokens"] = int(max_tokens)
-        elif cap:
-            kwargs["max_tokens"] = int(cap)
+        try:
+            max_tokens = params.get("max_tokens")
+            if max_tokens is None:
+                max_tokens = params.get("params", {}).get("max_tokens")
+            cap = os.environ.get("NVIDIA_NIM_MAX_OUTPUT_TOKENS")
+            if max_tokens is not None and cap:
+                kwargs["max_tokens"] = min(int(max_tokens), int(cap))
+            elif max_tokens is not None:
+                kwargs["max_tokens"] = int(max_tokens)
+            elif cap:
+                kwargs["max_tokens"] = int(cap)
 
-        temperature = params.get("temperature")
-        if temperature is None:
-            temperature = params.get("params", {}).get("temperature")
-        if temperature is not None:
-            kwargs["temperature"] = float(temperature)
+            temperature = params.get("temperature")
+            if temperature is None:
+                temperature = params.get("params", {}).get("temperature")
+            if temperature is not None:
+                kwargs["temperature"] = float(temperature)
+        except (TypeError, ValueError) as e:
+            return {
+                "status": "error",
+                "message": f"Invalid generation params (max_tokens/temperature must be numeric): {e}",
+            }
 
         llm = ChatOpenAI(**kwargs)
 
@@ -157,6 +163,20 @@ def health(params):
             "status": "error",
             "data": {"healthy": False, "checks": checks},
             "message": "NIM operational config missing.",
+        }
+
+    default_allowed = default_model in allowed
+    checks.append({
+        "check": "default_model_allowlisted",
+        "ok": default_allowed,
+        "detail": default_model if default_allowed
+        else f"'{default_model}' missing from NVIDIA_NIM_ALLOWED_MODELS",
+    })
+    if not default_allowed:
+        return {
+            "status": "error",
+            "data": {"healthy": False, "checks": checks},
+            "message": "Default model is not in the allowlist.",
         }
 
     healthy = True
