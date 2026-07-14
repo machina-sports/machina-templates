@@ -6,14 +6,14 @@ setup:
   estimatedTime: 5 minutes
   features:
     - Chat completions on Nemotron and other NIM-served models
-    - Endpoint and model allowlist from NVIDIA_NIM_* operational config (never workflow YAML)
-    - Health and list-models commands for private-runtime receipts
+    - Endpoint and model allowlist from NVIDIA_NIM_CHAT_* operational config (never workflow YAML)
+    - Health, completion, and list-models commands for private-runtime receipts
   requirements:
     - NVIDIA-NIM-Chat-Base-URL
     - NVIDIA-NIM-Chat-Model
   status: available
   value: connectors/nvidia-nim
-  version: 1.0.0
+  version: 1.1.0
 
 datasets:
   - type: "connector"

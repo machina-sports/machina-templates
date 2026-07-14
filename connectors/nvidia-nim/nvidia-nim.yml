@@ -1,6 +1,6 @@
 connector:
   name: "nvidia-nim"
-  description: "NVIDIA NIM chat (OpenAI-compatible). Endpoint and model allowlist resolved from NVIDIA_NIM_* operational config — never from workflow YAML."
+  description: "NVIDIA NIM chat (OpenAI-compatible). Endpoint and model allowlist resolved from NVIDIA_NIM_CHAT_* operational config — never from workflow YAML."
   filename: "nvidia-nim.py"
   filetype: "pyscript"
   commands:
@@ -10,3 +10,5 @@ connector:
       value: "list_models"
     - name: "Health"
       value: "health"
+    - name: "Completion Receipt"
+      value: "completion_receipt"
