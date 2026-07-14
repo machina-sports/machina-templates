@@ -13,10 +13,10 @@ fails closed on any `base_url` coming from a workflow).
 |---|---|---|
 | `NVIDIA_NIM_CHAT_BASE_URL` | yes | NIM endpoint, e.g. `http://nemotron-nim:8001/v1` |
 | `NVIDIA_NIM_CHAT_MODEL` | yes | Default model, e.g. `nvidia/nemotron-3-super-120b-a12b` |
-| `NVIDIA_NIM_ALLOWED_MODELS` | no | CSV allowlist; defaults to just the default model |
-| `NVIDIA_NIM_TIMEOUT_SECONDS` | no | Request timeout (default 70 — Nemotron with reasoning needs >18s for structured answers) |
-| `NVIDIA_NIM_MAX_OUTPUT_TOKENS` | no | Hard cap applied to `max_tokens` |
-| `NVIDIA_NIM_API_KEY` | no | Local NIMs don't validate it |
+| `NVIDIA_NIM_CHAT_ALLOWED_MODELS` | no | CSV allowlist; defaults to just the default model |
+| `NVIDIA_NIM_CHAT_TIMEOUT_SECONDS` | no | Request timeout (default 70 — Nemotron with reasoning needs >18s for structured answers) |
+| `NVIDIA_NIM_CHAT_MAX_OUTPUT_TOKENS` | no | Hard cap applied to `max_tokens` |
+| `NVIDIA_NIM_CHAT_API_KEY` | no | Local NIMs don't validate it |
 
 Embeddings are deliberately **separate**: the retrieval facade on
 machina-client-api owns them under the `RETRIEVAL_NIM_*` envs. This
@@ -27,10 +27,12 @@ connector is chat only.
 - `invoke_chat` (Prompt) — returns a LangChain `ChatOpenAI` wired to the NIM
   endpoint; the engine runs the prompt against it. Honors `model_name`
   (allowlist-checked), `temperature`, `max_tokens` (capped by
-  `NVIDIA_NIM_MAX_OUTPUT_TOKENS`).
+  `NVIDIA_NIM_CHAT_MAX_OUTPUT_TOKENS`).
 - `list_models` — models served by the endpoint alongside the allowlist.
-- `health` — private-runtime receipt: operational config present, endpoint
-  reachable, default model served. Used by the
+- `health` — operational config present, endpoint reachable, default model served.
+- `completion_receipt` — sends a small, non-streaming chat completion and
+  records the served model, response ID, output, and token usage. Together
+  with `health`, this is the executable private-runtime receipt used by the
   `nvidia-nim-test-credentials` workflow.
 
 ## Usage in a workflow prompt task
