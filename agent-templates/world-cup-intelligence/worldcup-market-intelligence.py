@@ -1367,12 +1367,30 @@ def normalize_schedule(request_data: dict[str, Any]) -> dict[str, Any]:
         venue = ev.get("venue") if isinstance(ev.get("venue"), dict) else (
             ev.get("sport:venue") if isinstance(ev.get("sport:venue"), dict) else {})
         competition = ev.get("sport:competition") if isinstance(ev.get("sport:competition"), dict) else {}
+        # Score: prefer the live_score block, then a plain score object; keep only
+        # the home/away/elapsed fields that are actually present (null otherwise).
+        score_src = ev.get("live_score") if isinstance(ev.get("live_score"), dict) else (
+            ev.get("score") if isinstance(ev.get("score"), dict) else None)
+        score: dict[str, Any] | None = None
+        if score_src is not None:
+            score = {k: score_src[k] for k in ("home", "away", "elapsed") if score_src.get(k) is not None}
+            score = score or None
+        # Round/stage: accept the top-level round/stage/competition_stage or the
+        # IPTC sport:round (string or {name|label} dict); resolve one label and
+        # expose it as both round and stage (null when the doc predates this).
+        round_raw = _first(ev, "round", "stage", "competition_stage", "sport:round")
+        if isinstance(round_raw, dict):
+            round_raw = _first(round_raw, "name", "label")
+        round_label = _text(round_raw) or None
         out.append({
             "event_urn": _first(ev, "_id", "id", "event_urn"),
             "name": _text(ev.get("name")),
             "start_date": start,
             "status": st,
             "competition": _text(ev.get("competition")) or _text(competition.get("name")) or "World Cup",
+            "score": score,
+            "round": round_label,
+            "stage": round_label,
             "teams": [
                 {
                     "name": _text(t.get("name")),
@@ -2147,6 +2165,15 @@ def mint_event_identity(request_data: dict[str, Any]) -> dict[str, Any]:
                 "away": ga,
                 "elapsed": (fixture.get("status") or {}).get("elapsed"),
             }
+        # API-Football tags knockout fixtures via league.round (e.g. "Semi-finals",
+        # "Final"). Carry it into the canonical doc as top-level round/stage so the
+        # schedule view can read it back — but never add null keys for group games
+        # where the round label is absent.
+        league = f.get("league") if isinstance(f.get("league"), dict) else {}
+        round_name = _text(league.get("round"))
+        if round_name:
+            doc["round"] = round_name
+            doc["stage"] = round_name
         for k, v in carry.get(fixture_id, {}).items():
             doc["provider_ids"].setdefault(k, v)
         events.append(doc)

@@ -876,6 +876,49 @@ class TestNormalizeSchedule:
         r2 = normalize_schedule({"params": {"events": [], "team": "nobody"}})
         assert r2["data"]["events"] == [] and r2["data"]["warnings"]
 
+    def test_finished_semifinal_carries_score_and_stage(self):
+        # A completed knockout fixture must surface its result (live_score) and
+        # its round/stage so schedule consumers can show "Semi-finals · 2-0".
+        ev = _event_doc("urn:x:sf", "Spain vs France", "2026-07-14T18:00:00+00:00",
+                        status="FT", home="Spain", away="France")
+        ev["round"] = "Semi-finals"
+        ev["stage"] = "Semi-finals"
+        ev["live_score"] = {"home": 2, "away": 0, "elapsed": 90}
+        out = normalize_schedule({"params": {"events": [ev]}})["data"]["events"][0]
+        assert out["score"] == {"home": 2, "away": 0, "elapsed": 90}
+        assert out["round"] == "Semi-finals"
+        assert out["stage"] == "Semi-finals"
+
+    def test_upcoming_final_carries_round_and_stage(self):
+        # An unplayed fixture has no score, but round/stage still flow through —
+        # here from a sport:round dict ({name}), the IPTC-derived shape.
+        ev = _event_doc("urn:x:final", "TBD vs TBD", "2026-07-19T18:00:00+00:00",
+                        status="NS", home="Winner SF1", away="Winner SF2")
+        ev["sport:round"] = {"name": "Final"}
+        out = normalize_schedule({"params": {"events": [ev]}})["data"]["events"][0]
+        assert out["round"] == "Final"
+        assert out["stage"] == "Final"
+        assert out["score"] is None
+
+    def test_event_without_score_or_round_is_backward_compatible(self):
+        # Docs minted before this change carry no score/round/stage; the fields
+        # must resolve to null rather than break the schedule shape.
+        out = normalize_schedule({"params": {"events": self._events()}})["data"]["events"][0]
+        assert out["score"] is None
+        assert out["round"] is None
+        assert out["stage"] is None
+
+    def test_plain_score_fallback_preserves_zero_and_omits_null_elapsed(self):
+        # No live_score block: fall back to a plain `score` object. A 0-0 result
+        # must survive (0 is a real score, not "missing"), while a null elapsed
+        # is dropped rather than emitted as an explicit None.
+        ev = _event_doc("urn:x:draw", "Japan vs Egypt", "2026-06-20T18:00:00+00:00",
+                        status="FT", home="Japan", away="Egypt")
+        ev["score"] = {"home": 0, "away": 0, "elapsed": None}
+        out = normalize_schedule({"params": {"events": [ev]}})["data"]["events"][0]
+        assert out["score"] == {"home": 0, "away": 0}
+        assert "elapsed" not in out["score"]
+
 
 # -- Identity resolution: player ----------------------------------------------
 
@@ -1069,6 +1112,18 @@ class TestMintEventIdentity:
         assert d["provider_ids"]["entain"] == "7722030"
         # Ingest still owns the api_football (fixture) id.
         assert d["provider_ids"]["api_football"] == "1489417"
+
+    def test_carries_league_round_as_round_and_stage(self):
+        # API-Football labels knockout fixtures via league.round; persist it as
+        # top-level round/stage so the schedule view can read it back.
+        fx = _af_fixture()
+        fx["league"] = {"id": 1, "name": "World Cup", "round": "Semi-finals"}
+        d = mint_event_identity({"params": {"fixtures": [fx]}})["data"]["events"][0]
+        assert d["round"] == "Semi-finals"
+        assert d["stage"] == "Semi-finals"
+        # When league.round is absent, no null round/stage keys are added.
+        d2 = mint_event_identity({"params": {"fixtures": [_af_fixture()]}})["data"]["events"][0]
+        assert "round" not in d2 and "stage" not in d2
 
 
 # -- Provider entity merge (identity crosswalk producer) ---------------------
