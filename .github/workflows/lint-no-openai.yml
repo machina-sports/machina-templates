@@ -10,7 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check for banned OpenAI / GPT / text-embedding-3 refs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # PyYAML powers the semantic router-policy pass; the line scan alone
+      # can be dodged with quoted keys or flow-style YAML.
+      - run: python -m pip install --disable-pip-version-check pyyaml
+      - name: Check banned AI routes and router policy
         run: |
           chmod +x scripts/check-no-openai.sh
           ./scripts/check-no-openai.sh all
+      - name: Check AI command inventory
+        run: python scripts/check-ai-command-inventory.py

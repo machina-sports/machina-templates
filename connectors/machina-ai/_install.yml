@@ -1,18 +1,18 @@
 setup:
-  title: Machina AI
-  description: Connect to the Machina AI API to get AI responses.
+  title: Machina AI Router
+  description: Policy-governed AI capability routing with Google Vertex AI as the repository default.
   category:
     - special-templates
   estimatedTime: 1 minute
   features:
-    - Real-time chat completion
-    - Real-time content generation
-    - Real-time image generation
+    - Vertex-first chat and embedding factories
+    - Direct chat, search, transcription, and generated media contracts
+    - Runtime policy, remapping, fallback, receipts, and protected endpoints
   integrations:
     - machina-ai
   status: available
   value: connectors/machina-ai
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
   - type: "connector"

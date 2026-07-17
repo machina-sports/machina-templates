@@ -13,6 +13,9 @@ connector:
     - name: Image
       value: invoke_image
 
+    - name: Edit Image (compatibility alias)
+      value: edit_image
+
     - name: Web Search
       value: invoke_search
 

@@ -1,39 +1,23 @@
 #!/usr/bin/env bash
-# Guardrail: fail when a workflow re-introduces OpenAI/GPT/text-embedding-3
-# references that should be Vertex (`google-genai`) instead.
+# Repository AI-provider guardrail.
 #
-# Runs in:
-#   - .githooks/pre-commit  (local; only scans staged files)
-#   - .github/workflows/lint-no-openai.yml  (CI; scans the whole tree)
-#
-# Exit 0 = clean, exit 1 = found banned patterns.
-#
-# What's banned (in *.yml / *.yaml outside the listed exemptions):
-#   - connector `name: openai` / `name: "openai"`
-#   - connector `name: machina-ai` / `name: "machina-ai"`
-#   - model: text-embedding-3-{small,large} / text-embedding-ada-002
-#   - model: gpt-{3.5*,4*}
-#   - $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
-#   - $MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY
-#
-# Exempted paths (legacy connector self-refs + this script):
-#   - connectors/openai/
-#   - connectors/machina-ai/
-#   - connectors/azure-foundry/
-#   - scripts/
-#   - .githooks/
-#   - .github/workflows/lint-no-openai.yml
+# Vertex AI remains the mandatory default.  The only provider-independent
+# workflow facade allowed is the structurally checked machina-ai router.
 
 set -euo pipefail
 
-# OpenAI restriction rule disabled by user request
-exit 0
+MODE="${1:-all}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
 
-MODE="${1:-all}"  # "all" or "staged"
+if [[ "$MODE" != "all" && "$MODE" != "staged" ]]; then
+  echo "usage: $0 [all|staged]" >&2
+  exit 2
+fi
 
-# Find candidate files
 if [[ "$MODE" == "staged" ]]; then
-  FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(yml|yaml)$' || true)
+  # Include renamed files so a rename+edit cannot dodge the pre-commit scan.
+  FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(yml|yaml)$' || true)
 else
   FILES=$(find . -type f \( -name '*.yml' -o -name '*.yaml' \) \
     -not -path './.git/*' \
@@ -46,74 +30,62 @@ else
     -not -path './.github/workflows/lint-no-openai.yml' 2>/dev/null || true)
 fi
 
-if [[ -z "$FILES" ]]; then
-  exit 0
-fi
-
-# Apply per-file exemptions before grepping (staged mode picks up files that may
-# live under exempt dirs — filter them out here).
 FILTERED=""
-while IFS= read -r f; do
-  [[ -z "$f" ]] && continue
-  case "$f" in
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  file="${file#./}"
+  case "$file" in
     connectors/openai/*|connectors/machina-ai/*|connectors/azure-foundry/*|scripts/*|.githooks/*|.github/workflows/lint-no-openai.yml)
       continue ;;
   esac
-  FILTERED+="$f"$'\n'
+  FILTERED+="$file"$'\n'
 done <<< "$FILES"
 
-if [[ -z "$FILTERED" ]]; then
-  exit 0
-fi
-
-# Patterns. The `name:` patterns are anchored by indent + colon so we don't
-# match it inside comments or unrelated strings.
 PATTERNS=(
-  'name:[[:space:]]+"?openai"?[[:space:]]*$'
-  'name:[[:space:]]+"?machina-ai"?[[:space:]]*$'
-  'model:[[:space:]]+"?text-embedding-(3-(small|large)|ada-002)"?'
-  'model:[[:space:]]+"?gpt-(3\.5|4)'
+  '["'"'"']?name["'"'"']?:[[:space:]]+["'"'"']?openai["'"'"']?[[:space:]]*(#.*)?$'
+  '["'"'"']?model["'"'"']?:[[:space:]]+["'"'"']?text-embedding-(3-(small|large)|ada-002)'
+  '["'"'"']?model["'"'"']?:[[:space:]]+["'"'"']?gpt-'
   '\$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY'
   '\$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY'
 )
 
 HITS=""
-while IFS= read -r f; do
-  [[ -z "$f" ]] && continue
-  for pat in "${PATTERNS[@]}"; do
-    if matches=$(grep -nE "$pat" "$f" 2>/dev/null); then
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  for pattern in "${PATTERNS[@]}"; do
+    if [[ "$MODE" == "staged" ]]; then
+      matches=$(git show ":$file" 2>/dev/null | grep -nE "$pattern" || true)
+    else
+      matches=$(grep -nE "$pattern" "$file" 2>/dev/null || true)
+    fi
+    if [[ -n "$matches" ]]; then
       while IFS= read -r line; do
-        HITS+="$f:$line"$'\n'
+        HITS+="$file:$line"$'\n'
       done <<< "$matches"
     fi
   done
 done <<< "$FILTERED"
 
 if [[ -n "$HITS" ]]; then
-  cat <<EOF >&2
-[lint-no-openai] Banned OpenAI/GPT references found.
+  cat >&2 <<'EOF'
+[lint-no-openai] Banned direct OpenAI/GPT references found.
 
-  We migrated all workflows to Google Vertex AI via the \`google-genai\`
-  connector (incident 2026-05-16; see scripts/migrate-openai-to-vertex.py).
-  New workflows must use Vertex from day one.
+Vertex AI remains the repository default. Workflows may use google-genai
+explicitly or the policy-governed machina-ai facade; they may not hardcode an
+OpenAI connector, GPT model, deprecated OpenAI embedding, or OpenAI secret.
 
-  Hits:
-
+Hits:
 EOF
-  echo "$HITS" | sed 's/^/  /' >&2
-  cat <<EOF >&2
+  printf '%s' "$HITS" | while IFS= read -r line; do
+    [[ -n "$line" ]] && printf '  %s\n' "$line" >&2
+  done
+  cat >&2 <<'EOF'
 
-  How to fix:
-    - connector  →  name: google-genai (add location: "global", provider: "vertex_ai")
-    - embedding  →  model: text-embedding-004
-    - prompt     →  model: gemini-2.5-flash (cheap)  /  gemini-2.5-pro (quality)
-    - credential →  \$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
-                    + \$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-
-  Or run the migration helper on a single file:
-    python3 scripts/migrate-openai-to-vertex.py --apply --paths <file.yml>
-
+Use Vertex models and credentials, or use machina-ai without workflow-owned
+provider credentials/endpoints. The structural router policy lint will reject
+non-Vertex profiles/providers and caller-controlled routing fields.
 EOF
   exit 1
 fi
-exit 0
+
+python3 scripts/check-machina-ai-policy.py "$MODE"

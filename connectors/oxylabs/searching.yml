@@ -134,11 +134,13 @@ workflow:
         )
       connector:
         name: google-genai
-        command: "edit_image"
+        command: "invoke_image"
+        provider: "vertex_ai"
+        location: "global"
       inputs:
         image_id: f"id-{$.get('document-id')}-{$.get('image-name')}"
-        instruction: f"{$.get('query')}"
-        images_base64: |
+        prompt: f"{$.get('query')}"
+        image_paths: |
           [
             *[
               d.get('image')
@@ -149,7 +151,7 @@ workflow:
               for d in $.get('organic-results-2')[:6]
             ]
           ]
-        model: "'gpt-image-1'"
+        model_name: "'gemini-3-pro-image-preview'"
       outputs:
         final_filename: f"article-image-{$.get('final_filename')}"
         full_filepath: "$.get('full_filepath')"
