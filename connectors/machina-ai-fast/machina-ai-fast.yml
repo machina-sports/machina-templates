@@ -8,3 +8,8 @@ connector:
       value: "invoke_prompt"
     - name: "Embedding (unsupported compatibility response)"
       value: "invoke_embedding"
+  # Runtime delegation allowlist: the executor's RouterRuntimeServices reads
+  # this from the connector document and rejects delegation to any connector
+  # not declared here (delegation_forbidden).
+  delegates_to:
+    - "machina-ai"

@@ -35,6 +35,11 @@ def _error(error_class, message):
 
 
 def _runtime_from(params):
+    # The server-owned runtime services object injected by the executor is
+    # authoritative when present (module global ``machina_router_runtime``).
+    runtime_service = globals().get("machina_router_runtime")
+    if runtime_service is not None:
+        return runtime_service
     if isinstance(params, dict) and params.get("_runtime") is not None:
         return params.get("_runtime")
     return globals().get("runtime")
@@ -47,8 +52,19 @@ def _delegate(command, params):
     payload.setdefault("profile", "fast")
 
     delegate = getattr(runtime_service, "delegate", None) if runtime_service is not None else None
+    if not callable(delegate):
+        # The executor also injects the bound method directly.
+        module_delegate = globals().get("machina_delegate")
+        if callable(module_delegate):
+            delegate = module_delegate
     if callable(delegate):
         attempts = (
+            # Runtime contract first: delegate(target_name, request_data=None, command=None).
+            # This form MUST stay first — the legacy positional form below would
+            # silently bind the command string into request_data on the real
+            # runtime instead of raising TypeError.
+            lambda: delegate("machina-ai", payload, command=command),
+            # Legacy/duck-typed fakes kept for compatibility.
             lambda: delegate(connector="machina-ai", command=command, params=payload),
             lambda: delegate("machina-ai", command, payload),
             lambda: delegate({"connector": "machina-ai", "command": command, "params": payload}),

@@ -88,4 +88,12 @@ EOF
   exit 1
 fi
 
-python3 scripts/check-machina-ai-policy.py "$MODE"
+# In CI the semantic (parsed-YAML) router-policy pass is mandatory: a runner
+# without PyYAML must fail loudly instead of silently degrading to the
+# line-based scan (which flow-style YAML can dodge). Local pre-commit runs
+# still degrade gracefully, with a stderr warning from the script itself.
+if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
+  python3 scripts/check-machina-ai-policy.py "$MODE" --require-semantic
+else
+  python3 scripts/check-machina-ai-policy.py "$MODE"
+fi

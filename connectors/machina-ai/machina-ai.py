@@ -6,8 +6,10 @@ manifest, so architectural boundaries are represented by the small classes in
 this module instead of nested packages.
 
 The module has no provider SDK imports at import time.  Provider libraries are
-loaded only after policy selects a route.  A server may inject a global
-``runtime`` service; tests and local callers may instead pass ``_runtime``.
+loaded only after policy selects a route.  The server runtime injects the
+``machina_router_runtime`` (RouterRuntimeServices) and ``machina_delegate``
+globals; a legacy ``runtime`` global and the ``_runtime`` param remain as
+offline/test fallbacks.
 """
 
 import base64
@@ -157,10 +159,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "quality": {
             "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-pro"}],
         },
+        "cheap": {
+            "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-flash-lite"}],
+        },
         "long_context": {
             "chat": [{"provider": "vertex_ai", "model": "gemini-2.5-pro"}],
         },
-        "fast": {"chat": [{"provider": "groq"}]},
+        "fast": {"chat": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}]},
         "private_runtime": {"chat": [{"provider": "nvidia_nim"}]},
         "open_source": {"chat": [{"provider": "nvidia_nim"}]},
         "multimodal": {},
@@ -175,7 +180,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "project_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID",
             "location": "global",
             "allowed_models": {
-                "chat": ["gemini-2.5-flash", "gemini-2.5-pro"],
+                "chat": ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"],
                 "embedding": ["text-embedding-004"],
                 "search_answer": ["gemini-2.5-flash", "gemini-2.5-pro"],
                 "image": [],
@@ -213,11 +218,14 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "allowed_models": {"chat": [], "embedding": []},
         },
         "groq": {
-            "enabled": False,
+            # Enabled for machina-ai-fast no-regression: credentials resolve from the
+            # runtime environment only; absent credential fails typed credential_missing.
+            "enabled": True,
             "adapter": "groq",
+            "require_credential": True,
             "credential_env": "TEMP_CONTEXT_VARIABLE_GROQ_API_KEY",
             "credential_env_aliases": ["TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY"],
-            "allowed_models": {"chat": []},
+            "allowed_models": {"chat": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]},
         },
         "xai": {
             "enabled": False,
@@ -265,7 +273,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "allowed_models": {"tts": [], "voice": []},
         },
         "google_speech": {
-            "enabled": False,
+            "enabled": True,
             "adapter": "google_speech",
             "credential_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL",
             "project_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID",
@@ -377,7 +385,7 @@ def _canonical_capability(value: Any) -> Optional[str]:
     return CAPABILITY_ALIASES.get(capability, capability)
 
 
-def _normalize_timeout(value: Any, default_ms: int, max_ms: int) -> int:
+def _normalize_timeout(value: Any, default_ms: int, max_ms: int, *, legacy_seconds: bool = False) -> int:
     if value in (None, ""):
         return min(default_ms, max_ms)
     try:
@@ -386,9 +394,21 @@ def _normalize_timeout(value: Any, default_ms: int, max_ms: int) -> int:
         return min(default_ms, max_ms)
     if timeout <= 0:
         return min(default_ms, max_ms)
-    if timeout <= 600:
+    # Only the legacy `timeout` alias carries the seconds heuristic (spec 8.4);
+    # canonical `timeout_ms` is always milliseconds.
+    if legacy_seconds and timeout <= 600:
         timeout *= 1000
     return min(int(timeout), max_ms)
+
+
+def _thaw(value: Any) -> Any:
+    """Deep-copy runtime-frozen mappings/tuples into plain dicts/lists."""
+
+    if isinstance(value, Mapping):
+        return {key: _thaw(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_thaw(item) for item in value]
+    return value
 
 
 def _safe_exception(error: Exception) -> Tuple[str, str]:
@@ -448,6 +468,9 @@ class RuntimeFacade:
 
     def config(self) -> Dict[str, Any]:
         def layered(value: Mapping[str, Any]) -> Dict[str, Any]:
+            # Runtime-injected configs (RouterRuntimeServices.config) arrive frozen
+            # (MappingProxyType/tuples) and already layer-merged; thaw before merging.
+            value = _thaw(value)
             layer_names = ("repository", "project", "organization", "runtime")
             if not any(isinstance(value.get(name), Mapping) for name in layer_names):
                 return dict(value)
@@ -510,22 +533,31 @@ class RuntimeFacade:
         return result
 
     def delegate(self, connector: str, command: str, payload: Mapping[str, Any]) -> Any:
-        if self.raw is None:
+        # The server injects `machina_delegate` (bound RouterRuntimeServices.delegate)
+        # into the module namespace; prefer it, then the runtime object's own method.
+        handlers: List[Any] = []
+        module_delegate = globals().get("machina_delegate")
+        if callable(module_delegate):
+            handlers.append(module_delegate)
+        raw_delegate = getattr(self.raw, "delegate", None) if self.raw is not None else None
+        if callable(raw_delegate) and all(raw_delegate is not handler and raw_delegate != handler for handler in handlers):
+            handlers.append(raw_delegate)
+        if not handlers:
             return None
-        delegate = getattr(self.raw, "delegate", None)
-        if not callable(delegate):
-            return None
-        attempts = (
-            lambda: delegate(connector=connector, command=command, params=dict(payload)),
-            lambda: delegate(connector, command, dict(payload)),
-            lambda: delegate({"connector": connector, "command": command, "params": dict(payload)}),
-        )
         last_error: Optional[Exception] = None
-        for attempt in attempts:
-            try:
-                return attempt()
-            except TypeError as error:
-                last_error = error
+        for handler in handlers:
+            # Runtime contract first: delegate(target_name, request_data, command=command).
+            attempts = (
+                lambda h=handler: h(connector, dict(payload), command=command),
+                lambda h=handler: h(connector=connector, command=command, params=dict(payload)),
+                lambda h=handler: h(connector, command, dict(payload)),
+                lambda h=handler: h({"connector": connector, "command": command, "params": dict(payload)}),
+            )
+            for attempt in attempts:
+                try:
+                    return attempt()
+                except TypeError as error:
+                    last_error = error
         if last_error:
             raise last_error
         return None
@@ -534,36 +566,83 @@ class RuntimeFacade:
         if self.raw is None:
             return None
         service = getattr(self.raw, "task", None) or getattr(self.raw, "tasks", None)
+        if service is None:
+            return None
         if callable(service):
             try:
                 return service(action, dict(payload))
             except TypeError:
-                return service(action=action, payload=dict(payload))
-        method = getattr(service, action, None) if service is not None else None
-        return method(dict(payload)) if callable(method) else None
+                try:
+                    return service(action=action, payload=dict(payload))
+                except TypeError:
+                    pass
+        method = getattr(service, action, None)
+        if callable(method):
+            return method(dict(payload))
+        # RouterTaskStore contract: ownership ledger with create/get/list/update/delete.
+        data = _as_dict(payload)
+        task_id = data.get("task_id")
+        try:
+            if action == "authorize" and callable(getattr(service, "get", None)):
+                if not task_id:
+                    return {"authorized": False}
+                record = service.get(str(task_id))
+                return {"authorized": bool(record)}
+            if action == "record" and callable(getattr(service, "create", None)):
+                if not task_id:
+                    return None
+                provider = str(data.get("provider") or "unknown")
+                route_identity = str(data.get("route") or f"{provider}:{data.get('model') or '-'}:video")
+                metadata = {key: value for key, value in data.items() if key not in {"task_id", "provider", "route"}}
+                service.create(str(task_id), route=route_identity, provider=provider, metadata=metadata)
+                return {"recorded": True}
+        except Exception:
+            return {"authorized": False} if action == "authorize" else None
+        return None
 
     def circuit_allow(self, route_id: str) -> bool:
         if self.raw is None:
             return True
         service = getattr(self.raw, "circuit", None)
+        if service is None:
+            return True
         if callable(service):
             try:
                 result = service("allow", route_id)
             except TypeError:
                 result = service(action="allow", route_id=route_id)
             return result is not False
-        method = getattr(service, "allow", None) if service is not None else None
-        return method(route_id) is not False if callable(method) else True
+        method = getattr(service, "allow", None)
+        if callable(method):
+            return method(route_id) is not False
+        # RouterCircuitStore contract: before_request raises when the circuit is open.
+        before = getattr(service, "before_request", None)
+        if callable(before):
+            try:
+                before(route_id)
+                return True
+            except Exception:
+                return False
+        return True
 
     def circuit_record(self, route_id: str, success: bool, error_class: Optional[str] = None) -> None:
         if self.raw is None:
             return
         service = getattr(self.raw, "circuit", None)
+        if service is None:
+            return
         try:
             if callable(service):
                 service("record", route_id, success=success, error_class=error_class)
-            elif service is not None and callable(getattr(service, "record", None)):
-                service.record(route_id, success=success, error_class=error_class)
+                return
+            record = getattr(service, "record", None)
+            if callable(record):
+                record(route_id, success=success, error_class=error_class)
+                return
+            # RouterCircuitStore contract.
+            target = getattr(service, "record_success" if success else "record_failure", None)
+            if callable(target):
+                target(route_id)
         except Exception:
             return
 
@@ -576,25 +655,26 @@ class RequestNormalizer:
     def _extract(self, canonical: str, sources: Sequence[Tuple[str, Mapping[str, Any]]], conflicts: List[str]) -> Any:
         aliases = FIELD_ALIASES.get(canonical, ())
         hits: List[Tuple[str, str, Any]] = []
+        # Scan every source so cross-source conflicts are recorded (spec 8.1);
+        # precedence stays first-source-wins, canonical before aliases per source.
         for source_name, source in sources:
             if canonical in source and source.get(canonical) not in (None, ""):
                 hits.append((source_name, canonical, source.get(canonical)))
             for alias in aliases:
                 if alias in source and source.get(alias) not in (None, ""):
                     hits.append((source_name, alias, source.get(alias)))
-            if hits:
-                chosen_source = hits[0][0]
-                # Canonical then aliases within the earliest source; later sources only conflict.
-                same_source = [hit for hit in hits if hit[0] == chosen_source]
-                chosen = same_source[0]
-                for _, alias, value in same_source[1:]:
-                    if value != chosen[2]:
-                        conflicts.append(f"{canonical}:{chosen[1]}!={alias}")
-                for later_name, alias, value in hits[len(same_source):]:
-                    if value != chosen[2]:
-                        conflicts.append(f"{canonical}:{chosen_source}!={later_name}.{alias}")
-                return chosen[2]
-        return None
+        if not hits:
+            return None
+        chosen_source = hits[0][0]
+        same_source = [hit for hit in hits if hit[0] == chosen_source]
+        chosen = same_source[0]
+        for _, alias, value in same_source[1:]:
+            if value != chosen[2]:
+                conflicts.append(f"{canonical}:{chosen[1]}!={alias}")
+        for later_name, alias, value in hits[len(same_source):]:
+            if value != chosen[2]:
+                conflicts.append(f"{canonical}:{chosen_source}!={later_name}.{alias}")
+        return chosen[2]
 
     def normalize(self, command: str, params: Optional[Mapping[str, Any]]) -> NormalizedRequest:
         raw = _as_dict(params)
@@ -638,11 +718,22 @@ class RequestNormalizer:
             value = self._extract(field_name, sources, conflicts)
             if value is not None and field_name not in options:
                 options[field_name] = value
-        timeout_value = self._extract("timeout_ms", sources, conflicts)
+        self._extract("timeout_ms", sources, conflicts)  # conflict telemetry only
+        timeout_value: Any = None
+        timeout_is_legacy = False
+        for _, source in sources:
+            if source.get("timeout_ms") not in (None, ""):
+                timeout_value = source.get("timeout_ms")
+                break
+            if source.get("timeout") not in (None, ""):
+                timeout_value = source.get("timeout")
+                timeout_is_legacy = True
+                break
         options["timeout_ms"] = _normalize_timeout(
             timeout_value,
             _safe_int(policy.get("default_timeout_ms"), 30000),
             _safe_int(policy.get("max_timeout_ms"), 120000),
+            legacy_seconds=timeout_is_legacy,
         )
         if _as_bool(options.get("stream")):
             raise RouterError("unsupported_option", "Streaming is not supported by the v1 router contract.")
@@ -798,22 +889,37 @@ class PolicyEngine:
             raise RouterError("policy_provider_not_allowed", "The requested provider is disabled by runtime policy.")
         return conf
 
-    def _profile_candidate(self, request: NormalizedRequest) -> Tuple[Dict[str, Any], str]:
+    def _profile_candidate(self, request: NormalizedRequest) -> Tuple[Dict[str, Any], str, bool]:
+        """Resolve a route candidate per spec 12.1/13: family and capability remaps
+        apply before profile resolution; a profile remap applies only when it carries
+        an entry for the request's capability or is itself a direct provider candidate.
+
+        Returns (candidate, reason, prefer_candidate_model).
+        """
         remaps = _as_dict(self.config.get("remaps"))
+        if request.model:
+            family_remap = _as_dict(_as_dict(remaps.get("families")).get(request.model))
+            if family_remap.get("provider"):
+                # The requested "model" is an abstract family alias; the remap's own
+                # model must win over the alias string.
+                return family_remap, f"remap:family:{request.model}", True
+        capability_remap = _as_dict(_as_dict(remaps.get("capabilities")).get(request.capability))
+        if capability_remap.get("provider"):
+            return capability_remap, f"remap:capability:{request.capability}", False
         profile_remap = _as_dict(_as_dict(remaps.get("profiles")).get(request.profile))
         if profile_remap:
-            candidate = _as_dict(profile_remap.get(request.capability) or profile_remap)
-            return candidate, f"remap:profile:{request.profile}"
-        capability_remap = _as_dict(_as_dict(remaps.get("capabilities")).get(request.capability))
-        if capability_remap:
-            return capability_remap, f"remap:capability:{request.capability}"
+            entry = _as_dict(profile_remap.get(request.capability))
+            if entry.get("provider"):
+                return entry, f"remap:profile:{request.profile}", False
+            if profile_remap.get("provider"):
+                return dict(profile_remap), f"remap:profile:{request.profile}", False
         profile = _as_dict(_as_dict(self.config.get("profiles")).get(request.profile))
         candidates = profile.get(request.capability)
         if isinstance(candidates, list) and candidates:
-            return _as_dict(candidates[0]), f"profile:{request.profile}"
+            return _as_dict(candidates[0]), f"profile:{request.profile}", False
         defaults = _as_dict(_as_dict(self.config.get("defaults")).get(request.capability))
         if defaults:
-            return defaults, f"default:{request.capability}"
+            return defaults, f"default:{request.capability}", False
         raise RouterError("unsupported_capability", "No allowed route is configured for this capability.")
 
     def _read_env(self, conf: Mapping[str, Any], field_name: str) -> Any:
@@ -839,20 +945,32 @@ class PolicyEngine:
             allowed = [str(default_model)]
         return allowed
 
-    def route(self, request: NormalizedRequest, candidate: Optional[Mapping[str, Any]] = None, reason: Optional[str] = None) -> Route:
+    def route(
+        self,
+        request: NormalizedRequest,
+        candidate: Optional[Mapping[str, Any]] = None,
+        reason: Optional[str] = None,
+        *,
+        prefer_candidate_model: bool = False,
+    ) -> Route:
         if candidate is None:
             if request.provider:
                 candidate = {"provider": request.provider, "model": request.model}
                 reason = "explicit_provider"
             else:
-                candidate, reason = self._profile_candidate(request)
+                candidate, reason, prefer_candidate_model = self._profile_candidate(request)
         candidate = _as_dict(candidate)
         provider = _canonical_provider(candidate.get("provider"))
         if not provider:
             raise RouterError("unsupported_capability", "The selected route does not identify a provider.")
         conf = self._provider_config(provider)
         allowed_models = self._allowed_models(provider, conf, request.capability)
-        model = request.model or candidate.get("model") or self._read_env(conf, "model")
+        if prefer_candidate_model:
+            # Fallback/family-remap candidates run with their own configured model;
+            # a caller-pinned model must not leak across providers.
+            model = candidate.get("model") or self._read_env(conf, "model")
+        else:
+            model = request.model or candidate.get("model") or self._read_env(conf, "model")
         if model is not None:
             model = str(model)
         if allowed_models and model not in allowed_models:
@@ -889,6 +1007,8 @@ class PolicyEngine:
             if not (trusted or _as_bool(policy.get("allow_workflow_credentials"))):
                 raise RouterError("credential_missing", "Workflow-supplied credentials are disabled by runtime policy.")
             credential = request_credential
+        if not credential and _as_bool(conf.get("require_credential")):
+            raise RouterError("credential_missing", "The provider credential is not configured for this runtime.")
         credentials = {
             "api_key": credential,
             "credential": credential,
@@ -923,15 +1043,23 @@ class PolicyEngine:
             protected=protected,
         )
 
-    def fallbacks(self, route: Route, request: NormalizedRequest) -> List[Route]:
+    def fallback_candidates(self, route: Route, request: NormalizedRequest) -> List[Tuple[Dict[str, Any], str]]:
+        """Return raw fallback candidate specs; routes are built lazily at dispatch
+        time so one unbuildable fallback cannot poison a healthy primary."""
         if route.protected and _as_bool(route.config.get("fail_closed", True)):
             return []
         configured = _as_dict(_as_dict(self.config.get("fallbacks")).get(request.capability))
         chain = configured.get(route.provider) or []
-        routes: List[Route] = []
-        for index, candidate in enumerate(chain):
-            routes.append(self.route(request, _as_dict(candidate), f"fallback:{route.provider}:{index + 1}"))
-        return routes
+        if isinstance(chain, Mapping):
+            chain = [chain]
+        specs: List[Tuple[Dict[str, Any], str]] = []
+        for index, candidate in enumerate(chain if isinstance(chain, (list, tuple)) else []):
+            if isinstance(candidate, str):
+                candidate = {"provider": candidate}
+            candidate = _as_dict(candidate)
+            if candidate.get("provider"):
+                specs.append((candidate, f"fallback:{route.provider}:{index + 1}"))
+        return specs
 
 
 class ProviderAdapter:
@@ -953,15 +1081,21 @@ class ProviderAdapter:
             "model_name": route.model,
             "timeout_ms": route.timeout_ms,
         })
+        # Delegate-target connectors read credentials from flat params (for example
+        # groq.py params.get("api_key")) as well as headers, so carry both.
         safe_headers: Dict[str, Any] = {}
         if route.credentials.get("api_key"):
             safe_headers["api_key"] = route.credentials["api_key"]
+            safe_params["api_key"] = route.credentials["api_key"]
         if route.credentials.get("credential"):
             safe_headers["credential"] = route.credentials["credential"]
+            safe_params["credential"] = route.credentials["credential"]
         if route.credentials.get("project"):
             safe_headers["project_id"] = route.credentials["project"]
+            safe_params["project_id"] = route.credentials["project"]
         if route.credentials.get("organization"):
             safe_headers["organization"] = route.credentials["organization"]
+            safe_params["organization"] = route.credentials["organization"]
         if route.credentials.get("location"):
             safe_params["location"] = route.credentials["location"]
         if request.security.get("callback_url"):
@@ -1583,7 +1717,10 @@ class BytePlusAdapter(ProviderAdapter):
         command = self.COMMAND_BY_OPERATION[operation]
         delegated = self._delegate(command, route, request)
         if delegated:
-            data = _as_dict(delegated.data)
+            if not isinstance(delegated.data, Mapping):
+                # list_tasks returns a list; preserve non-mapping payloads verbatim.
+                return delegated
+            data = dict(delegated.data)
             state = str(data.get("state") or data.get("status") or "queued").lower()
             state_map = {"pending": "queued", "processing": "running", "success": "succeeded", "completed": "succeeded", "error": "failed", "deleted": "cancelled"}
             data["state"] = state_map.get(state, state if state in {"queued", "running", "succeeded", "failed", "cancelled", "expired"} else "queued")
@@ -1766,12 +1903,34 @@ class Router:
             if request.capability == "management":
                 return self._management(request, started)
             primary = self.policy.route(request)
-            routes = [primary] + self.policy.fallbacks(primary, request)
+            fallback_specs = self.policy.fallback_candidates(primary, request)
             policy = _as_dict(self.config.get("policy"))
             deadline = started + (_safe_int(policy.get("total_deadline_ms"), 120000, minimum=1) / 1000.0)
             attempts: List[Dict[str, Any]] = []
             last_error: Optional[RouterError] = None
-            for route_index, route in enumerate(routes):
+            plan: List[Any] = [primary] + list(fallback_specs)
+            for route_index, planned in enumerate(plan):
+                if route_index > 0 and time.monotonic() >= deadline:
+                    last_error = last_error or RouterError("provider_timeout", "The router invocation deadline was exhausted.")
+                    break
+                if isinstance(planned, Route):
+                    route = planned
+                else:
+                    candidate, fallback_reason = planned
+                    try:
+                        # Fallback routes are built lazily and tolerantly: a candidate
+                        # that cannot be built is skipped instead of failing the request.
+                        route = self.policy.route(request, candidate, fallback_reason, prefer_candidate_model=True)
+                    except RouterError as error:
+                        attempts.append({
+                            "provider": _canonical_provider(candidate.get("provider")),
+                            "model": candidate.get("model"),
+                            "error_class": error.error_class,
+                            "latency_ms": 0,
+                            "retry": False,
+                            "skipped": True,
+                        })
+                        continue
                 route_id = f"{route.provider}:{route.model or '-'}:{route.capability}"
                 if not self.runtime.circuit_allow(route_id):
                     error = RouterError("provider_unavailable", "The selected provider route circuit is open.", transient=True)
@@ -1832,12 +1991,14 @@ class Router:
                 if last_error and not last_error.transient:
                     break
             error = last_error or RouterError("provider_unavailable", "No configured route completed the request.")
+            # Total-failure receipts carry the PRIMARY route identity in the headline
+            # fields; fallback_attempts keeps the per-attempt truth.
             metadata = self._metadata(
                 request, started,
-                selected_provider=routes[-1].provider if routes else None,
-                selected_model=routes[-1].model if routes else None,
-                route_reason=routes[-1].reason if routes else None,
-                fallback_used=len(routes) > 1,
+                selected_provider=primary.provider,
+                selected_model=primary.model,
+                route_reason=primary.reason,
+                fallback_used=bool(fallback_specs),
                 fallback_attempts=attempts,
             )
             return self._failure(error, metadata)
@@ -1848,11 +2009,17 @@ class Router:
             return self._failure(error, self._metadata(request, started))
 
 
-# Public connector commands.  The optional injected global is intentionally
-# resolved at call time because connector runtimes may attach it after import.
+# Public connector commands.  The optional injected globals are intentionally
+# resolved at call time because connector runtimes may attach them after import.
+# The server contract injects `machina_router_runtime` (RouterRuntimeServices);
+# `runtime` and the `_runtime` param remain as offline/test fallbacks.
 def _router(params: Optional[Mapping[str, Any]]) -> Router:
     supplied = _as_dict(params).get("_runtime") if isinstance(params, Mapping) else None
-    injected = supplied if supplied is not None else globals().get("runtime")
+    injected = supplied
+    if injected is None:
+        injected = globals().get("machina_router_runtime")
+    if injected is None:
+        injected = globals().get("runtime")
     return Router(injected)
 
 

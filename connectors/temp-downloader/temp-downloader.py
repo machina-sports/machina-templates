@@ -84,9 +84,19 @@ def invoke_save_to_tmp(request_data):
         
         # Decode base64 string to bytes
         image_data = base64.b64decode(image_base64)
-        
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+
+        # Write inside the sandboxed work directory when configured so that
+        # downstream media consumers (google-genai/stability sandboxes rooted
+        # at MACHINA_WORK_DIR) accept the produced path. Fall back to the
+        # system temp directory when the env var is unset.
+        target_dir = None
+        work_dir = os.environ.get("MACHINA_WORK_DIR")
+        if work_dir:
+            target_dir = os.path.join(work_dir, "tmp")
+            os.makedirs(target_dir, exist_ok=True)
+
+        # Create temporary file (unique name preserved by NamedTemporaryFile)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg", dir=target_dir) as temp_file:
             temp_file.write(image_data)
             temp_path = temp_file.name
 

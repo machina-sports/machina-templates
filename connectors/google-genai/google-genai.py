@@ -714,8 +714,13 @@ def invoke_image(request_data):
         # Prepare image parts under the same local/remote media policy used by
         # the router. Remote hosts are deny-by-default and configured through
         # GOOGLE_GENAI_MEDIA_ALLOWED_HOSTS.
+        #
+        # Legacy behavior preserved: an invalid input image is skipped (and
+        # recorded in the response metadata), not fatal to the whole call.
+        # Skip reasons are sanitized fixed strings — never the raw path.
         image_parts = []
-        for img_path in image_paths or []:
+        skipped_media = []
+        for img_index, img_path in enumerate(image_paths or []):
             try:
                 if str(img_path).startswith(("http://", "https://")):
                     image_data, mime_type = _download_remote_image(img_path)
@@ -724,10 +729,20 @@ def invoke_image(request_data):
                     image_data = local_path.read_bytes()
                     mime_type = _guess_mime_type(local_path)
             except Exception:
-                return {"status": False, "message": "An input image failed media security validation."}
+                is_remote = str(img_path).startswith(("http://", "https://"))
+                skipped_media.append(
+                    {
+                        "index": img_index,
+                        "kind": "remote" if is_remote else "local",
+                        "reason": "failed media security validation; input skipped",
+                    }
+                )
+                continue
             image_parts.append(
                 types.Part(inline_data=types.Blob(data=image_data, mime_type=mime_type))
             )
+        if skipped_media:
+            print(f"⚠️ {len(skipped_media)} input image(s) skipped by media security validation")
 
         # Decide contents based on available inputs
         if image_parts or prompt is not None:
@@ -832,6 +847,7 @@ def invoke_image(request_data):
                                     "input_image_paths": (
                                         image_paths if image_paths else []
                                     ),
+                                    "skipped_media": skipped_media,
                                 },
                                 "message": f"Image generated successfully using {len(image_parts)} input images.",
                             }
@@ -842,12 +858,14 @@ def invoke_image(request_data):
                 "status": False,
                 "message": "No image was generated - candidates exist but contain no image data",
                 "debug_info": f"Response had {len(response.candidates)} candidates but none contained inline_data",
+                "skipped_media": skipped_media,
             }
         else:
             return {
                 "status": False,
                 "message": "Error generating image - no candidates in response",
                 "debug_info": str(response) if response else "Response is None",
+                "skipped_media": skipped_media,
             }
 
     except Exception:

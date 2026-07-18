@@ -1627,7 +1627,7 @@ connector:
   profile: fast
 ```
 
-This is not currently valid committed repository YAML: `machina-ai` is blocked by lint, and a Groq-backed `fast` route requires explicit operator approval under the Vertex-only repository policy. The compatibility alias exists primarily so already-installed or legacy workflows do not break during rollout. Canonical committed examples MUST use the approved router syntax with an effective Vertex default and pass `scripts/check-no-openai.sh all`.
+This is not currently valid committed repository YAML: `machina-ai` is blocked by lint under the Vertex-only repository policy. The Groq-backed `fast` route ships enabled in the repository default router config for no-regression with `machina-ai-fast`, but it activates only when the operator provisions `TEMP_CONTEXT_VARIABLE_GROQ_API_KEY` (or the SDK alias) in the runtime environment; workflow-supplied Groq credentials remain disabled, and an absent credential fails with a typed `credential_missing` error. The compatibility alias exists primarily so already-installed or legacy workflows do not break during rollout. Canonical committed examples MUST use the approved router syntax with an effective Vertex default and pass `scripts/check-no-openai.sh all`.
 
 ### Provider-specific connectors
 

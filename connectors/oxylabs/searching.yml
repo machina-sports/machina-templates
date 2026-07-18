@@ -134,13 +134,20 @@ workflow:
         )
       connector:
         name: google-genai
-        command: "invoke_image"
+        command: "edit_image"
         provider: "vertex_ai"
         location: "global"
       inputs:
         image_id: f"id-{$.get('document-id')}-{$.get('image-name')}"
         prompt: f"{$.get('query')}"
-        image_paths: |
+        # Oxylabs google_search udm=2 (images) parsed organic results carry
+        # base64-encoded thumbnail data in the `image` field, not URLs/paths
+        # (see agent-templates/coverage-tools/tools/find-images.yml, which
+        # feeds the same field to temp-downloader as image_base64). They must
+        # therefore go through google-genai edit_image's images_base64 input,
+        # which materializes them under MACHINA_WORK_DIR before invoke_image's
+        # media sandbox validates the resulting local paths.
+        images_base64: |
           [
             *[
               d.get('image')

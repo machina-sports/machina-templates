@@ -3,6 +3,14 @@ connector:
   description: "Policy-governed AI router. Repository defaults resolve to Google Vertex AI."
   filename: "machina-ai.py"
   filetype: "pyscript"
+  delegates_to:
+    - "google-genai"
+    - "groq"
+    - "nvidia-nim"
+    - "stability"
+    - "elevenlabs"
+    - "google-speech-to-text"
+    - "byteplus-modelark"
   commands:
     - name: "Prompt model"
       value: "invoke_prompt"

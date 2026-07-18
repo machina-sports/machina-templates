@@ -110,70 +110,115 @@ def connector_blocks(lines):
         index = cursor
 
 
-def _validate_router_connector(connector, errors):
+def _validate_router_connector(connector, errors, line=0):
     provider = str(connector.get("provider") or "")
     profile = str(connector.get("profile") or "")
     command = str(connector.get("command") or "")
     model = str(connector.get("model") or connector.get("model_name") or "")
     if provider not in ALLOWED_PROVIDERS:
-        errors.add(f"machina-ai provider must be vertex_ai or omitted, got {provider!r}")
+        errors.add((line, f"machina-ai provider must be vertex_ai or omitted, got {provider!r}"))
     if profile not in ALLOWED_PROFILES:
-        errors.add(f"machina-ai profile {profile!r} is not allowed in committed workflows")
+        errors.add((line, f"machina-ai profile {profile!r} is not allowed in committed workflows"))
     if command not in ALLOWED_COMMANDS:
-        errors.add(f"machina-ai command {command!r} is not in the v1 inventory")
+        errors.add((line, f"machina-ai command {command!r} is not in the v1 inventory"))
     if model and model != "text-embedding-004" and not model.startswith("gemini-"):
-        errors.add(f"machina-ai model {model!r} is not a repository-approved Vertex model")
+        errors.add((line, f"machina-ai model {model!r} is not a repository-approved Vertex model"))
     for forbidden in sorted(FORBIDDEN_KEYS.intersection(connector)):
         errors.add(
-            f"machina-ai workflow connector may not set policy/security field {forbidden!r}"
+            (line, f"machina-ai workflow connector may not set policy/security field {forbidden!r}")
         )
 
 
-def semantic_lint(text: str) -> set[str]:
-    """Parsed-YAML pass so quoted keys and flow mappings cannot dodge the lint."""
+def _mapping_items(node):
+    """Return {scalar_key: value_node} for a YAML MappingNode, else {}."""
+    if yaml is None or not isinstance(node, yaml.nodes.MappingNode):
+        return {}
+    items = {}
+    for key_node, value_node in node.value:
+        if isinstance(key_node, yaml.nodes.ScalarNode):
+            items.setdefault(str(key_node.value), value_node)
+    return items
 
-    errors: set[str] = set()
+
+def _scalar(node):
+    if yaml is not None and isinstance(node, yaml.nodes.ScalarNode):
+        return "" if node.value is None else str(node.value)
+    return ""
+
+
+def _node_line(node):
+    mark = getattr(node, "start_mark", None)
+    return (mark.line + 1) if mark is not None else 0
+
+
+def semantic_lint(text: str) -> set[tuple[int, str]]:
+    """Parsed-YAML pass so quoted keys and flow mappings cannot dodge the lint.
+
+    Walks the composed node graph (instead of plain ``safe_load`` values) so
+    findings carry real line numbers.
+    """
+
+    errors: set[tuple[int, str]] = set()
     if yaml is None:
         return errors
     try:
-        documents = list(yaml.safe_load_all(text))
+        documents = list(yaml.compose_all(text))
     except yaml.YAMLError:
         return errors
 
+    seen = set()
+
     def walk(node):
-        if isinstance(node, dict):
-            connector = node.get("connector")
-            if isinstance(connector, dict):
+        if node is None or id(node) in seen:
+            return
+        seen.add(id(node))
+        if isinstance(node, yaml.nodes.MappingNode):
+            items = _mapping_items(node)
+            connector_node = items.get("connector")
+            if isinstance(connector_node, yaml.nodes.MappingNode):
+                connector_items = _mapping_items(connector_node)
+                connector_line = _node_line(connector_node)
+                connector = {key: _scalar(value) for key, value in connector_items.items()}
                 name = str(connector.get("name") or "")
                 if name == "machina-ai":
-                    _validate_router_connector(connector, errors)
-                    inputs = node.get("inputs")
-                    if isinstance(inputs, dict):
-                        for key in sorted(INPUT_ROUTING_KEYS.intersection(inputs)):
-                            errors.add(
-                                f"machina-ai task inputs may not set routing/security field {key!r}"
+                    _validate_router_connector(connector, errors, line=connector_line)
+                    inputs_items = _mapping_items(items.get("inputs"))
+                    for key in sorted(INPUT_ROUTING_KEYS.intersection(inputs_items)):
+                        errors.add(
+                            (
+                                _node_line(inputs_items[key]),
+                                f"machina-ai task inputs may not set routing/security field {key!r}",
                             )
+                        )
                 elif name == "openai":
                     errors.add(
-                        "workflow connector name 'openai' is banned; use google-genai "
-                        "or the policy-governed machina-ai router"
+                        (
+                            connector_line,
+                            "workflow connector name 'openai' is banned; use google-genai "
+                            "or the policy-governed machina-ai router",
+                        )
                     )
                 model = str(connector.get("model") or connector.get("model_name") or "")
                 if model.lower().startswith("gpt-"):
                     errors.add(
-                        f"hardcoded GPT model route {model!r} is banned; use a Vertex model"
+                        (
+                            connector_line,
+                            f"hardcoded GPT model route {model!r} is banned; use a Vertex model",
+                        )
                     )
-            router_variables = node.get("machina-ai")
-            if isinstance(router_variables, dict):
-                for key in sorted(FORBIDDEN_KEYS.intersection(router_variables)):
-                    errors.add(
+            router_variables = _mapping_items(items.get("machina-ai"))
+            for key in sorted(FORBIDDEN_KEYS.intersection(router_variables)):
+                errors.add(
+                    (
+                        _node_line(router_variables[key]),
                         f"machina-ai context variables may not set {key!r}; "
-                        "bind provider credentials in runtime policy"
+                        "bind provider credentials in runtime policy",
                     )
-            for value in node.values():
+                )
+            for _, value in node.value:
                 walk(value)
-        elif isinstance(node, list):
-            for item in node:
+        elif isinstance(node, yaml.nodes.SequenceNode):
+            for item in node.value:
                 walk(item)
 
     for document in documents:
@@ -253,8 +298,9 @@ def lint_file(path: Path, content=None, relative_override=None):
             cursor += 1
 
     reported = {message for _, message in errors}
-    for message in sorted(semantic_lint(text) - reported):
-        errors.append((0, message))
+    for line, message in sorted(semantic_lint(text)):
+        if message not in reported:
+            errors.append((line, message))
     return [(relative, line, message) for line, message in errors]
 
 
@@ -276,6 +322,23 @@ def candidate_files(arguments):
 
 def main(argv=None):
     arguments = list(argv if argv is not None else sys.argv[1:])
+    require_semantic = "--require-semantic" in arguments
+    arguments = [item for item in arguments if item != "--require-semantic"]
+    if yaml is None:
+        print(
+            "[lint-machina-ai-policy] WARNING: PyYAML is not installed, so the "
+            "semantic (parsed-YAML) router-policy pass was SKIPPED. Quoted keys "
+            "and flow-style YAML can dodge the line-based scan. Install pyyaml "
+            "(python3 -m pip install pyyaml) to restore full coverage.",
+            file=sys.stderr,
+        )
+        if require_semantic:
+            print(
+                "[lint-machina-ai-policy] --require-semantic: failing because "
+                "the semantic pass is unavailable without PyYAML.",
+                file=sys.stderr,
+            )
+            return 2
     staged = bool(arguments and arguments[0] == "staged")
     paths = candidate_files(arguments)
     errors = []

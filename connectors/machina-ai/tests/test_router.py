@@ -206,7 +206,7 @@ class TestRoutingAndReceipts:
         groq = FakeAdapter()
         runtime = FakeRuntime(
             config={
-                "providers": {"groq": {"enabled": True, "allowed_models": {"chat": ["groq-chat"]}}},
+                "providers": {"groq": {"enabled": True, "credential": "groq-secret", "allowed_models": {"chat": ["groq-chat"]}}},
                 "profiles": {"fast": {"chat": [{"provider": "groq", "model": "groq-chat"}]}},
             },
             adapters={"vertex_ai": FakeAdapter(), "groq": groq},
@@ -220,7 +220,7 @@ class TestRoutingAndReceipts:
         groq = FakeAdapter()
         runtime = FakeRuntime(
             config={
-                "providers": {"groq": {"enabled": True, "allowed_models": {"chat": ["groq-chat"]}}},
+                "providers": {"groq": {"enabled": True, "credential": "groq-secret", "allowed_models": {"chat": ["groq-chat"]}}},
                 "profiles": {"fast": {"chat": [{"provider": "groq", "model": "groq-chat"}]}},
                 "remaps": {"profiles": {"fast": {"chat": {"provider": "groq", "model": "groq-chat"}}}},
             },
@@ -232,7 +232,7 @@ class TestRoutingAndReceipts:
         assert result["metadata"]["route_reason"] == "remap:profile:fast"
 
     def test_disallowed_provider_and_model_are_typed(self):
-        provider = router.invoke_chat({"_runtime": FakeRuntime(), "provider": "groq", "prompt": "hello"})
+        provider = router.invoke_chat({"_runtime": FakeRuntime(), "provider": "perplexity", "prompt": "hello"})
         model = router.invoke_chat({"_runtime": FakeRuntime(), "model": "not-allowed", "prompt": "hello"})
         assert provider["metadata"]["error_class"] == "policy_provider_not_allowed"
         assert model["metadata"]["error_class"] == "policy_model_not_allowed"
@@ -240,7 +240,10 @@ class TestRoutingAndReceipts:
     def test_list_models_hides_disabled_provider_models(self):
         result = router.list_models({"_runtime": FakeRuntime()})
         assert result["status"] is True
-        assert {item["provider"] for item in result["data"]} == {"vertex_ai"}
+        providers = {item["provider"] for item in result["data"]}
+        # groq and google_speech ship enabled (env-only credentials) for no-regression.
+        assert providers == {"vertex_ai", "groq", "google_speech"}
+        assert "openai" not in providers
         assert all(item["enabled"] for item in result["data"])
 
     def test_health_is_local_and_structured(self):
@@ -530,3 +533,323 @@ class TestProviderAdapters:
             with pytest.raises(router.RouterError) as failure:
                 adapter.create_chat_model(self.route(), self.request())
         assert "secret-token" not in failure.value.safe_message
+
+
+class RuntimeServicesDelegate:
+    """Mimics the server RouterRuntimeServices.delegate signature."""
+
+    def __init__(self, response=None):
+        self.calls = []
+        self.response = response or {"status": True, "data": {"delegated": True}, "metadata": {"provider_request_id": "svc-1"}}
+
+    def delegate(self, target_name, request_data=None, command=None):
+        self.calls.append({"target": target_name, "request": request_data, "command": command})
+        return self.response
+
+
+class TestRuntimeContractAdoption:
+    def media(self):
+        return router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}})
+
+    def route(self, provider="groq", adapter="groq", capability="chat", model="llama-3.3-70b-versatile"):
+        return router.Route(
+            provider=provider,
+            adapter=adapter,
+            capability=capability,
+            operation_mode="factory",
+            model=model,
+            reason="test",
+            config={},
+            credentials={
+                "api_key": "groq-secret",
+                "credential": "groq-secret",
+                "project": "proj-1",
+                "organization": "org-1",
+                "deployment": None,
+                "api_version": None,
+                "location": None,
+            },
+            endpoint=None,
+            timeout_ms=1000,
+            retries=0,
+        )
+
+    def request(self, command="invoke_prompt", capability="chat", mode="factory", **kwargs):
+        return router.NormalizedRequest(command, capability, mode, "balanced", None, None, dict(kwargs), dict(kwargs), {}, {}, {}, raw=dict(kwargs))
+
+    def test_machina_router_runtime_global_is_adopted(self, monkeypatch):
+        runtime = FakeRuntime()
+        monkeypatch.setattr(router, "machina_router_runtime", runtime, raising=False)
+        result = router.invoke_prompt({})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+
+    def test_delegate_uses_runtime_signature_with_flat_and_header_credentials(self):
+        services = RuntimeServicesDelegate()
+        adapter = router.GroqAdapter(router.RuntimeFacade(services), self.media())
+        result = adapter.create_chat_model(self.route(), self.request())
+        assert result.data == {"delegated": True}
+        call = services.calls[0]
+        assert call["target"] == "groq"
+        assert call["command"] == "invoke_prompt"
+        payload = call["request"]
+        assert payload["api_key"] == "groq-secret"
+        assert payload["params"]["api_key"] == "groq-secret"
+        assert payload["headers"]["api_key"] == "groq-secret"
+        assert payload["params"]["project_id"] == "proj-1"
+        assert payload["organization"] == "org-1"
+
+    def test_module_global_machina_delegate_is_preferred(self, monkeypatch):
+        calls = []
+
+        def machina_delegate(target_name, request_data=None, command=None):
+            calls.append((target_name, command))
+            return {"status": True, "data": {"delegated": command}, "metadata": {}}
+
+        monkeypatch.setattr(router, "machina_delegate", machina_delegate, raising=False)
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), self.media())
+        result = adapter.create_chat_model(self.route("vertex_ai", "google_genai", model="gemini-2.5-flash"), self.request())
+        assert result.data == {"delegated": "invoke_prompt"}
+        assert calls == [("google-genai", "invoke_prompt")]
+
+    def test_frozen_runtime_services_config_tasks_and_circuit_shapes(self):
+        from types import MappingProxyType
+
+        class TaskStore:
+            def __init__(self):
+                self.created = []
+
+            def get(self, task_id):
+                return {"task_id": task_id} if task_id == "task-1" else None
+
+            def create(self, task_id, *, route, provider, state="queued", result=None, metadata=None):
+                self.created.append((task_id, route, provider))
+                return {"task_id": task_id}
+
+        class CircuitStore:
+            def __init__(self):
+                self.events = []
+
+            def before_request(self, route):
+                self.events.append(("before", route))
+                return {"state": "closed"}
+
+            def record_success(self, route):
+                self.events.append(("success", route))
+
+            def record_failure(self, route):
+                self.events.append(("failure", route))
+
+        class Services:
+            def __init__(self):
+                self.tasks = TaskStore()
+                self.circuit = CircuitStore()
+                self.scope = MappingProxyType({"organization_id": "org-1", "project_id": "project-1", "creator_id": "creator-1"})
+                self.trusted_headers = MappingProxyType({"X-Machina-Project-Id": "project-1"})
+
+            @property
+            def config(self):
+                return MappingProxyType({
+                    "providers": MappingProxyType({
+                        "byteplus_modelark": MappingProxyType({
+                            "enabled": True,
+                            "credential": "bp-secret",
+                            "allowed_models": MappingProxyType({"video": ("video-model",)}),
+                        })
+                    }),
+                    "defaults": MappingProxyType({"video": MappingProxyType({"provider": "byteplus_modelark", "model": "video-model"})}),
+                })
+
+            def delegate(self, target_name, request_data=None, command=None):
+                return {"status": True, "data": {"id": "task-1", "status": "pending"}, "metadata": {}}
+
+        services = Services()
+        created = router.invoke_video({"_runtime": services, "operation": "create_task", "prompt": "clip"})
+        assert created["status"] is True
+        assert created["data"]["task_id"] == "task-1"
+        assert services.tasks.created and services.tasks.created[0][0] == "task-1"
+        fetched = router.invoke_video({"_runtime": services, "operation": "get_task", "task_id": "task-1"})
+        assert fetched["status"] is True
+        denied = router.invoke_video({"_runtime": services, "operation": "get_task", "task_id": "other"})
+        assert denied["status"] is False
+        assert denied["metadata"]["error_class"] == "policy_provider_not_allowed"
+        assert ("before", "byteplus_modelark:video-model:video") in services.circuit.events
+        assert any(event[0] == "success" for event in services.circuit.events)
+
+
+class TestLazyFallbacksAndReceipts:
+    def test_primary_succeeds_despite_unbuildable_fallback_provider(self):
+        runtime = FakeRuntime(config={"fallbacks": {"chat": {"vertex_ai": [{"provider": "perplexity", "model": "sonar"}]}}})
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["fallback_used"] is False
+
+    def test_pinned_model_with_cross_provider_fallback_uses_candidate_model(self):
+        primary = FakeAdapter({"invoke_chat": router.RouterError("provider_timeout", "t", transient=True)})
+        fallback = FakeAdapter()
+        runtime = FakeRuntime(
+            config={
+                "providers": {"groq": {"enabled": True, "credential": "groq-secret"}},
+                "fallbacks": {"chat": {"vertex_ai": [{"provider": "groq", "model": "llama-3.1-8b-instant"}]}},
+            },
+            adapters={"vertex_ai": primary, "groq": fallback},
+        )
+        result = router.invoke_chat({"_runtime": runtime, "model": "gemini-2.5-flash", "prompt": "hello"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["selected_model"] == "llama-3.1-8b-instant"
+        assert result["metadata"]["fallback_used"] is True
+
+    def test_unbuildable_fallback_recorded_as_skipped(self):
+        primary = FakeAdapter({"invoke_chat": router.RouterError("provider_timeout", "t", transient=True)})
+        runtime = FakeRuntime(
+            config={"fallbacks": {"chat": {"vertex_ai": [{"provider": "perplexity", "model": "sonar"}]}}},
+            adapters={"vertex_ai": primary},
+        )
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+        assert result["status"] is False
+        skipped = [attempt for attempt in result["metadata"]["fallback_attempts"] if attempt.get("skipped")]
+        assert skipped and skipped[0]["provider"] == "perplexity"
+        assert skipped[0]["error_class"] == "policy_provider_not_allowed"
+
+    def test_total_failure_reports_primary_route_identity(self):
+        primary = FakeAdapter({"invoke_chat": router.RouterError("provider_timeout", "t", transient=True)})
+        fallback = FakeAdapter({"invoke_chat": router.RouterError("provider_unavailable", "down", transient=True)})
+        runtime = FakeRuntime(
+            config={
+                "providers": {"groq": {"enabled": True, "credential": "groq-secret"}},
+                "fallbacks": {"chat": {"vertex_ai": [{"provider": "groq", "model": "llama-3.3-70b-versatile"}]}},
+            },
+            adapters={"vertex_ai": primary, "groq": fallback},
+        )
+        result = router.invoke_chat({"_runtime": runtime, "prompt": "hello"})
+        assert result["status"] is False
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["selected_model"] == "gemini-2.5-flash"
+        assert result["metadata"]["route_reason"] == "profile:balanced"
+        assert [attempt["provider"] for attempt in result["metadata"]["fallback_attempts"]] == ["vertex_ai", "groq"]
+
+
+class TestRemapPrecedence:
+    def test_profile_remap_without_capability_entry_falls_through(self):
+        runtime = FakeRuntime(config={"remaps": {"profiles": {"fast": {"chat": {"provider": "groq", "model": "llama-3.3-70b-versatile"}}}}})
+        result = router.invoke_embedding({"_runtime": runtime, "profile": "fast"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["route_reason"] == "default:embedding"
+
+    def test_capability_remap_wins_over_profile_remap(self):
+        groq = FakeAdapter()
+        runtime = FakeRuntime(
+            config={
+                "providers": {"groq": {"enabled": True, "credential": "groq-secret", "allowed_models": {"chat": ["groq-chat"]}}},
+                "remaps": {
+                    "capabilities": {"chat": {"provider": "groq", "model": "groq-chat"}},
+                    "profiles": {"balanced": {"chat": {"provider": "perplexity", "model": "sonar"}}},
+                },
+            },
+            adapters={"vertex_ai": FakeAdapter(), "groq": groq},
+        )
+        result = router.invoke_prompt({"_runtime": runtime})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["route_reason"] == "remap:capability:chat"
+
+    def test_family_remap_redirects_abstract_model(self):
+        groq = FakeAdapter()
+        runtime = FakeRuntime(
+            config={
+                "providers": {"groq": {"enabled": True, "credential": "groq-secret", "allowed_models": {"chat": ["groq-chat"]}}},
+                "remaps": {"families": {"gemini-default": {"provider": "groq", "model": "groq-chat"}}},
+            },
+            adapters={"vertex_ai": FakeAdapter(), "groq": groq},
+        )
+        result = router.invoke_chat({"_runtime": runtime, "model": "gemini-default", "prompt": "hi"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["selected_model"] == "groq-chat"
+        assert result["metadata"]["route_reason"] == "remap:family:gemini-default"
+
+
+class TestTimeoutAndConflicts:
+    def test_timeout_ms_is_always_milliseconds(self):
+        request = router.Router(FakeRuntime()).normalizer.normalize("invoke_chat", {"timeout_ms": 500, "prompt": "x"})
+        assert request.options["timeout_ms"] == 500
+
+    def test_legacy_timeout_alias_keeps_seconds_heuristic(self):
+        request = router.Router(FakeRuntime()).normalizer.normalize("invoke_chat", {"timeout": 20, "prompt": "x"})
+        assert request.options["timeout_ms"] == 20000
+
+    def test_cross_source_conflict_is_recorded(self):
+        request = router.Router(FakeRuntime()).normalizer.normalize(
+            "invoke_chat", {"model": "gemini-2.5-flash", "params": {"model": "nested-model"}, "prompt": "x"}
+        )
+        assert request.model == "gemini-2.5-flash"
+        assert any(conflict.startswith("model:top_level!=params.") for conflict in request.conflicts)
+
+
+class TestBytePlusListPayloads:
+    def test_list_tasks_preserves_list_payload(self):
+        class Services:
+            def delegate(self, target_name, request_data=None, command=None):
+                return {"status": True, "data": [{"id": "t1"}, {"id": "t2"}], "metadata": {}}
+
+        adapter = router.BytePlusAdapter(router.RuntimeFacade(Services()), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = router.Route(
+            provider="byteplus_modelark",
+            adapter="byteplus_modelark",
+            capability="video",
+            operation_mode="execute",
+            model="video-model",
+            reason="test",
+            config={},
+            credentials={"api_key": "secret"},
+            endpoint=None,
+            timeout_ms=1000,
+            retries=0,
+        )
+        request = router.NormalizedRequest("invoke_video", "video", "execute", "balanced", None, None, {"operation": "list_tasks"}, {}, {}, {}, {}, raw={})
+        result = adapter.invoke_video(route, request)
+        assert result.data == [{"id": "t1"}, {"id": "t2"}]
+
+
+class TestDefaultEnablement:
+    def test_cheap_profile_routes_to_low_cost_vertex_model(self):
+        result = router.invoke_prompt({"_runtime": FakeRuntime(), "profile": "cheap"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_ai"
+        assert result["metadata"]["selected_model"] == "gemini-2.5-flash-lite"
+        assert result["metadata"]["route_reason"] == "profile:cheap"
+
+    def test_groq_enabled_with_env_credential_only(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "env-secret")
+        groq = FakeAdapter()
+        runtime = FakeRuntime(adapters={"vertex_ai": FakeAdapter(), "groq": groq})
+        result = router.invoke_chat({"_runtime": runtime, "provider": "groq", "model": "llama-3.3-70b-versatile", "prompt": "hi"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+
+    def test_groq_without_env_credential_is_typed_credential_missing(self, monkeypatch):
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", raising=False)
+        monkeypatch.delenv("TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY", raising=False)
+        result = router.invoke_chat({"_runtime": FakeRuntime(), "provider": "groq", "model": "llama-3.3-70b-versatile", "prompt": "hi"})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "credential_missing"
+
+    def test_fast_profile_routes_to_groq_default_model(self, monkeypatch):
+        monkeypatch.setenv("TEMP_CONTEXT_VARIABLE_GROQ_API_KEY", "env-secret")
+        groq = FakeAdapter()
+        runtime = FakeRuntime(adapters={"vertex_ai": FakeAdapter(), "groq": groq})
+        result = router.invoke_prompt({"_runtime": runtime, "profile": "fast"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "groq"
+        assert result["metadata"]["selected_model"] == "llama-3.3-70b-versatile"
+
+    def test_google_speech_transcription_enabled_by_default(self):
+        speech = FakeAdapter()
+        runtime = FakeRuntime(adapters={"google_speech": speech})
+        result = router.transcribe_audio_to_text({"_runtime": runtime, "audio_path": "handled-by-fake"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "google_speech"
+        assert result["data"]["text"] == "hello"
