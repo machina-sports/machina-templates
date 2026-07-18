@@ -1193,7 +1193,13 @@ class GoogleGenAIAdapter(ProviderAdapter):
         try:
             info = json.loads(credential) if isinstance(credential, (str, bytes)) else dict(credential)
             service_account = importlib.import_module("google.oauth2.service_account")
-            return service_account.Credentials.from_service_account_info(info)
+            # Unscoped service-account credentials fail token refresh with
+            # "invalid_scope" on clients that do not apply default scopes
+            # (VertexAIEmbeddings, unlike ChatVertexAI).
+            return service_account.Credentials.from_service_account_info(
+                info,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
         except Exception:
             raise RouterError("credential_invalid", "The configured Vertex credential is invalid.")
 
@@ -1680,7 +1686,10 @@ class GoogleSpeechAdapter(ProviderAdapter):
             if credential:
                 info = json.loads(credential) if isinstance(credential, str) else credential
                 service_account = importlib.import_module("google.oauth2.service_account")
-                client_kwargs["credentials"] = service_account.Credentials.from_service_account_info(info)
+                client_kwargs["credentials"] = service_account.Credentials.from_service_account_info(
+                    info,
+                    scopes=["https://www.googleapis.com/auth/cloud-platform"],
+                )
             client = speech.SpeechClient(**client_kwargs)
             audio = speech.RecognitionAudio(content=path.read_bytes())
             config = speech.RecognitionConfig(

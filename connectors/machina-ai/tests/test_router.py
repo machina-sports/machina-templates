@@ -499,6 +499,20 @@ class TestProviderAdapters:
             assert adapter.create_embedding_model(route, self.request("invoke_embedding", "embedding")).data == "azure-embed"
         assert fake_chat.call_args.kwargs["azure_deployment"] == "deployment"
 
+    def test_vertex_service_account_credentials_are_scoped(self):
+        fake_from_info = MagicMock(return_value="scoped-creds")
+        sa_module = SimpleNamespace(Credentials=SimpleNamespace(from_service_account_info=fake_from_info))
+        fake_embeddings = MagicMock(return_value="vertex-embed")
+        vertex_module = SimpleNamespace(VertexAIEmbeddings=fake_embeddings, ChatVertexAI=MagicMock(return_value="vertex-chat"))
+        adapter = router.GoogleGenAIAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("vertex_ai", "vertex_ai", capability="embedding", model="text-embedding-004")
+        route.credentials["credential"] = json.dumps({"type": "service_account", "project_id": "demo"})
+        with patch.dict(sys.modules, {"langchain_google_vertexai": vertex_module, "google.oauth2.service_account": sa_module}):
+            result = adapter.create_embedding_model(route, self.request("invoke_embedding", "embedding"))
+        assert result.data == "vertex-embed"
+        assert fake_from_info.call_args.kwargs["scopes"] == ["https://www.googleapis.com/auth/cloud-platform"]
+        assert fake_embeddings.call_args.kwargs["credentials"] == "scoped-creds"
+
     def test_groq_chat_and_embedding_rejection(self):
         fake_chat = MagicMock(return_value="groq-chat")
         adapter = router.GroqAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
