@@ -31,16 +31,15 @@ Before installing, verify:
 
 ```python
 # Check if connector exists
-mcp__docker_localhost__connector_search({
+{mcp}connector_search({
     "filters": {"name": "google-genai"},
     "page": 1,
     "page_size": 1
 })
 
 # Check secrets
-mcp__docker_localhost__check_secrets({
-    "name": "GOOGLE_GENAI_API_KEY"
-})
+{mcp}check_secrets(name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL")
+{mcp}check_secrets(name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID")
 ```
 
 ### 4. Install Template
@@ -94,7 +93,7 @@ See [api.md](./api.md) for the full MCP operations reference.
 
 | Environment | MCP Server Prefix |
 |-------------|-------------------|
-| Local dev | `mcp__docker-localhost__` |
+| Local dev | `{mcp}` |
 
 Additional environments depend on the project's MCP configuration. Pattern: `mcp__{project}-{env}__`.
 
@@ -105,7 +104,7 @@ Additional environments depend on the project's MCP configuration. Pattern: `mcp
 Install the connector first:
 
 ```python
-mcp__docker_localhost__get_local_template({
+{mcp}get_local_template({
     "template": "connectors/google-genai",
     "project_path": "/app/machina-templates/connectors/google-genai"
 })
@@ -116,12 +115,24 @@ mcp__docker_localhost__get_local_template({
 Create the secret — see [Secrets](./secrets.md) for the full process:
 
 ```python
-mcp__docker_localhost__create_secrets({
-    "data": {
-        "name": "GOOGLE_GENAI_API_KEY",
-        "key": "your-api-key-here"
-    }
-})
+{mcp}create_secrets(
+    name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL",
+    key="[REDACTED]"
+)
+{mcp}create_secrets(
+    name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID",
+    key="[REDACTED]"
+)
+```
+
+Map the opaque Vault references into the workflow; never place either plaintext value in YAML:
+
+```yaml
+workflow:
+  context-variables:
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
 ```
 
 ### Import succeeds but agent not found

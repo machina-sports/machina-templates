@@ -678,7 +678,7 @@ agent:
 
 All expressions use Python syntax with `$.get()` for state access.
 
-```yaml
+```python
 # Access current state
 $.get('field_name')
 $.get('field_name', 'default_value')

@@ -1,11 +1,11 @@
 setup:
-  title: "Machina Skills - Constructor"
-  description: "Construct, validate, and deploy Machina agent-templates and connectors with guided scaffolding and MCP integration."
+  title: "Machina Agent Builder (Deprecated Alias)"
+  description: "Deprecated compatibility alias for machina-agent-builder. Create, update, validate, debug, and install Machina agents and template resources with MCP integration."
   category:
-    - machina-ai
+    - development
   status: available
   value: skills/mkn-constructor
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
 

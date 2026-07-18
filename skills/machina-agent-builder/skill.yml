@@ -1,7 +1,7 @@
 skill:
-  name: "mkn-constructor"
-  title: "Machina Agent Builder (Deprecated Alias)"
-  description: "Deprecated compatibility alias for machina-agent-builder. Create, update, validate, debug, and install Machina agents and template resources with MCP integration."
+  name: "machina-agent-builder"
+  title: "Machina Agent Builder"
+  description: "Create, update, validate, debug, and install Machina agents and template resources with MCP integration."
   version: "2.0.0"
   category:
     - "devops"
@@ -17,7 +17,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-guide"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
 
     - name: "skill-reference"
       title: "Analyze"
@@ -25,7 +25,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "analyze"
 
     - name: "skill-reference"
@@ -34,7 +34,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "api"
 
     - name: "skill-reference"
@@ -43,7 +43,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "create"
 
     - name: "skill-reference"
@@ -52,7 +52,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "init"
 
     - name: "skill-reference"
@@ -61,7 +61,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "install"
 
     - name: "skill-schema"
@@ -70,7 +70,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-agent"
 
     - name: "skill-schema"
@@ -79,7 +79,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-connector"
 
     - name: "skill-schema"
@@ -88,7 +88,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-document"
 
     - name: "skill-schema"
@@ -97,7 +97,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-mapping"
 
     - name: "skill-schema"
@@ -106,7 +106,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-prompt"
 
     - name: "skill-schema"
@@ -115,7 +115,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-setup"
 
     - name: "skill-schema"
@@ -124,7 +124,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-skill"
 
     - name: "skill-schema"
@@ -133,7 +133,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "skill-schema"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "schema-workflow"
 
     - name: "skill-reference"
@@ -142,7 +142,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "secrets"
 
     - name: "skill-reference"
@@ -151,7 +151,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "trace"
 
     - name: "skill-reference"
@@ -160,7 +160,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "validate"
 
     - name: "skill-reference"
@@ -169,7 +169,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "yaml-reference"
 
     - name: "skill-reference"
@@ -178,12 +178,12 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "connectors"
 
   workflows:
 
-    - name: "mkn-constructor-check-setup"
+    - name: "machina-agent-builder-check-setup"
       description: "check-doc-structure"
       inputs:
         document_name: "$.get('document_name', 'doc-structure')"

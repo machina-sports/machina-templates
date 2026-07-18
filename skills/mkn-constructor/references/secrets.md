@@ -18,7 +18,7 @@ TEMP_CONTEXT_VARIABLE_{SERVICE}_{FIELD}
 
 Examples:
 - `TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY`
-- `TEMP_CONTEXT_VARIABLE_OPENAI_API_KEY`
+- `TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL`
 - `TEMP_CONTEXT_VARIABLE_SPORTRADAR_API_KEY`
 
 ### How Secrets Flow
@@ -39,21 +39,21 @@ Examples:
 Create ONE secret at a time:
 
 ```python
-mcp__docker-localhost__create_secrets({
-  "name": "TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME",
-  "key": "machina-templates-bucket-default"
-})
+{mcp}create_secrets(
+  name="TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME",
+  key="machina-templates-bucket-default"
+)
 
-mcp__docker-localhost__create_secrets({
-  "name": "TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY",
-  "key": '{"type":"service_account","project_id":"...",...}'
-})
+{mcp}create_secrets(
+  name="TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY",
+  key="[REDACTED]"
+)
 ```
 
 ### 2. Verify Secrets Exist
 
 ```python
-mcp__docker-localhost__check_secrets(name="TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY")
+{mcp}check_secrets(name="TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY")
 # Returns: {"status": "success", "message": "Secret ... exists."}
 ```
 
@@ -103,25 +103,22 @@ context-variables:
   google-genai:
     credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
     project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
   google-storage:
     api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
     bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
-  machina-ai:
-    api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
 ```
 
 ## MCP Commands
 
 ```python
 # Create
-mcp__docker-localhost__create_secrets({"name": "TEMP_...", "key": "value"})
+{mcp}create_secrets(name="TEMP_...", key="[REDACTED]")
 
 # Check
-mcp__docker-localhost__check_secrets(name="TEMP_...")
+{mcp}check_secrets(name="TEMP_...")
 
 # Delete
-mcp__docker-localhost__delete_secrets(name="TEMP_...")
+{mcp}delete_secrets(name="TEMP_...")
 ```
 
 ## Troubleshooting

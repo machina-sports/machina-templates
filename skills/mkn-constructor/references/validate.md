@@ -2,6 +2,21 @@
 
 Validate template YAML files against correct patterns before installation.
 
+## Executable Repository Validator
+
+For this skill package and both generated compatibility aliases, run from the
+repository root:
+
+```bash
+python3 scripts/validate-machina-agent-builder.py
+```
+
+The command checks YAML parsing and identities, dataset paths and ordering,
+registered references, local Markdown links, canonical/legacy parity, provider
+examples, and discovery triggers. Its errors include the affected path and a
+remediation hint. Use the manual checks below for template-specific semantic
+review that cannot be proven from package structure alone.
+
 ## Trigger
 
 - "Validate template", "Check template YAML"

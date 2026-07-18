@@ -90,9 +90,11 @@ Find documents in the database. Results are available in `$.get('documents')`.
     search-limit: 1000
     search-vector: true
   connector:
-    name: machina-ai
+    name: google-genai
     command: invoke_embedding
-    model: text-embedding-3-small
+    model: text-embedding-004
+    location: global
+    provider: vertex_ai
   inputs:
     name: "'content-snippet'"
     search-limit: "'1000'"
@@ -170,7 +172,7 @@ Update an existing document, identified by `filters`.
 
 **Spread pattern** (`**` / `*`): Used to preserve existing fields while updating specific ones.
 
-```yaml
+```python
 # Merge existing dict with new fields
 {**$.get('event_selected'), 'status': 'updated'}
 
@@ -279,9 +281,11 @@ Save multiple documents with optional embedding generation.
     embed-vector: true
     force-update: true
   connector:
-    name: openai
+    name: google-genai
     command: invoke_embedding
-    model: text-embedding-3-small
+    model: text-embedding-004
+    location: global
+    provider: vertex_ai
   document_name: "content-snippet"
   documents:
     items: "$.get('parsed-items')"

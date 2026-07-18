@@ -8,7 +8,7 @@ Each environment has its own MCP server prefix. Replace `{mcp}` in examples with
 
 | Environment | Prefix |
 |-------------|--------|
-| Local dev | `mcp__docker-localhost__` |
+| Local dev | `{mcp}` |
 
 Additional environments (dev, staging, production) depend on the project's MCP configuration. Each project may expose multiple server prefixes following the pattern `mcp__{project}-{env}__`.
 
@@ -136,7 +136,7 @@ Schema: [connector.md](../schemas/connector.md)
 
 ```python
 {mcp}connector_search(
-    filters={"name": "openai"},
+    filters={"name": "google-genai"},
     sorters=["name", 1],
     page=1,
     page_size=10,
@@ -148,7 +148,7 @@ Schema: [connector.md](../schemas/connector.md)
 
 ```python
 {mcp}connector_retrieve_id(item_id="abc123")
-{mcp}connector_retrieve_args(name="openai")
+{mcp}connector_retrieve_args(name="google-genai")
 ```
 
 ### connector_describe
@@ -188,9 +188,11 @@ Execute a connector command directly.
 ```python
 {mcp}connector_executor(item_id="abc123", data={
     "command": "invoke_prompt",
-    "inputs": {"api_key": "...", "messages": [...]}
+    "inputs": {"messages": [...]}
 })
 ```
+
+Credentials are resolved from Vault-backed context variables, not passed as executor inputs.
 
 ### connector_endpoint
 
@@ -378,22 +380,22 @@ One secret at a time. Name must follow `TEMP_CONTEXT_VARIABLE_*` pattern.
 
 ```python
 {mcp}create_secrets(
-    name="TEMP_CONTEXT_VARIABLE_OPENAI_API_KEY",
-    key="sk-..."
+    name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL",
+    key="[REDACTED]"
 )
 ```
 
 ### check_secrets
 
 ```python
-{mcp}check_secrets(name="TEMP_CONTEXT_VARIABLE_OPENAI_API_KEY")
+{mcp}check_secrets(name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL")
 # Returns: {"status": "success", "message": "Secret ... exists."}
 ```
 
 ### delete_secrets
 
 ```python
-{mcp}delete_secrets(name="TEMP_CONTEXT_VARIABLE_OPENAI_API_KEY")
+{mcp}delete_secrets(name="TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL")
 ```
 
 ---
@@ -457,8 +459,8 @@ Import from Docker volume mount.
 
 ```python
 {mcp}import_template_from_local(
-    template="connectors/openai",
-    project_path="/app/{repo-name}/connectors/openai"
+    template="connectors/google-genai",
+    project_path="/app/{repo-name}/connectors/google-genai"
 )
 ```
 
@@ -472,7 +474,7 @@ Import from Git repository.
 {mcp}import_template_from_git(repositories=[
     {
         "repo_url": "https://github.com/org/repo",
-        "template": "connectors/openai",
+        "template": "connectors/google-genai",
         "branch": "main"
     }
 ])

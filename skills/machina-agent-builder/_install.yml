@@ -1,0 +1,16 @@
+setup:
+  title: "Machina Agent Builder"
+  description: "Create, update, validate, debug, and install Machina agents and template resources with MCP integration."
+  category:
+    - development
+  status: available
+  value: skills/machina-agent-builder
+  version: 2.0.0
+
+datasets:
+
+  - type: "workflow"
+    path: "workflows/check-setup.yml"
+
+  - type: "skill"
+    path: "skill.yml"

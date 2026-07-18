@@ -226,7 +226,7 @@ from setup import API_BASE_URL
 ```python
 # setup.py
 API_BASE_URL = "https://api.example.com"
-DEFAULT_MODEL = "gpt-4o"
+DEFAULT_MODEL = "gemini-2.5-flash"
 SUPPORTED_FORMATS = ["mp3", "wav"]
 
 # connector.py
@@ -256,23 +256,6 @@ connector:
       value: invoke_search
     - name: Video
       value: invoke_video
-```
-
-### LLM Wrapper Connector
-
-```yaml
-connector:
-  name: machina-ai
-  description: "This connector is the Machina AI connector."
-  filename: machina-ai.py
-  filetype: pyscript
-  commands:
-    - name: "Embedding"
-      value: "invoke_embedding"
-    - name: "Prompt"
-      value: "invoke_prompt"
-    - name: "Prompt"
-      value: "transcribe_audio_to_text"
 ```
 
 ### Sports Data REST API
@@ -322,6 +305,8 @@ workflow:
     name: google-genai
     command: invoke_prompt
     model: gemini-2.5-flash
+    location: global
+    provider: vertex_ai
 ```
 
 Or for connector tasks:
