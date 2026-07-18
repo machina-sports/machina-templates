@@ -76,12 +76,16 @@ def _delegate(command, params):
                 continue
         return _error("provider_unavailable", "The runtime delegation service rejected the compatibility request.")
 
-    router_path = Path(__file__).resolve().parents[1] / "machina-ai" / "machina-ai.py"
-    if router_path.is_file():
-        spec = importlib.util.spec_from_file_location("machina_ai_router_offline", router_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return getattr(module, command)(payload)
+    # The production runtime execs this source without __file__, so the
+    # sibling-file fallback only applies to offline/checkout runs.
+    module_file = globals().get("__file__")
+    if module_file:
+        router_path = Path(module_file).resolve().parents[1] / "machina-ai" / "machina-ai.py"
+        if router_path.is_file():
+            spec = importlib.util.spec_from_file_location("machina_ai_router_offline", router_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return getattr(module, command)(payload)
 
     return _error("provider_unavailable", "The machina-ai router delegation service is unavailable.")
 

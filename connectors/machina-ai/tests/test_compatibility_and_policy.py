@@ -52,6 +52,18 @@ class TestFastCompatibility:
         assert "_runtime" not in request_data
         assert command == "invoke_prompt"
 
+    def test_wrapper_execd_without_file_returns_typed_unavailable(self):
+        # The production runtime execs connector source without __file__ and,
+        # on pre-delegation runtimes, without any injected delegate — the
+        # wrapper must return the typed error, not raise NameError.
+        source = (FAST_DIR / "machina-ai-fast.py").read_text()
+        namespace = {"__builtins__": __builtins__}
+        exec(compile(source, "<machina-ai-fast>", "exec"), namespace)
+        assert "__file__" not in namespace
+        result = namespace["invoke_prompt"]({"prompt": "hi"})
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "provider_unavailable"
+
     def test_wrapper_resolves_injected_machina_router_runtime_global(self):
         module = load_module("machina_ai_fast_injected_runtime", FAST_DIR / "machina-ai-fast.py")
         runtime = RuntimeContractServices()
