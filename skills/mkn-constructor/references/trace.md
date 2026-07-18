@@ -311,7 +311,7 @@ When the user asks to trace a **real execution** (mentions times, durations, sta
 
 | Environment | MCP Server Prefix |
 |-------------|-------------------|
-| Local dev | `mcp__docker-localhost__` |
+| Local dev | `{mcp}` |
 
 Additional environments depend on the project's MCP configuration. Pattern: `mcp__{project}-{env}__`.
 
@@ -367,7 +367,7 @@ AGENT: {agent-name}  [RUN: {execution_id}]
   │    1. [doc:search]  load-config                      OK   0.4s
   │       inputs:  name: "config"
   │       outputs: competitions (3 items)
-  │    2. [connector]   fetch-data                        OK   3.8s  ← slowest
+  │    2. [connector]   retrieve-data                     OK   3.8s  ← slowest
   │       connector: my-connector > get_schedules
   │       inputs:  league_id: "sr:league:1"
   │       outputs: schedules (180 items)
@@ -384,7 +384,7 @@ EXECUTION SUMMARY:
   total:     4.1s
   tokens:    1,240
   workflows: 2/3 executed, 1 skipped
-  slowest:   fetch-data (3.8s, step 1)
+  slowest:   retrieve-data (3.8s, step 1)
 ```
 
 **Key annotations:**
@@ -402,7 +402,7 @@ If any task has status `error`:
 
 ```
 FAILURES:
-  step 3, task 3: fetch-schedules
+  step 3, task 3: retrieve-schedules
     status:  error
     time:    3.8s
     error:   "HTTPError 429: Rate limit exceeded"
@@ -420,7 +420,7 @@ PERFORMANCE:
   avg execution:  18.2s (last 10 runs)
   p95 execution:  32.1s
   most common skip: steps 4-5 (72% of runs)
-  most common fail: fetch-* (3%, rate limits)
+  most common fail: retrieve-* (3%, rate limits)
 
 TIMING BREAKDOWN:
   external API calls:  8.2s (58%)

@@ -18,7 +18,7 @@ Scaffold a new Machina template project from scratch with directory structure, c
 | **title** | Yes | — | Human-readable title |
 | **description** | Yes | — | Brief description |
 | **category** | No | `["special-templates"]` | Template categories |
-| **integrations** | No | `["machina-ai"]` | Required connectors |
+| **integrations** | No | `["google-genai"]` | Required connectors |
 | **version** | No | `1.0.0` | Initial version |
 
 ### 2. Validate Inputs
@@ -47,15 +47,15 @@ setup:
   title: "{title}"
   description: "{description}"
   category:
-    - {category}
+    - "{category}"
   estimatedTime: 10 minutes
   features:
-    - {description}
+    - "{description}"
   integrations:
-    - {integrations}
+    - "{integrations}"
   status: available
-  value: {template_type}/{template_name}
-  version: {version}
+  value: "{template_type}/{template_name}"
+  version: "{version}"
 
 datasets:
   - type: "documents"
@@ -253,8 +253,9 @@ workflow:
   context-variables:
     debugger:
       enabled: true
-    machina-ai:
-      credential: "$TEMP_CONTEXT_VARIABLE_MACHINA_AI_API_KEY"
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
   inputs:
     input_message: "$.get('input_message', [])"
     thread_id: "$.get('thread_id')"
@@ -266,9 +267,11 @@ workflow:
       name: "{template_name}-process"
       description: "Process input with LLM"
       connector:
-        name: "machina-ai"
+        name: "google-genai"
         command: "invoke_prompt"
-        model: "machina-ai"
+        model: "gemini-2.5-flash"
+        location: "global"
+        provider: "vertex_ai"
       inputs:
         _0-input-data: "$.get('input_message')"
       outputs:

@@ -43,7 +43,8 @@ Scan all `context-variables` for values starting with `$`:
 ```yaml
 context-variables:
   google-genai:
-    api_key: "$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY"
+    credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+    project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
 ```
 
 Deduplicate all `$VARIABLE_NAME` references to build the Required Credentials list.
@@ -54,13 +55,11 @@ Cross-reference discovered connectors with known secret patterns:
 
 | Connector | Secret Variable |
 |-----------|-----------------|
-| `google-genai` | `$TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY` |
-| `machina-ai` | `$TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY` |
+| `google-genai` | `$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL`, `$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID` |
 | `google-storage` | `$MACHINA_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY` |
 | `sportradar-soccer` | `$TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY` |
 | `sportradar-nfl` | `$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NFL_API_KEY` |
 | `sportradar-nba` | `$TEMP_CONTEXT_VARIABLE_SPORTRADAR_NBA_API_KEY` |
-| `openai` | `$TEMP_CONTEXT_VARIABLE_OPENAI_API_KEY` |
 | `groq` | `$TEMP_CONTEXT_VARIABLE_GROQ_API_KEY` |
 | `bwin` | `$TEMP_CONTEXT_VARIABLE_BWIN_ACCESS_ID` |
 | `vertex-ai` | `$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL` |

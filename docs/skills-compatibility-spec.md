@@ -19,25 +19,53 @@ The goal is simple:
 
 Observed in `machina-templates`:
 
-- `_install.yml` files: 64
-- `skill.yml` files: 4
+- `_install.yml` files: 94
+- `skill.yml` files: 13 (including two generated `mkn-constructor` compatibility mirrors)
 
-Current `skill.yml` locations:
+Machina Agent Builder locations:
 
-- `skills/mkn-constructor/skill.yml`
+- `skills/machina-agent-builder/skill.yml` — canonical package (`machina-agent-builder`)
+- `skills/mkn-constructor/skill.yml` — generated deprecated alias (`mkn-constructor`)
+- `mkn-constructor/skill.yml` — intentional generated mirror of the deprecated alias
+
+Other current `skill.yml` locations:
+
+- `skills/manifest-generator/skill.yml`
+- `skills/match-headline-generator/skill.yml`
+- `skills/match-stats-formatter/skill.yml`
+- `skills/news-monitor-storylines/skill.yml`
+- `skills/post-match-tweet-thread/skill.yml`
+- `skills/press-conference-extractor/skill.yml`
+- `skills/world-cup-intelligence/skill.yml`
 - `connectors/polymarket/skills/sync-events/skill.yml`
 - `connectors/polymarket/skills/sync-markets/skill.yml`
 - `connectors/polymarket/skills/sync-series/skill.yml`
+
+The `skills/mkn-constructor/skill.yml` entry above is a legacy alias, not another
+canonical source. New authoring happens only in
+`skills/machina-agent-builder/`; run
+`python3 scripts/sync-machina-agent-builder-compat.py` to derive both aliases.
+The canonical package and both generated aliases always share one version in
+`setup.version` and `skill.version`. Aliases are regenerated from the canonical
+package and are never hand-versioned.
 
 Current dataset types observed in `_install.yml`:
 
 - `workflow`
 - `connector`
 - `mappings`
+- `mapping`
+- `documents`
 - `agent`
 - `prompts`
 - `prompt`
 - `skill`
+
+For new manifests, preserve the dependency order `connector` →
+`document`/`documents` → `prompt`/`prompts` → `mapping`/`mappings` →
+`workflow` → `agent` → `skill`. The singular and plural prompt and mapping
+spellings remain compatibility aliases; validators must normalize them for
+ordering and must not rewrite an existing package merely to change dialect.
 
 ### Current architectural reality
 

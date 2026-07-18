@@ -1,5 +1,5 @@
 workflow:
-  name: "mkn-constructor-check-setup"
+  name: "machina-agent-builder-check-setup"
   title: "Machina Agent Builder - Check Setup"
   description: "Search for the doc-structure document and return its content."
   inputs:

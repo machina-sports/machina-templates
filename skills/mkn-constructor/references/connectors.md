@@ -12,65 +12,34 @@ Use this reference when the user mentions: "connector catalog", "list connectors
 
 ## Overview
 
-This catalog documents all available connectors in the Machina platform. Connectors are reusable integrations with external services and APIs, used by agents and workflows to access data, generate content, and interact with third-party systems.
+This guide records the current repository inventory and selected connector guidance. Connectors are reusable integrations with external services and APIs; inspect their definitions and the target runtime before relying on availability.
 
-**Total Connectors**: 35
+**Repository inventory**: 47 connector directories at the time this guide was revised; inspect `connectors/` rather than relying on a fixed catalog.
 **Connector Types**:
 - **PyScript** - Python-based connectors with custom logic
 - **REST API** - OpenAPI spec-based REST connectors
 
-## Quick Reference Index
+## Current Repository Inventory
 
-### By Category
+The current connector directories are:
 
-| Category | Connectors | Count |
-|----------|-----------|-------|
-| **AI/LLM Services** | openai, google-genai, groq, grok, perplexity, machina-ai, machina-ai-fast | 7 |
-| **Sports Data** | api-football, sportradar-soccer, sportradar-nfl, sportradar-nba, sportradar-mlb, sportradar-nhl, sportradar-rugby, sportradar-tennis, opta (stats-perform), american-football, mlb-statsapi, fastf1 | 12 |
-| **Content & Publishing** | wordpress, elevenlabs, google-speech-to-text, docling | 4 |
-| **Storage & Files** | google-storage, storage, temp-downloader | 3 |
-| **Data & Search** | exa-search, oxylabs, rss-feed | 3 |
-| **Betting & Markets** | bwin, tallysight | 2 |
-| **Support & Services** | zendesk | 1 |
-| **Media Generation** | stability | 1 |
+`american-football`, `api-football`, `azure-foundry`, `bwin`,
+`byteplus-modelark`, `docling`, `elevenlabs`, `exa-search`, `fastf1`,
+`goalserve-soccer`, `google-genai`, `google-speech-to-text`, `google-storage`,
+`google-workstation`, `grok`, `groq`, `kalshi`, `mlb-statsapi`, `mongodb-atlas`,
+`nvidia-nim`, `oxylabs`, `perplexity`, `polymarket`, `resend`, `rss-feed`,
+`slack-webhook`, `sociavault`, `sportradar-mlb`, `sportradar-nba`,
+`sportradar-nfl`, `sportradar-nhl`, `sportradar-rugby`, `sportradar-soccer`,
+`sportradar-soccer-extended`, `sportradar-tennis`, `sports-skills`, `stability`,
+`stats-perform`, `storage`, `tallysight`, `temp-downloader`, `vertex-embedding`,
+`wordpress`, and `zendesk`.
 
-### Alphabetical Index
-
-| Connector | Type | Category | Key Commands |
-|-----------|------|----------|--------------|
-| american-football | REST | Sports Data | (OpenAPI spec) |
-| api-football | REST | Sports Data | (OpenAPI spec) |
-| bwin | REST | Betting | (OpenAPI spec) |
-| docling | PyScript | Content | (see connector yml) |
-| elevenlabs | PyScript | Content | (see connector yml) |
-| exa-search | REST | Data | (OpenAPI spec) |
-| fastf1 | PyScript | Sports Data | (see connector yml) |
-| google-genai | PyScript | AI/LLM | invoke_prompt, invoke_image, invoke_video, invoke_search |
-| google-speech-to-text | PyScript | Content | (see connector yml) |
-| google-storage | PyScript | Storage | invoke_upload |
-| grok | REST | AI/LLM | (OpenAPI spec) |
-| groq | PyScript | AI/LLM | invoke_prompt |
-| machina-ai | PyScript | AI/LLM | invoke_prompt |
-| machina-ai-fast | PyScript | AI/LLM | invoke_prompt |
-| mlb-statsapi | REST | Sports Data | (OpenAPI spec) |
-| openai | PyScript | AI/LLM | list_models, invoke_embedding, invoke_prompt, transcribe_audio_to_text |
-| opta | PyScript | Sports Data | authorization, invoke_request |
-| oxylabs | REST | Data | (OpenAPI spec) |
-| perplexity | REST | AI/LLM | (OpenAPI spec) |
-| rss-feed | PyScript | Data | (see connector yml) |
-| sportradar-mlb | REST | Sports Data | (OpenAPI spec) |
-| sportradar-nba | REST | Sports Data | (OpenAPI spec) |
-| sportradar-nfl | REST | Sports Data | (OpenAPI spec) |
-| sportradar-nhl | REST | Sports Data | (OpenAPI spec) |
-| sportradar-rugby | REST | Sports Data | (OpenAPI spec) |
-| sportradar-soccer | REST | Sports Data | (OpenAPI spec) |
-| sportradar-tennis | REST | Sports Data | (OpenAPI spec) |
-| stability | PyScript | Media | (see connector yml) |
-| storage | PyScript | Storage | (see connector yml) |
-| tallysight | REST | Betting | (OpenAPI spec) |
-| temp-downloader | PyScript | Storage | (see connector yml) |
-| wordpress | REST | Content | (OpenAPI spec) |
-| zendesk | PyScript | Support | (see connector yml) |
+The repository also retains three deprecated provider connector directories for
+migration compatibility. They are historical facts, not recommendations for
+new authoring. New prompt and embedding workflows must use `google-genai` with
+the Vertex configuration shown below. Inspect each connector's YAML or OpenAPI
+file for its current commands; directory presence alone does not prove runtime
+availability in a target environment.
 
 **Note**: REST connectors use OpenAPI specs - check the `.json` file in each connector directory for available endpoints. PyScript connectors define commands in their `.yml` file.
 
@@ -80,88 +49,7 @@ This catalog documents all available connectors in the Machina platform. Connect
 
 The following connectors are documented in detail due to their high usage and importance in the platform.
 
-### 1. OpenAI (`openai`)
-
-**Type**: PyScript
-**Category**: AI/LLM Services
-**Location**: `machina-templates/connectors/openai/`
-
-**Description**:
-Official OpenAI SDK connector providing access to GPT models, embeddings, and audio transcription via the OpenAI API.
-
-**Environment Variables**:
-- `MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY` - OpenAI API key
-
-**Commands**:
-
-#### `invoke_prompt`
-Invoke a GPT model for text generation.
-
-**Input Fields**:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| api_key | string | Yes | OpenAI API key |
-| model_name | string | Yes | Model ID (e.g., "gpt-4", "gpt-3.5-turbo") |
-
-**Output**:
-```json
-{
-  "status": true,
-  "data": "<ChatOpenAI object>",
-  "message": "Model loaded."
-}
-```
-
-**Example Workflow YAML**:
-```yaml
-- task: llm-generate
-  name: Generate content with GPT-4
-  connector:
-    name: openai
-    command: invoke_prompt
-  params:
-    api_key: $MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY
-    model_name: "gpt-4"
-```
-
-#### `invoke_embedding`
-Generate embeddings for text.
-
-**Input Fields**:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| api_key | string | Yes | OpenAI API key |
-| model_name | string | Yes | Embedding model (e.g., "text-embedding-3-small") |
-
-**Output**:
-```json
-{
-  "status": true,
-  "data": "<OpenAIEmbeddings object>",
-  "message": "Model loaded."
-}
-```
-
-#### `transcribe_audio_to_text`
-Transcribe audio files using Whisper.
-
-**Input Fields**:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| api_key | string | Yes | OpenAI API key (via headers) |
-| audio-path | array | Yes | Path to audio file |
-
-**Output**:
-```json
-{
-  "status": true,
-  "data": "Transcribed text..."
-}
-```
-
----
-
-### 2. Google GenAI (`google-genai`)
+### 1. Google GenAI (`google-genai`)
 
 **Type**: PyScript
 **Category**: AI/LLM Services
@@ -170,31 +58,33 @@ Transcribe audio files using Whisper.
 **Description**:
 Google Gemini models connector supporting text, image, video generation, and web-grounded search.
 
-**Environment Variables**:
-- `MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY` - Google GenAI API key
+**Vertex credentials and project**:
+
+Use the current pattern from `connectors/google-genai/test-credentials.yml`:
+
+```yaml
+workflow:
+  context-variables:
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  tasks:
+    - type: prompt
+      name: generate-with-gemini
+      connector:
+        name: google-genai
+        command: invoke_prompt
+        model: gemini-2.5-flash
+        location: global
+        provider: vertex_ai
+      inputs:
+        prompt: "$.get('prompt')"
+```
 
 **Commands**:
 
 #### `invoke_prompt`
 Generate text using Gemini models.
-
-**Input Fields**:
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| api_key | string | Yes | Google GenAI API key |
-| model_name | string | Yes | Model ID (e.g., "gemini-1.5-pro") |
-
-**Example Workflow YAML**:
-```yaml
-- task: llm-generate
-  name: Generate with Gemini
-  connector:
-    name: google-genai
-    command: invoke_prompt
-  params:
-    api_key: $MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY
-    model_name: "gemini-1.5-pro"
-```
 
 #### `invoke_image`
 Generate images using Gemini.
@@ -728,16 +618,6 @@ The following connectors are documented with essential information only.
 **Purpose**: xAI Grok model access
 **Key Command**: `invoke_prompt`
 
-#### `machina-ai`
-**Type**: PyScript
-**Purpose**: Custom Machina LLM wrapper
-**Key Command**: `invoke_prompt`
-
-#### `machina-ai-fast`
-**Type**: PyScript
-**Purpose**: Fast inference variant of machina-ai
-**Key Command**: `invoke_prompt`
-
 ---
 
 ### Sports Data APIs
@@ -886,18 +766,18 @@ Most connectors use environment variables for API keys and credentials. These ar
 
 ```yaml
 params:
-  api_key: $MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY
+  api_key: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
 ```
 
 Common environment variable patterns:
-- `$MACHINA_CONTEXT_VARIABLE_OPENAI_API_KEY`
-- `$MACHINA_CONTEXT_VARIABLE_GOOGLE_GENAI_API_KEY`
+- `$TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL`
+- `$TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID`
 - `$MACHINA_CONTEXT_VARIABLE_SPORTRADAR_NFL_API_KEY`
 - `$MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_KEY`
 
 ### Error Handling
 
-Connectors return standardized response formats:
+Some connectors return response mappings like the following; verify each connector definition rather than assuming a universal format:
 
 **Success Response**:
 ```json
@@ -918,7 +798,7 @@ Connectors return standardized response formats:
 
 ### Data Abstraction in Workflow Outputs
 
-**Important**: The SDK automatically unwraps the `data` object when passing values to workflow outputs.
+**Important**: Some current integrations expose `data`; verify and map the actual command response.
 
 **In the connector (Python):**
 ```python

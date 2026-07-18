@@ -428,7 +428,7 @@ skill:
     # ... more references ...
 
   workflows:
-    - name: "mkn-constructor-check-setup"
+    - name: "machina-agent-builder-check-setup"
       description: "check-doc-structure"
       inputs:
         document_name: "$.get('document_name', 'doc-structure')"

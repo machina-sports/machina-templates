@@ -1,11 +1,9 @@
 ---
-name: mkn-constructor
+name: machina-agent-builder
 description: Discover and use this skill for create, scaffold, update, validate, analyze, trace, debug, install, and maintain requests involving Machina agents, agent templates, workflows, connectors, prompts, mappings, documents, skills, and MCP-backed template installation.
 ---
 
-# Machina Agent Builder (Deprecated Alias)
-
-> **Deprecated:** `mkn-constructor` is a compatibility alias. Use `machina-agent-builder` for all new work.
+# Machina Agent Builder
 
 End-to-end skill for building, validating, installing, debugging, and maintaining Machina agent templates and their complete resource graphs.
 
@@ -63,7 +61,7 @@ For YAML field specifics, read the relevant schema from `schemas/`.
 
 ## Workflow
 
-**Name**: `mkn-constructor-check-setup`
+**Name**: `machina-agent-builder-check-setup`
 
 Validates that the `doc-structure` document exists and returns its content.
 
@@ -80,7 +78,7 @@ Validates that the `doc-structure` document exists and returns its content.
 
 Found a bug, unexpected behavior, or have an improvement idea while using this skill?
 
-- **Report issues**: [Open an issue](https://github.com/machina-sports/machina-templates/issues/new?labels=mkn-constructor) with the label `mkn-constructor`
+- **Report issues**: [Open an issue](https://github.com/machina-sports/machina-templates/issues/new?labels=machina-agent-builder) with the label `machina-agent-builder`
 - **Contribute fixes**: Fork the repo, apply your fix, and [open a PR](https://github.com/machina-sports/machina-templates/pulls) against `main`
 - **What to include**: Describe what you expected vs. what happened. For schema/reference fixes, include before/after YAML examples.
 

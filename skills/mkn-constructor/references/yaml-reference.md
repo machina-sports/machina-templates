@@ -10,7 +10,7 @@ Use this reference when the user mentions: "YAML syntax", "workflow examples", "
 **Last Updated**: 2026-01-18
 **Source**: Extracted from real codebase examples
 
-This guide documents the **actual** YAML structures used in Machina templates, based on working examples from `dazn-templates` and `entain-templates`.
+This guide documents YAML structures evidenced by current in-repository examples. Re-check the referenced files when runtime behavior or schemas change.
 
 ## Table of Contents
 
@@ -70,7 +70,7 @@ agent:
 
 ### Real Example
 
-From `dazn-templates/agent-templates/moderator-assistant/agents/chat-executor.yml`:
+From `machina-templates/agent-templates/onboarding/agents/chat-executor.yml`:
 
 ```yaml
 agent:
@@ -226,18 +226,16 @@ workflow:
     google-genai:
       credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
       project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    machina-ai:
-      api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
 
   # Input parameters
   inputs:
     param_name: $.get('param_name')
     optional_param: $.get('optional_param', 'default')
 
-  # Output values (workflow-status is REQUIRED)
+  # Output values (include workflow-status when the consuming agent expects it)
   outputs:
     result: $.get('computed_result')
-    workflow-status: $.get('success') is True and 'executed' or 'skipped'  # REQUIRED!
+    workflow-status: $.get('success') is True and 'executed' or 'skipped'
 
   # Task sequence
   tasks:
@@ -252,10 +250,10 @@ workflow:
 |-------|-------------|
 | `name` | Alphanumeric + hyphens only |
 | `title` | Human-readable title |
-| `outputs` | Must include `workflow-status` key |
+| `outputs` | Include `workflow-status` when required by the consuming agent/runtime contract |
 | `tasks` | Non-empty list of tasks |
 
-**⚠️ Important:** Every workflow **must** have `workflow-status` in outputs. This is validated by the SDK.
+**⚠️ Important:** Many agents expect `workflow-status`; include it when the consuming agent contract requires it and verify against the target runtime.
 
 ### Debugger Mode
 
@@ -275,7 +273,7 @@ When enabled, the SDK captures:
 
 ### Real Example
 
-From `dazn-templates/agent-templates/moderator-assistant/workflows/chat-reasoning.yml`:
+From `machina-templates/agent-templates/onboarding/workflows/chat-reasoning.yml`:
 
 ```yaml
 workflow:
@@ -482,9 +480,11 @@ Enable semantic similarity search using embeddings.
     threshold-similarity: 0.01
     search-limit: 1000
   connector:
-    name: machina-ai
+    name: google-genai
     command: invoke_embedding
-    model: text-embedding-3-small
+    model: text-embedding-004
+    location: global
+    provider: vertex_ai
   inputs:
     name: "'content-snippet'"
     search-query: $.get('user_question')
@@ -508,9 +508,11 @@ Enable semantic similarity search using embeddings.
     action: save
     embed-vector: true              # Generate embedding on save
   connector:
-    name: machina-ai
+    name: google-genai
     command: invoke_embedding
-    model: text-embedding-3-small
+    model: text-embedding-004
+    location: global
+    provider: vertex_ai
   documents:
     content-snippet: |
       {
@@ -532,9 +534,11 @@ Enable semantic similarity search using embeddings.
     search-vector: true
     search-limit: 100
   connector:
-    name: machina-ai
+    name: google-genai
     command: invoke_embedding
-    model: text-embedding-3-small
+    model: text-embedding-004
+    location: global
+    provider: vertex_ai
   filters:
     name: "'content-snippet'"
   inputs:
@@ -572,9 +576,11 @@ tasks:
       search-vector: true
       threshold-docs: 5
     connector:
-      name: machina-ai
+      name: google-genai
       command: invoke_embedding
-      model: text-embedding-3-small
+      model: text-embedding-004
+      location: global
+      provider: vertex_ai
     inputs:
       name: "'knowledge-base'"
       search-query: $.get('user_question')
@@ -585,9 +591,11 @@ tasks:
   - type: prompt
     name: generate-answer
     connector:
-      name: machina-ai
+      name: google-genai
       command: invoke_prompt
-      model: gpt-4o
+      model: gemini-2.5-flash
+      location: global
+      provider: vertex_ai
     inputs:
       _0-context: $.get('context_docs')
       _1-question: $.get('user_question')
@@ -610,8 +618,8 @@ Execute an LLM prompt via a connector.
     model: gemini-3-flash-preview                # Model name
     stream: true                                 # (optional) Enable streaming
     temperature: 0.7                             # (optional) LLM temperature
-    location: global                             # (optional) Region
-    provider: vertex_ai                          # (optional) Provider
+    location: global                             # Required for google-genai commands
+    provider: vertex_ai                          # Required for google-genai commands
   tools:                                         # (optional) LLM tools/functions
     - name: search_documents
       description: Search for relevant documents
@@ -652,9 +660,11 @@ Execute an LLM prompt via a connector.
 - type: prompt
   name: prompt-with-tools
   connector:
-    name: machina-ai
+    name: google-genai
     command: invoke_prompt
-    model: gpt-4o
+    model: gemini-2.5-flash
+    location: global
+    provider: vertex_ai
   tools:
     - name: get_weather
       description: Get current weather for a location
@@ -707,7 +717,7 @@ Execute a custom connector command.
 
 **Connector Return & Output Abstraction:**
 
-Connectors return `{"status": bool, "data": {...}, "message": str}`. The SDK **automatically unwraps** the `data` object:
+Connectors return `{"status": bool, "data": {...}, "message": str}`. Some current workflows explicitly select fields from the `data` object:
 
 ```python
 # Connector returns:
@@ -761,7 +771,7 @@ Execute a task multiple times over a list of items. Works with all task types.
 
 ```yaml
 - type: connector
-  name: fetch-with-retry
+  name: retrieve-with-retry
   foreach:
     name: item
     value: $.get('items')
@@ -769,7 +779,7 @@ Execute a task multiple times over a list of items. Works with all task types.
   continue_on_error: true    # Don't fail workflow if some iterations fail
   connector:
     name: external-api
-    command: fetch
+    command: get_items
 ```
 
 When `continue_on_error: true`, failed iterations are skipped and the workflow continues with successful results.
@@ -778,12 +788,12 @@ When `continue_on_error: true`, failed iterations are skipped and the workflow c
 
 ```yaml
 - type: connector
-  name: fetch-event-details
+  name: retrieve-event-details
   foreach:
     name: event_code
     expr: $
     value: $.get('event_codes')    # ['sr:match:1', 'sr:match:2', ...]
-    concurrent: true               # Fetch all in parallel
+    concurrent: true               # Load all in parallel
   connector:
     name: sportradar
     command: get_event
@@ -811,9 +821,11 @@ When `continue_on_error: true`, failed iterations are skipped and the workflow c
     value: $.get('articles')
     concurrent: true
   connector:
-    name: machina-ai
+    name: google-genai
     command: invoke_prompt
-    model: gpt-4o
+    model: gemini-2.5-flash
+    location: global
+    provider: vertex_ai
   inputs:
     _0-content: $.get('article').get('content')
   outputs:
@@ -906,7 +918,7 @@ prompts:
 
 ### Real Example
 
-From `dazn-templates/agent-templates/moderator-assistant/prompts/chat-reasoning.yml`:
+From `machina-templates/agent-templates/onboarding/prompts/chat-reasoning.yml`:
 
 ```yaml
 prompts:
@@ -975,7 +987,7 @@ mappings:
 
 ### Real Example
 
-From `dazn-templates/agent-templates/moderator-assistant/mappings/chat-documents.yml`:
+From `machina-templates/agent-templates/onboarding/mappings/chat-documents.yml`:
 
 ```yaml
 mappings:
@@ -1063,11 +1075,10 @@ setup:
     - Feature description 1
     - Feature description 2
   integrations:
-    - machina-ai                        # Required connectors
-    - google-genai
+    - google-genai                        # Required connectors
   status: available
   value: agent-templates/template-name  # Template path
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
   # Install order matters - dependencies first
@@ -1429,4 +1440,4 @@ agent-templates/template-name/
 
 ---
 
-**Note**: This reference is based on actual working templates. When in doubt, refer to existing templates in `dazn-templates` or `entain-templates` for more examples.
+**Note**: This reference is based on current files in this repository. When in doubt, inspect current `agent-templates/`, `connectors/`, and `skills/` examples and validate against the target runtime.

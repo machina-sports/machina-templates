@@ -1,8 +1,8 @@
 skill:
   name: "mkn-constructor"
-  title: "Machina Skills - Constructor"
-  description: "Construct, validate, and deploy Machina agent-templates and connectors with guided scaffolding and MCP integration."
-  version: "1.0.0"
+  title: "Machina Agent Builder (Deprecated Alias)"
+  description: "Deprecated compatibility alias for machina-agent-builder. Create, update, validate, debug, and install Machina agents and template resources with MCP integration."
+  version: "2.0.0"
   category:
     - "devops"
     - "templates"
@@ -12,7 +12,7 @@ skill:
   references:
 
     - name: "skill-guide"
-      title: "Template Constructor"
+      title: "Machina Agent Builder"
       filename: "SKILL.md"
       filetype: "markdown"
       metadata:
@@ -180,15 +180,6 @@ skill:
         category: "reference"
         skill: "mkn-constructor"
         reference_id: "connectors"
-
-    - name: "skill-reference"
-      title: "Frontend API"
-      filename: "references/frontend-api.md"
-      filetype: "markdown"
-      metadata:
-        category: "reference"
-        skill: "mkn-constructor"
-        reference_id: "frontend-api"
 
   workflows:
 

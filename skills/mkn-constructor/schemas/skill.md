@@ -35,7 +35,7 @@ Unique identifier. Used for dispatching the skill via the SDK.
 
 ```yaml
 name: "polymarket-sync-events"
-name: "mkn-constructor"
+name: "machina-agent-builder"
 name: "adapters-dataset-generate"
 ```
 
@@ -43,7 +43,7 @@ name: "adapters-dataset-generate"
 
 ```yaml
 title: "Polymarket - Sync Events"
-title: "Template Constructor"
+title: "Machina Agent Builder"
 title: "Adapters - Dataset Generate"
 ```
 
@@ -60,7 +60,7 @@ description: "Run full dataset pipeline: checkin → generate → annotate → b
 Semantic versioning.
 
 ```yaml
-version: "1.0.0"
+version: "2.0.0"
 version: "2.0.0"
 ```
 
@@ -107,7 +107,7 @@ URL of the repository that owns this skill. Used for provenance tracking.
 
 ```yaml
 domain: "https://github.com/machina-sports/machina-templates"
-domain: "https://github.com/machina-sports/machina-model-template"
+domain: "https://github.com/machina-sports/machina-templates"
 ```
 
 ---
@@ -189,7 +189,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-schema"
-      skill: "mkn-constructor"
+      skill: "machina-agent-builder"
       reference_id: "schema-agent"
 
   - name: "skill-schema"
@@ -198,7 +198,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-schema"
-      skill: "mkn-constructor"
+      skill: "machina-agent-builder"
       reference_id: "schema-workflow"
 ```
 
@@ -207,12 +207,12 @@ references:
 ```yaml
 references:
   - name: "skill-guide"
-    title: "Template Constructor"
+    title: "Machina Agent Builder"
     filename: "SKILL.md"
     filetype: "markdown"
     metadata:
       category: "skill-guide"
-      skill: "mkn-constructor"
+      skill: "machina-agent-builder"
 
   - name: "skill-reference"
     title: "Install"
@@ -220,7 +220,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "reference"
-      skill: "mkn-constructor"
+      skill: "machina-agent-builder"
       reference_id: "install"
 
   - name: "skill-schema"
@@ -229,7 +229,7 @@ references:
     filetype: "markdown"
     metadata:
       category: "skill-schema"
-      skill: "mkn-constructor"
+      skill: "machina-agent-builder"
       reference_id: "schema-agent"
 ```
 
@@ -354,7 +354,7 @@ skill:
   name: "polymarket-sync-markets"
   title: "Polymarket - Sync Markets"
   description: "Sync sports prediction markets from Polymarket to Machina documents."
-  version: "1.0.0"
+  version: "2.0.0"
   category:
     - "data-acquisition"
     - "prediction-markets"
@@ -396,10 +396,10 @@ skill:
 
 ```yaml
 skill:
-  name: "mkn-constructor"
-  title: "Template Constructor"
+  name: "machina-agent-builder"
+  title: "Machina Agent Builder"
   description: "End-to-end skill for building, validating, and deploying Machina agent-templates and connectors."
-  version: "1.0.0"
+  version: "2.0.0"
   category:
     - "devops"
     - "templates"
@@ -413,7 +413,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "init-template"
 
     - name: "skill-reference"
@@ -422,7 +422,7 @@ skill:
       filetype: "markdown"
       metadata:
         category: "reference"
-        skill: "mkn-constructor"
+        skill: "machina-agent-builder"
         reference_id: "create-template"
 
     # ... more references ...
@@ -446,12 +446,12 @@ skill:
   name: "adapters-dataset-pipeline"
   title: "Adapters - Dataset Pipeline"
   description: "Run full dataset pipeline: checkin → generate → annotate → build → checkout."
-  version: "1.0.0"
+  version: "2.0.0"
   category:
     - "dataset"
     - "fine-tuning"
   status: "available"
-  domain: "https://github.com/machina-sports/machina-model-template"
+  domain: "https://github.com/machina-sports/machina-templates"
 
   references:
     - name: "skill-guide"
@@ -504,12 +504,12 @@ skill:
   name: "adapters-guide"
   title: "Adapters - Guide"
   description: "Guide for creating a new LoRA adapter end-to-end: setup, dataset pipeline, train, deploy, eval."
-  version: "1.0.0"
+  version: "2.0.0"
   category:
     - "guide"
     - "fine-tuning"
   status: "available"
-  domain: "https://github.com/machina-sports/machina-model-template"
+  domain: "https://github.com/machina-sports/machina-templates"
 
   references:
     - name: "skill-guide"
@@ -527,13 +527,13 @@ skill:
 skill:
   name: "adapters-setup"
   title: "Adapters - Setup"
-  description: "Install the machina-model-template and verify all components are properly deployed."
-  version: "1.0.0"
+  description: "Install a machina-templates package and verify its declared components are deployed."
+  version: "2.0.0"
   category:
     - "setup"
     - "devops"
   status: "available"
-  domain: "https://github.com/machina-sports/machina-model-template"
+  domain: "https://github.com/machina-sports/machina-templates"
 
   references:
     - name: "skill-guide"

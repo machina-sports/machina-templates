@@ -56,16 +56,9 @@ context-variables:
   google-genai:
     credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
     project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
-    api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_GENERATIVE_AI_API_KEY
-  machina-ai:
-    api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
-  machina-ai-fast:
-    api_key: $TEMP_CONTEXT_VARIABLE_SDK_GROQ_API_KEY
   api-football:
     x-apisports-key: $TEMP_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
     api_key: $MACHINA_CONTEXT_VARIABLE_API_FOOTBALL_API_KEY
-  openai:
-    api_key: $TEMP_CONTEXT_VARIABLE_SDK_OPENAI_API_KEY
   google-storage:
     api_key: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_API_KEY
     bucket_name: $TEMP_CONTEXT_VARIABLE_GOOGLE_STORAGE_BUCKET_NAME
@@ -161,8 +154,8 @@ Calls an LLM via a connector to generate structured output.
     name: google-genai           # Connector name (must match context-variables)
     command: invoke_prompt        # Connector command
     model: gemini-2.5-flash      # Model identifier
-    location: global             # Optional. Provider-specific
-    provider: vertex_ai          # Optional. Provider-specific
+    location: global             # Required for google-genai commands
+    provider: vertex_ai          # Required for google-genai commands
   inputs:
     _1-conversation-history: $.get('messages_loaded', [])[-5:]
     _2-user-messages: $.get('input_message')
@@ -178,7 +171,7 @@ Calls an LLM via a connector to generate structured output.
 |-------|----------|-------------|
 | `name` | Yes | Connector name from `context-variables` |
 | `command` | Yes | `invoke_prompt`, `invoke_search`, `invoke_embedding`, `invoke_video` |
-| `model` | No | Model identifier (e.g., `gemini-2.5-flash`, `gpt-4.1-mini`, `llama-3.3-70b-versatile`) |
+| `model` | No | Model identifier (e.g., `gemini-2.5-flash`, `gemini-2.5-flash`, `llama-3.3-70b-versatile`) |
 | `location` | No | Region/location for provider (e.g., `global`) |
 | `provider` | No | Backend provider (e.g., `vertex_ai`) |
 
@@ -193,7 +186,7 @@ outputs:
 outputs:
   search_queries: "$.get('search_queries', [])"
 
-# Extract from OpenAI-style response
+# Extract from provider response response
 outputs:
   message: "$.get('choices')[0].get('message').get('content')"
 
@@ -238,7 +231,7 @@ Calls an external service (Python script or REST API).
 
 ```yaml
 - type: connector
-  name: fetch-fixture
+  name: retrieve-fixture
   connector:
     name: api-football
     command: get-fixtures
@@ -258,6 +251,8 @@ Calls an external service (Python script or REST API).
     name: google-genai
     command: invoke_search
     model: gemini-2.5-flash
+    location: global
+    provider: vertex_ai
   foreach:
     concurrent: true
     name: search_query
@@ -449,7 +444,7 @@ Workflow outputs: evaluated against final accumulated state
 
 ## Expression Syntax
 
-```yaml
+```python
 # Read from state
 $.get('field')
 $.get('field', 'default')
@@ -510,7 +505,7 @@ int($.get('week_sequence', 1))
 | Element | Convention | Example |
 |---------|-----------|---------|
 | Workflow name | `<template>-<action>` | `machina-assistant-reasoning` |
-| Task name | `<verb>-<noun>` | `load-thread-document`, `fetch-fixture` |
+| Task name | `<verb>-<noun>` | `load-thread-document`, `retrieve-fixture` |
 | Prompt task name | matches prompt YAML name | `assistant-chat-reasoning-prompt` |
 | Mapping task name | matches mapping YAML name | `api-football-mapping` |
 

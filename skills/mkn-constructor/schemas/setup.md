@@ -99,14 +99,12 @@ Required connector names. Tells the installer which connectors must be available
 
 ```yaml
 integrations:
-  - machina-ai
   - google-genai
 
 integrations:
   - api-football
   - google-genai
   - google-storage
-  - machina-ai
 ```
 
 #### `status` (optional)
@@ -133,7 +131,7 @@ value: connectors/google-genai
 Semantic versioning.
 
 ```yaml
-version: 1.0.0
+version: 2.0.0
 version: 2.0.0
 version: 7.0.0
 ```
@@ -185,7 +183,7 @@ Always follow this dependency order:
 ```yaml
 datasets:
   - type: connector
-    path: openai.yml
+    path: google-genai.yml
   - type: workflow
     path: test-credentials.yml
 ```
