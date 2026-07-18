@@ -1,0 +1,57 @@
+name: Test Machina AI Router
+
+# Path filters gate only the pytest suite. The always-on lint workflow
+# (lint-no-openai.yml) runs the policy and command-inventory checks on every
+# pull request, so an unmapped command outside these paths still fails CI.
+on:
+  pull_request:
+    paths:
+      - "connectors/machina-ai/**"
+      - "connectors/machina-ai-fast/**"
+      - "connectors/nvidia-nim/**"
+      - "connectors/google-genai/**"
+      - "connectors/azure-foundry/**"
+      - "connectors/groq/**"
+      - "connectors/grok/**"
+      - "connectors/perplexity/**"
+      - "connectors/byteplus-modelark/**"
+      - "connectors/openai/**"
+      - "connectors/vertex-embedding/**"
+      - "connectors/google-speech-to-text/**"
+      - "connectors/stability/**"
+      - "connectors/elevenlabs/**"
+      - "scripts/check-no-openai.sh"
+      - "scripts/check-machina-ai-policy.py"
+      - "scripts/check-ai-command-inventory.py"
+      - ".github/workflows/test-machina-ai.yml"
+  push:
+    branches: [main]
+    paths:
+      - "connectors/machina-ai/**"
+      - "connectors/machina-ai-fast/**"
+      - "connectors/nvidia-nim/**"
+      - "connectors/grok/**"
+      - "connectors/perplexity/**"
+      - "connectors/byteplus-modelark/**"
+      - "scripts/check-no-openai.sh"
+      - "scripts/check-machina-ai-policy.py"
+      - "scripts/check-ai-command-inventory.py"
+      - ".github/workflows/test-machina-ai.yml"
+
+jobs:
+  offline-router-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check pytest pyyaml
+      - name: Run offline router tests
+        run: python -m pytest connectors/machina-ai/tests -q
+      - name: Run policy and inventory checks
+        run: |
+          scripts/check-no-openai.sh all
+          python scripts/check-ai-command-inventory.py

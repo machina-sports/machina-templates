@@ -19,23 +19,15 @@ def list_models(params):
 
 
 def invoke_embedding(params):
-
-    api_key = params.get("api_key", "")
-
-    model_name = params.get("model_name", "llama2-70b-4096")
-
-    if not api_key:
-        return {"status": "error", "message": "API key is required."}
-
-    try:
-        llm = ChatGroq(
-            api_key=api_key,
-            model_name=model_name
-        )
-    except Exception as e:
-        return {"status": "error", "message": f"Exception when creating model: {e}"}
-
-    return {"status": True, "data": llm, "message": "Model loaded."}
+    """Legacy compatibility response; Groq does not expose embeddings here."""
+    message = "Groq embeddings are unsupported; use machina-ai invoke_embedding."
+    return {
+        "status": False,
+        "data": None,
+        "message": message,
+        "error": message,
+        "metadata": {"contract_version": "v1", "error_class": "unsupported_capability"},
+    }
 
 
 def invoke_prompt(params):

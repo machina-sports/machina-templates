@@ -7,8 +7,5 @@ connector:
     - name: "list_models"
       value: "list_models"
 
-    - name: "Embedding"
-      value: "invoke_embedding"
-
     - name: "Prompt"
       value: "invoke_prompt" 

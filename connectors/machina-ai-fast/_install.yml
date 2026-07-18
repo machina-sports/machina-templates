@@ -1,18 +1,17 @@
 setup:
-  title: Machina AI Fast
-  description: Connect to the Machina AI API to get AI responses.
+  title: Machina AI Fast Compatibility
+  description: Delegates legacy fast prompt calls to the policy-governed machina-ai fast profile.
   category:
     - special-templates
   estimatedTime: 1 minute
   features:
-    - Real-time chat completion
-    - Real-time content generation
-    - Real-time image generation
+    - Runtime-delegated fast profile
+    - Typed unsupported embedding response
   integrations:
     - machina-ai
   status: available
   value: connectors/machina-ai-fast
-  version: 1.0.0
+  version: 2.0.0
 
 datasets:
   - type: "connector"

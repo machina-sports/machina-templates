@@ -16,11 +16,15 @@ import base64
 
 import datetime
 
+import ipaddress
+
 import json
 
 import os
 
 import requests
+
+import socket
 
 import tempfile
 
@@ -30,6 +34,8 @@ import uuid
 
 import wave
 import re
+from pathlib import Path
+from urllib.parse import urlparse
 
 
 OMNI_VIDEO_MODEL_PREFIX = "gemini-omni"
@@ -65,6 +71,52 @@ def _guess_mime_type(path_or_url, fallback="image/jpeg"):
     return fallback
 
 
+def _allowed_media_hosts():
+    return {
+        host.strip().lower()
+        for host in os.getenv("GOOGLE_GENAI_MEDIA_ALLOWED_HOSTS", "").split(",")
+        if host.strip()
+    }
+
+
+def _validate_remote_media_url(raw_url):
+    parsed = urlparse(str(raw_url or ""))
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+        raise ValueError("Remote image URL is not allowed")
+    if parsed.hostname.lower() not in _allowed_media_hosts():
+        raise ValueError("Remote image host is not allowlisted")
+    for result in socket.getaddrinfo(parsed.hostname, None):
+        address = ipaddress.ip_address(result[4][0])
+        if address.is_private or address.is_loopback or address.is_link_local or address.is_reserved or address.is_multicast or address.is_unspecified:
+            raise ValueError("Remote image host resolves to a protected address")
+    return parsed.geturl()
+
+
+def _download_remote_image(raw_url, max_bytes=25 * 1024 * 1024):
+    url = _validate_remote_media_url(raw_url)
+    response = requests.get(url, timeout=(5, 30), stream=True, allow_redirects=False)
+    response.raise_for_status()
+    content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+    if not content_type.startswith("image/"):
+        raise ValueError("Remote media is not an image")
+    content = bytearray()
+    for chunk in response.iter_content(64 * 1024):
+        content.extend(chunk)
+        if len(content) > max_bytes:
+            raise ValueError("Remote image exceeds the configured size limit")
+    return bytes(content), content_type
+
+
+def _safe_local_media_path(raw_path, max_bytes=25 * 1024 * 1024):
+    path = Path(str(raw_path)).expanduser().resolve()
+    root = Path(os.getenv("MACHINA_WORK_DIR", os.getcwd())).expanduser().resolve()
+    if path != root and root not in path.parents:
+        raise ValueError("Local image path is outside the approved work directory")
+    if not path.is_file() or path.stat().st_size > max_bytes:
+        raise ValueError("Local image is missing or exceeds the configured size limit")
+    return path
+
+
 def _load_image_part(image_path=None, image_base64=None, mime_type=None):
     """Return an Interactions API image input part from a URL/path or base64 payload."""
     if image_base64:
@@ -79,16 +131,11 @@ def _load_image_part(image_path=None, image_base64=None, mime_type=None):
 
     image_bytes = None
     if str(image_path).startswith(("http://", "https://")):
-        response = requests.get(image_path, timeout=120)
-        response.raise_for_status()
-        image_bytes = response.content
-        detected_mime = response.headers.get("content-type", "").split(";")[0] or None
-    elif os.path.exists(image_path):
-        with open(image_path, "rb") as image_file:
-            image_bytes = image_file.read()
-        detected_mime = None
+        image_bytes, detected_mime = _download_remote_image(image_path)
     else:
-        raise FileNotFoundError(f"Input image not found: {image_path}")
+        local_path = _safe_local_media_path(image_path)
+        image_bytes = local_path.read_bytes()
+        detected_mime = None
 
     return {
         "type": "image",
@@ -573,8 +620,8 @@ def invoke_image(request_data):
     NOTE: Vertex AI does NOT support API keys; OAuth2 service account credentials only.
     """
 
-    params = request_data.get("params")
-    headers = request_data.get("headers")
+    params = request_data.get("params") or {}
+    headers = request_data.get("headers") or {}
 
     provider = (params.get("provider") or headers.get("provider") or "ai_studio").lower()
 
@@ -610,7 +657,11 @@ def invoke_image(request_data):
         }
 
     # Get parameters
-    image_paths = params.get("image_paths", [])  # Accept array of image paths
+    image_paths = params.get("image_paths") or []  # Accept array of image paths
+    if isinstance(image_paths, str):
+        image_paths = [image_paths]
+    else:
+        image_paths = list(image_paths)
     image_path = params.get("image_path")  # Keep backward compatibility
 
     # Collect individual image_path_N fields and add to array
@@ -620,7 +671,6 @@ def invoke_image(request_data):
         field_value = params.get(field_name)
         if field_value:
             image_paths.append(field_value)
-            print(f"📎 Adicionado {field_name}: {field_value}")
             i += 1
         else:
             break
@@ -661,56 +711,38 @@ def invoke_image(request_data):
                 credentials=credentials,
             )
 
-        # Prepare image parts if image_paths are provided
+        # Prepare image parts under the same local/remote media policy used by
+        # the router. Remote hosts are deny-by-default and configured through
+        # GOOGLE_GENAI_MEDIA_ALLOWED_HOSTS.
+        #
+        # Legacy behavior preserved: an invalid input image is skipped (and
+        # recorded in the response metadata), not fatal to the whole call.
+        # Skip reasons are sanitized fixed strings — never the raw path.
         image_parts = []
-        if image_paths:
-            print(f"🖼️ Processando {len(image_paths)} imagens")
-            for i, img_path in enumerate(image_paths):
-                print(f"📷 Processando imagem {i+1}/{len(image_paths)}: {img_path}")
-
-                image_data = None
-                if img_path.startswith(("http://", "https://")):
-                    # Download image from URL
-                    print(f"🌐 Baixando imagem de URL: {img_path}")
-                    try:
-                        response = requests.get(img_path)
-                        response.raise_for_status()
-                        image_data = response.content
-                        print(f"📊 Tamanho da imagem baixada: {len(image_data)} bytes")
-                    except Exception as e:
-                        print(f"❌ Erro ao baixar imagem {i+1}: {e}")
-                        continue
-                elif os.path.exists(img_path):
-                    # Read local file
-                    print(f"📁 Lendo imagem local: {img_path}")
-                    try:
-                        with open(img_path, "rb") as image_file:
-                            image_data = image_file.read()
-                        print(f"📊 Tamanho da imagem: {len(image_data)} bytes")
-                    except Exception as e:
-                        print(f"❌ Erro ao ler imagem {i+1}: {e}")
-                        continue
+        skipped_media = []
+        for img_index, img_path in enumerate(image_paths or []):
+            try:
+                if str(img_path).startswith(("http://", "https://")):
+                    image_data, mime_type = _download_remote_image(img_path)
                 else:
-                    print(f"❌ Imagem não encontrada: {img_path}")
-                    continue
-
-                if image_data:
-                    # Detect MIME type based on file extension or content
-                    mime_type = "image/jpeg"  # default
-                    if img_path.lower().endswith(".png"):
-                        mime_type = "image/png"
-                    elif img_path.lower().endswith(".gif"):
-                        mime_type = "image/gif"
-                    elif img_path.lower().endswith(".webp"):
-                        mime_type = "image/webp"
-
-                    image_part = types.Part(
-                        inline_data=types.Blob(data=image_data, mime_type=mime_type)
-                    )
-                    image_parts.append(image_part)
-                    print(f"✅ Imagem {i+1} preparada com sucesso ({mime_type})")
-
-            print(f"✅ Total de {len(image_parts)} imagens preparadas com sucesso")
+                    local_path = _safe_local_media_path(img_path)
+                    image_data = local_path.read_bytes()
+                    mime_type = _guess_mime_type(local_path)
+            except Exception:
+                is_remote = str(img_path).startswith(("http://", "https://"))
+                skipped_media.append(
+                    {
+                        "index": img_index,
+                        "kind": "remote" if is_remote else "local",
+                        "reason": "failed media security validation; input skipped",
+                    }
+                )
+                continue
+            image_parts.append(
+                types.Part(inline_data=types.Blob(data=image_data, mime_type=mime_type))
+            )
+        if skipped_media:
+            print(f"⚠️ {len(skipped_media)} input image(s) skipped by media security validation")
 
         # Decide contents based on available inputs
         if image_parts or prompt is not None:
@@ -815,6 +847,7 @@ def invoke_image(request_data):
                                     "input_image_paths": (
                                         image_paths if image_paths else []
                                     ),
+                                    "skipped_media": skipped_media,
                                 },
                                 "message": f"Image generated successfully using {len(image_parts)} input images.",
                             }
@@ -825,16 +858,66 @@ def invoke_image(request_data):
                 "status": False,
                 "message": "No image was generated - candidates exist but contain no image data",
                 "debug_info": f"Response had {len(response.candidates)} candidates but none contained inline_data",
+                "skipped_media": skipped_media,
             }
         else:
             return {
                 "status": False,
                 "message": "Error generating image - no candidates in response",
                 "debug_info": str(response) if response else "Response is None",
+                "skipped_media": skipped_media,
             }
 
-    except Exception as e:
-        return {"status": False, "message": f"Exception when generating image: {e}"}
+    except Exception:
+        return {"status": False, "message": "The configured image provider could not generate an image."}
+
+
+def edit_image(request_data):
+    """Compatibility alias for the previously observed google-genai/edit_image call."""
+    payload = dict(request_data or {})
+    params = dict(payload.get("params") or payload)
+    temporary_paths = []
+    params.setdefault("prompt", params.get("instruction"))
+    legacy_images = params.get("images_base64") or []
+    image_paths = list(params.get("image_paths") or [])
+    for item in legacy_images:
+        if not item:
+            continue
+        if str(item).startswith(("http://", "https://")):
+            image_paths.append(item)
+            continue
+        encoded = str(item)
+        if encoded.startswith("data:") and "," in encoded:
+            encoded = encoded.split(",", 1)[1]
+        try:
+            image_bytes = base64.b64decode(encoded, validate=True)
+        except Exception:
+            return {"status": False, "message": "A legacy image input is not valid base64."}
+        temp_root = Path(os.getenv("MACHINA_WORK_DIR", os.getcwd())).expanduser().resolve()
+        temp_root.mkdir(parents=True, exist_ok=True)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png", dir=temp_root)
+        temp_file.write(image_bytes)
+        temp_file.close()
+        temporary_paths.append(temp_file.name)
+        image_paths.append(temp_file.name)
+    params["image_paths"] = image_paths
+    requested_model = params.get("model_name") or params.get("model")
+    if not requested_model or str(requested_model).lower().startswith("gpt-"):
+        params["model_name"] = "gemini-3-pro-image-preview"
+    payload["params"] = params
+    try:
+        result = invoke_image(payload)
+        if result.get("status") and isinstance(result.get("data"), dict):
+            data = result["data"]
+            data.setdefault("final_filename", data.get("filename"))
+            data.setdefault("full_filepath", data.get("image_path"))
+        return result
+    finally:
+        for path in temporary_paths:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
 
 
 def invoke_search(request_data):
@@ -2196,7 +2279,6 @@ def invoke_music(request_data):
         field_value = params.get(field_name)
         if field_value:
             image_paths.append(field_value)
-            print(f"📎 Adicionado {field_name}: {field_value}")
             i += 1
         else:
             break

@@ -1,4 +1,4 @@
-from langchain_openai import ChatAzureOpenAI, AzureOpenAIEmbeddings
+from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 
 
 def invoke_prompt(params):
@@ -41,20 +41,20 @@ def invoke_prompt(params):
     )
 
     if not api_key:
-        return {"status": "error", "message": "Azure OpenAI API key is required."}
+        return {"status": False, "message": "Azure OpenAI API key is required."}
     if not azure_endpoint:
         return {
-            "status": "error",
+            "status": False,
             "message": "Azure OpenAI Endpoint (azure_endpoint) is required.",
         }
     if not azure_deployment:
         return {
-            "status": "error",
+            "status": False,
             "message": "Azure Deployment Name (azure_deployment) is required.",
         }
 
     try:
-        llm = ChatAzureOpenAI(
+        llm = AzureChatOpenAI(
             azure_endpoint=azure_endpoint,
             api_key=api_key,
             azure_deployment=azure_deployment,
@@ -66,10 +66,10 @@ def invoke_prompt(params):
             "data": llm,
             "message": f"Azure OpenAI model '{azure_deployment}' loaded successfully.",
         }
-    except Exception as e:
+    except Exception:
         return {
-            "status": "error",
-            "message": f"Exception when creating Azure OpenAI model: {e}",
+            "status": False,
+            "message": "Unable to create the configured Azure chat model.",
         }
 
 
@@ -110,15 +110,15 @@ def invoke_embedding(params):
     )
 
     if not api_key:
-        return {"status": "error", "message": "Azure OpenAI API key is required."}
+        return {"status": False, "message": "Azure OpenAI API key is required."}
     if not azure_endpoint:
         return {
-            "status": "error",
+            "status": False,
             "message": "Azure OpenAI Endpoint (azure_endpoint) is required.",
         }
     if not azure_deployment:
         return {
-            "status": "error",
+            "status": False,
             "message": "Azure Deployment Name (azure_deployment) is required.",
         }
 
@@ -134,8 +134,8 @@ def invoke_embedding(params):
             "data": embeddings,
             "message": f"Azure OpenAI embeddings '{azure_deployment}' loaded successfully.",
         }
-    except Exception as e:
+    except Exception:
         return {
-            "status": "error",
-            "message": f"Exception when creating Azure OpenAI embeddings: {e}",
+            "status": False,
+            "message": "Unable to create the configured Azure embedding model.",
         }
