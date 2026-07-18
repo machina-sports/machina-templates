@@ -117,6 +117,15 @@ def _safe_local_media_path(raw_path, max_bytes=25 * 1024 * 1024):
     return path
 
 
+def _output_root():
+    # Generated media must land inside MACHINA_WORK_DIR so downstream tasks can
+    # feed it back through _safe_local_media_path; system temp is the legacy
+    # fallback when no work dir is configured.
+    root = Path(os.getenv("MACHINA_WORK_DIR", tempfile.gettempdir())).expanduser().resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    return str(root)
+
+
 def _load_image_part(image_path=None, image_base64=None, mime_type=None):
     """Return an Interactions API image input part from a URL/path or base64 payload."""
     if image_base64:
@@ -232,7 +241,7 @@ def _save_video_results(video_payloads, output_path=None):
             base, ext = os.path.splitext(output_path)
             video_output_path = f"{base}_{idx + 1}{ext or '.mp4'}"
         else:
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4", dir=_output_root())
             video_output_path = temp_file.name
             temp_file.close()
 
@@ -826,7 +835,7 @@ def invoke_image(request_data):
                             image_data = part.inline_data.data
                             image = Image.open(BytesIO(image_data))
                             temp_file = tempfile.NamedTemporaryFile(
-                                delete=False, suffix=".webp"
+                                delete=False, suffix=".webp", dir=_output_root()
                             )
                             temp_path = temp_file.name
                             temp_file.close()
@@ -1531,7 +1540,7 @@ def invoke_video(request_data):
                 else:
                     # Create a temporary file
                     temp_file = tempfile.NamedTemporaryFile(
-                        delete=False, suffix=".mp4"
+                        delete=False, suffix=".mp4", dir=_output_root()
                     )
                     video_output_path = temp_file.name
                     temp_file.close()
@@ -2406,7 +2415,7 @@ def invoke_music(request_data):
         if audio_data:
             suffix = f".{response_format_param}"
             temp_file = tempfile.NamedTemporaryFile(
-                delete=False, suffix=suffix
+                delete=False, suffix=suffix, dir=_output_root()
             )
             temp_path = temp_file.name
             temp_file.write(audio_data)

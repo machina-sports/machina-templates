@@ -1,5 +1,6 @@
 import base64
 import importlib.util
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -174,3 +175,14 @@ def test_elevenlabs_returns_relative_artifact_and_sanitized_errors():
     assert "relative_to(root)" in source
     assert "print(" not in source
     assert "str(error)" not in source
+
+
+def test_google_genai_output_tempfiles_are_rooted_in_work_dir():
+    # Generated media (image/video/audio) must land inside MACHINA_WORK_DIR so
+    # downstream tasks can pass it back through the input sandbox; a bare
+    # NamedTemporaryFile writes to system /tmp, which the sandbox rejects.
+    source = (ROOT / "connectors" / "google-genai" / "google-genai.py").read_text()
+    calls = re.findall(r"NamedTemporaryFile\((?:[^()]|\([^()]*\))*\)", source)
+    assert calls, "expected NamedTemporaryFile call sites in google-genai.py"
+    for call in calls:
+        assert "dir=" in call, f"output tempfile not rooted in work dir: {call}"
