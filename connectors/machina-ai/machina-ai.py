@@ -58,6 +58,11 @@ PROVIDER_ALIASES = {
     "byteplus": "byteplus_modelark",
     "modelark": "byteplus_modelark",
     "google_speech_to_text": "google_speech",
+    "vertex_model_garden": "vertex_anthropic",
+    "model_garden": "vertex_anthropic",
+    "anthropic_vertex": "vertex_anthropic",
+    "anthropic": "vertex_anthropic",
+    "claude": "vertex_anthropic",
 }
 COMMANDS = {
     "invoke_prompt": ("chat", "factory"),
@@ -188,6 +193,33 @@ DEFAULT_CONFIG: Dict[str, Any] = {
                 "tts": [],
                 "music": [],
                 "voice": [],
+            },
+        },
+        "vertex_anthropic": {
+            # Anthropic Claude on Vertex AI Model Garden.  Reuses the same Vertex
+            # service-account as ``vertex_ai``; Claude is billed under the GCP
+            # project, so no separate Anthropic credential is required.  Chat
+            # only — no embedding/search/media parity on Vertex.
+            #
+            # Ships dormant: enable per-environment (Entain first) via router
+            # config ``providers.vertex_anthropic.enabled: true`` so the Claude
+            # cutover is a controlled canary, not a global default flip.
+            "enabled": False,
+            "adapter": "vertex_anthropic",
+            "credential_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL",
+            "project_env": "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID",
+            "location": "global",
+            "allowed_models": {
+                # Bare Model Garden ids (current-gen Claude uses no prefix / date
+                # suffix on Vertex).  Exact availability is per-project — validate
+                # in the target Vertex project and override via router config
+                # (providers.vertex_anthropic.allowed_models.chat).
+                "chat": [
+                    "claude-haiku-4-5",
+                    "claude-sonnet-4-6",
+                    "claude-sonnet-5",
+                    "claude-opus-4-8",
+                ],
             },
         },
         "google_ai_studio": {
@@ -1179,29 +1211,39 @@ class ProviderAdapter:
         raise RouterError("unsupported_capability", "This provider does not support music generation through the router.")
 
 
+def _vertex_service_account_credentials(credential: Any) -> Any:
+    """Build google.auth service-account credentials from a router credential.
+
+    Shared by the Gemini (``vertex_ai``) and Claude (``vertex_anthropic``)
+    routes, which authenticate to Vertex with the same service-account JSON.
+    Returns ``None`` when nothing is configured (ADC is used) and passes an
+    already-built credentials object through unchanged.
+    """
+    if not credential:
+        return None
+    if not isinstance(credential, (str, bytes, Mapping)):
+        return credential
+    try:
+        info = json.loads(credential) if isinstance(credential, (str, bytes)) else dict(credential)
+        service_account = importlib.import_module("google.oauth2.service_account")
+        # Unscoped service-account credentials fail token refresh with
+        # "invalid_scope" on clients that do not apply default scopes
+        # (VertexAIEmbeddings, unlike ChatVertexAI).
+        return service_account.Credentials.from_service_account_info(
+            info,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+    except Exception:
+        raise RouterError("credential_invalid", "The configured Vertex credential is invalid.")
+
+
 class GoogleGenAIAdapter(ProviderAdapter):
     provider_id = "vertex_ai"
     capabilities = {"chat", "embedding", "search_answer", "image", "video", "tts", "voice", "music"}
     delegate_connector = "google-genai"
 
     def _credentials(self, route: Route) -> Any:
-        credential = route.credentials.get("credential")
-        if not credential:
-            return None
-        if not isinstance(credential, (str, bytes, Mapping)):
-            return credential
-        try:
-            info = json.loads(credential) if isinstance(credential, (str, bytes)) else dict(credential)
-            service_account = importlib.import_module("google.oauth2.service_account")
-            # Unscoped service-account credentials fail token refresh with
-            # "invalid_scope" on clients that do not apply default scopes
-            # (VertexAIEmbeddings, unlike ChatVertexAI).
-            return service_account.Credentials.from_service_account_info(
-                info,
-                scopes=["https://www.googleapis.com/auth/cloud-platform"],
-            )
-        except Exception:
-            raise RouterError("credential_invalid", "The configured Vertex credential is invalid.")
+        return _vertex_service_account_credentials(route.credentials.get("credential"))
 
     def create_chat_model(self, route: Route, request: NormalizedRequest) -> AdapterResult:
         delegated = self._delegate("invoke_prompt", route, request)
@@ -1301,6 +1343,53 @@ class GoogleGenAIAdapter(ProviderAdapter):
         if delegated:
             return delegated
         raise RouterError("provider_unavailable", "Google music generation requires the runtime delegation service.")
+
+
+class VertexAnthropicAdapter(ProviderAdapter):
+    """Anthropic Claude on Vertex AI Model Garden.
+
+    Reuses the same Vertex service-account as the Gemini route (``vertex_ai``);
+    Model Garden bills Claude under the GCP project, so no separate Anthropic
+    credential is required.  Chat only — Claude on Vertex has no embedding,
+    search-grounding, or media parity, so those capabilities fall through to the
+    base ``unsupported_capability`` guard by design.
+    """
+
+    provider_id = "vertex_anthropic"
+    capabilities = {"chat"}
+    # Claude requires an explicit output cap and the langchain default is 1024,
+    # which truncates long report/article generations.  Use a generous default
+    # whenever the workflow does not set ``max_tokens`` (Entain workflows do not).
+    default_max_tokens = 8192
+
+    def _credentials(self, route: Route) -> Any:
+        return _vertex_service_account_credentials(route.credentials.get("credential"))
+
+    def create_chat_model(self, route: Route, request: NormalizedRequest) -> AdapterResult:
+        try:
+            module = importlib.import_module("langchain_google_vertexai.model_garden")
+            kwargs = {
+                "model_name": route.model,
+                "project": route.credentials.get("project"),
+                "location": route.credentials.get("location") or "global",
+                "temperature": request.options.get("temperature", 0.2),
+                "max_tokens": _safe_int(
+                    request.options.get("max_tokens"),
+                    self.default_max_tokens,
+                    minimum=1,
+                    maximum=64000,
+                ),
+            }
+            credentials = self._credentials(route)
+            if credentials is not None:
+                kwargs["credentials"] = credentials
+            model = module.ChatAnthropicVertex(**{k: v for k, v in kwargs.items() if v is not None})
+        except RouterError:
+            raise
+        except Exception as error:
+            error_class, message = _safe_exception(error)
+            raise RouterError(error_class, message)
+        return AdapterResult(model)
 
 
 class OpenAICompatibleAdapter(ProviderAdapter):
@@ -1747,6 +1836,7 @@ class AdapterRegistry:
         self.media = media
         self.factories = {
             "google_genai": GoogleGenAIAdapter,
+            "vertex_anthropic": VertexAnthropicAdapter,
             "openai_compatible": OpenAICompatibleAdapter,
             "azure_foundry": AzureFoundryAdapter,
             "groq": GroqAdapter,
