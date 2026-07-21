@@ -75,23 +75,11 @@ Run once for `claude-haiku-4-5` and once for `claude-sonnet-5`. Expected receipt
                 "route_reason": "explicit_provider", "fallback_used": false } }
 ```
 
-> Note: the repository's own policy lint (`scripts/check-machina-ai-policy.py`)
-> pins **committed** `machina-ai` workflows to `provider: vertex_ai` + Gemini, so
-> the Claude smoke runs as the direct connector call above — or as an env-local
-> workflow that is not committed to this repo. Shape:
->
-> ```yaml
-> - type: prompt
->   name: machina-ai-smoke-claude
->   connector:
->     name: machina-ai
->     command: invoke_prompt
->     provider: vertex_anthropic
->     model: claude-haiku-4-5   # or claude-sonnet-5
->     location: global
->   inputs:
->     prompt: "$.get('prompt', 'Reply in one sentence and name the model.')"
-> ```
+A repeatable workflow probe ships alongside this file:
+`test-smoke-claude-vertex.yml` (Haiku; swap `model` to `claude-sonnet-5` for
+Sonnet). The repository policy lint (`scripts/check-machina-ai-policy.py`) allows
+committed `machina-ai` workflows to use `provider: vertex_anthropic` with the
+approved Claude ids.
 
 ## 4. First cutover (Stage 2) — one config flip, no workflow edits
 

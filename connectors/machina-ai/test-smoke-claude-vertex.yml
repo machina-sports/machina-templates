@@ -1,0 +1,33 @@
+workflow:
+  name: "machina-ai-smoke-claude-vertex"
+  title: "Machina AI Router - Smoke: Claude on Vertex Model Garden"
+  description: >-
+    Exercises the vertex_anthropic route (Anthropic Claude on Vertex AI Model
+    Garden) through the machina-ai router. Run after enabling
+    providers.vertex_anthropic in the target environment. Ships as a literal
+    Haiku probe; swap model to claude-sonnet-5 to smoke the Sonnet route. For
+    the sanitized receipt (selected_provider / selected_model / route_reason),
+    call the connector directly per ACTIVATION.md.
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    prompt: "$.get('prompt', 'Reply with a one-sentence hello and name the model answering.')"
+  outputs:
+    result: "$.get('smoke_result', {})"
+    workflow-status: "$.get('workflow-status', 'skipped')"
+  tasks:
+    - type: prompt
+      name: machina-ai-test-credentials-prompt
+      description: Invoke Claude Haiku on Vertex Model Garden through the router.
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        provider: vertex_anthropic
+        model: claude-haiku-4-5
+        location: global
+      inputs:
+        prompt: "$.get('prompt', 'Reply with a one-sentence hello and name the model answering.')"
+      outputs:
+        smoke_result: "$"
+        workflow-status: "'executed'"
