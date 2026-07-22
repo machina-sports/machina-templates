@@ -145,6 +145,11 @@
                         "description": "JSON schema for deep search structured output mode. When provided, the output.content field is returned as structured JSON matching this schema.",
                         "additionalProperties": {}
                       },
+                      "systemPrompt": {
+                        "type": "string",
+                        "description": "Instructions that steer the synthesized output.content (used with deep search structured output / outputSchema). Guides tone, focus, and structure of the generated content.",
+                        "example": "Extract concise, factual structured analysis grounded strictly in the retrieved sources."
+                      },
                       "category": {
                         "type": "string",
                         "enum": [
