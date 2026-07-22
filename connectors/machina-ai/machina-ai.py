@@ -1381,8 +1381,11 @@ class VertexAnthropicAdapter(ProviderAdapter):
             }
             # Claude 4.6+ (Sonnet 5, Opus 4.7/4.8, …) reject sampling params with
             # a 400 ("temperature is deprecated for this model"), so no default is
-            # applied — only an explicit workflow-provided temperature is forwarded.
-            if request.options.get("temperature") is not None:
+            # applied. The platform workflow prompt runner also injects
+            # ``temperature: 0`` into every prompt task regardless of author
+            # intent, so 0/None are treated as "unset" — only an explicit
+            # non-zero temperature is forwarded on this route.
+            if request.options.get("temperature"):
                 kwargs["temperature"] = request.options["temperature"]
             credentials = self._credentials(route)
             if credentials is not None:

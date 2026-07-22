@@ -542,6 +542,11 @@ class TestProviderAdapters:
         with patch.dict(sys.modules, {"langchain_google_vertexai.model_garden": mg_module}):
             adapter.create_chat_model(route, self.request(temperature=0.7))
         assert fake_chat.call_args.kwargs["temperature"] == 0.7
+        # The platform prompt runner injects temperature: 0 into every prompt
+        # task; 0 must be treated as unset on this route (Claude rejects it).
+        with patch.dict(sys.modules, {"langchain_google_vertexai.model_garden": mg_module}):
+            adapter.create_chat_model(route, self.request(temperature=0))
+        assert "temperature" not in fake_chat.call_args.kwargs
 
     def test_vertex_and_google_media_can_delegate_without_provider_imports(self):
         class DelegateRuntime:
