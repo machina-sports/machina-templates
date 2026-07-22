@@ -4,6 +4,32 @@ The `vertex_anthropic` provider ships **dormant** (`enabled: false`). Nothing ro
 to Claude until an environment opts in. This is the Stage 0 activation runbook for
 the Entain Gemini→Claude migration (ClickUp 86ajmxm3u).
 
+## Deploy sequence (Stage 0 → live)
+
+Ordered by dependency; merge/deploy is gated on review sign-off.
+
+1. **Runtime** — merge machina-client-api #326, cut a client-api release (bump
+   from 1.19.1) that includes the router runtime (#316) + `anthropic`; deploy
+   staging → prod. Puts the dependency in the pod runtime.
+2. **Connector** — merge machina-templates #292, re-import the `machina-ai`
+   connector into the target pod. The `vertex_anthropic` route arrives dormant.
+3. **Enable + validate** — set `providers.vertex_anthropic.enabled: true` (§2),
+   validate the enabled Claude ids (§1), smoke Haiku + Sonnet (§3).
+4. **Widgets facade** — merge entain-widgets #44, re-import the widgets
+   workflows. Migrated assistants route through `machina-ai`, still on Gemini
+   (zero model change). Needs the connector from step 2 in the pod; does **not**
+   need `anthropic` (the Gemini path delegates to `google-genai`).
+5. **Claude cutover** — swap the model via §4 (capability remap or per-workflow).
+
+### Stage 0 — Definition of Done
+- [ ] client-api release/deploy with `anthropic` + router runtime (release version)
+- [ ] `machina-ai` connector imported into the target pod (import confirmation)
+- [ ] `providers.vertex_anthropic.enabled: true` in the env (config diff)
+- [ ] Haiku **and** Sonnet receipts showing `selected_provider: vertex_anthropic`,
+      `selected_model`, `route_reason`, `fallback_used`
+
+Rollback at any step is config-only (§5).
+
 ## 0. Prerequisites (both must be live)
 
 | Change | PR |
