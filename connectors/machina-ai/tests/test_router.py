@@ -527,6 +527,22 @@ class TestProviderAdapters:
             policy.route(request)
         assert unsupported.value.error_class == "unsupported_capability"
 
+    def test_vertex_anthropic_omits_default_temperature(self):
+        # Sonnet 5 / Opus 4.8-class models reject sampling params (400
+        # "temperature is deprecated"); the adapter must not inject a default.
+        fake_chat = MagicMock(return_value="claude-chat")
+        mg_module = SimpleNamespace(ChatAnthropicVertex=fake_chat)
+        adapter = router.VertexAnthropicAdapter(router.RuntimeFacade(), router.MediaSecurity({"media": {"allowed_roots": [os.getcwd()]}}))
+        route = self.route("vertex_anthropic", "vertex_anthropic", model="claude-sonnet-5")
+        with patch.dict(sys.modules, {"langchain_google_vertexai.model_garden": mg_module}):
+            result = adapter.create_chat_model(route, self.request())
+        assert result.data == "claude-chat"
+        assert "temperature" not in fake_chat.call_args.kwargs
+        assert fake_chat.call_args.kwargs["max_tokens"] == adapter.default_max_tokens
+        with patch.dict(sys.modules, {"langchain_google_vertexai.model_garden": mg_module}):
+            adapter.create_chat_model(route, self.request(temperature=0.7))
+        assert fake_chat.call_args.kwargs["temperature"] == 0.7
+
     def test_vertex_and_google_media_can_delegate_without_provider_imports(self):
         class DelegateRuntime:
             def delegate(self, connector, command, payload):

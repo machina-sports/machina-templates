@@ -1372,7 +1372,6 @@ class VertexAnthropicAdapter(ProviderAdapter):
                 "model_name": route.model,
                 "project": route.credentials.get("project"),
                 "location": route.credentials.get("location") or "global",
-                "temperature": request.options.get("temperature", 0.2),
                 "max_tokens": _safe_int(
                     request.options.get("max_tokens"),
                     self.default_max_tokens,
@@ -1380,6 +1379,11 @@ class VertexAnthropicAdapter(ProviderAdapter):
                     maximum=64000,
                 ),
             }
+            # Claude 4.6+ (Sonnet 5, Opus 4.7/4.8, …) reject sampling params with
+            # a 400 ("temperature is deprecated for this model"), so no default is
+            # applied — only an explicit workflow-provided temperature is forwarded.
+            if request.options.get("temperature") is not None:
+                kwargs["temperature"] = request.options["temperature"]
             credentials = self._credentials(route)
             if credentials is not None:
                 kwargs["credentials"] = credentials
