@@ -867,3 +867,67 @@ class TestDefaultEnablement:
         assert result["status"] is True
         assert result["metadata"]["selected_provider"] == "google_speech"
         assert result["data"]["text"] == "hello"
+
+
+class TestVertexAnthropicRoute:
+    """Claude on Vertex AI Model Garden — Stage 0 route."""
+
+    def _runtime(self, **config_extra):
+        config = router._deep_merge(
+            {"providers": {"vertex_anthropic": {"enabled": True}}}, config_extra
+        )
+        return FakeRuntime(
+            config=config,
+            adapters={"vertex_ai": FakeAdapter(), "vertex_anthropic": FakeAdapter()},
+        )
+
+    def test_route_ships_dormant_and_registered(self):
+        conf = router.DEFAULT_CONFIG["providers"]["vertex_anthropic"]
+        assert conf["enabled"] is False  # dormant; enabled per-environment
+        assert conf["adapter"] == "vertex_anthropic"
+        assert conf["credential_env"] == "TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL"
+        assert conf["project_env"] == "TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID"
+        for model in ("claude-haiku-4-5", "claude-sonnet-5", "claude-opus-4-8"):
+            assert model in conf["allowed_models"]["chat"]
+        assert "vertex_anthropic" in router.Router(FakeRuntime()).registry.factories
+        assert router.VertexAnthropicAdapter.capabilities == {"chat"}
+
+    def test_provider_aliases_canonicalize_to_vertex_anthropic(self):
+        for alias in ("vertex_model_garden", "model_garden", "anthropic_vertex", "anthropic", "claude"):
+            assert router.PROVIDER_ALIASES[alias] == "vertex_anthropic"
+
+    def test_explicit_claude_route_selected(self):
+        result = router.invoke_prompt(
+            {"_runtime": self._runtime(), "provider": "vertex_anthropic", "model": "claude-haiku-4-5", "prompt": "hi"}
+        )
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_anthropic"
+        assert result["metadata"]["selected_model"] == "claude-haiku-4-5"
+        assert result["metadata"]["route_reason"] == "explicit_provider"
+
+    def test_vertex_model_garden_alias_routes_to_claude(self):
+        result = router.invoke_prompt(
+            {"_runtime": self._runtime(), "provider": "vertex_model_garden", "model": "claude-sonnet-5", "prompt": "hi"}
+        )
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_anthropic"
+        assert result["metadata"]["selected_model"] == "claude-sonnet-5"
+
+    def test_gemini_model_rejected_on_claude_route(self):
+        result = router.invoke_prompt(
+            {"_runtime": self._runtime(), "provider": "vertex_anthropic", "model": "gemini-2.5-flash", "prompt": "hi"}
+        )
+        assert result["status"] is False
+        assert result["metadata"]["error_class"] == "policy_model_not_allowed"
+
+    def test_capability_remap_redirects_chat_to_claude(self):
+        # One config flip redirects all chat off the Gemini repository default
+        # onto Claude, without editing any workflow.
+        runtime = self._runtime(
+            remaps={"capabilities": {"chat": {"provider": "vertex_anthropic", "model": "claude-haiku-4-5"}}}
+        )
+        result = router.invoke_prompt({"_runtime": runtime, "prompt": "hi"})
+        assert result["status"] is True
+        assert result["metadata"]["selected_provider"] == "vertex_anthropic"
+        assert result["metadata"]["selected_model"] == "claude-haiku-4-5"
+        assert result["metadata"]["route_reason"] == "remap:capability:chat"

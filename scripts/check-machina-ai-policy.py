@@ -19,7 +19,10 @@ except ImportError:  # pragma: no cover - exercised only where PyYAML is absent
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_PROFILES = {"", "default", "balanced", "quality", "long_context"}
-ALLOWED_PROVIDERS = {"", "vertex_ai"}
+# vertex_anthropic = Claude on Vertex AI Model Garden (chat); the provider +
+# adapter live in connectors/machina-ai and are governed by the same runtime
+# policy as the Vertex/Gemini default.
+ALLOWED_PROVIDERS = {"", "vertex_ai", "vertex_anthropic"}
 ALLOWED_COMMANDS = {
     "invoke_prompt",
     "invoke_chat",
@@ -116,12 +119,12 @@ def _validate_router_connector(connector, errors, line=0):
     command = str(connector.get("command") or "")
     model = str(connector.get("model") or connector.get("model_name") or "")
     if provider not in ALLOWED_PROVIDERS:
-        errors.add((line, f"machina-ai provider must be vertex_ai or omitted, got {provider!r}"))
+        errors.add((line, f"machina-ai provider must be vertex_ai, vertex_anthropic, or omitted, got {provider!r}"))
     if profile not in ALLOWED_PROFILES:
         errors.add((line, f"machina-ai profile {profile!r} is not allowed in committed workflows"))
     if command not in ALLOWED_COMMANDS:
         errors.add((line, f"machina-ai command {command!r} is not in the v1 inventory"))
-    if model and model != "text-embedding-004" and not model.startswith("gemini-"):
+    if model and model != "text-embedding-004" and not (model.startswith("gemini-") or model.startswith("claude-")):
         errors.add((line, f"machina-ai model {model!r} is not a repository-approved Vertex model"))
     for forbidden in sorted(FORBIDDEN_KEYS.intersection(connector)):
         errors.add(
@@ -251,12 +254,12 @@ def lint_file(path: Path, content=None, relative_override=None):
         command = values.get("command", "")
         model = values.get("model", "") or values.get("model_name", "")
         if provider not in ALLOWED_PROVIDERS:
-            errors.append((locations.get("provider", start), f"machina-ai provider must be vertex_ai or omitted, got {provider!r}"))
+            errors.append((locations.get("provider", start), f"machina-ai provider must be vertex_ai, vertex_anthropic, or omitted, got {provider!r}"))
         if profile not in ALLOWED_PROFILES:
             errors.append((locations.get("profile", start), f"machina-ai profile {profile!r} is not allowed in committed workflows"))
         if command not in ALLOWED_COMMANDS:
             errors.append((locations.get("command", start), f"machina-ai command {command!r} is not in the v1 inventory"))
-        if model and model != "text-embedding-004" and not model.startswith("gemini-"):
+        if model and model != "text-embedding-004" and not (model.startswith("gemini-") or model.startswith("claude-")):
             errors.append((locations.get("model", locations.get("model_name", start)), f"machina-ai model {model!r} is not a repository-approved Vertex model"))
         for forbidden in sorted(FORBIDDEN_KEYS.intersection(values)):
             errors.append((locations[forbidden], f"machina-ai workflow connector may not set policy/security field {forbidden!r}"))

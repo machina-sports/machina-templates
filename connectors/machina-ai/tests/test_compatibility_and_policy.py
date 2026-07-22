@@ -204,6 +204,22 @@ workflow:
 """)
         assert result.returncode == 0, result.stderr
 
+    def test_vertex_anthropic_claude_block_passes(self, tmp_path):
+        result = self.run_lint(tmp_path, """
+workflow:
+  tasks:
+    - type: prompt
+      connector:
+        name: machina-ai
+        command: invoke_prompt
+        provider: vertex_anthropic
+        model: claude-haiku-4-5
+        location: global
+      inputs:
+        prompt: hello
+""")
+        assert result.returncode == 0, result.stderr
+
     @pytest.mark.parametrize(
         "line,expected",
         [
