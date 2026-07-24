@@ -41,6 +41,16 @@ datasets:
   - type: workflow
     path: workflows/assistant-update.yml
 
+  # Knowledge-base loader. Import as a regular workflow, then execute it once
+  # after install (POST /workflow/execute/machina-assistant-populate-knowledge)
+  # — without its documents the reasoning step never finds a match and the
+  # assistant answers every message with empty content.
+  - type: workflow
+    path: _populate-knowledge.yml
+
+  - type: workflow
+    path: workflows/assistant-update.yml
+
   # Configuration
   - type: workflow
     path: _folders.yml
