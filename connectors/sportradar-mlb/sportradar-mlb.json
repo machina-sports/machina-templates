@@ -486,6 +486,66 @@
           }
         ]
       }
+    },
+    "/games/{year}/{month}/{day}/{data_type}": {
+      "get": {
+        "summary": "Daily schedule / boxscore / summary for a given date",
+        "description": "The ONLY feed that carries runs. Season-level /games/{season_year}/{season_type}/boxscore.json returns 404; schedule.json carries no score. Payload is league.games[].game with home.runs / away.runs.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "data_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "boxscore.json | schedule.json | summary.json"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

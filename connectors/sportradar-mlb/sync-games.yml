@@ -1,0 +1,138 @@
+workflow:
+  name: sportradar-mlb-sync-games
+  title: Sportradar MLB Sync Games
+  description: |
+    Sync the MLB season schedule into IPTC sport:Event documents.
+
+    Unlike the NFL feed, MLB's schedule.json returns a FLAT games[] list (the NFL
+    one nests games inside weeks[]), and it carries NO runs — scores arrive via
+    sportradar-mlb-sync-results from the daily boxscore feed. Same split the
+    soccer connector uses (sync-schedules + sync-results).
+
+    Auth is a HEADER (x-api-key), not the query-param api_key that the soccer and
+    NFL v7 connectors use.
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-mlb:
+      x-api-key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    season_year: $.get('season_year', '2026')
+    season_type: $.get('season_type', 'REG')
+  outputs:
+    # Counts only, never the event payload. A full season is 2431 events (~5 MB);
+    # returning it made every run ship megabytes back through the caller for no
+    # reason. The written_count is the useful signal — it is diff-only, so a
+    # steady-state run reports 0 and a results day reports just the changed games.
+    games_count: len($.get('games_parsed', []))
+    written_count: len($.get('new_or_updated_events_list', []))
+    workflow-status: "'executed'"
+  tasks:
+
+    # task-load-games
+    - type: connector
+      name: task-load-games
+      description: Get a season schedule from SportRadar MLB
+      connector:
+        name: sportradar-mlb
+        command: get-games/{season_year}/{season_type}/{data_type}
+        command_attribute:
+          season_year: $.get('season_year')
+          season_type: $.get('season_type')
+          data_type: "'schedule.json'"
+      inputs:
+        x-api-key: $.get('x-api-key')
+      outputs:
+        games_parsed: |
+          [
+            {
+              **game,
+              'metadata': {
+                'event_code': game.get('id', ''),
+                'team_ids': [game.get('home', {}).get('id', ''), game.get('away', {}).get('id', '')],
+              },
+              'title': f"{game.get('home', {}).get('name', '')} v {game.get('away', {}).get('name', '')}",
+              'selected': False
+            }
+            for game in $.get('games', [])
+          ]
+
+    # iptc-sportradar-event-mlb-mapping
+    - type: mapping
+      name: iptc-sportradar-event-mlb-mapping
+      title: IPTC | Sportradar Event MLB Mapping
+      description: Mapping data from sportradar to IPTC events
+      condition: len($.get('games_parsed')) > 0
+      inputs:
+        schedules: $.get('games_parsed')
+        season_year: $.get('season_year')
+      outputs:
+        all_events: $.get('sport_schema_events')
+        all_events_ids: |
+          [str(f.get('@id', '')) for f in $.get('sport_schema_events', [])]
+
+    # load-events-by-ids
+    - type: document
+      name: load-events-by-ids
+      condition: $.get('all_events_ids') is not None
+      description: Load existing events by IDs.
+      config:
+        action: search
+        search-limit: 10000
+        search-vector: false
+      filters:
+        metadata.event_code: |
+          {'$in': $.get('all_events_ids', [])}
+      inputs:
+        name: "'sport:Event'"
+      outputs:
+        existing_events_ids: |
+          [
+            fixture.get('metadata', {}).get('event_code', '')
+            for fixture in $.get('documents', [])
+          ]
+        existing_events_map: |
+          {
+            fixture.get('metadata', {}).get('event_code', ''): {
+              'name': fixture.get('value', {}).get('name', ''),
+              'status': fixture.get('value', {}).get('sport:status', '')
+            }
+            for fixture in $.get('documents', [])
+          }
+
+    # task-bulk-save-events
+    #
+    # embed-vector is OFF. A full MLB season is 2431 fixtures — an order of
+    # magnitude more than the NFL's 272, which already stalled indefinitely with
+    # per-document embedding (2 docs instant, 32 timed out, 272 hung 30+ min).
+    # Nothing reads these by vector: predictions-find-upcoming filters on metadata
+    # with search-vector:false.
+    - type: document
+      name: task-bulk-save-events
+      description: Bulk save or update events (new events or events whose name/status changed).
+      condition: len($.get('new_or_updated_events_list', [])) > 0
+      config:
+        action: bulk-update
+        embed-vector: false
+        force-update: true
+      document_name: "'sport:Event'"
+      documents:
+        items: $.get('new_or_updated_events_list')
+      inputs:
+        new_or_updated_events_list: |
+          [
+            {
+              **f,
+              'metadata': {
+                'event_code': str(f.get('@id', '')),
+                'sport_name': str(f.get('schema:sportName', ''))
+              },
+              'title': f"{(f.get('sport:competition') or {}).get('name', '')} - {f.get('name', '')}"
+            }
+            for f in ($.get('all_events') or [])
+            if (
+              str(f.get('@id', '')) not in $.get('existing_events_ids', []) or
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') != f.get('name', '') or
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('status', '') != f.get('sport:status', '')
+            )
+          ]

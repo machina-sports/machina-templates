@@ -1,0 +1,23 @@
+mappings:
+- type: mapping
+  title: IPTC | Sportradar Event MLB Mapping
+  name: iptc-sportradar-event-mlb-mapping
+  description: 'Mapping data from sportradar MLB to sportschema event. NOTE: schedule.json carries NO runs — sportradar-mlb-sync-results merges the score in from the daily boxscore feed. sport:score is
+    emitted with explicit nulls so the shape stays stable and extract-team-stats reads a predictable path. sport:gameNumber / sport:doubleHeader are kept because MLB plays doubleheaders (two games, same
+    teams, same day) and a naive team+date join would collapse the pair. Do NOT put inline `#` comments inside the expression below — the engine''s expression parser returns an empty result instead of erroring.
+    O diff em task-bulk-save-events compara apenas name + status do evento, entao mudanca em campo aninhado (ex: sport:competitors) NAO dispara reescrita — por isso o name do evento tambem usa market+name.'
+  outputs:
+    sport_schema_events: "[\n  {\n    \"@context\": {\n      \"sport\": \"https://www.sportschema.org/ontologies/sport#\",\n      \"schema\": \"https://schema.org/\"\n    },\n    \"@id\": f\"urn:sportradar:sport_event:{f.get('id')}\"\
+      ,\n    \"@type\": [\"sport:Event\", \"schema:SportsEvent\"],\n    \"name\": f\"{f.get('home', {}).get('market', '')} {f.get('home', {}).get('name', 'TBD')}\".strip() + \" vs \" + f\"{f.get('away',\
+      \ {}).get('market', '')} {f.get('away', {}).get('name', 'TBD')}\".strip(),\n    \"schema:startDate\": f.get('scheduled') or f.get('start_time'),\n    \"schema:sportName\": \"mlb\",\n    \"sport:status\"\
+      : (f.get('status') or 'not_started').replace('created', 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),\n    \"sport:matchStatus\": (f.get('status') or 'not_started').replace('created',\
+      \ 'not_started').replace('inprogress', 'live').replace('scheduled', 'not_started'),\n    \"sport:competition\": {\n      \"@id\": f\"urn:sportradar:competition:mlb\",\n      \"@type\": \"sport:Competition\"\
+      ,\n      \"name\": \"MLB\",\n      \"sport:season\": {\n        \"@id\": f\"urn:sportradar:season:{$.get('season_year', '2026')}\",\n        \"@type\": \"sport:Season\",\n        \"name\": f\"MLB\
+      \ {$.get('season_year', '2026')}\",\n        \"sport:year\": f\"{$.get('season_year', '2026')}\"\n      }\n    },\n    \"sport:venue\": {\n      \"@type\": \"sport:Venue\",\n      \"@id\": f\"urn:sportradar:venue:{f.get('venue',\
+      \ {}).get('id')}\",\n      \"name\": f.get('venue', {}).get('name'),\n      \"schema:addressLocality\": f.get('venue', {}).get('city')\n    },\n    \"sport:competitors\": [\n      {\n        \"@type\"\
+      : \"sport:Team\",\n        \"@id\": f\"urn:sportradar:team:{f.get('home', {}).get('id')}\",\n        \"name\": f\"{f.get('home', {}).get('market', '')} {f.get('home', {}).get('name', '')}\".strip(),\n\
+      \        \"sport:market\": f.get('home', {}).get('market'),\n        \"sport:abbreviation\": f.get('home', {}).get('abbr'),\n        \"sport:qualifier\": \"home\"\n      },\n      {\n        \"@type\"\
+      : \"sport:Team\",\n        \"@id\": f\"urn:sportradar:team:{f.get('away', {}).get('id')}\",\n        \"name\": f\"{f.get('away', {}).get('market', '')} {f.get('away', {}).get('name', '')}\".strip(),\n\
+      \        \"sport:market\": f.get('away', {}).get('market'),\n        \"sport:abbreviation\": f.get('away', {}).get('abbr'),\n        \"sport:qualifier\": \"away\"\n      }\n    ],\n    \"sport:score\"\
+      : {\n      \"sport:homeScore\": f.get('home', {}).get('runs'),\n      \"sport:awayScore\": f.get('away', {}).get('runs')\n    },\n    \"sport:gameNumber\": f.get('game_number'),\n    \"sport:doubleHeader\"\
+      : f.get('double_header')\n  }\n  for f in $.get('schedules', [])\n]\n"
