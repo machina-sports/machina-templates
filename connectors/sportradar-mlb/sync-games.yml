@@ -95,7 +95,9 @@ workflow:
           {
             fixture.get('metadata', {}).get('event_code', ''): {
               'name': fixture.get('value', {}).get('name', ''),
-              'status': fixture.get('value', {}).get('sport:status', '')
+              'status': fixture.get('value', {}).get('sport:status', ''),
+              'score': fixture.get('value', {}).get('sport:score'),
+              'version_control': fixture.get('value', {}).get('version_control')
             }
             for fixture in $.get('documents', [])
           }
@@ -107,9 +109,17 @@ workflow:
     # per-document embedding (2 docs instant, 32 timed out, 272 hung 30+ min).
     # Nothing reads these by vector: predictions-find-upcoming filters on metadata
     # with search-vector:false.
+    #
+    # sport:score and version_control are carried over from the existing document.
+    # bulk-update REPLACES the whole value, and schedule.json carries no runs, so
+    # without this a schedule re-sync rewrites every score with null. Measured:
+    # one re-sync took 242 scored games to 0, which dropped games_played below
+    # min_games_played and made every MLB forecast abstain. version_control is
+    # preserved for the same reason sync-results preserves it — losing it
+    # re-forecasts the whole slate and re-bills the model.
     - type: document
       name: task-bulk-save-events
-      description: Bulk save or update events (new events or events whose name/status changed).
+      description: Bulk save or update events (new events or events whose name/status changed), preserving score and version_control.
       condition: len($.get('new_or_updated_events_list', [])) > 0
       config:
         action: bulk-update
@@ -123,6 +133,16 @@ workflow:
           [
             {
               **f,
+              **(
+                {'sport:score': ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('score')}
+                if (($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('score') or {}).get('sport:homeScore') is not None
+                else {}
+              ),
+              **(
+                {'version_control': ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('version_control')}
+                if ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('version_control')
+                else {}
+              ),
               'metadata': {
                 'event_code': str(f.get('@id', '')),
                 'sport_name': str(f.get('schema:sportName', ''))
