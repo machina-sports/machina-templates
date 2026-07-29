@@ -1,0 +1,83 @@
+workflow:
+  name: sportradar-mlb-sync-results
+  title: Sportradar MLB Sync Results
+  description: 'Companion to sportradar-mlb-sync-games. The season schedule.json carries NO runs, so this merges the score and final status onto the existing sport:Event docs from the DAILY boxscore feed
+    (/games/{year}/{month}/{day}/boxscore.json), whose payload is league.games[].game with home.runs / away.runs.
+
+    Without this, extract-team-stats has nothing to read — it needs value.sport:score.sport:homeScore / sport:awayScore — so no team stats, so the MLB forecaster prompt (gated on home_stats being non-null)
+    never runs and no pick is ever produced. Exactly the failure mode NFL hit for a different reason.
+
+    One call per day, defaulting to yesterday: MLB plays daily, games finish overnight US time, and a same-day call mid-slate returns half-finished games. Pass an explicit year/month/day to backfill.
+
+    Merge-not-replace: only sport:score / sport:status / sport:matchStatus are written, so version_control (forecasted / forecast_refreshed) survives. Clobbering it would re-forecast every fixture and re-bill
+    the model.'
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-mlb:
+      x-api-key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    year: $.get('year', (datetime.utcnow() - timedelta(days=1)).strftime('%Y'))
+    month: $.get('month', (datetime.utcnow() - timedelta(days=1)).strftime('%m'))
+    day: $.get('day', (datetime.utcnow() - timedelta(days=1)).strftime('%d'))
+  outputs:
+    scored_count: len($.get('scored_games', []))
+    workflow-status: '''executed'''
+  tasks:
+  - type: connector
+    name: load-daily-boxscore
+    description: Daily boxscore for the requested date
+    connector:
+      name: sportradar-mlb
+      command: get-games/{year}/{month}/{day}/{data_type}
+      command_attribute:
+        year: $.get('year')
+        month: $.get('month')
+        day: $.get('day')
+        data_type: '''boxscore.json'''
+    inputs:
+      x-api-key: $.get('x-api-key')
+    outputs:
+      scored_games: "[\n  {\n    'event_code': f\"urn:sportradar:sport_event:{(g.get('game') or {}).get('id')}\",\n    'status': (g.get('game') or {}).get('status'),\n    'home_runs': ((g.get('game') or\
+        \ {}).get('home') or {}).get('runs'),\n    'away_runs': ((g.get('game') or {}).get('away') or {}).get('runs')\n  }\n  for g in ($.get('league', {}) or {}).get('games', [])\n  if (g.get('game') or\
+        \ {}).get('id')\n]\n"
+      scored_ids: "[\n  f\"urn:sportradar:sport_event:{(g.get('game') or {}).get('id')}\"\n  for g in ($.get('league', {}) or {}).get('games', [])\n  if (g.get('game') or {}).get('id')\n]\n"
+      scored_map: "{\n  (g.get('game') or {}).get('id'): {\n    'status': (g.get('game') or {}).get('status'),\n    'home_runs': ((g.get('game') or {}).get('home') or {}).get('runs'),\n    'away_runs':\
+        \ ((g.get('game') or {}).get('away') or {}).get('runs')\n  }\n  for g in ($.get('league', {}) or {}).get('games', [])\n  if (g.get('game') or {}).get('id')\n}\n"
+  - type: document
+    name: load-existing-events
+    description: Load the sport:Event docs for the scored games
+    condition: len($.get('scored_ids', [])) > 0
+    config:
+      action: search
+      search-limit: 200
+      search-vector: false
+    filters:
+      metadata.event_code: '{''$in'': $.get(''scored_ids'', [])}
+
+        '
+    inputs:
+      name: '''sport:Event'''
+    outputs:
+      existing_docs: $.get('documents', [])
+  - type: document
+    name: merge-scores
+    description: 'Merge score + status onto each existing event, preserving version_control. The join lives in foreach.value, NOT in task inputs: on a foreach task the engine resolves foreach.value from
+      context BEFORE the task''s own inputs, so an inputs-based join silently yields zero iterations. Verified: the same expression returns 16 as a workflow output but 0 as a task input.'
+    condition: len($.get('existing_docs', [])) > 0
+    foreach:
+      name: item
+      expr: $
+      value: "[\n  {\n    'document_id': doc.get('_id'),\n    'value': {\n      **(doc.get('value') or {}),\n      'sport:status': ($.get('scored_map') or {}).get(doc.get('metadata', {}).get('event_code',\
+        \ '').replace('urn:sportradar:sport_event:', ''), {}).get('status'),\n      'sport:matchStatus': ($.get('scored_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:',\
+        \ ''), {}).get('status'),\n      'sport:score': {\n        'sport:homeScore': ($.get('scored_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:',\
+        \ ''), {}).get('home_runs'),\n        'sport:awayScore': ($.get('scored_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', ''), {}).get('away_runs')\n\
+        \      }\n    }\n  }\n  for doc in $.get('existing_docs', [])\n  if doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', '') in ($.get('scored_map') or {})\n]\n"
+    config:
+      action: update
+      embed-vector: false
+      force-update: true
+    filters:
+      document_id: $.get('item').get('document_id')
+    documents:
+      sport:Event: $.get('item').get('value')

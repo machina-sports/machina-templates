@@ -12,12 +12,13 @@ setup:
     - Favorite players season stats
     - In-depth subjective statistics
     - All game data feeds update in real-time as games are played
-    - All NFL games - including preseason - feature full play-by-play coverage
+    - Season schedule sync into IPTC sport:Event documents
+    - Daily boxscore sync that merges runs onto existing fixtures
   integrations:
     - sportradar
   status: available
   value: sportradar-mlb
-  version: 8.0.0
+  version: 8.1.0
 
 datasets:
   - type: "connector"
@@ -26,4 +27,18 @@ datasets:
   - type: "workflow"
     path: "test-credentials.yml"
 
+  # mappings
+  - type: "mappings"
+    path: "mappings/iptc-sport-event.yml"
 
+  # workflows
+  #
+  # Two workflows, not one, because the MLB feeds split the data:
+  #   sync-games   -> /games/{season_year}/{season_type}/schedule.json  (fixtures, NO runs)
+  #   sync-results -> /games/{year}/{month}/{day}/boxscore.json         (runs)
+  # Same split the sportradar-soccer connector uses.
+  - type: "workflow"
+    path: "sync-games.yml"
+
+  - type: "workflow"
+    path: "sync-results.yml"
