@@ -14,11 +14,12 @@ setup:
     - All game data feeds update in real-time as games are played
     - Season schedule sync into IPTC sport:Event documents
     - Daily boxscore sync that merges runs onto existing fixtures
+    - Probable starting pitchers from the daily summary feed
   integrations:
     - sportradar
   status: available
   value: sportradar-mlb
-  version: 8.1.0
+  version: 8.2.0
 
 datasets:
   - type: "connector"
@@ -42,3 +43,12 @@ datasets:
 
   - type: "workflow"
     path: "sync-results.yml"
+
+  # sync-pitchers -> /games/{year}/{month}/{day}/summary.json
+  #
+  # The probable starting pitcher, which neither of the other two feeds carries and
+  # which is the single largest factor in an MLB market. Merge-only: it writes
+  # sport:probablePitcher and sport:teamRecord and leaves score/status/version_control
+  # alone.
+  - type: "workflow"
+    path: "sync-pitchers.yml"
