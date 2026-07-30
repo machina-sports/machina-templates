@@ -101,7 +101,12 @@ workflow:
           {
             fixture.get('metadata', {}).get('event_code', ''): {
               'name': fixture.get('value', {}).get('name', ''),
-              'status': fixture.get('value', {}).get('sport:status', '')
+              'status': fixture.get('value', {}).get('sport:status', ''),
+              'abbrs': [
+                (c or {}).get('sport:abbreviation')
+                for c in (fixture.get('value', {}).get('sport:competitors') or [])
+              ],
+              'version_control': fixture.get('value', {}).get('version_control')
             }
             for fixture in $.get('documents', [])
           }
@@ -130,6 +135,15 @@ workflow:
           [
             {
               **f,
+              # Full-value replace: without carrying version_control over, a re-sync
+              # clears the forecast flags and the whole slate is re-forecast and
+              # re-billed. Latent while NFL has no forecasts. Same fix MLB needed,
+              # where the equivalent replace wiped 242 scores.
+              **(
+                {'version_control': ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('version_control')}
+                if ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('version_control')
+                else {}
+              ),
               'metadata': {
                 'event_code': str(f.get('@id', '')),
                 'sport_name': str(f.get('schema:sportName', ''))
@@ -142,6 +156,11 @@ workflow:
               ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') != f.get('name', '') or
               ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('status', '') != f.get('sport:status', '') or
               '(win)' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') or
-              'TBD' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '')
+              'TBD' in ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('name', '') or
+              # The diff compared only name and status, so a mapping change rewrote
+              # NOTHING: stored fixtures keep both, so none looked changed.
+              ($.get('existing_events_map') or {}).get(str(f.get('@id', '')), {}).get('abbrs', []) != [
+                (c or {}).get('sport:abbreviation') for c in (f.get('sport:competitors') or [])
+              ]
             )
           ]
