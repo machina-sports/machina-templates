@@ -1,0 +1,147 @@
+workflow:
+  name: sportradar-mlb-sync-pitchers
+  title: Sportradar MLB Sync Probable Pitchers
+  description: |-
+    Merge the probable starting pitcher (plus the game-day weather forecast) onto the
+    existing MLB sport:Event documents, from the DAILY SUMMARY feed
+    (/games/{year}/{month}/{day}/summary.json).
+
+    WHY THIS EXISTS
+    The starting pitcher is the single largest factor in an MLB market, and the model was
+    blind to it: schedule.json carries no pitcher at all, so the forecaster's own drivers
+    read "No starting pitchers have been officially announced for either team". The daily
+    summary has it as home/away.probable_pitcher with full_name, era and W-L, in one call
+    per day.
+
+    Weather is NOT extracted. The documented payload has weather.forecast (temp, wind) and
+    it is a genuine totals factor in baseball, but this feed returned it empty for every one
+    of our games -- 0 of 25 docs had a non-null temp_f -- so shipping the key would have
+    added a permanently-null field. Revisit if the entitlement or the near-gametime
+    population changes.
+
+    MERGE, NOT REPLACE. Only the pitcher and weather keys are written; sport:score,
+    sport:status and version_control are read from the existing document and written back.
+    Clobbering version_control re-forecasts the whole slate and re-bills the model, and a
+    full-value replace is exactly what wiped 242 scores when sync-games did it.
+
+    The join lives in foreach.value, NOT in task inputs: on a foreach task the engine
+    resolves foreach.value from context BEFORE the task's own inputs, so an inputs-based
+    join silently yields zero iterations.
+
+    TWO DATES, because a Major League Baseball day begins at 4am ET (per Sportradar), so a
+    UTC 'today' before ~08:00 UTC is still the previous MLB day. The agent runs yesterday
+    and today; re-reading a day is idempotent.
+  context-variables:
+    debugger:
+      enabled: true
+    sportradar-mlb:
+      x-api-key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
+  inputs:
+    year: $.get('year', datetime.utcnow().strftime('%Y'))
+    month: $.get('month', datetime.utcnow().strftime('%m'))
+    day: $.get('day', datetime.utcnow().strftime('%d'))
+  outputs:
+    pitcher_count: len($.get('pitcher_games', []))
+    merged_count: len($.get('existing_docs', []))
+    workflow-status: '''executed'''
+  tasks:
+  - type: connector
+    name: load-daily-summary
+    description: Daily summary for the requested MLB day. Heavy payload (full team + player stats); only
+      the pitcher, record and weather keys are kept.
+    connector:
+      name: sportradar-mlb
+      command: get-games/{year}/{month}/{day}/{data_type}
+      command_attribute:
+        year: $.get('year')
+        month: $.get('month')
+        day: $.get('day')
+        data_type: '''summary.json'''
+    inputs:
+      x-api-key: $.get('x-api-key')
+    outputs:
+      pitcher_games: |
+        [
+          {
+            'event_code': f"urn:sportradar:sport_event:{(g.get('game') or {}).get('id')}",
+            'home_pitcher': (((g.get('game') or {}).get('home') or {}).get('probable_pitcher')
+                             or ((g.get('game') or {}).get('home') or {}).get('starting_pitcher') or {}),
+            'away_pitcher': (((g.get('game') or {}).get('away') or {}).get('probable_pitcher')
+                             or ((g.get('game') or {}).get('away') or {}).get('starting_pitcher') or {}),
+            'home_record': {'win': ((g.get('game') or {}).get('home') or {}).get('win'),
+                            'loss': ((g.get('game') or {}).get('home') or {}).get('loss')},
+            'away_record': {'win': ((g.get('game') or {}).get('away') or {}).get('win'),
+                            'loss': ((g.get('game') or {}).get('away') or {}).get('loss')}
+          }
+          for g in ($.get('league', {}) or {}).get('games', [])
+          if (g.get('game') or {}).get('id')
+        ]
+      pitcher_ids: |
+        [
+          f"urn:sportradar:sport_event:{(g.get('game') or {}).get('id')}"
+          for g in ($.get('league', {}) or {}).get('games', [])
+          if (g.get('game') or {}).get('id')
+        ]
+      pitcher_map: |
+        {
+          (g.get('game') or {}).get('id'): {
+            'home_pitcher': (((g.get('game') or {}).get('home') or {}).get('probable_pitcher')
+                             or ((g.get('game') or {}).get('home') or {}).get('starting_pitcher') or {}),
+            'away_pitcher': (((g.get('game') or {}).get('away') or {}).get('probable_pitcher')
+                             or ((g.get('game') or {}).get('away') or {}).get('starting_pitcher') or {}),
+            'home_record': {'win': ((g.get('game') or {}).get('home') or {}).get('win'),
+                            'loss': ((g.get('game') or {}).get('home') or {}).get('loss')},
+            'away_record': {'win': ((g.get('game') or {}).get('away') or {}).get('win'),
+                            'loss': ((g.get('game') or {}).get('away') or {}).get('loss')}
+          }
+          for g in ($.get('league', {}) or {}).get('games', [])
+          if (g.get('game') or {}).get('id')
+        }
+  - type: document
+    name: load-existing-events
+    description: Load the sport:Event docs for the games on this MLB day
+    condition: len($.get('pitcher_ids', [])) > 0
+    config:
+      action: search
+      search-limit: 200
+      search-vector: false
+    filters:
+      metadata.event_code: '{''$in'': $.get(''pitcher_ids'', [])}'
+    inputs:
+      name: '''sport:Event'''
+    outputs:
+      existing_docs: $.get('documents', [])
+  - type: document
+    name: merge-pitchers
+    description: Merge pitcher + weather onto each existing event, preserving everything else.
+    condition: len($.get('existing_docs', [])) > 0
+    foreach:
+      name: item
+      expr: $
+      value: |
+        [
+          {
+            'document_id': doc.get('_id'),
+            'value': {
+              **(doc.get('value') or {}),
+              'sport:probablePitcher': {
+                'home': ($.get('pitcher_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', ''), {}).get('home_pitcher'),
+                'away': ($.get('pitcher_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', ''), {}).get('away_pitcher')
+              },
+              'sport:teamRecord': {
+                'home': ($.get('pitcher_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', ''), {}).get('home_record'),
+                'away': ($.get('pitcher_map') or {}).get(doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', ''), {}).get('away_record')
+              }
+            }
+          }
+          for doc in $.get('existing_docs', [])
+          if doc.get('metadata', {}).get('event_code', '').replace('urn:sportradar:sport_event:', '') in ($.get('pitcher_map') or {})
+        ]
+    config:
+      action: update
+      embed-vector: false
+      force-update: true
+    filters:
+      document_id: $.get('item').get('document_id')
+    documents:
+      sport:Event: $.get('item').get('value')
