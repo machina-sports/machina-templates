@@ -42,12 +42,14 @@ mappings:
                 "@type": "sport:Team",
                 "@id": f"urn:sportradar:team:{f.get('home', {}).get('id')}",
                 "name": f.get('home', {}).get('name'),
+                "sport:abbreviation": f.get('home', {}).get('alias'),
                 "sport:qualifier": "home"
               },
               {
                 "@type": "sport:Team",
                 "@id": f"urn:sportradar:team:{f.get('away', {}).get('id')}",
                 "name": f.get('away', {}).get('name'),
+                "sport:abbreviation": f.get('away', {}).get('alias'),
                 "sport:qualifier": "away"
               }
             ],
