@@ -7,7 +7,9 @@ workflow:
     Without this, extract-team-stats has nothing to read — it needs value.sport:score.sport:homeScore / sport:awayScore — so no team stats, so the MLB forecaster prompt (gated on home_stats being non-null)
     never runs and no pick is ever produced. Exactly the failure mode NFL hit for a different reason.
 
-    One call per day, defaulting to yesterday: MLB plays daily, games finish overnight US time, and a same-day call mid-slate returns half-finished games. Pass an explicit year/month/day to backfill.
+    One call per day, defaulting to yesterday: MLB plays daily, games finish overnight US time, and a same-day call mid-slate returns half-finished games. Pass an explicit year/month/day to backfill, or
+    days_ago (integer, default 1) to pick the day relative to now — added because the enrichment pod''s AGENT-leg input context cannot evaluate datetime (every date leg resolved to the literal string
+    "Error: name ''datetime'' is not defined" and 404ed for a week), so scheduler legs must pass literals; the date arithmetic lives in the task''s command_attribute, where datetime is proven on that pod.
 
     Merge-not-replace: only sport:score / sport:status / sport:matchStatus are written, so version_control (forecasted / forecast_refreshed) survives. Clobbering it would re-forecast every fixture and re-bill
     the model.'
@@ -17,9 +19,10 @@ workflow:
     sportradar-mlb:
       x-api-key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
-    year: $.get('year', (datetime.utcnow() - timedelta(days=1)).strftime('%Y'))
-    month: $.get('month', (datetime.utcnow() - timedelta(days=1)).strftime('%m'))
-    day: $.get('day', (datetime.utcnow() - timedelta(days=1)).strftime('%d'))
+    days_ago: $.get('days_ago', 1)
+    year: $.get('year')
+    month: $.get('month')
+    day: $.get('day')
   outputs:
     scored_count: len($.get('scored_games', []))
     workflow-status: '''executed'''
@@ -31,9 +34,9 @@ workflow:
       name: sportradar-mlb
       command: get-games/{year}/{month}/{day}/{data_type}
       command_attribute:
-        year: $.get('year')
-        month: $.get('month')
-        day: $.get('day')
+        year: $.get('year') or (datetime.utcnow() - timedelta(days=int($.get('days_ago', 1)))).strftime('%Y')
+        month: $.get('month') or (datetime.utcnow() - timedelta(days=int($.get('days_ago', 1)))).strftime('%m')
+        day: $.get('day') or (datetime.utcnow() - timedelta(days=int($.get('days_ago', 1)))).strftime('%d')
         data_type: '''boxscore.json'''
     inputs:
       x-api-key: $.get('x-api-key')

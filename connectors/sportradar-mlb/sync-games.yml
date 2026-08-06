@@ -17,7 +17,11 @@ workflow:
     sportradar-mlb:
       x-api-key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
-    season_year: $.get('season_year', '2026')
+    # season_year defaults to the current UTC year, computed in the task's
+    # command_attribute — not here and not as a '2026' literal. The enrichment
+    # pod's AGENT-leg input context cannot evaluate datetime, so scheduler legs
+    # pass no season_year at all and the task computes it where datetime works.
+    season_year: $.get('season_year')
     season_type: $.get('season_type', 'REG')
   outputs:
     # Counts only, never the event payload. A full season is 2431 events (~5 MB);
@@ -37,7 +41,7 @@ workflow:
         name: sportradar-mlb
         command: get-games/{season_year}/{season_type}/{data_type}
         command_attribute:
-          season_year: $.get('season_year')
+          season_year: $.get('season_year') or str(datetime.utcnow().year)
           season_type: $.get('season_type')
           data_type: "'schedule.json'"
       inputs:
