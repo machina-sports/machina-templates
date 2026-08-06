@@ -15,7 +15,7 @@ Design:
 
 Runtime requirement:
 - The pod's Python env must have `sports-skills` importable. The
-  preferred path is adding `sports-skills>=0.21` to
+  preferred path is adding `sports-skills>=0.30.1` to
   `machina-client-api/requirements.txt` and rebuilding the pod image.
 - As a fallback this module attempts a one-time `pip install
   sports-skills` on first ImportError so customers can use the
@@ -30,8 +30,8 @@ import subprocess
 import sys
 
 
-_MIN_VERSION = (0, 28, 0)
-_PIP_PACKAGE = "sports-skills>=0.28.0,<1.0"
+_MIN_VERSION = (0, 30, 1)
+_PIP_PACKAGE = "sports-skills>=0.30.1,<1.0"
 # Writable install target for in-place upgrades. The pod runs as a non-root
 # user whose home dir is read-only (`pip install --user` fails with EACCES on
 # /home/machina), and system site-packages is root-owned — /tmp is the one
