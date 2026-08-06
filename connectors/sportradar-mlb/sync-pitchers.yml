@@ -30,16 +30,20 @@ workflow:
 
     TWO DATES, because a Major League Baseball day begins at 4am ET (per Sportradar), so a
     UTC 'today' before ~08:00 UTC is still the previous MLB day. The agent runs yesterday
-    and today; re-reading a day is idempotent.
+    and today; re-reading a day is idempotent. Dates come from days_ago (integer, default 0
+    = today) computed in the task's command_attribute, or explicit year/month/day overrides:
+    the enrichment pod's AGENT-leg input context cannot evaluate datetime (dates resolved to
+    the literal error string and 404ed), so scheduler legs must pass literals.
   context-variables:
     debugger:
       enabled: true
     sportradar-mlb:
       x-api-key: $TEMP_CONTEXT_VARIABLE_SPORTRADAR_SOCCER_V4_API_KEY
   inputs:
-    year: $.get('year', datetime.utcnow().strftime('%Y'))
-    month: $.get('month', datetime.utcnow().strftime('%m'))
-    day: $.get('day', datetime.utcnow().strftime('%d'))
+    days_ago: $.get('days_ago', 0)
+    year: $.get('year')
+    month: $.get('month')
+    day: $.get('day')
   outputs:
     pitcher_count: len($.get('pitcher_games', []))
     merged_count: len($.get('existing_docs', []))
@@ -53,9 +57,9 @@ workflow:
       name: sportradar-mlb
       command: get-games/{year}/{month}/{day}/{data_type}
       command_attribute:
-        year: $.get('year')
-        month: $.get('month')
-        day: $.get('day')
+        year: $.get('year') or (datetime.utcnow() - timedelta(days=int($.get('days_ago', 0)))).strftime('%Y')
+        month: $.get('month') or (datetime.utcnow() - timedelta(days=int($.get('days_ago', 0)))).strftime('%m')
+        day: $.get('day') or (datetime.utcnow() - timedelta(days=int($.get('days_ago', 0)))).strftime('%d')
         data_type: '''summary.json'''
     inputs:
       x-api-key: $.get('x-api-key')
