@@ -1132,6 +1132,93 @@ class TestGraphRichObservation(unittest.TestCase):
         self.assertEqual(json.dumps(self.doc), json.dumps(again))
 
 
+class TestOmission(unittest.TestCase):
+    """A8 — omission over fabrication, asserted on the document, not the helper.
+
+    Every test here scans emitted output rather than calling ``_put``. A helper
+    that drops placeholders proves nothing if one call site bypasses it, and the
+    call sites are where this has gone wrong before.
+    """
+
+    def test_absent_site_emits_no_site_resource_and_no_location_property(self):
+        doc = sport_schema_graph(MINIMAL, id_resolver=mint())
+        self.assertNotIn("sport:Site", [n["@type"] for n in doc["@graph"]])
+        self.assertNotIn("sport:location", typed(doc, "sport:Event")[0])
+
+    def test_no_null_no_empty_string_and_no_placeholder_survives_anywhere(self):
+        """Scanned over both fixtures, because the rich one is where an unmapped
+        optional field has somewhere to leak from."""
+        for label, observation in (("minimal", MINIMAL), ("rich", graph_observation())):
+            blob = json.dumps(sport_schema_graph(observation, id_resolver=mint()))
+            with self.subTest(fixture=label):
+                self.assertNotIn("null", blob)
+                self.assertNotIn('""', blob)
+                for value in sorted(profile_module.PLACEHOLDER_VALUES):
+                    if value:
+                        self.assertNotIn('"{0}"'.format(value), blob)
+
+    def test_absent_score_omits_the_property_rather_than_emitting_zero(self):
+        """A pre-match fixture has no score. ``"0"`` is a claim that both sides
+        have scored nothing, which is a different fact from not yet knowing."""
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["event"]["status"] = "not_started"
+        for participant in observation["observation"]["participants"]:
+            participant.pop("score")
+        doc = sport_schema_graph(observation, id_resolver=mint())
+        for node in doc["@graph"]:
+            self.assertNotIn("sport:score", node)
+
+    def test_a_genuine_zero_is_a_fact_and_survives(self):
+        """The mirror of the test above, and the reason omission is not a
+        truthiness test: ``0`` is knowledge, ``None`` is not."""
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["participants"][0]["score"] = "0"
+        observation["observation"]["participants"][1]["score"] = 0
+        scores = [p.get("sport:score") for p in
+                  typed(sport_schema_graph(observation, id_resolver=mint()),
+                        "sport:TeamParticipation")]
+        self.assertEqual(scores, ["0", "0"])
+
+    def test_a_placeholder_in_a_provider_field_is_dropped_not_forwarded(self):
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["competition"]["name"] = "Unknown Competition"
+        observation["observation"]["event"]["label"] = "TBD"
+        doc = sport_schema_graph(observation, id_resolver=mint())
+        for node in doc["@graph"]:
+            if node["@type"] in ("sport:Competition", "sport:Event"):
+                self.assertNotIn("rdfs:label", node)
+
+    def test_a_resource_left_with_no_facts_is_not_emitted_as_a_stub(self):
+        """A node carrying only ``@id`` and ``@type`` reads as a described entity
+        to every consumer and describes nothing. It also silently satisfies the
+        non-vacuity check, which is worse than being absent."""
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["site"] = {"provider_id": "9101",
+                                             "name": "Unknown Venue"}
+        doc = sport_schema_graph(observation, id_resolver=mint())
+        self.assertNotIn("sport:Site", [n["@type"] for n in doc["@graph"]])
+        for node in doc["@graph"]:
+            with self.subTest(node=node["@id"]):
+                self.assertNotEqual(sorted(node), ["@id", "@type"])
+
+    def test_an_unmapped_provider_status_omits_the_property_rather_than_guessing(self):
+        """``vocab`` has no entry for this status, so there is nothing defensible
+        to emit. The provider's own string survives in ``observation.raw``."""
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["event"]["status"] = "extra_time_pending"
+        event = typed(sport_schema_graph(observation, id_resolver=mint()),
+                      "sport:Event")[0]
+        self.assertNotIn("sport:eventStatus", event)
+        self.assertNotIn("extra_time_pending", json.dumps(event))
+
+    def test_the_serializer_placeholder_set_is_the_profile_placeholder_set(self):
+        """``serialize.py`` reaches ``PLACEHOLDERS`` through ``observation.py``
+        rather than keeping a third copy. If that ever becomes a copy, the two
+        halves of the repository start disagreeing about what a stub looks like.
+        """
+        self.assertEqual(PLACEHOLDERS, profile_module.PLACEHOLDER_VALUES)
+
+
 #: Modules destined to be copied byte-exact into ``sports-skills``, a published
 #: zero-dependency package that supports Python 3.9 and cannot import this
 #: repository. ``export_official_terms.py`` is deliberately not here: it is a
