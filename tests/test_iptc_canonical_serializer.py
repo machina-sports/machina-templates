@@ -35,6 +35,7 @@ import copy
 import json
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -60,8 +61,10 @@ from tools.iptc.canonical.observation import (  # noqa: E402
 )
 from tools.iptc.canonical import vocab  # noqa: E402
 from tools.iptc.canonical import serialize as serialize_module  # noqa: E402
+from tools.iptc import validate_graph  # noqa: E402
 from tools.iptc.canonical.serialize import (  # noqa: E402
     SHARED_CONTEXT_PATH,
+    canonical_envelope,
     event_view,
     provenance_block,
     provider_identifiers,
@@ -70,6 +73,8 @@ from tools.iptc.canonical.serialize import (  # noqa: E402
 )
 from tools.iptc.context import CONTEXT_PATH, load_context  # noqa: E402
 from tools.iptc.reference import NEWSCODE_STEM, load_reference  # noqa: E402
+from tools.iptc.validate import validate_document  # noqa: E402
+from tools.iptc.validate_graph import rights_findings  # noqa: E402
 
 #: The smallest observation that is genuinely valid: two participants, every
 #: required field, nothing optional. Every negative case below is this document
@@ -1744,6 +1749,247 @@ class TestEventView(unittest.TestCase):
     def test_the_view_is_byte_stable_across_runs(self):
         self.assertEqual(json.dumps(view_of(graph_observation())),
                          json.dumps(view_of(graph_observation())))
+
+
+def envelope_of(observation=None, resolver=None):
+    return canonical_envelope(observation or graph_observation(),
+                              id_resolver=resolver or mint())
+
+
+def licensed(prototype_only=False, commercial_use=True,
+             data_class="licensed-redistributable"):
+    observation = copy.deepcopy(graph_observation())
+    observation["observation"]["rights"] = {"data_class": data_class,
+                                           "prototype_only": prototype_only,
+                                           "commercial_use": commercial_use}
+    return observation
+
+
+class TestCanonicalEnvelope(unittest.TestCase):
+    """A12 — the envelope composes the four builders and claims both versions."""
+
+    def test_the_envelope_carries_every_part_rfc_002_names(self):
+        block = envelope_of()["machina_sports_schema"]
+        self.assertEqual(sorted(block), [
+            "capabilities", "event_view", "profile", "provenance", "provider_ids",
+            "rights", "schema_version", "sport_schema_graph",
+        ])
+        self.assertEqual(block["schema_version"], "machina-sports-schema/1")
+        self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
+
+    def test_the_envelope_has_no_key_beyond_the_one_block(self):
+        self.assertEqual(sorted(envelope_of()), ["machina_sports_schema"])
+
+    def test_each_part_is_the_builder_output_and_not_a_reimplementation(self):
+        """Composition, asserted. A second code path producing the same shape is
+        the thing that drifts."""
+        observation = graph_observation()
+        block = envelope_of(observation)["machina_sports_schema"]
+        self.assertEqual(block["sport_schema_graph"],
+                         sport_schema_graph(observation, id_resolver=mint()))
+        self.assertEqual(block["event_view"],
+                         event_view(observation, id_resolver=mint())["event_view"])
+        self.assertEqual(block["provenance"],
+                         provenance_block(observation, id_resolver=mint())["provenance"])
+        self.assertEqual(block["provider_ids"],
+                         provider_identifiers(observation, id_resolver=mint()))
+        self.assertEqual(block["capabilities"],
+                         capability_report(observation)["capabilities"])
+        self.assertEqual(block["rights"], observation["observation"]["rights"])
+
+    def test_one_resolver_serves_the_whole_envelope_consistently(self):
+        block = envelope_of()["machina_sports_schema"]
+        event = typed(block["sport_schema_graph"], "sport:Event")[0]
+        self.assertEqual(block["event_view"]["event_id"], event["@id"])
+        crosswalk = [e for e in block["provider_ids"] if e["entity_type"] == "event"]
+        self.assertEqual(crosswalk[0]["machina_id"], event["@id"])
+
+    def test_an_invalid_observation_raises_rather_than_emitting_a_bad_envelope(self):
+        """The serializer is not a repair shop. An envelope built from an invalid
+        observation is a conformance claim about a document nobody validated."""
+        broken = copy.deepcopy(MINIMAL)
+        del broken["observation"]["rights"]
+        broken["observation"]["event"]["label"] = "Unknown"
+        with self.assertRaises(ValueError) as raised:
+            envelope_of(broken)
+        message = str(raised.exception)
+        self.assertIn("observation.rights: required field is missing", message)
+        self.assertIn("event.label", message)
+
+    def test_the_envelope_is_byte_stable_across_runs(self):
+        self.assertEqual(json.dumps(envelope_of()), json.dumps(envelope_of()))
+
+    def test_capabilities_are_reported_non_vacuously_for_the_rich_fixture(self):
+        """The rich fixture is deliberately complete enough to reach the top tier.
+        A capability report that satisfied nothing would let every assertion above
+        pass while proving the serializer can emit an empty envelope."""
+        capabilities = envelope_of()["machina_sports_schema"]["capabilities"]
+        self.assertEqual(capabilities["tier"], "advanced")
+        self.assertEqual(capabilities["tiers_satisfied"], ["core", "live", "advanced"])
+        self.assertEqual(capabilities["violations"], [])
+        for name in ("event.identity", "event.participants", "event.actions",
+                     "participant.player_statistics", "provenance"):
+            with self.subTest(capability=name):
+                self.assertIn(name, capabilities["present"])
+
+    def test_capabilities_absent_for_the_right_reason(self):
+        """``not_expressible`` separates "the provider withheld it" from
+        "``canonical-observation/1`` has no field that could carry it". Only one of
+        those is a provider conversation."""
+        capabilities = envelope_of()["machina_sports_schema"]["capabilities"]
+        self.assertIn("event.tracking", capabilities["not_expressible"])
+        self.assertNotIn("event.live_statistics", capabilities["not_expressible"])
+
+
+class TestRightsGate(unittest.TestCase):
+    """A12 — a production consumer refuses prototype-only data rather than
+    downgrading quietly. Rights are not decoration (RFC 002 §9)."""
+
+    def test_prototype_only_rights_fail_closed_for_a_production_consumer(self):
+        envelope = canonical_envelope(
+            MINIMAL, id_resolver=surrogate_resolver("sports-skills/espn"))
+        self.assertEqual(rights_findings(envelope, consumer_tier="prototype"), [])
+        findings = rights_findings(envelope, consumer_tier="production")
+        self.assertEqual([f["code"] for f in findings], ["rights-prototype-only"])
+
+    def test_the_finding_names_the_tier_and_the_class_it_refused(self):
+        envelope = canonical_envelope(
+            MINIMAL, id_resolver=surrogate_resolver("sports-skills/espn"))
+        finding = rights_findings(envelope, consumer_tier="production")[0]
+        self.assertEqual(finding["consumer_tier"], "production")
+        self.assertEqual(finding["data_class"], "public-non-commercial")
+        self.assertIn("prototype", finding["detail"])
+
+    def test_a_prototype_only_envelope_reports_exactly_one_finding_not_a_cascade(self):
+        """``prototype_only`` and ``commercial_use: false`` travel together on
+        every open-data envelope. Reporting both buries the one line that names
+        the fix, which is the same reasoning ``_check_rights`` uses on absence."""
+        envelope = canonical_envelope(
+            MINIMAL, id_resolver=surrogate_resolver("sports-skills/espn"))
+        self.assertEqual(len(rights_findings(envelope, consumer_tier="production")), 1)
+
+    def test_non_commercial_alone_still_fails_a_production_consumer(self):
+        envelope = envelope_of(licensed(prototype_only=False, commercial_use=False))
+        self.assertEqual([f["code"] for f in
+                          rights_findings(envelope, consumer_tier="production")],
+                         ["rights-non-commercial"])
+
+    def test_licensed_commercial_data_passes_a_production_consumer(self):
+        envelope = envelope_of(licensed())
+        self.assertEqual(rights_findings(envelope, consumer_tier="production"), [])
+        self.assertEqual(rights_findings(envelope, consumer_tier="prototype"), [])
+
+    def test_the_default_tier_is_the_strict_one(self):
+        """A caller who forgets the argument gets the safe answer. A gate whose
+        default is permissive is a gate nobody notices is off."""
+        envelope = canonical_envelope(
+            MINIMAL, id_resolver=surrogate_resolver("sports-skills/espn"))
+        self.assertEqual([f["code"] for f in rights_findings(envelope)],
+                         ["rights-prototype-only"])
+
+    def test_an_unreadable_rights_block_fails_closed(self):
+        """No rights block means no licence claim, which is not the same as a
+        permissive one. Every path that cannot read rights must refuse."""
+        for label, envelope in (
+            ("no envelope", {}),
+            ("no block", {"machina_sports_schema": {}}),
+            ("rights not an object", {"machina_sports_schema": {"rights": "public"}}),
+            ("flags not booleans", {"machina_sports_schema": {
+                "rights": {"data_class": "x", "prototype_only": "no",
+                           "commercial_use": "yes"}}}),
+        ):
+            with self.subTest(case=label):
+                codes = [f["code"] for f in
+                         rights_findings(envelope, consumer_tier="production")]
+                self.assertEqual(codes, ["rights-unreadable"])
+
+    def test_an_unknown_consumer_tier_is_refused_rather_than_guessed(self):
+        """A typo'd tier must not be read as the permissive one. It returns a
+        finding rather than raising, because a raise can be caught and mistaken
+        for 'no findings' while a finding is a refusal by construction."""
+        envelope = envelope_of(licensed())
+        codes = [f["code"] for f in rights_findings(envelope, consumer_tier="prod")]
+        self.assertEqual(codes, ["rights-unknown-consumer-tier"])
+
+    def test_every_known_tier_is_accepted(self):
+        envelope = envelope_of(licensed())
+        for tier in sorted(validate_graph.CONSUMER_TIERS):
+            with self.subTest(tier=tier):
+                self.assertEqual(rights_findings(envelope, consumer_tier=tier), [])
+
+
+class TestValidateGraphCli(unittest.TestCase):
+    """A12 — the new flag is additive; the existing CLI is untouched."""
+
+    def test_the_consumer_tier_flag_defaults_to_prototype(self):
+        parser = validate_graph.build_parser()
+        self.assertEqual(parser.parse_args([]).consumer_tier, "prototype")
+
+    def test_the_flag_rejects_a_tier_the_gate_does_not_know(self):
+        parser = validate_graph.build_parser()
+        with self.assertRaises(SystemExit):
+            parser.parse_args(["--consumer-tier", "prod"])
+
+    def test_the_existing_invocation_still_validates_a_fixture(self):
+        """A conforming fixture from PR 1, through the unchanged code path."""
+        self.assertEqual(validate_graph.main(["--all", "--json"]), 1)
+
+
+class TestFourLayerConformance(unittest.TestCase):
+    """The proof A1-A6 could not give: a conforming document falls out of the
+    contract, checked by the PR 1 harness rather than by assertion.
+
+    The graph is built here from the synthetic observation and written to a
+    temporary file inside the repository, because ``validate_document`` reports
+    paths relative to the repo root.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(dir=str(REPO_ROOT))
+        path = Path(cls.temporary.name) / "synthetic-canonical-graph.json"
+        document = envelope_of()["machina_sports_schema"]["sport_schema_graph"]
+        path.write_text(json.dumps(document, indent=2), encoding="utf-8")
+        cls.result = validate_document(path, "synthetic-canonical",
+                                       repo_root=REPO_ROOT)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temporary.cleanup()
+
+    def test_all_four_layers_pass(self):
+        for layer in ("jsonld_parse", "official_shacl", "machina_profile",
+                      "controlled_vocabulary"):
+            with self.subTest(layer=layer):
+                self.assertTrue(self.result.layers[layer]["ok"],
+                                self.result.layers[layer])
+
+    def test_the_shacl_pass_is_not_vacuous(self):
+        """A SHACL run over zero official-class instances 'conforms'. That is the
+        failure mode this whole programme exists to catch."""
+        shacl = self.result.layers["official_shacl"]["detail"]
+        self.assertFalse(shacl["vacuous"])
+        self.assertGreater(shacl["official_class_instances"], 0)
+        self.assertEqual(shacl["result_count"], 0)
+
+    def test_all_four_counters_are_zero(self):
+        for counter in ("unknown_sport_terms", "invalid_newscode_values",
+                        "duplicate_resource_ids",
+                        "provider_properties_in_iptc_namespace"):
+            with self.subTest(counter=counter):
+                self.assertEqual(self.result.counters[counter], 0)
+
+    def test_the_controlled_vocabulary_layer_checked_real_codes(self):
+        """Layer 4 passing on zero NewsCodes would be the vacuity failure again,
+        one layer down."""
+        detail = self.result.layers["controlled_vocabulary"]["detail"]
+        self.assertGreater(len(detail["valid"]), 0)
+        for key in ("invalid", "undeclared_prefix", "unverifiable"):
+            with self.subTest(key=key):
+                self.assertEqual(detail[key], [])
+
+    def test_the_document_conforms_overall(self):
+        self.assertTrue(self.result.conforms)
 
 
 

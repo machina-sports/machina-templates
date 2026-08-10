@@ -37,6 +37,7 @@ import json
 from pathlib import Path
 
 from . import (
+    MACHINA_SCHEMA_VERSION,
     PROFILE_VERSION,
     SERIALIZER_NAME,
     SERIALIZER_VERSION,
@@ -44,7 +45,8 @@ from . import (
     UPSTREAM_REPOSITORY,
     UPSTREAM_TARGET_VERSION,
 )
-from .observation import PLACEHOLDERS
+from .capabilities import capability_report
+from .observation import PLACEHOLDERS, validate_observation
 from .vocab import (
     ACTION_CLASS,
     COMPETITION_TYPE,
@@ -833,3 +835,44 @@ def sport_schema_graph(document, *, id_resolver):
     _provenance_resource(graph, observation, ids, id_resolver)
 
     return {"@context": shared_context(), "@graph": graph.nodes}
+
+
+# ---------------------------------------------------------------------------
+# canonical_envelope
+# ---------------------------------------------------------------------------
+
+def canonical_envelope(document, *, id_resolver):
+    """The full output envelope (RFC 002 §9).
+
+    Composes the four builders plus :func:`capability_report`. Every part is the
+    builder's own output rather than a second code path producing the same shape,
+    because a second code path is the thing that drifts.
+
+    Raises ``ValueError`` when ``validate_observation`` reports anything. The
+    serializer is not a repair shop: an envelope built from an invalid observation
+    is a conformance claim, citing a profile and a pin, about a document nobody
+    validated. Refusing is the only honest outcome, and the message carries every
+    error rather than the first, so one run tells the adapter author everything to
+    fix.
+    """
+    errors = validate_observation(document)
+    if errors:
+        raise ValueError(
+            "canonical observation is not valid, so no envelope was produced:\n"
+            + "\n".join("  - {0}".format(error) for error in errors)
+        )
+
+    observation = _observation(document)
+    return {"machina_sports_schema": {
+        "schema_version": MACHINA_SCHEMA_VERSION,
+        "profile": PROFILE_VERSION,
+        "sport_schema_graph": sport_schema_graph(document, id_resolver=id_resolver),
+        "event_view": event_view(document, id_resolver=id_resolver)["event_view"],
+        "provenance": provenance_block(document, id_resolver=id_resolver)["provenance"],
+        "provider_ids": provider_identifiers(document, id_resolver=id_resolver),
+        # Unwrapped: capability_report returns its own {"capabilities": …}
+        # envelope, and nesting it would give the consumer
+        # machina_sports_schema.capabilities.capabilities.
+        "capabilities": capability_report(document)["capabilities"],
+        "rights": dict(_section(observation, "rights")),
+    }}

@@ -430,6 +430,38 @@ reported and does not affect `compatible`; a missing *required* one does.
 `prototype_only: true` / `commercial_use: false`, and a consumer gated on
 production rights must refuse such an envelope rather than downgrade quietly.
 
+`canonical_envelope(observation, *, id_resolver)` composes the four builders plus
+`capability_report`, and **raises `ValueError`** when `validate_observation`
+reports anything. An envelope built from an invalid observation is a conformance
+claim — citing a profile and a pin — about a document nobody validated. The
+message carries every error rather than the first, so one run tells the adapter
+author everything to fix.
+
+The gate is `validate_graph.rights_findings(envelope, consumer_tier="production")`.
+Empty means the tier may consume the envelope.
+
+| Code | When |
+|---|---|
+| `rights-unreadable` | no envelope, no `rights` block, or `prototype_only`/`commercial_use` are not booleans |
+| `rights-prototype-only` | tier `production`, `prototype_only: true` |
+| `rights-non-commercial` | tier `production`, `commercial_use: false` |
+| `rights-unknown-consumer-tier` | a tier outside `prototype` / `production` |
+
+Four decisions in that table are deliberate:
+
+- **It fails closed on unreadability.** An absent licence claim is not a
+  permissive one, and reading it as permission is how prototype-only data reaches
+  a commercial surface.
+- **One finding, never a cascade.** `prototype_only` and `commercial_use: false`
+  travel together on every open-data envelope, so reporting both buries the one
+  line that names the fix — the same reasoning §1.1 applies to an absent block.
+- **The function's default tier is `production`**, the strict one. A gate whose
+  default is permissive is a gate nobody notices is off. `validate_graph.py`'s
+  `--consumer-tier` flag defaults to `prototype` instead, so the command's
+  existing output is unchanged; every checked-in fixture predates the gate.
+- **An unknown tier returns a finding rather than raising.** A raise can be caught
+  and mistaken for "no findings"; a finding is a refusal by construction.
+
 ---
 
 ## 10. Vendoring
