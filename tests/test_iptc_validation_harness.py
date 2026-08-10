@@ -937,6 +937,124 @@ class TestBaselineIsMeasuredNotAssumed(unittest.TestCase):
         self.assertGreater(result.counters["invalid_newscode_values"], 0)
 
 
+class TestCorrectedOutputIsTheClaimCiHolds(unittest.TestCase):
+    """The other half of the baseline finding, and the half that is a promise.
+
+    The baseline section is *expected* to fail, so CI gates it on reproducibility
+    (see ``TestBaselineIsMeasuredNotAssumed``). The corrected section is the
+    opposite kind of statement: it is what the canonical serializers actually
+    emit, it is what ``sports-skills`` reproduces byte-for-byte from the vendored
+    runtime, and it is the only section a consumer is entitled to read as
+    "conforming". A single non-conforming row there voids that claim for every
+    provider at once.
+
+    Before A18 nothing asserted it. ``--check`` compared the report to itself, so a
+    corrected fixture that regressed to 7/8 produced a *new* report, the new report
+    was checked in, and CI went green on it. These tests read the counters instead
+    of the diff: the section has to be at least as large as it is today, every row
+    has to conform, and every gate has to be at zero.
+    """
+
+    #: The size of the corrected section at A18: api-football, four Sportradar
+    #: readings, Stats Perform Opta, the sports-skills reference contract and the
+    #: cross-provider synthetic match. A floor rather than an equality, because
+    #: A15 keeps adding providers and a test about the count would fail on growth
+    #: while saying nothing about correctness.
+    MINIMUM_CORRECTED_FIXTURES = 8
+
+    #: Every gate the profile defines, plus the missing-evidence counter. All five
+    #: are zero for a corrected output, and each is listed rather than looped over
+    #: the report's keys: a counter renamed in the report would silently drop out
+    #: of a loop and keep this test green.
+    GATES = (
+        "unknown_sport_terms",
+        "invalid_newscode_values",
+        "unverifiable_newscode_values",
+        "duplicate_resource_ids",
+        "provider_properties_in_iptc_namespace",
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        cls.results = run()
+        cls.totals = report_module.build_report(cls.results)["totals"]["corrected"]
+
+    def test_the_section_holds_every_corrected_output_this_repository_emits(self):
+        self.assertGreaterEqual(len(self.results["corrected"]),
+                                self.MINIMUM_CORRECTED_FIXTURES)
+
+    def test_every_corrected_fixture_conforms(self):
+        """Named per fixture, so a failure says which provider regressed rather
+        than that a count moved."""
+        for item in self.results["corrected"]:
+            with self.subTest(fixture=item.fixture):
+                self.assertTrue(item.conforms)
+
+    def test_all_four_layers_pass_for_every_corrected_fixture(self):
+        for item in self.results["corrected"]:
+            for layer in ("jsonld_parse", "official_shacl", "machina_profile",
+                          "controlled_vocabulary"):
+                with self.subTest(fixture=item.fixture, layer=layer):
+                    self.assertTrue(item.layers[layer]["ok"],
+                                    item.layers[layer]["detail"])
+
+    def test_no_corrected_shacl_pass_is_vacuous(self):
+        """The most dangerous false positive in the audit, on the section where it
+        would do the most damage: a document under a non-official namespace passes
+        pyshacl by matching no shape at all."""
+        for item in self.results["corrected"]:
+            with self.subTest(fixture=item.fixture):
+                detail = item.layers["official_shacl"]["detail"]
+                self.assertFalse(detail["vacuous"])
+                self.assertGreater(detail["official_class_instances"], 0)
+
+    def test_every_gate_counter_is_zero_for_every_corrected_fixture(self):
+        for item in self.results["corrected"]:
+            for gate in self.GATES:
+                with self.subTest(fixture=item.fixture, gate=gate):
+                    self.assertEqual(item.counters[gate], 0)
+
+    def test_the_reported_totals_agree_with_the_documents(self):
+        """The counters CI and every reader see come from the report, not from the
+        results object above. Asserting only the objects would leave the published
+        numbers unchecked."""
+        self.assertGreaterEqual(self.totals["documents"],
+                                self.MINIMUM_CORRECTED_FIXTURES)
+        self.assertEqual(self.totals["conforming"], self.totals["documents"])
+        for layer in ("jsonld_parse", "official_shacl", "machina_profile",
+                      "controlled_vocabulary"):
+            with self.subTest(layer=layer):
+                self.assertEqual(self.totals["layer_pass"][layer],
+                                 self.totals["documents"])
+
+    def test_every_reported_gate_total_is_zero(self):
+        for gate in self.GATES:
+            with self.subTest(gate=gate):
+                self.assertEqual(self.totals[gate], 0)
+
+    def test_no_corrected_finding_is_recorded_as_unknown(self):
+        """The ``_unknown`` counters are the report's own "could not tell"
+        bucket. Non-zero there means a gate did not decide, and an undecided gate
+        is not a passed one."""
+        for gate, value in sorted(self.totals.items()):
+            if not gate.endswith("_unknown"):
+                continue
+            with self.subTest(gate=gate):
+                self.assertEqual(value, 0)
+
+    def test_the_checked_in_report_carries_these_numbers(self):
+        """Read off the published JSON, which is what a reader outside CI sees."""
+        published = json.loads(
+            report_module.JSON_REPORT_PATH.read_text(encoding="utf-8"))
+        corrected = published["totals"]["corrected"]
+        self.assertGreaterEqual(corrected["documents"],
+                                self.MINIMUM_CORRECTED_FIXTURES)
+        self.assertEqual(corrected["conforming"], corrected["documents"])
+        for gate in self.GATES:
+            with self.subTest(gate=gate):
+                self.assertEqual(corrected[gate], 0)
+
+
 class TestReportReproducibility(unittest.TestCase):
     """CI asserts the recorded failure report is reproducible, not that it passes."""
 
@@ -1091,8 +1209,11 @@ class TestArtifactOwnership(unittest.TestCase):
                     / "validate-iptc-sport-schema.yml").read_text(encoding="utf-8")
         commands = self.workflow_run_commands(workflow)
         self.assertIn("python -m pip install -r requirements-iptc-validator.txt", commands)
-        # The module form is shadowable; the file form is not. See this file's docstring.
-        self.assertIn("python tests/test_iptc_validation_harness.py -v", commands)
+        # Every suite, through the manifest runner, which executes each one as a
+        # file. The module form is shadowable; the file form is not. See this
+        # file's docstring.
+        self.assertIn("python tools/iptc/run_test_suites.py --list", commands)
+        self.assertIn("python tools/iptc/run_test_suites.py --verbose", commands)
         for command in commands:
             with self.subTest(command=command):
                 self.assertNotIn("-m unittest", command)
@@ -1100,6 +1221,36 @@ class TestArtifactOwnership(unittest.TestCase):
         agent_builder = (REPO_ROOT / ".github" / "workflows"
                          / "validate-machina-agent-builder.yml").read_text(encoding="utf-8")
         self.assertNotIn("requirements-iptc-validator.txt", agent_builder)
+
+    def test_no_suite_is_named_in_the_workflow_beside_the_runner(self):
+        """A18 replaced a hard-coded harness step with the manifest runner, and a
+        leftover step naming a suite by hand would run it twice: once on its own
+        and once through the runner. Doubling the slowest suite in the tree is the
+        visible cost; the invisible one is that a hand-named step looks like
+        coverage while the manifest is what actually decides.
+        """
+        workflow = (REPO_ROOT / ".github" / "workflows"
+                    / "validate-iptc-sport-schema.yml").read_text(encoding="utf-8")
+        for command in self.workflow_run_commands(workflow):
+            with self.subTest(command=command):
+                self.assertNotIn("tests/test_iptc_", command)
+
+    def test_the_pin_and_the_report_checks_survived_the_ci_rewrite(self):
+        """The runner is additive. If gating every suite cost the pin check or the
+        report reproducibility check, the trade would be a bad one: a conformance
+        result against unverified upstream bytes means nothing, however many
+        suites ran to produce it."""
+        workflow = (REPO_ROOT / ".github" / "workflows"
+                    / "validate-iptc-sport-schema.yml").read_text(encoding="utf-8")
+        commands = self.workflow_run_commands(workflow)
+        self.assertIn("python -m tools.iptc --verify-pin", commands)
+        self.assertIn("python -m tools.iptc --check", commands)
+        self.assertTrue(any("git status --porcelain" in command
+                            for command in commands))
+        # The pin is worthless after the fact: it has to precede the suites that
+        # cite it, so an unverified byte stops the run instead of colouring it.
+        self.assertLess(commands.index("python -m tools.iptc --verify-pin"),
+                        commands.index("python tools/iptc/run_test_suites.py --list"))
 
     def test_the_workflow_command_scan_reads_steps_and_not_comments(self):
         """Guard the guard: the parser must find real steps and ignore prose."""
@@ -1212,6 +1363,19 @@ class TestOutputNeutrality(unittest.TestCase):
         for token in ("references/", "contexts/", "iptc-sport-schema-1.1"):
             self.assertNotIn(token, install)
 
+    BANNED_MODULES = {"requests", "httpx", "socket", "urllib", "urllib.request",
+                      "http", "http.client", "ftplib", "subprocess"}
+
+    #: The one module allowed to spawn a process, and it is allowed exactly that.
+    #: `run_test_suites.py` runs the suites; it could not exist without
+    #: `subprocess`. The exemption buys nothing else — the runner still may not
+    #: import a network client and still may not read the environment — and it
+    #: costs nothing here, because the runner computes no conformance result. What
+    #: it is permitted to spawn is constrained in
+    #: `tests/test_iptc_test_manifest.py`: this interpreter, on a path the
+    #: manifest registers, inside this repository.
+    PROCESS_LAUNCHER = "run_test_suites.py"
+
     def test_harness_imports_no_network_module_and_reads_no_environment(self):
         """A real check, not a substring grep: parse the AST.
 
@@ -1221,9 +1385,10 @@ class TestOutputNeutrality(unittest.TestCase):
         """
         import ast
 
-        banned_modules = {"requests", "httpx", "socket", "urllib", "urllib.request",
-                          "http", "http.client", "ftplib", "subprocess"}
         for path in sorted(reference_module.PACKAGE_ROOT.glob("*.py")):
+            banned_modules = self.BANNED_MODULES
+            if path.name == self.PROCESS_LAUNCHER:
+                banned_modules = banned_modules - {"subprocess"}
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
@@ -1236,6 +1401,29 @@ class TestOutputNeutrality(unittest.TestCase):
                 elif isinstance(node, ast.Attribute) and node.attr in ("environ", "getenv"):
                     self.fail(f"{path.name} reads the environment: no credential may "
                               f"influence a conformance result")
+
+    def test_only_the_suite_runner_may_spawn_a_process(self):
+        """Guard the exemption above, from both sides.
+
+        An exemption applied by name is only as narrow as the check that no second
+        module quietly joins it. So: nothing else in the package imports
+        `subprocess`, and the runner's exemption covers `subprocess` alone — a
+        network client there would be as bad as one anywhere, and worse for being
+        in the file with the waiver.
+        """
+        import ast
+
+        for path in sorted(reference_module.PACKAGE_ROOT.glob("*.py")):
+            imported = set()
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    imported.update(a.name.split(".")[0] for a in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    imported.add(node.module.split(".")[0])
+            expected = {"subprocess"} if path.name == self.PROCESS_LAUNCHER else set()
+            with self.subTest(module=path.name):
+                self.assertEqual(imported & self.BANNED_MODULES, expected)
 
 
 if __name__ == "__main__":

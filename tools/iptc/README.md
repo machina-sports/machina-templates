@@ -70,10 +70,21 @@ python3 tools/iptc/validate_vocabularies.py --list-schemes
 python3 tools/iptc/extract_mapping_fixture.py --list-artifacts
 python3 tools/iptc/extract_mapping_fixture.py --mapping <mapping.yml>
 
-# tests — run the file directly. `tests/` has no `__init__.py`, so an installed
-# distribution shipping a top-level `tests` package would shadow the module form.
+# tests — every suite, in manifest order, each executed as a file. `tests/` has no
+# `__init__.py`, so an installed distribution shipping a top-level `tests` package
+# would shadow the module form. This is what CI runs; nothing names a suite by hand.
+python3 tools/iptc/run_test_suites.py --list      # is every suite registered?
+python3 tools/iptc/run_test_suites.py --verbose   # run all of it
+
+# one suite on its own, while working on it
 python3 tests/test_iptc_validation_harness.py -v
 ```
+
+`tools/iptc/test-suites.json` is the list. A suite on disk that is not in it fails
+`tests/test_iptc_test_manifest.py`, so adding a suite and gating it in CI are one
+act rather than two. Order is derived — declared `groups` order, then path — with
+the cheap manifest suites first and the SHACL harness last; `timeout_seconds` is
+optional and declares a ceiling for the suites whose runtime pyshacl dominates.
 
 ## The four layers
 
