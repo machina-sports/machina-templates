@@ -61,6 +61,7 @@ from tools.iptc.canonical.observation import (  # noqa: E402
 from tools.iptc.canonical import vocab  # noqa: E402
 from tools.iptc.canonical.serialize import (  # noqa: E402
     SHARED_CONTEXT_PATH,
+    provider_identifiers,
     shared_context,
     sport_schema_graph,
 )
@@ -797,6 +798,17 @@ class TestRfcContractConsistency(unittest.TestCase):
         rfc_002_vocabularies = rfc_section(RFC_002_PATH, "7")
         self.assertIn("spsocactiontype:` is not mapped at all", rfc_002_vocabularies)
 
+    def test_rfc_001_names_the_check_that_enforces_its_identifier_policy(self):
+        """§6.1 asserted "never a provider URN" for a whole PR while nothing
+        checked it. A normative rule with no named check is a rule a reader cannot
+        tell apart from an aspiration, so §6 now cites the finding code.
+        """
+        section = rfc_section(RFC_001_PATH, "6")
+        self.assertIn("provider-id-as-resource-id", section)
+        self.assertIn("provider-id-as-resource-id",
+                      [f["code"] for f in profile_module.check(
+                          official_graph("urn:apifootball:sport_event:1")).findings])
+
     def test_rfc_002_records_every_top_level_field_the_validator_requires(self):
         """A required field the contract does not list is a trap: the adapter
         author reads the RFC, the validator rejects the result."""
@@ -1217,6 +1229,210 @@ class TestOmission(unittest.TestCase):
         halves of the repository start disagreeing about what a stub looks like.
         """
         self.assertEqual(PLACEHOLDERS, profile_module.PLACEHOLDER_VALUES)
+
+
+def official_graph(node_id, type_name="sport:Event"):
+    """The smallest document the profile will walk, with one official resource."""
+    return {
+        "@context": dict(load_context()),
+        "@graph": [{"@id": node_id, "@type": type_name, "rdfs:label": "x"}],
+    }
+
+
+class TestCrosswalk(unittest.TestCase):
+    """A9 — a provider identifier is evidence attached to an identity, never the
+    identity itself (RFC 002 §5)."""
+
+    def setUp(self):
+        self.doc = sport_schema_graph(graph_observation(), id_resolver=mint())
+
+    def test_provider_ids_are_separate_machina_typed_resources(self):
+        crosswalk = typed(self.doc, "machina:ProviderIdentifier")
+        self.assertTrue(crosswalk)
+        node = crosswalk[0]
+        self.assertEqual(node["machina:providerNamespace"], "api-football")
+        self.assertIn("machina:providerId", node)
+        self.assertIn("@id", node["machina:identifies"])
+
+    def test_every_crosswalk_resource_points_at_a_resource_in_this_graph(self):
+        ids = {n["@id"] for n in self.doc["@graph"]}
+        for node in typed(self.doc, "machina:ProviderIdentifier"):
+            self.assertIn(node["machina:identifies"]["@id"], ids)
+
+    def test_official_resources_carry_no_machina_property(self):
+        """The pinned shapes are ``sh:closed`` (RFC 001 §5.4), so one ``machina:``
+        key on a ``sport:`` resource fails layer 2 for the whole document."""
+        for node in self.doc["@graph"]:
+            if str(node["@type"]).startswith("sport:"):
+                with self.subTest(resource=node["@type"]):
+                    self.assertEqual([k for k in node if k.startswith("machina:")], [])
+
+    def test_crosswalk_resources_carry_no_official_property(self):
+        """The mirror: a ``machina:``-typed resource is not an official resource
+        and must not describe itself with official predicates either."""
+        for node in typed(self.doc, "machina:ProviderIdentifier"):
+            self.assertEqual([k for k in node if k.startswith("sport:")], [])
+
+    def test_resolution_method_is_one_of_the_three_and_never_a_guess(self):
+        """RFC 002 §5: ``provider-native``, ``ordinal-derived`` or ``declared``.
+        There is no fourth value and no fuzzy matching in this phase."""
+        for node in typed(self.doc, "machina:ProviderIdentifier"):
+            self.assertIn(node["machina:resolutionMethod"],
+                          ("provider-native", "ordinal-derived", "declared"))
+
+    def test_the_envelope_crosswalk_lists_every_identified_entity(self):
+        entries = provider_identifiers(graph_observation(), id_resolver=mint())
+        self.assertEqual(
+            [e["entity_type"] for e in entries],
+            ["competition", "season", "phase", "site", "event", "team", "team",
+             "athlete"],
+        )
+        for entry in entries:
+            with self.subTest(entity=entry["entity_type"]):
+                self.assertEqual(sorted(entry), [
+                    "confidence", "entity_type", "evidence", "machina_id",
+                    "provider_id", "provider_namespace", "resolution_method",
+                ])
+
+    def test_the_evidence_pointer_names_where_the_provider_id_came_from(self):
+        """A crosswalk entry a reviewer cannot trace back to a field in the
+        observation is an assertion with no source."""
+        entries = provider_identifiers(graph_observation(), id_resolver=mint())
+        by_type = {}
+        for entry in entries:
+            by_type.setdefault(entry["entity_type"], []).append(entry)
+        self.assertEqual(by_type["event"][0]["evidence"],
+                         "observation.event.provider_id")
+        self.assertEqual(by_type["season"][0]["evidence"],
+                         "observation.competition.season.provider_id")
+        self.assertEqual(by_type["athlete"][0]["evidence"],
+                         "observation.participants[2].provider_id")
+
+    def test_the_envelope_crosswalk_and_the_graph_crosswalk_agree(self):
+        """Two views of one fact. They are built from one entry list rather than
+        two passes, because a second pass is a second chance to disagree."""
+        entries = provider_identifiers(graph_observation(), id_resolver=mint())
+        nodes = typed(self.doc, "machina:ProviderIdentifier")
+        self.assertEqual(
+            [(e["machina_id"], e["provider_id"]) for e in entries],
+            [(n["machina:identifies"]["@id"], n["machina:providerId"]) for n in nodes],
+        )
+
+    def test_derived_structures_get_no_crosswalk_entry(self):
+        """Participations, memberships and actions are structures this serializer
+        derives, not entities the provider named. There is no provider identifier
+        that could honestly be recorded for them."""
+        entries = provider_identifiers(graph_observation(), id_resolver=mint())
+        for kind in ("participation", "membership", "action"):
+            self.assertNotIn(kind, [e["entity_type"] for e in entries])
+
+
+class TestProviderIdAsResourceIdRule(unittest.TestCase):
+    """A9 — the profile rejects a provider identifier used as canonical identity.
+
+    This is the rule that makes the surrogate resolver load-bearing rather than
+    advisory: without it, "provider IDs are evidence, never identity" is a
+    sentence in an RFC that nothing enforces.
+    """
+
+    def test_profile_rejects_a_provider_id_used_as_a_resource_id(self):
+        result = profile_module.check(official_graph("urn:apifootball:sport_event:1035842"))
+        self.assertIn("provider-id-as-resource-id",
+                      [f["code"] for f in result.findings])
+
+    def test_the_finding_names_the_token_and_the_pointer(self):
+        finding = next(f for f in profile_module.check(
+            official_graph("urn:espn:event:401547")).findings
+            if f["code"] == "provider-id-as-resource-id")
+        self.assertEqual(finding["token"], "espn")
+        self.assertEqual(finding["@id"], "urn:espn:event:401547")
+        self.assertEqual(finding["pointer"], "/@graph/0")
+
+    def test_every_known_provider_namespace_is_rejected(self):
+        for token in sorted(profile_module.PROVIDER_NAMESPACE_TOKENS):
+            with self.subTest(token=token):
+                codes = [f["code"] for f in profile_module.check(
+                    official_graph("urn:{0}:event:1".format(token))).findings]
+                self.assertIn("provider-id-as-resource-id", codes)
+
+    def test_the_tokens_are_derived_from_the_leak_rules_not_hand_listed(self):
+        """A hand-listed set goes stale the moment a connector is added. Every
+        provider in ``provider-leak-terms.json`` must be covered, in both the
+        hyphenated and the run-together spelling a URN might use."""
+        rules = json.loads(profile_module.RULES_PATH.read_text(encoding="utf-8"))
+        for provider in sorted(rules["providers"]):
+            with self.subTest(provider=provider):
+                self.assertIn(provider, profile_module.PROVIDER_NAMESPACE_TOKENS)
+                self.assertIn(provider.replace("-", ""),
+                              profile_module.PROVIDER_NAMESPACE_TOKENS)
+
+    def test_the_rule_does_not_fire_on_a_machina_typed_crosswalk_resource(self):
+        """The crosswalk resource's whole job is to carry a provider identifier.
+        Flagging it would make the rule fire on the fix for the defect."""
+        document = {
+            "@context": dict(load_context()),
+            "@graph": [{
+                "@id": "urn:machina:sports:provider-identifier:xabc",
+                "@type": "machina:ProviderIdentifier",
+                "machina:providerNamespace": "api-football",
+                "machina:providerId": "39",
+                "machina:resolutionMethod": "provider-native",
+            }],
+        }
+        self.assertEqual(
+            [f for f in profile_module.check(document).findings
+             if f["code"] == "provider-id-as-resource-id"], [])
+
+    def test_a_provider_id_in_a_property_value_is_not_this_rule(self):
+        """Only ``@id`` is identity. A provider identifier as the *value* of a
+        ``machina:`` evidence property is the sanctioned form, and conflating the
+        two would leave no way to record the crosswalk at all."""
+        document = {
+            "@context": dict(load_context()),
+            "@graph": [
+                {"@id": "urn:machina:sports:event:xabc", "@type": "sport:Event",
+                 "rdfs:label": "x"},
+                {"@id": "urn:machina:sports:provider-identifier:xdef",
+                 "@type": "machina:ProviderIdentifier",
+                 "machina:identifies": {"@id": "urn:machina:sports:event:xabc"},
+                 "machina:providerId": "urn:apifootball:sport_event:1035842"},
+            ],
+        }
+        self.assertEqual(
+            [f for f in profile_module.check(document).findings
+             if f["code"] == "provider-id-as-resource-id"], [])
+
+    def test_a_token_inside_a_larger_word_is_not_flagged(self):
+        """The rule matches a delimited segment, not a bare substring. An opaque
+        surrogate digest that happens to contain provider letters is not a
+        provider identifier, and a rule that cried wolf there would be switched
+        off rather than fixed."""
+        self.assertEqual(
+            [f for f in profile_module.check(
+                official_graph("urn:machina:sports:event:xespnish401547")).findings
+             if f["code"] == "provider-id-as-resource-id"], [])
+
+    def test_a_hyphen_delimited_provider_token_is_still_flagged(self):
+        """``urn:machina:…:espn-401547`` is the leak the substring rule was
+        reaching for, and delimited matching still catches it."""
+        codes = [f["code"] for f in profile_module.check(
+            official_graph("urn:machina:sports:event:espn-401547")).findings]
+        self.assertIn("provider-id-as-resource-id", codes)
+
+    def test_the_graph_this_serializer_emits_is_clean_under_the_rule(self):
+        """The point of the whole surrogate design, asserted end to end."""
+        document = sport_schema_graph(graph_observation(), id_resolver=mint())
+        self.assertEqual(
+            [f for f in profile_module.check(document).findings
+             if f["code"] == "provider-id-as-resource-id"], [])
+
+    def test_a_surrogate_id_never_contains_a_provider_token_at_all(self):
+        document = sport_schema_graph(graph_observation(), id_resolver=mint())
+        for node in document["@graph"]:
+            for token in sorted(profile_module.PROVIDER_NAMESPACE_TOKENS):
+                with self.subTest(node=node["@id"], token=token):
+                    self.assertNotIn(token, node["@id"])
+
 
 
 #: Modules destined to be copied byte-exact into ``sports-skills``, a published

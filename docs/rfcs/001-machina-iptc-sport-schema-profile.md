@@ -313,7 +313,24 @@ Provider identifiers are **evidence attached to a Machina identity**, never the
 identity.
 
 1. A resource `@id` is a Machina identifier (§7). It is never a provider
-   identifier and never a provider URN.
+   identifier and never a provider URN. Layer 3 enforces this as
+   `provider-id-as-resource-id`: a resource typed in the official `sport:`
+   namespace whose `@id` embeds a known provider namespace is a finding. The
+   namespaces are derived from the connectors already named in
+   `rules/provider-leak-terms.json`, plus `espn` and `dsg`, in both the
+   hyphenated and run-together spellings — `urn:apifootball:sport_event:1035842`
+   is the form this repository actually emitted.
+
+   The match is on a **delimited word**, not a bare substring, so `espn-401547`
+   is a finding and an opaque surrogate digest that happens to contain provider
+   letters is not. A rule that fired on correct identifiers would be switched off
+   rather than fixed.
+
+   The rule is scoped to `sport:`-typed resources on purpose. A
+   `machina:ProviderIdentifier` exists to carry a provider identifier (§6.2), and
+   only `@id` is identity: the same string as the *value* of a `machina:`
+   evidence property is the sanctioned crosswalk and is not a finding. A rule
+   that flagged it would fire on the fix for the defect.
 2. Every provider identifier appears as a `machina:ProviderIdentifier` resource
    carrying `machina:identifies`, `machina:providerNamespace` and
    `machina:providerId`, plus optional `machina:resolutionMethod`,

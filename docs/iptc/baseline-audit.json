@@ -162,7 +162,7 @@
                 "schema": "https://schema.org/",
                 "sport": "https://www.sportschema.org/ontologies/sport#"
               },
-              "finding_count": 36,
+              "finding_count": 42,
               "findings": [
                 {
                   "code": "sport-namespace-not-official",
@@ -170,6 +170,17 @@
                   "expected": "https://sportschema.org/ontologies/main/",
                   "found": "https://www.sportschema.org/ontologies/sport#",
                   "pointer": "/@context/sport"
+                },
+                {
+                  "@id": "urn:americanfootball:game:9001",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:americanfootball:game:9001' embeds the provider namespace 'americanfootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/",
+                  "token": "americanfootball",
+                  "types": [
+                    "sport:Event",
+                    "schema:SportsEvent"
+                  ]
                 },
                 {
                   "code": "undefined-term",
@@ -190,6 +201,16 @@
                   "kind": "property",
                   "pointer": "/sport:competition",
                   "term": "sport:competition"
+                },
+                {
+                  "@id": "urn:americanfootball:league:91",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:americanfootball:league:91' embeds the provider namespace 'americanfootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competition",
+                  "token": "americanfootball",
+                  "types": [
+                    "sport:Competition"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -218,6 +239,16 @@
                   "kind": "class",
                   "pointer": "/sport:competition/sport:season/@type",
                   "term": "sport:Season"
+                },
+                {
+                  "@id": "urn:americanfootball:season:91:2025",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:americanfootball:season:91:2025' embeds the provider namespace 'americanfootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competition/sport:season",
+                  "token": "americanfootball",
+                  "types": [
+                    "sport:Season"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -255,6 +286,16 @@
                   "term": "sport:Venue"
                 },
                 {
+                  "@id": "urn:americanfootball:venue:9801",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:americanfootball:venue:9801' embeds the provider namespace 'americanfootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:venue",
+                  "token": "americanfootball",
+                  "types": [
+                    "sport:Venue"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:Venue'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/sport:venue",
@@ -274,6 +315,16 @@
                   "kind": "property",
                   "pointer": "/sport:competitors",
                   "term": "sport:competitors"
+                },
+                {
+                  "@id": "urn:americanfootball:team:9101",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:americanfootball:team:9101' embeds the provider namespace 'americanfootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competitors/0",
+                  "token": "americanfootball",
+                  "types": [
+                    "sport:Team"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -302,6 +353,16 @@
                   "pointer": "/sport:competitors/0/schema:logo",
                   "property": "schema:logo",
                   "value": ""
+                },
+                {
+                  "@id": "urn:americanfootball:team:9102",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:americanfootball:team:9102' embeds the provider namespace 'americanfootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competitors/1",
+                  "token": "americanfootball",
+                  "types": [
+                    "sport:Team"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -522,8 +583,18 @@
               "context_bindings": {
                 "sport": "https://sportschema.org/ontologies/main/"
               },
-              "finding_count": 24,
+              "finding_count": 36,
               "findings": [
+                {
+                  "@id": "urn:apifootball:action:23:Goal:9001",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:action:23:Goal:9001' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Action"
+                  ]
+                },
                 {
                   "code": "invented-sport-term",
                   "detail": "'sport:label' is not declared by IPTC Sport Schema 1.1 (https://sportschema.org/ontologies/main/). Machina extensions belong under machina: (https://machina.gg/ns/sport/1.0/) or in event_view.",
@@ -553,11 +624,31 @@
                   "value": ""
                 },
                 {
+                  "@id": "urn:apifootball:team-participation:9001",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team-participation:9001' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participation/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:TeamParticipation"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:TeamParticipation'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/0/sport:participation/0",
                   "types": [
                     "sport:TeamParticipation"
+                  ]
+                },
+                {
+                  "@id": "urn:apifootball:team:9001",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:9001' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participation/0/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
                   ]
                 },
                 {
@@ -576,11 +667,31 @@
                   "term": "sport:label"
                 },
                 {
+                  "@id": "urn:apifootball:player-participation:9101",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player-participation:9101' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participation/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:IndividualParticipation"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:IndividualParticipation'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/0/sport:participation/1",
                   "types": [
                     "sport:IndividualParticipation"
+                  ]
+                },
+                {
+                  "@id": "urn:apifootball:player:9101",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player:9101' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participation/1/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Athlete"
                   ]
                 },
                 {
@@ -599,11 +710,31 @@
                   "term": "sport:label"
                 },
                 {
+                  "@id": "urn:apifootball:assist-participation:9102",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:assist-participation:9102' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participation/2",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:IndividualParticipation"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:IndividualParticipation'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/0/sport:participation/2",
                   "types": [
                     "sport:IndividualParticipation"
+                  ]
+                },
+                {
+                  "@id": "urn:apifootball:player:9102",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player:9102' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participation/2/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Athlete"
                   ]
                 },
                 {
@@ -620,6 +751,16 @@
                   "kind": "property",
                   "pointer": "/0/sport:participation/2/sport:participationBy/sport:label",
                   "term": "sport:label"
+                },
+                {
+                  "@id": "urn:apifootball:action:67:Card:9002",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:action:67:Card:9002' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Action"
+                  ]
                 },
                 {
                   "code": "invented-sport-term",
@@ -650,11 +791,31 @@
                   "value": ""
                 },
                 {
+                  "@id": "urn:apifootball:team-participation:9002",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team-participation:9002' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1/sport:participation/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:TeamParticipation"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:TeamParticipation'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/1/sport:participation/0",
                   "types": [
                     "sport:TeamParticipation"
+                  ]
+                },
+                {
+                  "@id": "urn:apifootball:team:9002",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:9002' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1/sport:participation/0/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
                   ]
                 },
                 {
@@ -673,11 +834,31 @@
                   "term": "sport:label"
                 },
                 {
+                  "@id": "urn:apifootball:player-participation:9201",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player-participation:9201' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1/sport:participation/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:IndividualParticipation"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:IndividualParticipation'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/1/sport:participation/1",
                   "types": [
                     "sport:IndividualParticipation"
+                  ]
+                },
+                {
+                  "@id": "urn:apifootball:player:9201",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player:9201' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1/sport:participation/1/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Athlete"
                   ]
                 },
                 {
@@ -1023,8 +1204,18 @@
                 "spsocstat": "https://sportschema.org/ontologies/soccer/",
                 "spstat": "https://sportschema.org/ontologies/corestatistics/"
               },
-              "finding_count": 51,
+              "finding_count": 55,
               "findings": [
+                {
+                  "@id": "urn:apifootball:player-participation:9101:9000",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player-participation:9101:9000' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:IndividualParticipation"
+                  ]
+                },
                 {
                   "code": "undefined-term",
                   "detail": "Key 'metadata' is neither a JSON-LD keyword nor a term defined by any @context in scope. JSON-LD expansion drops it silently, so the value is lost.",
@@ -1060,6 +1251,16 @@
                   "detail": "Prefix 'rdfs:' is used but not bound by any @context in scope, so 'rdfs:label' expands to a relative IRI rather than a term.",
                   "pointer": "/0/rdfs:label",
                   "term": "rdfs:label"
+                },
+                {
+                  "@id": "urn:apifootball:player:9101",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player:9101' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/0/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Athlete"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -1187,6 +1388,16 @@
                   "term": "sport:rating"
                 },
                 {
+                  "@id": "urn:apifootball:player-participation:9103:9000",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player-participation:9103:9000' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:IndividualParticipation"
+                  ]
+                },
+                {
                   "code": "undefined-term",
                   "detail": "Key 'metadata' is neither a JSON-LD keyword nor a term defined by any @context in scope. JSON-LD expansion drops it silently, so the value is lost.",
                   "pointer": "/1/metadata",
@@ -1221,6 +1432,16 @@
                   "detail": "Prefix 'rdfs:' is used but not bound by any @context in scope, so 'rdfs:label' expands to a relative IRI rather than a term.",
                   "pointer": "/1/rdfs:label",
                   "term": "rdfs:label"
+                },
+                {
+                  "@id": "urn:apifootball:player:9103",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:player:9103' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/1/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Athlete"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2158,7 +2379,7 @@
                 "schema": "https://schema.org/",
                 "sport": "https://www.sportschema.org/ontologies/sport#"
               },
-              "finding_count": 29,
+              "finding_count": 35,
               "findings": [
                 {
                   "code": "sport-namespace-not-official",
@@ -2166,6 +2387,17 @@
                   "expected": "https://sportschema.org/ontologies/main/",
                   "found": "https://www.sportschema.org/ontologies/sport#",
                   "pointer": "/@context/sport"
+                },
+                {
+                  "@id": "urn:apifootball:fixture:1390823",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:fixture:1390823' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Event",
+                    "schema:SportsEvent"
+                  ]
                 },
                 {
                   "code": "undefined-term",
@@ -2179,6 +2411,16 @@
                   "kind": "property",
                   "pointer": "/sport:competition",
                   "term": "sport:competition"
+                },
+                {
+                  "@id": "urn:apifootball:league:140",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:league:140' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competition",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Competition"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2209,6 +2451,16 @@
                   "term": "sport:Season"
                 },
                 {
+                  "@id": "urn:apifootball:season:140:2025",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:season:140:2025' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competition/sport:season",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Season"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:Season'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/sport:competition/sport:season",
@@ -2237,6 +2489,16 @@
                   "term": "sport:competitors"
                 },
                 {
+                  "@id": "urn:apifootball:team:540",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:540' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competitors/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:Team'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/sport:competitors/0",
@@ -2256,6 +2518,16 @@
                   "kind": "property",
                   "pointer": "/sport:competitors/0/sport:qualifier",
                   "term": "sport:qualifier"
+                },
+                {
+                  "@id": "urn:apifootball:team:530",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:530' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competitors/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2337,6 +2609,16 @@
                   "kind": "class",
                   "pointer": "/sport:venue/@type",
                   "term": "sport:Venue"
+                },
+                {
+                  "@id": "urn:apifootball:venue:1474",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:venue:1474' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:venue",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Venue"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2540,7 +2822,7 @@
                 "schema": "https://schema.org/",
                 "sport": "https://www.sportschema.org/ontologies/sport#"
               },
-              "finding_count": 31,
+              "finding_count": 37,
               "findings": [
                 {
                   "code": "sport-namespace-not-official",
@@ -2548,6 +2830,17 @@
                   "expected": "https://sportschema.org/ontologies/main/",
                   "found": "https://www.sportschema.org/ontologies/sport#",
                   "pointer": "/@context/sport"
+                },
+                {
+                  "@id": "urn:apifootball:fixture:1377885",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:fixture:1377885' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Event",
+                    "schema:SportsEvent"
+                  ]
                 },
                 {
                   "code": "undefined-term",
@@ -2568,6 +2861,16 @@
                   "kind": "property",
                   "pointer": "/sport:competition",
                   "term": "sport:competition"
+                },
+                {
+                  "@id": "urn:apifootball:league:135",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:league:135' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competition",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Competition"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2596,6 +2899,16 @@
                   "kind": "class",
                   "pointer": "/sport:competition/sport:season/@type",
                   "term": "sport:Season"
+                },
+                {
+                  "@id": "urn:apifootball:season:2025",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:season:2025' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competition/sport:season",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Season"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2633,6 +2946,16 @@
                   "term": "sport:Venue"
                 },
                 {
+                  "@id": "urn:apifootball:venue:12275",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:venue:12275' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:venue",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Venue"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:Venue'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/sport:venue",
@@ -2654,6 +2977,16 @@
                   "term": "sport:competitors"
                 },
                 {
+                  "@id": "urn:apifootball:team:490",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:490' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competitors/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:Team'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/sport:competitors/0",
@@ -2673,6 +3006,16 @@
                   "kind": "property",
                   "pointer": "/sport:competitors/0/sport:qualifier",
                   "term": "sport:qualifier"
+                },
+                {
+                  "@id": "urn:apifootball:team:523",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:523' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:competitors/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2837,13 +3180,33 @@
                 "spsocstat": "https://sportschema.org/ontologies/soccer/",
                 "spstat": "https://sportschema.org/ontologies/corestatistics/"
               },
-              "finding_count": 14,
+              "finding_count": 19,
               "findings": [
+                {
+                  "@id": "urn:apifootball:sport_event:9000",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:sport_event:9000' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Event"
+                  ]
+                },
                 {
                   "code": "undeclared-prefix",
                   "detail": "Prefix 'rdfs:' is used but not bound by any @context in scope, so 'rdfs:label' expands to a relative IRI rather than a term.",
                   "pointer": "/rdfs:label",
                   "term": "rdfs:label"
+                },
+                {
+                  "@id": "urn:apifootball:team-participation:9001",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team-participation:9001' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:participation/0",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:TeamParticipation"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2858,6 +3221,16 @@
                   "detail": "Prefix 'rdfs:' is used but not bound by any @context in scope, so 'rdfs:label' expands to a relative IRI rather than a term.",
                   "pointer": "/sport:participation/0/rdfs:label",
                   "term": "rdfs:label"
+                },
+                {
+                  "@id": "urn:apifootball:team:9001",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:9001' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:participation/0/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
+                  ]
                 },
                 {
                   "code": "nested-resource",
@@ -2887,6 +3260,16 @@
                   "value": ""
                 },
                 {
+                  "@id": "urn:apifootball:team-participation:9002",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team-participation:9002' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:participation/1",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:TeamParticipation"
+                  ]
+                },
+                {
                   "code": "nested-resource",
                   "detail": "A typed resource ['sport:TeamParticipation'] is nested inside another resource. The profile requires distinct resources as siblings in a top-level @graph, referenced by @id.",
                   "pointer": "/sport:participation/1",
@@ -2899,6 +3282,16 @@
                   "detail": "Prefix 'rdfs:' is used but not bound by any @context in scope, so 'rdfs:label' expands to a relative IRI rather than a term.",
                   "pointer": "/sport:participation/1/rdfs:label",
                   "term": "rdfs:label"
+                },
+                {
+                  "@id": "urn:apifootball:team:9002",
+                  "code": "provider-id-as-resource-id",
+                  "detail": "@id 'urn:apifootball:team:9002' embeds the provider namespace 'apifootball'. A provider identifier is evidence attached to a Machina identity, never the identity itself: two providers describing one event would mint two identities that nothing can reconcile. Mint the resource ID from the identity resolver and record the provider ID on a machina:ProviderIdentifier resource.",
+                  "pointer": "/sport:participation/1/sport:participationBy",
+                  "token": "apifootball",
+                  "types": [
+                    "sport:Team"
+                  ]
                 },
                 {
                   "code": "nested-resource",

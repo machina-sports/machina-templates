@@ -98,6 +98,54 @@ def provider_leak_index() -> dict[str, list[str]]:
     return {k: sorted(v) for k, v in index.items()}
 
 
+def _provider_namespace_tokens() -> frozenset[str]:
+    """Provider namespaces that must never appear in a canonical resource ``@id``.
+
+    Derived from the connector namespaces already named in
+    ``provider-leak-terms.json`` rather than hand-listed, so adding a connector
+    extends this rule for free. Each namespace is registered in both spellings a
+    URN plausibly uses — ``api-football`` and ``apifootball`` — because
+    ``urn:apifootball:sport_event:1035842`` is the form this repository actually
+    emitted.
+
+    ``espn`` and ``dsg`` are added explicitly: both appear as provider namespaces
+    in this repository without owning an entry in the leak table, which records
+    *field-name* leaks rather than identity leaks.
+    """
+    rules = json.loads(RULES_PATH.read_text(encoding="utf-8"))
+    tokens = {"espn", "dsg"}
+    for provider in rules["providers"]:
+        tokens.add(provider)
+        tokens.add(provider.replace("-", ""))
+    return frozenset(tokens)
+
+
+#: See :func:`_provider_namespace_tokens`.
+PROVIDER_NAMESPACE_TOKENS = _provider_namespace_tokens()
+
+#: A provider namespace counts only as a whole delimited word inside an ``@id``,
+#: not as a bare substring. An opaque surrogate digest that happens to contain
+#: provider letters (``xespnish401547``) is not a provider identifier, and a rule
+#: that cried wolf there would be switched off rather than fixed. ``espn-401547``
+#: still matches, which is the leak the rule is actually for.
+_PROVIDER_TOKEN_PATTERNS = tuple(
+    (token, re.compile(r"(?<![0-9A-Za-z])" + re.escape(token) + r"(?![0-9A-Za-z])"))
+    for token in sorted(PROVIDER_NAMESPACE_TOKENS)
+)
+
+
+def provider_namespace_in_id(node_id: str) -> str | None:
+    """The first provider namespace ``node_id`` embeds, or ``None``.
+
+    Sorted iteration, so a document with two offending tokens always reports the
+    same one and the finding stays deterministic.
+    """
+    for token, pattern in _PROVIDER_TOKEN_PATTERNS:
+        if pattern.search(node_id):
+            return token
+    return None
+
+
 @dataclass
 class ProfileResult:
     findings: list[dict]
@@ -302,6 +350,31 @@ class _Walker:
         describes = any(key != "@id" for key in node)
         if isinstance(node_id, str) and node_id and describes:
             self.node_ids.append((node_id, pointer or "/"))
+
+        # A provider identifier used as canonical identity. Scoped to resources
+        # typed in the official namespace, because that is what "canonical
+        # identity" means here: a machina:ProviderIdentifier carrying a provider
+        # ID is the sanctioned crosswalk, and flagging it would make the rule
+        # fire on the fix for the defect. Only @id is identity — the same string
+        # as a machina: property VALUE is evidence and is left alone.
+        if isinstance(node_id, str) and node_id and describes:
+            if any(t.startswith("sport:") for t in type_list):
+                token = provider_namespace_in_id(node_id)
+                if token is not None:
+                    self.add(
+                        "provider-id-as-resource-id",
+                        pointer or "/",
+                        f"@id '{node_id}' embeds the provider namespace "
+                        f"'{token}'. A provider identifier is evidence attached "
+                        f"to a Machina identity, never the identity itself: two "
+                        f"providers describing one event would mint two "
+                        f"identities that nothing can reconcile. Mint the "
+                        f"resource ID from the identity resolver and record the "
+                        f"provider ID on a machina:ProviderIdentifier resource.",
+                        token=token,
+                        types=type_list,
+                        **{"@id": node_id},
+                    )
 
         if type_list and not isinstance(node_id, str):
             self.add("missing-node-id", pointer or "/",

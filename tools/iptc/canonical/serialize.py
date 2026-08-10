@@ -518,6 +518,39 @@ def _crosswalk_entries(observation, ids):
     ]
 
 
+def provider_identifiers(document, *, id_resolver):
+    """The crosswalk as the envelope carries it (RFC 002 §5).
+
+    The same entry list the graph's ``machina:ProviderIdentifier`` resources are
+    built from, projected into plain JSON. One list feeding both views is what
+    keeps them from disagreeing; a second pass over the observation would be a
+    second chance to.
+
+    ``confidence`` is ``1.0`` because ``provider-native`` means the provider
+    stated the identifier itself. There is no fuzzy matching in this phase, so
+    there is no case here that deserves a lower number — and inventing a spread
+    of confidences nothing measured would be exactly the false precision the
+    profile exists to keep out.
+    """
+    observation = _observation(document)
+    ids = _Identities(observation, id_resolver)
+    namespace = _text(_namespace(observation))
+    if namespace is None:
+        return []
+    return [
+        {
+            "machina_id": machina_id,
+            "entity_type": kind,
+            "provider_namespace": namespace,
+            "provider_id": provider_id,
+            "resolution_method": RESOLUTION_PROVIDER_NATIVE,
+            "confidence": 1.0,
+            "evidence": evidence,
+        }
+        for kind, machina_id, provider_id, evidence in _crosswalk_entries(observation, ids)
+    ]
+
+
 def _crosswalk_resources(graph, observation, ids, id_resolver):
     namespace = _text(_namespace(observation))
     if namespace is None:

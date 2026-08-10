@@ -117,12 +117,13 @@ Each row proves one detector actually fires. A green row here would mean the cor
 
 **Layer 2 — official SHACL:** **VACUOUS** — pyshacl reports `conforms=True`, but the document contains **0 instances of any official IPTC class**, so every `sh:targetClass` matched nothing and no shape was exercised. This is the wrong-namespace defect: the document's `sport:` prefix does not point at `https://sportschema.org/ontologies/main/`, so its `sport:Event`, `sport:Team` and friends are not IPTC classes at all. Counted as a layer-2 failure.
 
-**Layer 3 — Machina profile:** 36 finding(s).
+**Layer 3 — Machina profile:** 42 finding(s).
 
 - `invented-sport-term` × 14
 - `nested-resource` × 5
 - `no-graph-envelope` × 1
 - `placeholder-value` × 2
+- `provider-id-as-resource-id` × 6
 - `provider-property-in-iptc-namespace` × 2
 - `sport-namespace-not-official` × 1
 - `undefined-term` × 11
@@ -169,7 +170,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - `DatatypeConstraintComponent` on `urn:apifootball:action:23:Goal:9001` path `https://sportschema.org/ontologies/main/actionDateTime` — Value is not Literal with datatype xsd:dateTime
 - `DatatypeConstraintComponent` on `urn:apifootball:action:67:Card:9002` path `https://sportschema.org/ontologies/main/actionDateTime` — Value is not Literal with datatype xsd:dateTime
 
-**Layer 3 — Machina profile:** 24 finding(s).
+**Layer 3 — Machina profile:** 36 finding(s).
 
 - `datetime-datatype` × 2
 - `invented-sport-term` × 7
@@ -177,6 +178,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - `newscode-not-a-node` × 2
 - `no-graph-envelope` × 1
 - `placeholder-value` × 2
+- `provider-id-as-resource-id` × 12
 - context binds `sport:` to `https://sportschema.org/ontologies/main/`
 
 **Layer 4 — controlled vocabulary:** 0 valid, 0 invalid, 0 unresolvable prefix, 2 unverifiable.
@@ -219,13 +221,14 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - `ClosedConstraintComponent` on `urn:apifootball:player-participation:9101:9000` path `https://sportschema.org/ontologies/main/minutesPlayed` — Node <urn:apifootball:player-participation:9101:9000> is closed. It cannot have value: Literal("90", datatype=xsd:integer)
 - … 58 more, in `baseline-audit.json`.
 
-**Layer 3 — Machina profile:** 51 finding(s).
+**Layer 3 — Machina profile:** 55 finding(s).
 
 - `invented-sport-term` × 12
 - `nested-resource` × 2
 - `newscode-not-a-node` × 2
 - `no-graph-envelope` × 1
 - `placeholder-value` × 4
+- `provider-id-as-resource-id` × 4
 - `provider-property-in-iptc-namespace` × 10
 - `undeclared-prefix` × 10
 - `undefined-term` × 10
@@ -264,11 +267,12 @@ Each row proves one detector actually fires. A green row here would mean the cor
 
 **Layer 2 — official SHACL:** **VACUOUS** — pyshacl reports `conforms=True`, but the document contains **0 instances of any official IPTC class**, so every `sh:targetClass` matched nothing and no shape was exercised. This is the wrong-namespace defect: the document's `sport:` prefix does not point at `https://sportschema.org/ontologies/main/`, so its `sport:Event`, `sport:Team` and friends are not IPTC classes at all. Counted as a layer-2 failure.
 
-**Layer 3 — Machina profile:** 29 finding(s).
+**Layer 3 — Machina profile:** 35 finding(s).
 
 - `invented-sport-term` × 13
 - `nested-resource` × 5
 - `no-graph-envelope` × 1
+- `provider-id-as-resource-id` × 6
 - `provider-property-in-iptc-namespace` × 1
 - `sport-namespace-not-official` × 1
 - `undefined-term` × 8
@@ -303,12 +307,13 @@ Each row proves one detector actually fires. A green row here would mean the cor
 
 **Layer 2 — official SHACL:** **VACUOUS** — pyshacl reports `conforms=True`, but the document contains **0 instances of any official IPTC class**, so every `sh:targetClass` matched nothing and no shape was exercised. This is the wrong-namespace defect: the document's `sport:` prefix does not point at `https://sportschema.org/ontologies/main/`, so its `sport:Event`, `sport:Team` and friends are not IPTC classes at all. Counted as a layer-2 failure.
 
-**Layer 3 — Machina profile:** 31 finding(s).
+**Layer 3 — Machina profile:** 37 finding(s).
 
 - `invented-sport-term` × 13
 - `nested-resource` × 5
 - `no-graph-envelope` × 1
 - `null-value` × 2
+- `provider-id-as-resource-id` × 6
 - `provider-property-in-iptc-namespace` × 1
 - `sport-namespace-not-official` × 1
 - `undefined-term` × 8
@@ -357,11 +362,12 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - `ClosedConstraintComponent` on `urn:apifootball:team:9001` path `rdfs:label` — Node <urn:apifootball:team:9001> is closed. It cannot have value: Literal("Synthetic Home FC")
 - … 19 more, in `baseline-audit.json`.
 
-**Layer 3 — Machina profile:** 14 finding(s).
+**Layer 3 — Machina profile:** 19 finding(s).
 
 - `nested-resource` × 4
 - `no-graph-envelope` × 1
 - `placeholder-value` × 2
+- `provider-id-as-resource-id` × 5
 - `undeclared-prefix` × 7
 - context binds `sport:` to `https://sportschema.org/ontologies/main/`
 
