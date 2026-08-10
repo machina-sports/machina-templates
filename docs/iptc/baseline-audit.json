@@ -11777,6 +11777,181 @@
         },
         "path": "tools/iptc/fixtures/corrected/api-football-soccer-graph.json"
       },
+      "corrected-sportradar-soccer": {
+        "conforms": true,
+        "counters": {
+          "duplicate_resource_ids": 0,
+          "invalid_newscode_values": 0,
+          "provider_properties_in_iptc_namespace": 0,
+          "unknown_sport_terms": 0,
+          "unknown_sport_terms_distinct": 0,
+          "unverifiable_newscode_values": 0
+        },
+        "fixture": "corrected-sportradar-soccer",
+        "layers": {
+          "controlled_vocabulary": {
+            "detail": {
+              "invalid": [],
+              "ok": true,
+              "pinned_scheme_count": 17,
+              "undeclared_prefix": [],
+              "unverifiable": [],
+              "valid": [
+                {
+                  "forms": [
+                    "iri"
+                  ],
+                  "scheme": "mediatopic",
+                  "source": "vocabularies/mediatopic.ttl",
+                  "value": "http://cv.iptc.org/newscodes/mediatopic/20001065"
+                },
+                {
+                  "forms": [
+                    "iri"
+                  ],
+                  "scheme": "spct",
+                  "source": "vocabularies/spct.ttl",
+                  "value": "http://cv.iptc.org/newscodes/spct/season"
+                },
+                {
+                  "forms": [
+                    "iri"
+                  ],
+                  "scheme": "speventoutcome",
+                  "source": "vocabularies/speventoutcome.ttl",
+                  "value": "http://cv.iptc.org/newscodes/speventoutcome/loss"
+                },
+                {
+                  "forms": [
+                    "iri"
+                  ],
+                  "scheme": "speventoutcome",
+                  "source": "vocabularies/speventoutcome.ttl",
+                  "value": "http://cv.iptc.org/newscodes/speventoutcome/win"
+                },
+                {
+                  "forms": [
+                    "iri"
+                  ],
+                  "scheme": "speventstatus",
+                  "source": "vocabularies/speventstatus.ttl",
+                  "value": "http://cv.iptc.org/newscodes/speventstatus/post-event"
+                }
+              ]
+            },
+            "name": "controlled_vocabulary",
+            "ok": true
+          },
+          "counter_detail": {
+            "duplicate_resource_ids": [],
+            "provider_properties_in_iptc_namespace": [],
+            "unknown_sport_terms": []
+          },
+          "jsonld_parse": {
+            "detail": {
+              "stage": "ok",
+              "triples": 80
+            },
+            "name": "jsonld_parse",
+            "ok": true
+          },
+          "machina_profile": {
+            "detail": {
+              "conforms": true,
+              "context_bindings": {
+                "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+                "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+                "dcterms": "http://purl.org/dc/terms/",
+                "ikos": "http://cv.iptc.org/newscodes/ikos/",
+                "machina": "https://machina.gg/ns/sport/1.0/",
+                "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+                "owl": "http://www.w3.org/2002/07/owl#",
+                "prov": "http://www.w3.org/ns/prov#",
+                "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "schema": "https://schema.org/",
+                "schemaorg": "https://schema.org/",
+                "sh": "http://www.w3.org/ns/shacl#",
+                "skos": "http://www.w3.org/2004/02/skos/core#",
+                "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+                "spamfstat": "https://sportschema.org/ontologies/american-football/",
+                "spbblstat": "https://sportschema.org/ontologies/baseball/",
+                "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+                "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+                "spct": "http://cv.iptc.org/newscodes/spct/",
+                "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+                "spespstat": "https://sportschema.org/ontologies/esports/",
+                "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+                "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+                "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+                "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+                "spgolf": "https://sportschema.org/ontologies/golf/",
+                "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+                "spgolstat": "https://sportschema.org/ontologies/golf/",
+                "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+                "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+                "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+                "sport": "https://sportschema.org/ontologies/main/",
+                "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+                "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+                "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+                "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+                "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+                "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+                "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+                "spsocstat": "https://sportschema.org/ontologies/soccer/",
+                "spstat": "https://sportschema.org/ontologies/corestatistics/",
+                "sptenstat": "https://sportschema.org/ontologies/tennis/",
+                "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+                "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+                "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+                "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+                "xsd": "http://www.w3.org/2001/XMLSchema#"
+              },
+              "finding_count": 0,
+              "findings": [],
+              "node_id_count": 15,
+              "sport_terms_used": [
+                "sport:Competition",
+                "sport:Event",
+                "sport:Site",
+                "sport:Team",
+                "sport:TeamParticipation",
+                "sport:alignment",
+                "sport:attendance",
+                "sport:competitionType",
+                "sport:eventInCompetition",
+                "sport:eventOutcome",
+                "sport:eventStatus",
+                "sport:location",
+                "sport:parent",
+                "sport:participation",
+                "sport:participationBy",
+                "sport:score",
+                "sport:sport",
+                "sport:startDateTime"
+              ]
+            },
+            "name": "machina_profile",
+            "ok": true
+          },
+          "official_shacl": {
+            "detail": {
+              "conforms": true,
+              "official_class_instances": 8,
+              "report_text_head": [
+                "Validation Report"
+              ],
+              "result_count": 0,
+              "results": [],
+              "vacuous": false
+            },
+            "name": "official_shacl",
+            "ok": true
+          }
+        },
+        "path": "tools/iptc/fixtures/corrected/sportradar-soccer-graph.json"
+      },
       "corrected-sports-skills-espn-soccer": {
         "conforms": true,
         "counters": {
@@ -13344,17 +13519,17 @@
       "unverifiable_newscode_values": 14
     },
     "corrected": {
-      "conforming": 2,
-      "documents": 2,
+      "conforming": 3,
+      "documents": 3,
       "duplicate_resource_ids": 0,
       "duplicate_resource_ids_unknown": 0,
       "invalid_newscode_values": 0,
       "invalid_newscode_values_unknown": 0,
       "layer_pass": {
-        "controlled_vocabulary": 2,
-        "jsonld_parse": 2,
-        "machina_profile": 2,
-        "official_shacl": 2
+        "controlled_vocabulary": 3,
+        "jsonld_parse": 3,
+        "machina_profile": 3,
+        "official_shacl": 3
       },
       "provider_properties_in_iptc_namespace": 0,
       "provider_properties_in_iptc_namespace_unknown": 0,

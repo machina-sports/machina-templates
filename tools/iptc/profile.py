@@ -73,6 +73,20 @@ URI_SCHEMES = frozenset({
     "doi", "isbn", "uuid", "did", "geo", "news", "sms", "ws", "wss",
 })
 
+#: Properties whose value is a foreign identifier by construction, so a
+#: CURIE-shaped value is not a term reference and an unbound prefix is not a
+#: defect.
+#:
+#: One property, deliberately. ``machina:providerId`` exists to carry a
+#: provider's own identifier verbatim, and several providers delimit theirs with
+#: colons (Sportradar's ``sr:competitor:2814``, Opta's stage and tournament
+#: keys). Reading one as a controlled-vocabulary reference reports the sanctioned
+#: crosswalk as the very defect the crosswalk is the fix for — the trap already
+#: fenced off for ``provider-id-as-resource-id`` above, and fenced here on the
+#: same grounds and no wider. Every sibling ``machina:`` property carries a value
+#: from Machina's own vocabulary, where a prefix nothing binds is still broken.
+PROVIDER_IDENTIFIER_VALUE_PROPERTIES = frozenset({"machina:providerId"})
+
 
 @dataclass
 class Finding:
@@ -261,7 +275,7 @@ class _Walker:
             )
             return
 
-        if isinstance(value, str):
+        if isinstance(value, str) and key not in PROVIDER_IDENTIFIER_VALUE_PROPERTIES:
             curie = _CURIE.match(value)
             prefix = curie.group(1) if curie else None
             if prefix and prefix.lower() not in URI_SCHEMES and prefix not in self._active_context():

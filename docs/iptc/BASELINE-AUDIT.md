@@ -70,6 +70,7 @@ The 'after' rows. Each is emitted by `tools/iptc/canonical/serialize.py` from a 
 | Fixture | L1 JSON-LD | L2 official SHACL | L3 Machina profile | L4 vocabulary | unknown `sport:` | invalid codes | dup IDs | provider leaks |
 |---|---|---|---|---|---|---|---|---|
 | `corrected-api-football-soccer` | pass | pass | pass | pass | 0 | 0 | 0 | 0 |
+| `corrected-sportradar-soccer` | pass | pass | pass | pass | 0 | 0 | 0 | 0 |
 | `corrected-sports-skills-espn-soccer` | pass | pass | pass | pass | 0 | 0 | 0 | 0 |
 
 ## Baseline — current mapping outputs
@@ -916,6 +917,31 @@ Each row proves one detector actually fires. A green row here would mean the cor
 **Layer 4 — controlled vocabulary:** 5 valid, 0 invalid, 0 unresolvable prefix, 0 unverifiable.
 
 
+### `corrected-sportradar-soccer`
+
+- **section:** corrected
+- **document:** `tools/iptc/fixtures/corrected/sportradar-soccer-graph.json`
+- **fixture class:** corrected-serializer-output
+- **derived from:** `agent-templates/iptc-mappings/example-sportradar.json`
+- **provenance:** SANITIZED CHECKED-IN PROVIDER EXAMPLE. No Sportradar endpoint was called and no credential exists in this repository. The source is the provider example already committed at agent-templates/iptc-mappings/example-sportradar.json, read verbatim and unmodified by this task.
+- **RIGHTS:** Shape evidence, NOT an entitlement. A checked-in provider example proves what a Sportradar summary payload looks like; it grants this repository no right to redistribute Sportradar data. The observation behind this graph is `licensed-provider-example-fixture`, prototype_only true, commercial_use false, and tools.iptc.validate_graph.rights_findings on the envelope beside it returns `rights-prototype-only` exactly once for consumer_tier `production`. The gate is also the command: `python3 tools/iptc/validate_graph.py --consumer-tier production tools/iptc/fixtures/corrected/sportradar-soccer-envelope.json` reports the refusal and exits nonzero. Tests assert both. Do not read this fixture, or the audit row it produces, as a commercial redistribution claim.
+- **transformation:** Read by tools/iptc/canonical/adapters/sportradar_soccer.py into the canonical observation checked in at tools/iptc/fixtures/observations/sportradar-soccer-observation.json with observed_at 2026-03-01T22:05:00+00:00, then serialized by tools/iptc/canonical/serialize.py. Reproducible byte-for-byte from those two inputs; tests/test_iptc_sportradar_soccer_adapter.py asserts it rather than trusting it. The source is the RAW provider summary payload (`sport_event` + `sport_event_status`), NOT this repository's own mapping output: the matching baseline row `sportradar-soccer-event` is the legacy output for the same match and is read by nothing here.
+- **emitted by:** tools/iptc/canonical/serialize.py sport_schema_graph, via canonical_envelope with surrogate_resolver('sportradar-soccer'). The full envelope a consumer receives is checked in beside it at tools/iptc/fixtures/corrected/sportradar-soccer-envelope.json; this file is the same graph standalone, because the harness validates JSON-LD documents rather than envelopes.
+- **coverage:** Sportradar soccer event, corrected. Capability tier `core`: the summary payload carries no clock, no period reading, no timeline and no player statistics, so `live` and `advanced` are correctly not claimed. It does carry attendance, a venue country and a stated winner, which the API-Football row does not.
+- **role:** The second corrected output derived from a real provider shape, and the first that reads a RAW provider payload for a provider whose legacy mapping output is also in the baseline set. The matching baseline row, `sportradar-soccer-event`, is that legacy output for the same fixture; the two rows read together are the before and after for one match, one from the mapping and one from the provider.
+- **MISSING EVIDENCE:** The source is a checked-in EXAMPLE, not a captured production response, and it carries real club, competition and venue names copied verbatim from that already-committed example. So: (1) it is one finished fixture, which exercises no pre-match, in-play, drawn, extra-time or abandoned path — those are covered by adapter unit tests over locally-mutated copies of this payload, not by a checked-in provider document; (2) it is a single-sport, single-endpoint shape, so a green row here is evidence about Sportradar's soccer summary payload and about nothing else; (3) NO TIMELINE IS COVERED. The plan expected this row to reach the `live` tier from `sportradar-soccer-timeline.json`, and it does not: that baseline fixture is a hand-authored mapping-contract shape for a DIFFERENT, synthetic match (sr:competitor:9001/9002), so joining it to this real fixture would fabricate a timeline for a real match. `sport:Action`, `spactionclass:` and the unpinned soccer action-type rule are exercised by the `corrected-stats-perform-opta-soccer` row instead; (4) four real provider absences are visible and deliberately NOT filled in — no competition phase (`sport_event_context.round` is `{"number": 1}`, an ordinal inside a season, and `stage` has no identifier), no competition type (`stage.type` describes the stage, not the competition), no clock (`period_scores` are scores per period, not a reading) and no outcome type — so the row understates what a richer payload could carry, which is the correct direction to be wrong in; (5) `sport_event_status.match_status` is deliberately unmapped and survives only in `raw`, so this row makes no claim about Sportradar's half-by-half status vocabulary.
+- **note:** Canonical identity here is a marked provider-scoped surrogate (`urn:machina:sports:<kind>:x<blake2b-128>`). The provider's own identifiers — sport_event sr:sport_event:61623432, competition sr:competition:8, season sr:season:130805, venue sr:venue:1307 and competitors sr:competitor:2814 and sr:competitor:2836 — appear only as machina:ProviderIdentifier crosswalk evidence with an evidence pointer back to the observation field each came from. No `urn:sportradar:` identifier and no bare `sr:` token survives in any resource identifier. The crosswalk namespace is `sportradar-soccer` rather than `sportradar`: Sportradar publishes a separate feed per sport, and one namespace across feeds would claim their identifier spaces are one, which nothing here has checked.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
+
+**Layer 1 — JSON-LD parse:** pass, 80 triples.
+
+**Layer 2 — official SHACL:** conforms, over 8 instance(s) of an official IPTC class.
+
+**Layer 3 — Machina profile:** conforms.
+
+**Layer 4 — controlled vocabulary:** 5 valid, 0 invalid, 0 unresolvable prefix, 0 unverifiable.
+
+
 ### `corrected-sports-skills-espn-soccer`
 
 - **section:** corrected
@@ -1126,7 +1152,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 
 **10 of 14 baseline fixtures are `mapping-contract-synthetic`**, because no checked-in sample of those mappings' output exists and this work may not call a licensed provider to get one. Those fixtures faithfully reproduce the SHAPE each mapping emits — the key set, the nesting, the context — but their values are synthetic. Read their rows as statements about the mapping contract, not as production volumes: `api-football-actions`, `api-football-team-stats`, `api-football-player-stats`, `sportradar-soccer-timeline`, `stats-perform-opta-event`, `stats-perform-opta-timeline`, `sportradar-tennis-event`, `sportradar-nfl-event`, `sportradar-mlb-event`, `american-football-event`.
 
-**The same rule governs the 2 `corrected-serializer-output` fixtures, and it is worth stating twice because a passing row invites the stronger reading.** Each one is derived from checked-in source evidence — a sanitized provider example or a mapping-contract-synthetic payload — and NO licensed provider was called and no credential was used to produce any of them. A checked-in example is evidence of a payload's *shape*; it is not an entitlement, and none of these fixtures is a claim that this repository may commercially redistribute the provider's data. Every observation behind them is marked `prototype_only` with `commercial_use: false`, which `rights_findings(envelope, consumer_tier="production")` refuses. Per-fixture source, rights and limitations: `corrected-api-football-soccer`, `corrected-sports-skills-espn-soccer`.
+**The same rule governs the 3 `corrected-serializer-output` fixtures, and it is worth stating twice because a passing row invites the stronger reading.** Each one is derived from checked-in source evidence — a sanitized provider example or a mapping-contract-synthetic payload — and NO licensed provider was called and no credential was used to produce any of them. A checked-in example is evidence of a payload's *shape*; it is not an entitlement, and none of these fixtures is a claim that this repository may commercially redistribute the provider's data. Every observation behind them is marked `prototype_only` with `commercial_use: false`, which `rights_findings(envelope, consumer_tier="production")` refuses. Per-fixture source, rights and limitations: `corrected-api-football-soccer`, `corrected-sports-skills-espn-soccer`, `corrected-sportradar-soccer`.
 
 ### Missing evidence, stated rather than papered over
 

@@ -801,9 +801,13 @@ class TestCorrectedSectionIsRegistered(unittest.TestCase):
         self.entries = report_module.load_provenance()["corrected"]
         self.entry = next(e for e in self.entries if e["fixture"] == FIXTURE_NAME)
 
-    def test_the_section_now_holds_both_corrected_fixtures(self):
-        self.assertEqual([e["fixture"] for e in self.entries],
-                         ["corrected-api-football-soccer", FIXTURE_NAME])
+    def test_the_section_holds_this_fixture_beside_the_api_football_one(self):
+        """Membership, not the whole list. This test is about the reference
+        contract taking its place beside the first corrected output; pinning the
+        list would make every later provider fail a test about sports-skills."""
+        registered = [e["fixture"] for e in self.entries]
+        self.assertIn("corrected-api-football-soccer", registered)
+        self.assertIn(FIXTURE_NAME, registered)
 
     def test_the_graph_is_registered_and_resolvable(self):
         self.assertEqual(self.entry["class"], "corrected-serializer-output")
@@ -845,9 +849,25 @@ class TestNoSportsSkillsAdapterLivesHere(unittest.TestCase):
         )
         self.assertEqual(offenders, [])
 
-    def test_the_adapter_package_holds_only_the_api_football_reading(self):
+    #: Every provider reading this repository owns. A15 extends it one adapter at
+    #: a time, and that is the point: a module appearing here without a line in
+    #: this list is a reading nobody decided to own.
+    OWNED_ADAPTERS = ("__init__.py", "api_football.py", "sportradar_soccer.py")
+
+    def test_the_adapter_package_holds_only_readings_this_repository_owns(self):
+        """An inventory rather than a pin on two files. A15 adds provider
+        adapters, so pinning the package contents would fail on planned growth
+        while still not saying what the rule is; an explicit owned list fails on
+        exactly the thing that matters — a module nobody decided to own."""
         self.assertEqual(sorted(p.name for p in self.ADAPTERS.glob("*.py")),
-                         ["__init__.py", "api_football.py"])
+                         sorted(self.OWNED_ADAPTERS))
+
+    def test_no_owned_adapter_is_a_sports_skills_or_espn_reading(self):
+        """The list above cannot be extended into the thing this class forbids."""
+        for name in self.OWNED_ADAPTERS:
+            with self.subTest(name=name):
+                self.assertNotIn("sports_skills", name)
+                self.assertNotIn("espn", name)
 
     def test_no_such_module_is_importable(self):
         for name in ("tools.iptc.canonical.adapters.sports_skills_espn",
