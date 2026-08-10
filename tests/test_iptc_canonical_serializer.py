@@ -30,6 +30,7 @@ What is being defended here:
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import sys
@@ -595,6 +596,69 @@ class TestVocab(unittest.TestCase):
                      "SOCCER_POSITION"):
             with self.subTest(table=name):
                 self.assertTrue(getattr(vocab, name))
+
+
+#: Modules destined to be copied byte-exact into ``sports-skills``, a published
+#: zero-dependency package that supports Python 3.9 and cannot import this
+#: repository. ``export_official_terms.py`` is deliberately not here: it is a
+#: generator, it runs only in this repository, and it is not vendored.
+VENDORED_RUNTIME_MODULES = (
+    "observation.py",
+    "ids.py",
+    "capabilities.py",
+    "vocab.py",
+)
+
+
+class TestVendoringConstraints(unittest.TestCase):
+    """The vendoring boundary, checked here rather than discovered downstream.
+
+    Every one of these failures would otherwise surface as a broken install of a
+    published package, which is the most expensive place to find them.
+    """
+
+    def module_source(self, name: str) -> str:
+        return (REPO_ROOT / "tools/iptc/canonical" / name).read_text(encoding="utf-8")
+
+    def test_every_vendored_module_parses_under_python_3_9(self):
+        for name in VENDORED_RUNTIME_MODULES:
+            with self.subTest(module=name):
+                ast.parse(
+                    self.module_source(name), filename=name, feature_version=(3, 9)
+                )
+
+    def test_no_vendored_module_imports_tools(self):
+        for name in VENDORED_RUNTIME_MODULES:
+            with self.subTest(module=name):
+                tree = ast.parse(self.module_source(name), filename=name)
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            self.assertNotEqual(alias.name.split(".")[0], "tools")
+                    elif isinstance(node, ast.ImportFrom):
+                        root = (node.module or "").split(".")[0]
+                        self.assertNotEqual(root, "tools")
+                        # level >= 2 escapes tools/iptc/canonical/ into
+                        # tools/iptc/, which does not exist downstream.
+                        self.assertLessEqual(node.level, 1, "relative import escapes the package")
+
+    def test_no_vendored_module_imports_a_third_party_package(self):
+        stdlib = set(sys.stdlib_module_names)
+        for name in VENDORED_RUNTIME_MODULES:
+            tree = ast.parse(self.module_source(name), filename=name)
+            for node in ast.walk(tree):
+                roots = []
+                if isinstance(node, ast.Import):
+                    roots = [alias.name.split(".")[0] for alias in node.names]
+                elif isinstance(node, ast.ImportFrom) and node.level == 0:
+                    roots = [(node.module or "").split(".")[0]]
+                for root in roots:
+                    with self.subTest(module=name, imported=root):
+                        self.assertTrue(
+                            root in stdlib,
+                            "{0} imports '{1}', which is not in the standard "
+                            "library".format(name, root),
+                        )
 
 
 def canonical_pin() -> str:
