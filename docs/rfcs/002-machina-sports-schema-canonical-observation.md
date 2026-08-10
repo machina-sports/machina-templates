@@ -437,8 +437,9 @@ claim — citing a profile and a pin — about a document nobody validated. The
 message carries every error rather than the first, so one run tells the adapter
 author everything to fix.
 
-The gate is `validate_graph.rights_findings(envelope, consumer_tier="production")`.
-Empty means the tier may consume the envelope.
+The gate is `validate_graph.rights_findings(envelope, consumer_tier="production")`
+— implemented in `tools/iptc/validate.py` beside the layers it is reported with,
+and re-exported under that name. Empty means the tier may consume the envelope.
 
 | Code | When |
 |---|---|
@@ -458,9 +459,37 @@ Four decisions in that table are deliberate:
 - **The function's default tier is `production`**, the strict one. A gate whose
   default is permissive is a gate nobody notices is off. `validate_graph.py`'s
   `--consumer-tier` flag defaults to `prototype` instead, so the command's
-  existing output is unchanged; every checked-in fixture predates the gate.
+  verdict over checked-in fixtures is unchanged; every one of them predates the
+  gate.
 - **An unknown tier returns a finding rather than raising.** A raise can be caught
   and mistaken for "no findings"; a finding is a refusal by construction.
+
+### 9.1 The gate at the command line
+
+`validate_graph.py` accepts a canonical envelope as an input document and
+**enforces** `--consumer-tier` on it:
+
+```bash
+python3 tools/iptc/validate_graph.py --consumer-tier production <envelope.json>
+# FAIL  … rights_gate: consumer tier 'production' is refused this envelope
+#            - rights-prototype-only: …                     → exit status 1
+```
+
+Three properties make that a check rather than a label:
+
+- **An envelope is validated, not bounced.** Its inner `sport_schema_graph` goes
+  through the same layers as a standalone graph document, in memory, and the
+  result is reported under the path the caller named. Rejecting an envelope for
+  "not being JSON-LD" would answer a question nobody asked while leaving the
+  rights question unanswered.
+- **The rights verdict is a `rights_gate` layer** in both the human and the
+  `--json` output, and a refusal fails the run. An authorization flag that parses
+  and decides nothing is worse than no flag: it reads as a check that passed.
+- **A graph document gets no rights verdict at all** — not a passing one. Rights
+  live in the envelope, so `rights_gate` is reported as not applicable and the
+  document remains a valid input. Manufacturing a pass for a document that
+  cannot carry a licence claim is the same failure as reading an absent claim as
+  a permissive one.
 
 ---
 

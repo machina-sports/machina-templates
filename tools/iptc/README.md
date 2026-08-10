@@ -56,6 +56,10 @@ python3 tools/iptc/validate_graph.py         <doc.json>   # layers 1 + 2 + 3
 python3 tools/iptc/validate_terms.py         <doc.json>   # gates 1 + 4, against the pinned ontologies
 python3 tools/iptc/validate_vocabularies.py  <doc.json>   # layer 4 / gate 2, against the pinned TTLs
 
+# a canonical envelope is validated through its inner sport_schema_graph, and is
+# additionally gated on the rights it carries. A refused envelope exits nonzero.
+python3 tools/iptc/validate_graph.py --consumer-tier production <envelope.json>
+
 # each focused command also takes --all [--section baseline] [--json] [--verbose]
 python3 tools/iptc/validate_graph.py --all --section baseline
 python3 tools/iptc/validate_terms.py --list-official-terms

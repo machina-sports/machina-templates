@@ -99,6 +99,20 @@ def print_layer(result, layer: str, *, verbose: bool = False) -> None:
                 print(f"         - {code} x{count}")
         return
 
+    if layer == "rights_gate":
+        tier = detail["consumer_tier"]
+        if entry["ok"]:
+            print(f"    {mark} {layer}: consumer tier '{tier}' may consume this "
+                  f"envelope")
+        else:
+            print(f"    {mark} {layer}: consumer tier '{tier}' is refused this "
+                  f"envelope")
+        # A refusal is never hidden behind -v: the reader who did not pass the
+        # flag is the one who needs to know why the run failed.
+        for finding in detail["findings"]:
+            print(f"         - {finding['code']}: {finding['detail']}")
+        return
+
     if layer == "controlled_vocabulary":
         print(f"    {mark} {layer}: {len(detail['valid'])} valid, "
               f"{len(detail['invalid'])} invalid, "
