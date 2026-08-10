@@ -31,6 +31,7 @@ What is being defended here:
 from __future__ import annotations
 
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -40,6 +41,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from tools.iptc import canonical  # noqa: E402
+from tools.iptc.canonical import export_official_terms  # noqa: E402
 
 
 class TestVersionClaims(unittest.TestCase):
@@ -60,6 +62,45 @@ class TestVersionClaims(unittest.TestCase):
         rfc2 = REPO_ROOT / "docs/rfcs/002-machina-sports-schema-canonical-observation.md"
         self.assertTrue(rfc2.is_file())
         self.assertIn("canonical-observation/1", rfc2.read_text(encoding="utf-8"))
+
+
+class TestOfficialTermExport(unittest.TestCase):
+    """A4 — the allowlist is generated from the pin, never hand-maintained."""
+
+    def test_allowlist_is_reproducible_from_the_pin(self):
+        path = export_official_terms.OUTPUT_PATH
+        self.assertTrue(
+            path.is_file(),
+            "run: python -m tools.iptc.canonical.export_official_terms",
+        )
+        self.assertEqual(path.read_text(encoding="utf-8"), export_official_terms.render())
+
+    def test_allowlist_records_the_pin_it_was_generated_from(self):
+        payload = json.loads(export_official_terms.OUTPUT_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(payload["pin"], canonical_pin())
+        self.assertEqual(payload["target_version"], "1.1")
+
+    def test_allowlist_contains_a_verified_statistic_and_not_an_invented_one(self):
+        names = set(
+            json.loads(export_official_terms.OUTPUT_PATH.read_text(encoding="utf-8"))["local_names"]
+        )
+        self.assertIn("shotsTotal", names)
+        self.assertIn("startDateTime", names)
+        self.assertNotIn("machinaVibes", names)
+
+    def test_allowlist_holds_properties_only_and_not_classes(self):
+        """A class name in a property allowlist would let ``spsocstat:Team`` pass."""
+        names = set(
+            json.loads(export_official_terms.OUTPUT_PATH.read_text(encoding="utf-8"))["local_names"]
+        )
+        self.assertNotIn("Event", names)
+        self.assertNotIn("Team", names)
+
+
+def canonical_pin() -> str:
+    from tools.iptc.reference import UPSTREAM_COMMIT
+
+    return UPSTREAM_COMMIT
 
 
 if __name__ == "__main__":
