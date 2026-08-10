@@ -41,7 +41,41 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from tools.iptc import canonical  # noqa: E402
+from tools.iptc import profile as profile_module  # noqa: E402
 from tools.iptc.canonical import export_official_terms  # noqa: E402
+from tools.iptc.canonical.observation import (  # noqa: E402
+    PLACEHOLDERS,
+    validate_observation,
+)
+
+#: The smallest observation that is genuinely valid: two participants, every
+#: required field, nothing optional. Every negative case below is this document
+#: with exactly one thing broken, so a failure names the rule it broke.
+MINIMAL = {
+    "schema_version": "canonical-observation/1",
+    "observation": {
+        "provider": {"namespace": "api-football", "family": "licensed"},
+        "observed_at": "2026-03-01T22:05:00+00:00",
+        "sport": {"medtop": "20001065", "key": "soccer"},
+        "competition": {
+            "provider_id": "39",
+            "name": "Synthetic Premier Division",
+            "type": "recurring-competition",
+        },
+        "event": {
+            "provider_id": "9001",
+            "label": "H vs A",
+            "start_time": "2026-03-01T20:00:00+00:00",
+            "status": "closed",
+        },
+        "participants": [
+            {"kind": "team", "provider_id": "9011", "name": "H",
+             "alignment": "home", "score": "2"},
+            {"kind": "team", "provider_id": "9012", "name": "A",
+             "alignment": "away", "score": "1"},
+        ],
+    },
+}
 
 
 class TestVersionClaims(unittest.TestCase):
@@ -62,6 +96,176 @@ class TestVersionClaims(unittest.TestCase):
         rfc2 = REPO_ROOT / "docs/rfcs/002-machina-sports-schema-canonical-observation.md"
         self.assertTrue(rfc2.is_file())
         self.assertIn("canonical-observation/1", rfc2.read_text(encoding="utf-8"))
+
+
+class TestObservationValidation(unittest.TestCase):
+    """A2 — fabrication is caught at the adapter boundary or it is not caught."""
+
+    def test_minimal_observation_is_valid(self):
+        self.assertEqual(validate_observation(MINIMAL), [])
+
+    def test_wrong_schema_version_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["schema_version"] = "canonical-observation/2"
+        self.assertIn("schema_version", " ".join(validate_observation(bad)))
+
+    def test_every_required_field_is_required(self):
+        """One subtest per required field, so a regression names the field."""
+        required = [
+            ("provider", "namespace"),
+            ("observed_at",),
+            ("sport", "medtop"),
+            ("competition", "provider_id"),
+            ("event", "provider_id"),
+            ("event", "start_time"),
+            ("event", "status"),
+        ]
+        for path in required:
+            with self.subTest(field=".".join(path)):
+                bad = copy.deepcopy(MINIMAL)
+                node = bad["observation"]
+                for key in path[:-1]:
+                    node = node[key]
+                node.pop(path[-1])
+                errors = validate_observation(bad)
+                self.assertIn(
+                    "observation." + ".".join(path) + ": required field is missing", errors
+                )
+
+    def test_one_participant_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"] = bad["observation"]["participants"][:1]
+        self.assertIn("observation.participants: need at least 2", validate_observation(bad))
+
+    def test_null_and_placeholder_are_rejected_at_the_boundary(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["site"] = {
+            "provider_id": "9101", "name": "Unknown Venue", "city": None,
+        }
+        errors = " ".join(validate_observation(bad))
+        self.assertIn("placeholder", errors)
+        self.assertIn("null", errors)
+
+    def test_empty_string_is_rejected_as_its_own_error(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["event"]["label"] = ""
+        self.assertIn("empty string", " ".join(validate_observation(bad)))
+
+    def test_placeholder_set_matches_the_profile_the_harness_enforces(self):
+        """Vendoring forces the set to be duplicated; this stops it diverging.
+
+        ``observation.py`` is copied byte-exact into a package that cannot import
+        ``tools.iptc.profile``, so it carries its own copy. Two copies of one
+        list drift; the only question is when. This is the test that notices.
+        """
+        self.assertEqual(PLACEHOLDERS, frozenset(profile_module.PLACEHOLDER_VALUES))
+
+    def test_provider_payload_under_raw_is_not_placeholder_scanned(self):
+        """``raw`` is verbatim provider bytes and never reaches the graph.
+
+        A real payload is full of nulls. Scanning it would make every genuine
+        observation invalid, which would end with adapters stripping ``raw`` and
+        the provenance trail disappearing.
+        """
+        ok = copy.deepcopy(MINIMAL)
+        ok["observation"]["raw"] = {"venue": None, "status_text": "TBD", "note": ""}
+        self.assertEqual(validate_observation(ok), [])
+
+    def test_naive_datetime_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["event"]["start_time"] = "2026-03-01T20:00:00"
+        self.assertIn("observation.event.start_time", " ".join(validate_observation(bad)))
+
+    def test_impossible_datetime_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["observed_at"] = "2026-02-30T25:00:00+00:00"
+        self.assertIn("observation.observed_at", " ".join(validate_observation(bad)))
+
+    def test_a_date_without_a_time_is_not_a_datetime(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["event"]["start_time"] = "2026-03-01"
+        self.assertIn("observation.event.start_time", " ".join(validate_observation(bad)))
+
+    def test_unknown_statistic_curie_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0]["statistics"] = {"spsocstat:machinaVibes": "9"}
+        self.assertIn("spsocstat:machinaVibes", " ".join(validate_observation(bad)))
+
+    def test_known_statistic_curie_is_accepted(self):
+        ok = copy.deepcopy(MINIMAL)
+        ok["observation"]["participants"][0]["statistics"] = {"spsocstat:shotsTotal": "14"}
+        self.assertEqual(validate_observation(ok), [])
+
+    def test_a_bare_statistic_name_without_a_prefix_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0]["statistics"] = {"shotsTotal": "14"}
+        self.assertIn("shotsTotal", " ".join(validate_observation(bad)))
+
+    def test_a_numeric_statistic_is_rejected_because_the_shapes_say_string(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0]["statistics"] = {"spsocstat:shotsTotal": 14}
+        self.assertIn("must be a string", " ".join(validate_observation(bad)))
+
+    def test_malformed_rights_block_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["rights"] = {"data_class": "public-non-commercial"}
+        errors = " ".join(validate_observation(bad))
+        self.assertIn("observation.rights.prototype_only", errors)
+        self.assertIn("observation.rights.commercial_use", errors)
+
+    def test_rights_flags_must_be_booleans_not_truthy_strings(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["rights"] = {
+            "data_class": "public-non-commercial",
+            "prototype_only": "true",
+            "commercial_use": "false",
+        }
+        self.assertIn("must be a boolean", " ".join(validate_observation(bad)))
+
+    def test_malformed_adapter_provenance_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["adapter"] = {"name": "sports_skills.canonical.adapters.football"}
+        self.assertIn("observation.adapter.version", " ".join(validate_observation(bad)))
+
+    def test_participant_missing_its_own_required_fields_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][1].pop("name")
+        self.assertIn(
+            "observation.participants[1].name: required field is missing",
+            validate_observation(bad),
+        )
+
+    def test_a_team_participant_without_an_alignment_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0].pop("alignment")
+        self.assertIn(
+            "observation.participants[0].alignment: required field is missing",
+            validate_observation(bad),
+        )
+
+    def test_an_unknown_participant_kind_is_rejected(self):
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0]["kind"] = "mascot"
+        self.assertIn("mascot", " ".join(validate_observation(bad)))
+
+    def test_every_error_is_reported_not_just_the_first(self):
+        """A validator that stops at the first error makes fixing an adapter a
+        game of whack-a-mole, and reviewers stop running it."""
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"].pop("observed_at")
+        bad["observation"]["event"].pop("status")
+        bad["observation"]["participants"] = bad["observation"]["participants"][:1]
+        self.assertEqual(len(validate_observation(bad)), 3, validate_observation(bad))
+
+    def test_validation_never_mutates_the_document(self):
+        """No silent defaults: a validator that repairs hides the adapter bug."""
+        document = copy.deepcopy(MINIMAL)
+        before = json.dumps(document, sort_keys=True)
+        validate_observation(document)
+        self.assertEqual(json.dumps(document, sort_keys=True), before)
+
+    def test_a_non_dict_document_is_an_error_and_not_an_exception(self):
+        self.assertNotEqual(validate_observation([]), [])
 
 
 class TestOfficialTermExport(unittest.TestCase):

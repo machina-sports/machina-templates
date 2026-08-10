@@ -360,6 +360,17 @@ Those modules are therefore **Python 3.9-compatible and standard-library only**,
 and must not import `tools.*`. `export_official_terms.py` may — it is a
 generator, it runs only in this repository, and it is not vendored.
 
+Two consequences a vendoring reviewer has to act on:
+
+- A vendored module may use a package-relative import (`from . import
+  SCHEMA_VERSION`), so the receiving `_vendored/__init__.py` must define the
+  version constants in §0. If it does not, the import fails loudly at load time
+  rather than producing a subtly mislabelled envelope.
+- `PLACEHOLDERS` in `observation.py` is a second copy of
+  `profile.PLACEHOLDER_VALUES`, forced by the same boundary. A test in this
+  repository asserts the two are equal; that assertion is the only thing keeping
+  them from drifting, so it is not optional.
+
 Hash manifests on both sides catch a file changing without the manifest being
 regenerated. Cross-repo *equality* of the two manifests is a **stated review
 check, not an automated one**: neither CI can reach the other repository, and
