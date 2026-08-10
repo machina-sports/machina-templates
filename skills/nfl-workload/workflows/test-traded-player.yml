@@ -1,0 +1,107 @@
+workflow:
+  name: test-traded-player
+  title: TEST - traded-player stint disclosure
+  description: 'REGRESSION TEST for the traded-player redesign, end to end including the prompt. Shaheed
+    held two 2025 stints (NO 68 opportunities, SEA 32) while Chase held one (CIN 178), so a comparison
+    between them uses part of one player''s season and all of the other''s. Asserts three layers: (1)
+    STRUCTURE - selected_team differs, NO vs CIN, and other_stints is non-empty for Shaheed and empty
+    for Chase; (2) CAVEAT - names the split and the 68-of-100 total; (3) POINT-OF-CITATION labelling under
+    prompt rule 7a - every key_factors entry citing a Shaheed opportunity/share/WOPR figure carries a
+    stint marker, and no entry compares 178 against 68 unlabelled. Layer 3 is enforced by an LLM, so assertions
+    are SUBSTRING-based on ''stint'' rather than exact strings: phrasing varies run to run (''0.305 (Shaheed''s
+    NO stint)'' vs ''(0.305, NO stint)'') while the marker does not. Run this several times - a single
+    pass does not establish determinism. Writes no documents.'
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    season: $.get('season', 2025)
+    week: $.get('week', 17)
+    position: $.get('position', 'WR')
+  outputs:
+    a_selected_team: $.get('sa_team', '')
+    b_selected_team: $.get('sb_team', '')
+    a_other_stints: $.get('sa_stints', [])
+    b_other_stints: $.get('sb_stints', [])
+    key_factors: $.get('rec', {}).get('key_factors', [])
+    reasoning: $.get('rec', {}).get('reasoning', '')
+    caveat: $.get('rec', {}).get('caveat', '')
+    assert_teams_differ: $.get('sa_team', '') != $.get('sb_team', '') and $.get('sa_team', '') == 'NO'
+      and $.get('sb_team', '') == 'CIN'
+    assert_a_has_stints: len($.get('sa_stints', [])) == 1 and $.get('sa_stints', [{}])[0].get('team')
+      == 'SEA'
+    assert_b_no_stints: len($.get('sb_stints', [])) == 0
+    assert_caveat_names_split: '''NO stint'' in $.get(''rec'', {}).get(''caveat'', '''') and ''SEA'' in
+      $.get(''rec'', {}).get(''caveat'', '''')'
+    assert_caveat_names_total: '''68 of 100'' in $.get(''rec'', {}).get(''caveat'', '''')'
+    assert_kf_shaheed_figures_labelled: all('stint' in e for e in $.get('rec', {}).get('key_factors',
+      []) if '0.305' in e or '68' in e)
+    assert_kf_label_present: any('stint' in e for e in $.get('rec', {}).get('key_factors', []))
+    assert_kf_no_bare_comparison: not any(('178' in e and '68' in e and 'stint' not in e) for e in $.get('rec',
+      {}).get('key_factors', []))
+    assert_reasoning_labelled: '''stint'' in $.get(''rec'', {}).get(''reasoning'', '''')'
+    assert_reasoning_no_bare_comparison: not ('178' in $.get('rec', {}).get('reasoning', '') and '68'
+      in $.get('rec', {}).get('reasoning', '') and 'stint' not in $.get('rec', {}).get('reasoning', ''))
+    unlabelled_kf_entries: '[e for e in $.get(''rec'', {}).get(''key_factors'', []) if (''0.305'' in e
+      or ''68'' in e) and ''stint'' not in e]'
+    result: ($.get('sa_team', '') == 'NO' and $.get('sb_team', '') == 'CIN' and len($.get('sa_stints',
+      [])) == 1 and len($.get('sb_stints', [])) == 0 and 'NO stint' in $.get('rec', {}).get('caveat',
+      '') and all('stint' in e for e in $.get('rec', {}).get('key_factors', []) if '0.305' in e or '68'
+      in e) and not any(('178' in e and '68' in e and 'stint' not in e) for e in $.get('rec', {}).get('key_factors',
+      [])) and 'stint' in $.get('rec', {}).get('reasoning', '')) and 'PASS' or 'FAIL'
+    workflow-status: $.get('rec', {}) and 'executed' or 'skipped'
+  tasks:
+  - type: connector
+    name: lookup-pair
+    description: Shaheed (two stints) vs Chase (one). Lifts stint provenance for both the structural assertions
+      and the prompt's _4-stints section.
+    connector:
+      name: nfl-workload
+      command: get_player_pair_workload
+    continue_on_error: true
+    inputs:
+      season: $.get('season', 2025)
+      week: $.get('week', 17)
+      position: $.get('position', 'WR')
+      player_a_name: '''Shaheed'''
+      player_b_name: '''Chase'''
+    outputs:
+      a_row: $.get('player_a', {}).get('player') or {}
+      b_row: $.get('player_b', {}).get('player') or {}
+      sa_team: $.get('player_a', {}).get('selected_team') or ''
+      sb_team: $.get('player_b', {}).get('selected_team') or ''
+      sa_stints: $.get('player_a', {}).get('other_stints', [])
+      sb_stints: $.get('player_b', {}).get('other_stints', [])
+      a_stint_block: '{''selected_team'': $.get(''player_a'', {}).get(''selected_team''), ''other_stints'':
+        $.get(''player_a'', {}).get(''other_stints'', [])}'
+      b_stint_block: '{''selected_team'': $.get(''player_b'', {}).get(''selected_team''), ''other_stints'':
+        $.get(''player_b'', {}).get(''other_stints'', [])}'
+  - type: prompt
+    name: fantasy-explain-prompt
+    description: 'DRIFT WARNING: This duplicates fantasy-explain-reasoning''s prompt wiring rather than
+      invoking it directly. If that workflow''s prompt task changes, this test must be updated to match
+      or it will silently test stale behavior. Invoking it is not an option: probed 2026-08-10, type:
+      workflow tasks require config.detached: true (synchronous nested workflows are not supported), so
+      a nested call cannot return the recommendation these assertions read. --- The task NAME must equal
+      the prompt name: the engine resolves prompts by task name, and calling this task ''explain'' produced
+      ''Prompt not found (id=None name=explain)''. _3-context is passed empty here: this test is about
+      stint provenance, and leaving context out keeps the caveat''s stint half isolated from its availability
+      half.'
+    condition: $.get('sa_team', '') != '' and $.get('sb_team', '') != ''
+    connector:
+      name: google-genai
+      command: invoke_prompt
+      location: global
+      model: gemini-2.5-flash
+      provider: vertex_ai
+    inputs:
+      _1-player-a: $.get('a_row', {})
+      _2-player-b: $.get('b_row', {})
+      _3-context: '{''player_a'': {}, ''player_b'': {}}'
+      _4-stints: '{''player_a'': $.get(''a_stint_block'', {}), ''player_b'': $.get(''b_stint_block'',
+        {})}'
+    outputs:
+      rec: $

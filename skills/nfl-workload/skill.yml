@@ -1,0 +1,92 @@
+skill:
+  name: "nfl-workload"
+  title: "NFL Workload"
+  description: |
+    Derived NFL fantasy opportunity metrics and roster context, plus a
+    start/sit explainer. No third-party projections or consensus rankings
+    exist on this platform, so opportunity is derived from nflverse
+    play-by-play rather than consumed. Every answer says what it does not
+    know: an absent or ambiguous name, a week ESPN cannot describe, and a
+    traded player's team split are all reported rather than papered over.
+  version: "1.0.0"
+  category:
+    - "sports"
+    - "fantasy"
+  status: "available"
+  domain: "https://github.com/machina-sports/machina-templates"
+
+  references:
+    - name: "skill-guide"
+      title: "NFL Workload Guide"
+      filename: "SKILL.md"
+      filetype: "markdown"
+      metadata:
+        category: "skill-guide"
+        skill: "nfl-workload"
+
+  workflows:
+    - name: "nfl-workload-report"
+      description: "Computes the workload report and upserts it as a document, one row per (season, week, position)."
+      inputs:
+        season: "$.get('season', 2025)"
+        through_week: "$.get('through_week', 0)"
+        position: "$.get('position', 'WR')"
+        team: "$.get('team', '')"
+        lookback_weeks: "$.get('lookback_weeks', 3)"
+        min_opportunities: "$.get('min_opportunities', 10)"
+        limit: "$.get('limit', 50)"
+      outputs:
+        season: "$.get('season', 0)"
+        week: "$.get('week', 0)"
+        position: "$.get('position', '')"
+        n_players: "$.get('n_players', 0)"
+        deps: "$.get('report_deps', {})"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: "nfl-workload-latest"
+      description: "Read-side counterpart: fetches an already-stored report for a (season, week, position). Computes nothing, writes nothing."
+      inputs:
+        season: "$.get('season', 0)"
+        week: "$.get('week', 0)"
+        position: "$.get('position', 'WR')"
+      outputs:
+        documents: "$.get('workload-documents', [])"
+        season: "$.get('season', 0)"
+        week: "$.get('week', 0)"
+        position: "$.get('position', 'WR')"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: "fantasy-explain-reasoning"
+      description: "Two players resolved off one season load, enriched with depth-chart and injury context, and explained as a start/sit call with explicit caveats for unknown availability and traded-player stint splits."
+      inputs:
+        season: "$.get('season', 0)"
+        week: "$.get('week', 0)"
+        position: "$.get('position', 'WR')"
+        player_a_name: "$.get('player_a_name', '')"
+        player_a_team: "$.get('player_a_team', '')"
+        player_b_name: "$.get('player_b_name', '')"
+        player_b_team: "$.get('player_b_team', '')"
+      outputs:
+        recommendation: "$.get('recommendation', {})"
+        n_matched: "$.get('pair_n_matched', 0)"
+        player_a_status: "$.get('player_a_status', '')"
+        player_a_matched: "$.get('player_a_matched', '')"
+        player_a_reason: "$.get('player_a_reason', '')"
+        player_a_message: "$.get('player_a_message', '')"
+        player_a_candidates: "$.get('player_a_candidates', [])"
+        player_a_selected_team: "$.get('player_a_selected_team', '')"
+        player_a_other_stints: "$.get('player_a_other_stints', [])"
+        player_a_context_status: "$.get('player_a_context_status', '')"
+        player_a_context_reason: "$.get('player_a_context_reason', '')"
+        player_a_context_message: "$.get('player_a_context_message', '')"
+        player_b_status: "$.get('player_b_status', '')"
+        player_b_matched: "$.get('player_b_matched', '')"
+        player_b_reason: "$.get('player_b_reason', '')"
+        player_b_message: "$.get('player_b_message', '')"
+        player_b_candidates: "$.get('player_b_candidates', [])"
+        player_b_selected_team: "$.get('player_b_selected_team', '')"
+        player_b_other_stints: "$.get('player_b_other_stints', [])"
+        player_b_context_status: "$.get('player_b_context_status', '')"
+        player_b_context_reason: "$.get('player_b_context_reason', '')"
+        player_b_context_message: "$.get('player_b_context_message', '')"
+        workflow-status: "$.get('workflow-status')"

@@ -1,0 +1,48 @@
+workflow:
+  name: test-duplicate-alias
+  title: TEST - duplicate pbp spelling collapse
+  description: 'REGRESSION TEST. nflverse play-by-play spells Michael Wilson both ''M.Wilson'' and ''Mi.Wilson''
+    in 2025, and grouping usage on the name split his ARI stint into two rows of 58 and 60 opportunities,
+    each dividing by the same team denominator and so understating every share by roughly half. Grouping
+    on (player_id, team) collapses them to one row of 118. Asserts the collapsed total, and that other_stints
+    is EMPTY - the two halves were one stint, not two, so nothing should be reported as excluded. Self-asserting:
+    `result` is PASS/FAIL. Writes no documents.'
+  inputs:
+    season: $.get('season', 2025)
+    week: $.get('week', 17)
+    position: $.get('position', 'WR')
+    player_name: $.get('player_name', 'Michael Wilson')
+  outputs:
+    reason: $.get('w', {}).get('reason', '')
+    matched_name: $.get('w', {}).get('matched_name', '')
+    selected_team: $.get('w', {}).get('selected_team', '')
+    opportunities: ($.get('w', {}).get('player') or {}).get('opportunities')
+    targets: ($.get('w', {}).get('player') or {}).get('targets')
+    target_share: ($.get('w', {}).get('player') or {}).get('target_share')
+    other_stints: $.get('w', {}).get('other_stints', [])
+    assert_matched: $.get('w', {}).get('reason', '') == 'matched'
+    assert_opportunities_118: ($.get('w', {}).get('player') or {}).get('opportunities') == 118
+    assert_targets_118: ($.get('w', {}).get('player') or {}).get('targets') == 118
+    assert_team_ari: $.get('w', {}).get('selected_team', '') == 'ARI'
+    assert_no_other_stints: len($.get('w', {}).get('other_stints', [])) == 0
+    assert_share_not_halved: (($.get('w', {}).get('player') or {}).get('target_share') or 0) > 0.15
+    result: ($.get('w', {}).get('reason', '') == 'matched' and ($.get('w', {}).get('player') or {}).get('opportunities')
+      == 118 and $.get('w', {}).get('selected_team', '') == 'ARI' and len($.get('w', {}).get('other_stints',
+      [])) == 0) and 'PASS' or 'FAIL'
+    workflow-status: $.get('w', {}) and 'executed' or 'skipped'
+  tasks:
+  - type: connector
+    name: lookup-michael-wilson
+    description: Expect one ARI row at 118 opportunities (58 + 60), target_share above 0.15 rather than
+      the ~0.10 each half reported, and an empty other_stints.
+    connector:
+      name: nfl-workload
+      command: get_player_workload
+    continue_on_error: true
+    inputs:
+      season: $.get('season', 2025)
+      week: $.get('week', 17)
+      position: $.get('position', 'WR')
+      player_name: $.get('player_name', 'Michael Wilson')
+    outputs:
+      w: $

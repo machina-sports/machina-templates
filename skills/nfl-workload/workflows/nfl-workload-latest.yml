@@ -1,0 +1,36 @@
+workflow:
+  name: nfl-workload-latest
+  title: NFL - Latest workload report (read)
+  description: Read-side counterpart to nfl-workload-report. Fetches the already-stored workload report
+    for a given (season, week, position) out of the nfl-workload dataset. Computes nothing, calls no connector
+    and writes no document — pure read. The write path upserts on name + metadata, so a full key match
+    returns a single row.
+  inputs:
+    season: $.get('season', 0)
+    week: $.get('week', 0)
+    position: $.get('position', 'WR')
+  outputs:
+    documents: $.get('workload-documents', [])
+    season: $.get('season', 0)
+    week: $.get('week', 0)
+    position: $.get('position', 'WR')
+    workflow-status: $.get('workload-documents', []) and 'found' or 'not-found'
+  tasks:
+  - type: document
+    name: fetch-workload-report
+    description: 'Searches the documents collection for the stored nfl-workload report matching season,
+      week and position. Read-only: no action other than search, so nothing is written and a miss simply
+      yields an empty result.'
+    condition: $.get('season', 0) > 0 and $.get('week', 0) > 0
+    config:
+      action: search
+      search-limit: 1
+      search-vector: false
+    filters:
+      name: '''nfl-workload-report'''
+      metadata.dataset: '''nfl-workload'''
+      metadata.season: $.get('season', 0)
+      metadata.week: $.get('week', 0)
+      metadata.position: $.get('position', 'WR')
+    outputs:
+      workload-documents: $.get('documents', [])
