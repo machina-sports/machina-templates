@@ -143,7 +143,7 @@
       },
       "machina:providerNamespace": "sportradar-mlb",
       "machina:providerId": "mlb",
-      "machina:resolutionMethod": "provider-native"
+      "machina:resolutionMethod": "declared"
     },
     {
       "@id": "urn:machina:sports:provider-identifier:x6ddddbe8091178420194a32f089a7175",
@@ -154,7 +154,7 @@
       },
       "machina:providerNamespace": "sportradar-mlb",
       "machina:providerId": "2026",
-      "machina:resolutionMethod": "provider-native"
+      "machina:resolutionMethod": "declared"
     },
     {
       "@id": "urn:machina:sports:provider-identifier:x4316d046db50265480e48f29702c5f5f",

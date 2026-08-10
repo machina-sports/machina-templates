@@ -70,6 +70,40 @@ _REQUIRED_FIELDS = (
 #: artefact, not a participant.
 PARTICIPANT_KINDS = ("team", "individual")
 
+#: How a provider identifier came to be attached to a Machina identity, in the
+#: order RFC 002 §5 lists them: the provider stated it, no stable provider
+#: identifier exists and the value is positional, or the caller supplied it.
+#: There is no fourth value and no fuzzy matching in this phase, which is why
+#: this is a closed set rather than a free string.
+RESOLUTION_METHODS = ("provider-native", "ordinal-derived", "declared")
+
+#: What an identity-bearing section that says nothing means.
+#:
+#: Defaulting at all is a real choice, and it is defensible only in this
+#: direction: an adapter that read a provider field and did not annotate it did
+#: read a provider field. The two cases that are *not* provider-native — a
+#: hardcoded mapping constant and a positional key — are exactly the cases an
+#: adapter author has to think about, so those are the ones that must be written
+#: down. Requiring the key everywhere would have every adapter spell out
+#: ``provider-native`` on six sections, which buries the two lines that matter.
+RESOLUTION_DEFAULT = "provider-native"
+
+#: Sections whose ``provider_id`` becomes a crosswalk entry, and which may
+#: therefore state how that identifier was resolved. Participants are the sixth
+#: and are handled with the rest of their per-item checks, because their path
+#: carries an index.
+#:
+#: A resolution method anywhere else would be a fact about an identifier the
+#: crosswalk never records, so it is not accepted there rather than being
+#: accepted and ignored.
+IDENTITY_BEARING_SECTIONS = (
+    ("competition",),
+    ("competition", "season"),
+    ("phase",),
+    ("site",),
+    ("event",),
+)
+
 #: The provider payload. Held verbatim, surfaced only in ``event_view``, and
 #: deliberately exempt from the placeholder scan: a real payload is full of
 #: nulls and provider-side "TBD" strings, and scanning it would make every
@@ -266,6 +300,41 @@ def _check_participants(observation, errors):
             )
 
 
+def _check_resolution_method(node, path, errors):
+    """``resolution_method`` is optional; when present it is one of three values.
+
+    Checked rather than defaulted, because the field's whole job is to be the
+    place a weak crosswalk says so. A value outside the set is not a weaker claim
+    than ``provider-native`` — it is an unreadable one, and a consumer deciding
+    whether to trust an identifier cannot act on it.
+    """
+    if not isinstance(node, dict) or "resolution_method" not in node:
+        return
+    method = node["resolution_method"]
+    if method not in RESOLUTION_METHODS:
+        errors.append(
+            "{0}.resolution_method: '{1}' is not one of {2}".format(
+                path, method, ", ".join(RESOLUTION_METHODS)
+            )
+        )
+
+
+def _check_resolution_methods(observation, errors):
+    for section in IDENTITY_BEARING_SECTIONS:
+        node = observation
+        path = "observation"
+        for key in section:
+            path = "{0}.{1}".format(path, key)
+            node = node.get(key) if isinstance(node, dict) else None
+        _check_resolution_method(node, path, errors)
+    participants = observation.get("participants")
+    if isinstance(participants, list):
+        for index, participant in enumerate(participants):
+            _check_resolution_method(
+                participant, "observation.participants[{0}]".format(index), errors
+            )
+
+
 def _check_rights(observation, errors):
     rights = observation.get("rights")
     if rights is None:
@@ -372,6 +441,7 @@ def validate_observation(document):
 
     _check_required(observation, errors)
     _check_participants(observation, errors)
+    _check_resolution_methods(observation, errors)
     _check_datetimes(observation, errors)
     _check_rights(observation, errors)
     _check_adapter(observation, errors)

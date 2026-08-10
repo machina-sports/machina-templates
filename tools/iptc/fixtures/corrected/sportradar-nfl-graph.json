@@ -145,7 +145,7 @@
       },
       "machina:providerNamespace": "sportradar-nfl",
       "machina:providerId": "nfl",
-      "machina:resolutionMethod": "provider-native"
+      "machina:resolutionMethod": "declared"
     },
     {
       "@id": "urn:machina:sports:provider-identifier:x63ad7f8791518892ed78ea3c99aa0488",
@@ -156,7 +156,7 @@
       },
       "machina:providerNamespace": "sportradar-nfl",
       "machina:providerId": "2025",
-      "machina:resolutionMethod": "provider-native"
+      "machina:resolutionMethod": "declared"
     },
     {
       "@id": "urn:machina:sports:provider-identifier:x1ef9160cd15df077a3251036e160b152",

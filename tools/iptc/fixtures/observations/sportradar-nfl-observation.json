@@ -28,9 +28,11 @@
     },
     "competition": {
       "provider_id": "nfl",
+      "resolution_method": "declared",
       "name": "NFL",
       "season": {
         "provider_id": "2025",
+        "resolution_method": "declared",
         "name": "NFL 2025"
       }
     },

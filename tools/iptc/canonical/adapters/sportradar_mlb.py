@@ -173,6 +173,17 @@ LEGACY_URN_STEMS = {
 #: decide about it here.
 MAPPING_CONSTANT_IDENTIFIERS = ("competition", "season")
 
+#: What :data:`MAPPING_CONSTANT_IDENTIFIERS` resolve *as*, in RFC 002 §5's terms:
+#: the caller supplied them, and the provider did not state them. Written onto
+#: the two sections rather than left to default, because the default —
+#: ``provider-native`` — would have the crosswalk assert that Sportradar
+#: addresses its baseball competition as ``mlb`` and its season as ``2026``,
+#: which this repository has no evidence for and the mapping's own source
+#: contradicts. Naming the constants without marking them was the state before
+#: A16: the limitation was recorded in prose and the machine-readable field said
+#: the opposite.
+MAPPING_CONSTANT_RESOLUTION = "declared"
+
 #: ``sport:status`` -> the canonical status key
 #: ``tools.iptc.canonical.vocab.EVENT_STATUS`` maps into a pinned
 #: ``speventstatus:`` NewsCode.
@@ -301,18 +312,34 @@ def _participant(competitor, score_block):
     return participant
 
 
+def _mark_declared(section):
+    """Record how a mapping-constant identifier was resolved, if there is one.
+
+    Guarded on the identifier's presence: a resolution method on a section that
+    carries no ``provider_id`` is an annotation on nothing, and it would also turn
+    an empty season block into a truthy one and get an otherwise-absent season
+    emitted.
+    """
+    if "provider_id" in section:
+        section["resolution_method"] = MAPPING_CONSTANT_RESOLUTION
+    return section
+
+
 def _competition(document):
     block = _section(document, "sport:competition")
     season_block = _section(block, "sport:season")
 
     competition = {}
-    # A mapping constant, not a provider field. See MAPPING_CONSTANT_IDENTIFIERS.
+    # A mapping constant, not a provider field. See MAPPING_CONSTANT_IDENTIFIERS,
+    # and note the resolution method that says so in the crosswalk itself.
     _put(competition, "provider_id", _provider_id(block, "competition"))
+    _mark_declared(competition)
     _put(competition, "name", _text(block.get("name")))
     # No type: the source never says whether this game is in the regular season
     # or the post-season, so spct:season-regular would be a guess.
     season = {}
     _put(season, "provider_id", _provider_id(season_block, "season"))
+    _mark_declared(season)
     _put(season, "name", _text(season_block.get("name")))
     _put(competition, "season", season or None)
     return competition

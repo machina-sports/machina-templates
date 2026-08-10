@@ -570,7 +570,21 @@ class TestIdentityIsASurrogate(unittest.TestCase):
         for entry in entries:
             with self.subTest(entity=entry["entity_type"]):
                 self.assertEqual(entry["provider_namespace"], "sportradar-nfl")
-                self.assertEqual(entry["resolution_method"], "provider-native")
+
+    def test_the_two_mapping_constants_crosswalk_as_declared_not_provider_native(self):
+        """A16. ``nfl`` and ``2025`` are literals in the mapping expression and the
+        schedule payload carries no competition entity and no season entity at
+        all, so ``provider-native`` on those two entries was a claim about
+        Sportradar that this repository has no evidence for. The other four
+        identifiers really are read from provider fields and stay as they were."""
+        by_type = {e["entity_type"]: e for e in self.block["provider_ids"]}
+        for kind in sportradar_nfl.MAPPING_CONSTANT_IDENTIFIERS:
+            with self.subTest(entity=kind):
+                self.assertEqual(by_type[kind]["resolution_method"], "declared")
+        for kind in ("site", "event", "team"):
+            with self.subTest(entity=kind):
+                self.assertEqual(by_type[kind]["resolution_method"],
+                                 "provider-native")
 
     def test_every_crosswalk_entry_names_the_field_it_came_from(self):
         by_type = {e["entity_type"]: e for e in self.block["provider_ids"]}

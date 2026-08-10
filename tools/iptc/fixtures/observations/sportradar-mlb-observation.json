@@ -28,9 +28,11 @@
     },
     "competition": {
       "provider_id": "mlb",
+      "resolution_method": "declared",
       "name": "MLB",
       "season": {
         "provider_id": "2026",
+        "resolution_method": "declared",
         "name": "MLB 2026"
       }
     },
