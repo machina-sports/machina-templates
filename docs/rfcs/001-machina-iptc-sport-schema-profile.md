@@ -453,10 +453,31 @@ its count stay separate from `invalid` because the two need different fixes: an
 invalid code is a mapping bug to correct here, while an unverifiable one is
 resolved by a pin bump once upstream publishes the scheme.
 
-Serializers must still emit them as node references under `spsocactiontype:`. A
-value under a prefix that no context in scope binds — which is what
-`spsocaction:score-change` currently is — is a gate 2 failure, because it resolves
-to nothing at all.
+**Serializers must not emit a soccer action-type NewsCode at all, under any
+prefix.** Both spellings fail, for different reasons, and neither is repairable
+here: `spsocaction:score-change`, which the current mappings carry, is under a
+prefix no context in scope binds, so it resolves to nothing and is a gate 2
+failure; `spsocactiontype:`, the prefix `tools/prefixes.ttl` does bind, has no
+vocabulary TTL at the pin, so every value in it is `unverifiable` and the rule
+above fails closed on it. Emitting either produces a document that looks validated
+and is not.
+
+What a serializer emits instead:
+
+- the **action class**, as a node reference in `spactionclass:` — the one pinned
+  scheme for this — where the provider's action has a defensible class;
+- the provider's own action type verbatim in `event_view` (§11), or as bounded
+  `machina:evidence` on a `machina:`-typed sibling. Never under `sport:`, and never
+  as a NewsCode.
+
+No substitute code list is invented, and no provider string is promoted to a
+NewsCode. This is revisited only once a sport-specific action vocabulary is
+actually pinned: a pin bump vendors `vocabularies/spsocaction.ttl`, layer 4 can
+then check its values, and only then may a mapping be added under the §9 rule that
+every mapped code is *proved* present in a pinned scheme. Until then the gap stays
+visible in the `unverifiable` count rather than papered over. RFC 002 §7 states the
+same rule from the serializer side, and `vocab.py` maps nothing into the scheme, so
+neither document can drift from the other without a test failing.
 
 ---
 

@@ -33,6 +33,7 @@ from __future__ import annotations
 import ast
 import copy
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -58,6 +59,7 @@ from tools.iptc.canonical.observation import (  # noqa: E402
     validate_observation,
 )
 from tools.iptc.canonical import vocab  # noqa: E402
+from tools.iptc.context import load_context  # noqa: E402
 from tools.iptc.reference import NEWSCODE_STEM, load_reference  # noqa: E402
 
 #: The smallest observation that is genuinely valid: two participants, every
@@ -68,6 +70,10 @@ MINIMAL = {
     "observation": {
         "provider": {"namespace": "api-football", "family": "licensed"},
         "observed_at": "2026-03-01T22:05:00+00:00",
+        "adapter": {"name": "sports_skills.canonical.adapters.football",
+                    "version": "0.31.0"},
+        "rights": {"data_class": "public-non-commercial", "prototype_only": True,
+                   "commercial_use": False},
         "sport": {"medtop": "20001065", "key": "soccer"},
         "competition": {
             "provider_id": "39",
@@ -126,6 +132,8 @@ class TestObservationValidation(unittest.TestCase):
         required = [
             ("provider", "namespace"),
             ("observed_at",),
+            ("adapter",),
+            ("rights",),
             ("sport", "medtop"),
             ("competition", "provider_id"),
             ("event", "provider_id"),
@@ -208,6 +216,37 @@ class TestObservationValidation(unittest.TestCase):
         ok["observation"]["participants"][0]["statistics"] = {"spsocstat:shotsTotal": "14"}
         self.assertEqual(validate_observation(ok), [])
 
+    def test_a_statistic_under_an_unbound_prefix_is_rejected(self):
+        """``notpinned:shotsTotal`` carries a genuine local name under a prefix
+        no context in scope binds, so it expands to nothing at all. A check that
+        looks only at the local name reads it as official.
+        """
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0]["statistics"] = {"notpinned:shotsTotal": "14"}
+        errors = " ".join(validate_observation(bad))
+        self.assertIn("notpinned:shotsTotal", errors)
+        self.assertIn("not an official Sport Schema property", errors)
+
+    def test_a_real_local_name_under_the_wrong_pinned_namespace_is_rejected(self):
+        """``sport:startDateTime`` is official and ``spsocstat:startDateTime`` is
+        not: the soccer statistics ontology declares no such property. Both
+        prefixes are pinned, so only full-CURIE membership separates them.
+        """
+        bad = copy.deepcopy(MINIMAL)
+        bad["observation"]["participants"][0]["statistics"] = {
+            "spsocstat:startDateTime": "2026-03-01T20:00:00+00:00"
+        }
+        self.assertIn("spsocstat:startDateTime", " ".join(validate_observation(bad)))
+
+    def test_a_pinned_core_statistic_curie_is_accepted(self):
+        """The counterpart to the two rejections above: a CURIE whose prefix and
+        local name both come from the pin is accepted, from any pinned statistics
+        namespace and not just soccer.
+        """
+        ok = copy.deepcopy(MINIMAL)
+        ok["observation"]["participants"][0]["statistics"] = {"spstat:eventsPlayed": "38"}
+        self.assertEqual(validate_observation(ok), [])
+
     def test_a_bare_statistic_name_without_a_prefix_is_rejected(self):
         bad = copy.deepcopy(MINIMAL)
         bad["observation"]["participants"][0]["statistics"] = {"shotsTotal": "14"}
@@ -217,6 +256,31 @@ class TestObservationValidation(unittest.TestCase):
         bad = copy.deepcopy(MINIMAL)
         bad["observation"]["participants"][0]["statistics"] = {"spsocstat:shotsTotal": 14}
         self.assertIn("must be a string", " ".join(validate_observation(bad)))
+
+    def test_an_absent_rights_block_is_one_deterministic_error(self):
+        """Rights are a licence fact, and a licence fact is not derivable from a
+        payload. Accepting an observation with no rights block means every
+        consumer picks its own default, which is a licence decision made by
+        accident. The error names the block once and does not cascade into its
+        member fields, so the adapter fix is unambiguous.
+        """
+        bad = copy.deepcopy(MINIMAL)
+        del bad["observation"]["rights"]
+        self.assertEqual(
+            validate_observation(bad),
+            ["observation.rights: required field is missing"],
+        )
+
+    def test_an_absent_adapter_block_is_one_deterministic_error(self):
+        """Adapter provenance is what makes a wrong fact traceable to the code
+        that produced it. Without it an observation is an anonymous claim.
+        """
+        bad = copy.deepcopy(MINIMAL)
+        del bad["observation"]["adapter"]
+        self.assertEqual(
+            validate_observation(bad),
+            ["observation.adapter: required field is missing"],
+        )
 
     def test_malformed_rights_block_is_rejected(self):
         bad = copy.deepcopy(MINIMAL)
@@ -503,21 +567,41 @@ class TestOfficialTermExport(unittest.TestCase):
         self.assertEqual(payload["pin"], canonical_pin())
         self.assertEqual(payload["target_version"], "1.1")
 
+    def allowlist(self) -> set:
+        payload = json.loads(export_official_terms.OUTPUT_PATH.read_text(encoding="utf-8"))
+        return set(payload["curies"])
+
     def test_allowlist_contains_a_verified_statistic_and_not_an_invented_one(self):
-        names = set(
-            json.loads(export_official_terms.OUTPUT_PATH.read_text(encoding="utf-8"))["local_names"]
-        )
-        self.assertIn("shotsTotal", names)
-        self.assertIn("startDateTime", names)
-        self.assertNotIn("machinaVibes", names)
+        curies = self.allowlist()
+        self.assertIn("spsocstat:shotsTotal", curies)
+        self.assertIn("sport:startDateTime", curies)
+        self.assertNotIn("spsocstat:machinaVibes", curies)
+
+    def test_allowlist_membership_is_the_whole_curie_not_the_local_name(self):
+        """The local name is not the term. ``spsocstat:startDateTime`` pairs a
+        real local name with a namespace that does not declare it, and
+        ``notpinned:shotsTotal`` pairs one with a prefix nothing binds. Both are
+        indistinguishable from an official term if only local names are stored.
+        """
+        curies = self.allowlist()
+        self.assertNotIn("spsocstat:startDateTime", curies)
+        self.assertNotIn("notpinned:shotsTotal", curies)
+
+    def test_allowlist_prefixes_are_all_bound_by_the_shared_context(self):
+        """A CURIE whose prefix the shared context does not bind expands to
+        nothing, so allowing one would be allowing a term no document can carry.
+        """
+        bound = set(load_context())
+        self.assertTrue(bound)
+        for curie in sorted(self.allowlist()):
+            with self.subTest(curie=curie):
+                self.assertIn(curie.split(":")[0], bound)
 
     def test_allowlist_holds_properties_only_and_not_classes(self):
         """A class name in a property allowlist would let ``spsocstat:Team`` pass."""
-        names = set(
-            json.loads(export_official_terms.OUTPUT_PATH.read_text(encoding="utf-8"))["local_names"]
-        )
-        self.assertNotIn("Event", names)
-        self.assertNotIn("Team", names)
+        curies = self.allowlist()
+        self.assertNotIn("sport:Event", curies)
+        self.assertNotIn("sport:Team", curies)
 
 
 class TestVocab(unittest.TestCase):
@@ -596,6 +680,133 @@ class TestVocab(unittest.TestCase):
                      "SOCCER_POSITION"):
             with self.subTest(table=name):
                 self.assertTrue(getattr(vocab, name))
+
+
+RFC_001_PATH = REPO_ROOT / "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
+RFC_002_PATH = REPO_ROOT / "docs/rfcs/002-machina-sports-schema-canonical-observation.md"
+
+
+def rfc_section(path: Path, number: str) -> str:
+    """The body of the section numbered ``number``, up to the next heading.
+
+    Section-scoped rather than whole-file, so "the RFC mentions this somewhere"
+    can never be mistaken for "the rule that governs it says so".
+    """
+    lines = path.read_text(encoding="utf-8").splitlines()
+    heading = re.compile(r"^#{2,4} " + re.escape(number) + r"[.\s]")
+    start = next((i + 1 for i, line in enumerate(lines) if heading.match(line)), None)
+    assert start is not None, "{0} has no section {1}".format(path.name, number)
+    body = []
+    for line in lines[start:]:
+        if re.match(r"^#{2,4} ", line):
+            break
+        body.append(line)
+    return "\n".join(body)
+
+
+class TestRfcContractConsistency(unittest.TestCase):
+    """The RFCs and the code they authorise are checked against each other.
+
+    Every gap closed in this class was first found by a human reading two
+    documents side by side. That is the expensive way to find a contradiction,
+    and it only works while someone is looking.
+    """
+
+    def required_bullet(self) -> str:
+        """RFC 002 §1.1's ``**Required:**`` bullet, and only that bullet.
+
+        Scoped to the one bullet on purpose. A whole-section search passes on any
+        stray mention — "the caller fixes the adapter" would have satisfied a
+        looser check while the required list still omitted `adapter`.
+        """
+        section = rfc_section(RFC_002_PATH, "1.1")
+        match = re.search(r"^- \*\*Required:\*\*(.*?)(?=^- \*\*)", section,
+                          re.DOTALL | re.MULTILINE)
+        self.assertIsNotNone(match, "RFC 002 §1.1 has no **Required:** bullet")
+        return match.group(1)
+
+    #: A scheme prefix as the RFCs write one: ``prefix:`` inside backticks. The
+    #: closing backtick right after the colon is what keeps ``sport:eventStatus``
+    #: and other term references out of the match.
+    SCHEME_REFERENCE = re.compile(r"`([a-z][a-z0-9]*):`")
+
+    #: An instruction to emit, minus its negations. ``must not`` and ``must never``
+    #: are the reconciled rule, not the defect, so a test that flagged them would
+    #: fail on exactly the text it is asking for.
+    EMIT_INSTRUCTION = re.compile(r"\bmust\b(?!\s+(?:not|never))[^.]*\bemit\b")
+
+    def unpinned_scheme_prefixes(self) -> set:
+        """Prefixes the shared context binds to a NewsCode scheme the pin cannot check.
+
+        Read from the pin rather than from `vocab.TABLES`: "this profile maps
+        nothing into it" and "nothing can validate it" are different facts, and
+        only the second one makes an emission instruction indefensible. `medtop:`
+        is pinned and unmapped — RFC 001 is right to require emitting it — so a
+        check keyed on the mapping tables would flag it.
+        """
+        pinned = {scheme.scheme_iri for scheme in load_reference().schemes.values()}
+        unpinned = {
+            prefix for prefix, iri in load_context().items()
+            if iri.startswith(NEWSCODE_STEM) and iri not in pinned
+        }
+        self.assertIn("spsocactiontype", unpinned, "no spsocaction TTL exists at the pin")
+        self.assertNotIn("medtop", unpinned, "mediatopic is pinned and must stay emittable")
+        return unpinned
+
+    def test_no_rfc_instructs_emitting_a_newscode_from_an_unpinned_scheme(self):
+        """RFC 001 §9.2 named `spsocactiontype:` as an emission target while §9's
+        own normative rule fails closed on any value nothing in the pin can check
+        — and while RFC 002 §7 and `vocab.py` map nothing into it. An adapter
+        author following the RFC would emit a NewsCode layer 4 then rejects.
+
+        Mechanical on both sides: the scheme names come out of the prose, their
+        pinned-ness out of the vendored vocabularies. A pin bump that publishes
+        `spsocaction.ttl` retires this check by itself, with no test edit.
+        """
+        unpinned = self.unpinned_scheme_prefixes()
+        offenders = []
+        for path in (RFC_001_PATH, RFC_002_PATH):
+            for sentence in re.split(r"(?<=\.)\s+", path.read_text(encoding="utf-8")):
+                named = sorted(
+                    p for p in set(self.SCHEME_REFERENCE.findall(sentence)) if p in unpinned
+                )
+                if named and self.EMIT_INSTRUCTION.search(sentence):
+                    offenders.append("{0} [{1}]: {2}".format(
+                        path.name, ", ".join(named), " ".join(sentence.split())
+                    ))
+        self.assertEqual(
+            offenders, [],
+            "an RFC instructs emitting a NewsCode from a scheme the pin cannot "
+            "check, which §9 requires failing closed on",
+        )
+
+    def test_rfc_001_and_rfc_002_agree_on_where_soccer_action_detail_goes(self):
+        """The reconciled rule, asserted on both sides: the class goes to the one
+        pinned scheme, the provider's own action type survives outside the graph.
+        """
+        section = rfc_section(RFC_001_PATH, "9.2")
+        self.assertIn("spactionclass:", section)
+        self.assertIn("event_view", section)
+        self.assertIn("spactionclass", vocab.TABLES)
+        self.assertNotIn("spsocactiontype", vocab.TABLES)
+        rfc_002_vocabularies = rfc_section(RFC_002_PATH, "7")
+        self.assertIn("spsocactiontype:` is not mapped at all", rfc_002_vocabularies)
+
+    def test_rfc_002_records_every_top_level_field_the_validator_requires(self):
+        """A required field the contract does not list is a trap: the adapter
+        author reads the RFC, the validator rejects the result."""
+        bullet = self.required_bullet()
+        for key in sorted(MINIMAL["observation"]):
+            bad = copy.deepcopy(MINIMAL)
+            del bad["observation"][key]
+            if not validate_observation(bad):
+                continue
+            with self.subTest(field=key):
+                self.assertRegex(
+                    bullet, r"`{0}[.`]".format(re.escape(key)),
+                    "validate_observation requires observation.{0} and the RFC "
+                    "002 §1.1 required list does not name it".format(key),
+                )
 
 
 #: Modules destined to be copied byte-exact into ``sports-skills``, a published

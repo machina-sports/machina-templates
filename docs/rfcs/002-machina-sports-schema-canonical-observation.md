@@ -94,18 +94,29 @@ package is not justified by a key walk.
 
 ### 1.1 Rules, all enforced by `validate_observation`
 
-- **Required:** `provider.namespace`, `observed_at`, `sport.medtop`,
-  `competition.provider_id`, `event.provider_id`, `event.start_time`,
-  `event.status`, and **at least two participants**. A one-sided event is not an
-  event; it is a partially-parsed payload.
+- **Required:** `provider.namespace`, `observed_at`, `adapter` (`name`,
+  `version`), `rights` (`data_class`, `prototype_only`, `commercial_use`),
+  `sport.medtop`, `competition.provider_id`, `event.provider_id`,
+  `event.start_time`, `event.status`, and **at least two `participants`**. A
+  one-sided event is not an event; it is a partially-parsed payload.
+- **`adapter` and `rights` are required, not optional-if-present.** Neither is
+  derivable from a payload. An observation with no `rights` block leaves every
+  consumer to pick its own licence default, which is a licence decision made by
+  accident; an observation with no `adapter` block is an anonymous claim, so when
+  a fact turns out to be wrong there is nothing naming the code that produced it.
+  Both are omissions an adapter must fix, and neither is ever defaulted here.
 - **`null`, `""` and every placeholder in `profile.PLACEHOLDER_VALUES` are
   errors**, at any depth. This is the whole point of validating the observation
   rather than the output: fabrication is caught in the *adapter*, where a human
   can see which provider field produced it, not in the serializer, where the
   provenance is already gone.
-- **Every `statistics` key is a CURIE** whose local name appears in
+- **Every `statistics` key is a CURIE** whose whole `prefix:localName` appears in
   `official-property-names.json` (§4). An unknown one is an **error**, not a
-  warning. A statistic nobody can resolve is not data.
+  warning. A statistic nobody can resolve is not data. Matching the local name
+  alone is not enough: `startDateTime` is declared by `.../ontologies/main/` and
+  by nothing else, so a local-name check accepts `spsocstat:startDateTime`, and
+  it accepts `notpinned:shotsTotal` — a CURIE under a prefix nothing binds, which
+  expands to nothing at all.
 - **Datetimes are validated for form**, including an explicit offset. A naive
   timestamp is ambiguous by an unknown number of hours and is rejected.
 - **`observed_at` is an input**, never sampled. Nothing in this package reads the
@@ -172,12 +183,23 @@ unmappable status, a soccer action type (§7), a provider's own clock string.
 
 `tools/iptc/canonical/official-property-names.json` is **generated**, not
 maintained: `python -m tools.iptc.canonical.export_official_terms` reads the
-pinned ontologies and writes every official property local name.
+pinned ontologies and the shared context and writes every official property as a
+full CURIE.
 
-`{"pin": <commit>, "target_version": "1.1", "local_names": [ … sorted … ]}`, two-
-space indent, trailing newline. A test asserts the checked-in bytes equal what
-the generator renders, so the file cannot drift from the pin it claims to come
-from. Bumping the pin regenerates it; nobody edits it by hand.
+`{"pin": <commit>, "target_version": "1.1", "curies": [ … sorted … ]}`, two-space
+indent, trailing newline. A test asserts the checked-in bytes equal what the
+generator renders, so the file cannot drift from the pin it claims to come from.
+Bumping the pin regenerates it; nobody edits it by hand.
+
+Membership is the whole `prefix:localName`, and each half is evidence from a
+different place: the IRI comes from the pinned ontology that declares the
+property, and the prefix from the shared context that binds that IRI — the one
+context an emitted document carries, so a prefix absent from it is a prefix no
+document could resolve. The generator refuses to run while
+`check_context_against_reference` reports drift, because a context that disagrees
+with the pin makes its own prefixes evidence of nothing. Where upstream binds one
+namespace under two prefixes — golf, as `spgolf` and `spgolstat` — both spellings
+are listed, because both are what upstream says.
 
 It is vendored into `sports-skills` because `validate_observation` needs it there
 and that package cannot import this repository.
