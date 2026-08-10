@@ -1,0 +1,494 @@
+{
+  "machina_sports_schema": {
+    "schema_version": "machina-sports-schema/1",
+    "profile": "machina-iptc-profile/1.1",
+    "sport_schema_graph": {
+      "@context": {
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
+        "sh": "http://www.w3.org/ns/shacl#",
+        "dcterms": "http://purl.org/dc/terms/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "schema": "https://schema.org/",
+        "schemaorg": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/",
+        "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+        "spamfstat": "https://sportschema.org/ontologies/american-football/",
+        "spbblstat": "https://sportschema.org/ontologies/baseball/",
+        "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+        "spespstat": "https://sportschema.org/ontologies/esports/",
+        "spgolf": "https://sportschema.org/ontologies/golf/",
+        "spgolstat": "https://sportschema.org/ontologies/golf/",
+        "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+        "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/",
+        "sptenstat": "https://sportschema.org/ontologies/tennis/",
+        "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+        "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+        "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+        "ikos": "http://cv.iptc.org/newscodes/ikos/",
+        "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+        "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+        "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+        "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+        "spct": "http://cv.iptc.org/newscodes/spct/",
+        "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+        "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+        "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+        "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+        "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+        "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+        "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+        "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+        "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+        "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+        "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+        "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+        "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+        "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+        "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+        "machina": "https://machina.gg/ns/sport/1.0/"
+      },
+      "@graph": [
+        {
+          "@id": "urn:machina:sports:competition:x95e2a2b67276c471ae7ca58f8cc243e2",
+          "@type": "sport:Competition",
+          "rdfs:label": "NFL",
+          "sport:sport": {
+            "@id": "medtop:20000823"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:competition:xd88ec2f16cfe1e8d946a6c2e1b96f77d",
+          "@type": "sport:Competition",
+          "rdfs:label": "NFL 2025",
+          "sport:sport": {
+            "@id": "medtop:20000823"
+          },
+          "sport:competitionType": {
+            "@id": "spct:season"
+          },
+          "sport:parent": {
+            "@id": "urn:machina:sports:competition:x95e2a2b67276c471ae7ca58f8cc243e2"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:site:x500722463254cd557ecd63bc5c76aef9",
+          "@type": "sport:Site",
+          "rdfs:label": "Synthetic Dome"
+        },
+        {
+          "@id": "urn:machina:sports:team:x6208dd7c96134a6ff63f9a284990687b",
+          "@type": "sport:Team",
+          "rdfs:label": "Synthetic Home Hawks"
+        },
+        {
+          "@id": "urn:machina:sports:team:xa049f23fa3e897e62873423ae1e8f742",
+          "@type": "sport:Team",
+          "rdfs:label": "Synthetic Away Anchors"
+        },
+        {
+          "@id": "urn:machina:sports:event:xf425cd702c12072be3934430fc9b6cc0",
+          "@type": "sport:Event",
+          "rdfs:label": "Synthetic Home Hawks vs Synthetic Away Anchors",
+          "sport:sport": {
+            "@id": "medtop:20000823"
+          },
+          "sport:eventInCompetition": {
+            "@id": "urn:machina:sports:competition:xd88ec2f16cfe1e8d946a6c2e1b96f77d"
+          },
+          "sport:location": {
+            "@id": "urn:machina:sports:site:x500722463254cd557ecd63bc5c76aef9"
+          },
+          "sport:startDateTime": {
+            "@value": "2025-11-09T18:00:00+00:00",
+            "@type": "xsd:dateTime"
+          },
+          "sport:eventStatus": {
+            "@id": "speventstatus:post-event"
+          },
+          "sport:participation": [
+            {
+              "@id": "urn:machina:sports:participation:xf4a89c0e4e156136f6d57cc36a64330b"
+            },
+            {
+              "@id": "urn:machina:sports:participation:x5a2c0755941f76a96966530ce0b16ce8"
+            }
+          ]
+        },
+        {
+          "@id": "urn:machina:sports:participation:xf4a89c0e4e156136f6d57cc36a64330b",
+          "@type": "sport:TeamParticipation",
+          "rdfs:label": "Synthetic Home Hawks participation in Synthetic Home Hawks vs Synthetic Away Anchors",
+          "sport:participationBy": {
+            "@id": "urn:machina:sports:team:x6208dd7c96134a6ff63f9a284990687b"
+          },
+          "sport:alignment": "home",
+          "sport:score": "24"
+        },
+        {
+          "@id": "urn:machina:sports:participation:x5a2c0755941f76a96966530ce0b16ce8",
+          "@type": "sport:TeamParticipation",
+          "rdfs:label": "Synthetic Away Anchors participation in Synthetic Home Hawks vs Synthetic Away Anchors",
+          "sport:participationBy": {
+            "@id": "urn:machina:sports:team:xa049f23fa3e897e62873423ae1e8f742"
+          },
+          "sport:alignment": "away",
+          "sport:score": "17"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xf2513fddad9fc05471b64caf302d236b",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-nfl competition nfl",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:competition:x95e2a2b67276c471ae7ca58f8cc243e2"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:providerId": "nfl",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x63ad7f8791518892ed78ea3c99aa0488",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-nfl season 2025",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:competition:xd88ec2f16cfe1e8d946a6c2e1b96f77d"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:providerId": "2025",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x1ef9160cd15df077a3251036e160b152",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-nfl site 00000000-0000-4000-8000-000000009801",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:site:x500722463254cd557ecd63bc5c76aef9"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:providerId": "00000000-0000-4000-8000-000000009801",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x8729b8c4d1b981248665032d561901ac",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-nfl event 00000000-0000-4000-8000-000000009001",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:event:xf425cd702c12072be3934430fc9b6cc0"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:providerId": "00000000-0000-4000-8000-000000009001",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xae8da33a1fb01d75e22c81d90fdb3f1f",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-nfl team 00000000-0000-4000-8000-000000009101",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:team:x6208dd7c96134a6ff63f9a284990687b"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:providerId": "00000000-0000-4000-8000-000000009101",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xff3ac69492b2f56b37328b1cbd379034",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-nfl team 00000000-0000-4000-8000-000000009102",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:team:xa049f23fa3e897e62873423ae1e8f742"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:providerId": "00000000-0000-4000-8000-000000009102",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:observation-provenance:x91140fa4bb4f0799c681cf670ab86904",
+          "@type": "machina:ObservationProvenance",
+          "rdfs:label": "sportradar-nfl observation of event xf425cd702c12072be3934430fc9b6cc0",
+          "machina:describes": {
+            "@id": "urn:machina:sports:event:xf425cd702c12072be3934430fc9b6cc0"
+          },
+          "machina:providerNamespace": "sportradar-nfl",
+          "machina:observedAt": {
+            "@value": "2026-03-01T22:05:00+00:00",
+            "@type": "xsd:dateTime"
+          },
+          "machina:adapterVersion": "1",
+          "machina:serializerVersion": "1",
+          "machina:rightsClass": "legacy-mapping-contract-shape"
+        }
+      ]
+    },
+    "event_view": {
+      "event_id": "urn:machina:sports:event:xf425cd702c12072be3934430fc9b6cc0",
+      "label": "Synthetic Home Hawks vs Synthetic Away Anchors",
+      "sport": "american-football",
+      "start_time": "2025-11-09T18:00:00+00:00",
+      "status": "closed",
+      "competition": {
+        "id": "urn:machina:sports:competition:x95e2a2b67276c471ae7ca58f8cc243e2",
+        "name": "NFL"
+      },
+      "season": {
+        "id": "urn:machina:sports:competition:xd88ec2f16cfe1e8d946a6c2e1b96f77d",
+        "name": "NFL 2025"
+      },
+      "site": {
+        "id": "urn:machina:sports:site:x500722463254cd557ecd63bc5c76aef9",
+        "name": "Synthetic Dome",
+        "city": "Synthetic City"
+      },
+      "participants": [
+        {
+          "id": "urn:machina:sports:team:x6208dd7c96134a6ff63f9a284990687b",
+          "role": "home",
+          "name": "Synthetic Home Hawks",
+          "score": "24"
+        },
+        {
+          "id": "urn:machina:sports:team:xa049f23fa3e897e62873423ae1e8f742",
+          "role": "away",
+          "name": "Synthetic Away Anchors",
+          "score": "17"
+        }
+      ],
+      "provider": {
+        "namespace": "sportradar-nfl",
+        "family": "licensed",
+        "raw": {
+          "@context": {
+            "sport": "https://www.sportschema.org/ontologies/sport#",
+            "schema": "https://schema.org/"
+          },
+          "@id": "urn:sportradar:sport_event:00000000-0000-4000-8000-000000009001",
+          "@type": [
+            "sport:Event",
+            "schema:SportsEvent"
+          ],
+          "name": "Synthetic Home Hawks vs Synthetic Away Anchors",
+          "schema:startDate": "2025-11-09T18:00:00+00:00",
+          "schema:sportName": "nfl",
+          "sport:status": "closed",
+          "sport:matchStatus": "closed",
+          "sport:competition": {
+            "@id": "urn:sportradar:competition:nfl",
+            "@type": "sport:Competition",
+            "name": "NFL",
+            "sport:season": {
+              "@id": "urn:sportradar:season:2025",
+              "@type": "sport:Season",
+              "name": "NFL 2025",
+              "sport:year": "2025"
+            }
+          },
+          "sport:venue": {
+            "@type": "sport:Venue",
+            "@id": "urn:sportradar:venue:00000000-0000-4000-8000-000000009801",
+            "name": "Synthetic Dome",
+            "schema:addressLocality": "Synthetic City"
+          },
+          "sport:competitors": [
+            {
+              "@type": "sport:Team",
+              "@id": "urn:sportradar:team:00000000-0000-4000-8000-000000009101",
+              "name": "Synthetic Home Hawks",
+              "sport:abbreviation": "SHH",
+              "sport:qualifier": "home"
+            },
+            {
+              "@type": "sport:Team",
+              "@id": "urn:sportradar:team:00000000-0000-4000-8000-000000009102",
+              "name": "Synthetic Away Anchors",
+              "sport:abbreviation": "SAA",
+              "sport:qualifier": "away"
+            }
+          ],
+          "sport:score": {
+            "sport:homeScore": 24,
+            "sport:awayScore": 17,
+            "sport:halfTime": {
+              "period_type": "quarter",
+              "id": "00000000-0000-4000-8000-000000009901",
+              "number": 1,
+              "sequence": 1,
+              "home_points": 7,
+              "away_points": 3
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "provider": {
+        "namespace": "sportradar-nfl",
+        "family": "licensed"
+      },
+      "adapter": {
+        "name": "tools.iptc.canonical.adapters.sportradar_nfl",
+        "version": "1"
+      },
+      "serializer": {
+        "name": "machina-iptc-serializer",
+        "version": "1"
+      },
+      "profile": "machina-iptc-profile/1.1",
+      "upstream_pin": {
+        "repository": "https://github.com/iptc/sport-schema",
+        "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
+        "target_version": "1.1"
+      },
+      "observed_at": "2026-03-01T22:05:00+00:00",
+      "source_refs": [
+        {
+          "kind": "legacy-mapping-output",
+          "value": "iptc-sportradar-event-nfl-mapping",
+          "note": "legacy mapping-contract shape, not raw provider data; no Sportradar endpoint was called and no credential exists"
+        }
+      ],
+      "rights": {
+        "data_class": "legacy-mapping-contract-shape",
+        "prototype_only": true,
+        "commercial_use": false
+      },
+      "determinism": {
+        "id_strategy": "provider-scoped-surrogate",
+        "digest": "blake2b-128",
+        "canonical_id_service": "not-available-in-this-phase"
+      }
+    },
+    "provider_ids": [
+      {
+        "machina_id": "urn:machina:sports:competition:x95e2a2b67276c471ae7ca58f8cc243e2",
+        "entity_type": "competition",
+        "provider_namespace": "sportradar-nfl",
+        "provider_id": "nfl",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:competition:xd88ec2f16cfe1e8d946a6c2e1b96f77d",
+        "entity_type": "season",
+        "provider_namespace": "sportradar-nfl",
+        "provider_id": "2025",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.season.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:site:x500722463254cd557ecd63bc5c76aef9",
+        "entity_type": "site",
+        "provider_namespace": "sportradar-nfl",
+        "provider_id": "00000000-0000-4000-8000-000000009801",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.site.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:event:xf425cd702c12072be3934430fc9b6cc0",
+        "entity_type": "event",
+        "provider_namespace": "sportradar-nfl",
+        "provider_id": "00000000-0000-4000-8000-000000009001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.event.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:x6208dd7c96134a6ff63f9a284990687b",
+        "entity_type": "team",
+        "provider_namespace": "sportradar-nfl",
+        "provider_id": "00000000-0000-4000-8000-000000009101",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[0].provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:xa049f23fa3e897e62873423ae1e8f742",
+        "entity_type": "team",
+        "provider_namespace": "sportradar-nfl",
+        "provider_id": "00000000-0000-4000-8000-000000009102",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[1].provider_id"
+      }
+    ],
+    "capabilities": {
+      "tier": "core",
+      "tiers_satisfied": [
+        "core"
+      ],
+      "present": [
+        "event.competition",
+        "event.identity",
+        "event.participants",
+        "event.score",
+        "event.start_time",
+        "event.status",
+        "provenance"
+      ],
+      "absent": [
+        "event.actions",
+        "event.clock",
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.lineups",
+        "event.live_statistics",
+        "event.period",
+        "event.play_by_play",
+        "event.result",
+        "event.tracking",
+        "participant.player_statistics"
+      ],
+      "not_expressible": [
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.tracking"
+      ],
+      "by_tier": {
+        "core": {
+          "required_present": [
+            "event.competition",
+            "event.identity",
+            "event.participants",
+            "event.start_time",
+            "event.status",
+            "provenance"
+          ],
+          "required_absent": [],
+          "optional_present": [
+            "event.score"
+          ],
+          "optional_absent": [
+            "event.result"
+          ]
+        },
+        "live": {
+          "required_present": [],
+          "required_absent": [
+            "event.actions",
+            "event.clock",
+            "event.period"
+          ],
+          "optional_present": [],
+          "optional_absent": [
+            "event.live_statistics",
+            "event.play_by_play"
+          ]
+        }
+      },
+      "violations": []
+    },
+    "rights": {
+      "data_class": "legacy-mapping-contract-shape",
+      "prototype_only": true,
+      "commercial_use": false
+    }
+  }
+}
