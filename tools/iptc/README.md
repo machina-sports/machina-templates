@@ -18,6 +18,7 @@ a string, or `@import` — **before** the processor is handed the bytes.
 | `agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/` | vendored upstream ontologies, `shacl/`, vocabularies, samples, `UPSTREAM.md`, `LICENSE.md`, `upstream-commit.json` | the pinned standard sits beside the mappings it governs |
 | `agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld` | the one shared JSON-LD context | it is a serializer input, so it ships with the templates |
 | `tools/iptc/` | the harness, its rules and its fixtures | operator tooling, not installed |
+| `tools/iptc/vendored-manifest.json` | the authoritative pin of the runtime `sports-skills` vendors byte-exact | the specification belongs beside the bytes; the consumer's `VENDORED.json` is only its receipt |
 | `docs/rfcs/001-machina-iptc-sport-schema-profile.md` | the normative Machina profile | layer 3 is this document's executable form |
 | `docs/iptc/BASELINE-AUDIT.md`, `docs/iptc/baseline-audit.json` | the recorded baseline | generated; CI checks they are current |
 | `docs/iptc/INVENTORY.md`, `docs/iptc/inventory.json` | every IPTC emitter and consumer in the repo | the evidence base for PR 2 scope and PR 3 consumer migration |
