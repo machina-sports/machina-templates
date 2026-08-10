@@ -36,6 +36,13 @@ a different shape:
    ``canonical_envelope`` ValueError instead of through the envelope — into
    whatever CI log, ticket or terminal read them. Every shape above is driven
    through every surface and the raw text must appear on none of them.
+5. **Nor does it repeat the key names it refused.** The redaction covered the
+   three published fields and left the one error that echoed a *key*: an entry
+   with an unexpected key was rejected with ``unexpected key(s)`` followed by
+   the sorted key names joined verbatim. A key is as good a place to put
+   ``Authorization: Bearer …`` as a value, and an entry rejected for having one
+   published it through the same findings and the same ValueError. The
+   unexpected-key error now names the entry and nothing else.
 """
 
 from __future__ import annotations
@@ -133,6 +140,46 @@ SAFE_REFS = (
     "espn/scoreboard",
 )
 
+#: One string that exists nowhere in the repository, embedded in every unexpected
+#: key below. Asserting on it as well as on the whole key name catches a report
+#: that names a fragment of the key rather than all of it.
+SENTINEL = "EXTRA_URL_TOKEN_SHOULD_NOT_APPEAR_7f3c91"
+
+#: Unexpected key names an entry must be refused for without any of them being
+#: repeated back. A key carries whatever the producer typed, so the shapes are
+#: the ones a leaked header, a query string or a pasted URL produces — plus the
+#: bare sentinel, because a key does not have to look dangerous to be somebody's
+#: identifier.
+DANGEROUS_UNEXPECTED_KEYS = tuple(template.format(SENTINEL) for template in (
+    "Authorization: Bearer {0}",
+    "authorization: Bearer {0}",
+    "AUTHORIZATION: Bearer {0}",
+    "token={0}",
+    "TOKEN={0}",
+    "access_token={0}",
+    "api_key={0}",
+    "API_KEY={0}",
+    "api-key: {0}",
+    "apikey/{0}",
+    "password={0}",
+    "PASSWORD={0}",
+    "secret={0}",
+    "client_secret={0}",
+    "cookie: session={0}",
+    "Set-Cookie: session={0}",
+    "https://v3.football.api-sports.io/fixtures?id={0}",
+    "HTTP://EXAMPLE.INVALID/{0}",
+    "fixtures?id={0}",
+    "fixtures&season={0}",
+    "{0}",
+))
+
+#: Unexpected keys with nothing dangerous in them. They must not be listed
+#: either: an error that names the benign ones and hides the rest tells an
+#: attacker which of their keys was the interesting one, and an error whose text
+#: depends on the keys is one edit away from naming all of them again.
+BENIGN_UNEXPECTED_KEYS = ("notes", "Value", "kind ", "endpoint", "url_class")
+
 #: The one note the checked-in fixtures carry. It contains the word "credential"
 #: on purpose — saying "no credential exists" must not read as carrying one.
 FIXTURE_NOTE = ("legacy mapping-contract shape, not raw provider data; no "
@@ -172,6 +219,24 @@ def refusal(index, field, marker):
             "credential-shaped material was redacted (contains '{2}'). Record "
             "the endpoint class only; no URL, query or credential.".format(
                 index, field, marker))
+
+
+def unexpected_key_refusal(index):
+    """The one message an entry with unexpected keys produces, whatever they are.
+
+    Deterministic in the pointer and in nothing else, for the same reason
+    :func:`refusal` is: a key name is producer-controlled text, so naming it in
+    the error hands it to every log the error reaches.
+    """
+    return ("observation.adapter.source_refs[{0}]: unexpected field name(s) "
+            "redacted; only kind, value and note are recorded".format(index))
+
+
+def ref_with_key(key):
+    """A safe ``source_refs`` entry carrying one unexpected ``key``."""
+    ref = {"kind": "endpoint-class", "value": "api-football/fixtures"}
+    ref[key] = "x"
+    return ref
 
 
 def resolver():
@@ -426,6 +491,102 @@ class TestTheRefusalNeverRepeatsWhatItRefused(unittest.TestCase):
         ))
         self.assertEqual(
             errors, [refusal(1, "note", "api_key")])
+
+
+class TestTheRefusalNeverRepeatsAnUnexpectedKeyName(unittest.TestCase):
+    """An unexpected key is refused by pointer, never by name.
+
+    ``kind``, ``value`` and ``note`` are redacted, and a key is the fourth place
+    a producer can put ``Authorization: Bearer …`` in the same entry. Listing the
+    unexpected keys back moved that material out through ``validate_observation``
+    and through the ``canonical_envelope`` ValueError — the two surfaces the
+    value redaction exists to keep clean.
+    """
+
+    def test_a_dangerous_key_is_one_generic_error_naming_the_entry(self):
+        for key in DANGEROUS_UNEXPECTED_KEYS:
+            with self.subTest(key=key):
+                errors = validate_observation(document(ref_with_key(key)))
+                self.assertEqual(errors, [unexpected_key_refusal(0)])
+
+    def test_no_dangerous_key_or_sentinel_reaches_the_validation_findings(self):
+        for key in DANGEROUS_UNEXPECTED_KEYS:
+            with self.subTest(key=key):
+                joined = "\n".join(
+                    validate_observation(document(ref_with_key(key))))
+                self.assertNotIn(key, joined)
+                self.assertNotIn(SENTINEL, joined)
+
+    def test_a_benign_key_is_not_named_either(self):
+        for key in BENIGN_UNEXPECTED_KEYS:
+            with self.subTest(key=key):
+                errors = validate_observation(document(ref_with_key(key)))
+                self.assertEqual(errors, [unexpected_key_refusal(0)])
+                self.assertNotIn(key, "\n".join(errors))
+
+    def test_several_unexpected_keys_are_one_error_naming_none_of_them(self):
+        ref = {"kind": "endpoint-class", "value": "api-football/fixtures"}
+        for key in DANGEROUS_UNEXPECTED_KEYS[:3] + BENIGN_UNEXPECTED_KEYS[:2]:
+            ref[key] = "x"
+        errors = validate_observation(document(ref))
+        self.assertEqual(errors, [unexpected_key_refusal(0)])
+        self.assertNotIn(SENTINEL, "\n".join(errors))
+
+    def test_each_bad_entry_is_reported_against_its_own_index(self):
+        errors = validate_observation(document(
+            endpoint_ref("api-football/fixtures"),
+            ref_with_key(DANGEROUS_UNEXPECTED_KEYS[0]),
+            ref_with_key("notes"),
+        ))
+        self.assertEqual(
+            errors, [unexpected_key_refusal(1), unexpected_key_refusal(2)])
+
+    def test_the_same_input_always_produces_the_same_error(self):
+        doc = document(ref_with_key(DANGEROUS_UNEXPECTED_KEYS[0]))
+        self.assertEqual(validate_observation(doc), validate_observation(doc))
+
+    def test_no_dangerous_key_reaches_the_envelope_exception(self):
+        for key in DANGEROUS_UNEXPECTED_KEYS:
+            with self.subTest(key=key):
+                with self.assertRaises(ValueError) as raised:
+                    canonical_envelope(document(ref_with_key(key)),
+                                       id_resolver=resolver())
+                message = str(raised.exception)
+                self.assertIn("observation.adapter.source_refs[0]", message)
+                self.assertNotIn(key, message)
+                self.assertNotIn(SENTINEL, message)
+
+    def test_no_dangerous_key_reaches_any_serialized_output(self):
+        """With validation bypassed, as in ``TestOneRuleNotTwo``: each builder is
+        public and must hold on its own."""
+        for key in DANGEROUS_UNEXPECTED_KEYS:
+            with self.subTest(key=key):
+                doc = document(ref_with_key(key))
+                for name, built in (
+                    ("provenance", provenance_block(doc, id_resolver=resolver())),
+                    ("event_view", event_view(doc, id_resolver=resolver())),
+                    ("graph", sport_schema_graph(doc, id_resolver=resolver())),
+                ):
+                    serialized = json.dumps(built)
+                    self.assertNotIn(key, serialized, name)
+                    self.assertNotIn(SENTINEL, serialized, name)
+
+    def test_the_entry_still_reports_its_other_faults(self):
+        """Redacting the key names must not swallow the errors that name a field
+        the author can actually fix."""
+        errors = validate_observation(document(
+            {"kind": "endpoint-class", "value": "token=abc",
+             DANGEROUS_UNEXPECTED_KEYS[0]: "x"}))
+        self.assertEqual(errors, [
+            unexpected_key_refusal(0),
+            refusal(0, "value", "token"),
+        ])
+        self.assertNotIn(SENTINEL, "\n".join(errors))
+
+    def test_an_entry_with_only_the_recorded_fields_is_not_refused(self):
+        self.assertEqual(validate_observation(document(
+            {"kind": "endpoint-class", "value": "api-football/fixtures",
+             "note": FIXTURE_NOTE})), [])
 
 
 if __name__ == "__main__":

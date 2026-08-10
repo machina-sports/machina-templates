@@ -458,10 +458,18 @@ def _check_source_refs(adapter, errors):
         if not isinstance(ref, dict):
             errors.append("{0}: expected an object".format(pointer))
             continue
-        extra = sorted(set(ref) - {"kind", "value", "note"})
-        if extra:
-            errors.append("{0}: unexpected key(s) {1}; only kind, value and note "
-                          "are recorded".format(pointer, ", ".join(extra)))
+        if set(ref) - {"kind", "value", "note"}:
+            # The key names are not echoed, for the reason the values are not:
+            # a key is producer-controlled text, so an entry keyed
+            # "Authorization: Bearer …" published its own credential through
+            # this finding and through the ValueError the envelope raises. Not
+            # even the benign names are listed — an error whose text depends on
+            # the keys says which of them was filtered, and is one edit away
+            # from naming all of them again. The pointer is what the adapter
+            # author fixes the entry with; the key names are what they already
+            # have.
+            errors.append("{0}: unexpected field name(s) redacted; only kind, "
+                          "value and note are recorded".format(pointer))
         for key in ("kind", "value"):
             if not isinstance(ref.get(key), str) or not ref.get(key):
                 errors.append("{0}.{1}: required non-empty string is missing".format(
