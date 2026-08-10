@@ -1,0 +1,84 @@
+{
+  "manifest_version": "iptc-test-suites/1",
+  "runner": "tools/iptc/run_test_suites.py",
+  "pattern": "tests/test_iptc_*.py",
+  "groups": [
+    "manifest",
+    "canonical",
+    "adapters",
+    "harness"
+  ],
+  "suites": [
+    {
+      "path": "tests/test_iptc_test_manifest.py",
+      "group": "manifest"
+    },
+    {
+      "path": "tests/test_iptc_vendored_manifest.py",
+      "group": "manifest"
+    },
+    {
+      "path": "tests/test_iptc_canonical_serializer.py",
+      "group": "canonical",
+      "timeout_seconds": 600
+    },
+    {
+      "path": "tests/test_iptc_capability_matrix.py",
+      "group": "canonical"
+    },
+    {
+      "path": "tests/test_iptc_cli_rights_gate.py",
+      "group": "canonical",
+      "timeout_seconds": 600
+    },
+    {
+      "path": "tests/test_iptc_cross_provider_equivalence.py",
+      "group": "canonical"
+    },
+    {
+      "path": "tests/test_iptc_identity_resolution_method.py",
+      "group": "canonical"
+    },
+    {
+      "path": "tests/test_iptc_multi_participant_contract.py",
+      "group": "canonical"
+    },
+    {
+      "path": "tests/test_iptc_source_ref_credentials.py",
+      "group": "canonical"
+    },
+    {
+      "path": "tests/test_iptc_sports_skills_reference_contract.py",
+      "group": "canonical"
+    },
+    {
+      "path": "tests/test_iptc_api_football_adapter.py",
+      "group": "adapters"
+    },
+    {
+      "path": "tests/test_iptc_sportradar_mlb_adapter.py",
+      "group": "adapters"
+    },
+    {
+      "path": "tests/test_iptc_sportradar_nfl_adapter.py",
+      "group": "adapters"
+    },
+    {
+      "path": "tests/test_iptc_sportradar_soccer_adapter.py",
+      "group": "adapters"
+    },
+    {
+      "path": "tests/test_iptc_sportradar_tennis_adapter.py",
+      "group": "adapters"
+    },
+    {
+      "path": "tests/test_iptc_stats_perform_opta_adapter.py",
+      "group": "adapters"
+    },
+    {
+      "path": "tests/test_iptc_validation_harness.py",
+      "group": "harness",
+      "timeout_seconds": 900
+    }
+  ]
+}

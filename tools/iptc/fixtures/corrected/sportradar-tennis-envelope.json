@@ -1,0 +1,639 @@
+{
+  "machina_sports_schema": {
+    "schema_version": "machina-sports-schema/1",
+    "profile": "machina-iptc-profile/1.1",
+    "sport_schema_graph": {
+      "@context": {
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
+        "sh": "http://www.w3.org/ns/shacl#",
+        "dcterms": "http://purl.org/dc/terms/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "schema": "https://schema.org/",
+        "schemaorg": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/",
+        "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+        "spamfstat": "https://sportschema.org/ontologies/american-football/",
+        "spbblstat": "https://sportschema.org/ontologies/baseball/",
+        "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+        "spespstat": "https://sportschema.org/ontologies/esports/",
+        "spgolf": "https://sportschema.org/ontologies/golf/",
+        "spgolstat": "https://sportschema.org/ontologies/golf/",
+        "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+        "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/",
+        "sptenstat": "https://sportschema.org/ontologies/tennis/",
+        "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+        "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+        "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+        "ikos": "http://cv.iptc.org/newscodes/ikos/",
+        "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+        "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+        "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+        "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+        "spct": "http://cv.iptc.org/newscodes/spct/",
+        "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+        "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+        "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+        "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+        "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+        "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+        "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+        "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+        "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+        "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+        "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+        "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+        "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+        "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+        "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+        "machina": "https://machina.gg/ns/sport/1.0/"
+      },
+      "@graph": [
+        {
+          "@id": "urn:machina:sports:competition:xf8219c62e42d4ab95fe38dac87d3d587",
+          "@type": "sport:Competition",
+          "rdfs:label": "Synthetic Open",
+          "sport:sport": {
+            "@id": "medtop:20001085"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:competition:x6e6a70d42a5cb0128273f04ca3158400",
+          "@type": "sport:Competition",
+          "rdfs:label": "Synthetic Open 2026",
+          "sport:sport": {
+            "@id": "medtop:20001085"
+          },
+          "sport:competitionType": {
+            "@id": "spct:season"
+          },
+          "sport:parent": {
+            "@id": "urn:machina:sports:competition:xf8219c62e42d4ab95fe38dac87d3d587"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:site:x0f1c5169ca47dd36d96d51653820c642",
+          "@type": "sport:Site",
+          "rdfs:label": "Synthetic Centre Court"
+        },
+        {
+          "@id": "urn:machina:sports:athlete:x02490b549d1800c59c676ce3b62f5706",
+          "@type": "sport:Athlete",
+          "rdfs:label": "Synthetic Player A"
+        },
+        {
+          "@id": "urn:machina:sports:athlete:x07887cd25f12254f655a3817a54309f5",
+          "@type": "sport:Athlete",
+          "rdfs:label": "Synthetic Player B"
+        },
+        {
+          "@id": "urn:machina:sports:event:x9c1978252b27b653fb9c623fce727c2a",
+          "@type": "sport:Event",
+          "rdfs:label": "Synthetic Player A vs Synthetic Player B",
+          "sport:sport": {
+            "@id": "medtop:20001085"
+          },
+          "sport:eventInCompetition": {
+            "@id": "urn:machina:sports:competition:x6e6a70d42a5cb0128273f04ca3158400"
+          },
+          "sport:location": {
+            "@id": "urn:machina:sports:site:x0f1c5169ca47dd36d96d51653820c642"
+          },
+          "sport:startDateTime": {
+            "@value": "2026-01-20T09:00:00+00:00",
+            "@type": "xsd:dateTime"
+          },
+          "sport:eventStatus": {
+            "@id": "speventstatus:post-event"
+          },
+          "sport:participation": [
+            {
+              "@id": "urn:machina:sports:participation:x2ed0330cd36e8a0bd92b8e8149636d4c"
+            },
+            {
+              "@id": "urn:machina:sports:participation:x069b076cd6567964ddc6c7ea63de1871"
+            }
+          ]
+        },
+        {
+          "@id": "urn:machina:sports:participation:x2ed0330cd36e8a0bd92b8e8149636d4c",
+          "@type": "sport:IndividualParticipation",
+          "rdfs:label": "Synthetic Player A participation in Synthetic Player A vs Synthetic Player B",
+          "sport:participationBy": {
+            "@id": "urn:machina:sports:athlete:x02490b549d1800c59c676ce3b62f5706"
+          },
+          "sport:score": "2",
+          "sport:eventOutcome": {
+            "@id": "speventoutcome:win"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:participation:x069b076cd6567964ddc6c7ea63de1871",
+          "@type": "sport:IndividualParticipation",
+          "rdfs:label": "Synthetic Player B participation in Synthetic Player A vs Synthetic Player B",
+          "sport:participationBy": {
+            "@id": "urn:machina:sports:athlete:x07887cd25f12254f655a3817a54309f5"
+          },
+          "sport:score": "1",
+          "sport:eventOutcome": {
+            "@id": "speventoutcome:loss"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xbc0b31745bea0076e92f8f431d134497",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-tennis competition sr:competition:9001",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:competition:xf8219c62e42d4ab95fe38dac87d3d587"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:providerId": "sr:competition:9001",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x34aebc6bd1bee2ba18ee268695caf064",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-tennis season sr:season:9001",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:competition:x6e6a70d42a5cb0128273f04ca3158400"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:providerId": "sr:season:9001",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x30fa3cbf4edaf9e2f36b21521cf2eb68",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-tennis site sr:venue:9001",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:site:x0f1c5169ca47dd36d96d51653820c642"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:providerId": "sr:venue:9001",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xf2fff53aaf04dfb30584cfb3a79fc558",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-tennis event sr:sport_event:9000001",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:event:x9c1978252b27b653fb9c623fce727c2a"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:providerId": "sr:sport_event:9000001",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xc50560c3b8a532923f38f488f64897f7",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-tennis athlete sr:competitor:9101",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:athlete:x02490b549d1800c59c676ce3b62f5706"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:providerId": "sr:competitor:9101",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x004946d326054358ad5160ed86875970",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "sportradar-tennis athlete sr:competitor:9102",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:athlete:x07887cd25f12254f655a3817a54309f5"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:providerId": "sr:competitor:9102",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:observation-provenance:x403f7a1f4fae52e999c0fb25e354b46f",
+          "@type": "machina:ObservationProvenance",
+          "rdfs:label": "sportradar-tennis observation of event x9c1978252b27b653fb9c623fce727c2a",
+          "machina:describes": {
+            "@id": "urn:machina:sports:event:x9c1978252b27b653fb9c623fce727c2a"
+          },
+          "machina:providerNamespace": "sportradar-tennis",
+          "machina:observedAt": {
+            "@value": "2026-03-01T22:05:00+00:00",
+            "@type": "xsd:dateTime"
+          },
+          "machina:adapterVersion": "1",
+          "machina:serializerVersion": "1",
+          "machina:rightsClass": "legacy-mapping-contract-shape"
+        }
+      ]
+    },
+    "event_view": {
+      "event_id": "urn:machina:sports:event:x9c1978252b27b653fb9c623fce727c2a",
+      "label": "Synthetic Player A vs Synthetic Player B",
+      "sport": "tennis",
+      "start_time": "2026-01-20T09:00:00+00:00",
+      "status": "closed",
+      "competition": {
+        "id": "urn:machina:sports:competition:xf8219c62e42d4ab95fe38dac87d3d587",
+        "name": "Synthetic Open"
+      },
+      "season": {
+        "id": "urn:machina:sports:competition:x6e6a70d42a5cb0128273f04ca3158400",
+        "name": "Synthetic Open 2026"
+      },
+      "site": {
+        "id": "urn:machina:sports:site:x0f1c5169ca47dd36d96d51653820c642",
+        "name": "Synthetic Centre Court",
+        "city": "Synthetic City",
+        "country": "Synthetica"
+      },
+      "players": [
+        {
+          "id": "urn:machina:sports:athlete:x02490b549d1800c59c676ce3b62f5706",
+          "name": "Synthetic Player A"
+        },
+        {
+          "id": "urn:machina:sports:athlete:x07887cd25f12254f655a3817a54309f5",
+          "name": "Synthetic Player B"
+        }
+      ],
+      "provider": {
+        "namespace": "sportradar-tennis",
+        "family": "licensed",
+        "raw": {
+          "@context": {
+            "sport": "https://www.sportschema.org/ontologies/sport#",
+            "schema": "https://schema.org/"
+          },
+          "@id": "urn:sportradar:tennis:match:sr:sport_event:9000001",
+          "@type": [
+            "sport:Event",
+            "schema:SportsEvent"
+          ],
+          "name": "Synthetic Player A vs Synthetic Player B - Synthetic Open",
+          "schema:startDate": "2026-01-20T09:00:00+00:00",
+          "schema:sportName": "tennis",
+          "sport:status": "ended",
+          "sport:competition": {
+            "@id": "urn:sportradar:tennis:competition:sr:competition:9001",
+            "@type": "sport:Competition",
+            "name": "Synthetic Open",
+            "sport:season": {
+              "@id": "urn:sportradar:tennis:season:sr:season:9001",
+              "@type": "sport:Season",
+              "name": "Synthetic Open 2026",
+              "sport:year": "2026"
+            }
+          },
+          "sport:venue": {
+            "@type": "sport:Venue",
+            "@id": "urn:sportradar:tennis:venue:sr:venue:9001",
+            "name": "Synthetic Centre Court",
+            "schema:addressLocality": "Synthetic City",
+            "schema:addressCountry": "Synthetica",
+            "sport:timezone": "UTC"
+          },
+          "sport:competitors": [
+            {
+              "@type": "sport:Competitor",
+              "@id": "urn:sportradar:tennis:competitor:sr:competitor:9101",
+              "name": "Synthetic Player A",
+              "sport:qualifier": "home",
+              "sport:country": "Synthetica",
+              "sport:countryCode": "SYN",
+              "sport:abbreviation": "PLA",
+              "sport:seed": 3,
+              "sport:bracketNumber": 1
+            },
+            {
+              "@type": "sport:Competitor",
+              "@id": "urn:sportradar:tennis:competitor:sr:competitor:9102",
+              "name": "Synthetic Player B",
+              "sport:qualifier": "away",
+              "sport:country": "Synthetica",
+              "sport:countryCode": "SYN",
+              "sport:abbreviation": "PLB",
+              "sport:seed": null,
+              "sport:bracketNumber": 2
+            }
+          ],
+          "sport:score": {
+            "sport:homeScore": 2,
+            "sport:awayScore": 1,
+            "sport:periodScores": [
+              {
+                "sport:periodNumber": 1,
+                "sport:homeScore": 6,
+                "sport:awayScore": 4,
+                "sport:periodType": "set"
+              },
+              {
+                "sport:periodNumber": 2,
+                "sport:homeScore": 3,
+                "sport:awayScore": 6,
+                "sport:periodType": "set"
+              },
+              {
+                "sport:periodNumber": 3,
+                "sport:homeScore": 7,
+                "sport:awayScore": 5,
+                "sport:periodType": "set"
+              }
+            ]
+          },
+          "sport:gameInfo": {
+            "sport:round": "Quarterfinal",
+            "sport:roundNumber": 5,
+            "sport:stagePhase": "main_draw",
+            "sport:bestOf": 3,
+            "sport:totalSets": 3,
+            "sport:isFinished": true,
+            "sport:hasWinner": true,
+            "sport:winnerId": "sr:competitor:9101",
+            "sport:status": "closed"
+          },
+          "sport:sport": {
+            "@id": "urn:iptc:sport:tennis",
+            "@type": "sport:Sport",
+            "name": "Tennis"
+          },
+          "sport:competitionFormat": {
+            "sport:matchType": "singles",
+            "sport:genderCategory": "men",
+            "sport:level": "atp_250"
+          },
+          "sport:stage": {
+            "@type": "sport:Stage",
+            "sport:phase": "main_draw",
+            "sport:type": "cup",
+            "sport:order": 0,
+            "sport:startDate": "2026-01-12",
+            "sport:endDate": "2026-01-25"
+          },
+          "sport:coverage": {
+            "sport:detailedServeOutcomes": true,
+            "sport:enhancedStats": true,
+            "sport:playByPlay": true,
+            "sport:scores": "detailed"
+          },
+          "sport:statistics": {
+            "sport:competitorStats": [
+              {
+                "sport:competitorId": "sr:competitor:9101",
+                "sport:competitorName": "Synthetic Player A",
+                "sport:qualifier": "home",
+                "sport:abbreviation": "PLA",
+                "sport:statistics": {
+                  "sport:aces": 9,
+                  "sport:breakpointsWon": 4,
+                  "sport:doubleFaults": 2,
+                  "sport:firstServePointsWon": 51,
+                  "sport:firstServeSuccessful": 68,
+                  "sport:gamesWon": 16,
+                  "sport:maxGamesInARow": 4,
+                  "sport:maxPointsInARow": 7,
+                  "sport:pointsWon": 104,
+                  "sport:pointsWonFromLast10": 6,
+                  "sport:secondServePointsWon": 19,
+                  "sport:secondServeSuccessful": 31,
+                  "sport:serviceGamesWon": 12,
+                  "sport:servicePointsLost": 31,
+                  "sport:servicePointsWon": 70,
+                  "sport:tiebreaksWon": 0,
+                  "sport:totalBreakpoints": 9
+                }
+              },
+              {
+                "sport:competitorId": "sr:competitor:9102",
+                "sport:competitorName": "Synthetic Player B",
+                "sport:qualifier": "away",
+                "sport:abbreviation": "PLB",
+                "sport:statistics": {
+                  "sport:aces": 5,
+                  "sport:breakpointsWon": 2,
+                  "sport:doubleFaults": 5,
+                  "sport:firstServePointsWon": 44,
+                  "sport:firstServeSuccessful": 61,
+                  "sport:gamesWon": 15,
+                  "sport:maxGamesInARow": 3,
+                  "sport:maxPointsInARow": 5,
+                  "sport:pointsWon": 97,
+                  "sport:pointsWonFromLast10": 4,
+                  "sport:secondServePointsWon": 17,
+                  "sport:secondServeSuccessful": 28,
+                  "sport:serviceGamesWon": 11,
+                  "sport:servicePointsLost": 35,
+                  "sport:servicePointsWon": 61,
+                  "sport:tiebreaksWon": 0,
+                  "sport:totalBreakpoints": 7
+                }
+              }
+            ]
+          },
+          "sport:channels": [
+            {
+              "sport:channelName": "Synthetic Sports 1"
+            }
+          ],
+          "sport:groups": [],
+          "sport:mode": {
+            "sport:bestOf": 3
+          },
+          "sport:round": {
+            "sport:roundName": "Quarterfinal",
+            "sport:roundNumber": 5
+          },
+          "sport:category": {
+            "sport:categoryId": "sr:category:9001",
+            "sport:categoryName": "ATP Synthetic"
+          },
+          "sport:competitionContext": {
+            "sport:parentId": "sr:competition:9000",
+            "sport:competitionGender": "men",
+            "sport:competitionLevel": "atp_250",
+            "sport:competitionType": "singles"
+          },
+          "sport:seasonContext": {
+            "sport:seasonStartDate": "2026-01-12",
+            "sport:seasonEndDate": "2026-01-25"
+          },
+          "sport:eventDetails": {
+            "sport:estimated": false,
+            "sport:startTimeConfirmed": true,
+            "sport:startTime": "2026-01-20T09:00:00+00:00",
+            "sport:documentType": "sportradar-tennis:sport_event_summary",
+            "sport:selected": false,
+            "sport:title": "Unknown Title"
+          }
+        }
+      }
+    },
+    "provenance": {
+      "provider": {
+        "namespace": "sportradar-tennis",
+        "family": "licensed"
+      },
+      "adapter": {
+        "name": "tools.iptc.canonical.adapters.sportradar_tennis",
+        "version": "1"
+      },
+      "serializer": {
+        "name": "machina-iptc-serializer",
+        "version": "1"
+      },
+      "profile": "machina-iptc-profile/1.1",
+      "upstream_pin": {
+        "repository": "https://github.com/iptc/sport-schema",
+        "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
+        "target_version": "1.1"
+      },
+      "observed_at": "2026-03-01T22:05:00+00:00",
+      "source_refs": [
+        {
+          "kind": "legacy-mapping-output",
+          "value": "iptc-sportradar-tennis-event-mapping",
+          "note": "legacy mapping-contract shape, not raw provider data; no Sportradar endpoint was called and no credential exists"
+        }
+      ],
+      "rights": {
+        "data_class": "legacy-mapping-contract-shape",
+        "prototype_only": true,
+        "commercial_use": false
+      },
+      "determinism": {
+        "id_strategy": "provider-scoped-surrogate",
+        "digest": "blake2b-128",
+        "canonical_id_service": "not-available-in-this-phase"
+      }
+    },
+    "provider_ids": [
+      {
+        "machina_id": "urn:machina:sports:competition:xf8219c62e42d4ab95fe38dac87d3d587",
+        "entity_type": "competition",
+        "provider_namespace": "sportradar-tennis",
+        "provider_id": "sr:competition:9001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:competition:x6e6a70d42a5cb0128273f04ca3158400",
+        "entity_type": "season",
+        "provider_namespace": "sportradar-tennis",
+        "provider_id": "sr:season:9001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.season.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:site:x0f1c5169ca47dd36d96d51653820c642",
+        "entity_type": "site",
+        "provider_namespace": "sportradar-tennis",
+        "provider_id": "sr:venue:9001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.site.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:event:x9c1978252b27b653fb9c623fce727c2a",
+        "entity_type": "event",
+        "provider_namespace": "sportradar-tennis",
+        "provider_id": "sr:sport_event:9000001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.event.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:athlete:x02490b549d1800c59c676ce3b62f5706",
+        "entity_type": "athlete",
+        "provider_namespace": "sportradar-tennis",
+        "provider_id": "sr:competitor:9101",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[0].provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:athlete:x07887cd25f12254f655a3817a54309f5",
+        "entity_type": "athlete",
+        "provider_namespace": "sportradar-tennis",
+        "provider_id": "sr:competitor:9102",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[1].provider_id"
+      }
+    ],
+    "capabilities": {
+      "tier": "core",
+      "tiers_satisfied": [
+        "core"
+      ],
+      "present": [
+        "event.competition",
+        "event.identity",
+        "event.lineups",
+        "event.participants",
+        "event.result",
+        "event.score",
+        "event.start_time",
+        "event.status",
+        "provenance"
+      ],
+      "absent": [
+        "event.actions",
+        "event.clock",
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.live_statistics",
+        "event.period",
+        "event.play_by_play",
+        "event.tracking",
+        "participant.player_statistics"
+      ],
+      "not_expressible": [
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.tracking"
+      ],
+      "by_tier": {
+        "core": {
+          "required_present": [
+            "event.competition",
+            "event.identity",
+            "event.participants",
+            "event.start_time",
+            "event.status",
+            "provenance"
+          ],
+          "required_absent": [],
+          "optional_present": [
+            "event.result",
+            "event.score"
+          ],
+          "optional_absent": []
+        },
+        "live": {
+          "required_present": [],
+          "required_absent": [
+            "event.actions",
+            "event.clock",
+            "event.period"
+          ],
+          "optional_present": [],
+          "optional_absent": [
+            "event.live_statistics",
+            "event.play_by_play"
+          ]
+        }
+      },
+      "violations": []
+    },
+    "rights": {
+      "data_class": "legacy-mapping-contract-shape",
+      "prototype_only": true,
+      "commercial_use": false
+    }
+  }
+}

@@ -9,7 +9,7 @@
 | **Shared context** | `agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld` |
 | **Executable form** | `tools/iptc/` — layer 3 of the harness implements this document |
 | **Grounding** | The pinned upstream artefacts vendored in this repository, and the measured baseline in `docs/iptc/` |
-| **Profile version** | `machina-iptc-profile/1` |
+| **Profile version** | `machina-iptc-profile/1.1` (see §15) |
 
 ---
 
@@ -313,7 +313,24 @@ Provider identifiers are **evidence attached to a Machina identity**, never the
 identity.
 
 1. A resource `@id` is a Machina identifier (§7). It is never a provider
-   identifier and never a provider URN.
+   identifier and never a provider URN. Layer 3 enforces this as
+   `provider-id-as-resource-id`: a resource typed in the official `sport:`
+   namespace whose `@id` embeds a known provider namespace is a finding. The
+   namespaces are derived from the connectors already named in
+   `rules/provider-leak-terms.json`, plus `espn` and `dsg`, in both the
+   hyphenated and run-together spellings — `urn:apifootball:sport_event:1035842`
+   is the form this repository actually emitted.
+
+   The match is on a **delimited word**, not a bare substring, so `espn-401547`
+   is a finding and an opaque surrogate digest that happens to contain provider
+   letters is not. A rule that fired on correct identifiers would be switched off
+   rather than fixed.
+
+   The rule is scoped to `sport:`-typed resources on purpose. A
+   `machina:ProviderIdentifier` exists to carry a provider identifier (§6.2), and
+   only `@id` is identity: the same string as the *value* of a `machina:`
+   evidence property is the sanctioned crosswalk and is not a finding. A rule
+   that flagged it would fire on the fix for the defect.
 2. Every provider identifier appears as a `machina:ProviderIdentifier` resource
    carrying `machina:identifies`, `machina:providerNamespace` and
    `machina:providerId`, plus optional `machina:resolutionMethod`,
@@ -348,6 +365,23 @@ identity.
 6. **Form.** An opaque, collision-free identifier minted by the canonical ID
    generator, which is owned by the Client API. Serializers and templates do not
    mint identifiers.
+
+   A serializer therefore takes an **injected resolver**, `id_resolver(kind,
+   *parts) -> str`, and calls it. It never contains minting logic, so the Client
+   API generator can be swapped in later with no serializer change.
+
+   Until that generator exists, the resolver of record is a **provider-scoped
+   deterministic surrogate**: `urn:machina:sports:{kind}:x{32-hex}`, where the
+   hex is a digest over an identity tuple whose first element is the provider
+   namespace. Two consequences, stated rather than glossed:
+
+   - the leading `x` is a permanent marker that the identifier is a surrogate, so
+     it can never be mistaken for a canonical Client-API identity;
+   - because the tuple is provider-scoped, **two providers observing one fixture
+     mint two different identifiers**. That is honest, not a defect: this profile
+     does not claim cross-provider identity resolution. The crosswalk in §6
+     records the evidence linking them and stops there. Collapsing them is the
+     canonical identity service's job.
 
 ---
 
@@ -436,10 +470,31 @@ its count stay separate from `invalid` because the two need different fixes: an
 invalid code is a mapping bug to correct here, while an unverifiable one is
 resolved by a pin bump once upstream publishes the scheme.
 
-Serializers must still emit them as node references under `spsocactiontype:`. A
-value under a prefix that no context in scope binds — which is what
-`spsocaction:score-change` currently is — is a gate 2 failure, because it resolves
-to nothing at all.
+**Serializers must not emit a soccer action-type NewsCode at all, under any
+prefix.** Both spellings fail, for different reasons, and neither is repairable
+here: `spsocaction:score-change`, which the current mappings carry, is under a
+prefix no context in scope binds, so it resolves to nothing and is a gate 2
+failure; `spsocactiontype:`, the prefix `tools/prefixes.ttl` does bind, has no
+vocabulary TTL at the pin, so every value in it is `unverifiable` and the rule
+above fails closed on it. Emitting either produces a document that looks validated
+and is not.
+
+What a serializer emits instead:
+
+- the **action class**, as a node reference in `spactionclass:` — the one pinned
+  scheme for this — where the provider's action has a defensible class;
+- the provider's own action type verbatim in `event_view` (§11), or as bounded
+  `machina:evidence` on a `machina:`-typed sibling. Never under `sport:`, and never
+  as a NewsCode.
+
+No substitute code list is invented, and no provider string is promoted to a
+NewsCode. This is revisited only once a sport-specific action vocabulary is
+actually pinned: a pin bump vendors `vocabularies/spsocaction.ttl`, layer 4 can
+then check its values, and only then may a mapping be added under the §9 rule that
+every mapped code is *proved* present in a pinned scheme. Until then the gap stays
+visible in the `unverifiable` count rather than papered over. RFC 002 §7 states the
+same rule from the serializer side, and `vocab.py` maps nothing into the scheme, so
+neither document can drift from the other without a test failing.
 
 ---
 
@@ -553,6 +608,17 @@ Initial `machina:` vocabulary: `machina:ProviderIdentifier`,
 `machina:validTo`, `machina:legacyMachinaUrn`, `machina:canonicalRevision`,
 `machina:mappingVersion`, `machina:sourceRef`.
 
+Added in `machina-iptc-profile/1.1`, to carry observation provenance as a
+resource in the graph rather than only as an envelope block:
+`machina:ObservationProvenance`, `machina:describes`, `machina:observedAt`,
+`machina:adapterVersion`, `machina:serializerVersion`, `machina:rightsClass`,
+`machina:evidence`.
+
+`machina:evidence` is where a provider's own detail survives when no pinned
+NewsCode can carry it — a soccer action type, for instance (§9.2). It is a
+`machina:` property on a `machina:`-typed resource, never an extra property on a
+closed official shape.
+
 ### 12.1 Provider-specific properties currently in the IPTC namespace
 
 Terms currently emitted under `sport:` that are transliterations of a provider's
@@ -641,8 +707,14 @@ claimed IPTC-conformant, whatever a SHACL processor says about an empty target s
 
 ## 15. Versioning
 
-- This profile is `machina-iptc-profile/1`, and every conformance claim cites both
-  the profile version and the upstream pin.
+- This profile is `machina-iptc-profile/1.1`, and every conformance claim cites
+  both the profile version and the upstream pin.
+- **`1` → `1.1`**, reviewed and approved by the profile owner, is a minor bump
+  under the rule below. It *adds* the `machina:` observation terms in §12 and the
+  injected-resolver rule in §7.6. It tightens nothing already emitted and changes
+  the meaning of no already-conforming document: a document that conformed to
+  `machina-iptc-profile/1` still conforms to `1.1`. The upstream pin is
+  unchanged, so this is a profile bump and not a pin bump.
 - **Bumping the upstream pin** means: change `UPSTREAM_COMMIT`, re-vendor the
   bytes, regenerate `upstream-commit.json`, re-run `--verify-pin`, regenerate the
   baseline audit, and record in `UPSTREAM.md` whether the two known upstream

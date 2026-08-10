@@ -1,0 +1,229 @@
+{
+  "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "sh": "http://www.w3.org/ns/shacl#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "schema": "https://schema.org/",
+    "schemaorg": "https://schema.org/",
+    "sport": "https://sportschema.org/ontologies/main/",
+    "spstat": "https://sportschema.org/ontologies/corestatistics/",
+    "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+    "spamfstat": "https://sportschema.org/ontologies/american-football/",
+    "spbblstat": "https://sportschema.org/ontologies/baseball/",
+    "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+    "spespstat": "https://sportschema.org/ontologies/esports/",
+    "spgolf": "https://sportschema.org/ontologies/golf/",
+    "spgolstat": "https://sportschema.org/ontologies/golf/",
+    "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+    "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+    "spsocstat": "https://sportschema.org/ontologies/soccer/",
+    "sptenstat": "https://sportschema.org/ontologies/tennis/",
+    "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+    "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+    "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+    "ikos": "http://cv.iptc.org/newscodes/ikos/",
+    "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+    "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+    "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+    "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+    "spct": "http://cv.iptc.org/newscodes/spct/",
+    "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+    "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+    "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+    "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+    "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+    "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+    "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+    "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+    "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+    "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+    "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+    "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+    "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+    "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+    "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+    "machina": "https://machina.gg/ns/sport/1.0/"
+  },
+  "@graph": [
+    {
+      "@id": "urn:machina:sports:competition:xd4b00d2b3360332277999e4ba0e82835",
+      "@type": "sport:Competition",
+      "rdfs:label": "LaLiga",
+      "sport:sport": {
+        "@id": "medtop:20001065"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:competition:x0ce32e0c9730af2bb85bb501bb2cc7ef",
+      "@type": "sport:Competition",
+      "rdfs:label": "LaLiga 25/26",
+      "sport:sport": {
+        "@id": "medtop:20001065"
+      },
+      "sport:competitionType": {
+        "@id": "spct:season"
+      },
+      "sport:parent": {
+        "@id": "urn:machina:sports:competition:xd4b00d2b3360332277999e4ba0e82835"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:site:x6c728a00ef7227f844e460511c5c75a3",
+      "@type": "sport:Site",
+      "rdfs:label": "RCDE Stadium"
+    },
+    {
+      "@id": "urn:machina:sports:team:x817a4382f0cde8eabfa10dd9fe97e69e",
+      "@type": "sport:Team",
+      "rdfs:label": "Espanyol Barcelona"
+    },
+    {
+      "@id": "urn:machina:sports:team:xea0c4dbfd3a573a7a39c907ab4e74079",
+      "@type": "sport:Team",
+      "rdfs:label": "Atletico Madrid"
+    },
+    {
+      "@id": "urn:machina:sports:event:xd24931d63aa3220235115d1e31024bac",
+      "@type": "sport:Event",
+      "rdfs:label": "Espanyol Barcelona vs Atletico Madrid",
+      "sport:sport": {
+        "@id": "medtop:20001065"
+      },
+      "sport:eventInCompetition": {
+        "@id": "urn:machina:sports:competition:x0ce32e0c9730af2bb85bb501bb2cc7ef"
+      },
+      "sport:location": {
+        "@id": "urn:machina:sports:site:x6c728a00ef7227f844e460511c5c75a3"
+      },
+      "sport:startDateTime": {
+        "@value": "2025-08-17T19:30:00+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "sport:eventStatus": {
+        "@id": "speventstatus:post-event"
+      },
+      "sport:attendance": "29612",
+      "sport:participation": [
+        {
+          "@id": "urn:machina:sports:participation:xdd2b216a2c88872fba1acfbd64ed29b5"
+        },
+        {
+          "@id": "urn:machina:sports:participation:x94f9d887a3c55793b587e8f9ff671b7d"
+        }
+      ]
+    },
+    {
+      "@id": "urn:machina:sports:participation:xdd2b216a2c88872fba1acfbd64ed29b5",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Espanyol Barcelona participation in Espanyol Barcelona vs Atletico Madrid",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:team:x817a4382f0cde8eabfa10dd9fe97e69e"
+      },
+      "sport:alignment": "home",
+      "sport:score": "2",
+      "sport:eventOutcome": {
+        "@id": "speventoutcome:win"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:participation:x94f9d887a3c55793b587e8f9ff671b7d",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Atletico Madrid participation in Espanyol Barcelona vs Atletico Madrid",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:team:xea0c4dbfd3a573a7a39c907ab4e74079"
+      },
+      "sport:alignment": "away",
+      "sport:score": "1",
+      "sport:eventOutcome": {
+        "@id": "speventoutcome:loss"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x1979769e9412fce9cb975b0ca8295b79",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-soccer competition sr:competition:8",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:competition:xd4b00d2b3360332277999e4ba0e82835"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:providerId": "sr:competition:8",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x20dc00d309273994f5a1b9f17e1385e5",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-soccer season sr:season:130805",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:competition:x0ce32e0c9730af2bb85bb501bb2cc7ef"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:providerId": "sr:season:130805",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:xf5bd1c3ef858d0fe92e1ec6bfbebfd2c",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-soccer site sr:venue:1307",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:site:x6c728a00ef7227f844e460511c5c75a3"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:providerId": "sr:venue:1307",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x086954b43611cd2d6bd9987ddc12b56a",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-soccer event sr:sport_event:61623432",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:event:xd24931d63aa3220235115d1e31024bac"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:providerId": "sr:sport_event:61623432",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:xc3eba516f4ee71742166d143db114aab",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-soccer team sr:competitor:2814",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:team:x817a4382f0cde8eabfa10dd9fe97e69e"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:providerId": "sr:competitor:2814",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x898aadd5ffb744651c24165de696daf1",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-soccer team sr:competitor:2836",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:team:xea0c4dbfd3a573a7a39c907ab4e74079"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:providerId": "sr:competitor:2836",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:observation-provenance:x1f234ced54010e8d5eb2a6100510acfb",
+      "@type": "machina:ObservationProvenance",
+      "rdfs:label": "sportradar-soccer observation of event xd24931d63aa3220235115d1e31024bac",
+      "machina:describes": {
+        "@id": "urn:machina:sports:event:xd24931d63aa3220235115d1e31024bac"
+      },
+      "machina:providerNamespace": "sportradar-soccer",
+      "machina:observedAt": {
+        "@value": "2026-03-01T22:05:00+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "machina:adapterVersion": "1",
+      "machina:serializerVersion": "1",
+      "machina:rightsClass": "licensed-provider-example-fixture"
+    }
+  ]
+}

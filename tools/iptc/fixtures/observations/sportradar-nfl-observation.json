@@ -1,0 +1,128 @@
+{
+  "schema_version": "canonical-observation/1",
+  "observation": {
+    "provider": {
+      "namespace": "sportradar-nfl",
+      "family": "licensed"
+    },
+    "observed_at": "2026-03-01T22:05:00+00:00",
+    "adapter": {
+      "name": "tools.iptc.canonical.adapters.sportradar_nfl",
+      "version": "1",
+      "source_refs": [
+        {
+          "kind": "legacy-mapping-output",
+          "value": "iptc-sportradar-event-nfl-mapping",
+          "note": "legacy mapping-contract shape, not raw provider data; no Sportradar endpoint was called and no credential exists"
+        }
+      ]
+    },
+    "rights": {
+      "data_class": "legacy-mapping-contract-shape",
+      "prototype_only": true,
+      "commercial_use": false
+    },
+    "sport": {
+      "medtop": "20000823",
+      "key": "american-football"
+    },
+    "competition": {
+      "provider_id": "nfl",
+      "resolution_method": "declared",
+      "name": "NFL",
+      "season": {
+        "provider_id": "2025",
+        "resolution_method": "declared",
+        "name": "NFL 2025"
+      }
+    },
+    "site": {
+      "provider_id": "00000000-0000-4000-8000-000000009801",
+      "name": "Synthetic Dome",
+      "city": "Synthetic City"
+    },
+    "event": {
+      "provider_id": "00000000-0000-4000-8000-000000009001",
+      "label": "Synthetic Home Hawks vs Synthetic Away Anchors",
+      "start_time": "2025-11-09T18:00:00+00:00",
+      "status": "closed"
+    },
+    "participants": [
+      {
+        "kind": "team",
+        "provider_id": "00000000-0000-4000-8000-000000009101",
+        "name": "Synthetic Home Hawks",
+        "alignment": "home",
+        "score": "24"
+      },
+      {
+        "kind": "team",
+        "provider_id": "00000000-0000-4000-8000-000000009102",
+        "name": "Synthetic Away Anchors",
+        "alignment": "away",
+        "score": "17"
+      }
+    ],
+    "raw": {
+      "@context": {
+        "sport": "https://www.sportschema.org/ontologies/sport#",
+        "schema": "https://schema.org/"
+      },
+      "@id": "urn:sportradar:sport_event:00000000-0000-4000-8000-000000009001",
+      "@type": [
+        "sport:Event",
+        "schema:SportsEvent"
+      ],
+      "name": "Synthetic Home Hawks vs Synthetic Away Anchors",
+      "schema:startDate": "2025-11-09T18:00:00+00:00",
+      "schema:sportName": "nfl",
+      "sport:status": "closed",
+      "sport:matchStatus": "closed",
+      "sport:competition": {
+        "@id": "urn:sportradar:competition:nfl",
+        "@type": "sport:Competition",
+        "name": "NFL",
+        "sport:season": {
+          "@id": "urn:sportradar:season:2025",
+          "@type": "sport:Season",
+          "name": "NFL 2025",
+          "sport:year": "2025"
+        }
+      },
+      "sport:venue": {
+        "@type": "sport:Venue",
+        "@id": "urn:sportradar:venue:00000000-0000-4000-8000-000000009801",
+        "name": "Synthetic Dome",
+        "schema:addressLocality": "Synthetic City"
+      },
+      "sport:competitors": [
+        {
+          "@type": "sport:Team",
+          "@id": "urn:sportradar:team:00000000-0000-4000-8000-000000009101",
+          "name": "Synthetic Home Hawks",
+          "sport:abbreviation": "SHH",
+          "sport:qualifier": "home"
+        },
+        {
+          "@type": "sport:Team",
+          "@id": "urn:sportradar:team:00000000-0000-4000-8000-000000009102",
+          "name": "Synthetic Away Anchors",
+          "sport:abbreviation": "SAA",
+          "sport:qualifier": "away"
+        }
+      ],
+      "sport:score": {
+        "sport:homeScore": 24,
+        "sport:awayScore": 17,
+        "sport:halfTime": {
+          "period_type": "quarter",
+          "id": "00000000-0000-4000-8000-000000009901",
+          "number": 1,
+          "sequence": 1,
+          "home_points": 7,
+          "away_points": 3
+        }
+      }
+    }
+  }
+}

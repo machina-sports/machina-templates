@@ -1,0 +1,220 @@
+{
+  "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "sh": "http://www.w3.org/ns/shacl#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "schema": "https://schema.org/",
+    "schemaorg": "https://schema.org/",
+    "sport": "https://sportschema.org/ontologies/main/",
+    "spstat": "https://sportschema.org/ontologies/corestatistics/",
+    "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+    "spamfstat": "https://sportschema.org/ontologies/american-football/",
+    "spbblstat": "https://sportschema.org/ontologies/baseball/",
+    "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+    "spespstat": "https://sportschema.org/ontologies/esports/",
+    "spgolf": "https://sportschema.org/ontologies/golf/",
+    "spgolstat": "https://sportschema.org/ontologies/golf/",
+    "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+    "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+    "spsocstat": "https://sportschema.org/ontologies/soccer/",
+    "sptenstat": "https://sportschema.org/ontologies/tennis/",
+    "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+    "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+    "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+    "ikos": "http://cv.iptc.org/newscodes/ikos/",
+    "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+    "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+    "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+    "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+    "spct": "http://cv.iptc.org/newscodes/spct/",
+    "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+    "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+    "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+    "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+    "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+    "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+    "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+    "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+    "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+    "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+    "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+    "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+    "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+    "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+    "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+    "machina": "https://machina.gg/ns/sport/1.0/"
+  },
+  "@graph": [
+    {
+      "@id": "urn:machina:sports:competition:x5afd35e2fcc6ca759e23d32f794ceb45",
+      "@type": "sport:Competition",
+      "rdfs:label": "MLB",
+      "sport:sport": {
+        "@id": "medtop:20000849"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:competition:x604942c299b02c2b118deb624711087a",
+      "@type": "sport:Competition",
+      "rdfs:label": "MLB 2026",
+      "sport:sport": {
+        "@id": "medtop:20000849"
+      },
+      "sport:competitionType": {
+        "@id": "spct:season"
+      },
+      "sport:parent": {
+        "@id": "urn:machina:sports:competition:x5afd35e2fcc6ca759e23d32f794ceb45"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:site:x070e8e6b2b1330adb359a4279a5e4aef",
+      "@type": "sport:Site",
+      "rdfs:label": "Synthetic Ballpark"
+    },
+    {
+      "@id": "urn:machina:sports:team:x4caf8153b9de71727fb7c2194ed20027",
+      "@type": "sport:Team",
+      "rdfs:label": "Synthetic City Sentinels"
+    },
+    {
+      "@id": "urn:machina:sports:team:x8c70ea6bac86c38d7523213977a3ab13",
+      "@type": "sport:Team",
+      "rdfs:label": "Synthetic Town Tanagers"
+    },
+    {
+      "@id": "urn:machina:sports:event:xdd919e9fb4d1f4e3eb59a4dbbdc95712",
+      "@type": "sport:Event",
+      "rdfs:label": "Synthetic City Sentinels vs Synthetic Town Tanagers",
+      "sport:sport": {
+        "@id": "medtop:20000849"
+      },
+      "sport:eventInCompetition": {
+        "@id": "urn:machina:sports:competition:x604942c299b02c2b118deb624711087a"
+      },
+      "sport:location": {
+        "@id": "urn:machina:sports:site:x070e8e6b2b1330adb359a4279a5e4aef"
+      },
+      "sport:startDateTime": {
+        "@value": "2026-04-15T23:05:00+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "sport:eventStatus": {
+        "@id": "speventstatus:post-event"
+      },
+      "sport:participation": [
+        {
+          "@id": "urn:machina:sports:participation:x254943887879c97abab7df71fd78b775"
+        },
+        {
+          "@id": "urn:machina:sports:participation:x0e0f0f82a67daf143f665da4d17a4bdf"
+        }
+      ]
+    },
+    {
+      "@id": "urn:machina:sports:participation:x254943887879c97abab7df71fd78b775",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Synthetic City Sentinels participation in Synthetic City Sentinels vs Synthetic Town Tanagers",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:team:x4caf8153b9de71727fb7c2194ed20027"
+      },
+      "sport:alignment": "home"
+    },
+    {
+      "@id": "urn:machina:sports:participation:x0e0f0f82a67daf143f665da4d17a4bdf",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Synthetic Town Tanagers participation in Synthetic City Sentinels vs Synthetic Town Tanagers",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:team:x8c70ea6bac86c38d7523213977a3ab13"
+      },
+      "sport:alignment": "away"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x26b8f8c2a20bb41a64b0fd8b554249b2",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-mlb competition mlb",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:competition:x5afd35e2fcc6ca759e23d32f794ceb45"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:providerId": "mlb",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x6ddddbe8091178420194a32f089a7175",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-mlb season 2026",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:competition:x604942c299b02c2b118deb624711087a"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:providerId": "2026",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x4316d046db50265480e48f29702c5f5f",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-mlb site 00000000-0000-4000-8000-000000009802",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:site:x070e8e6b2b1330adb359a4279a5e4aef"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:providerId": "00000000-0000-4000-8000-000000009802",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x149152fac6edefac7579ec851c51a54d",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-mlb event 00000000-0000-4000-8000-000000009002",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:event:xdd919e9fb4d1f4e3eb59a4dbbdc95712"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:providerId": "00000000-0000-4000-8000-000000009002",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x1a44e540eae7d5d928aae2c82284294d",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-mlb team 00000000-0000-4000-8000-000000009201",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:team:x4caf8153b9de71727fb7c2194ed20027"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:providerId": "00000000-0000-4000-8000-000000009201",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x67bdb9fe937fef0a90a662e445a5a2c2",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "sportradar-mlb team 00000000-0000-4000-8000-000000009202",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:team:x8c70ea6bac86c38d7523213977a3ab13"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:providerId": "00000000-0000-4000-8000-000000009202",
+      "machina:resolutionMethod": "provider-native"
+    },
+    {
+      "@id": "urn:machina:sports:observation-provenance:x13a07dd2c95cd157e292608ba219bc0e",
+      "@type": "machina:ObservationProvenance",
+      "rdfs:label": "sportradar-mlb observation of event xdd919e9fb4d1f4e3eb59a4dbbdc95712",
+      "machina:describes": {
+        "@id": "urn:machina:sports:event:xdd919e9fb4d1f4e3eb59a4dbbdc95712"
+      },
+      "machina:providerNamespace": "sportradar-mlb",
+      "machina:observedAt": {
+        "@value": "2026-03-01T22:05:00+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "machina:adapterVersion": "1",
+      "machina:serializerVersion": "1",
+      "machina:rightsClass": "legacy-mapping-contract-shape"
+    }
+  ]
+}

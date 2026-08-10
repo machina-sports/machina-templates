@@ -20,13 +20,23 @@ name: Validate IPTC Sport Schema
 # paths would skip this workflow, so a reviewer could wrongly read a skipped run
 # as "the AI-route lint did not apply". One owner per check.
 
+# THE TWO FILTERS BELOW ARE IDENTICAL ON PURPOSE, AND `tests/test_iptc_*.py` IS A
+# GLOB RATHER THAN ONE FILE. Until PR 2 task A18 the filter named exactly one
+# suite, so every suite added after it could change without this workflow running
+# — the same omission that kept those suites out of the run itself. The glob
+# closes both halves. `tools/iptc/**` already reaches the suite manifest, the
+# runner, the vendored canonical runtime, `vendored-manifest.json`, the rules and
+# every fixture; `docs/iptc/**` reaches the four generated reports. Those are not
+# restated as separate entries: an overlapping glob is one more thing to keep in
+# step with a directory move. `tests/test_iptc_test_manifest.py` asserts that each
+# of those concrete inputs is in fact reached.
 on:
   pull_request:
     paths:
       - "agent-templates/iptc-mappings/**"
       - "tools/iptc/**"
       - "tools/__init__.py"
-      - "tests/test_iptc_validation_harness.py"
+      - "tests/test_iptc_*.py"
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
@@ -37,7 +47,7 @@ on:
       - "agent-templates/iptc-mappings/**"
       - "tools/iptc/**"
       - "tools/__init__.py"
-      - "tests/test_iptc_validation_harness.py"
+      - "tests/test_iptc_*.py"
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
@@ -67,12 +77,25 @@ jobs:
       - name: Verify the pinned upstream bytes and the shared context
         run: python -m tools.iptc --verify-pin
 
-      # Run the file directly rather than via `-m unittest tests...`. `tests/` is a
-      # namespace directory with no `__init__.py`, so any installed distribution that
-      # ships a top-level regular `tests` package wins on sys.path and the module
-      # never resolves. Executing the file cannot be shadowed.
-      - name: Harness unit tests
-        run: python tests/test_iptc_validation_harness.py -v
+      # The cheap structural question first, in milliseconds: is every
+      # `tests/test_iptc_*.py` on disk registered in tools/iptc/test-suites.json?
+      # An unregistered suite is a coverage gap, and the run below would otherwise
+      # be green while silently skipping it.
+      - name: Every canonical suite is registered for CI
+        run: python tools/iptc/run_test_suites.py --list
+
+      # Then all of it, in manifest order. The runner executes each suite as a
+      # FILE rather than via `-m unittest tests...`: `tests/` is a namespace
+      # directory with no `__init__.py`, so any installed distribution that ships
+      # a top-level regular `tests` package wins on sys.path and the module never
+      # resolves. Executing the file cannot be shadowed.
+      #
+      # NO SUITE IS NAMED BY HAND HERE. A leftover step for one suite would run it
+      # twice, and — worse — would look like the coverage while the manifest is
+      # what actually decides. `tests/test_iptc_validation_harness.py` asserts
+      # that no run step in this file names a suite path.
+      - name: Every canonical suite
+        run: python tools/iptc/run_test_suites.py --verbose
 
       # Reproducibility gate. Covers all four generated artefacts:
       # docs/iptc/baseline-audit.json, docs/iptc/BASELINE-AUDIT.md,

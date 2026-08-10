@@ -19,6 +19,15 @@ Everything runs offline against
 credentials, no provider calls. Layer 1 enforces that rather than assuming it: a
 document that would make the JSON-LD processor fetch a context is rejected before
 the processor ever sees it. See :func:`context_loader_findings`.
+
+Two kinds of document arrive here. A **graph document** is the JSON-LD the four
+layers describe. A **canonical envelope** (RFC 002 §9) carries that same graph
+under ``machina_sports_schema.sport_schema_graph`` alongside the rights claim a
+consumer is gated on; it is unwrapped and its inner graph validated identically,
+under the caller's own path. An envelope additionally gets a ``rights_gate``
+result, which :func:`rights_findings` decides and which fails closed. A graph
+document gets no such result at all — rights live in the envelope, and inventing
+a verdict for a document that cannot carry one is worse than reporting none.
 """
 
 from __future__ import annotations
@@ -32,6 +41,12 @@ from rdflib import RDF, BNode, Graph, URIRef
 from rdflib.namespace import SH
 
 from . import profile
+from .canonical.rights import (
+    CONSUMER_TIERS,
+    ENVELOPE_KEY,
+    STRICT_CONSUMER_TIER,
+    rights_findings,
+)
 from .reference import (
     NEWSCODE_STEM,
     TARGET_VERSION,
@@ -42,6 +57,19 @@ from .reference import (
 )
 
 HARNESS_VERSION = "1"
+
+#: The layer name an envelope's rights verdict is reported under. It is absent
+#: from a graph document's layers on purpose — see :func:`validate_payload`.
+RIGHTS_LAYER = "rights_gate"
+
+#: ``rights_findings``, ``ENVELOPE_KEY``, ``CONSUMER_TIERS`` and
+#: ``STRICT_CONSUMER_TIER`` are imported from :mod:`tools.iptc.canonical.rights`
+#: and re-exported, not defined here. The gate is a cross-repository rule that
+#: has to be vendorable into a package which cannot import this one, and this
+#: module needs pyshacl and rdflib. Re-exporting keeps every documented import
+#: path — RFC 002 §9 names ``validate_graph.rights_findings`` — resolving to the
+#: single implementation, rather than to a second copy that agrees until the day
+#: one side is fixed.
 
 
 @dataclass
@@ -83,6 +111,10 @@ SKIP_REASONS = {
         "will not load"
     ),
     "rdf": "not run: the document does not expand to parseable RDF",
+    "envelope": (
+        "not run: the canonical envelope carries no sport_schema_graph object to "
+        "validate"
+    ),
 }
 
 
@@ -160,7 +192,21 @@ def parse_jsonld(path: Path) -> tuple[Graph | None, dict]:
             "error": f"{type(exc).__name__}: {exc}",
             "document": None,
         }
+    return expand_jsonld(document, raw=raw)
 
+
+def expand_jsonld(document, *, raw: str | None = None) -> tuple[Graph | None, dict]:
+    """The same check over an already-parsed document, with no file behind it.
+
+    This is what lets a canonical envelope's inner graph reach layer 1 without
+    being written to a transient file first: a temporary artifact would have to be
+    created, named and cleaned up, and the result would report its path instead of
+    the one the caller asked about.
+
+    ``raw`` is the document's own bytes when they exist; rdflib is handed those in
+    preference to a re-serialization, so validating a file stays byte-for-byte the
+    operation it always was.
+    """
     blocked = context_loader_findings(document)
     if blocked:
         return None, {
@@ -179,7 +225,8 @@ def parse_jsonld(path: Path) -> tuple[Graph | None, dict]:
     graph = Graph()
     try:
         # base= keeps relative IRIs resolvable without reaching for the network.
-        graph.parse(data=raw, format="json-ld", base="urn:machina:iptc:fixture:")
+        graph.parse(data=raw if raw is not None else json.dumps(document),
+                    format="json-ld", base="urn:machina:iptc:fixture:")
     except Exception as exc:
         return None, {
             "stage": "rdf",
@@ -344,46 +391,83 @@ def controlled_vocabulary(data_graph: Graph, profile_result) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# The rights gate — see the re-export note above; the rule lives in
+# tools/iptc/canonical/rights.py, which is vendored into sports-skills.
+# ---------------------------------------------------------------------------
+
+def envelope_block(document) -> dict | None:
+    """The canonical envelope block in ``document``, or None if it carries none.
+
+    One key decides it, because one key is what RFC 002 §9 defines. A document
+    without it is a graph document and is validated as one.
+    """
+    if isinstance(document, dict) and isinstance(document.get(ENVELOPE_KEY), dict):
+        return document[ENVELOPE_KEY]
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def validate_document(path: Path, fixture: str, *, repo_root: Path) -> DocumentResult:
-    """Run all four layers plus the four counters against one fixture."""
-    graph, parse_detail = parse_jsonld(path)
-    document = parse_detail.pop("document", None)
+def validate_document(path: Path, fixture: str, *, repo_root: Path,
+                      consumer_tier: str = STRICT_CONSUMER_TIER) -> DocumentResult:
+    """Run all four layers plus the four counters against one file."""
     relative = str(path.relative_to(repo_root))
+    raw = path.read_text(encoding="utf-8")
+    try:
+        document = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        return _nothing_to_validate(fixture, relative, {
+            "stage": "json",
+            "error": f"{type(exc).__name__}: {exc}",
+        }, rights=None)
+    return validate_payload(document, fixture, path=relative,
+                            consumer_tier=consumer_tier, raw=raw)
 
-    layer1 = LayerResult("jsonld_parse", graph is not None, parse_detail)
+
+def validate_payload(document, fixture: str, *, path: str,
+                     consumer_tier: str = STRICT_CONSUMER_TIER,
+                     raw: str | None = None) -> DocumentResult:
+    """The same verdict for an already-parsed document, reported under ``path``.
+
+    ``path`` is the caller's logical path and is echoed verbatim: a canonical
+    envelope is validated through its inner graph, but the result is about the
+    document the caller named, not about an unwrapped copy of part of it.
+    """
+    block = envelope_block(document)
+    rights = None
+    payload = document
+    if block is not None:
+        findings = rights_findings(document, consumer_tier)
+        rights = asdict(LayerResult(RIGHTS_LAYER, not findings, {
+            "consumer_tier": consumer_tier,
+            "finding_count": len(findings),
+            "findings": findings,
+        }))
+        payload = block.get("sport_schema_graph")
+        # The envelope's bytes are not the graph's; re-serialize the inner graph.
+        raw = None
+        if not isinstance(payload, dict):
+            return _nothing_to_validate(fixture, path, {
+                "stage": "envelope",
+                "error": "machina_sports_schema.sport_schema_graph is missing or is "
+                         "not an object, so the envelope carries no graph to "
+                         "validate. An envelope with nothing to check does not pass.",
+            }, rights=rights)
+
+    graph, parse_detail = expand_jsonld(payload, raw=raw)
+    parse_detail.pop("document", None)
 
     if graph is None:
-        skipped = SKIP_REASONS[parse_detail["stage"]]
-        return DocumentResult(
-            fixture=fixture,
-            path=relative,
-            layers={
-                "jsonld_parse": asdict(layer1),
-                "official_shacl": asdict(LayerResult("official_shacl", False, {
-                    "skipped": skipped})),
-                "machina_profile": asdict(LayerResult("machina_profile", False, {
-                    "skipped": skipped})),
-                "controlled_vocabulary": asdict(LayerResult("controlled_vocabulary", False, {
-                    "skipped": skipped})),
-            },
-            counters={
-                "unknown_sport_terms": None,
-                "invalid_newscode_values": None,
-                "duplicate_resource_ids": None,
-                "provider_properties_in_iptc_namespace": None,
-                "note": "Counters are null, not zero: nothing could be counted.",
-            },
-            conforms=False,
-        )
+        return _nothing_to_validate(fixture, path, parse_detail, rights=rights)
 
+    layer1 = LayerResult("jsonld_parse", True, parse_detail)
     shacl = official_shacl(graph)
     # A vacuous pass is not a pass. See _official_target_nodes.
     layer2 = LayerResult("official_shacl", shacl["conforms"] and not shacl["vacuous"], shacl)
 
-    profile_result = profile.check(document)
+    profile_result = profile.check(payload)
     layer3 = LayerResult("machina_profile", profile_result.conforms, {
         "conforms": profile_result.conforms,
         "finding_count": len(profile_result.findings),
@@ -411,22 +495,61 @@ def validate_document(path: Path, fixture: str, *, repo_root: Path) -> DocumentR
         "provider_properties_in_iptc_namespace": profile_result.provider_leaks,
     }
 
+    layers = {
+        "jsonld_parse": asdict(layer1),
+        "official_shacl": asdict(layer2),
+        "machina_profile": asdict(layer3),
+        "controlled_vocabulary": asdict(layer4),
+        "counter_detail": detail,
+    }
+    if rights is not None:
+        layers[RIGHTS_LAYER] = rights
+
     return DocumentResult(
         fixture=fixture,
-        path=relative,
-        layers={
-            "jsonld_parse": asdict(layer1),
-            "official_shacl": asdict(layer2),
-            "machina_profile": asdict(layer3),
-            "controlled_vocabulary": asdict(layer4),
-            "counter_detail": detail,
-        },
+        path=path,
+        layers=layers,
         counters=counters,
+        # ``conforms`` stays a statement about the four layers and the four
+        # counters. The rights gate answers "may this consumer use it?", which is
+        # a different question from "is this document conformant?" and is reported
+        # as its own layer rather than folded into this one.
         conforms=layer1.ok and layer2.ok and layer3.ok and layer4.ok
         and counters["unknown_sport_terms"] == 0
         and counters["invalid_newscode_values"] == 0
         and counters["duplicate_resource_ids"] == 0
         and counters["provider_properties_in_iptc_namespace"] == 0,
+    )
+
+
+def _nothing_to_validate(fixture: str, path: str, parse_detail: dict,
+                         *, rights: dict | None) -> DocumentResult:
+    """The verdict when layer 1 never got a graph. Layers 2-4 are failures, not
+    blanks, and the counters are null rather than zero: nothing was counted."""
+    skipped = SKIP_REASONS[parse_detail["stage"]]
+    layers = {
+        "jsonld_parse": asdict(LayerResult("jsonld_parse", False, parse_detail)),
+        "official_shacl": asdict(LayerResult("official_shacl", False, {
+            "skipped": skipped})),
+        "machina_profile": asdict(LayerResult("machina_profile", False, {
+            "skipped": skipped})),
+        "controlled_vocabulary": asdict(LayerResult("controlled_vocabulary", False, {
+            "skipped": skipped})),
+    }
+    if rights is not None:
+        layers[RIGHTS_LAYER] = rights
+    return DocumentResult(
+        fixture=fixture,
+        path=path,
+        layers=layers,
+        counters={
+            "unknown_sport_terms": None,
+            "invalid_newscode_values": None,
+            "duplicate_resource_ids": None,
+            "provider_properties_in_iptc_namespace": None,
+            "note": "Counters are null, not zero: nothing could be counted.",
+        },
+        conforms=False,
     )
 
 

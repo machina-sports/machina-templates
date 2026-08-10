@@ -1,0 +1,122 @@
+{
+  "schema_version": "canonical-observation/1",
+  "observation": {
+    "provider": {
+      "namespace": "sportradar-mlb",
+      "family": "licensed"
+    },
+    "observed_at": "2026-03-01T22:05:00+00:00",
+    "adapter": {
+      "name": "tools.iptc.canonical.adapters.sportradar_mlb",
+      "version": "1",
+      "source_refs": [
+        {
+          "kind": "legacy-mapping-output",
+          "value": "iptc-sportradar-event-mlb-mapping",
+          "note": "legacy mapping-contract shape, not raw provider data; no Sportradar endpoint was called and no credential exists"
+        }
+      ]
+    },
+    "rights": {
+      "data_class": "legacy-mapping-contract-shape",
+      "prototype_only": true,
+      "commercial_use": false
+    },
+    "sport": {
+      "medtop": "20000849",
+      "key": "baseball"
+    },
+    "competition": {
+      "provider_id": "mlb",
+      "resolution_method": "declared",
+      "name": "MLB",
+      "season": {
+        "provider_id": "2026",
+        "resolution_method": "declared",
+        "name": "MLB 2026"
+      }
+    },
+    "site": {
+      "provider_id": "00000000-0000-4000-8000-000000009802",
+      "name": "Synthetic Ballpark",
+      "city": "Synthetic City"
+    },
+    "event": {
+      "provider_id": "00000000-0000-4000-8000-000000009002",
+      "label": "Synthetic City Sentinels vs Synthetic Town Tanagers",
+      "start_time": "2026-04-15T23:05:00+00:00",
+      "status": "closed"
+    },
+    "participants": [
+      {
+        "kind": "team",
+        "provider_id": "00000000-0000-4000-8000-000000009201",
+        "name": "Synthetic City Sentinels",
+        "alignment": "home"
+      },
+      {
+        "kind": "team",
+        "provider_id": "00000000-0000-4000-8000-000000009202",
+        "name": "Synthetic Town Tanagers",
+        "alignment": "away"
+      }
+    ],
+    "raw": {
+      "@context": {
+        "sport": "https://www.sportschema.org/ontologies/sport#",
+        "schema": "https://schema.org/"
+      },
+      "@id": "urn:sportradar:sport_event:00000000-0000-4000-8000-000000009002",
+      "@type": [
+        "sport:Event",
+        "schema:SportsEvent"
+      ],
+      "name": "Synthetic City Sentinels vs Synthetic Town Tanagers",
+      "schema:startDate": "2026-04-15T23:05:00+00:00",
+      "schema:sportName": "mlb",
+      "sport:status": "closed",
+      "sport:matchStatus": "closed",
+      "sport:competition": {
+        "@id": "urn:sportradar:competition:mlb",
+        "@type": "sport:Competition",
+        "name": "MLB",
+        "sport:season": {
+          "@id": "urn:sportradar:season:2026",
+          "@type": "sport:Season",
+          "name": "MLB 2026",
+          "sport:year": "2026"
+        }
+      },
+      "sport:venue": {
+        "@type": "sport:Venue",
+        "@id": "urn:sportradar:venue:00000000-0000-4000-8000-000000009802",
+        "name": "Synthetic Ballpark",
+        "schema:addressLocality": "Synthetic City"
+      },
+      "sport:competitors": [
+        {
+          "@type": "sport:Team",
+          "@id": "urn:sportradar:team:00000000-0000-4000-8000-000000009201",
+          "name": "Synthetic City Sentinels",
+          "sport:market": "Synthetic City",
+          "sport:abbreviation": "SCS",
+          "sport:qualifier": "home"
+        },
+        {
+          "@type": "sport:Team",
+          "@id": "urn:sportradar:team:00000000-0000-4000-8000-000000009202",
+          "name": "Synthetic Town Tanagers",
+          "sport:market": "Synthetic Town",
+          "sport:abbreviation": "STT",
+          "sport:qualifier": "away"
+        }
+      ],
+      "sport:score": {
+        "sport:homeScore": null,
+        "sport:awayScore": null
+      },
+      "sport:gameNumber": 1,
+      "sport:doubleHeader": false
+    }
+  }
+}

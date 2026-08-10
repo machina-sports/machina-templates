@@ -18,6 +18,7 @@ a string, or `@import` — **before** the processor is handed the bytes.
 | `agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/` | vendored upstream ontologies, `shacl/`, vocabularies, samples, `UPSTREAM.md`, `LICENSE.md`, `upstream-commit.json` | the pinned standard sits beside the mappings it governs |
 | `agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld` | the one shared JSON-LD context | it is a serializer input, so it ships with the templates |
 | `tools/iptc/` | the harness, its rules and its fixtures | operator tooling, not installed |
+| `tools/iptc/vendored-manifest.json` | the authoritative pin of the runtime `sports-skills` vendors byte-exact | the specification belongs beside the bytes; the consumer's `VENDORED.json` is only its receipt |
 | `docs/rfcs/001-machina-iptc-sport-schema-profile.md` | the normative Machina profile | layer 3 is this document's executable form |
 | `docs/iptc/BASELINE-AUDIT.md`, `docs/iptc/baseline-audit.json` | the recorded baseline | generated; CI checks they are current |
 | `docs/iptc/INVENTORY.md`, `docs/iptc/inventory.json` | every IPTC emitter and consumer in the repo | the evidence base for PR 2 scope and PR 3 consumer migration |
@@ -56,6 +57,10 @@ python3 tools/iptc/validate_graph.py         <doc.json>   # layers 1 + 2 + 3
 python3 tools/iptc/validate_terms.py         <doc.json>   # gates 1 + 4, against the pinned ontologies
 python3 tools/iptc/validate_vocabularies.py  <doc.json>   # layer 4 / gate 2, against the pinned TTLs
 
+# a canonical envelope is validated through its inner sport_schema_graph, and is
+# additionally gated on the rights it carries. A refused envelope exits nonzero.
+python3 tools/iptc/validate_graph.py --consumer-tier production <envelope.json>
+
 # each focused command also takes --all [--section baseline] [--json] [--verbose]
 python3 tools/iptc/validate_graph.py --all --section baseline
 python3 tools/iptc/validate_terms.py --list-official-terms
@@ -65,10 +70,21 @@ python3 tools/iptc/validate_vocabularies.py --list-schemes
 python3 tools/iptc/extract_mapping_fixture.py --list-artifacts
 python3 tools/iptc/extract_mapping_fixture.py --mapping <mapping.yml>
 
-# tests — run the file directly. `tests/` has no `__init__.py`, so an installed
-# distribution shipping a top-level `tests` package would shadow the module form.
+# tests — every suite, in manifest order, each executed as a file. `tests/` has no
+# `__init__.py`, so an installed distribution shipping a top-level `tests` package
+# would shadow the module form. This is what CI runs; nothing names a suite by hand.
+python3 tools/iptc/run_test_suites.py --list      # is every suite registered?
+python3 tools/iptc/run_test_suites.py --verbose   # run all of it
+
+# one suite on its own, while working on it
 python3 tests/test_iptc_validation_harness.py -v
 ```
+
+`tools/iptc/test-suites.json` is the list. A suite on disk that is not in it fails
+`tests/test_iptc_test_manifest.py`, so adding a suite and gating it in CI are one
+act rather than two. Order is derived — declared `groups` order, then path — with
+the cheap manifest suites first and the SHACL harness last; `timeout_seconds` is
+optional and declares a ceiling for the suites whose runtime pyshacl dominates.
 
 ## The four layers
 
