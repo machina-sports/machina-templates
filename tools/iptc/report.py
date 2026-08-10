@@ -122,7 +122,7 @@ def _count(value) -> str:
 
 
 def _fixture_meta(provenance: dict, fixture: str) -> dict:
-    for section in ("baseline", "conforming", "negative"):
+    for section in ("baseline", "conforming", "corrected", "negative"):
         for entry in provenance.get(section, []):
             if entry["fixture"] == fixture:
                 return entry
@@ -256,6 +256,16 @@ def render_markdown(report: dict) -> str:
             "`machina-profile-conforming-minimal` is the only document in this "
             "repository expected to pass everything, and it is the target shape the "
             "corrected serializers aim at.")),
+        "corrected": ("Corrected — canonical serializer outputs", (
+            "The 'after' rows. Each is emitted by `tools/iptc/canonical/serialize.py` "
+            "from a canonical observation that a provider adapter built from "
+            "checked-in source evidence, and each is expected to pass all four "
+            "layers with all four gates at zero. Read a green row narrowly: it is "
+            "evidence that one provider payload shape can be serialized "
+            "conformingly, not a licence to redistribute that provider's data and "
+            "not a statement about payloads this fixture does not contain. The "
+            "`rights` and `MISSING EVIDENCE` lines in each fixture's detail below "
+            "say which is which.")),
         "baseline": ("Baseline — current mapping outputs", (
             "One row per supported mapping output. `class` distinguishes a verbatim "
             "checked-in artefact from a fixture hand-authored against the mapping "
@@ -265,7 +275,7 @@ def render_markdown(report: dict) -> str:
             "the corresponding gate is decorative.")),
     }
 
-    for section in ("conforming", "baseline", "negative"):
+    for section in ("conforming", "corrected", "baseline", "negative"):
         entries = report["documents"].get(section, {})
         if not entries:
             continue
@@ -298,7 +308,7 @@ def render_markdown(report: dict) -> str:
     # -- per-fixture detail ---------------------------------------------------
     add("## Per-mapping detail")
     add("")
-    for section in ("baseline", "conforming", "negative"):
+    for section in ("baseline", "conforming", "corrected", "negative"):
         entries = report["documents"].get(section, {})
         for fixture, entry in entries.items():
             meta = _fixture_meta(provenance, fixture)
@@ -314,6 +324,11 @@ def render_markdown(report: dict) -> str:
                 add(f"- **derived from:** `{meta['source']}`")
             if meta.get("provenance"):
                 add(f"- **provenance:** {meta['provenance']}")
+            if meta.get("rights"):
+                # Rendered high in the block, and never behind a flag: a rights
+                # line that lives only in provenance.json is invisible exactly
+                # where someone decides whether they may ship this data.
+                add(f"- **RIGHTS:** {meta['rights']}")
             if meta.get("transformation"):
                 add(f"- **transformation:** {meta['transformation']}")
             if meta.get("emitted_by"):
@@ -340,8 +355,9 @@ def render_markdown(report: dict) -> str:
             else:
                 add(
                     "- **known consumer dependencies:** none recorded. For a negative "
-                    "or positive control that is correct; for a baseline mapping it "
-                    "would be an inventory defect."
+                    "control, a positive control or a corrected serializer output "
+                    "that is correct — nothing in production reads them yet; for a "
+                    "baseline mapping it would be an inventory defect."
                 )
             add("")
 
@@ -505,6 +521,28 @@ def render_markdown(report: dict) -> str:
         + "."
     )
     add("")
+    corrected = provenance.get("corrected") or []
+    if corrected:
+        plural = "" if len(corrected) == 1 else "s"
+        add(
+            f"**The same rule governs the {len(corrected)} "
+            f"`corrected-serializer-output` fixture{plural}, and it is worth "
+            f"stating twice because a passing row invites the stronger reading.** "
+            f"Each one "
+            f"is derived from checked-in source evidence — a sanitized provider "
+            f"example or a mapping-contract-synthetic payload — and NO licensed "
+            f"provider was called and no credential was used to produce any of "
+            f"them. A checked-in example is evidence of a payload's *shape*; it is "
+            f"not an entitlement, and none of these fixtures is a claim that this "
+            f"repository may commercially redistribute the provider's data. Every "
+            f"observation behind them is marked `prototype_only` with "
+            f"`commercial_use: false`, which `rights_findings(envelope, "
+            f"consumer_tier=\"production\")` refuses. Per-fixture source, rights "
+            f"and limitations: "
+            + ", ".join(f"`{entry['fixture']}`" for entry in corrected)
+            + "."
+        )
+        add("")
     add("### Missing evidence, stated rather than papered over")
     add("")
     add(

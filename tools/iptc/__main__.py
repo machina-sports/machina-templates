@@ -30,7 +30,7 @@ from .report import (
 )
 from .validate import validate_document
 
-SECTIONS = ("conforming", "baseline", "negative")
+SECTIONS = ("conforming", "corrected", "baseline", "negative")
 
 
 def run(only: str | None = None) -> dict:

@@ -29,7 +29,26 @@
     "to a licensed feed. Identifiers use a 9xxx / 'synthetic0...' pattern.",
     "",
     "PR 2 replaces the baseline set with corrected outputs. It does not edit these",
-    "files: they are the 'before' evidence the audit is measured against."
+    "files: they are the 'before' evidence the audit is measured against.",
+    "",
+    "A third fixture class arrives with PR 2's corrected serializers:",
+    "",
+    "  corrected-serializer-output A JSON-LD graph emitted by",
+    "                             tools/iptc/canonical/serialize.py from a",
+    "                             canonical observation, which a provider adapter",
+    "                             built from checked-in source evidence. These are",
+    "                             the 'after' documents and they are expected to",
+    "                             pass all four layers with all four gates at zero.",
+    "                             Every one is reproducible byte-for-byte from its",
+    "                             source fixture plus a fixed observed_at, and a",
+    "                             test asserts that rather than trusting it.",
+    "",
+    "A corrected fixture's `source` is shape evidence, never an entitlement. A",
+    "checked-in provider example proves what a payload looks like; it grants this",
+    "repository no right to redistribute that provider's data. Each corrected entry",
+    "therefore records a `rights` line, and the observation behind it is marked",
+    "prototype_only with commercial_use false, which the rights gate fails closed",
+    "on for any production consumer."
   ],
   "fixture_set_version": "1",
   "conforming": [
@@ -69,6 +88,22 @@
       "class": "machina-authored-conforming",
       "provenance": "Machina-authored. Every term IRI copied from the pinned ontology; the shared context at agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld is inlined.",
       "role": "Tightly-scoped positive control for ALL FOUR layers and all four counters at zero. This is the only fixture in this repository that is expected to pass everything, and it is what the PR 2 serializers are aiming at."
+    }
+  ],
+  "corrected": [
+    {
+      "fixture": "corrected-api-football-soccer",
+      "path": "tools/iptc/fixtures/corrected/api-football-soccer-graph.json",
+      "class": "corrected-serializer-output",
+      "source": "agent-templates/iptc-mappings/example-apifootball.json",
+      "transformation": "Read by tools/iptc/canonical/adapters/api_football.py into the canonical observation checked in at tools/iptc/fixtures/observations/api-football-soccer-observation.json with observed_at 2026-03-01T22:05:00+00:00, then serialized by tools/iptc/canonical/serialize.py. Reproducible byte-for-byte from those two inputs; tests/test_iptc_api_football_adapter.py asserts it rather than trusting it.",
+      "emitted_by": "tools/iptc/canonical/serialize.py sport_schema_graph, via canonical_envelope with surrogate_resolver('api-football'). The full envelope a consumer receives is checked in beside it at tools/iptc/fixtures/corrected/api-football-soccer-envelope.json; this file is the same graph standalone, because the harness validates JSON-LD documents rather than envelopes.",
+      "coverage": "API-Football soccer event, corrected. Capability tier `core`: the payload carries no clock period, no actions and no player statistics, so `live` and `advanced` are correctly not claimed.",
+      "provenance": "SANITIZED CHECKED-IN PROVIDER EXAMPLE. No API-Football endpoint was called and no credential exists in this repository. The source is the provider example already committed at agent-templates/iptc-mappings/example-apifootball.json, read verbatim and unmodified by this task.",
+      "rights": "Shape evidence, NOT an entitlement. A checked-in provider example proves what an API-Football payload looks like; it grants this repository no right to redistribute API-Football data. The observation behind this graph is `licensed-provider-example-fixture`, prototype_only true, commercial_use false, and tools.iptc.validate_graph.rights_findings on the envelope beside it returns `rights-prototype-only` for consumer_tier `production` — a test asserts that rather than leaving it as prose. Note the gate is library-only today: validate_graph.py accepts --consumer-tier but does not yet print rights findings, so a CLI run is not the check. Do not read this fixture, or the audit row it produces, as a commercial redistribution claim.",
+      "limitation": "The source is a checked-in EXAMPLE, not a captured production response, and it carries real club, competition and venue names copied verbatim from that already-committed example. So: (1) it is one finished fixture, which exercises no pre-match, in-play, drawn, extra-time or abandoned path — those are covered by adapter unit tests over locally-mutated copies of this payload, not by a checked-in provider document; (2) it is a single-sport, single-provider shape, so a green row here is evidence about API-Football's fixtures payload and about nothing else; (3) three real provider absences are visible in it and are deliberately NOT filled in — no competition type (league.standings is not a competition type), no event outcome type (null extratime is not a statement of `regular`) and no venue country (league.country is the competition's) — so the row understates what a richer payload could carry, which is the correct direction to be wrong in.",
+      "role": "The first corrected output measured against the baseline set, and the first conformance evidence in this repository derived from a real provider shape rather than a hand-authored synthetic one. Expected to pass all four layers with all four gates at zero. The matching baseline row, `api-football-soccer-event`, is the same provider's current mapping output and fails layer 2 vacuously; the two rows read together are the before and after.",
+      "note": "Canonical identity here is a marked provider-scoped surrogate (`urn:machina:sports:<kind>:x<blake2b-128>`). The provider's own identifiers — fixture 1390823, league 140, venue 1474, teams 540 and 530, round `Regular Season - 1` and season 2025 — appear only as machina:ProviderIdentifier crosswalk evidence with an evidence pointer back to the observation field each came from. No `urn:apifootball:` identifier survives anywhere in the document."
     }
   ],
   "baseline": [

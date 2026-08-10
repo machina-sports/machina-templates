@@ -14,7 +14,7 @@ from pathlib import Path
 from .reference import REPO_ROOT
 
 PROVENANCE_PATH = Path(__file__).resolve().parent / "fixtures" / "provenance.json"
-SECTIONS = ("conforming", "baseline", "negative")
+SECTIONS = ("conforming", "corrected", "baseline", "negative")
 
 
 def add_common_arguments(parser: argparse.ArgumentParser) -> None:

@@ -1,0 +1,552 @@
+{
+  "machina_sports_schema": {
+    "schema_version": "machina-sports-schema/1",
+    "profile": "machina-iptc-profile/1.1",
+    "sport_schema_graph": {
+      "@context": {
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
+        "sh": "http://www.w3.org/ns/shacl#",
+        "dcterms": "http://purl.org/dc/terms/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "schema": "https://schema.org/",
+        "schemaorg": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/",
+        "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+        "spamfstat": "https://sportschema.org/ontologies/american-football/",
+        "spbblstat": "https://sportschema.org/ontologies/baseball/",
+        "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+        "spespstat": "https://sportschema.org/ontologies/esports/",
+        "spgolf": "https://sportschema.org/ontologies/golf/",
+        "spgolstat": "https://sportschema.org/ontologies/golf/",
+        "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+        "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/",
+        "sptenstat": "https://sportschema.org/ontologies/tennis/",
+        "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+        "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+        "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+        "ikos": "http://cv.iptc.org/newscodes/ikos/",
+        "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+        "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+        "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+        "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+        "spct": "http://cv.iptc.org/newscodes/spct/",
+        "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+        "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+        "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+        "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+        "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+        "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+        "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+        "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+        "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+        "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+        "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+        "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+        "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+        "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+        "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+        "machina": "https://machina.gg/ns/sport/1.0/"
+      },
+      "@graph": [
+        {
+          "@id": "urn:machina:sports:competition:xd2bea54b916520694b2378cdffc6bfec",
+          "@type": "sport:Competition",
+          "rdfs:label": "La Liga",
+          "sport:sport": {
+            "@id": "medtop:20001065"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:competition:x3a52ab3453fbf7b451d099c6ef4d9806",
+          "@type": "sport:Competition",
+          "rdfs:label": "La Liga 2025",
+          "sport:sport": {
+            "@id": "medtop:20001065"
+          },
+          "sport:competitionType": {
+            "@id": "spct:season"
+          },
+          "sport:parent": {
+            "@id": "urn:machina:sports:competition:xd2bea54b916520694b2378cdffc6bfec"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:phase:xced3d063fb0f2ca4ee30d1d863ae8b9f",
+          "@type": "sport:CompetitionPhase",
+          "rdfs:label": "Regular Season - 1",
+          "sport:sport": {
+            "@id": "medtop:20001065"
+          },
+          "sport:phaseInCompetition": {
+            "@id": "urn:machina:sports:competition:x3a52ab3453fbf7b451d099c6ef4d9806"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:site:xdd01267fee9122592f355a0a56f3c118",
+          "@type": "sport:Site",
+          "rdfs:label": "RCDE Stadium"
+        },
+        {
+          "@id": "urn:machina:sports:team:xabcbbe0b3da6d6a70252f66ab84d9bdb",
+          "@type": "sport:Team",
+          "rdfs:label": "Espanyol"
+        },
+        {
+          "@id": "urn:machina:sports:team:x291c07c416001c6cdf467e9f81fba335",
+          "@type": "sport:Team",
+          "rdfs:label": "Atletico Madrid"
+        },
+        {
+          "@id": "urn:machina:sports:event:xa6e163b82adf167b424339d07f052c63",
+          "@type": "sport:Event",
+          "rdfs:label": "Espanyol vs Atletico Madrid",
+          "sport:sport": {
+            "@id": "medtop:20001065"
+          },
+          "sport:eventInCompetition": {
+            "@id": "urn:machina:sports:competition:x3a52ab3453fbf7b451d099c6ef4d9806"
+          },
+          "sport:eventInCompetitionPhase": {
+            "@id": "urn:machina:sports:phase:xced3d063fb0f2ca4ee30d1d863ae8b9f"
+          },
+          "sport:location": {
+            "@id": "urn:machina:sports:site:xdd01267fee9122592f355a0a56f3c118"
+          },
+          "sport:startDateTime": {
+            "@value": "2025-08-17T19:30:00+00:00",
+            "@type": "xsd:dateTime"
+          },
+          "sport:eventStatus": {
+            "@id": "speventstatus:post-event"
+          },
+          "sport:participation": [
+            {
+              "@id": "urn:machina:sports:participation:x32fe43364c34dff20361c0b4eff5ec75"
+            },
+            {
+              "@id": "urn:machina:sports:participation:xed3ceacf14e167fa32266f25dc8def9b"
+            }
+          ]
+        },
+        {
+          "@id": "urn:machina:sports:participation:x32fe43364c34dff20361c0b4eff5ec75",
+          "@type": "sport:TeamParticipation",
+          "rdfs:label": "Espanyol participation in Espanyol vs Atletico Madrid",
+          "sport:participationBy": {
+            "@id": "urn:machina:sports:team:xabcbbe0b3da6d6a70252f66ab84d9bdb"
+          },
+          "sport:alignment": "home",
+          "sport:score": "2",
+          "sport:eventOutcome": {
+            "@id": "speventoutcome:win"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:participation:xed3ceacf14e167fa32266f25dc8def9b",
+          "@type": "sport:TeamParticipation",
+          "rdfs:label": "Atletico Madrid participation in Espanyol vs Atletico Madrid",
+          "sport:participationBy": {
+            "@id": "urn:machina:sports:team:x291c07c416001c6cdf467e9f81fba335"
+          },
+          "sport:alignment": "away",
+          "sport:score": "1",
+          "sport:eventOutcome": {
+            "@id": "speventoutcome:loss"
+          }
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x87de78a5cd5ce64b46f5a43683ea4ea9",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football competition 140",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:competition:xd2bea54b916520694b2378cdffc6bfec"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "140",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xad4920d2a073f178969d8a7b9098458d",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football season 2025",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:competition:x3a52ab3453fbf7b451d099c6ef4d9806"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "2025",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x55b0d1d3f9363dd00ade4c4e6914be26",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football phase Regular Season - 1",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:phase:xced3d063fb0f2ca4ee30d1d863ae8b9f"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "Regular Season - 1",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x3a5b9fa761ab01c6776ff7303943e473",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football site 1474",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:site:xdd01267fee9122592f355a0a56f3c118"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "1474",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x6c78a1e2de32f88f97fad50890a95ac8",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football event 1390823",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:event:xa6e163b82adf167b424339d07f052c63"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "1390823",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:xb679b272abaf4617856b432c7d856d17",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football team 540",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:team:xabcbbe0b3da6d6a70252f66ab84d9bdb"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "540",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:provider-identifier:x5a8f27ec51d2043b9336137b2d6e12ca",
+          "@type": "machina:ProviderIdentifier",
+          "rdfs:label": "api-football team 530",
+          "machina:identifies": {
+            "@id": "urn:machina:sports:team:x291c07c416001c6cdf467e9f81fba335"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:providerId": "530",
+          "machina:resolutionMethod": "provider-native"
+        },
+        {
+          "@id": "urn:machina:sports:observation-provenance:x13de45de7adabb3f303da7dedd19d8f9",
+          "@type": "machina:ObservationProvenance",
+          "rdfs:label": "api-football observation of event xa6e163b82adf167b424339d07f052c63",
+          "machina:describes": {
+            "@id": "urn:machina:sports:event:xa6e163b82adf167b424339d07f052c63"
+          },
+          "machina:providerNamespace": "api-football",
+          "machina:observedAt": {
+            "@value": "2026-03-01T22:05:00+00:00",
+            "@type": "xsd:dateTime"
+          },
+          "machina:adapterVersion": "1",
+          "machina:serializerVersion": "1",
+          "machina:rightsClass": "licensed-provider-example-fixture"
+        }
+      ]
+    },
+    "event_view": {
+      "event_id": "urn:machina:sports:event:xa6e163b82adf167b424339d07f052c63",
+      "label": "Espanyol vs Atletico Madrid",
+      "sport": "soccer",
+      "start_time": "2025-08-17T19:30:00+00:00",
+      "status": "closed",
+      "clock": {
+        "minute": "90"
+      },
+      "competition": {
+        "id": "urn:machina:sports:competition:xd2bea54b916520694b2378cdffc6bfec",
+        "name": "La Liga"
+      },
+      "season": {
+        "id": "urn:machina:sports:competition:x3a52ab3453fbf7b451d099c6ef4d9806",
+        "name": "La Liga 2025"
+      },
+      "phase": {
+        "id": "urn:machina:sports:phase:xced3d063fb0f2ca4ee30d1d863ae8b9f",
+        "name": "Regular Season - 1"
+      },
+      "site": {
+        "id": "urn:machina:sports:site:xdd01267fee9122592f355a0a56f3c118",
+        "name": "RCDE Stadium",
+        "city": "Cornella de Llobregat"
+      },
+      "participants": [
+        {
+          "id": "urn:machina:sports:team:xabcbbe0b3da6d6a70252f66ab84d9bdb",
+          "role": "home",
+          "name": "Espanyol",
+          "score": "2",
+          "outcome": "win"
+        },
+        {
+          "id": "urn:machina:sports:team:x291c07c416001c6cdf467e9f81fba335",
+          "role": "away",
+          "name": "Atletico Madrid",
+          "score": "1",
+          "outcome": "loss"
+        }
+      ],
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed",
+        "raw": {
+          "fixture": {
+            "date": "2025-08-17T19:30:00+00:00",
+            "id": 1390823,
+            "periods": {
+              "first": 1755459000,
+              "second": 1755462600
+            },
+            "referee": "Mateo Busquets Ferrer",
+            "status": {
+              "elapsed": 90,
+              "extra": 7,
+              "long": "Match Finished",
+              "short": "FT"
+            },
+            "timestamp": 1755459000,
+            "timezone": "UTC",
+            "venue": {
+              "city": "Cornella de Llobregat",
+              "id": 1474,
+              "name": "RCDE Stadium"
+            }
+          },
+          "goals": {
+            "away": 1,
+            "home": 2
+          },
+          "league": {
+            "country": "Spain",
+            "flag": "https://media.api-sports.io/flags/es.svg",
+            "id": 140,
+            "logo": "https://media.api-sports.io/football/leagues/140.png",
+            "name": "La Liga",
+            "round": "Regular Season - 1",
+            "season": 2025,
+            "standings": true
+          },
+          "score": {
+            "extratime": {
+              "away": null,
+              "home": null
+            },
+            "fulltime": {
+              "away": 1,
+              "home": 2
+            },
+            "halftime": {
+              "away": 1,
+              "home": 0
+            },
+            "penalty": {
+              "away": null,
+              "home": null
+            }
+          },
+          "teams": {
+            "away": {
+              "id": 530,
+              "logo": "https://media.api-sports.io/football/teams/530.png",
+              "name": "Atletico Madrid",
+              "winner": false
+            },
+            "home": {
+              "id": 540,
+              "logo": "https://media.api-sports.io/football/teams/540.png",
+              "name": "Espanyol",
+              "winner": true
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "provider": {
+        "namespace": "api-football",
+        "family": "licensed"
+      },
+      "adapter": {
+        "name": "tools.iptc.canonical.adapters.api_football",
+        "version": "1"
+      },
+      "serializer": {
+        "name": "machina-iptc-serializer",
+        "version": "1"
+      },
+      "profile": "machina-iptc-profile/1.1",
+      "upstream_pin": {
+        "repository": "https://github.com/iptc/sport-schema",
+        "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
+        "target_version": "1.1"
+      },
+      "observed_at": "2026-03-01T22:05:00+00:00",
+      "source_refs": [
+        {
+          "kind": "endpoint-class",
+          "value": "api-football/fixtures",
+          "note": "endpoint class only; no URL, query or credential is recorded"
+        }
+      ],
+      "rights": {
+        "data_class": "licensed-provider-example-fixture",
+        "prototype_only": true,
+        "commercial_use": false
+      },
+      "determinism": {
+        "id_strategy": "provider-scoped-surrogate",
+        "digest": "blake2b-128",
+        "canonical_id_service": "not-available-in-this-phase"
+      }
+    },
+    "provider_ids": [
+      {
+        "machina_id": "urn:machina:sports:competition:xd2bea54b916520694b2378cdffc6bfec",
+        "entity_type": "competition",
+        "provider_namespace": "api-football",
+        "provider_id": "140",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:competition:x3a52ab3453fbf7b451d099c6ef4d9806",
+        "entity_type": "season",
+        "provider_namespace": "api-football",
+        "provider_id": "2025",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.season.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:phase:xced3d063fb0f2ca4ee30d1d863ae8b9f",
+        "entity_type": "phase",
+        "provider_namespace": "api-football",
+        "provider_id": "Regular Season - 1",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.phase.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:site:xdd01267fee9122592f355a0a56f3c118",
+        "entity_type": "site",
+        "provider_namespace": "api-football",
+        "provider_id": "1474",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.site.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:event:xa6e163b82adf167b424339d07f052c63",
+        "entity_type": "event",
+        "provider_namespace": "api-football",
+        "provider_id": "1390823",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.event.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:xabcbbe0b3da6d6a70252f66ab84d9bdb",
+        "entity_type": "team",
+        "provider_namespace": "api-football",
+        "provider_id": "540",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[0].provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:x291c07c416001c6cdf467e9f81fba335",
+        "entity_type": "team",
+        "provider_namespace": "api-football",
+        "provider_id": "530",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[1].provider_id"
+      }
+    ],
+    "capabilities": {
+      "tier": "core",
+      "tiers_satisfied": [
+        "core"
+      ],
+      "present": [
+        "event.clock",
+        "event.competition",
+        "event.identity",
+        "event.participants",
+        "event.result",
+        "event.score",
+        "event.start_time",
+        "event.status",
+        "provenance"
+      ],
+      "absent": [
+        "event.actions",
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.lineups",
+        "event.live_statistics",
+        "event.period",
+        "event.play_by_play",
+        "event.tracking",
+        "participant.player_statistics"
+      ],
+      "not_expressible": [
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.tracking"
+      ],
+      "by_tier": {
+        "core": {
+          "required_present": [
+            "event.competition",
+            "event.identity",
+            "event.participants",
+            "event.start_time",
+            "event.status",
+            "provenance"
+          ],
+          "required_absent": [],
+          "optional_present": [
+            "event.result",
+            "event.score"
+          ],
+          "optional_absent": []
+        },
+        "live": {
+          "required_present": [
+            "event.clock"
+          ],
+          "required_absent": [
+            "event.actions",
+            "event.period"
+          ],
+          "optional_present": [],
+          "optional_absent": [
+            "event.live_statistics",
+            "event.play_by_play"
+          ]
+        }
+      },
+      "violations": []
+    },
+    "rights": {
+      "data_class": "licensed-provider-example-fixture",
+      "prototype_only": true,
+      "commercial_use": false
+    }
+  }
+}

@@ -63,6 +63,14 @@ The controlled claim here is **layer 2 only**: the four upstream samples are kno
 | `official-soccer-standings` | pass | pass | **FAIL** | **FAIL** | 0 | 5 | 0 | 0 |
 | `official-team-roster` | pass | pass | pass | **FAIL** | 0 | 0 | 0 | 0 |
 
+## Corrected — canonical serializer outputs
+
+The 'after' rows. Each is emitted by `tools/iptc/canonical/serialize.py` from a canonical observation that a provider adapter built from checked-in source evidence, and each is expected to pass all four layers with all four gates at zero. Read a green row narrowly: it is evidence that one provider payload shape can be serialized conformingly, not a licence to redistribute that provider's data and not a statement about payloads this fixture does not contain. The `rights` and `MISSING EVIDENCE` lines in each fixture's detail below say which is which.
+
+| Fixture | L1 JSON-LD | L2 official SHACL | L3 Machina profile | L4 vocabulary | unknown `sport:` | invalid codes | dup IDs | provider leaks |
+|---|---|---|---|---|---|---|---|---|
+| `corrected-api-football-soccer` | pass | pass | pass | pass | 0 | 0 | 0 | 0 |
+
 ## Baseline — current mapping outputs
 
 One row per supported mapping output. `class` distinguishes a verbatim checked-in artefact from a fixture hand-authored against the mapping contract because no checked-in sample exists.
@@ -728,7 +736,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **emitted by:** iptc-opta-event-mapping, sport:timeline array
 - **coverage:** Stats Perform / Opta timeline
 - **MISSING EVIDENCE:** No checked-in sample exists, and the timeline is not a separately named mapping upstream of this fixture — it is a nested array inside the event mapping.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 38 triples.
 
@@ -771,7 +779,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **fixture class:** machina-authored-conforming
 - **provenance:** Machina-authored. Every term IRI copied from the pinned ontology; the shared context at agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld is inlined.
 - **role:** Tightly-scoped positive control for ALL FOUR layers and all four counters at zero. This is the only fixture in this repository that is expected to pass everything, and it is what the PR 2 serializers are aiming at.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 90 triples.
 
@@ -789,7 +797,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **fixture class:** official-upstream-sample
 - **provenance:** Byte-exact upstream samples/json-ld/player-bio-01.jsonld at the pinned commit.
 - **role:** Smallest official positive control; keeps the fast test path fast.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 40 triples.
 
@@ -810,7 +818,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **provenance:** Byte-exact upstream samples/json-ld/soccer-match-02.jsonld at the pinned commit.
 - **role:** Positive control for layers 1 and 2. Known to conform against the official SHACL shapes. A layer-1 or layer-2 failure here means the harness is wrong, not the data.
 - **profile expectation:** Satisfies every Machina structural rule — one document-level @context, a flat @graph, node references by @id, NewsCodes as node references — which is worth noting, because it shows layer 3 is stricter than IPTC without being arbitrary: it codifies the shape upstream's own samples already use. It nevertheless carries ONE profile finding: `sport:infractionType` has the value `vendpenalty:foul`, and no @context in the sample binds a `vendpenalty` prefix. That is a real defect in the upstream sample, not a harness artefact — the value resolves to nothing. It is left visible rather than allowlisted.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 1280 triples.
 
@@ -842,7 +850,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **provenance:** Byte-exact upstream samples/json-ld/soccer-standings.jsonld at the pinned commit.
 - **role:** Core-statistics coverage in a document that conforms to the official SHACL shapes.
 - **profile expectation:** Conforms to layers 1, 2 and 4 but carries 5 profile findings, all the same defect: `spstat:resultEffectTarget` values of the form `league:l.uefa.org.champions`, where no @context in the sample binds a `league` prefix. Same class of upstream sample defect as soccer-match-02. Recorded, not allowlisted: an unbound prefix in a value is broken whoever wrote it.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 765 triples.
 
@@ -868,7 +876,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **fixture class:** official-upstream-sample
 - **provenance:** Byte-exact upstream samples/json-ld/team-roster.jsonld at the pinned commit.
 - **role:** Membership and Participation coverage in a known-conforming document.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 637 triples.
 
@@ -882,13 +890,38 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - UNVERIFIABLE `http://cv.iptc.org/newscodes/spphasestatus/inactive` — No vocabularies/spphasestatus.ttl exists at the pinned commit, so this code cannot be checked offline.
 - UNVERIFIABLE `http://cv.iptc.org/newscodes/spphasestatus/injured` — No vocabularies/spphasestatus.ttl exists at the pinned commit, so this code cannot be checked offline.
 
+### `corrected-api-football-soccer`
+
+- **section:** corrected
+- **document:** `tools/iptc/fixtures/corrected/api-football-soccer-graph.json`
+- **fixture class:** corrected-serializer-output
+- **derived from:** `agent-templates/iptc-mappings/example-apifootball.json`
+- **provenance:** SANITIZED CHECKED-IN PROVIDER EXAMPLE. No API-Football endpoint was called and no credential exists in this repository. The source is the provider example already committed at agent-templates/iptc-mappings/example-apifootball.json, read verbatim and unmodified by this task.
+- **RIGHTS:** Shape evidence, NOT an entitlement. A checked-in provider example proves what an API-Football payload looks like; it grants this repository no right to redistribute API-Football data. The observation behind this graph is `licensed-provider-example-fixture`, prototype_only true, commercial_use false, and tools.iptc.validate_graph.rights_findings on the envelope beside it returns `rights-prototype-only` for consumer_tier `production` — a test asserts that rather than leaving it as prose. Note the gate is library-only today: validate_graph.py accepts --consumer-tier but does not yet print rights findings, so a CLI run is not the check. Do not read this fixture, or the audit row it produces, as a commercial redistribution claim.
+- **transformation:** Read by tools/iptc/canonical/adapters/api_football.py into the canonical observation checked in at tools/iptc/fixtures/observations/api-football-soccer-observation.json with observed_at 2026-03-01T22:05:00+00:00, then serialized by tools/iptc/canonical/serialize.py. Reproducible byte-for-byte from those two inputs; tests/test_iptc_api_football_adapter.py asserts it rather than trusting it.
+- **emitted by:** tools/iptc/canonical/serialize.py sport_schema_graph, via canonical_envelope with surrogate_resolver('api-football'). The full envelope a consumer receives is checked in beside it at tools/iptc/fixtures/corrected/api-football-soccer-envelope.json; this file is the same graph standalone, because the harness validates JSON-LD documents rather than envelopes.
+- **coverage:** API-Football soccer event, corrected. Capability tier `core`: the payload carries no clock period, no actions and no player statistics, so `live` and `advanced` are correctly not claimed.
+- **role:** The first corrected output measured against the baseline set, and the first conformance evidence in this repository derived from a real provider shape rather than a hand-authored synthetic one. Expected to pass all four layers with all four gates at zero. The matching baseline row, `api-football-soccer-event`, is the same provider's current mapping output and fails layer 2 vacuously; the two rows read together are the before and after.
+- **MISSING EVIDENCE:** The source is a checked-in EXAMPLE, not a captured production response, and it carries real club, competition and venue names copied verbatim from that already-committed example. So: (1) it is one finished fixture, which exercises no pre-match, in-play, drawn, extra-time or abandoned path — those are covered by adapter unit tests over locally-mutated copies of this payload, not by a checked-in provider document; (2) it is a single-sport, single-provider shape, so a green row here is evidence about API-Football's fixtures payload and about nothing else; (3) three real provider absences are visible in it and are deliberately NOT filled in — no competition type (league.standings is not a competition type), no event outcome type (null extratime is not a statement of `regular`) and no venue country (league.country is the competition's) — so the row understates what a richer payload could carry, which is the correct direction to be wrong in.
+- **note:** Canonical identity here is a marked provider-scoped surrogate (`urn:machina:sports:<kind>:x<blake2b-128>`). The provider's own identifiers — fixture 1390823, league 140, venue 1474, teams 540 and 530, round `Regular Season - 1` and season 2025 — appear only as machina:ProviderIdentifier crosswalk evidence with an evidence pointer back to the observation field each came from. No `urn:apifootball:` identifier survives anywhere in the document.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
+
+**Layer 1 — JSON-LD parse:** pass, 90 triples.
+
+**Layer 2 — official SHACL:** conforms, over 9 instance(s) of an official IPTC class.
+
+**Layer 3 — Machina profile:** conforms.
+
+**Layer 4 — controlled vocabulary:** 5 valid, 0 invalid, 0 unresolvable prefix, 0 unverifiable.
+
+
 ### `negative-duplicate-ids`
 
 - **section:** negative
 - **document:** `tools/iptc/fixtures/negative/duplicate-ids.json`
 - **construction:** Two sport:Team nodes sharing one @id.
 - **asserts:** counter 3 > 0 and profile finding duplicate-node-id
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 89 triples.
 
@@ -915,7 +948,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **document:** `tools/iptc/fixtures/negative/invalid-newscode.json`
 - **construction:** sport:playerStatus points at spplayerstatus/definitely-not-a-status, which the pinned vocabularies/spplayerstatus.ttl does not contain.
 - **asserts:** counter 2 > 0 and layer 4 invalid
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 90 triples.
 
@@ -937,7 +970,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **document:** `tools/iptc/fixtures/negative/invented-sport-term.json`
 - **construction:** The conforming minimal fixture with exactly one added property, sport:machinaConfidenceScore.
 - **asserts:** counter 1 > 0 and profile finding invented-sport-term
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 91 triples.
 
@@ -963,7 +996,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **document:** `tools/iptc/fixtures/negative/malformed.jsonld`
 - **construction:** A trailing comma and an unquoted key.
 - **asserts:** layer 1 fails at the json stage and every later layer is skipped, with null counters rather than zero counters
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** FAIL at the `json` stage — `JSONDecodeError: Expecting property name enclosed in double quotes: line 5 column 7 (char 163)`. Layers 2-4 were not run and the four counters are `null`, not `0`.
 
@@ -979,7 +1012,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **document:** `tools/iptc/fixtures/negative/null-and-placeholder.json`
 - **construction:** The conforming minimal fixture with one null-valued property and one 'Unknown' string. Nothing here is an invented term, an invalid code, a duplicate id or a provider leak, which is the point: it isolates the omission rule from the four gates.
 - **asserts:** profile findings null-value and placeholder-value; counters 1-4 all zero
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 90 triples.
 
@@ -1000,7 +1033,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **document:** `tools/iptc/fixtures/negative/provider-leakage.json`
 - **construction:** sport:doubleHeader and sport:matchStatus emitted under the official namespace; both appear in rules/provider-leak-terms.json.
 - **asserts:** counter 4 > 0 and profile finding provider-property-in-iptc-namespace
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** pass, 92 triples.
 
@@ -1035,7 +1068,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 - **construction:** A minimal @graph document whose @context is a URL on the reserved .invalid TLD. Nothing resolves it, and nothing is meant to: the point is that the harness rejects it before the RDF parser is handed the bytes.
 - **asserts:** layer 1 fails at the `context` stage and layers 2-4 are not run: a string @context would be dereferenced by IRI, which the offline harness refuses.
 - **role:** Proves the offline guarantee is enforced rather than assumed.
-- **known consumer dependencies:** none recorded. For a negative or positive control that is correct; for a baseline mapping it would be an inventory defect.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
 
 **Layer 1 — JSON-LD parse:** FAIL at the `context` stage — `1 off-document JSON-LD context reference(s): remote-context at /@context. The harness is offline by construction and will not dereference a context; the profile requires one inline document-level context.`. Layers 2-4 were not run and the four counters are `null`, not `0`.
 - BLOCKED `remote-context` at `/@context` → `https://example.invalid/iptc-sport-schema-1.1.context.jsonld`. Rejected before the RDF parser ran; no request was made.
@@ -1066,6 +1099,8 @@ Each row proves one detector actually fires. A green row here would mean the cor
 | Generic custom event | `custom-event` | repository-artifact |
 
 **10 of 14 baseline fixtures are `mapping-contract-synthetic`**, because no checked-in sample of those mappings' output exists and this work may not call a licensed provider to get one. Those fixtures faithfully reproduce the SHAPE each mapping emits — the key set, the nesting, the context — but their values are synthetic. Read their rows as statements about the mapping contract, not as production volumes: `api-football-actions`, `api-football-team-stats`, `api-football-player-stats`, `sportradar-soccer-timeline`, `stats-perform-opta-event`, `stats-perform-opta-timeline`, `sportradar-tennis-event`, `sportradar-nfl-event`, `sportradar-mlb-event`, `american-football-event`.
+
+**The same rule governs the 1 `corrected-serializer-output` fixture, and it is worth stating twice because a passing row invites the stronger reading.** Each one is derived from checked-in source evidence — a sanitized provider example or a mapping-contract-synthetic payload — and NO licensed provider was called and no credential was used to produce any of them. A checked-in example is evidence of a payload's *shape*; it is not an entitlement, and none of these fixtures is a claim that this repository may commercially redistribute the provider's data. Every observation behind them is marked `prototype_only` with `commercial_use: false`, which `rights_findings(envelope, consumer_tier="production")` refuses. Per-fixture source, rights and limitations: `corrected-api-football-soccer`.
 
 ### Missing evidence, stated rather than papered over
 
