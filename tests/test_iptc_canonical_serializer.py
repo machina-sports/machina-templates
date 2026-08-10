@@ -56,6 +56,8 @@ from tools.iptc.canonical.observation import (  # noqa: E402
     PLACEHOLDERS,
     validate_observation,
 )
+from tools.iptc.canonical import vocab  # noqa: E402
+from tools.iptc.reference import NEWSCODE_STEM, load_reference  # noqa: E402
 
 #: The smallest observation that is genuinely valid: two participants, every
 #: required field, nothing optional. Every negative case below is this document
@@ -515,6 +517,84 @@ class TestOfficialTermExport(unittest.TestCase):
         )
         self.assertNotIn("Event", names)
         self.assertNotIn("Team", names)
+
+
+class TestVocab(unittest.TestCase):
+    """A6 — no code is mapped into a scheme the pin cannot check."""
+
+    def test_status_maps_to_a_node_reference(self):
+        self.assertEqual(
+            vocab.newscode("speventstatus", vocab.EVENT_STATUS["closed"]),
+            {"@id": "speventstatus:post-event"},
+        )
+
+    def test_a_newscode_is_never_a_bare_string(self):
+        """A literal cannot be followed to a concept, and layers 3 and 4 reject
+        it. The only way to emit one is to bypass ``newscode``."""
+        for scheme, table in vocab.TABLES.items():
+            for key in table:
+                with self.subTest(scheme=scheme, key=key):
+                    self.assertEqual(list(vocab.newscode(scheme, table[key])), ["@id"])
+
+    def test_every_mapped_code_is_in_a_pinned_scheme(self):
+        reference = load_reference()
+        for scheme, table in vocab.TABLES.items():
+            for key, code in table.items():
+                iri = "{0}{1}/{2}".format(NEWSCODE_STEM, vocab.SCHEME_PATH[scheme], code)
+                with self.subTest(scheme=scheme, key=key):
+                    pinned = reference.scheme_for(iri)
+                    self.assertIsNotNone(
+                        pinned, "{0} is not pinned; do not map into it".format(scheme)
+                    )
+                    self.assertIn(iri, pinned.concepts)
+
+    def test_every_table_has_a_scheme_path(self):
+        self.assertEqual(sorted(vocab.TABLES), sorted(vocab.SCHEME_PATH))
+
+    def test_soccer_action_types_are_not_mapped_at_all(self):
+        """RFC 001 §9.2: no ``spsocaction`` vocabulary exists at the pinned
+        commit, layer 4 fails closed on unverifiable, so there is nothing
+        defensible to map into. The provider's own action type survives in
+        ``event_view`` and ``machina:evidence`` instead."""
+        self.assertNotIn("spsocactiontype", vocab.TABLES)
+        self.assertNotIn("spsocaction", vocab.TABLES)
+        self.assertNotIn("spsocactiontype", vocab.SCHEME_PATH)
+
+    def test_provider_status_codes_map_the_way_rfc_001_says(self):
+        for provider_code, expected in (
+            ("not_started", "pre-event"),
+            ("in_progress", "mid-event"),
+            ("halftime", "intermission"),
+            ("closed", "post-event"),
+            ("postponed", "postponed"),
+            ("cancelled", "canceled"),
+            ("suspended", "suspended"),
+            ("abandoned", "halted"),
+            ("awarded", "forfeited"),
+        ):
+            with self.subTest(status=provider_code):
+                self.assertEqual(vocab.EVENT_STATUS[provider_code], expected)
+
+    def test_unmapped_status_raises_rather_than_guessing(self):
+        with self.assertRaises(KeyError):
+            vocab.EVENT_STATUS["definitely_not_a_status"]
+
+    def test_newscode_refuses_a_scheme_it_does_not_know(self):
+        """Failing closed here is what stops a caller reaching an unpinned
+        scheme by passing its name in as a string."""
+        with self.assertRaises(KeyError):
+            vocab.newscode("spsocactiontype", "goal")
+
+    def test_newscode_refuses_a_code_that_is_not_in_the_table(self):
+        with self.assertRaises(ValueError):
+            vocab.newscode("speventstatus", "definitely-not-a-code")
+
+    def test_the_expected_tables_exist(self):
+        for name in ("EVENT_STATUS", "EVENT_OUTCOME", "EVENT_OUTCOME_TYPE",
+                     "COMPETITION_TYPE", "ACTION_CLASS", "PLAYER_STATUS",
+                     "SOCCER_POSITION"):
+            with self.subTest(table=name):
+                self.assertTrue(getattr(vocab, name))
 
 
 def canonical_pin() -> str:
