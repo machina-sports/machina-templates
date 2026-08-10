@@ -525,6 +525,159 @@ def _crosswalk_entries(observation, ids):
     ]
 
 
+# ---------------------------------------------------------------------------
+# event_view
+# ---------------------------------------------------------------------------
+
+def _local_name(curie):
+    """``spsocstat:shotsTotal`` -> ``shotsTotal``.
+
+    ``event_view`` promises no RDF, and a CURIE key would drag the whole
+    vocabulary into a projection built for consumers who asked not to have it.
+    """
+    return curie.split(":", 1)[1] if ":" in curie else curie
+
+
+def _view_statistics(participant):
+    statistics = {}
+    for curie, value in _statistics(participant):
+        _put(statistics, _local_name(curie), value)
+    return statistics
+
+
+def _view_entity(section, identifier, *fields):
+    """A compact ``{"id": …, <field>: …}`` block, or nothing."""
+    block = {}
+    _put(block, "id", identifier)
+    for field in fields:
+        _put(block, field, _text(section.get(field)))
+    return block if len(block) > 1 else {}
+
+
+def _view_participants(observation, ids):
+    participants = []
+    for participant in _participants(observation):
+        if participant.get("kind") != "team":
+            continue
+        block = {}
+        _put(block, "id", ids.teams.get(participant.get("provider_id")))
+        _put(block, "role", _text(participant.get("alignment")))
+        _put(block, "name", _text(participant.get("name")))
+        _put(block, "score", _text(participant.get("score")))
+        _put(block, "outcome", _text(participant.get("outcome")))
+        _put(block, "statistics", _view_statistics(participant))
+        if block:
+            participants.append(block)
+    return participants
+
+
+def _view_players(observation, ids):
+    """Individuals, kept in their own list rather than beside the teams.
+
+    ``role`` means alignment for a team and would have to mean position or
+    starter-status for a person. One key with two meanings is the kind of shape a
+    consumer reads wrongly once and then works around forever.
+    """
+    players = []
+    for participant in _participants(observation):
+        if participant.get("kind") != "individual":
+            continue
+        block = {}
+        _put(block, "id", ids.athletes.get(participant.get("provider_id")))
+        _put(block, "name", _text(participant.get("name")))
+        _put(block, "team_id", ids.teams.get(participant.get("team_provider_id")))
+        _put(block, "status", _text(participant.get("player_status")))
+        _put(block, "position", _text(participant.get("position")))
+        _put(block, "uniform_number", _text(participant.get("uniform_number")))
+        _put(block, "statistics", _view_statistics(participant))
+        if block:
+            players.append(block)
+    return players
+
+
+def _view_actions(observation):
+    """Actions verbatim from the observation, including the ones the graph drops.
+
+    An action whose class does not map to a pinned scheme is not emitted as
+    ``sport:Action`` at all. This is where it survives, which is why the two
+    serializers read the observation and not each other.
+    """
+    actions = []
+    for action in _list(observation, "actions"):
+        if not isinstance(action, dict):
+            continue
+        block = {}
+        _put(block, "ordinal", _text(action.get("ordinal")))
+        _put(block, "class", _text(action.get("class")))
+        _put(block, "label", _text(action.get("label")))
+        _put(block, "minute", _text(action.get("minute")))
+        _put(block, "period", _text(action.get("period")))
+        _put(block, "time", _text(action.get("action_time")))
+        if block:
+            actions.append(block)
+    return actions
+
+
+def event_view(document, *, id_resolver):
+    """A compact non-RDF projection of one observation (RFC 002 §3).
+
+    **Derived from the observation, never from :func:`sport_schema_graph`.** Two
+    serializers reading one input is the property that lets either be replaced
+    without silently corrupting the other; deriving one from the other would make
+    a bug in the first become a bug in the second, invisibly. The shared
+    ``id_resolver`` is how the two agree on identifiers without one reading the
+    other's output.
+
+    This is also the escape hatch for everything IPTC cannot express: an unmapped
+    status, a soccer action type with no pinned vocabulary (RFC 001 §9.2), a
+    venue's city and country that ``SiteShape`` admits no property for, and a
+    clock reading that ``EventShape`` has nowhere to put. Those facts are real,
+    and this is where they live rather than being forced into a shape that
+    rejects them.
+    """
+    observation = _observation(document)
+    ids = _Identities(observation, id_resolver)
+    competition = _section(observation, "competition")
+    season = competition.get("season") if isinstance(competition.get("season"), dict) else {}
+    event = _section(observation, "event")
+    clock = event.get("clock") if isinstance(event.get("clock"), dict) else {}
+
+    view = {}
+    _put(view, "event_id", ids.event)
+    _put(view, "label", _text(event.get("label")))
+    _put(view, "sport", _text(_section(observation, "sport").get("key")))
+    _put(view, "start_time", _text(event.get("start_time")))
+    _put(view, "end_time", _text(event.get("end_time")))
+    _put(view, "status", _text(event.get("status")))
+    _put(view, "outcome_type", _text(event.get("outcome_type")))
+    _put(view, "attendance", _text(event.get("attendance")))
+    clock_view = {}
+    _put(clock_view, "minute", _text(clock.get("minute")))
+    _put(clock_view, "period", _text(clock.get("period")))
+    _put(view, "clock", clock_view)
+    _put(view, "competition", _view_entity(competition, ids.competition, "name", "type"))
+    _put(view, "season", _view_entity(season, ids.season, "name"))
+    _put(view, "phase", _view_entity(_section(observation, "phase"), ids.phase, "name"))
+    _put(view, "site", _view_entity(_section(observation, "site"), ids.site,
+                                    "name", "city", "country"))
+    _put(view, "participants", _view_participants(observation, ids))
+    _put(view, "players", _view_players(observation, ids))
+    _put(view, "actions", _view_actions(observation))
+
+    provider = {}
+    _put(provider, "namespace", _text(_namespace(observation)))
+    _put(provider, "family", _text(_section(observation, "provider").get("family")))
+    # The only place a provider payload survives. It is exempt from the
+    # placeholder scan for the reason RFC 002 §1.1 gives: a real payload is full
+    # of provider-side nulls, and rewriting it would destroy the one field whose
+    # value is being an unaltered record.
+    raw = observation.get("raw")
+    if isinstance(raw, (dict, list)) and raw:
+        provider["raw"] = raw
+    _put(view, "provider", provider)
+    return {"event_view": view}
+
+
 #: The one note a ``source_refs`` entry carries when the adapter did not write its
 #: own, stating the constraint the value was accepted under.
 SOURCE_REF_NOTE = "endpoint class only; no URL, query or credential is recorded"

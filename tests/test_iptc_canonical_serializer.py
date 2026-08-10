@@ -59,8 +59,10 @@ from tools.iptc.canonical.observation import (  # noqa: E402
     validate_observation,
 )
 from tools.iptc.canonical import vocab  # noqa: E402
+from tools.iptc.canonical import serialize as serialize_module  # noqa: E402
 from tools.iptc.canonical.serialize import (  # noqa: E402
     SHARED_CONTEXT_PATH,
+    event_view,
     provenance_block,
     provider_identifiers,
     shared_context,
@@ -1579,6 +1581,169 @@ class TestProvenanceResource(unittest.TestCase):
                          block["serializer"]["version"])
         self.assertEqual(provenance["machina:rightsClass"],
                          block["rights"]["data_class"])
+
+
+def view_of(observation, resolver=None):
+    return event_view(observation, id_resolver=resolver or mint())["event_view"]
+
+
+def without_raw(view):
+    """``view`` minus the provider payload.
+
+    The RDF-token scans below exclude ``provider.raw`` deliberately. ``raw`` is
+    the provider's own bytes, and this fixture's payload genuinely contains
+    ``"@type": "provider-payload"``. Rewriting a provider payload to satisfy our
+    own scan would destroy the one field whose value is being an unaltered
+    record, so the rule is "no RDF in anything the serializer authored" rather
+    than "no RDF anywhere".
+    """
+    stripped = copy.deepcopy(view)
+    stripped.get("provider", {}).pop("raw", None)
+    return stripped
+
+
+class TestEventView(unittest.TestCase):
+    """A11 — a compact non-RDF projection, derived from the observation alone."""
+
+    def test_the_view_carries_no_rdf_keyword_term_or_node_reference(self):
+        """``machina:`` is deliberately not in this list. The view's identifiers
+        are ``urn:machina:sports:…`` URNs, which are Machina identifiers rather
+        than RDF terms — the ``machina:`` *prefix* only becomes a term when it
+        heads a key, and the CURIE-key test below is what covers that.
+        """
+        for label, observation in (("minimal", MINIMAL), ("rich", graph_observation())):
+            blob = json.dumps(without_raw(view_of(observation)))
+            with self.subTest(fixture=label):
+                for token in ("@context", "@graph", "@type", "@id", "@value",
+                              "sport:", "rdfs:", "medtop:", "machina:Provider",
+                              "machina:Observation"):
+                    self.assertNotIn(token, blob)
+
+    def test_no_key_anywhere_in_the_view_is_a_curie(self):
+        """A statistic keyed ``spsocstat:shotsTotal`` would drag the RDF
+        vocabulary into a projection whose whole promise is not carrying it. The
+        local name is what a consumer of the compact view wants."""
+        def keys(node):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    yield key
+                    for found in keys(value):
+                        yield found
+            elif isinstance(node, list):
+                for item in node:
+                    for found in keys(item):
+                        yield found
+
+        for key in keys(without_raw(view_of(graph_observation()))):
+            with self.subTest(key=key):
+                self.assertNotIn(":", key)
+
+    def test_the_view_is_compact_and_role_addressable(self):
+        view = view_of(MINIMAL)
+        self.assertEqual(view["status"], "closed")
+        self.assertEqual([p["role"] for p in view["participants"]], ["home", "away"])
+        self.assertEqual(view["provider"]["namespace"], "api-football")
+
+    def test_the_provider_status_survives_verbatim_even_when_unmapped(self):
+        """The graph omits an unmapped status because it has nothing defensible to
+        emit. The view is where the provider's own word is preserved, and that is
+        the whole reason two serializers exist."""
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["event"]["status"] = "extra_time_pending"
+        self.assertEqual(view_of(observation)["status"], "extra_time_pending")
+
+    def test_the_view_ids_agree_with_the_graph_without_being_derived_from_it(self):
+        resolver = mint()
+        view = view_of(MINIMAL, resolver)
+        graph = sport_schema_graph(MINIMAL, id_resolver=resolver)
+        self.assertEqual(view["event_id"], typed(graph, "sport:Event")[0]["@id"])
+        team_ids = {t["@id"] for t in typed(graph, "sport:Team")}
+        self.assertEqual({p["id"] for p in view["participants"]}, team_ids)
+
+    def test_event_view_does_not_call_sport_schema_graph(self):
+        """Asserted by making the call impossible, not by reading the source.
+
+        Two serializers reading one input is the property that lets either be
+        replaced without silently corrupting the other. If ``event_view`` ever
+        derives from the graph, that property is gone and this test is the only
+        thing that would notice.
+        """
+        def refuse(*args, **kwargs):
+            raise AssertionError("event_view called sport_schema_graph")
+
+        original = serialize_module.sport_schema_graph
+        serialize_module.sport_schema_graph = refuse
+        try:
+            view = view_of(graph_observation())
+        finally:
+            serialize_module.sport_schema_graph = original
+        self.assertEqual(view["event_id"],
+                         typed(sport_schema_graph(graph_observation(),
+                                                  id_resolver=mint()),
+                               "sport:Event")[0]["@id"])
+
+    def test_absent_facts_are_absent_keys(self):
+        view = view_of(MINIMAL)
+        for key in ("site", "phase", "season", "clock", "actions", "players",
+                    "attendance", "outcome_type"):
+            with self.subTest(key=key):
+                self.assertNotIn(key, view)
+
+    def test_the_rich_view_carries_what_the_graph_had_to_drop(self):
+        """The clock has no place in a closed ``EventShape``, and ``sport:Site``
+        admits nothing but a label. Those facts are real, so this is where they
+        live rather than being forced into a shape that rejects them."""
+        view = view_of(graph_observation())
+        self.assertEqual(view["clock"], {"minute": "90", "period": "2"})
+        self.assertEqual(view["site"], {"id": view["site"]["id"],
+                                        "name": "Synthetic Home Ground",
+                                        "city": "Synthetic City",
+                                        "country": "SYN"})
+
+    def test_the_provider_raw_payload_lives_only_here(self):
+        view = view_of(graph_observation())
+        self.assertEqual(view["provider"]["raw"],
+                         graph_observation()["observation"]["raw"])
+        self.assertNotIn("provider-payload",
+                         json.dumps(sport_schema_graph(graph_observation(),
+                                                       id_resolver=mint())))
+
+    def test_the_unmapped_soccer_action_detail_survives_in_the_view(self):
+        """``"Normal Goal"`` has no pinned vocabulary, so the graph cannot carry
+        it (RFC 001 §9.2). It is not lost: it is here, and in ``provider.raw``."""
+        view = view_of(graph_observation())
+        self.assertEqual(view["actions"][0]["label"], "Goal")
+        self.assertIn("Normal Goal", json.dumps(view["provider"]["raw"]))
+
+    def test_statistics_are_keyed_by_local_name_and_kept_as_strings(self):
+        view = view_of(graph_observation())
+        home = next(p for p in view["participants"] if p["role"] == "home")
+        self.assertEqual(home["statistics"],
+                         {"shotsTotal": "14", "timeOfPossessionPercentage": "57.0"})
+
+    def test_players_are_addressable_and_point_at_their_team(self):
+        view = view_of(graph_observation())
+        self.assertEqual(len(view["players"]), 1)
+        player = view["players"][0]
+        home = next(p for p in view["participants"] if p["role"] == "home")
+        self.assertEqual(player["name"], "Synthetic Scorer")
+        self.assertEqual(player["team_id"], home["id"])
+        self.assertEqual(player["status"], "starter")
+        self.assertEqual(player["position"], "forward")
+
+    def test_no_placeholder_or_null_reaches_the_view_either(self):
+        observation = copy.deepcopy(MINIMAL)
+        observation["observation"]["site"] = {"provider_id": "9101",
+                                             "name": "Unknown Venue"}
+        blob = json.dumps(without_raw(view_of(observation)))
+        self.assertNotIn("null", blob)
+        for value in sorted(profile_module.PLACEHOLDER_VALUES):
+            if value:
+                self.assertNotIn('"{0}"'.format(value), blob)
+
+    def test_the_view_is_byte_stable_across_runs(self):
+        self.assertEqual(json.dumps(view_of(graph_observation())),
+                         json.dumps(view_of(graph_observation())))
 
 
 

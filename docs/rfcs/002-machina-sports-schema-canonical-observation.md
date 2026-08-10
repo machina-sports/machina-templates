@@ -186,7 +186,30 @@ either be replaced without silently corrupting the other.
 
 Absent facts are absent keys. `provider.raw` is the only place a provider payload
 survives, and it is the escape hatch for everything IPTC cannot express: an
-unmappable status, a soccer action type (§7), a provider's own clock string.
+unmappable status, a soccer action type (§7), a provider's own clock string, and a
+venue's city and country, for which the closed `SiteShape` admits no property.
+
+The signature takes the shared `id_resolver` — `event_view(observation, *,
+id_resolver)` — which is how the two serializers agree on identifiers without
+either reading the other's output. Independence is asserted by test, not by
+comment: the suite replaces `sport_schema_graph` with a function that raises and
+then calls `event_view`. Nothing else would notice, because an `event_id` derived
+from the graph agrees with the graph by construction.
+
+Three shape decisions:
+
+- **`participants` holds teams, `players` holds individuals.** `role` means
+  alignment for a team and would have to mean position or starter-status for a
+  person. One key with two meanings is the kind of shape a consumer reads wrongly
+  once and works around forever.
+- **`statistics` is keyed by local name** (`shotsTotal`), not by CURIE
+  (`spsocstat:shotsTotal`). A CURIE key would drag the RDF vocabulary into the one
+  projection whose promise is not carrying it. A test asserts no key anywhere in
+  the view contains a colon.
+- **`provider.raw` is exempt from the RDF-token scan**, and only it. A real
+  payload can legitimately contain `@type`; rewriting it to satisfy our own scan
+  would destroy the one field whose value is being an unaltered record. The rule
+  is "no RDF in anything the serializer authored", not "no RDF anywhere".
 
 ---
 
