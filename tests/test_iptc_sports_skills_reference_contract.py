@@ -123,6 +123,23 @@ NATIVE_STATUSES_THAT_ARE_NOT_CANONICAL = ("live", "1st_half", "2nd_half")
 PROVIDER_IDS = ("9001", "9011", "9012", "9101",
                 "synthetic-league-1", "synthetic-league-1-2026")
 
+#: The **runtime** rights classification: what the data an adapter emits actually
+#: is. ``sports-skills`` reads ESPN's public endpoints, so every envelope its
+#: adapter produces — in production, off real fixtures — carries this class. It is
+#: therefore the only honest value for the observation this contract pins, because
+#: PR B's adapter stamps one constant onto both this synthetic fixture and every
+#: real match it ever reads. A class naming the fixture would travel out with real
+#: events and call them synthetic, which is a false statement about live data and
+#: exactly the kind of blurred fact this contract exists to prevent.
+RUNTIME_RIGHTS_CLASS = "open-public"
+
+#: The **fixture evidence** classification: what the checked-in payload behind
+#: this row is. A different question from the one above, with a different answer,
+#: and it stays recorded in ``provenance.json`` rather than in the envelope. The
+#: match, the teams, the venue and the competition are invented, so this row is
+#: evidence about the mapping contract and about nothing observed.
+FIXTURE_EVIDENCE_CLASS = "mapping-contract-synthetic"
+
 
 def source():
     return json.loads(SOURCE_PATH.read_text(encoding="utf-8"))
@@ -249,11 +266,15 @@ class TestObservationIsTheReferenceContract(unittest.TestCase):
                 with self.subTest(marker=marker):
                     self.assertNotIn(marker, ref["value"])
 
-    def test_the_rights_block_is_synthetic_open_prototype_evidence(self):
-        """A synthetic contract fixture and a licensed provider example are
-        different limitations, and the audit distinguishes them."""
+    def test_the_rights_block_carries_the_runtime_open_data_classification(self):
+        """The class describes the data the adapter emits, not the fixture it was
+        demonstrated on. ``sports-skills`` reads ESPN's public endpoints, so
+        ``open-public`` is what its envelopes carry — here and off real matches.
+
+        The two flags are unchanged and still what the gate reads: the package is
+        public and personal/non-commercial and can never emit anything else."""
         rights = self.observation["rights"]
-        self.assertIn("synthetic", rights["data_class"])
+        self.assertEqual(rights["data_class"], RUNTIME_RIGHTS_CLASS)
         self.assertIs(rights["prototype_only"], True)
         self.assertIs(rights["commercial_use"], False)
         for word in ("licensed", "redistributable"):
@@ -763,6 +784,119 @@ class TestRightsGateRefusesAProductionConsumer(unittest.TestCase):
         argument = str(ENVELOPE_PATH.relative_to(REPO_ROOT))
         status, out = run_cli(["--consumer-tier", "prototype", argument])
         self.assertEqual(status, 0, out)
+
+
+class TestRuntimeRightsClassIsNotTheFixtureEvidenceClass(unittest.TestCase):
+    """Two different questions, two different answers, and neither one may be
+    read off the other.
+
+    **What is this data?** is answered by the envelope, at runtime, by a class the
+    adapter stamps on every document it emits. ``sports-skills`` reads ESPN's
+    public endpoints, so that answer is ``open-public`` — for this fixture and for
+    every real match the published adapter will ever read, because it is one
+    constant in one module.
+
+    **What is the checked-in evidence behind this audit row?** is answered by
+    ``provenance.json``, and the answer is ``mapping-contract-synthetic``: the
+    match, the teams, the venue and the competition are invented.
+
+    The first class was previously ``mapping-contract-synthetic-open-prototype``,
+    which answered the second question in the field that carries the first. Shipped
+    downstream that class travels out attached to real ESPN fixtures and calls them
+    synthetic — a false statement about live data, made by the contract that exists
+    to keep such statements out. Reclassifying it does not weaken the gate: the two
+    booleans are untouched and a production consumer is still refused, which is the
+    other half of what these tests hold.
+    """
+
+    def setUp(self):
+        self.observation = observation_document()["observation"]
+        self.checked_in = json.loads(ENVELOPE_PATH.read_text(encoding="utf-8"))
+        self.block = self.checked_in["machina_sports_schema"]
+        self.entry = next(e for e in report_module.load_provenance()["corrected"]
+                          if e["fixture"] == FIXTURE_NAME)
+
+    def test_the_runtime_class_is_the_authoritative_open_data_classification(self):
+        self.assertEqual(self.observation["rights"]["data_class"],
+                         RUNTIME_RIGHTS_CLASS)
+
+    def test_every_place_the_runtime_class_travels_carries_the_same_value(self):
+        """The class is written three times into one envelope — the rights block a
+        consumer reads, the provenance block an auditor reads, and the graph node a
+        standards consumer reads. Three copies that can disagree are three chances
+        to cite the wrong one."""
+        graph_node = next(node for node in self.block["sport_schema_graph"]["@graph"]
+                          if "machina:rightsClass" in node)
+        for label, value in (
+            ("envelope rights", self.block["rights"]["data_class"]),
+            ("envelope provenance", self.block["provenance"]["rights"]["data_class"]),
+            ("graph machina:rightsClass", graph_node["machina:rightsClass"]),
+        ):
+            with self.subTest(where=label):
+                self.assertEqual(value, RUNTIME_RIGHTS_CLASS)
+
+    def test_no_runtime_rights_class_calls_a_real_event_synthetic(self):
+        """The load-bearing assertion. This class is emitted by a published
+        adapter onto live ESPN reads; the word ``synthetic`` in it would be a lie
+        about every one of them."""
+        for label, value in (
+            ("observation", self.observation["rights"]["data_class"]),
+            ("envelope rights", self.block["rights"]["data_class"]),
+            ("envelope provenance", self.block["provenance"]["rights"]["data_class"]),
+        ):
+            with self.subTest(where=label):
+                self.assertNotIn("synthetic", value)
+                self.assertNotIn("prototype", value)
+
+    def test_the_fixture_evidence_class_is_still_recorded_as_synthetic(self):
+        """The fact that moved out of the envelope did not evaporate. It is
+        recorded where it was always true: the provenance of the checked-in row."""
+        self.assertIn(FIXTURE_EVIDENCE_CLASS, self.entry["rights"])
+        self.assertIn("SYNTHETIC", self.entry["provenance"])
+        self.assertIn("INVENTED", self.entry["limitation"])
+
+    def test_the_provenance_entry_names_both_classes_and_says_which_is_which(self):
+        """A row naming one class leaves a reader to assume it answers both
+        questions, which is the confusion this task removes."""
+        rights = self.entry["rights"]
+        self.assertIn(RUNTIME_RIGHTS_CLASS, rights)
+        self.assertIn(FIXTURE_EVIDENCE_CLASS, rights)
+        self.assertIn("runtime", rights)
+        self.assertIn("fixture", rights)
+
+    def test_the_two_classes_are_not_the_same_string(self):
+        """The guard against 'simplifying' them back into one field. If these ever
+        collapse, one of the two facts has been lost."""
+        self.assertNotEqual(RUNTIME_RIGHTS_CLASS, FIXTURE_EVIDENCE_CLASS)
+        self.assertNotIn(FIXTURE_EVIDENCE_CLASS, RUNTIME_RIGHTS_CLASS)
+
+    def test_the_source_fixture_is_unchanged_and_still_obviously_synthetic(self):
+        """Reclassifying the runtime rights of the reading must not touch the
+        payload the reading was demonstrated on."""
+        self.assertIn("Synthetic", SOURCE_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(self.observation["raw"], source())
+
+    def test_reclassifying_the_data_did_not_weaken_the_gate(self):
+        """The other half. ``open-public`` is a truthful class and still
+        prototype-only and non-commercial, so a production consumer is refused
+        exactly once and a prototype consumer passes."""
+        findings = validate_graph.rights_findings(self.checked_in,
+                                                  consumer_tier="production")
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]["code"], "rights-prototype-only")
+        self.assertEqual(findings[0]["data_class"], RUNTIME_RIGHTS_CLASS)
+        self.assertEqual(
+            validate_graph.rights_findings(self.checked_in,
+                                           consumer_tier="prototype"), [])
+
+    def test_the_gate_that_decides_is_the_vendorable_one(self):
+        """``sports-skills`` runs this rule on its own envelopes and cannot import
+        this repository, so the gate this contract is checked with has to be the
+        module that crosses the boundary — not a copy of it that lives here."""
+        from tools.iptc.canonical import rights as canonical_rights
+
+        self.assertIs(validate_graph.rights_findings,
+                      canonical_rights.rights_findings)
 
 
 class TestCapabilityReportCarriesOnlyWhatTheFixtureStates(unittest.TestCase):

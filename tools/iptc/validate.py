@@ -41,6 +41,12 @@ from rdflib import RDF, BNode, Graph, URIRef
 from rdflib.namespace import SH
 
 from . import profile
+from .canonical.rights import (
+    CONSUMER_TIERS,
+    ENVELOPE_KEY,
+    STRICT_CONSUMER_TIER,
+    rights_findings,
+)
 from .reference import (
     NEWSCODE_STEM,
     TARGET_VERSION,
@@ -52,23 +58,18 @@ from .reference import (
 
 HARNESS_VERSION = "1"
 
-#: The single top-level key a canonical envelope carries (RFC 002 §9). It is what
-#: tells an envelope apart from the graph document it wraps.
-ENVELOPE_KEY = "machina_sports_schema"
-
 #: The layer name an envelope's rights verdict is reported under. It is absent
 #: from a graph document's layers on purpose — see :func:`validate_payload`.
 RIGHTS_LAYER = "rights_gate"
 
-#: Consumer tiers the rights gate knows. ``prototype`` may consume prototype-only,
-#: personal/non-commercial data; ``production`` may not.
-CONSUMER_TIERS = ("prototype", "production")
-
-#: The tier this module assumes when a caller does not name one: the strict one.
-#: A gate whose default is permissive is a gate nobody notices is off.
-#: ``validate_graph.py``'s flag defaults to ``prototype`` instead, so the
-#: command's existing output over checked-in fixtures is unchanged.
-STRICT_CONSUMER_TIER = "production"
+#: ``rights_findings``, ``ENVELOPE_KEY``, ``CONSUMER_TIERS`` and
+#: ``STRICT_CONSUMER_TIER`` are imported from :mod:`tools.iptc.canonical.rights`
+#: and re-exported, not defined here. The gate is a cross-repository rule that
+#: has to be vendorable into a package which cannot import this one, and this
+#: module needs pyshacl and rdflib. Re-exporting keeps every documented import
+#: path — RFC 002 §9 names ``validate_graph.rights_findings`` — resolving to the
+#: single implementation, rather than to a second copy that agrees until the day
+#: one side is fixed.
 
 
 @dataclass
@@ -390,66 +391,9 @@ def controlled_vocabulary(data_graph: Graph, profile_result) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# The rights gate
+# The rights gate — see the re-export note above; the rule lives in
+# tools/iptc/canonical/rights.py, which is vendored into sports-skills.
 # ---------------------------------------------------------------------------
-
-def rights_findings(envelope, consumer_tier: str = STRICT_CONSUMER_TIER) -> list[dict]:
-    """Why ``consumer_tier`` may not consume ``envelope``. Empty means it may.
-
-    Fails closed on every path that cannot read a licence claim. No rights block
-    is not a permissive rights block: it is the absence of a claim, and reading it
-    as permission is how prototype-only data reaches a commercial surface.
-
-    One finding, never a cascade. ``prototype_only`` and ``commercial_use: false``
-    travel together on every open-data envelope, and reporting both buries the one
-    line that names the fix — the same reasoning ``_check_rights`` applies to an
-    absent block.
-    """
-    if consumer_tier not in CONSUMER_TIERS:
-        return [{
-            "code": "rights-unknown-consumer-tier",
-            "consumer_tier": consumer_tier,
-            "detail": f"Unknown consumer tier '{consumer_tier}'; expected one of "
-                      f"{', '.join(CONSUMER_TIERS)}. Refused rather than read as "
-                      f"the permissive tier.",
-        }]
-
-    block = envelope.get(ENVELOPE_KEY) if isinstance(envelope, dict) else None
-    rights = block.get("rights") if isinstance(block, dict) else None
-    if not isinstance(rights, dict) or not all(
-        isinstance(rights.get(flag), bool)
-        for flag in ("prototype_only", "commercial_use")
-    ):
-        return [{
-            "code": "rights-unreadable",
-            "consumer_tier": consumer_tier,
-            "detail": "No readable rights block: machina_sports_schema.rights must "
-                      "carry boolean prototype_only and commercial_use. An absent "
-                      "licence claim is not a permissive one.",
-        }]
-
-    if consumer_tier == "prototype":
-        return []
-
-    data_class = rights.get("data_class")
-    if rights["prototype_only"]:
-        return [{
-            "code": "rights-prototype-only",
-            "consumer_tier": consumer_tier,
-            "data_class": data_class,
-            "detail": "The envelope is marked prototype_only, so a production "
-                      "consumer must refuse it rather than downgrade quietly.",
-        }]
-    if not rights["commercial_use"]:
-        return [{
-            "code": "rights-non-commercial",
-            "consumer_tier": consumer_tier,
-            "data_class": data_class,
-            "detail": "The envelope forbids commercial use, so a production "
-                      "consumer must refuse it.",
-        }]
-    return []
-
 
 def envelope_block(document) -> dict | None:
     """The canonical envelope block in ``document``, or None if it carries none.

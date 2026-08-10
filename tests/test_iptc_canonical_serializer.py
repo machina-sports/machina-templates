@@ -61,6 +61,8 @@ from tools.iptc.canonical.observation import (  # noqa: E402
 )
 from tools.iptc.canonical import vocab  # noqa: E402
 from tools.iptc.canonical import serialize as serialize_module  # noqa: E402
+from tools.iptc.canonical import rights as rights_module  # noqa: E402
+from tools.iptc import validate as validate_module  # noqa: E402
 from tools.iptc import validate_graph  # noqa: E402
 from tools.iptc.canonical.serialize import (  # noqa: E402
     SHARED_CONTEXT_PATH,
@@ -2003,6 +2005,7 @@ VENDORED_RUNTIME_MODULES = (
     "capabilities.py",
     "vocab.py",
     "serialize.py",
+    "rights.py",
 )
 
 #: Non-Python files that travel with those modules. ``serialize.py`` reads the
@@ -2093,6 +2096,71 @@ class TestVendoringConstraints(unittest.TestCase):
                             "{0} imports '{1}', which is not in the standard "
                             "library".format(name, root),
                         )
+
+
+class TestTheRightsGateIsOneVendorableImplementation(unittest.TestCase):
+    """The rights gate is a cross-repository rule, so it has to be vendorable.
+
+    ``sports-skills`` cannot import this repository, and a gate reimplemented
+    downstream is the same failure RFC 002 §10 exists to prevent for the
+    serializer: two copies of one contract diverge, and the copy that drifts is
+    the one deciding whether prototype-only data reaches a commercial surface.
+
+    So the rule lives in ``canonical/rights.py`` beside the modules that already
+    cross the boundary, and ``validate.py`` / ``validate_graph.py`` re-export it.
+    Identity — ``is``, not equality of behaviour — is what makes that a fact
+    rather than a convention someone will helpfully "clean up" into a second
+    implementation.
+    """
+
+    #: The two paths RFC 002 §9 and every existing caller import the gate by.
+    RE_EXPORTS = ("tools.iptc.validate", "tools.iptc.validate_graph")
+
+    def test_the_library_re_export_is_the_canonical_function_itself(self):
+        self.assertIs(validate_module.rights_findings,
+                      rights_module.rights_findings)
+
+    def test_the_cli_module_re_export_is_the_canonical_function_itself(self):
+        """RFC 002 §9 names ``validate_graph.rights_findings``, so that name has
+        to resolve to the vendorable implementation and not to a wrapper."""
+        self.assertIs(validate_graph.rights_findings,
+                      rights_module.rights_findings)
+
+    def test_the_gate_the_cli_calls_is_defined_in_the_vendored_module(self):
+        """``__module__`` is the check a reader can make without a debugger: it
+        says where the code that decided actually lives."""
+        for path in self.RE_EXPORTS:
+            with self.subTest(caller=path):
+                self.assertEqual(sys.modules[path].rights_findings.__module__,
+                                 "tools.iptc.canonical.rights")
+
+    def test_no_caller_defines_a_second_copy_of_the_rule(self):
+        """A re-export that is really a reimplementation passes every behavioural
+        test on the day it lands and disagrees the first time either side is
+        fixed. The only definition allowed is the vendorable one."""
+        for name in ("validate.py", "validate_graph.py"):
+            source = (REPO_ROOT / "tools/iptc" / name).read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=name)
+            defined = [node.name for node in ast.walk(tree)
+                       if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+            with self.subTest(module=name):
+                self.assertNotIn("rights_findings", defined)
+
+    def test_the_tier_vocabulary_is_not_a_second_copy_either(self):
+        """A gate whose caller carries its own tier list can accept a tier the
+        gate refuses, which is a permissive disagreement — the worst direction."""
+        self.assertIs(validate_module.CONSUMER_TIERS, rights_module.CONSUMER_TIERS)
+        self.assertIs(validate_graph.CONSUMER_TIERS, rights_module.CONSUMER_TIERS)
+        self.assertEqual(validate_module.STRICT_CONSUMER_TIER,
+                         rights_module.STRICT_CONSUMER_TIER)
+
+    def test_the_vendored_gate_reads_the_envelope_key_the_serializer_writes(self):
+        """The gate has to find the block in a real envelope, not just in the
+        hand-built dicts the negative cases use, and the harness must read that
+        key from the gate rather than keeping a third copy of the literal."""
+        envelope = envelope_of()
+        self.assertIn(rights_module.ENVELOPE_KEY, envelope)
+        self.assertIs(validate_module.ENVELOPE_KEY, rights_module.ENVELOPE_KEY)
 
 
 def canonical_pin() -> str:

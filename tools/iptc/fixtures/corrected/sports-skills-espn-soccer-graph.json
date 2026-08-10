@@ -216,7 +216,7 @@
       },
       "machina:adapterVersion": "1",
       "machina:serializerVersion": "1",
-      "machina:rightsClass": "mapping-contract-synthetic-open-prototype"
+      "machina:rightsClass": "open-public"
     }
   ]
 }

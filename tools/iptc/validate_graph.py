@@ -42,7 +42,9 @@ LAYERS = ("jsonld_parse", "official_shacl", "machina_profile")
 
 #: ``rights_findings`` is re-exported, not defined here: RFC 002 §9 names it
 #: ``validate_graph.rights_findings`` and callers import it by that path, but the
-#: gate belongs beside the layers it is reported with, and this file adds no
+#: gate itself lives in ``tools/iptc/canonical/rights.py`` — it is vendored into
+#: ``sports-skills``, so a consumer that cannot import this repository runs the
+#: same rule rather than a second copy of it (RFC 002 §10). This file adds no
 #: validation logic.
 __all__ = ["CONSUMER_TIERS", "DEFAULT_CONSUMER_TIER", "LAYERS", "build_parser",
            "main", "rights_findings"]

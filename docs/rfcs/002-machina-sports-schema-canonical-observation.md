@@ -438,8 +438,10 @@ message carries every error rather than the first, so one run tells the adapter
 author everything to fix.
 
 The gate is `validate_graph.rights_findings(envelope, consumer_tier="production")`
-— implemented in `tools/iptc/validate.py` beside the layers it is reported with,
-and re-exported under that name. Empty means the tier may consume the envelope.
+— implemented in `tools/iptc/canonical/rights.py`, because a consumer downstream
+has to run the same rule and cannot import this repository (§10), and re-exported
+from `validate.py` and `validate_graph.py` under that name. Empty means the tier
+may consume the envelope.
 
 | Code | When |
 |---|---|
@@ -497,9 +499,19 @@ Three properties make that a check rather than a label:
 
 `sports-skills` is a published zero-dependency package and cannot import this
 repository, so `observation.py`, `ids.py`, `capabilities.py`, `vocab.py`,
-`serialize.py`, `official-property-names.json` and `shared-context.json` are
-vendored **byte-exact**, not reimplemented. Two reimplementations of one contract
-diverge; the only question is when.
+`serialize.py`, `rights.py`, `official-property-names.json` and
+`shared-context.json` are vendored **byte-exact**, not reimplemented. Two
+reimplementations of one contract diverge; the only question is when.
+
+`rights.py` joined that list because §9's gate is the one rule a *consumer* runs,
+and a consumer downstream cannot import `tools.iptc.validate` — that module needs
+pyshacl and rdflib, which the published package does not have. So the rule moved
+to `canonical/rights.py` and `validate.py` / `validate_graph.py` re-export it;
+`validate_graph.rights_findings` still resolves to it, and a test asserts the
+re-exports are the same function object rather than a second copy. Of every file
+on this list, this is the one where a divergence would be worst: the drifting copy
+would be the one deciding whether prototype-only data reaches a commercial
+surface.
 
 `vocab.py` and `shared-context.json` joined that list when `serialize.py` landed.
 `serialize.py` emits NewsCodes through `vocab.newscode`, so inlining those tables
