@@ -30,6 +30,12 @@ a different shape:
    tuple is driven through ``validate_observation`` *and* through the three
    serializers with validation bypassed, so a serializer that grew its own copy
    of the list — or trusted the validator to have run — fails here.
+4. **The refusal does not repeat what it refused.** The first fix rejected the
+   entry and then interpolated it into the error, so the credential travelled
+   out through ``validate_observation``'s findings and through the
+   ``canonical_envelope`` ValueError instead of through the envelope — into
+   whatever CI log, ticket or terminal read them. Every shape above is driven
+   through every surface and the raw text must appear on none of them.
 """
 
 from __future__ import annotations
@@ -47,6 +53,7 @@ if str(REPO_ROOT) not in sys.path:
 from tools.iptc.canonical.ids import surrogate_resolver  # noqa: E402
 from tools.iptc.canonical.observation import (  # noqa: E402
     CREDENTIAL_MARKERS,
+    SOURCE_REF_TEXT_FIELDS,
     credential_marker,
     source_ref_credential_findings,
     validate_observation,
@@ -141,6 +148,30 @@ def document(*refs):
 
 def endpoint_ref(value):
     return {"kind": "endpoint-class", "value": value}
+
+
+def ref_carrying(field, text):
+    """A ``source_refs`` entry whose ``field`` holds ``text``, rest safe.
+
+    One entry shape per published field, so a refusal can be attributed to the
+    field under test rather than to the rest of the record.
+    """
+    ref = {"kind": "endpoint-class", "value": "api-football/fixtures"}
+    ref[field] = text
+    return ref
+
+
+def refusal(index, field, marker):
+    """The one message a rejected entry produces, whatever it held.
+
+    Deterministic in the pointer and the marker and in nothing else: the value is
+    the material being refused, so naming it in the error hands it to every log
+    the error reaches.
+    """
+    return ("observation.adapter.source_refs[{0}].{1}: request- or "
+            "credential-shaped material was redacted (contains '{2}'). Record "
+            "the endpoint class only; no URL, query or credential.".format(
+                index, field, marker))
 
 
 def resolver():
@@ -332,6 +363,69 @@ class TestNoUnsafeRefReachesAnyOutput(unittest.TestCase):
         must not smuggle in the unfiltered ``source_refs`` it was copied from."""
         block = provenance_block(self.bad(), id_resolver=resolver())["provenance"]
         self.assertNotIn("source_refs", block["adapter"])
+
+
+class TestTheRefusalNeverRepeatsWhatItRefused(unittest.TestCase):
+    """A rejected value is named by its path, never by its text.
+
+    Rejecting an entry and then quoting it in the error moves the credential from
+    one published surface to another: ``validate_observation`` returns the
+    findings to whatever printed them, and ``canonical_envelope`` raises them as a
+    ValueError that a caller logs, prints or attaches to a ticket. The pointer is
+    what an adapter author fixes the bug with; the value is what an adapter author
+    already has.
+    """
+
+    def test_the_error_is_the_same_redacted_message_whatever_the_value(self):
+        for value in CREDENTIAL_SHAPED:
+            with self.subTest(value=value):
+                self.assertEqual(
+                    validate_observation(document(endpoint_ref(value))),
+                    [refusal(0, "value", credential_marker(value))])
+
+    def test_no_rejected_text_reaches_the_validation_findings(self):
+        for field in SOURCE_REF_TEXT_FIELDS:
+            for text in CREDENTIAL_SHAPED:
+                with self.subTest(field=field, text=text):
+                    errors = validate_observation(
+                        document(ref_carrying(field, text)))
+                    self.assertEqual(
+                        errors, [refusal(0, field, credential_marker(text))])
+                    self.assertNotIn(text, "\n".join(errors))
+
+    def test_no_rejected_text_reaches_the_envelope_exception(self):
+        for text in CREDENTIAL_SHAPED:
+            with self.subTest(text=text):
+                with self.assertRaises(ValueError) as raised:
+                    canonical_envelope(document(endpoint_ref(text)),
+                                       id_resolver=resolver())
+                message = str(raised.exception)
+                self.assertIn("observation.adapter.source_refs[0].value", message)
+                self.assertNotIn(text, message)
+
+    def test_no_rejected_text_reaches_any_serialized_output(self):
+        """With validation bypassed, as in ``TestOneRuleNotTwo``: each builder is
+        public and must hold on its own."""
+        for text in CREDENTIAL_SHAPED:
+            with self.subTest(text=text):
+                doc = document(endpoint_ref(text))
+                for name, built in (
+                    ("provenance", provenance_block(doc, id_resolver=resolver())),
+                    ("event_view", event_view(doc, id_resolver=resolver())),
+                    ("graph", sport_schema_graph(doc, id_resolver=resolver())),
+                ):
+                    self.assertNotIn(text, json.dumps(built), name)
+
+    def test_the_pointer_and_the_marker_survive_the_redaction(self):
+        """Redacting the value must not cost the two things that make the error
+        actionable: which entry and field, and why it was refused."""
+        errors = validate_observation(document(
+            endpoint_ref("api-football/fixtures"),
+            {"kind": "endpoint-class", "value": "api-football/fixtures",
+             "note": "called with API_KEY=hunter2"},
+        ))
+        self.assertEqual(
+            errors, [refusal(1, "note", "api_key")])
 
 
 if __name__ == "__main__":

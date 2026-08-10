@@ -467,11 +467,17 @@ def _check_source_refs(adapter, errors):
                 errors.append("{0}.{1}: required non-empty string is missing".format(
                     pointer, key))
         for field, marker in source_ref_credential_findings(ref):
+            # The value is the material being refused, so it is named by its
+            # path and by the marker that matched, never by its text. Quoting it
+            # moved the credential from the envelope — where it was caught — into
+            # this error, and from there into every log, ticket and terminal that
+            # read a validation finding or the ValueError the envelope raises.
+            # The pointer is what the adapter author fixes the bug with; the
+            # value is what they already have.
             errors.append(
-                "{0}.{1}: '{2}' looks like a request or a credential rather "
-                "than an endpoint class (contains '{3}'). Record the endpoint "
-                "class only; no URL, query or credential.".format(
-                    pointer, field, ref[field], marker)
+                "{0}.{1}: request- or credential-shaped material was redacted "
+                "(contains '{2}'). Record the endpoint class only; no URL, "
+                "query or credential.".format(pointer, field, marker)
             )
 
 
