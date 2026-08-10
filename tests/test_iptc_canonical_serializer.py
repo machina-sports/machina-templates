@@ -43,6 +43,7 @@ if str(REPO_ROOT) not in sys.path:
 from tools.iptc import canonical  # noqa: E402
 from tools.iptc import profile as profile_module  # noqa: E402
 from tools.iptc.canonical import export_official_terms  # noqa: E402
+from tools.iptc.canonical.ids import SURROGATE_MARKER, surrogate_resolver  # noqa: E402
 from tools.iptc.canonical.observation import (  # noqa: E402
     PLACEHOLDERS,
     validate_observation,
@@ -266,6 +267,59 @@ class TestObservationValidation(unittest.TestCase):
 
     def test_a_non_dict_document_is_an_error_and_not_an_exception(self):
         self.assertNotEqual(validate_observation([]), [])
+
+
+class TestSurrogateIds(unittest.TestCase):
+    """A3 — identity is a visibly-marked, provider-scoped surrogate."""
+
+    def test_ids_are_deterministic(self):
+        a, b = surrogate_resolver("api-football"), surrogate_resolver("api-football")
+        self.assertEqual(a("event", "9001"), b("event", "9001"))
+
+    def test_ids_are_provider_scoped(self):
+        self.assertNotEqual(
+            surrogate_resolver("api-football")("event", "9001"),
+            surrogate_resolver("sportradar-soccer")("event", "9001"),
+        )
+
+    def test_form_marks_the_id_as_a_surrogate(self):
+        value = surrogate_resolver("api-football")("event", "9001")
+        self.assertRegex(value, r"^urn:machina:sports:event:x[0-9a-f]{32}$")
+        self.assertEqual(SURROGATE_MARKER, "x")
+
+    def test_distinct_fixtures_never_collide(self):
+        mint = surrogate_resolver("api-football")
+        self.assertNotEqual(mint("event", "9001"), mint("event", "9002"))
+
+    def test_no_provider_namespace_leaks_into_the_id(self):
+        self.assertNotIn("api-football", surrogate_resolver("api-football")("team", "9011"))
+
+    def test_no_provider_id_leaks_into_the_id(self):
+        """The digest is opaque, so the profile's provider-id-as-resource-id rule
+        can never be tripped by an identifier this resolver minted."""
+        self.assertNotIn("9011", surrogate_resolver("api-football")("team", "9011"))
+
+    def test_kinds_do_not_collide_with_each_other(self):
+        mint = surrogate_resolver("api-football")
+        self.assertNotEqual(
+            mint("team", "9011").split(":")[-1], mint("athlete", "9011").split(":")[-1]
+        )
+
+    def test_part_boundaries_are_not_ambiguous(self):
+        """``("a", "bc")`` and ``("ab", "c")`` must not mint the same identifier.
+
+        Concatenating parts before hashing is the classic way to make two
+        different fixtures collide, and a collision here silently merges two
+        events into one resource.
+        """
+        mint = surrogate_resolver("api-football")
+        self.assertNotEqual(mint("participation", "a", "bc"), mint("participation", "ab", "c"))
+
+    def test_integer_and_string_parts_agree(self):
+        """An adapter reading ordinal 1 as int must not mint a different action
+        identifier from one reading it as "1"."""
+        mint = surrogate_resolver("api-football")
+        self.assertEqual(mint("action", "9001", 1), mint("action", "9001", "1"))
 
 
 class TestOfficialTermExport(unittest.TestCase):
