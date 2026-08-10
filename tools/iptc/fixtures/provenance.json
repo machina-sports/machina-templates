@@ -1,0 +1,307 @@
+{
+  "_comment": [
+    "Frozen sanitized baseline fixtures for the IPTC validation harness.",
+    "",
+    "NO LICENSED PROVIDER WAS CALLED AND NO CREDENTIAL WAS USED to produce any file",
+    "here. Every fixture is derived from artefacts already checked into this",
+    "repository, and each one records exactly which artefact and by what",
+    "transformation.",
+    "",
+    "Two fixture classes, and the difference matters when reading the audit:",
+    "",
+    "  repository-artifact        A checked-in IPTC output document, copied verbatim",
+    "                             (or with one named envelope key unwrapped). These",
+    "                             are real current outputs. Findings against them",
+    "                             are findings against production shapes.",
+    "",
+    "  mapping-contract-synthetic Hand-authored from the mapping YAML's literal",
+    "                             emitted key set, with obviously synthetic",
+    "                             identifiers and names. No checked-in sample of the",
+    "                             real output exists for these mappings, so the",
+    "                             fixture reproduces the SHAPE the mapping emits and",
+    "                             nothing else. Counts derived from these fixtures",
+    "                             describe the mapping contract, not observed",
+    "                             production volume. This limitation is restated in",
+    "                             docs/iptc/BASELINE-AUDIT.md per fixture.",
+    "",
+    "Synthetic fixtures never contain real team names, real player names, real",
+    "provider identifiers, real venues or real fixture dates that could be traced",
+    "to a licensed feed. Identifiers use a 9xxx / 'synthetic0...' pattern.",
+    "",
+    "PR 2 replaces the baseline set with corrected outputs. It does not edit these",
+    "files: they are the 'before' evidence the audit is measured against."
+  ],
+  "fixture_set_version": "1",
+  "conforming": [
+    {
+      "fixture": "official-soccer-match-02",
+      "path": "agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/samples/json-ld/soccer-match-02.jsonld",
+      "class": "official-upstream-sample",
+      "provenance": "Byte-exact upstream samples/json-ld/soccer-match-02.jsonld at the pinned commit.",
+      "role": "Positive control for layers 1 and 2. Known to conform against the official SHACL shapes. A layer-1 or layer-2 failure here means the harness is wrong, not the data.",
+      "profile_expectation": "Satisfies every Machina structural rule — one document-level @context, a flat @graph, node references by @id, NewsCodes as node references — which is worth noting, because it shows layer 3 is stricter than IPTC without being arbitrary: it codifies the shape upstream's own samples already use. It nevertheless carries ONE profile finding: `sport:infractionType` has the value `vendpenalty:foul`, and no @context in the sample binds a `vendpenalty` prefix. That is a real defect in the upstream sample, not a harness artefact — the value resolves to nothing. It is left visible rather than allowlisted."
+    },
+    {
+      "fixture": "official-player-bio-01",
+      "path": "agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/samples/json-ld/player-bio-01.jsonld",
+      "class": "official-upstream-sample",
+      "provenance": "Byte-exact upstream samples/json-ld/player-bio-01.jsonld at the pinned commit.",
+      "role": "Smallest official positive control; keeps the fast test path fast."
+    },
+    {
+      "fixture": "official-team-roster",
+      "path": "agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/samples/json-ld/team-roster.jsonld",
+      "class": "official-upstream-sample",
+      "provenance": "Byte-exact upstream samples/json-ld/team-roster.jsonld at the pinned commit.",
+      "role": "Membership and Participation coverage in a known-conforming document."
+    },
+    {
+      "fixture": "official-soccer-standings",
+      "path": "agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/samples/json-ld/soccer-standings.jsonld",
+      "class": "official-upstream-sample",
+      "provenance": "Byte-exact upstream samples/json-ld/soccer-standings.jsonld at the pinned commit.",
+      "role": "Core-statistics coverage in a document that conforms to the official SHACL shapes.",
+      "profile_expectation": "Conforms to layers 1, 2 and 4 but carries 5 profile findings, all the same defect: `spstat:resultEffectTarget` values of the form `league:l.uefa.org.champions`, where no @context in the sample binds a `league` prefix. Same class of upstream sample defect as soccer-match-02. Recorded, not allowlisted: an unbound prefix in a value is broken whoever wrote it."
+    },
+    {
+      "fixture": "machina-profile-conforming-minimal",
+      "path": "tools/iptc/fixtures/conforming/machina-profile-conforming-minimal.json",
+      "class": "machina-authored-conforming",
+      "provenance": "Machina-authored. Every term IRI copied from the pinned ontology; the shared context at agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld is inlined.",
+      "role": "Tightly-scoped positive control for ALL FOUR layers and all four counters at zero. This is the only fixture in this repository that is expected to pass everything, and it is what the PR 2 serializers are aiming at."
+    }
+  ],
+  "baseline": [
+    {
+      "fixture": "api-football-soccer-event",
+      "path": "tools/iptc/fixtures/baseline/api-football-soccer-event.json",
+      "class": "repository-artifact",
+      "source": "agent-templates/iptc-mappings/example-apifootball-output.json",
+      "transformation": "verbatim copy",
+      "emitted_by": "iptc-api-football-event-mapping (agent-templates/iptc-mappings/api-football/event-mapping.yml), output key sport_schema_events",
+      "coverage": "API-Football soccer event",
+      "consumers": [
+        "agent-templates/iptc-mappings/any-selector/event-selector.yml",
+        "agent-templates/iptc-mappings/any-selector/events-selector.yml",
+        "agent-templates/iptc-mappings/any-selector/events-summary.yml",
+        "connectors/api-football/workflows/event-consumer-live.yml",
+        "connectors/api-football/workflows/event-consumer-prelive.yml",
+        "agent-templates/coverage-tools/mappings/selectors.yml",
+        "agent-templates/world-cup-intelligence/mappings/worldcup-iptc-event-to-api-response.yml"
+      ]
+    },
+    {
+      "fixture": "api-football-soccer-event-nulls",
+      "path": "tools/iptc/fixtures/baseline/api-football-soccer-event-nulls.json",
+      "class": "repository-artifact",
+      "source": "agent-templates/iptc-mappings/example-iptc-event.json",
+      "transformation": "verbatim copy",
+      "emitted_by": "iptc-api-football-event-mapping, pre-kickoff state",
+      "coverage": "API-Football soccer event, null/absent-value behaviour",
+      "note": "Kept as a separate fixture because it carries explicit nulls (sport:score.sport:homeScore, sport:awayScore) and a numeric sport:year where the sibling artefact has a string. It is the repository's own evidence for the null-vs-omission rule and for datatype drift between two runs of the SAME mapping. It also uses urn:apifootball:fixture: while the mapping now emits urn:apifootball:sport_event: — an identifier-scheme drift already present in checked-in examples.",
+      "consumers": ["same as api-football-soccer-event"]
+    },
+    {
+      "fixture": "api-football-actions",
+      "path": "tools/iptc/fixtures/baseline/api-football-actions.json",
+      "class": "mapping-contract-synthetic",
+      "source": "agent-templates/iptc-mappings/api-football/event-mapping.yml",
+      "transformation": "Hand-authored from the literal key set of the iptc-api-football-events-mapping expression (output key iptc_events). Synthetic ids 9001/9002/9101/9102/9201.",
+      "emitted_by": "iptc-api-football-events-mapping",
+      "coverage": "API-Football actions",
+      "limitation": "No checked-in sample of this mapping's output exists. The fixture reproduces the emitted shape only.",
+      "consumers": ["agent-templates/iptc-mappings/any-selector/events-summary.yml (iptc-events-summary-timeline)"]
+    },
+    {
+      "fixture": "api-football-team-stats",
+      "path": "tools/iptc/fixtures/baseline/api-football-team-stats.json",
+      "class": "mapping-contract-synthetic",
+      "source": "agent-templates/iptc-mappings/api-football/event-teams-stats.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-api-football-event-teams-stats (output key iptc_teams_statistics). Statistic values synthetic.",
+      "emitted_by": "iptc-api-football-event-teams-stats",
+      "coverage": "API-Football team statistics",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "consumers": ["connectors/api-football/sync-fixtures-teams-statistics.yml"]
+    },
+    {
+      "fixture": "api-football-player-stats",
+      "path": "tools/iptc/fixtures/baseline/api-football-player-stats.json",
+      "class": "mapping-contract-synthetic",
+      "source": "agent-templates/iptc-mappings/api-football/event-players-stats.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-api-football-event-players-stats (output key iptc_players_statistics), including the Machina `metadata` block the mapping emits alongside the JSON-LD keys, and the goalkeeper-only spread.",
+      "emitted_by": "iptc-api-football-event-players-stats",
+      "coverage": "API-Football player statistics",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "consumers": ["connectors/api-football/sync-fixtures-players-statistics.yml"]
+    },
+    {
+      "fixture": "sportradar-soccer-event",
+      "path": "tools/iptc/fixtures/baseline/sportradar-soccer-event.json",
+      "class": "repository-artifact",
+      "source": "agent-templates/iptc-mappings/example-sportradar-output.json",
+      "transformation": "Unwrapped the single top-level `sport-schema-event` envelope key. Content otherwise unchanged; re-serialized with 2-space indent and sorted-key order preserved from the source.",
+      "emitted_by": "iptc-sportradar-event-mapping (connectors/sportradar-soccer/mappings/iptc-sport-event.yml), output key sport_schema_events",
+      "coverage": "Sportradar soccer event",
+      "consumers": [
+        "connectors/sportradar-soccer/workflows/event-consumer.yml",
+        "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+        "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+        "connectors/sportradar-soccer/workflows/load-round-events.yml",
+        "agent-templates/iptc-mappings/any-selector/*",
+        "agent-templates/coverage-tools/mappings/selectors.yml"
+      ]
+    },
+    {
+      "fixture": "sportradar-soccer-timeline",
+      "path": "tools/iptc/fixtures/baseline/sportradar-soccer-timeline.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/sportradar-soccer/mappings/iptc-sport-event.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-sportradar-events-timeline-mapping (output key iptc_events_timeline), including the score_change and card conditional spreads. Synthetic sr: identifiers.",
+      "emitted_by": "iptc-sportradar-events-timeline-mapping",
+      "coverage": "Sportradar soccer timeline",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "note": "Preserves the mapping's `spsocaction:` compact value for sport:actionType even though no @context in that mapping binds the spsocaction prefix. That is what the mapping emits.",
+      "consumers": ["agent-templates/iptc-mappings/any-selector/events-summary.yml (iptc-events-summary-timeline)"]
+    },
+    {
+      "fixture": "stats-perform-opta-event",
+      "path": "tools/iptc/fixtures/baseline/stats-perform-opta-event.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/stats-perform/mappings/iptc-sport-event.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-opta-event-mapping (output key sport_schema_events), including the Machina `version_control` block and the nested `sport:timeline` array with its own nested @context. Synthetic opta identifiers.",
+      "emitted_by": "iptc-opta-event-mapping",
+      "coverage": "Stats Perform / Opta event (with embedded timeline)",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "consumers": [
+        "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+        "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+        "connectors/stats-perform/workflows/sp-opta-event-synchronize.yml",
+        "connectors/stats-perform/workflows/sync-update-live.yml"
+      ]
+    },
+    {
+      "fixture": "stats-perform-opta-timeline",
+      "path": "tools/iptc/fixtures/baseline/stats-perform-opta-timeline.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/stats-perform/mappings/iptc-sport-event.yml",
+      "transformation": "The `sport:timeline` element shape from iptc-opta-event-mapping, extracted as a standalone document set. This is how a consumer that reads only the timeline sees it.",
+      "emitted_by": "iptc-opta-event-mapping, sport:timeline array",
+      "coverage": "Stats Perform / Opta timeline",
+      "limitation": "No checked-in sample exists, and the timeline is not a separately named mapping upstream of this fixture — it is a nested array inside the event mapping."
+    },
+    {
+      "fixture": "sportradar-tennis-event",
+      "path": "tools/iptc/fixtures/baseline/sportradar-tennis-event.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/sportradar-tennis/mappings/iptc-event-mapping.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-sportradar-tennis-event-mapping (output key sport_schema_events). Synthetic sr: identifiers and player names.",
+      "emitted_by": "iptc-sportradar-tennis-event-mapping",
+      "coverage": "Sportradar tennis",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "note": "This is the widest mapping in the repository by distinct sport: term count. It also emits sport:round twice with two different shapes (once under sport:gameInfo as a string, once as an object), and an invented sport:sport node id urn:iptc:sport:tennis.",
+      "consumers": ["connectors/sportradar-tennis/workflows/sync-season-summaries.yml"]
+    },
+    {
+      "fixture": "sportradar-nfl-event",
+      "path": "tools/iptc/fixtures/baseline/sportradar-nfl-event.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-sportradar-event-nfl-mapping (output key sport_schema_events). Synthetic UUIDs.",
+      "emitted_by": "iptc-sportradar-event-nfl-mapping",
+      "coverage": "Sportradar NFL",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "note": "sport:score.sport:halfTime is the raw Sportradar period object, verbatim, so the fixture carries raw provider keys (period_type, home_points, ...) inside an IPTC-namespaced property. The season is hardcoded to 2025 in the mapping.",
+      "consumers": [
+        "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+        "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+        "connectors/sportradar-nfl/sync-games.yml"
+      ]
+    },
+    {
+      "fixture": "sportradar-mlb-event",
+      "path": "tools/iptc/fixtures/baseline/sportradar-mlb-event.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/sportradar-mlb/mappings/iptc-sport-event.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-sportradar-event-mlb-mapping (output key sport_schema_events). Synthetic UUIDs.",
+      "emitted_by": "iptc-sportradar-event-mlb-mapping",
+      "coverage": "Sportradar MLB",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "note": "The mapping deliberately emits sport:score with explicit nulls (its own comment says so) because schedule.json carries no runs and a later workflow merges them in. The nulls are load-bearing for a downstream reader today, which is exactly why the null rule needs a migration and not a flag day.",
+      "consumers": [
+        "connectors/sportradar-mlb/sync-games.yml",
+        "connectors/sportradar-mlb/sync-results.yml",
+        "connectors/sportradar-mlb/sync-pitchers.yml"
+      ]
+    },
+    {
+      "fixture": "american-football-event",
+      "path": "tools/iptc/fixtures/baseline/american-football-event.json",
+      "class": "mapping-contract-synthetic",
+      "source": "connectors/american-football/mappings/iptc-american-football-event-mapping.yml",
+      "transformation": "Hand-authored from the literal key set of iptc-american-football-event-mapping (output key sport_schema_events). Synthetic league/team/venue ids.",
+      "emitted_by": "iptc-american-football-event-mapping",
+      "coverage": "American football",
+      "limitation": "No checked-in sample of this mapping's output exists.",
+      "consumers": ["connectors/american-football/workflows/sync-games.yml"]
+    },
+    {
+      "fixture": "custom-event",
+      "path": "tools/iptc/fixtures/baseline/custom-event.json",
+      "class": "repository-artifact",
+      "source": "agent-templates/iptc-mappings/example-any-event-output.json",
+      "transformation": "verbatim copy",
+      "emitted_by": "iptc-custom-event-mapping (agent-templates/iptc-mappings/any-source/custom-event-mapping.yml), output key sport_schema_event",
+      "coverage": "Generic custom event",
+      "note": "The generic path fabricates a venue (`urn:custom:venue:unknown`, name 'Unknown') rather than omitting it, and mints event/team ids from mutable display names — the identity hazard the RFC's identifier rules forbid.",
+      "consumers": [
+        "agent-templates/iptc-mappings/any-selector/*",
+        "agent-templates/chat-completion/workflows/chat-moderator.yml"
+      ]
+    }
+  ],
+  "negative": [
+    {
+      "fixture": "negative-invented-sport-term",
+      "path": "tools/iptc/fixtures/negative/invented-sport-term.json",
+      "asserts": "counter 1 > 0 and profile finding invented-sport-term",
+      "construction": "The conforming minimal fixture with exactly one added property, sport:machinaConfidenceScore."
+    },
+    {
+      "fixture": "negative-invalid-newscode",
+      "path": "tools/iptc/fixtures/negative/invalid-newscode.json",
+      "asserts": "counter 2 > 0 and layer 4 invalid",
+      "construction": "sport:playerStatus points at spplayerstatus/definitely-not-a-status, which the pinned vocabularies/spplayerstatus.ttl does not contain."
+    },
+    {
+      "fixture": "negative-duplicate-ids",
+      "path": "tools/iptc/fixtures/negative/duplicate-ids.json",
+      "asserts": "counter 3 > 0 and profile finding duplicate-node-id",
+      "construction": "Two sport:Team nodes sharing one @id."
+    },
+    {
+      "fixture": "negative-provider-leakage",
+      "path": "tools/iptc/fixtures/negative/provider-leakage.json",
+      "asserts": "counter 4 > 0 and profile finding provider-property-in-iptc-namespace",
+      "construction": "sport:doubleHeader and sport:matchStatus emitted under the official namespace; both appear in rules/provider-leak-terms.json."
+    },
+    {
+      "fixture": "negative-malformed",
+      "path": "tools/iptc/fixtures/negative/malformed.jsonld",
+      "asserts": "layer 1 fails at the json stage and every later layer is skipped, with null counters rather than zero counters",
+      "construction": "A trailing comma and an unquoted key."
+    },
+    {
+      "fixture": "negative-remote-context",
+      "path": "tools/iptc/fixtures/negative/remote-context.json",
+      "asserts": "layer 1 fails at the `context` stage and layers 2-4 are not run: a string @context would be dereferenced by IRI, which the offline harness refuses.",
+      "construction": "A minimal @graph document whose @context is a URL on the reserved .invalid TLD. Nothing resolves it, and nothing is meant to: the point is that the harness rejects it before the RDF parser is handed the bytes.",
+      "role": "Proves the offline guarantee is enforced rather than assumed."
+    },
+    {
+      "fixture": "negative-null-and-placeholder",
+      "path": "tools/iptc/fixtures/negative/null-and-placeholder.json",
+      "asserts": "profile findings null-value and placeholder-value; counters 1-4 all zero",
+      "construction": "The conforming minimal fixture with one null-valued property and one 'Unknown' string. Nothing here is an invented term, an invalid code, a duplicate id or a provider leak, which is the point: it isolates the omission rule from the four gates."
+    }
+  ]
+}

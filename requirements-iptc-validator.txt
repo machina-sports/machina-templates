@@ -1,0 +1,27 @@
+# Pinned dependencies for `tools/iptc` — the offline IPTC Sport Schema 1.1
+# conformance harness. Installed by CI on Python 3.12.
+#
+# This file is deliberately SEPARATE from requirements-validator.txt. The
+# pre-existing `validate-machina-agent-builder` workflow installs only that file,
+# so it neither pays for this harness's dependency tree nor risks one of these
+# packages shadowing a module it imports. Only the IPTC workflow installs this
+# file. The include below keeps the base validator pins as the single source of
+# truth for what they cover — do not restate them here.
+-r requirements-validator.txt
+
+# Exact pins only: a range here would make a checked-in report snapshot
+# non-reproducible, and the IPTC baseline audit is compared byte-for-byte.
+#
+# rdflib supplies JSON-LD expansion and Turtle parsing; pyshacl runs the official
+# pinned SHACL shapes. Both are pure Python, need no system packages, and support
+# Python 3.12. The transitive dependencies are pinned as well, because pyshacl
+# resolves owlrl/prettytable/html5rdf and an unpinned resolve could change a
+# validation report without any change in this repository.
+rdflib==7.1.4
+pyshacl==0.30.0
+owlrl==7.1.4
+prettytable==3.18.0
+html5rdf==1.2.1
+pyparsing==3.3.2
+wcwidth==0.8.2
+packaging==26.3

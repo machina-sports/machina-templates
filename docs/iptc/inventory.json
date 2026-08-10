@@ -1,0 +1,3357 @@
+{
+  "categories": {
+    "invented-sport-term": "Uses the official sport: prefix but is NOT declared by IPTC Sport Schema 1.1. Gate 1. Must move to machina: or event_view in PR 2.",
+    "invented-statistic-term": "Uses an official statistics prefix but is not declared by the corresponding pinned ontology. Gate 1.",
+    "jsonld-keyword": "A JSON-LD keyword. Not a vocabulary term.",
+    "machina-extension": "A term in the Machina extension namespace. Permitted by the profile.",
+    "machina-operational-field": "An unprefixed key. Neither a JSON-LD keyword nor a term defined by any @context in scope, so JSON-LD expansion drops it silently and the value is lost. Belongs under machina: or in event_view.",
+    "newscode-pinned-invalid": "A literal NewsCode whose scheme IS pinned and does NOT contain it. Gate 2.",
+    "newscode-pinned-valid": "A literal NewsCode that IS a skos:Concept in a pinned concept scheme. Checked against the vendored TTL, not inferred from the prefix.",
+    "newscode-unverifiable": "A NewsCode reference that cannot be checked offline: either upstream ships no TTL for the scheme at the pinned commit, or the mapping names a prefix without a literal code to check. Membership is NOT claimed. A prefix pointing at the NewsCodes stem proves nothing about the code.",
+    "official-iptc-class": "Declared as a class by the pinned IPTC Sport Schema 1.1 ontology, AND the emitting mapping binds sport: to the official IRI, so it really is that class.",
+    "official-iptc-property": "Declared as a property by the pinned IPTC Sport Schema 1.1 ontology, AND the emitting mapping binds sport: to the official IRI.",
+    "official-local-name-wrong-namespace": "The local name IS declared by IPTC Sport Schema 1.1, but the emitting mapping does not bind sport: to https://sportschema.org/ontologies/main/ \u2014 so the term expands into a namespace nobody owns and is NOT the official term. This is the defect that makes a SHACL pass vacuous. Counting these as official would be the most flattering possible misreading of the baseline.",
+    "official-sport-specific-statistic": "Declared by a pinned per-sport or core statistics ontology.",
+    "schema-org-term-unverified": "A schema.org term. NOT VERIFIED: no schema.org vocabulary is pinned in this repository, so offline validation of schema.org terms is not possible. Listed rather than asserted valid.",
+    "standard-rdf-term": "An RDF, RDFS, XSD or SKOS term.",
+    "undeclared-prefix-term": "Uses a prefix that no @context in the emitting mapping binds, so it expands to a relative IRI rather than a term."
+  },
+  "consumers": [
+    {
+      "file": "agent-templates/assistant-tools/scripts/event-processor.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:homeScore",
+        "sport:score",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/scripts/event-summarizer.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:awayScore",
+        "sport:channelName",
+        "sport:channels",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:homeScore",
+        "sport:qualifier",
+        "sport:score",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/scripts/market-event-matcher.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/scripts/market-extractor.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "sport:competitor",
+        "sport:competitors"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/scripts/message-data-transformer.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:awayScore",
+        "sport:channelName",
+        "sport:channels",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:homeScore",
+        "sport:label",
+        "sport:minutesElapsed",
+        "sport:participation",
+        "sport:participationBy",
+        "sport:qualifier",
+        "sport:score",
+        "sport:statLabel",
+        "sport:statValue",
+        "sport:statistics",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/tools/event-matcher.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:season",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:status"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/assistant-tools/tools/find-upcoming.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/chat-completion/workflows/chat-moderator.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": [
+        "iptc-events",
+        "sport-schema-event",
+        "sport_schema_event"
+      ]
+    },
+    {
+      "file": "agent-templates/coverage-tools/mappings/selectors.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "schema:startDate",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:homeScore",
+        "sport:round",
+        "sport:score",
+        "sport:season",
+        "sport:stage",
+        "sport:status",
+        "sport:venue"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/coverage-tools/scripts/past_events.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:sportName",
+        "schema:startDate",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:matchStatus",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:venue"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/coverage-tools/tools/find-images.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/coverage-tools/tools/soccer/tallysight-widgets.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/iptc-mappings/any-selector/event-selector.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:score"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/iptc-mappings/any-selector/events-selector.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:score"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/iptc-mappings/any-selector/events-summary.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "schema:startDate",
+        "sport:actionType",
+        "sport:awayScore",
+        "sport:channelName",
+        "sport:channels",
+        "sport:competition",
+        "sport:fieldLocation",
+        "sport:homeScore",
+        "sport:label",
+        "sport:minutesElapsed",
+        "sport:participation",
+        "sport:participationBy",
+        "sport:periodValue",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:statLabel",
+        "sport:statParticipant",
+        "sport:statValue",
+        "sport:statistics",
+        "sport:status",
+        "sport:venue"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/iptc-mappings/any-source/custom-event-test.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "sport-schema-event",
+        "sport_schema_event"
+      ]
+    },
+    {
+      "file": "agent-templates/iptc-mappings/api-football/event-mapping-test.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "sport-schema-event",
+        "sport_schema_event"
+      ]
+    },
+    {
+      "file": "agent-templates/iptc-mappings/sportradar/event-mapping-test.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "sport-schema-event",
+        "sport_schema_event"
+      ]
+    },
+    {
+      "file": "agent-templates/kalshi-market-agent/scripts/market-event-matcher.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/kalshi-market-agent/workflows/combo-analysis/executor.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/kalshi-market-agent/workflows/event-matcher.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:season",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/consumer.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/executor.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:status"
+      ],
+      "reads_payload_keys": [
+        "iptc-events"
+      ]
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/mappings/worldcup-iptc-event-to-api-response.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:status",
+        "sport:venue"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/prompts/worldcup-match-recap.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/tests/test_worldcup_market_intelligence.py",
+      "kind": "test",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier",
+        "sport:round",
+        "sport:status",
+        "sport:venue"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-coverage-gateway.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_events",
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competitor",
+        "sport:competitors"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "agent-templates/world-cup-intelligence/worldcup-market-intelligence.py",
+      "kind": "script",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:qualifier",
+        "sport:round",
+        "sport:status",
+        "sport:venue"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/american-football/workflows/sync-games.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/api-football/sync-fixtures-events.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:label"
+      ],
+      "reads_payload_keys": [
+        "iptc_events",
+        "iptc_schema_events",
+        "iptc_schema_ids"
+      ]
+    },
+    {
+      "file": "connectors/api-football/sync-fixtures-players-statistics.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_players",
+        "iptc_players_statistics",
+        "iptc_schema_events",
+        "iptc_schema_ids"
+      ]
+    },
+    {
+      "file": "connectors/api-football/sync-fixtures-teams-statistics.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:participation",
+        "sport:participationBy"
+      ],
+      "reads_payload_keys": [
+        "iptc_schema_events",
+        "iptc_schema_ids",
+        "iptc_teams",
+        "iptc_teams_statistics"
+      ]
+    },
+    {
+      "file": "connectors/api-football/sync-fixtures.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/api-football/workflows/event-sync-markets.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": [
+        "iptc_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/api-football/workflows/event-synchronize.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": [
+        "iptc_schema_events",
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/api-football/workflows/event-update.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-mlb/sync-games.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "sport:competition",
+        "sport:homeScore",
+        "sport:score",
+        "sport:status"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-mlb/sync-pitchers.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:score",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-mlb/sync-results.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:awayScore",
+        "sport:homeScore",
+        "sport:matchStatus",
+        "sport:score",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-nfl/sync-games.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "sport:abbreviation",
+        "sport:competition",
+        "sport:competitor",
+        "sport:competitors",
+        "sport:status"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-nfl/workflows/event-sync-timeline.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_game_statistics",
+        "iptc_player_statistics",
+        "iptc_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/event-synchronize.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_events",
+        "iptc_events_statistics",
+        "iptc_events_timeline",
+        "iptc_schema_events",
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/load-round-events.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition",
+        "sport:round"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/sync-competitors.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_teams",
+        "sport_schema_teams"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/sync-events-stats.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc_events",
+        "iptc_match_statistics",
+        "iptc_players",
+        "iptc_players_statistics",
+        "iptc_schema_events",
+        "iptc_schema_ids",
+        "iptc_teams",
+        "iptc_teams_statistics"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-soccer/workflows/sync-schedules.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "sport:competition"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/sportradar-tennis/workflows/sync-season-info.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:competition",
+        "sport:season",
+        "sport:venue"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/sportradar-tennis/workflows/sync-season-summaries.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [],
+      "reads_payload_keys": [
+        "iptc-events",
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:status"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sp-opta-event-sync-markets.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sp-opta-event-synchronize.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:competition"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sp-opta-event-update.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate"
+      ],
+      "reads_payload_keys": []
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sync-players.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "sport:competition",
+        "sport:season"
+      ],
+      "reads_payload_keys": [
+        "iptc_players",
+        "sport_schema_players"
+      ]
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sync-schedules.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName",
+        "sport:competition"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sync-teams.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:sportName"
+      ],
+      "reads_payload_keys": [
+        "iptc_teams",
+        "sport_schema_teams"
+      ]
+    },
+    {
+      "file": "connectors/stats-perform/workflows/sync-update-live.yml",
+      "kind": "workflow-or-mapping",
+      "reads_field_paths": [
+        "schema:startDate",
+        "sport:status"
+      ],
+      "reads_payload_keys": [
+        "sport_schema_event",
+        "sport_schema_events"
+      ]
+    }
+  ],
+  "emitters": [
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "away",
+        "canceled",
+        "finished",
+        "home",
+        "name",
+        "not_started",
+        "postponed",
+        "schema",
+        "schema:addressLocality",
+        "schema:startDate",
+        "sport",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:competitors",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:status",
+        "sport:venue",
+        "sport:year"
+      ],
+      "file": "agent-templates/iptc-mappings/any-source/custom-event-mapping.yml",
+      "mapping": "iptc-custom-event-mapping",
+      "provider_leak_terms": [
+        "sport:halfTime"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 32,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Season",
+          "sport:Venue",
+          "sport:awayScore",
+          "sport:competition",
+          "sport:competitors",
+          "sport:halfTime",
+          "sport:homeScore",
+          "sport:qualifier",
+          "sport:season",
+          "sport:status",
+          "sport:venue",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "away",
+          "canceled",
+          "finished",
+          "home",
+          "name",
+          "not_started",
+          "postponed",
+          "schema",
+          "sport",
+          "urn:custom:venue:unknown"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:Team",
+          "sport:score"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressLocality",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressLocality",
+        "schema:logo",
+        "schema:startDate",
+        "sport",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:competitors",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:status",
+        "sport:venue",
+        "sport:year"
+      ],
+      "file": "agent-templates/iptc-mappings/api-football/event-mapping.yml",
+      "mapping": "iptc-api-football-event-mapping",
+      "provider_leak_terms": [
+        "sport:halfTime"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 26,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Season",
+          "sport:Venue",
+          "sport:awayScore",
+          "sport:competition",
+          "sport:competitors",
+          "sport:halfTime",
+          "sport:homeScore",
+          "sport:qualifier",
+          "sport:season",
+          "sport:status",
+          "sport:venue",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport"
+        ],
+        "official-iptc-class": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:Team"
+        ],
+        "official-iptc-property": [
+          "sport:score"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressLocality",
+          "schema:logo",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "sport",
+        "sport:actionDateTime",
+        "sport:actionType",
+        "sport:comment",
+        "sport:label",
+        "sport:minutesElapsed",
+        "sport:participation",
+        "sport:participationBy"
+      ],
+      "file": "agent-templates/iptc-mappings/api-football/event-mapping.yml",
+      "mapping": "iptc-api-football-events-mapping",
+      "provider_leak_terms": [],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 16,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:label"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "sport"
+        ],
+        "official-iptc-class": [
+          "sport:Action",
+          "sport:Athlete",
+          "sport:IndividualParticipation",
+          "sport:Team",
+          "sport:TeamParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:actionDateTime",
+          "sport:actionType",
+          "sport:comment",
+          "sport:minutesElapsed",
+          "sport:participation",
+          "sport:participationBy"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "document_type",
+        "event_code",
+        "metadata",
+        "player_code",
+        "rdfs:label",
+        "schema:image",
+        "schema:teamLogo",
+        "schema:teamName",
+        "sport",
+        "sport:captain",
+        "sport:jerseyNumber",
+        "sport:minutesPlayed",
+        "sport:participationBy",
+        "sport:playerStatus",
+        "sport:position",
+        "sport:rating",
+        "sport:substitute",
+        "spsocstat",
+        "spsocstat:assistsTotal",
+        "spsocstat:cautionsTotal",
+        "spsocstat:dribblesAttempted",
+        "spsocstat:dribblesSuccessful",
+        "spsocstat:duelsTotal",
+        "spsocstat:duelsWon",
+        "spsocstat:ejectionsTotal",
+        "spsocstat:foulsCommited",
+        "spsocstat:foulsSuffered",
+        "spsocstat:goalsAgainstTotal",
+        "spsocstat:goalsTotal",
+        "spsocstat:interceptions",
+        "spsocstat:offsides",
+        "spsocstat:passesComplete",
+        "spsocstat:passesCompletePercentage",
+        "spsocstat:passesKey",
+        "spsocstat:passesTotal",
+        "spsocstat:saves",
+        "spsocstat:shotsBlocked",
+        "spsocstat:shotsOnGoalTotal",
+        "spsocstat:shotsTotal",
+        "spsocstat:tacklesTotal",
+        "spstat",
+        "team_code"
+      ],
+      "file": "agent-templates/iptc-mappings/api-football/event-players-stats.yml",
+      "mapping": "iptc-api-football-event-players-stats",
+      "provider_leak_terms": [
+        "sport:captain",
+        "sport:jerseyNumber",
+        "sport:minutesPlayed",
+        "sport:rating",
+        "sport:substitute"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 47,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:captain",
+          "sport:jerseyNumber",
+          "sport:minutesPlayed",
+          "sport:position",
+          "sport:rating",
+          "sport:substitute"
+        ],
+        "invented-statistic-term": [
+          "spsocstat:dribblesAttempted",
+          "spsocstat:dribblesSuccessful",
+          "spsocstat:duelsTotal",
+          "spsocstat:duelsWon",
+          "spsocstat:passesKey"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "document_type",
+          "event_code",
+          "metadata",
+          "player_code",
+          "sport",
+          "spsocstat",
+          "spstat",
+          "team_code"
+        ],
+        "official-iptc-class": [
+          "sport:Athlete",
+          "sport:IndividualParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:participationBy",
+          "sport:playerStatus"
+        ],
+        "official-sport-specific-statistic": [
+          "spsocstat:assistsTotal",
+          "spsocstat:cautionsTotal",
+          "spsocstat:ejectionsTotal",
+          "spsocstat:foulsCommited",
+          "spsocstat:foulsSuffered",
+          "spsocstat:goalsAgainstTotal",
+          "spsocstat:goalsTotal",
+          "spsocstat:interceptions",
+          "spsocstat:offsides",
+          "spsocstat:passesComplete",
+          "spsocstat:passesCompletePercentage",
+          "spsocstat:passesTotal",
+          "spsocstat:saves",
+          "spsocstat:shotsBlocked",
+          "spsocstat:shotsOnGoalTotal",
+          "spsocstat:shotsTotal",
+          "spsocstat:tacklesTotal"
+        ],
+        "schema-org-term-unverified": [
+          "schema:image",
+          "schema:teamLogo",
+          "schema:teamName"
+        ],
+        "standard-rdf-term": [
+          "rdfs:label"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "rdfs:label",
+        "schema:logo",
+        "sport",
+        "sport:alignment",
+        "sport:participation",
+        "sport:participationBy",
+        "spsocstat",
+        "spsocstat:cautionsTotal",
+        "spsocstat:cornerKicks",
+        "spsocstat:ejectionsTotal",
+        "spsocstat:foulsCommited",
+        "spsocstat:offsides",
+        "spsocstat:passesComplete",
+        "spsocstat:passesCompletePercentage",
+        "spsocstat:passesTotal",
+        "spsocstat:saves",
+        "spsocstat:shotsBlocked",
+        "spsocstat:shotsOnGoalTotal",
+        "spsocstat:shotsTotal",
+        "spstat",
+        "spstat:timeOfPossessionPercentage"
+      ],
+      "file": "agent-templates/iptc-mappings/api-football/event-teams-stats.yml",
+      "mapping": "iptc-api-football-event-teams-stats",
+      "provider_leak_terms": [],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 27,
+      "terms_by_category": {
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "sport",
+          "spsocstat",
+          "spstat"
+        ],
+        "official-iptc-class": [
+          "sport:Event",
+          "sport:Team",
+          "sport:TeamParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:alignment",
+          "sport:participation",
+          "sport:participationBy"
+        ],
+        "official-sport-specific-statistic": [
+          "spsocstat:cautionsTotal",
+          "spsocstat:cornerKicks",
+          "spsocstat:ejectionsTotal",
+          "spsocstat:foulsCommited",
+          "spsocstat:offsides",
+          "spsocstat:passesComplete",
+          "spsocstat:passesCompletePercentage",
+          "spsocstat:passesTotal",
+          "spsocstat:saves",
+          "spsocstat:shotsBlocked",
+          "spsocstat:shotsOnGoalTotal",
+          "spsocstat:shotsTotal",
+          "spstat:timeOfPossessionPercentage"
+        ],
+        "schema-org-term-unverified": [
+          "schema:logo"
+        ],
+        "standard-rdf-term": [
+          "rdfs:label"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@id",
+        "sport:childCompetitions",
+        "sport:competitionDepth",
+        "sport:competitionLevel",
+        "sport:parentCompetitions"
+      ],
+      "file": "agent-templates/iptc-mappings/sportradar-tennis/event-mapping.yml",
+      "mapping": "iptc-sportradar-tennis-event-hierarchy-mapping",
+      "provider_leak_terms": [
+        "sport:competitionDepth",
+        "sport:competitionLevel"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 5,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:childCompetitions",
+          "sport:competitionDepth",
+          "sport:competitionLevel",
+          "sport:parentCompetitions"
+        ],
+        "jsonld-keyword": [
+          "@id"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressCountry",
+        "schema:alternativeName",
+        "sport",
+        "sport:category",
+        "sport:competition",
+        "sport:competitionFormat",
+        "sport:competitionType",
+        "sport:countryCode",
+        "sport:genderCategory",
+        "sport:hasChildren",
+        "sport:indoor",
+        "sport:isChildCompetition",
+        "sport:level",
+        "sport:matchType",
+        "sport:parentCompetition",
+        "sport:sport",
+        "sport:surfaceType"
+      ],
+      "file": "agent-templates/iptc-mappings/sportradar-tennis/event-mapping.yml",
+      "mapping": "iptc-sportradar-tennis-event-mapping",
+      "provider_leak_terms": [
+        "sport:genderCategory",
+        "sport:hasChildren",
+        "sport:indoor",
+        "sport:isChildCompetition",
+        "sport:matchType",
+        "sport:surfaceType"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 28,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Category",
+          "sport:Sport",
+          "sport:category",
+          "sport:competition",
+          "sport:countryCode",
+          "sport:genderCategory",
+          "sport:hasChildren",
+          "sport:indoor",
+          "sport:isChildCompetition",
+          "sport:level",
+          "sport:matchType",
+          "sport:parentCompetition",
+          "sport:surfaceType"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport",
+          "urn:iptc:sport:tennis"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:competitionFormat",
+          "sport:competitionType",
+          "sport:sport"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressCountry",
+          "schema:alternativeName"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "rdfs",
+        "rdfs:label",
+        "sport",
+        "sport:jerseyNumber",
+        "sport:minutesPlayed",
+        "sport:participationBy",
+        "sport:playerStatus",
+        "sport:position",
+        "spsocstat",
+        "spsocstat:aerialDuelsTotal",
+        "spsocstat:aerialDuelsWon",
+        "spsocstat:assistsTotal",
+        "spsocstat:ballsLost",
+        "spsocstat:ballsRecovered",
+        "spsocstat:blocksDefensive",
+        "spsocstat:cautionsSecondYellow",
+        "spsocstat:cautionsTotal",
+        "spsocstat:clearancesSuccessful",
+        "spsocstat:cornerKicks",
+        "spsocstat:crossesSuccessful",
+        "spsocstat:crossesTotal",
+        "spsocstat:distributionKicks",
+        "spsocstat:distributionThrows",
+        "spsocstat:dribblesAttempted",
+        "spsocstat:dribblesSuccessful",
+        "spsocstat:duelsTotal",
+        "spsocstat:duelsWon",
+        "spsocstat:ejectionsTotal",
+        "spsocstat:foulsCommited",
+        "spsocstat:foulsSuffered",
+        "spsocstat:goalsAgainstTotal",
+        "spsocstat:goalsOwn",
+        "spsocstat:goalsTotal",
+        "spsocstat:interceptions",
+        "spsocstat:longBalls",
+        "spsocstat:offsides",
+        "spsocstat:passesComplete",
+        "spsocstat:passesCompletePercentage",
+        "spsocstat:passesTotal",
+        "spsocstat:saves",
+        "spsocstat:savesCaught",
+        "spsocstat:savesFromPenalty",
+        "spsocstat:savesParried",
+        "spsocstat:shotsBlocked",
+        "spsocstat:shotsOffGoalTotal",
+        "spsocstat:shotsOnGoalTotal",
+        "spsocstat:shotsTotal",
+        "spsocstat:substitutedIn",
+        "spsocstat:substitutedOut",
+        "spsocstat:tacklesTotal",
+        "spsocstat:throughBalls",
+        "spsocstat:touches"
+      ],
+      "file": "agent-templates/iptc-mappings/sportradar/event-players-stats.yml",
+      "mapping": "iptc-sportradar-event-players-stats",
+      "provider_leak_terms": [
+        "sport:jerseyNumber",
+        "sport:minutesPlayed"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 57,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:jerseyNumber",
+          "sport:minutesPlayed",
+          "sport:position"
+        ],
+        "invented-statistic-term": [
+          "spsocstat:aerialDuelsTotal",
+          "spsocstat:aerialDuelsWon",
+          "spsocstat:ballsLost",
+          "spsocstat:ballsRecovered",
+          "spsocstat:blocksDefensive",
+          "spsocstat:cautionsSecondYellow",
+          "spsocstat:crossesSuccessful",
+          "spsocstat:crossesTotal",
+          "spsocstat:distributionKicks",
+          "spsocstat:distributionThrows",
+          "spsocstat:dribblesAttempted",
+          "spsocstat:dribblesSuccessful",
+          "spsocstat:duelsTotal",
+          "spsocstat:duelsWon",
+          "spsocstat:longBalls",
+          "spsocstat:savesCaught",
+          "spsocstat:savesFromPenalty",
+          "spsocstat:savesParried",
+          "spsocstat:substitutedIn",
+          "spsocstat:substitutedOut",
+          "spsocstat:throughBalls"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "rdfs",
+          "sport",
+          "spsocstat"
+        ],
+        "official-iptc-class": [
+          "sport:Athlete",
+          "sport:IndividualParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:participationBy",
+          "sport:playerStatus"
+        ],
+        "official-sport-specific-statistic": [
+          "spsocstat:assistsTotal",
+          "spsocstat:cautionsTotal",
+          "spsocstat:clearancesSuccessful",
+          "spsocstat:cornerKicks",
+          "spsocstat:ejectionsTotal",
+          "spsocstat:foulsCommited",
+          "spsocstat:foulsSuffered",
+          "spsocstat:goalsAgainstTotal",
+          "spsocstat:goalsOwn",
+          "spsocstat:goalsTotal",
+          "spsocstat:interceptions",
+          "spsocstat:offsides",
+          "spsocstat:passesComplete",
+          "spsocstat:passesCompletePercentage",
+          "spsocstat:passesTotal",
+          "spsocstat:saves",
+          "spsocstat:shotsBlocked",
+          "spsocstat:shotsOffGoalTotal",
+          "spsocstat:shotsOnGoalTotal",
+          "spsocstat:shotsTotal",
+          "spsocstat:tacklesTotal",
+          "spsocstat:touches"
+        ],
+        "standard-rdf-term": [
+          "rdfs:label"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "rdfs:label",
+        "sport",
+        "sport:alignment",
+        "sport:participation",
+        "sport:participationBy",
+        "spsocstat",
+        "spsocstat:cautionsTotal",
+        "spsocstat:cornerKicks",
+        "spsocstat:ejectionsTotal",
+        "spsocstat:foulsCommited",
+        "spsocstat:freeKicks",
+        "spsocstat:goalsTotal",
+        "spsocstat:offsides",
+        "spsocstat:saves",
+        "spsocstat:shotsBlocked",
+        "spsocstat:shotsOnGoalTotal",
+        "spsocstat:shotsTotal",
+        "spsocstat:substitutions",
+        "spsocstat:throwIns",
+        "spstat",
+        "spstat:timeOfPossessionPercentage"
+      ],
+      "file": "agent-templates/iptc-mappings/sportradar/event-teams-stats.yml",
+      "mapping": "iptc-sportradar-event-teams-stats",
+      "provider_leak_terms": [],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 27,
+      "terms_by_category": {
+        "invented-statistic-term": [
+          "spsocstat:substitutions",
+          "spsocstat:throwIns"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "sport",
+          "spsocstat",
+          "spstat"
+        ],
+        "official-iptc-class": [
+          "sport:Event",
+          "sport:Team",
+          "sport:TeamParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:alignment",
+          "sport:participation",
+          "sport:participationBy"
+        ],
+        "official-sport-specific-statistic": [
+          "spsocstat:cautionsTotal",
+          "spsocstat:cornerKicks",
+          "spsocstat:ejectionsTotal",
+          "spsocstat:foulsCommited",
+          "spsocstat:freeKicks",
+          "spsocstat:goalsTotal",
+          "spsocstat:offsides",
+          "spsocstat:saves",
+          "spsocstat:shotsBlocked",
+          "spsocstat:shotsOnGoalTotal",
+          "spsocstat:shotsTotal",
+          "spstat:timeOfPossessionPercentage"
+        ],
+        "standard-rdf-term": [
+          "rdfs:label"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressLocality",
+        "schema:logo",
+        "schema:startDate",
+        "sport",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:competitors",
+        "sport:gameInfo",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:status",
+        "sport:venue",
+        "sport:year",
+        "stage",
+        "timezone",
+        "week"
+      ],
+      "file": "connectors/american-football/mappings/iptc-american-football-event-mapping.yml",
+      "mapping": "iptc-american-football-event-mapping",
+      "provider_leak_terms": [
+        "sport:gameInfo",
+        "sport:halfTime"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 30,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Season",
+          "sport:Venue",
+          "sport:awayScore",
+          "sport:competition",
+          "sport:competitors",
+          "sport:gameInfo",
+          "sport:halfTime",
+          "sport:homeScore",
+          "sport:qualifier",
+          "sport:season",
+          "sport:status",
+          "sport:venue",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport",
+          "stage",
+          "timezone",
+          "week"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:Team",
+          "sport:score"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressLocality",
+          "schema:logo",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {},
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressLocality",
+        "schema:sportName",
+        "schema:startDate",
+        "sport",
+        "sport:abbreviation",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:competitors",
+        "sport:doubleHeader",
+        "sport:gameNumber",
+        "sport:homeScore",
+        "sport:market",
+        "sport:matchStatus",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:status",
+        "sport:venue",
+        "sport:year"
+      ],
+      "file": "connectors/sportradar-mlb/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-event-mlb-mapping",
+      "provider_leak_terms": [
+        "sport:abbreviation",
+        "sport:doubleHeader",
+        "sport:gameNumber",
+        "sport:market",
+        "sport:matchStatus"
+      ],
+      "sport_namespace": null,
+      "sport_namespace_is_official": false,
+      "term_count": 31,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Season",
+          "sport:Venue",
+          "sport:abbreviation",
+          "sport:awayScore",
+          "sport:competition",
+          "sport:competitors",
+          "sport:doubleHeader",
+          "sport:gameNumber",
+          "sport:homeScore",
+          "sport:market",
+          "sport:matchStatus",
+          "sport:qualifier",
+          "sport:season",
+          "sport:status",
+          "sport:venue",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport",
+          "urn:sportradar:competition:mlb"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:Team",
+          "sport:score"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressLocality",
+          "schema:sportName",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressLocality",
+        "schema:sportName",
+        "schema:startDate",
+        "sport",
+        "sport:abbreviation",
+        "sport:awayScore",
+        "sport:competition",
+        "sport:competitors",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:matchStatus",
+        "sport:qualifier",
+        "sport:score",
+        "sport:season",
+        "sport:status",
+        "sport:venue",
+        "sport:year"
+      ],
+      "file": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-event-nfl-mapping",
+      "provider_leak_terms": [
+        "sport:abbreviation",
+        "sport:halfTime",
+        "sport:matchStatus"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 30,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Season",
+          "sport:Venue",
+          "sport:abbreviation",
+          "sport:awayScore",
+          "sport:competition",
+          "sport:competitors",
+          "sport:halfTime",
+          "sport:homeScore",
+          "sport:matchStatus",
+          "sport:qualifier",
+          "sport:season",
+          "sport:status",
+          "sport:venue",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport",
+          "urn:sportradar:competition:nfl",
+          "urn:sportradar:season:2025"
+        ],
+        "official-iptc-class": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:Team"
+        ],
+        "official-iptc-property": [
+          "sport:score"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressLocality",
+          "schema:sportName",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "sport:attendance",
+        "sport:awayScore",
+        "sport:broadcast",
+        "sport:clock",
+        "sport:duration",
+        "sport:homeScore",
+        "sport:matchStatus",
+        "sport:quarter",
+        "sport:score",
+        "sport:status",
+        "sport:weather"
+      ],
+      "file": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-event-update-mapping",
+      "provider_leak_terms": [
+        "sport:broadcast",
+        "sport:clock",
+        "sport:duration",
+        "sport:matchStatus",
+        "sport:quarter",
+        "sport:weather"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 11,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:awayScore",
+          "sport:broadcast",
+          "sport:clock",
+          "sport:duration",
+          "sport:homeScore",
+          "sport:matchStatus",
+          "sport:quarter",
+          "sport:status",
+          "sport:weather"
+        ],
+        "official-iptc-property": [
+          "sport:attendance",
+          "sport:score"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "abbreviation",
+        "name",
+        "sport",
+        "sport:qualifier",
+        "sport:statLabel",
+        "sport:statParticipant",
+        "sport:statType",
+        "sport:statValue",
+        "sport:statistics",
+        "spsocstat",
+        "spstat"
+      ],
+      "file": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-events-statistics-mapping",
+      "provider_leak_terms": [
+        "sport:statLabel",
+        "sport:statParticipant",
+        "sport:statType",
+        "sport:statValue"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 17,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Statistic",
+          "sport:TeamStatistics",
+          "sport:qualifier",
+          "sport:statLabel",
+          "sport:statParticipant",
+          "sport:statType",
+          "sport:statValue",
+          "sport:statistics"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "abbreviation",
+          "name",
+          "sport",
+          "spsocstat",
+          "spstat"
+        ],
+        "official-iptc-class": [
+          "sport:Team"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "commentaries",
+        "competitor",
+        "sport",
+        "sport:actionDateTime",
+        "sport:actionType",
+        "sport:fieldLocation",
+        "sport:label",
+        "sport:minutesElapsed",
+        "sport:participation",
+        "sport:participationBy",
+        "sport:periodValue",
+        "type"
+      ],
+      "file": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-events-timeline-mapping",
+      "provider_leak_terms": [],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 20,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:label"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "commentaries",
+          "competitor",
+          "sport",
+          "type"
+        ],
+        "official-iptc-class": [
+          "sport:Action",
+          "sport:Athlete",
+          "sport:IndividualParticipation",
+          "sport:Team",
+          "sport:TeamParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:actionDateTime",
+          "sport:actionType",
+          "sport:fieldLocation",
+          "sport:minutesElapsed",
+          "sport:participation",
+          "sport:participationBy",
+          "sport:periodValue"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "abbreviation",
+        "name",
+        "sport",
+        "sport:attendance",
+        "sport:broadcast",
+        "sport:clock",
+        "sport:defense",
+        "sport:duration",
+        "sport:efficiency",
+        "sport:extraPoints",
+        "sport:fieldGoals",
+        "sport:firstDowns",
+        "sport:fumbles",
+        "sport:interceptions",
+        "sport:kickReturns",
+        "sport:kickoffs",
+        "sport:passing",
+        "sport:penalties",
+        "sport:puntReturns",
+        "sport:punts",
+        "sport:qualifier",
+        "sport:quarter",
+        "sport:receiving",
+        "sport:rushing",
+        "sport:summary",
+        "sport:team",
+        "sport:teamStatistics",
+        "sport:touchdowns",
+        "sport:weather",
+        "spstat"
+      ],
+      "file": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-game-statistics-mapping",
+      "provider_leak_terms": [
+        "sport:broadcast",
+        "sport:clock",
+        "sport:defense",
+        "sport:duration",
+        "sport:efficiency",
+        "sport:extraPoints",
+        "sport:fieldGoals",
+        "sport:firstDowns",
+        "sport:fumbles",
+        "sport:interceptions",
+        "sport:kickReturns",
+        "sport:kickoffs",
+        "sport:passing",
+        "sport:puntReturns",
+        "sport:punts",
+        "sport:quarter",
+        "sport:receiving",
+        "sport:rushing",
+        "sport:summary",
+        "sport:teamStatistics",
+        "sport:touchdowns",
+        "sport:weather"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 36,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:GameStatistics",
+          "sport:TeamStatistics",
+          "sport:broadcast",
+          "sport:clock",
+          "sport:defense",
+          "sport:duration",
+          "sport:efficiency",
+          "sport:extraPoints",
+          "sport:fieldGoals",
+          "sport:firstDowns",
+          "sport:fumbles",
+          "sport:interceptions",
+          "sport:kickReturns",
+          "sport:kickoffs",
+          "sport:passing",
+          "sport:penalties",
+          "sport:puntReturns",
+          "sport:punts",
+          "sport:qualifier",
+          "sport:quarter",
+          "sport:receiving",
+          "sport:rushing",
+          "sport:summary",
+          "sport:team",
+          "sport:teamStatistics",
+          "sport:touchdowns",
+          "sport:weather"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "abbreviation",
+          "name",
+          "sport",
+          "spstat"
+        ],
+        "official-iptc-class": [
+          "sport:Team"
+        ],
+        "official-iptc-property": [
+          "sport:attendance"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@id",
+        "@type",
+        "name",
+        "sport:category",
+        "sport:jersey",
+        "sport:player",
+        "sport:position",
+        "sport:qualifier",
+        "sport:statistics",
+        "sport:team"
+      ],
+      "file": "connectors/sportradar-nfl/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-player-statistics-mapping",
+      "provider_leak_terms": [
+        "sport:jersey"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 13,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:PlayerStatistics",
+          "sport:category",
+          "sport:jersey",
+          "sport:player",
+          "sport:position",
+          "sport:qualifier",
+          "sport:statistics",
+          "sport:team"
+        ],
+        "jsonld-keyword": [
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name"
+        ],
+        "official-iptc-class": [
+          "sport:Athlete",
+          "sport:Team"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressLocality",
+        "schema:sportName",
+        "schema:startDate",
+        "sport",
+        "sport:aggregate",
+        "sport:awayScore",
+        "sport:channelName",
+        "sport:channelUrl",
+        "sport:channels",
+        "sport:competition",
+        "sport:competitors",
+        "sport:country",
+        "sport:countryCode",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:matchStatus",
+        "sport:number",
+        "sport:penalties",
+        "sport:phase",
+        "sport:qualifier",
+        "sport:round",
+        "sport:score",
+        "sport:season",
+        "sport:stage",
+        "sport:status",
+        "sport:venue",
+        "sport:year"
+      ],
+      "file": "connectors/sportradar-soccer/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-event-mapping",
+      "provider_leak_terms": [
+        "sport:aggregate",
+        "sport:channelName",
+        "sport:channelUrl",
+        "sport:channels",
+        "sport:halfTime",
+        "sport:matchStatus"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 41,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:BroadcastChannel",
+          "sport:Round",
+          "sport:Season",
+          "sport:Stage",
+          "sport:Venue",
+          "sport:aggregate",
+          "sport:awayScore",
+          "sport:channelName",
+          "sport:channelUrl",
+          "sport:channels",
+          "sport:competition",
+          "sport:competitors",
+          "sport:country",
+          "sport:countryCode",
+          "sport:halfTime",
+          "sport:homeScore",
+          "sport:matchStatus",
+          "sport:number",
+          "sport:penalties",
+          "sport:phase",
+          "sport:qualifier",
+          "sport:round",
+          "sport:season",
+          "sport:stage",
+          "sport:status",
+          "sport:venue",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport"
+        ],
+        "official-iptc-class": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:Team"
+        ],
+        "official-iptc-property": [
+          "sport:score"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressLocality",
+          "schema:sportName",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "abbreviation",
+        "name",
+        "sport",
+        "sport:qualifier",
+        "sport:statLabel",
+        "sport:statParticipant",
+        "sport:statType",
+        "sport:statValue",
+        "sport:statistics",
+        "spsocstat",
+        "spstat"
+      ],
+      "file": "connectors/sportradar-soccer/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-events-statistics-mapping",
+      "provider_leak_terms": [
+        "sport:statLabel",
+        "sport:statParticipant",
+        "sport:statType",
+        "sport:statValue"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 17,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Statistic",
+          "sport:TeamStatistics",
+          "sport:qualifier",
+          "sport:statLabel",
+          "sport:statParticipant",
+          "sport:statType",
+          "sport:statValue",
+          "sport:statistics"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "abbreviation",
+          "name",
+          "sport",
+          "spsocstat",
+          "spstat"
+        ],
+        "official-iptc-class": [
+          "sport:Team"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "spsocstat": "http://cv.iptc.org/newscodes/spsocstat/",
+        "spstat": "http://cv.iptc.org/newscodes/spstat/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "commentaries",
+        "competitor",
+        "sport",
+        "sport:actionDateTime",
+        "sport:actionType",
+        "sport:awayScore",
+        "sport:cardColor",
+        "sport:cardType",
+        "sport:fieldLocation",
+        "sport:homeScore",
+        "sport:label",
+        "sport:minutesElapsed",
+        "sport:participation",
+        "sport:participationBy",
+        "sport:penaltyStatus",
+        "sport:periodType",
+        "sport:periodValue",
+        "sport:playerRole",
+        "sport:scoreMethod",
+        "sport:shootoutAttempt",
+        "sport:shootoutAwayScore",
+        "sport:shootoutHomeScore",
+        "type"
+      ],
+      "file": "connectors/sportradar-soccer/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-sportradar-events-timeline-mapping",
+      "provider_leak_terms": [
+        "sport:cardColor",
+        "sport:cardType",
+        "sport:penaltyStatus",
+        "sport:periodType",
+        "sport:scoreMethod",
+        "sport:shootoutAttempt",
+        "sport:shootoutAwayScore",
+        "sport:shootoutHomeScore"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 31,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:awayScore",
+          "sport:cardColor",
+          "sport:cardType",
+          "sport:homeScore",
+          "sport:label",
+          "sport:penaltyStatus",
+          "sport:periodType",
+          "sport:playerRole",
+          "sport:scoreMethod",
+          "sport:shootoutAttempt",
+          "sport:shootoutAwayScore",
+          "sport:shootoutHomeScore"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "commentaries",
+          "competitor",
+          "sport",
+          "type"
+        ],
+        "official-iptc-class": [
+          "sport:Action",
+          "sport:Athlete",
+          "sport:IndividualParticipation",
+          "sport:Team",
+          "sport:TeamParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:actionDateTime",
+          "sport:actionType",
+          "sport:fieldLocation",
+          "sport:minutesElapsed",
+          "sport:participation",
+          "sport:participationBy",
+          "sport:periodValue"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:name",
+        "sport",
+        "sport:abbreviation",
+        "sport:code",
+        "sport:country",
+        "sport:countryCode",
+        "sport:officialName",
+        "sport:shortName",
+        "sport:status",
+        "title"
+      ],
+      "file": "connectors/sportradar-soccer/mappings/iptc-team.yml",
+      "mapping": "iptc-sportradar-team-mapping",
+      "provider_leak_terms": [
+        "sport:abbreviation"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 17,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:abbreviation",
+          "sport:code",
+          "sport:country",
+          "sport:countryCode",
+          "sport:officialName",
+          "sport:shortName",
+          "sport:status"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport",
+          "title"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Team"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsTeam",
+          "schema:name"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "name",
+        "schema",
+        "schema:addressCountry",
+        "schema:addressLocality",
+        "schema:sportName",
+        "schema:startDate",
+        "sport",
+        "sport:abbreviation",
+        "sport:aces",
+        "sport:awayScore",
+        "sport:bestOf",
+        "sport:bracketNumber",
+        "sport:breakpointsWon",
+        "sport:category",
+        "sport:categoryId",
+        "sport:categoryName",
+        "sport:channelName",
+        "sport:channels",
+        "sport:competition",
+        "sport:competitionContext",
+        "sport:competitionFormat",
+        "sport:competitionGender",
+        "sport:competitionLevel",
+        "sport:competitionType",
+        "sport:competitorId",
+        "sport:competitorName",
+        "sport:competitorStats",
+        "sport:competitors",
+        "sport:country",
+        "sport:countryCode",
+        "sport:coverage",
+        "sport:detailedServeOutcomes",
+        "sport:documentType",
+        "sport:doubleFaults",
+        "sport:endDate",
+        "sport:enhancedStats",
+        "sport:estimated",
+        "sport:eventDetails",
+        "sport:firstServePointsWon",
+        "sport:firstServeSuccessful",
+        "sport:gameInfo",
+        "sport:gamesWon",
+        "sport:genderCategory",
+        "sport:groupId",
+        "sport:groupName",
+        "sport:groups",
+        "sport:hasWinner",
+        "sport:homeScore",
+        "sport:isFinished",
+        "sport:level",
+        "sport:matchType",
+        "sport:maxGamesInARow",
+        "sport:maxPointsInARow",
+        "sport:mode",
+        "sport:order",
+        "sport:parentId",
+        "sport:periodNumber",
+        "sport:periodScores",
+        "sport:periodType",
+        "sport:phase",
+        "sport:playByPlay",
+        "sport:pointsWon",
+        "sport:pointsWonFromLast10",
+        "sport:qualifier",
+        "sport:round",
+        "sport:roundName",
+        "sport:roundNumber",
+        "sport:score",
+        "sport:scores",
+        "sport:season",
+        "sport:seasonContext",
+        "sport:seasonEndDate",
+        "sport:seasonStartDate",
+        "sport:secondServePointsWon",
+        "sport:secondServeSuccessful",
+        "sport:seed",
+        "sport:selected",
+        "sport:serviceGamesWon",
+        "sport:servicePointsLost",
+        "sport:servicePointsWon",
+        "sport:sport",
+        "sport:stage",
+        "sport:stagePhase",
+        "sport:startDate",
+        "sport:startTime",
+        "sport:startTimeConfirmed",
+        "sport:statistics",
+        "sport:status",
+        "sport:tiebreaksWon",
+        "sport:timezone",
+        "sport:title",
+        "sport:totalBreakpoints",
+        "sport:totalSets",
+        "sport:type",
+        "sport:venue",
+        "sport:winnerId",
+        "sport:year"
+      ],
+      "file": "connectors/sportradar-tennis/mappings/iptc-event-mapping.yml",
+      "mapping": "iptc-sportradar-tennis-event-mapping",
+      "provider_leak_terms": [
+        "sport:abbreviation",
+        "sport:bestOf",
+        "sport:bracketNumber",
+        "sport:categoryId",
+        "sport:categoryName",
+        "sport:channelName",
+        "sport:channels",
+        "sport:competitionContext",
+        "sport:competitionLevel",
+        "sport:competitorId",
+        "sport:competitorName",
+        "sport:competitorStats",
+        "sport:coverage",
+        "sport:detailedServeOutcomes",
+        "sport:documentType",
+        "sport:enhancedStats",
+        "sport:estimated",
+        "sport:eventDetails",
+        "sport:gameInfo",
+        "sport:genderCategory",
+        "sport:groupId",
+        "sport:groupName",
+        "sport:groups",
+        "sport:hasWinner",
+        "sport:isFinished",
+        "sport:matchType",
+        "sport:mode",
+        "sport:parentId",
+        "sport:periodType",
+        "sport:playByPlay",
+        "sport:roundName",
+        "sport:roundNumber",
+        "sport:seasonContext",
+        "sport:seasonEndDate",
+        "sport:seasonStartDate",
+        "sport:seed",
+        "sport:selected",
+        "sport:stagePhase",
+        "sport:startTimeConfirmed",
+        "sport:totalSets",
+        "sport:winnerId"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 109,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Competitor",
+          "sport:Season",
+          "sport:Sport",
+          "sport:Stage",
+          "sport:Venue",
+          "sport:abbreviation",
+          "sport:aces",
+          "sport:awayScore",
+          "sport:bestOf",
+          "sport:bracketNumber",
+          "sport:breakpointsWon",
+          "sport:category",
+          "sport:categoryId",
+          "sport:categoryName",
+          "sport:channelName",
+          "sport:channels",
+          "sport:competition",
+          "sport:competitionContext",
+          "sport:competitionGender",
+          "sport:competitionLevel",
+          "sport:competitorId",
+          "sport:competitorName",
+          "sport:competitorStats",
+          "sport:competitors",
+          "sport:country",
+          "sport:countryCode",
+          "sport:coverage",
+          "sport:detailedServeOutcomes",
+          "sport:documentType",
+          "sport:doubleFaults",
+          "sport:enhancedStats",
+          "sport:estimated",
+          "sport:eventDetails",
+          "sport:firstServePointsWon",
+          "sport:firstServeSuccessful",
+          "sport:gameInfo",
+          "sport:gamesWon",
+          "sport:genderCategory",
+          "sport:groupId",
+          "sport:groupName",
+          "sport:groups",
+          "sport:hasWinner",
+          "sport:homeScore",
+          "sport:isFinished",
+          "sport:level",
+          "sport:matchType",
+          "sport:maxGamesInARow",
+          "sport:maxPointsInARow",
+          "sport:mode",
+          "sport:order",
+          "sport:parentId",
+          "sport:periodNumber",
+          "sport:periodScores",
+          "sport:periodType",
+          "sport:phase",
+          "sport:playByPlay",
+          "sport:pointsWon",
+          "sport:pointsWonFromLast10",
+          "sport:qualifier",
+          "sport:round",
+          "sport:roundName",
+          "sport:roundNumber",
+          "sport:scores",
+          "sport:season",
+          "sport:seasonContext",
+          "sport:seasonEndDate",
+          "sport:seasonStartDate",
+          "sport:secondServePointsWon",
+          "sport:secondServeSuccessful",
+          "sport:seed",
+          "sport:selected",
+          "sport:serviceGamesWon",
+          "sport:servicePointsLost",
+          "sport:servicePointsWon",
+          "sport:stage",
+          "sport:stagePhase",
+          "sport:startTime",
+          "sport:startTimeConfirmed",
+          "sport:statistics",
+          "sport:status",
+          "sport:tiebreaksWon",
+          "sport:timezone",
+          "sport:title",
+          "sport:totalBreakpoints",
+          "sport:totalSets",
+          "sport:type",
+          "sport:venue",
+          "sport:winnerId",
+          "sport:year"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "name",
+          "schema",
+          "sport",
+          "urn:iptc:sport:tennis"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Competition",
+          "sport:Event",
+          "sport:competitionFormat",
+          "sport:competitionType",
+          "sport:endDate",
+          "sport:score",
+          "sport:sport",
+          "sport:startDate"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:addressCountry",
+          "schema:addressLocality",
+          "schema:sportName",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "appearances",
+        "chances_created",
+        "expected_goals",
+        "final_third_passes",
+        "games_played",
+        "goals",
+        "key_passes",
+        "lastUpdated",
+        "minutes_played",
+        "name",
+        "schema",
+        "schema:birthDate",
+        "schema:familyName",
+        "schema:givenName",
+        "schema:name",
+        "shots",
+        "shots_on_target",
+        "sport",
+        "sport:active",
+        "sport:club",
+        "sport:clubCode",
+        "sport:clubId",
+        "sport:competitionId",
+        "sport:competitionName",
+        "sport:endDate",
+        "sport:gender",
+        "sport:knownName",
+        "sport:matchName",
+        "sport:nationality",
+        "sport:nationalityId",
+        "sport:placeOfBirth",
+        "sport:position",
+        "sport:seasonId",
+        "sport:secondNationality",
+        "sport:shirtNumber",
+        "sport:startDate",
+        "sport:type",
+        "stats",
+        "title"
+      ],
+      "file": "connectors/stats-perform/mappings/iptc-player.yml",
+      "mapping": "iptc-opta-player-mapping",
+      "provider_leak_terms": [
+        "sport:clubCode",
+        "sport:clubId",
+        "sport:competitionId",
+        "sport:competitionName",
+        "sport:knownName",
+        "sport:matchName",
+        "sport:nationalityId",
+        "sport:seasonId",
+        "sport:shirtNumber"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 44,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Player",
+          "sport:active",
+          "sport:club",
+          "sport:clubCode",
+          "sport:clubId",
+          "sport:competitionId",
+          "sport:competitionName",
+          "sport:gender",
+          "sport:knownName",
+          "sport:matchName",
+          "sport:nationalityId",
+          "sport:placeOfBirth",
+          "sport:position",
+          "sport:seasonId",
+          "sport:secondNationality",
+          "sport:shirtNumber",
+          "sport:type"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "appearances",
+          "chances_created",
+          "expected_goals",
+          "final_third_passes",
+          "games_played",
+          "goals",
+          "key_passes",
+          "lastUpdated",
+          "minutes_played",
+          "name",
+          "schema",
+          "shots",
+          "shots_on_target",
+          "sport",
+          "stats",
+          "title"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:endDate",
+          "sport:nationality",
+          "sport:startDate"
+        ],
+        "schema-org-term-unverified": [
+          "schema:Person",
+          "schema:birthDate",
+          "schema:familyName",
+          "schema:givenName",
+          "schema:name"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://sportschema.org/ontologies/main/"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "commentaries",
+        "competitor",
+        "consumer-update-timestamp",
+        "counter",
+        "finished",
+        "name",
+        "processing",
+        "schema",
+        "schema:latitude",
+        "schema:longitude",
+        "schema:sportName",
+        "schema:startDate",
+        "sport",
+        "sport:actionDateTime",
+        "sport:actionType",
+        "sport:aggregate",
+        "sport:attendance",
+        "sport:awayScore",
+        "sport:code",
+        "sport:competition",
+        "sport:competitionCode",
+        "sport:competitionFormat",
+        "sport:competitors",
+        "sport:coverageLevel",
+        "sport:endDate",
+        "sport:halfTime",
+        "sport:homeScore",
+        "sport:knownName",
+        "sport:label",
+        "sport:localDate",
+        "sport:localTime",
+        "sport:matchInfo",
+        "sport:minutesElapsed",
+        "sport:neutral",
+        "sport:numberOfPeriods",
+        "sport:officialName",
+        "sport:participation",
+        "sport:participationBy",
+        "sport:penalties",
+        "sport:periodLength",
+        "sport:periodValue",
+        "sport:qualifier",
+        "sport:role",
+        "sport:score",
+        "sport:season",
+        "sport:shortName",
+        "sport:stage",
+        "sport:startDate",
+        "sport:status",
+        "sport:timeline",
+        "sport:var",
+        "sport:venue",
+        "sport:week",
+        "sport:winner",
+        "text",
+        "type",
+        "version_control"
+      ],
+      "file": "connectors/stats-perform/mappings/iptc-sport-event.yml",
+      "mapping": "iptc-opta-event-mapping",
+      "provider_leak_terms": [
+        "sport:aggregate",
+        "sport:competitionCode",
+        "sport:coverageLevel",
+        "sport:halfTime",
+        "sport:knownName",
+        "sport:localDate",
+        "sport:localTime",
+        "sport:matchInfo",
+        "sport:neutral",
+        "sport:numberOfPeriods",
+        "sport:periodLength",
+        "sport:timeline",
+        "sport:var",
+        "sport:week"
+      ],
+      "sport_namespace": "https://sportschema.org/ontologies/main/",
+      "sport_namespace_is_official": true,
+      "term_count": 71,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:Season",
+          "sport:Stage",
+          "sport:Venue",
+          "sport:aggregate",
+          "sport:awayScore",
+          "sport:code",
+          "sport:competition",
+          "sport:competitionCode",
+          "sport:competitors",
+          "sport:coverageLevel",
+          "sport:halfTime",
+          "sport:homeScore",
+          "sport:knownName",
+          "sport:label",
+          "sport:localDate",
+          "sport:localTime",
+          "sport:matchInfo",
+          "sport:neutral",
+          "sport:numberOfPeriods",
+          "sport:officialName",
+          "sport:penalties",
+          "sport:periodLength",
+          "sport:qualifier",
+          "sport:season",
+          "sport:shortName",
+          "sport:stage",
+          "sport:status",
+          "sport:timeline",
+          "sport:var",
+          "sport:venue",
+          "sport:week",
+          "sport:winner"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "commentaries",
+          "competitor",
+          "consumer-update-timestamp",
+          "counter",
+          "finished",
+          "name",
+          "processing",
+          "schema",
+          "sport",
+          "text",
+          "type",
+          "version_control"
+        ],
+        "official-iptc-class": [
+          "sport:Action",
+          "sport:Athlete",
+          "sport:Competition",
+          "sport:Event",
+          "sport:IndividualParticipation",
+          "sport:Team",
+          "sport:TeamParticipation"
+        ],
+        "official-iptc-property": [
+          "sport:actionDateTime",
+          "sport:actionType",
+          "sport:attendance",
+          "sport:competitionFormat",
+          "sport:endDate",
+          "sport:minutesElapsed",
+          "sport:participation",
+          "sport:participationBy",
+          "sport:periodValue",
+          "sport:role",
+          "sport:score",
+          "sport:startDate"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsEvent",
+          "schema:latitude",
+          "schema:longitude",
+          "schema:sportName",
+          "schema:startDate"
+        ]
+      }
+    },
+    {
+      "declared_prefixes": {
+        "schema": "https://schema.org/",
+        "sport": "https://www.sportschema.org/ontologies/sport#"
+      },
+      "emitted_property_keys": [
+        "@context",
+        "@id",
+        "@type",
+        "lastUpdated",
+        "name",
+        "postalCode",
+        "schema",
+        "schema:address",
+        "schema:name",
+        "sport",
+        "sport:city",
+        "sport:code",
+        "sport:country",
+        "sport:countryId",
+        "sport:details",
+        "sport:founded",
+        "sport:officialName",
+        "sport:shortName",
+        "sport:status",
+        "sport:teamType",
+        "sport:type",
+        "streetAddress",
+        "title"
+      ],
+      "file": "connectors/stats-perform/mappings/iptc-team.yml",
+      "mapping": "iptc-opta-team-mapping",
+      "provider_leak_terms": [
+        "sport:countryId",
+        "sport:teamType"
+      ],
+      "sport_namespace": "https://www.sportschema.org/ontologies/sport#",
+      "sport_namespace_is_official": false,
+      "term_count": 25,
+      "terms_by_category": {
+        "invented-sport-term": [
+          "sport:city",
+          "sport:code",
+          "sport:country",
+          "sport:countryId",
+          "sport:details",
+          "sport:founded",
+          "sport:officialName",
+          "sport:shortName",
+          "sport:status",
+          "sport:teamType",
+          "sport:type"
+        ],
+        "jsonld-keyword": [
+          "@context",
+          "@id",
+          "@type"
+        ],
+        "machina-operational-field": [
+          "lastUpdated",
+          "name",
+          "postalCode",
+          "schema",
+          "sport",
+          "streetAddress",
+          "title"
+        ],
+        "official-local-name-wrong-namespace": [
+          "sport:Team"
+        ],
+        "schema-org-term-unverified": [
+          "schema:SportsTeam",
+          "schema:address",
+          "schema:name"
+        ]
+      }
+    }
+  ],
+  "inventory_kind": "iptc-emitter-and-consumer-inventory",
+  "inventory_version": "1",
+  "known_gaps": [
+    "schema.org terms are listed but NOT validated: no schema.org vocabulary is pinned in this repository, so `schema-org-term-unverified` means exactly that and no more.",
+    "Emitted terms are read from the literal quoted keys in each mapping expression. The expression is never evaluated, because its language belongs to the Machina workflow engine rather than to Python. A term produced only by string construction at runtime would not appear here.",
+    "The consumer scan matches known IPTC field paths and payload state keys as substrings. A consumer that reaches an IPTC field through a variable it built at runtime would be missed. A consumer this inventory misses is an inventory defect: extend the inventory, do not widen the tolerance.",
+    "Provider attribution for gate 4 comes from the reviewed table in tools/iptc/rules/provider-leak-terms.json, not from inference.",
+    "Term classification is per emitting mapping, so the same spelling can land in different categories in different mappings: `sport:Event` is `official-iptc-class` only where the mapping binds sport: to https://sportschema.org/ontologies/main/, and `official-local-name-wrong-namespace` where it does not.",
+    "NewsCode classification checks a literal code against the pinned TTL where one is present in the mapping text. Where the mapping supplies only a prefix, or the scheme has no TTL at the pinned commit, the term is `newscode-unverifiable` and no membership claim is made."
+  ],
+  "pin": {
+    "target_version": "1.1",
+    "upstream_commit": "0e77bf8678f3702fe81c28673bede35efe47d633"
+  },
+  "reproduce": "python3 -m tools.iptc",
+  "scope_boundary": {
+    "canonical_model": "The Machina canonical domain model remains authoritative. IPTC Sport Schema is an output projection generated from it \u2014 never the storage model and never Machina identity.",
+    "read_this_way": "This PR is foundation-only and output-neutral. It makes conformance measurable; it does not make anything conformant. Anyone reading the inventory as a statement that the projection now exists is reading it wrong.",
+    "what_this_pr_does": [
+      "Pins and vendors the official IPTC Sport Schema 1.1 artefacts with attribution and per-file hashes.",
+      "Adds one shared JSON-LD context copied from the pinned prefixes.",
+      "Adds the Machina IPTC profile RFC.",
+      "Adds the offline four-layer validation harness, its fixtures and CI.",
+      "Records this inventory and the exact baseline failure audit."
+    ],
+    "what_this_pr_does_NOT_do": [
+      "No serializer is implemented. sport_schema_graph is not produced by any corrected serializer yet.",
+      "No canonical identity work. Opaque identifiers and provider-identifier persistence remain unimplemented; the profile only states the policy.",
+      "No API or MCP contract change, and no response envelope change.",
+      "No event_view production output.",
+      "No consumer migration. Every consumer listed below still reads the legacy shape, unchanged.",
+      "No mapping YAML, output shape, selector or consumer field path is modified."
+    ]
+  },
+  "sport_namespace_usage": {
+    "None": [
+      "connectors/sportradar-mlb/mappings/iptc-sport-event.yml::iptc-sportradar-event-mlb-mapping"
+    ],
+    "https://sportschema.org/ontologies/main/": [
+      "agent-templates/iptc-mappings/api-football/event-mapping.yml::iptc-api-football-event-mapping",
+      "agent-templates/iptc-mappings/api-football/event-mapping.yml::iptc-api-football-events-mapping",
+      "agent-templates/iptc-mappings/api-football/event-players-stats.yml::iptc-api-football-event-players-stats",
+      "agent-templates/iptc-mappings/api-football/event-teams-stats.yml::iptc-api-football-event-teams-stats",
+      "agent-templates/iptc-mappings/sportradar/event-players-stats.yml::iptc-sportradar-event-players-stats",
+      "agent-templates/iptc-mappings/sportradar/event-teams-stats.yml::iptc-sportradar-event-teams-stats",
+      "connectors/sportradar-nfl/mappings/iptc-sport-event.yml::iptc-sportradar-event-nfl-mapping",
+      "connectors/sportradar-nfl/mappings/iptc-sport-event.yml::iptc-sportradar-event-update-mapping",
+      "connectors/sportradar-nfl/mappings/iptc-sport-event.yml::iptc-sportradar-events-statistics-mapping",
+      "connectors/sportradar-nfl/mappings/iptc-sport-event.yml::iptc-sportradar-events-timeline-mapping",
+      "connectors/sportradar-nfl/mappings/iptc-sport-event.yml::iptc-sportradar-game-statistics-mapping",
+      "connectors/sportradar-nfl/mappings/iptc-sport-event.yml::iptc-sportradar-player-statistics-mapping",
+      "connectors/sportradar-soccer/mappings/iptc-sport-event.yml::iptc-sportradar-event-mapping",
+      "connectors/sportradar-soccer/mappings/iptc-sport-event.yml::iptc-sportradar-events-statistics-mapping",
+      "connectors/sportradar-soccer/mappings/iptc-sport-event.yml::iptc-sportradar-events-timeline-mapping",
+      "connectors/stats-perform/mappings/iptc-sport-event.yml::iptc-opta-event-mapping"
+    ],
+    "https://www.sportschema.org/ontologies/sport#": [
+      "agent-templates/iptc-mappings/any-source/custom-event-mapping.yml::iptc-custom-event-mapping",
+      "agent-templates/iptc-mappings/sportradar-tennis/event-mapping.yml::iptc-sportradar-tennis-event-hierarchy-mapping",
+      "agent-templates/iptc-mappings/sportradar-tennis/event-mapping.yml::iptc-sportradar-tennis-event-mapping",
+      "connectors/american-football/mappings/iptc-american-football-event-mapping.yml::iptc-american-football-event-mapping",
+      "connectors/sportradar-soccer/mappings/iptc-team.yml::iptc-sportradar-team-mapping",
+      "connectors/sportradar-tennis/mappings/iptc-event-mapping.yml::iptc-sportradar-tennis-event-mapping",
+      "connectors/stats-perform/mappings/iptc-player.yml::iptc-opta-player-mapping",
+      "connectors/stats-perform/mappings/iptc-team.yml::iptc-opta-team-mapping"
+    ]
+  },
+  "totals": {
+    "consumer_files": 75,
+    "emitting_files": 16,
+    "emitting_mappings": 25,
+    "sport_namespaces_in_use": {
+      "None": 1,
+      "https://sportschema.org/ontologies/main/": 16,
+      "https://www.sportschema.org/ontologies/sport#": 8
+    },
+    "terms_by_category": {
+      "invented-sport-term": {
+        "distinct_terms": 192,
+        "occurrences": 350
+      },
+      "invented-statistic-term": {
+        "distinct_terms": 24,
+        "occurrences": 28
+      },
+      "jsonld-keyword": {
+        "distinct_terms": 3,
+        "occurrences": 69
+      },
+      "machina-operational-field": {
+        "distinct_terms": 49,
+        "occurrences": 119
+      },
+      "official-iptc-class": {
+        "distinct_terms": 7,
+        "occurrences": 46
+      },
+      "official-iptc-property": {
+        "distinct_terms": 16,
+        "occurrences": 48
+      },
+      "official-local-name-wrong-namespace": {
+        "distinct_terms": 10,
+        "occurrences": 30
+      },
+      "official-sport-specific-statistic": {
+        "distinct_terms": 24,
+        "occurrences": 64
+      },
+      "schema-org-term-unverified": {
+        "distinct_terms": 19,
+        "occurrences": 50
+      },
+      "standard-rdf-term": {
+        "distinct_terms": 1,
+        "occurrences": 4
+      }
+    }
+  }
+}

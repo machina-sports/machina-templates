@@ -1,0 +1,161 @@
+{
+  "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "schema": "https://schema.org/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "sport": "https://sportschema.org/ontologies/main/",
+    "spstat": "https://sportschema.org/ontologies/corestatistics/",
+    "spsocstat": "https://sportschema.org/ontologies/soccer/",
+    "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+    "spct": "http://cv.iptc.org/newscodes/spct/",
+    "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+    "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+    "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+    "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+    "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+    "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+    "machina": "https://machina.gg/ns/sport/1.0/"
+  },
+  "@graph": [
+    {
+      "@id": "urn:machina:sports:competition:0000000000000000000000000001",
+      "@type": "sport:Competition",
+      "rdfs:label": "Synthetic Premier Division",
+      "sport:sport": { "@id": "medtop:20001065" },
+      "sport:competitionType": { "@id": "spct:recurring-competition" }
+    },
+    {
+      "@id": "urn:machina:sports:competition:0000000000000000000000000002",
+      "@type": "sport:Competition",
+      "rdfs:label": "Synthetic Premier Division 2025/2026",
+      "sport:sport": { "@id": "medtop:20001065" },
+      "sport:competitionType": { "@id": "spct:competition" },
+      "sport:parent": { "@id": "urn:machina:sports:competition:0000000000000000000000000001" }
+    },
+    {
+      "@id": "urn:machina:sports:phase:0000000000000000000000000003",
+      "@type": "sport:CompetitionPhase",
+      "rdfs:label": "Matchday 27",
+      "sport:phaseInCompetition": { "@id": "urn:machina:sports:competition:0000000000000000000000000002" }
+    },
+    {
+      "@id": "urn:machina:sports:site:0000000000000000000000000004",
+      "@type": "sport:Site",
+      "rdfs:label": "Synthetic Home Ground"
+    },
+    {
+      "@id": "urn:machina:sports:team:0000000000000000000000000005",
+      "@type": "sport:Team",
+      "rdfs:label": "Synthetic Home United"
+    },
+    {
+      "@id": "urn:machina:sports:team:0000000000000000000000000006",
+      "@type": "sport:Team",
+      "rdfs:label": "Synthetic Away Town"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:0000000000000000000000000101",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "api-football team 9001",
+      "machina:identifies": { "@id": "urn:machina:sports:team:0000000000000000000000000005" },
+      "machina:providerNamespace": "api-football",
+      "machina:providerId": "9001"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:0000000000000000000000000102",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "api-football team 9002",
+      "machina:identifies": { "@id": "urn:machina:sports:team:0000000000000000000000000006" },
+      "machina:providerNamespace": "api-football",
+      "machina:providerId": "9002"
+    },
+    {
+      "@id": "urn:machina:sports:athlete:0000000000000000000000000007",
+      "@type": "sport:Athlete",
+      "rdfs:label": "Synthetic Scorer"
+    },
+    {
+      "@id": "urn:machina:sports:membership:0000000000000000000000000008",
+      "@type": "sport:IndividualMembership",
+      "rdfs:label": "Synthetic Scorer membership of Synthetic Home United",
+      "sport:member": { "@id": "urn:machina:sports:athlete:0000000000000000000000000007" },
+      "sport:membershipOf": { "@id": "urn:machina:sports:team:0000000000000000000000000005" },
+      "sport:uniformNumber": "9"
+    },
+    {
+      "@id": "urn:machina:sports:event:0000000000000000000000000009",
+      "@type": "sport:Event",
+      "rdfs:label": "Synthetic Home United vs Synthetic Away Town",
+      "sport:sport": { "@id": "medtop:20001065" },
+      "sport:eventInCompetition": { "@id": "urn:machina:sports:competition:0000000000000000000000000002" },
+      "sport:eventInCompetitionPhase": { "@id": "urn:machina:sports:phase:0000000000000000000000000003" },
+      "sport:location": { "@id": "urn:machina:sports:site:0000000000000000000000000004" },
+      "sport:startDateTime": { "@value": "2026-03-01T20:00:00+00:00", "@type": "xsd:dateTime" },
+      "sport:eventStatus": { "@id": "speventstatus:post-event" },
+      "sport:eventOutcomeType": { "@id": "speventoutcometype:regular" },
+      "sport:attendance": "60123",
+      "sport:participation": [
+        { "@id": "urn:machina:sports:participation:0000000000000000000000000010" },
+        { "@id": "urn:machina:sports:participation:0000000000000000000000000011" },
+        { "@id": "urn:machina:sports:participation:0000000000000000000000000012" }
+      ]
+    },
+    {
+      "@id": "urn:machina:sports:participation:0000000000000000000000000010",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Synthetic Home United participation in event 0000000000000000000000000009",
+      "sport:participationBy": { "@id": "urn:machina:sports:team:0000000000000000000000000005" },
+      "sport:alignment": "home",
+      "sport:score": "2",
+      "sport:eventOutcome": { "@id": "speventoutcome:win" },
+      "spstat:timeOfPossessionPercentage": "57.0",
+      "spsocstat:shotsTotal": "14",
+      "spsocstat:shotsOnGoalTotal": "6",
+      "spsocstat:cornerKicks": "7",
+      "spsocstat:foulsCommited": "9",
+      "spsocstat:offsides": "2",
+      "spsocstat:cautionsTotal": "1"
+    },
+    {
+      "@id": "urn:machina:sports:participation:0000000000000000000000000011",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Synthetic Away Town participation in event 0000000000000000000000000009",
+      "sport:participationBy": { "@id": "urn:machina:sports:team:0000000000000000000000000006" },
+      "sport:alignment": "away",
+      "sport:score": "1",
+      "sport:eventOutcome": { "@id": "speventoutcome:loss" },
+      "spstat:timeOfPossessionPercentage": "43.0",
+      "spsocstat:shotsTotal": "8",
+      "spsocstat:shotsOnGoalTotal": "3",
+      "spsocstat:cornerKicks": "3",
+      "spsocstat:foulsCommited": "12",
+      "spsocstat:offsides": "1",
+      "spsocstat:cautionsTotal": "3"
+    },
+    {
+      "@id": "urn:machina:sports:participation:0000000000000000000000000012",
+      "@type": "sport:IndividualParticipation",
+      "rdfs:label": "Synthetic Scorer participation in event 0000000000000000000000000009",
+      "sport:participationBy": { "@id": "urn:machina:sports:athlete:0000000000000000000000000007" },
+      "sport:playerStatus": { "@id": "spplayerstatus:starter" },
+      "sport:positionEvent": { "@id": "spsocposition:forward" },
+      "spstat:timePlayedTotal": "90",
+      "spsocstat:goalsTotal": "1",
+      "spsocstat:shotsTotal": "4"
+    },
+    {
+      "@id": "urn:machina:sports:action:0000000000000000000000000013",
+      "@type": "sport:Action",
+      "rdfs:label": "Goal on event 0000000000000000000000000009",
+      "sport:actionInEvent": { "@id": "urn:machina:sports:event:0000000000000000000000000009" },
+      "sport:class": { "@id": "spactionclass:score" },
+      "sport:actionDateTime": { "@value": "2026-03-01T20:23:11+00:00", "@type": "xsd:dateTime" },
+      "sport:minutesElapsed": "23",
+      "sport:periodValue": "1",
+      "sport:participation": { "@id": "urn:machina:sports:participation:0000000000000000000000000012" }
+    }
+  ]
+}

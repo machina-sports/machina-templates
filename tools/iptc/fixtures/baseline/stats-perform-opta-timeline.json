@@ -1,0 +1,90 @@
+[
+  {
+    "@context": {
+      "sport": "https://sportschema.org/ontologies/main/"
+    },
+    "@id": "urn:opta:action:synthetic0eventid01",
+    "@type": "sport:Action",
+    "type": "G",
+    "competitor": "home",
+    "sport:label": "G at 23' - Period 1",
+    "sport:actionType": "http://cv.iptc.org/newscodes/spsocaction/g",
+    "sport:minutesElapsed": "23",
+    "sport:actionDateTime": "2026-03-01T20:23:11Z",
+    "sport:periodValue": "1",
+    "sport:participation": [
+      {
+        "@id": "urn:opta:team-participation:synthetic0teamid001",
+        "@type": "sport:TeamParticipation",
+        "sport:participationBy": {
+          "@id": "urn:opta:team:synthetic0teamid001",
+          "@type": "sport:Team",
+          "sport:label": "Synthetic Home United"
+        }
+      },
+      {
+        "@id": "urn:opta:player-participation:synthetic0persoid01",
+        "@type": "sport:IndividualParticipation",
+        "sport:participationBy": {
+          "@id": "urn:opta:player:synthetic0persoid01",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Scorer"
+        }
+      },
+      {
+        "@id": "urn:opta:player-participation:synthetic0persoid02",
+        "@type": "sport:IndividualParticipation",
+        "sport:role": "assist",
+        "sport:participationBy": {
+          "@id": "urn:opta:player:synthetic0persoid02",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Assister"
+        }
+      }
+    ],
+    "commentaries": [
+      {
+        "text": "Synthetic Scorer - G (23:11) Assist: Synthetic Assister"
+      }
+    ]
+  },
+  {
+    "@context": {
+      "sport": "https://sportschema.org/ontologies/main/"
+    },
+    "@id": "urn:opta:action:synthetic0eventid02",
+    "@type": "sport:Action",
+    "type": "YC",
+    "competitor": "away",
+    "sport:label": "Yc at 67' - Period 2",
+    "sport:actionType": "http://cv.iptc.org/newscodes/spsocaction/yc",
+    "sport:minutesElapsed": "67",
+    "sport:actionDateTime": "2026-03-01T21:12:40Z",
+    "sport:periodValue": "2",
+    "sport:participation": [
+      {
+        "@id": "urn:opta:team-participation:synthetic0teamid002",
+        "@type": "sport:TeamParticipation",
+        "sport:participationBy": {
+          "@id": "urn:opta:team:synthetic0teamid002",
+          "@type": "sport:Team",
+          "sport:label": "Synthetic Away Town"
+        }
+      },
+      {
+        "@id": "urn:opta:player-participation:synthetic0persoid03",
+        "@type": "sport:IndividualParticipation",
+        "sport:participationBy": {
+          "@id": "urn:opta:player:synthetic0persoid03",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Booked Player"
+        }
+      }
+    ],
+    "commentaries": [
+      {
+        "text": "Synthetic Booked Player - YC (67:40) Reason: Foul"
+      }
+    ]
+  }
+]

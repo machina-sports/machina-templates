@@ -1,0 +1,60 @@
+{
+  "@context": {
+    "sport": "https://www.sportschema.org/ontologies/sport#",
+    "schema": "https://schema.org/"
+  },
+  "@id": "urn:americanfootball:game:9001",
+  "@type": [
+    "sport:Event",
+    "schema:SportsEvent"
+  ],
+  "name": "Synthetic Home Hawks vs Synthetic Away Anchors - Synthetic Football League",
+  "schema:startDate": "2025-11-09T18:00:00+00:00",
+  "sport:status": "FT",
+  "sport:competition": {
+    "@id": "urn:americanfootball:league:91",
+    "@type": "sport:Competition",
+    "name": "Synthetic Football League",
+    "sport:season": {
+      "@id": "urn:americanfootball:season:91:2025",
+      "@type": "sport:Season",
+      "name": "Synthetica Synthetic Football League 2025",
+      "sport:year": "2025"
+    }
+  },
+  "sport:venue": {
+    "@type": "sport:Venue",
+    "@id": "urn:americanfootball:venue:9801",
+    "name": "Synthetic Dome",
+    "schema:addressLocality": "Synthetic City"
+  },
+  "sport:competitors": [
+    {
+      "@type": "sport:Team",
+      "@id": "urn:americanfootball:team:9101",
+      "name": "Synthetic Home Hawks",
+      "sport:qualifier": "home",
+      "schema:logo": ""
+    },
+    {
+      "@type": "sport:Team",
+      "@id": "urn:americanfootball:team:9102",
+      "name": "Synthetic Away Anchors",
+      "sport:qualifier": "away",
+      "schema:logo": ""
+    }
+  ],
+  "sport:score": {
+    "sport:homeScore": 24,
+    "sport:awayScore": 17,
+    "sport:halfTime": {
+      "home": 7,
+      "away": 3
+    }
+  },
+  "sport:gameInfo": {
+    "stage": "Regular Season",
+    "week": "Week 10",
+    "timezone": "UTC"
+  }
+}
