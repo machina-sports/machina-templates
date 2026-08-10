@@ -59,7 +59,12 @@ from tools.iptc.canonical.observation import (  # noqa: E402
     validate_observation,
 )
 from tools.iptc.canonical import vocab  # noqa: E402
-from tools.iptc.context import load_context  # noqa: E402
+from tools.iptc.canonical.serialize import (  # noqa: E402
+    SHARED_CONTEXT_PATH,
+    shared_context,
+    sport_schema_graph,
+)
+from tools.iptc.context import CONTEXT_PATH, load_context  # noqa: E402
 from tools.iptc.reference import NEWSCODE_STEM, load_reference  # noqa: E402
 
 #: The smallest observation that is genuinely valid: two participants, every
@@ -809,6 +814,324 @@ class TestRfcContractConsistency(unittest.TestCase):
                 )
 
 
+def graph_observation():
+    """A wholly synthetic observation exercising every resource kind in RFC 002 §2.
+
+    Invented from end to end: no provider was called, and no name, identifier or
+    venue below belongs to a real entity. Its statistics are chosen from the
+    properties the pinned ``sh:closed`` participation shapes actually admit, which
+    is the difference between a fixture that proves conformance and one that
+    proves the serializer can emit plausible-looking JSON.
+    """
+    return {
+        "schema_version": "canonical-observation/1",
+        "observation": {
+            "provider": {"namespace": "api-football", "family": "licensed"},
+            "observed_at": "2026-03-01T22:05:00+00:00",
+            "adapter": {"name": "tests.synthetic", "version": "0"},
+            "rights": {"data_class": "licensed-redistributable",
+                       "prototype_only": False, "commercial_use": True},
+            "sport": {"medtop": "20001065", "key": "soccer"},
+            "competition": {
+                "provider_id": "39",
+                "name": "Synthetic Premier Division",
+                "type": "recurring-competition",
+                "season": {"provider_id": "39-2026",
+                           "name": "Synthetic Premier Division 2025/2026"},
+            },
+            "phase": {"provider_id": "39-2026-27", "name": "Matchday 27"},
+            "site": {"provider_id": "9101", "name": "Synthetic Home Ground",
+                     "city": "Synthetic City", "country": "SYN"},
+            "event": {
+                "provider_id": "9001",
+                "label": "Synthetic Home United vs Synthetic Away Town",
+                "start_time": "2026-03-01T20:00:00+00:00",
+                "status": "closed",
+                "outcome_type": "regular",
+                "attendance": "60123",
+                "clock": {"minute": "90", "period": "2"},
+            },
+            "participants": [
+                {"kind": "team", "provider_id": "9011",
+                 "name": "Synthetic Home United", "alignment": "home",
+                 "score": "2", "outcome": "win",
+                 "statistics": {"spsocstat:shotsTotal": "14",
+                                "spstat:timeOfPossessionPercentage": "57.0"}},
+                {"kind": "team", "provider_id": "9012",
+                 "name": "Synthetic Away Town", "alignment": "away",
+                 "score": "1", "outcome": "loss",
+                 "statistics": {"spsocstat:shotsTotal": "8"}},
+                {"kind": "individual", "provider_id": "9021",
+                 "name": "Synthetic Scorer", "team_provider_id": "9011",
+                 "player_status": "starter", "position": "forward",
+                 "statistics": {"spsocstat:goalsTotal": "1",
+                                "spstat:timePlayedTotal": "90"}},
+            ],
+            "memberships": [{"individual_provider_id": "9021",
+                             "team_provider_id": "9011", "uniform_number": "9"}],
+            "actions": [{"ordinal": 1, "class": "score", "minute": "23",
+                         "period": "1", "participant_provider_id": "9021",
+                         "label": "Goal",
+                         "action_time": "2026-03-01T20:23:11+00:00"}],
+            "raw": {"@type": "provider-payload", "fixture": {"id": 9001},
+                    "events": [{"type": "Goal", "detail": "Normal Goal"}]},
+        },
+    }
+
+
+def mint():
+    return surrogate_resolver("api-football")
+
+
+def typed(document, type_name):
+    return [n for n in document["@graph"] if n.get("@type") == type_name]
+
+
+class TestPackagedSharedContext(unittest.TestCase):
+    """A7 — the serializer inlines the *published* context, not a lookalike.
+
+    ``serialize.py`` is vendored into a package that has no ``tools.iptc.context``
+    to import, so it carries its own copy. A copy nobody checks is a fork waiting
+    to happen: these two assertions are what make it a copy rather than a second
+    source of truth.
+    """
+
+    def test_packaged_copy_is_byte_identical_to_the_published_context(self):
+        self.assertEqual(SHARED_CONTEXT_PATH.read_bytes(), CONTEXT_PATH.read_bytes())
+
+    def test_packaged_copy_binds_exactly_what_load_context_binds(self):
+        self.assertEqual(shared_context(), load_context())
+
+    def test_the_returned_table_cannot_be_mutated_through_a_caller(self):
+        first = shared_context()
+        first["sport"] = "https://example.invalid/"
+        self.assertEqual(shared_context()["sport"],
+                         "https://sportschema.org/ontologies/main/")
+
+
+class TestGraphCore(unittest.TestCase):
+    """A7 — one context, one flat @graph, resources as addressable siblings."""
+
+    def setUp(self):
+        self.doc = sport_schema_graph(MINIMAL, id_resolver=mint())
+
+    def test_one_inline_document_context_and_one_graph(self):
+        self.assertIsInstance(self.doc["@context"], dict)
+        self.assertEqual(self.doc["@context"]["sport"],
+                         "https://sportschema.org/ontologies/main/")
+        self.assertEqual(load_context()["sport"], self.doc["@context"]["sport"])
+        self.assertIsInstance(self.doc["@graph"], list)
+        self.assertTrue(all("@context" not in n for n in self.doc["@graph"]))
+
+    def test_the_document_has_no_key_beyond_context_and_graph(self):
+        self.assertEqual(sorted(self.doc), ["@context", "@graph"])
+
+    def test_resources_are_separate_siblings(self):
+        types = [n["@type"] for n in self.doc["@graph"]]
+        for expected in ("sport:Competition", "sport:Event", "sport:Team",
+                         "sport:TeamParticipation", "machina:ObservationProvenance"):
+            self.assertIn(expected, types)
+        self.assertEqual(types.count("sport:TeamParticipation"), 2)
+
+    def test_no_resource_is_nested_inside_another(self):
+        """A nested typed node is a resource nobody else can reference by @id.
+
+        A typed *value* node — ``{"@value": …, "@type": "xsd:dateTime"}`` — carries
+        a datatype rather than a class, so it is not a resource and is exempt.
+        """
+        for node in self.doc["@graph"]:
+            for key, value in node.items():
+                for child in (value if isinstance(value, list) else [value]):
+                    if isinstance(child, dict) and "@value" not in child:
+                        self.assertNotIn("@type", child, "{0} nests a resource".format(key))
+
+    def test_event_carries_the_mandatory_properties(self):
+        event = typed(self.doc, "sport:Event")[0]
+        self.assertEqual(event["rdfs:label"], "H vs A")
+        self.assertEqual(event["sport:sport"], {"@id": "medtop:20001065"})
+        self.assertEqual(event["sport:eventStatus"], {"@id": "speventstatus:post-event"})
+        self.assertEqual(event["sport:startDateTime"],
+                         {"@value": "2026-03-01T20:00:00+00:00", "@type": "xsd:dateTime"})
+        self.assertIn("sport:eventInCompetition", event)
+        self.assertEqual(len(event["sport:participation"]), 2)
+        self.assertTrue(all(set(r) == {"@id"} for r in event["sport:participation"]))
+
+    def test_event_participation_references_resolve_inside_the_graph(self):
+        ids = {n["@id"] for n in self.doc["@graph"]}
+        event = typed(self.doc, "sport:Event")[0]
+        for reference in event["sport:participation"]:
+            self.assertIn(reference["@id"], ids)
+
+    def test_team_participation_carries_alignment_score_and_the_team(self):
+        home = next(p for p in typed(self.doc, "sport:TeamParticipation")
+                    if p["sport:alignment"] == "home")
+        team_ids = {t["@id"] for t in typed(self.doc, "sport:Team")}
+        self.assertEqual(home["sport:score"], "2")
+        self.assertIn(home["sport:participationBy"]["@id"], team_ids)
+
+    def test_ids_are_unique_and_output_is_byte_stable(self):
+        ids = [n["@id"] for n in self.doc["@graph"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        again = sport_schema_graph(MINIMAL, id_resolver=mint())
+        self.assertEqual(json.dumps(self.doc, sort_keys=False),
+                         json.dumps(again, sort_keys=False))
+
+    def test_every_sport_term_emitted_is_declared_by_the_pin(self):
+        reference = load_reference()
+        official = reference.main_local_names()
+        for node in self.doc["@graph"]:
+            for term in [node["@type"]] + list(node):
+                if isinstance(term, str) and term.startswith("sport:"):
+                    with self.subTest(term=term):
+                        self.assertIn(term.split(":", 1)[1], official)
+
+
+class TestGraphRichObservation(unittest.TestCase):
+    """A7 — every resource kind in the RFC 002 §2 table, from one observation."""
+
+    def setUp(self):
+        self.observation = graph_observation()
+        self.doc = sport_schema_graph(self.observation, id_resolver=mint())
+
+    def test_the_fixture_is_itself_a_valid_observation(self):
+        self.assertEqual(validate_observation(self.observation), [])
+
+    def test_every_contract_resource_kind_is_emitted(self):
+        types = [n["@type"] for n in self.doc["@graph"]]
+        for expected in ("sport:Competition", "sport:CompetitionPhase", "sport:Site",
+                         "sport:Team", "sport:Athlete", "sport:Event",
+                         "sport:TeamParticipation", "sport:IndividualParticipation",
+                         "sport:IndividualMembership", "sport:Action",
+                         "machina:ProviderIdentifier", "machina:ObservationProvenance"):
+            with self.subTest(resource=expected):
+                self.assertIn(expected, types)
+        self.assertEqual(types.count("sport:Competition"), 2)
+        self.assertEqual(types.count("sport:Event"), 1)
+        self.assertEqual(types.count("machina:ObservationProvenance"), 1)
+
+    def test_the_season_competition_points_at_the_recurring_one(self):
+        recurring, season = typed(self.doc, "sport:Competition")
+        self.assertNotIn("sport:parent", recurring)
+        self.assertEqual(season["sport:parent"], {"@id": recurring["@id"]})
+        self.assertEqual(season["sport:competitionType"], {"@id": "spct:season"})
+
+    def test_the_event_sits_in_the_season_not_the_recurring_competition(self):
+        _, season = typed(self.doc, "sport:Competition")
+        event = typed(self.doc, "sport:Event")[0]
+        self.assertEqual(event["sport:eventInCompetition"], {"@id": season["@id"]})
+
+    def test_the_phase_and_site_are_referenced_by_the_event(self):
+        event = typed(self.doc, "sport:Event")[0]
+        self.assertEqual(event["sport:eventInCompetitionPhase"],
+                         {"@id": typed(self.doc, "sport:CompetitionPhase")[0]["@id"]})
+        self.assertEqual(event["sport:location"],
+                         {"@id": typed(self.doc, "sport:Site")[0]["@id"]})
+
+    def test_the_site_carries_only_a_label_because_its_shape_admits_nothing_else(self):
+        site = typed(self.doc, "sport:Site")[0]
+        self.assertEqual(sorted(site), ["@id", "@type", "rdfs:label"])
+
+    def test_the_clock_never_becomes_a_datetime_or_an_event_property(self):
+        event = typed(self.doc, "sport:Event")[0]
+        self.assertNotIn("sport:minutesElapsed", event)
+        self.assertNotIn("sport:clock", event)
+
+    def test_statistics_land_on_participations_as_string_literals(self):
+        home = next(p for p in typed(self.doc, "sport:TeamParticipation")
+                    if p["sport:alignment"] == "home")
+        self.assertEqual(home["spsocstat:shotsTotal"], "14")
+        self.assertEqual(home["spstat:timeOfPossessionPercentage"], "57.0")
+        self.assertNotIn("sport:Statistic", [n["@type"] for n in self.doc["@graph"]])
+
+    def test_participant_outcome_is_a_newscode_node_reference(self):
+        home = next(p for p in typed(self.doc, "sport:TeamParticipation")
+                    if p["sport:alignment"] == "home")
+        self.assertEqual(home["sport:eventOutcome"], {"@id": "speventoutcome:win"})
+
+    def test_outcome_type_stays_on_the_event_where_the_closed_shape_admits_it(self):
+        event = typed(self.doc, "sport:Event")[0]
+        self.assertEqual(event["sport:eventOutcomeType"],
+                         {"@id": "speventoutcometype:regular"})
+        self.assertEqual(event["sport:attendance"], "60123")
+        for participation in typed(self.doc, "sport:TeamParticipation"):
+            self.assertNotIn("sport:eventOutcomeType", participation)
+
+    def test_the_individual_participation_links_athlete_status_and_team(self):
+        individual = typed(self.doc, "sport:IndividualParticipation")[0]
+        athlete = typed(self.doc, "sport:Athlete")[0]
+        home = next(p for p in typed(self.doc, "sport:TeamParticipation")
+                    if p["sport:alignment"] == "home")
+        self.assertEqual(individual["sport:participationBy"], {"@id": athlete["@id"]})
+        self.assertEqual(individual["sport:playerStatus"],
+                         {"@id": "spplayerstatus:starter"})
+        self.assertEqual(individual["sport:positionEvent"],
+                         {"@id": "spsocposition:forward"})
+        self.assertEqual(individual["sport:teamParticipation"], {"@id": home["@id"]})
+        self.assertEqual(individual["spsocstat:goalsTotal"], "1")
+
+    def test_the_membership_joins_the_athlete_to_the_team(self):
+        membership = typed(self.doc, "sport:IndividualMembership")[0]
+        self.assertEqual(membership["sport:member"],
+                         {"@id": typed(self.doc, "sport:Athlete")[0]["@id"]})
+        home_team = typed(self.doc, "sport:Team")[0]
+        self.assertEqual(membership["sport:membershipOf"], {"@id": home_team["@id"]})
+        self.assertEqual(membership["sport:uniformNumber"], "9")
+
+    def test_the_action_references_the_event_its_class_and_its_participation(self):
+        action = typed(self.doc, "sport:Action")[0]
+        event = typed(self.doc, "sport:Event")[0]
+        individual = typed(self.doc, "sport:IndividualParticipation")[0]
+        self.assertEqual(action["sport:actionInEvent"], {"@id": event["@id"]})
+        self.assertEqual(action["sport:class"], {"@id": "spactionclass:score"})
+        self.assertEqual(action["sport:actionDateTime"],
+                         {"@value": "2026-03-01T20:23:11+00:00", "@type": "xsd:dateTime"})
+        self.assertEqual(action["sport:minutesElapsed"], "23")
+        self.assertEqual(action["sport:periodValue"], "1")
+        self.assertEqual(action["sport:participation"], {"@id": individual["@id"]})
+
+    def test_no_unpinned_action_vocabulary_is_invented_for_the_provider_detail(self):
+        """No TTL for ``spsocaction`` exists at the pin, so layer 4 cannot check it.
+
+        Asserted over ``@graph`` rather than the whole document: the shared context
+        *binds* the prefix, because upstream declares it. Binding a prefix commits
+        to nothing; emitting a value in it commits to a code nobody can verify.
+        """
+        blob = json.dumps(self.doc["@graph"])
+        for token in ("spsocactiontype", "spsocaction:", "Normal Goal"):
+            self.assertNotIn(token, blob)
+
+    def test_the_provider_payload_never_reaches_the_graph(self):
+        self.assertNotIn("provider-payload", json.dumps(self.doc))
+
+    def test_every_reference_resolves_and_no_id_repeats(self):
+        """A dangling @id is a fact that reads as present and resolves to nothing.
+
+        Two kinds of reference exist: a resource URN, which must name a sibling in
+        this graph, and a controlled-vocabulary CURIE, which names a concept in a
+        pinned scheme and is checked by layer 4 instead.
+        """
+        ids = [n["@id"] for n in self.doc["@graph"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        known = set(ids)
+        for node in self.doc["@graph"]:
+            for key, value in node.items():
+                if key in ("@id", "@type"):
+                    continue
+                for child in (value if isinstance(value, list) else [value]):
+                    if not (isinstance(child, dict) and set(child) == {"@id"}):
+                        continue
+                    target = child["@id"]
+                    with self.subTest(pointer="{0}/{1}".format(node["@id"], key)):
+                        if target.startswith("urn:"):
+                            self.assertIn(target, known)
+                        else:
+                            self.assertIn(target.split(":", 1)[0], load_context())
+
+    def test_output_is_byte_stable_across_runs(self):
+        again = sport_schema_graph(graph_observation(), id_resolver=mint())
+        self.assertEqual(json.dumps(self.doc), json.dumps(again))
+
+
 #: Modules destined to be copied byte-exact into ``sports-skills``, a published
 #: zero-dependency package that supports Python 3.9 and cannot import this
 #: repository. ``export_official_terms.py`` is deliberately not here: it is a
@@ -818,6 +1141,15 @@ VENDORED_RUNTIME_MODULES = (
     "ids.py",
     "capabilities.py",
     "vocab.py",
+    "serialize.py",
+)
+
+#: Non-Python files that travel with those modules. ``serialize.py`` reads the
+#: shared context from a package-local copy rather than importing
+#: ``tools.iptc.context``, because the vendored package has no such module.
+VENDORED_RUNTIME_DATA = (
+    "official-property-names.json",
+    "shared-context.json",
 )
 
 
@@ -837,6 +1169,18 @@ class TestVendoringConstraints(unittest.TestCase):
                 ast.parse(
                     self.module_source(name), filename=name, feature_version=(3, 9)
                 )
+
+    def test_every_vendored_data_file_is_present_and_is_plain_json(self):
+        """A runtime module that reads a data file drags that file downstream.
+
+        Recorded here so the vendoring list is the whole set a reviewer has to
+        copy, not just the ``.py`` files that are easy to notice.
+        """
+        for name in VENDORED_RUNTIME_DATA:
+            path = REPO_ROOT / "tools/iptc/canonical" / name
+            with self.subTest(data=name):
+                self.assertTrue(path.is_file(), path)
+                json.loads(path.read_text(encoding="utf-8"))
 
     def test_no_vendored_module_imports_tools(self):
         for name in VENDORED_RUNTIME_MODULES:
