@@ -9,7 +9,7 @@
 | **Shared context** | `agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld` |
 | **Executable form** | `tools/iptc/` — layer 3 of the harness implements this document |
 | **Grounding** | The pinned upstream artefacts vendored in this repository, and the measured baseline in `docs/iptc/` |
-| **Profile version** | `machina-iptc-profile/1` |
+| **Profile version** | `machina-iptc-profile/1.1` (see §15) |
 
 ---
 
@@ -349,6 +349,23 @@ identity.
    generator, which is owned by the Client API. Serializers and templates do not
    mint identifiers.
 
+   A serializer therefore takes an **injected resolver**, `id_resolver(kind,
+   *parts) -> str`, and calls it. It never contains minting logic, so the Client
+   API generator can be swapped in later with no serializer change.
+
+   Until that generator exists, the resolver of record is a **provider-scoped
+   deterministic surrogate**: `urn:machina:sports:{kind}:x{32-hex}`, where the
+   hex is a digest over an identity tuple whose first element is the provider
+   namespace. Two consequences, stated rather than glossed:
+
+   - the leading `x` is a permanent marker that the identifier is a surrogate, so
+     it can never be mistaken for a canonical Client-API identity;
+   - because the tuple is provider-scoped, **two providers observing one fixture
+     mint two different identifiers**. That is honest, not a defect: this profile
+     does not claim cross-provider identity resolution. The crosswalk in §6
+     records the evidence linking them and stops there. Collapsing them is the
+     canonical identity service's job.
+
 ---
 
 ## 8. Datatypes and dates
@@ -553,6 +570,17 @@ Initial `machina:` vocabulary: `machina:ProviderIdentifier`,
 `machina:validTo`, `machina:legacyMachinaUrn`, `machina:canonicalRevision`,
 `machina:mappingVersion`, `machina:sourceRef`.
 
+Added in `machina-iptc-profile/1.1`, to carry observation provenance as a
+resource in the graph rather than only as an envelope block:
+`machina:ObservationProvenance`, `machina:describes`, `machina:observedAt`,
+`machina:adapterVersion`, `machina:serializerVersion`, `machina:rightsClass`,
+`machina:evidence`.
+
+`machina:evidence` is where a provider's own detail survives when no pinned
+NewsCode can carry it — a soccer action type, for instance (§9.2). It is a
+`machina:` property on a `machina:`-typed resource, never an extra property on a
+closed official shape.
+
 ### 12.1 Provider-specific properties currently in the IPTC namespace
 
 Terms currently emitted under `sport:` that are transliterations of a provider's
@@ -641,8 +669,14 @@ claimed IPTC-conformant, whatever a SHACL processor says about an empty target s
 
 ## 15. Versioning
 
-- This profile is `machina-iptc-profile/1`, and every conformance claim cites both
-  the profile version and the upstream pin.
+- This profile is `machina-iptc-profile/1.1`, and every conformance claim cites
+  both the profile version and the upstream pin.
+- **`1` → `1.1`**, reviewed and approved by the profile owner, is a minor bump
+  under the rule below. It *adds* the `machina:` observation terms in §12 and the
+  injected-resolver rule in §7.6. It tightens nothing already emitted and changes
+  the meaning of no already-conforming document: a document that conformed to
+  `machina-iptc-profile/1` still conforms to `1.1`. The upstream pin is
+  unchanged, so this is a profile bump and not a pin bump.
 - **Bumping the upstream pin** means: change `UPSTREAM_COMMIT`, re-vendor the
   bytes, regenerate `upstream-commit.json`, re-run `--verify-pin`, regenerate the
   baseline audit, and record in `UPSTREAM.md` whether the two known upstream
