@@ -986,9 +986,9 @@ class TestNoSportsSkillsAdapterLivesHere(unittest.TestCase):
     #: Every provider reading this repository owns. A15 extends it one adapter at
     #: a time, and that is the point: a module appearing here without a line in
     #: this list is a reading nobody decided to own.
-    OWNED_ADAPTERS = ("__init__.py", "api_football.py", "sportradar_nfl.py",
-                      "sportradar_soccer.py", "sportradar_tennis.py",
-                      "stats_perform_opta.py")
+    OWNED_ADAPTERS = ("__init__.py", "api_football.py", "sportradar_mlb.py",
+                      "sportradar_nfl.py", "sportradar_soccer.py",
+                      "sportradar_tennis.py", "stats_perform_opta.py")
 
     def test_the_adapter_package_holds_only_readings_this_repository_owns(self):
         """An inventory rather than a pin on two files. A15 adds provider
