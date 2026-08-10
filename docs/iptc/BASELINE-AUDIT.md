@@ -70,6 +70,7 @@ The 'after' rows. Each is emitted by `tools/iptc/canonical/serialize.py` from a 
 | Fixture | L1 JSON-LD | L2 official SHACL | L3 Machina profile | L4 vocabulary | unknown `sport:` | invalid codes | dup IDs | provider leaks |
 |---|---|---|---|---|---|---|---|---|
 | `corrected-api-football-soccer` | pass | pass | pass | pass | 0 | 0 | 0 | 0 |
+| `corrected-sports-skills-espn-soccer` | pass | pass | pass | pass | 0 | 0 | 0 | 0 |
 
 ## Baseline — current mapping outputs
 
@@ -915,6 +916,31 @@ Each row proves one detector actually fires. A green row here would mean the cor
 **Layer 4 — controlled vocabulary:** 5 valid, 0 invalid, 0 unresolvable prefix, 0 unverifiable.
 
 
+### `corrected-sports-skills-espn-soccer`
+
+- **section:** corrected
+- **document:** `tools/iptc/fixtures/corrected/sports-skills-espn-soccer-graph.json`
+- **fixture class:** corrected-serializer-output
+- **derived from:** `tools/iptc/fixtures/source/sports-skills-espn-soccer-native.json`
+- **provenance:** SYNTHETIC. No ESPN endpoint was called, no sports-skills command was run, no credential exists in this repository and there is no network access in this harness. The source payload was hand-authored in the exact shape sports-skills' own `_normalize_espn_event` returns — its key set, key order and value types — with invented identifiers (9001/9011/9012/9101, `synthetic-league-1`) and `Synthetic *` names throughout.
+- **RIGHTS:** Synthetic open-data prototype evidence. Nothing here is provider data: the match, the teams, the venue and the competition are invented, so there is no third party whose rights are engaged and no redistribution claim to read into it. The observation is `mapping-contract-synthetic-open-prototype`, prototype_only true, commercial_use false, because the sports-skills package is public, personal/non-commercial and can never emit anything else. tools.iptc.validate_graph.rights_findings on the envelope beside it returns `rights-prototype-only` for consumer_tier `production`, and the gate is also the command: `python3 tools/iptc/validate_graph.py --consumer-tier production tools/iptc/fixtures/corrected/sports-skills-espn-soccer-envelope.json` reports the refusal and exits nonzero. Tests assert both.
+- **transformation:** REFERENCE CONTRACT, not an adapter in this repository. The native->canonical adapter for the `sports-skills/espn` open-data provider is owned by the `sports-skills` repository, which publishes it and vendors this repository's serializer byte-exact; a second adapter here would be a second source of truth for one provider reading. So the canonical observation that source payload must produce is checked in at tools/iptc/fixtures/observations/sports-skills-espn-soccer-observation.json with observed_at 2026-03-01T22:05:00+00:00, and this graph is serialized from THAT observation by tools/iptc/canonical/serialize.py. Reproducible byte-for-byte from the observation; tests/test_iptc_sports_skills_reference_contract.py asserts it rather than trusting it, and also asserts that no sports-skills adapter module exists here. The `sports-skills` PR reproduces the observation from the source fixture with its own adapter and the vendored runtime, and must match these bytes exactly.
+- **emitted by:** tools/iptc/canonical/serialize.py sport_schema_graph, via canonical_envelope with surrogate_resolver('sports-skills/espn'). The full envelope a consumer receives is checked in beside it at tools/iptc/fixtures/corrected/sports-skills-espn-soccer-envelope.json; this file is the same graph standalone, because the harness validates JSON-LD documents rather than envelopes.
+- **coverage:** sports-skills/espn open-data soccer event, corrected. Capability tier `core`: the normalized native payload carries no clock, no actions and no player statistics, so `live` and `advanced` are correctly not claimed. It also carries no winner flag, so no participant outcome is claimed either.
+- **role:** The cross-repository reference contract, and the second corrected output. It is also the open-data counterpart to the licensed `corrected-api-football-soccer` row: the two together show one canonical shape reached from a licensed provider example and from an open-data provider's normalized output, which is what the cross-provider concept-equivalence test is built on.
+- **MISSING EVIDENCE:** The match is INVENTED, so this row is evidence about the mapping contract and about nothing observed. Specifically: (1) it proves the shape sports-skills' normalized ESPN event can be read into, not that any real ESPN payload carries these values — a green row here is not a claim about ESPN's coverage, its status vocabulary or its identifier stability; (2) it is one finished, single-sport event, so no pre-match, in-play, halftime, drawn, abandoned or extra-time path is exercised; (3) the adapter that will produce this observation in production does not exist in this repository, so what is proved here is that the contract is satisfiable and self-consistent, not that the published adapter satisfies it — that is the `sports-skills` PR's gate, and until it lands this entry is a contract awaiting its implementation; (4) the native payload's own `status` value happens to coincide with the canonical key `closed`, which the sibling native values `live`, `1st_half` and `2nd_half` do not, so the adapter must map its status vocabulary explicitly and raise on an unmapped code rather than pass the string through.
+- **note:** Four native placeholders are carried in the source payload on purpose — `matchday: null`, `round: ""`, `round_name: ""` and `odds: null` — because they are what sports-skills' normalizer actually emits, and the contract is that every one of them is dropped rather than forwarded. None reaches the observation outside `raw`, the graph or the view, and no `sport:CompetitionPhase` is invented from the empty round fields. `round_name` is a display string with no identifier the provider addresses, so recording it as provider-native evidence would be an invention; the API-Football adapter's `league.round` is different because that API takes that exact string as a round key. Canonical identity is a marked provider-scoped surrogate (`urn:machina:sports:<kind>:x<blake2b-128>`); the six invented provider identifiers appear only as machina:ProviderIdentifier crosswalk evidence with a pointer back to the observation field each came from.
+- **known consumer dependencies:** none recorded. For a negative control, a positive control or a corrected serializer output that is correct — nothing in production reads them yet; for a baseline mapping it would be an inventory defect.
+
+**Layer 1 — JSON-LD parse:** pass, 77 triples.
+
+**Layer 2 — official SHACL:** conforms, over 8 instance(s) of an official IPTC class.
+
+**Layer 3 — Machina profile:** conforms.
+
+**Layer 4 — controlled vocabulary:** 3 valid, 0 invalid, 0 unresolvable prefix, 0 unverifiable.
+
+
 ### `negative-duplicate-ids`
 
 - **section:** negative
@@ -1100,7 +1126,7 @@ Each row proves one detector actually fires. A green row here would mean the cor
 
 **10 of 14 baseline fixtures are `mapping-contract-synthetic`**, because no checked-in sample of those mappings' output exists and this work may not call a licensed provider to get one. Those fixtures faithfully reproduce the SHAPE each mapping emits — the key set, the nesting, the context — but their values are synthetic. Read their rows as statements about the mapping contract, not as production volumes: `api-football-actions`, `api-football-team-stats`, `api-football-player-stats`, `sportradar-soccer-timeline`, `stats-perform-opta-event`, `stats-perform-opta-timeline`, `sportradar-tennis-event`, `sportradar-nfl-event`, `sportradar-mlb-event`, `american-football-event`.
 
-**The same rule governs the 1 `corrected-serializer-output` fixture, and it is worth stating twice because a passing row invites the stronger reading.** Each one is derived from checked-in source evidence — a sanitized provider example or a mapping-contract-synthetic payload — and NO licensed provider was called and no credential was used to produce any of them. A checked-in example is evidence of a payload's *shape*; it is not an entitlement, and none of these fixtures is a claim that this repository may commercially redistribute the provider's data. Every observation behind them is marked `prototype_only` with `commercial_use: false`, which `rights_findings(envelope, consumer_tier="production")` refuses. Per-fixture source, rights and limitations: `corrected-api-football-soccer`.
+**The same rule governs the 2 `corrected-serializer-output` fixtures, and it is worth stating twice because a passing row invites the stronger reading.** Each one is derived from checked-in source evidence — a sanitized provider example or a mapping-contract-synthetic payload — and NO licensed provider was called and no credential was used to produce any of them. A checked-in example is evidence of a payload's *shape*; it is not an entitlement, and none of these fixtures is a claim that this repository may commercially redistribute the provider's data. Every observation behind them is marked `prototype_only` with `commercial_use: false`, which `rights_findings(envelope, consumer_tier="production")` refuses. Per-fixture source, rights and limitations: `corrected-api-football-soccer`, `corrected-sports-skills-espn-soccer`.
 
 ### Missing evidence, stated rather than papered over
 

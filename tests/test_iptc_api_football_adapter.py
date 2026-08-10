@@ -540,8 +540,11 @@ class TestCorrectedSectionIsRegistered(unittest.TestCase):
     def test_the_corrected_graph_is_registered_and_resolvable(self):
         provenance = report_module.load_provenance()
         entries = provenance["corrected"]
-        self.assertEqual([entry["fixture"] for entry in entries],
-                         ["corrected-api-football-soccer"])
+        # This fixture is registered; siblings are other tasks' business. Pinning
+        # the whole list here would make every later corrected fixture fail a test
+        # that is about API-Football.
+        self.assertIn("corrected-api-football-soccer",
+                      [entry["fixture"] for entry in entries])
         for entry in entries:
             with self.subTest(fixture=entry["fixture"]):
                 self.assertEqual(entry["class"], "corrected-serializer-output")
