@@ -1,0 +1,274 @@
+{
+  "manifest_version": 1,
+  "manifest_kind": "iptc-sport-schema-upstream-pin",
+  "vendored_root": "agent-templates/iptc-mappings/references/iptc-sport-schema-1.1",
+  "upstream_repository": "https://github.com/iptc/sport-schema",
+  "upstream_commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
+  "upstream_ref_note": "The GitHub Releases list for iptc/sport-schema has no 1.1 tag. The commit IS the pin. Do not reference a 1.1 release tag; it does not exist.",
+  "upstream_archive": {
+    "url": "https://codeload.github.com/iptc/sport-schema/tar.gz/0e77bf8678f3702fe81c28673bede35efe47d633",
+    "sha256": "d480ec88688034400bdd3fcb4cc89a84cc6ed005f55fc3e0a5a93d222b77b415",
+    "note": "sha256 of the gzip archive as served by codeload, recorded for provenance only. gzip framing is not guaranteed byte-stable across GitHub infrastructure changes, so the per-file sha256 list below is the authoritative integrity check."
+  },
+  "declared_version": {
+    "version": "1.1",
+    "evidence": [
+      "README.md heading: 'Latest version: Sport Schema 1.1'",
+      "credits.markdown: 'Version 1.1 was approved by the IPTC Standards Committee on 2 October 2024.'",
+      "ontologies/iptc-sport-ontology.ttl: owl:versionIRI <https://sportschema.org/ontologies/main/1.1> ; owl:versionInfo \"1.1\"^^xsd:string"
+    ]
+  },
+  "license": {
+    "spdx_id": "CC-BY-4.0",
+    "uri": "https://creativecommons.org/licenses/by/4.0/",
+    "declared_by": "dcterms:license and dcterms:rights on each owl:Ontology in ontologies/*.ttl",
+    "upstream_license_file": null,
+    "note": "The upstream repository contains no LICENSE file at this commit. The license is declared in-band in the ontology headers only. LICENSE.md in this directory is a Machina-authored attribution notice quoting that in-band declaration; it is not a vendored upstream file."
+  },
+  "byte_preservation": "Every file listed below is a byte-exact copy of the upstream file at the pinned commit. tools/iptc never rewrites these files; the two upstream syntax defects recorded in UPSTREAM.md are worked around by documented in-memory shims at load time.",
+  "verified_by": "python3 -m tools.iptc --verify-pin",
+  "file_count": 40,
+  "total_bytes": 3904626,
+  "files": [
+    {
+      "vendored_path": "README.md",
+      "upstream_path": "README.md",
+      "size_bytes": 4724,
+      "sha256": "ed630f9459881dbaf11be00f6a654486557fce6bd5f3bcdd927cb96fa04dc7e6"
+    },
+    {
+      "vendored_path": "credits.markdown",
+      "upstream_path": "docs/credits.markdown",
+      "size_bytes": 1476,
+      "sha256": "f40405ea502bcb4a53500d1172c709bb26c1e5f56f01aa870ba2cd7d6512c162"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-american-football-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-american-football-statistics.ttl",
+      "size_bytes": 94354,
+      "sha256": "bc1b4d8d54c743887e3a93540550794e8c92ceac58401ad3d53c32385e28ff69"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-baseball-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-baseball-statistics.ttl",
+      "size_bytes": 39107,
+      "sha256": "391647071f100cc99f0c50969ec9c6122b4e83b6df7dc8393d9cb338c5ed5e30"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-basketball-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-basketball-statistics.ttl",
+      "size_bytes": 29242,
+      "sha256": "a7a4c56a97344afb2f52e60e010a003ca9eca99242c5a46a938dad108223a945"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-core-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-core-statistics.ttl",
+      "size_bytes": 20856,
+      "sha256": "4c1451fe275b60d121f418db421cd2442ee00304e1c95f72566e610d41b888ac"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-esports-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-esports-statistics.ttl",
+      "size_bytes": 3509,
+      "sha256": "3630f246902d48e48fd32b7b1acf2b3cda2af2d7dc92c7632b35c567f032c4e5"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-facets.ttl",
+      "upstream_path": "ontologies/iptc-sport-facets.ttl",
+      "size_bytes": 13632,
+      "sha256": "1252b8877c9eb59bfa402d0f73f5d63888376157151e381e41a71cae7682dff4"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-golf.ttl",
+      "upstream_path": "ontologies/iptc-sport-golf.ttl",
+      "size_bytes": 23015,
+      "sha256": "8ad440d1bfc99c3f72bbe2e2b2c07397d7e4f143e55c340927168b47ada9d83d"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-merged-ontology.ttl",
+      "upstream_path": "ontologies/iptc-sport-merged-ontology.ttl",
+      "size_bytes": 396846,
+      "sha256": "6b8ed645d96b3863ca3a59e9cdba10bcede9b92725584d1d63af9bfcef45e73d"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-motor-racing-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-motor-racing-statistics.ttl",
+      "size_bytes": 16890,
+      "sha256": "350ed797fb2d16153abd05fef1b68698e999f2d4cd7693979729b45f054dde2e"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-ontology.ttl",
+      "upstream_path": "ontologies/iptc-sport-ontology.ttl",
+      "size_bytes": 40439,
+      "sha256": "0197debf9f4b18d4692eed2d74bf37ef200873cbe1014ab9e808dee6eec2c75c"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-rugby-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-rugby-statistics.ttl",
+      "size_bytes": 15426,
+      "sha256": "84fbc252ab67677af8c60dddb28c6fa91f1b8d98886d935e63e5afcc934943d3"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-skos-add-on.ttl",
+      "upstream_path": "ontologies/iptc-sport-skos-add-on.ttl",
+      "size_bytes": 2266,
+      "sha256": "049f950fac355cab80c096cb1fec97b78e35286747726e23419ac784cee727cb"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-soccer-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-soccer-statistics.ttl",
+      "size_bytes": 27368,
+      "sha256": "521bda0913683b615d29f22dfb5b40d1254e547ef8eb580a3887f46725823e0f"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-tennis-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-tennis-statistics.ttl",
+      "size_bytes": 18993,
+      "sha256": "dffc8c5afee2eeab4960baa662092d4e0f41b5b2e4db74dce3aacdbb2add10d4"
+    },
+    {
+      "vendored_path": "ontologies/iptc-sport-volleyball-statistics.ttl",
+      "upstream_path": "ontologies/iptc-sport-volleyball-statistics.ttl",
+      "size_bytes": 13768,
+      "sha256": "a58f28a65c35c412ffdb597cf8260aa6210a928d461b92b9e67e3b2edb4df9d7"
+    },
+    {
+      "vendored_path": "samples/json-ld/player-bio-01.jsonld",
+      "upstream_path": "samples/json-ld/player-bio-01.jsonld",
+      "size_bytes": 5489,
+      "sha256": "1b455ee87c7c485b060c621f7c9a499efc78fb99a2c9758c07673dba0a87685c"
+    },
+    {
+      "vendored_path": "samples/json-ld/soccer-match-02.jsonld",
+      "upstream_path": "samples/json-ld/soccer-match-02.jsonld",
+      "size_bytes": 100922,
+      "sha256": "b85f81b5b1cea3f1bf243c2f763500e9e136ccde46c46ca198e468be17946bc1"
+    },
+    {
+      "vendored_path": "samples/json-ld/soccer-standings.jsonld",
+      "upstream_path": "samples/json-ld/soccer-standings.jsonld",
+      "size_bytes": 58472,
+      "sha256": "c0a942e69c42a064a1e0b7a4a927cc5cca65a99db845438107f3b8bc773dced2"
+    },
+    {
+      "vendored_path": "samples/json-ld/team-roster.jsonld",
+      "upstream_path": "samples/json-ld/team-roster.jsonld",
+      "size_bytes": 69122,
+      "sha256": "ebcb8b54d38c47479b66eea663f11c961f69ad4b057c45816db64ca4a3196c26"
+    },
+    {
+      "vendored_path": "shacl/iptc-sport-shacl.ttl",
+      "upstream_path": "ontologies/iptc-sport-shacl.ttl",
+      "size_bytes": 38041,
+      "sha256": "dd328351ed84bc3208bfc71ac8fb9d80bf4eadf532be140ef276b3b184834064"
+    },
+    {
+      "vendored_path": "tools/prefixes.ttl",
+      "upstream_path": "tools/prefixes.ttl",
+      "size_bytes": 1194,
+      "sha256": "143cddca86cb7e284695b13044fd5a34db42332c07b47c8028b1ce7cab111b91"
+    },
+    {
+      "vendored_path": "vocabularies/asportfacetvalue.ttl",
+      "upstream_path": "vocabularies/asportfacetvalue.ttl",
+      "size_bytes": 107705,
+      "sha256": "5873ea2d6e96d0bad131bf10adf561aaeb05bd8c7a635be9b31b3cabda1cc8cc"
+    },
+    {
+      "vendored_path": "vocabularies/mediatopic.ttl",
+      "upstream_path": "vocabularies/mediatopic.ttl",
+      "size_bytes": 2719864,
+      "sha256": "21b9505a670f8b09512c5a0c8de883caccb82af112dd1ae33fb89361163c6dbc"
+    },
+    {
+      "vendored_path": "vocabularies/spactionclass.ttl",
+      "upstream_path": "vocabularies/spactionclass.ttl",
+      "size_bytes": 1605,
+      "sha256": "dd140fb910e01fa509be6a82291fe8673b97c884ec1b928e19baed6ebff3c74f"
+    },
+    {
+      "vendored_path": "vocabularies/spcompetitionscope.ttl",
+      "upstream_path": "vocabularies/spcompetitionscope.ttl",
+      "size_bytes": 3700,
+      "sha256": "a4145bc69f79c6b3f004a4665b58910486a2e474c6f7d4d05c680f28ab383767"
+    },
+    {
+      "vendored_path": "vocabularies/spct.ttl",
+      "upstream_path": "vocabularies/spct.ttl",
+      "size_bytes": 9211,
+      "sha256": "54f0e124eaf3a3d46acd56dfd9522f025b8f8420f8ba3df404729b95b3e66026"
+    },
+    {
+      "vendored_path": "vocabularies/speventoutcome.ttl",
+      "upstream_path": "vocabularies/speventoutcome.ttl",
+      "size_bytes": 1406,
+      "sha256": "3ad1ff2c8ea003196a73241e0349077e062754fb262b670bd048d93831549e58"
+    },
+    {
+      "vendored_path": "vocabularies/speventoutcometype.ttl",
+      "upstream_path": "vocabularies/speventoutcometype.ttl",
+      "size_bytes": 1751,
+      "sha256": "bde37d3955f6f37edfc49e3304b31381ad6d003aef2d3b86c0b1dc18512b9ee6"
+    },
+    {
+      "vendored_path": "vocabularies/speventstatus.ttl",
+      "upstream_path": "vocabularies/speventstatus.ttl",
+      "size_bytes": 3935,
+      "sha256": "8011e41c2387870fbc8d4b5b2802404bfab98bb74e764a000666a4c0275bbd90"
+    },
+    {
+      "vendored_path": "vocabularies/spgolholetype.ttl",
+      "upstream_path": "vocabularies/spgolholetype.ttl",
+      "size_bytes": 884,
+      "sha256": "d0cd8f8880b0f6a27718237e2ac2818fb5eb0cd9e7b7108c3e48f621e36c05ac"
+    },
+    {
+      "vendored_path": "vocabularies/sphorposition.ttl",
+      "upstream_path": "vocabularies/sphorposition.ttl",
+      "size_bytes": 1361,
+      "sha256": "6c6f5b74ac9ea8631eac5fdf26d8966c474aed2bb3f20c07f52932c87ec0bd29"
+    },
+    {
+      "vendored_path": "vocabularies/spichposition.ttl",
+      "upstream_path": "vocabularies/spichposition.ttl",
+      "size_bytes": 3485,
+      "sha256": "07d111de5aea93fbc8def1924ab29146d022eea71f993a94f2fcbdc6047e7955"
+    },
+    {
+      "vendored_path": "vocabularies/spplayerstatus.ttl",
+      "upstream_path": "vocabularies/spplayerstatus.ttl",
+      "size_bytes": 1970,
+      "sha256": "847b54265aef66ad596902f0c520a22767d1fcf9faef711103ea30dbfc59dcff"
+    },
+    {
+      "vendored_path": "vocabularies/spresulteffect.ttl",
+      "upstream_path": "vocabularies/spresulteffect.ttl",
+      "size_bytes": 929,
+      "sha256": "5a22729f27a3627350d9dcb688fb30a7597048032039b4657b4a9ac9e57b7c23"
+    },
+    {
+      "vendored_path": "vocabularies/spscoreunits.ttl",
+      "upstream_path": "vocabularies/spscoreunits.ttl",
+      "size_bytes": 1164,
+      "sha256": "6478be6fd628e048df9275402fa8c0c8cceef7550bf40516fa33019e33b25589"
+    },
+    {
+      "vendored_path": "vocabularies/spsocposition.ttl",
+      "upstream_path": "vocabularies/spsocposition.ttl",
+      "size_bytes": 4928,
+      "sha256": "7461c91b8dc31e7305bc09275a0a61fafe55c0b5679de1c80f523f0b31326d17"
+    },
+    {
+      "vendored_path": "vocabularies/sptournamentform.ttl",
+      "upstream_path": "vocabularies/sptournamentform.ttl",
+      "size_bytes": 2444,
+      "sha256": "c92033b92865c4e9398c7e13f36dfe82df7f94ec93afd8ef8b97803d19a00d7b"
+    },
+    {
+      "vendored_path": "vocabularies/sptournamentphase.ttl",
+      "upstream_path": "vocabularies/sptournamentphase.ttl",
+      "size_bytes": 3133,
+      "sha256": "81af4b8d658169e3a620a15bb8edd72a9475fd7ea7abad95fea7d9c9e550e5d6"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "@context": {
+      "sport": "https://sportschema.org/ontologies/main/"
+    },
+    "@id": "urn:apifootball:action:23:Goal:9001",
+    "@type": "sport:Action",
+    "sport:label": "Goal - Normal Goal at 23'",
+    "sport:actionType": "http://cv.iptc.org/newscodes/spsocaction/goal",
+    "sport:minutesElapsed": "23",
+    "sport:actionDateTime": "23",
+    "sport:comment": "",
+    "sport:participation": [
+      {
+        "@id": "urn:apifootball:team-participation:9001",
+        "@type": "sport:TeamParticipation",
+        "sport:participationBy": {
+          "@id": "urn:apifootball:team:9001",
+          "@type": "sport:Team",
+          "sport:label": "Synthetic Home FC"
+        }
+      },
+      {
+        "@id": "urn:apifootball:player-participation:9101",
+        "@type": "sport:IndividualParticipation",
+        "sport:participationBy": {
+          "@id": "urn:apifootball:player:9101",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Scorer"
+        }
+      },
+      {
+        "@id": "urn:apifootball:assist-participation:9102",
+        "@type": "sport:IndividualParticipation",
+        "sport:participationBy": {
+          "@id": "urn:apifootball:player:9102",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Assister"
+        }
+      }
+    ]
+  },
+  {
+    "@context": {
+      "sport": "https://sportschema.org/ontologies/main/"
+    },
+    "@id": "urn:apifootball:action:67:Card:9002",
+    "@type": "sport:Action",
+    "sport:label": "Card - Yellow Card at 67'",
+    "sport:actionType": "http://cv.iptc.org/newscodes/spsocaction/card",
+    "sport:minutesElapsed": "67",
+    "sport:actionDateTime": "67+2",
+    "sport:comment": "",
+    "sport:participation": [
+      {
+        "@id": "urn:apifootball:team-participation:9002",
+        "@type": "sport:TeamParticipation",
+        "sport:participationBy": {
+          "@id": "urn:apifootball:team:9002",
+          "@type": "sport:Team",
+          "sport:label": "Synthetic Away FC"
+        }
+      },
+      {
+        "@id": "urn:apifootball:player-participation:9201",
+        "@type": "sport:IndividualParticipation",
+        "sport:participationBy": {
+          "@id": "urn:apifootball:player:9201",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Booked Player"
+        }
+      }
+    ]
+  }
+]

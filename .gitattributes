@@ -1,0 +1,39 @@
+# Vendored upstream IPTC Sport Schema 1.1 bytes.
+#
+# These files are a byte-exact copy of https://github.com/iptc/sport-schema at the
+# pinned commit, and their sha256 is asserted by
+# agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/upstream-commit.json
+# on every harness run. Upstream ships trailing whitespace throughout, so Git's
+# whitespace checks would flag every line — and "fixing" it would break the pin,
+# void the licence notice's "no changes were made" statement, and invalidate every
+# conformance result measured against these bytes.
+#
+# So: mark them vendored, and turn off diff and whitespace checking for them ONLY.
+# Nothing else in the repository is affected, and reviewability is preserved for
+# everything Machina actually authored.
+
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/ontologies/** linguist-vendored -diff -whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/shacl/** linguist-vendored -diff -whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/vocabularies/** linguist-vendored -diff -whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/samples/** linguist-vendored -diff -whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/tools/** linguist-vendored -diff -whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/README.md linguist-vendored -diff -whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/credits.markdown linguist-vendored -diff -whitespace
+
+# One baseline fixture is a byte-exact copy of a pre-existing checked-in example
+# (agent-templates/iptc-mappings/example-iptc-event.json), whose EOF blank line is
+# part of those bytes. PR 1 is output-neutral, so the example is not rewritten to
+# suit the copy, and the copy is not altered to suit Git — provenance.json claims a
+# verbatim copy and that claim stays literally true.
+#
+# So: turn off whitespace checking for this ONE file. It stays fully diffable and
+# is NOT marked vendored: it is a Machina-authored fixture and is reviewed as one.
+tools/iptc/fixtures/baseline/api-football-soccer-event-nulls.json -whitespace
+
+# Machina-authored, and therefore deliberately NOT vendored: these are reviewed
+# like any other file in the repository, with diff and whitespace checks on. They
+# are the three files upstream-commit.json does not hash, and the same three names
+# that tools/iptc/reference.py exempts from its unmanifested-file check.
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/LICENSE.md !linguist-vendored diff whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/UPSTREAM.md !linguist-vendored diff whitespace
+agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/upstream-commit.json !linguist-vendored diff whitespace

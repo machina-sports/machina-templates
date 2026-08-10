@@ -1,0 +1,10 @@
+{
+  "@context": "https://example.invalid/iptc-sport-schema-1.1.context.jsonld",
+  "@graph": [
+    {
+      "@id": "urn:machina:sports:event:synthetic0000000000000000",
+      "@type": "sport:Event",
+      "rdfs:label": "Synthetic Event"
+    }
+  ]
+}

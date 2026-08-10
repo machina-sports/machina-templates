@@ -1,0 +1,8 @@
+{
+  "@context": { "sport": "https://sportschema.org/ontologies/main/" },
+  "@graph": [
+    { "@id": "urn:machina:sports:event:0000000000000000000000000009",
+      @type: "sport:Event",
+      "rdfs:label": "Malformed on purpose", }
+  ]
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "@context": {
+      "sport": "https://sportschema.org/ontologies/main/"
+    },
+    "@id": "urn:sportradar:action:sr:action:9000001",
+    "@type": "sport:Action",
+    "type": "score_change",
+    "competitor": "home",
+    "sport:label": "Score Change at 23' - Regular Period",
+    "sport:actionType": "spsocaction:score-change",
+    "sport:minutesElapsed": "23",
+    "sport:actionDateTime": "2026-03-01T20:23:11+00:00",
+    "sport:periodValue": "1",
+    "sport:periodType": "regular_period",
+    "sport:fieldLocation": "41,58",
+    "commentaries": [],
+    "sport:homeScore": 1,
+    "sport:awayScore": 0,
+    "sport:scoreMethod": "penalty",
+    "sport:shootoutHomeScore": null,
+    "sport:shootoutAwayScore": null,
+    "sport:participation": [
+      {
+        "@id": "urn:sportradar:team-participation:sr:competitor:9001",
+        "@type": "sport:TeamParticipation",
+        "sport:participationBy": {
+          "@id": "urn:sportradar:team:sr:competitor:9001",
+          "@type": "sport:Team",
+          "sport:label": "Synthetic Home SC"
+        }
+      },
+      {
+        "@id": "urn:sportradar:player-participation:sr:player:9101",
+        "@type": "sport:IndividualParticipation",
+        "sport:participationBy": {
+          "@id": "urn:sportradar:player:sr:player:9101",
+          "@type": "sport:Athlete",
+          "sport:label": "Synthetic Scorer"
+        },
+        "sport:playerRole": "scorer"
+      }
+    ]
+  },
+  {
+    "@context": {
+      "sport": "https://sportschema.org/ontologies/main/"
+    },
+    "@id": "urn:sportradar:action:sr:action:9000002",
+    "@type": "sport:Action",
+    "type": "yellow_card",
+    "competitor": "away",
+    "sport:label": "Yellow Card at 67' - Regular Period",
+    "sport:actionType": "spsocaction:yellow-card",
+    "sport:minutesElapsed": "67",
+    "sport:actionDateTime": "2026-03-01T21:12:40+00:00",
+    "sport:periodValue": "2",
+    "sport:periodType": "regular_period",
+    "sport:fieldLocation": null,
+    "commentaries": [],
+    "sport:cardType": "yellow",
+    "sport:cardColor": "yellow",
+    "sport:participation": [
+      {
+        "@id": "urn:sportradar:team-participation:sr:competitor:9002",
+        "@type": "sport:TeamParticipation",
+        "sport:participationBy": {
+          "@id": "urn:sportradar:team:sr:competitor:9002",
+          "@type": "sport:Team",
+          "sport:label": "Synthetic Away SC"
+        }
+      }
+    ]
+  }
+]

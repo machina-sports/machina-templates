@@ -1,0 +1,62 @@
+{
+  "@context": {
+    "sport": "https://sportschema.org/ontologies/main/",
+    "spsocstat": "https://sportschema.org/ontologies/soccer/",
+    "spstat": "https://sportschema.org/ontologies/corestatistics/"
+  },
+  "@id": "urn:apifootball:sport_event:9000",
+  "@type": "sport:Event",
+  "rdfs:label": "Synthetic Home FC vs Synthetic Away FC",
+  "sport:participation": [
+    {
+      "@id": "urn:apifootball:team-participation:9001",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Synthetic Home FC participation",
+      "sport:participationBy": {
+        "@id": "urn:apifootball:team:9001",
+        "@type": "sport:Team",
+        "rdfs:label": "Synthetic Home FC",
+        "schema:logo": ""
+      },
+      "sport:alignment": "home",
+      "spstat:timeOfPossessionPercentage": "57",
+      "spsocstat:shotsTotal": 14,
+      "spsocstat:shotsOnGoalTotal": 6,
+      "spsocstat:shotsBlocked": 3,
+      "spsocstat:cornerKicks": 7,
+      "spsocstat:foulsCommited": 9,
+      "spsocstat:offsides": 2,
+      "spsocstat:cautionsTotal": 1,
+      "spsocstat:ejectionsTotal": 0,
+      "spsocstat:saves": 2,
+      "spsocstat:passesTotal": 512,
+      "spsocstat:passesComplete": 441,
+      "spsocstat:passesCompletePercentage": "86"
+    },
+    {
+      "@id": "urn:apifootball:team-participation:9002",
+      "@type": "sport:TeamParticipation",
+      "rdfs:label": "Synthetic Away FC participation",
+      "sport:participationBy": {
+        "@id": "urn:apifootball:team:9002",
+        "@type": "sport:Team",
+        "rdfs:label": "Synthetic Away FC",
+        "schema:logo": ""
+      },
+      "sport:alignment": "away",
+      "spstat:timeOfPossessionPercentage": "43",
+      "spsocstat:shotsTotal": 8,
+      "spsocstat:shotsOnGoalTotal": 3,
+      "spsocstat:shotsBlocked": 1,
+      "spsocstat:cornerKicks": 3,
+      "spsocstat:foulsCommited": 12,
+      "spsocstat:offsides": 1,
+      "spsocstat:cautionsTotal": 3,
+      "spsocstat:ejectionsTotal": 0,
+      "spsocstat:saves": 4,
+      "spsocstat:passesTotal": 388,
+      "spsocstat:passesComplete": 299,
+      "spsocstat:passesCompletePercentage": "77"
+    }
+  ]
+}

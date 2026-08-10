@@ -1,0 +1,203 @@
+{
+  "_comment": [
+    "Terms currently emitted under an official IPTC namespace that are verbatim or",
+    "camelCased transliterations of a PROVIDER field name. These are the",
+    "'provider-specific properties in the IPTC namespace' counter (gate 4)",
+    "#027 section D4.",
+    "",
+    "WHY THIS IS A TABLE AND NOT AN INFERENCE. Nothing in the term",
+    "'sport:doubleHeader' says it came from a Sportradar MLB payload. The only",
+    "honest way to attribute a term to a provider is to look at the mapping that",
+    "emits it and at that provider's field names, then write the attribution down",
+    "where a reviewer can check it. So this table is derived by inspection of the",
+    "mapping YAML listed under `derived_from`, and it is reviewable rather than",
+    "magical.",
+    "",
+    "RELATIONSHIP TO THE UNKNOWN-TERMS COUNTER. Every term here is also an",
+    "undeclared term in an official namespace, so it is also counted by the",
+    "unknown-`sport:`-terms counter. That is deliberate: the two counters answer",
+    "different questions ('is this a real IPTC term?' and 'whose vocabulary is this",
+    "really?'). The audit reports both and states the overlap. Do not add the two",
+    "together and call it a total.",
+    "",
+    "NOT IN THIS TABLE, ON PURPOSE: generically-named invented terms such as",
+    "sport:homeScore, sport:awayScore, sport:qualifier, sport:status, sport:label,",
+    "sport:year. They are invented, not provider-branded, so they belong to the",
+    "unknown-terms counter alone.",
+    "",
+    "PR 2 removes these terms from the official namespace. It does not extend this",
+    "table."
+  ],
+  "namespaces_in_scope": [
+    "https://sportschema.org/ontologies/",
+    "https://www.sportschema.org/ontologies/sport#"
+  ],
+  "providers": {
+    "api-football": {
+      "derived_from": [
+        "agent-templates/iptc-mappings/api-football/event-mapping.yml",
+        "agent-templates/iptc-mappings/api-football/event-players-stats.yml"
+      ],
+      "local_names": [
+        "captain",
+        "halfTime",
+        "jerseyNumber",
+        "minutesPlayed",
+        "rating",
+        "substitute"
+      ]
+    },
+    "sportradar-soccer": {
+      "derived_from": [
+        "connectors/sportradar-soccer/mappings/iptc-sport-event.yml",
+        "connectors/sportradar-soccer/mappings/iptc-team.yml"
+      ],
+      "local_names": [
+        "abbreviation",
+        "aggregate",
+        "cardColor",
+        "cardType",
+        "channelName",
+        "channelUrl",
+        "channels",
+        "matchStatus",
+        "penaltyStatus",
+        "periodType",
+        "scoreMethod",
+        "shootoutAttempt",
+        "shootoutAwayScore",
+        "shootoutHomeScore",
+        "statLabel",
+        "statParticipant",
+        "statType",
+        "statValue"
+      ]
+    },
+    "sportradar-nfl": {
+      "derived_from": ["connectors/sportradar-nfl/mappings/iptc-sport-event.yml"],
+      "local_names": [
+        "broadcast",
+        "clock",
+        "defense",
+        "duration",
+        "efficiency",
+        "extraPoints",
+        "fieldGoals",
+        "firstDowns",
+        "fumbles",
+        "gameInfo",
+        "interceptions",
+        "jersey",
+        "kickReturns",
+        "kickoffs",
+        "matchStatus",
+        "passing",
+        "puntReturns",
+        "punts",
+        "quarter",
+        "receiving",
+        "rushing",
+        "summary",
+        "teamStatistics",
+        "touchdowns",
+        "weather"
+      ]
+    },
+    "sportradar-mlb": {
+      "derived_from": ["connectors/sportradar-mlb/mappings/iptc-sport-event.yml"],
+      "local_names": [
+        "abbreviation",
+        "doubleHeader",
+        "gameNumber",
+        "market",
+        "matchStatus",
+        "probablePitcher"
+      ]
+    },
+    "sportradar-tennis": {
+      "derived_from": [
+        "connectors/sportradar-tennis/mappings/iptc-event-mapping.yml",
+        "agent-templates/iptc-mappings/sportradar-tennis/event-mapping.yml"
+      ],
+      "local_names": [
+        "bestOf",
+        "bracketNumber",
+        "categoryId",
+        "categoryName",
+        "competitionContext",
+        "competitionDepth",
+        "competitionLevel",
+        "competitorId",
+        "competitorName",
+        "competitorStats",
+        "coverage",
+        "detailedServeOutcomes",
+        "documentType",
+        "enhancedStats",
+        "estimated",
+        "eventDetails",
+        "gameInfo",
+        "genderCategory",
+        "groupId",
+        "groupName",
+        "groups",
+        "hasChildren",
+        "hasWinner",
+        "indoor",
+        "isChildCompetition",
+        "isFinished",
+        "matchType",
+        "mode",
+        "parentId",
+        "playByPlay",
+        "roundName",
+        "roundNumber",
+        "seasonContext",
+        "seasonEndDate",
+        "seasonStartDate",
+        "seed",
+        "selected",
+        "stagePhase",
+        "startTimeConfirmed",
+        "surfaceType",
+        "totalSets",
+        "winnerId"
+      ]
+    },
+    "stats-perform-opta": {
+      "derived_from": [
+        "connectors/stats-perform/mappings/iptc-sport-event.yml",
+        "connectors/stats-perform/mappings/iptc-team.yml",
+        "connectors/stats-perform/mappings/iptc-player.yml"
+      ],
+      "local_names": [
+        "clubCode",
+        "clubId",
+        "competitionCode",
+        "competitionId",
+        "competitionName",
+        "countryId",
+        "coverageLevel",
+        "knownName",
+        "localDate",
+        "localTime",
+        "matchInfo",
+        "matchName",
+        "nationalityId",
+        "neutral",
+        "numberOfPeriods",
+        "periodLength",
+        "seasonId",
+        "shirtNumber",
+        "teamType",
+        "timeline",
+        "var",
+        "week"
+      ]
+    },
+    "american-football": {
+      "derived_from": ["connectors/american-football/mappings/iptc-american-football-event-mapping.yml"],
+      "local_names": ["gameInfo", "halfTime"]
+    }
+  }
+}

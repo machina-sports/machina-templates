@@ -1,0 +1,324 @@
+@prefix dcterms:   <http://purl.org/dc/terms/> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+@prefix sport:     <https://sportschema.org/ontologies/main/> .
+@prefix spvolstat: <https://sportschema.org/ontologies/volleyball/> .
+
+<https://sportschema.org/ontologies/volleyball/>
+    rdf:type owl:Ontology ;
+    dcterms:title "IPTC Sport Schema - Volleyball statistics"@en ;
+    rdfs:label "IPTC Sport Schema - Volleyball statistics"@en ;
+    dcterms:created "2023-10-04"^^xsd:date ;
+    dcterms:modified "2024-10-02"^^xsd:date ;
+    dcterms:creator "IPTC Sports Content Working Group"@en ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:rights "Copyright (C) International Press Telecommunications Council 2024. Released under the Creative Commons Attribution (CC-BY) 4.0 licence."@en ;
+    dcterms:description "Add-on ontology to IPTC Sport Schema, covering volleyball statistics."@en ;
+    rdfs:isDefinedBy spvolstat: ;
+    owl:versionIRI <https://sportschema.org/ontologies/volleyball/1.1> ;
+    owl:versionInfo "1.1"^^xsd:string .
+
+spvolstat:errorsOppenent rdf:type owl:DatatypeProperty ; 
+        rdfs:label "errorsOppenent"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:faultsOpponent rdf:type owl:DatatypeProperty ; 
+        rdfs:label "faultsOpponent"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:points rdf:type owl:DatatypeProperty ; 
+        rdfs:label "points"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:pointAttempts rdf:type owl:DatatypeProperty ; 
+        rdfs:label "pointAttempts"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:attacksRank rdf:type owl:DatatypeProperty ; 
+        rdfs:label "attacksRank"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:attacksTotal rdf:type owl:DatatypeProperty ; 
+        rdfs:label "attacksTotal"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:attackAttempts rdf:type owl:DatatypeProperty ; 
+        rdfs:label "attackAttempts"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:attackFaults rdf:type owl:DatatypeProperty ; 
+        rdfs:label "attackFaults"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:attacksInPlay rdf:type owl:DatatypeProperty ; 
+        rdfs:label "attacksInPlay"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:attacksPercentage rdf:type owl:DatatypeProperty ; 
+        rdfs:label "attacksPercentage"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:blocksRank rdf:type owl:DatatypeProperty ; 
+        rdfs:label "blocksRank"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:blocksTotal rdf:type owl:DatatypeProperty ; 
+        rdfs:label "blocksTotal"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:blockAttempts rdf:type owl:DatatypeProperty ; 
+        rdfs:label "blockAttempts"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:blockFaults rdf:type owl:DatatypeProperty ; 
+        rdfs:label "blockFaults"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:blocksInPlay rdf:type owl:DatatypeProperty ; 
+        rdfs:label "blocksInPlay"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:blocksAveragePerSet rdf:type owl:DatatypeProperty ; 
+        rdfs:label "blocksAveragePerSet"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:serviceRank rdf:type owl:DatatypeProperty ; 
+        rdfs:label "serviceRank"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:aces rdf:type owl:DatatypeProperty ; 
+        rdfs:label "aces"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:servicesTotal rdf:type owl:DatatypeProperty ; 
+        rdfs:label "servicesTotal"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:serviceFaults rdf:type owl:DatatypeProperty ; 
+        rdfs:label "serviceFaults"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:servicesInPlay rdf:type owl:DatatypeProperty ; 
+        rdfs:label "servicesInPlay"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:acesAveragePerSet rdf:type owl:DatatypeProperty ; 
+        rdfs:label "acesAveragePerSet"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:defenseRank rdf:type owl:DatatypeProperty ; 
+        rdfs:label "defenseRank"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:digsTotal rdf:type owl:DatatypeProperty ; 
+        rdfs:label "digsTotal"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:digAttempts rdf:type owl:DatatypeProperty ; 
+        rdfs:label "digAttempts"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:digsFaults rdf:type owl:DatatypeProperty ; 
+        rdfs:label "digsFaults"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:digsInPlay rdf:type owl:DatatypeProperty ; 
+        rdfs:label "digsInPlay"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:digsAveragePerSet rdf:type owl:DatatypeProperty ; 
+        rdfs:label "digsAveragePerSet"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:defenseRankSets rdf:type owl:DatatypeProperty ; 
+        rdfs:label "defenseRankSets"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:runningSetsTotal rdf:type owl:DatatypeProperty ; 
+        rdfs:label "runningSetsTotal"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:setsAttempts rdf:type owl:DatatypeProperty ; 
+        rdfs:label "setsAttempts"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:setsFaults rdf:type owl:DatatypeProperty ; 
+        rdfs:label "setsFaults"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:setsInPlay rdf:type owl:DatatypeProperty ; 
+        rdfs:label "setsInPlay"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:setsAveragePerSet rdf:type owl:DatatypeProperty ; 
+        rdfs:label "setsAveragePerSet"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:receptionsRank rdf:type owl:DatatypeProperty ; 
+        rdfs:label "receptionsRank"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:receptionsExcellent rdf:type owl:DatatypeProperty ; 
+        rdfs:label "receptionsExcellent"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:receptionsAttempts rdf:type owl:DatatypeProperty ; 
+        rdfs:label "receptionsAttempts"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:receptionFaults rdf:type owl:DatatypeProperty ; 
+        rdfs:label "receptionFaults"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:receptionsInPlay rdf:type owl:DatatypeProperty ; 
+        rdfs:label "receptionsInPlay"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:receptionPercentage rdf:type owl:DatatypeProperty ; 
+        rdfs:label "receptionPercentage"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:pointsPlayer rdf:type owl:DatatypeProperty ; 
+        rdfs:label "pointsPlayer"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:pointAttemptsPlayer rdf:type owl:DatatypeProperty ; 
+        rdfs:label "pointAttemptsPlayer"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	spvolstat:pointsPercentageOfTeam rdf:type owl:DatatypeProperty ; 
+        rdfs:label "pointsPercentageOfTeam"@en ; 
+        rdfs:comment ""@en ; 
+        rdfs:domain sport:Participation ; 
+        rdfs:range xsd:integer ; 
+        rdf:isDefinedBy <https://sportschema.org/ontologies/volleyball> . 
+        
+	

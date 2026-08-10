@@ -1,0 +1,1769 @@
+{
+    "@graph": [
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4537",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4537"
+            },
+            "rdfs:label": "Branden Troock membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Team/l.nhl.com-t.21",
+            "rdfs:label": "Dallas Stars",
+            "@type": "sport:Team"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4537",
+            "sport:dateOfBirth": {
+                "@value": "1994-03-20",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Branden Troock",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.1192",
+            "sport:dateOfBirth": {
+                "@value": "1980-05-09",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Vernon Fiddler",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4435",
+            "sport:dateOfBirth": {
+                "@value": "1984-12-27",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Mike Hedden",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3724",
+            "sport:uniformNumber": "10",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3724"
+            },
+            "rdfs:label": "Justin Dowling membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3724",
+            "sport:dateOfBirth": {
+                "@value": "1990-10-01",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Justin Dowling",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2732",
+            "sport:uniformNumber": "4",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2732"
+            },
+            "rdfs:label": "Jason Demers membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2732",
+            "sport:dateOfBirth": {
+                "@value": "1988-06-09",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jason Demers",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4173",
+            "sport:uniformNumber": "42",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4173"
+            },
+            "rdfs:label": "Troy Vance membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4173",
+            "sport:dateOfBirth": {
+                "@value": "1993-08-02",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Troy Vance",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3691",
+            "sport:dateOfBirth": {
+                "@value": "1992-05-03",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Brendan Ranford",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4806",
+            "sport:dateOfBirth": {
+                "@value": "1995-04-16",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Remi Elie",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4158",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4158"
+            },
+            "rdfs:label": "Emil Molin membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4158",
+            "sport:dateOfBirth": {
+                "@value": "1993-02-03",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Emil Molin",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3872",
+            "sport:uniformNumber": "5",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3872"
+            },
+            "rdfs:label": "Jamie Oleksiak membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3872",
+            "sport:dateOfBirth": {
+                "@value": "1992-12-21",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jamie Oleksiak",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3138",
+            "sport:uniformNumber": "11",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3138"
+            },
+            "rdfs:label": "Curtis McKenzie membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3138",
+            "sport:dateOfBirth": {
+                "@value": "1991-02-22",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Curtis McKenzie",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2841",
+            "sport:dateOfBirth": {
+                "@value": "1990-03-19",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Cameron Gaunce",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4427",
+            "sport:dateOfBirth": {
+                "@value": "1994-04-16",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Gemel Smith",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3716",
+            "sport:uniformNumber": "21",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3716"
+            },
+            "rdfs:label": "Antoine Roussel membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3716",
+            "sport:dateOfBirth": {
+                "@value": "1989-11-21",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Antoine Roussel",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4314",
+            "sport:dateOfBirth": {
+                "@value": "1988-11-07",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Austin Smith",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3454",
+            "sport:dateOfBirth": {
+                "@value": "1992-01-09",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jack Campbell",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.1440",
+            "sport:uniformNumber": "6",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.1440"
+            },
+            "rdfs:label": "Trevor Daley membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.1440",
+            "sport:dateOfBirth": {
+                "@value": "1983-10-09",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Trevor Daley",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.5121",
+            "sport:dateOfBirth": {
+                "@value": "1996-03-17",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Brett Pollock",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3514",
+            "sport:dateOfBirth": {
+                "@value": "1992-01-31",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Tyler Seguin",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2279",
+            "sport:uniformNumber": "38",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2279"
+            },
+            "rdfs:label": "Francis Wathier membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2279",
+            "sport:dateOfBirth": {
+                "@value": "1984-12-07",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Francis Wathier",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4961",
+            "sport:dateOfBirth": {
+                "@value": "1991-01-06",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Ludwig Karlsson",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4464",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4464"
+            },
+            "rdfs:label": "Esa Lindell membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4464",
+            "sport:dateOfBirth": {
+                "@value": "1994-05-23",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Esa Lindell",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.485",
+            "sport:dateOfBirth": {
+                "@value": "1978-10-27",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Toby Petersen",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2940",
+            "sport:dateOfBirth": {
+                "@value": "1991-05-24",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Cody Eakin",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3895",
+            "sport:dateOfBirth": {
+                "@value": "1993-07-01",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Brett Ritchie",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2106",
+            "sport:dateOfBirth": {
+                "@value": "1984-04-21",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Derek Meech",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4349",
+            "sport:uniformNumber": "41",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4349"
+            },
+            "rdfs:label": "Cristopher Nilstorp membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4349",
+            "sport:dateOfBirth": {
+                "@value": "1984-02-16",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Cristopher Nilstorp",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3385",
+            "sport:uniformNumber": "40",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3385"
+            },
+            "rdfs:label": "Jussi Rynnas membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3385",
+            "sport:dateOfBirth": {
+                "@value": "1987-05-22",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jussi Rynnas",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3398",
+            "sport:uniformNumber": "60",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3398"
+            },
+            "rdfs:label": "Tristan King membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3398",
+            "sport:dateOfBirth": {
+                "@value": "1990-11-07",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Tristan King",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2200",
+            "sport:dateOfBirth": {
+                "@value": "1984-01-09",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Travis Morin",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.423",
+            "sport:dateOfBirth": {
+                "@value": "1983-06-13",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jason Spezza",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2561",
+            "sport:dateOfBirth": {
+                "@value": "1983-07-28",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Maxime Fortunus",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4707",
+            "sport:uniformNumber": "43",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/injured"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4707"
+            },
+            "rdfs:label": "Valeri Nichushkin membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4707",
+            "sport:dateOfBirth": {
+                "@value": "1995-03-04",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Valeri Nichushkin",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.1362",
+            "sport:dateOfBirth": {
+                "@value": "1983-11-16",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Kari Lehtonen",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.229",
+            "sport:dateOfBirth": {
+                "@value": "1978-09-17",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Shawn Horcoff",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2764",
+            "sport:uniformNumber": "22",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2764"
+            },
+            "rdfs:label": "Colton Sceviour membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2764",
+            "sport:dateOfBirth": {
+                "@value": "1989-04-20",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Colton Sceviour",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4687",
+            "sport:dateOfBirth": {
+                "@value": "1995-08-16",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Philippe Desrosiers",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4740",
+            "sport:dateOfBirth": {
+                "@value": "1995-07-04",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jason Dickinson",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4546",
+            "sport:dateOfBirth": {
+                "@value": "1994-02-26",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Henri Kiviaho",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4328",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4328"
+            },
+            "rdfs:label": "Matt Mangene membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4328",
+            "sport:dateOfBirth": {
+                "@value": "1989-03-12",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Matt Mangene",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4254",
+            "sport:dateOfBirth": {
+                "@value": "1987-07-26",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jordie Benn",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4397",
+            "sport:uniformNumber": "94",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4397"
+            },
+            "rdfs:label": "Radek Faksa membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4397",
+            "sport:dateOfBirth": {
+                "@value": "1994-01-09",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Radek Faksa",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4284",
+            "sport:uniformNumber": "25",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4284"
+            },
+            "rdfs:label": "Taylor Peters membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4284",
+            "sport:dateOfBirth": {
+                "@value": "1992-01-24",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Taylor Peters",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.485",
+            "sport:uniformNumber": "19",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.485"
+            },
+            "rdfs:label": "Toby Petersen membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4435",
+            "sport:uniformNumber": "26",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4435"
+            },
+            "rdfs:label": "Mike Hedden membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.1393",
+            "sport:uniformNumber": "27",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/injured"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.1393"
+            },
+            "rdfs:label": "Travis Moen membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.1393",
+            "sport:dateOfBirth": {
+                "@value": "1982-04-06",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Travis Moen",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2577",
+            "sport:uniformNumber": "14",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2577"
+            },
+            "rdfs:label": "Jamie Benn membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2577",
+            "sport:dateOfBirth": {
+                "@value": "1989-07-18",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jamie Benn",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3691",
+            "sport:uniformNumber": "39",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3691"
+            },
+            "rdfs:label": "Brendan Ranford membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Competition/l.nhl.com",
+            "sport:sport": {
+                "@id": "medtop:20000965"
+            },
+            "rdfs:label": "National Hockey League",
+            "@type": "sport:Competition"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4054",
+            "sport:dateOfBirth": {
+                "@value": "1992-10-03",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Mattias Backman",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4806",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4806"
+            },
+            "rdfs:label": "Remi Elie membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.423",
+            "sport:uniformNumber": "90",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.423"
+            },
+            "rdfs:label": "Jason Spezza membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.1165",
+            "sport:uniformNumber": "83",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.1165"
+            },
+            "rdfs:label": "Ales Hemsky membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.1165",
+            "sport:dateOfBirth": {
+                "@value": "1983-08-13",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Ales Hemsky",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.229",
+            "sport:uniformNumber": "10",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.229"
+            },
+            "rdfs:label": "Shawn Horcoff membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2377",
+            "sport:uniformNumber": "33",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2377"
+            },
+            "rdfs:label": "Alex Goligoski membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2377",
+            "sport:dateOfBirth": {
+                "@value": "1985-07-30",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Alex Goligoski",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4427",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4427"
+            },
+            "rdfs:label": "Gemel Smith membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3625",
+            "sport:dateOfBirth": {
+                "@value": "1992-08-14",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "John Klingberg",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2528",
+            "sport:uniformNumber": "1",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2528"
+            },
+            "rdfs:label": "Jhonas Enroth membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2528",
+            "sport:dateOfBirth": {
+                "@value": "1988-06-25",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jhonas Enroth",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4187",
+            "sport:dateOfBirth": {
+                "@value": "1993-07-11",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Matej Stransky",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4314",
+            "sport:uniformNumber": "9",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4314"
+            },
+            "rdfs:label": "Austin Smith membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4460",
+            "sport:dateOfBirth": {
+                "@value": "1994-07-20",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Ludwig Bystrom",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4878",
+            "sport:dateOfBirth": {
+                "@value": "1992-12-08",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Mattias Janmark-Nylen",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/TeamParticipation/l.nhl.com-2015-l.nhl.com-t.21",
+            "sport:participationBy": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "rdfs:label": "Dallas Stars participation in competition l.nhl.com-2015",
+            "@type": "sport:TeamParticipation"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3501",
+            "sport:uniformNumber": "37",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3501"
+            },
+            "rdfs:label": "Patrick Nemeth membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.3501",
+            "sport:dateOfBirth": {
+                "@value": "1992-02-08",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Patrick Nemeth",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4253",
+            "sport:dateOfBirth": {
+                "@value": "1985-08-12",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Ryan Garbutt",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2968",
+            "sport:uniformNumber": "2",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2968"
+            },
+            "rdfs:label": "William Wrenn membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2968",
+            "sport:dateOfBirth": {
+                "@value": "1991-03-16",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "William Wrenn",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.5121",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.5121"
+            },
+            "rdfs:label": "Brett Pollock membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3514",
+            "sport:uniformNumber": "91",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/injured"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3514"
+            },
+            "rdfs:label": "Tyler Seguin membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.1907",
+            "sport:uniformNumber": "18",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.1907"
+            },
+            "rdfs:label": "Patrick Eaves membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.1907",
+            "sport:dateOfBirth": {
+                "@value": "1984-05-01",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Patrick Eaves",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4961",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4961"
+            },
+            "rdfs:label": "Ludwig Karlsson membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2149",
+            "sport:uniformNumber": "17",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2149"
+            },
+            "rdfs:label": "Rich Peverley membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2149",
+            "sport:dateOfBirth": {
+                "@value": "1982-07-08",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Rich Peverley",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.5032",
+            "sport:dateOfBirth": {
+                "@value": "1989-12-01",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Josh Robinson",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.4053",
+            "sport:dateOfBirth": {
+                "@value": "1991-08-20",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Jyrki Jokipakka",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2934",
+            "sport:uniformNumber": "46",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2934"
+            },
+            "rdfs:label": "Ryan Button membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2934",
+            "sport:dateOfBirth": {
+                "@value": "1991-03-26",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Ryan Button",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.5099",
+            "sport:dateOfBirth": {
+                "@value": "1995-12-03",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Julius Honka",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3895",
+            "sport:uniformNumber": "20",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3895"
+            },
+            "rdfs:label": "Brett Ritchie membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2919",
+            "sport:uniformNumber": "15",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2919"
+            },
+            "rdfs:label": "Scott Glennie membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.2919",
+            "sport:dateOfBirth": {
+                "@value": "1991-02-22",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Scott Glennie",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.1192",
+            "sport:uniformNumber": "38",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.1192"
+            },
+            "rdfs:label": "Vernon Fiddler membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Competition/l.nhl.com-2015",
+            "sport:participation": {
+                "@id": "http://example.com/TeamParticipation/l.nhl.com-2015-l.nhl.com-t.21"
+            },
+            "sport:parent": {
+                "@id": "http://example.com/Competition/l.nhl.com"
+            },
+            "rdfs:label": "National Hockey League 2015",
+            "@type": "sport:Competition"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4687",
+            "sport:uniformNumber": "70",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4687"
+            },
+            "rdfs:label": "Philippe Desrosiers membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4740",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4740"
+            },
+            "rdfs:label": "Jason Dickinson membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2841",
+            "sport:uniformNumber": "36",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2841"
+            },
+            "rdfs:label": "Cameron Gaunce membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4546",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4546"
+            },
+            "rdfs:label": "Henri Kiviaho membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4254",
+            "sport:uniformNumber": "24",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4254"
+            },
+            "rdfs:label": "Jordie Benn membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3454",
+            "sport:uniformNumber": "1",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3454"
+            },
+            "rdfs:label": "Jack Campbell membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Athlete/l.nhl.com-p.740",
+            "sport:dateOfBirth": {
+                "@value": "1974-04-15",
+                "@type": "xsd:date"
+            },
+            "rdfs:label": "Tim Thomas",
+            "@type": "sport:Athlete"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4054",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4054"
+            },
+            "rdfs:label": "Mattias Backman membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2940",
+            "sport:uniformNumber": "20",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2940"
+            },
+            "rdfs:label": "Cody Eakin membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.3625",
+            "sport:uniformNumber": "3",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.3625"
+            },
+            "rdfs:label": "John Klingberg membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4187",
+            "sport:uniformNumber": "28",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/right-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4187"
+            },
+            "rdfs:label": "Matej Stransky membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4878",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4878"
+            },
+            "rdfs:label": "Mattias Janmark-Nylen membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2106",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2106"
+            },
+            "rdfs:label": "Derek Meech membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4460",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4460"
+            },
+            "rdfs:label": "Ludwig Bystrom membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4253",
+            "sport:uniformNumber": "16",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/left-forward"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4253"
+            },
+            "rdfs:label": "Ryan Garbutt membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2200",
+            "sport:uniformNumber": "39",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/center"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2200"
+            },
+            "rdfs:label": "Travis Morin membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.2561",
+            "sport:uniformNumber": "73",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.2561"
+            },
+            "rdfs:label": "Maxime Fortunus membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.1362",
+            "sport:uniformNumber": "32",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.1362"
+            },
+            "rdfs:label": "Kari Lehtonen membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.5032",
+            "sport:uniformNumber": "30",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.5032"
+            },
+            "rdfs:label": "Josh Robinson membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.4053",
+            "sport:uniformNumber": "2",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/active"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.4053"
+            },
+            "rdfs:label": "Jyrki Jokipakka membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.740",
+            "sport:uniformNumber": "30",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/goalie"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.740"
+            },
+            "rdfs:label": "Tim Thomas membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        },
+        {
+            "@id": "http://example.com/Membership/l.nhl.com-t.21-l.nhl.com-p.5099",
+            "sport:positionRegular": {
+                "@id": "http://cv.iptc.org/newscodes/spichposition/defenseman"
+            },
+            "sport:membershipStatus": {
+                "@id": "http://cv.iptc.org/newscodes/spphasestatus/inactive"
+            },
+            "sport:membershipOf": {
+                "@id": "http://example.com/Team/l.nhl.com-t.21"
+            },
+            "sport:member": {
+                "@id": "http://example.com/Athlete/l.nhl.com-p.5099"
+            },
+            "rdfs:label": "Julius Honka membership of Dallas Stars",
+            "@type": "sport:IndividualMembership"
+        }
+    ],
+    "@context": {
+        "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+        "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+        "schemaorg": "https://schema.org/",
+        "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "spstat": "https://sportschema.org/ontologies/corestatistics/",
+        "spespstat": "https://sportschema.org/ontologies/esports/",
+        "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+        "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+        "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+        "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+        "spct": "http://cv.iptc.org/newscodes/spct/",
+        "sport": "https://sportschema.org/ontologies/main/",
+        "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+        "spsocstat": "https://sportschema.org/ontologies/soccer/"
+    }
+}

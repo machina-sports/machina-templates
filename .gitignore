@@ -20,3 +20,12 @@
 __pycache__/
 agent-templates/weekly-token-report/connectors/__pycache__/
 .mcp.json
+
+# Python bytecode and local virtualenvs. tools/iptc is an importable package, so
+# running the harness or its tests writes __pycache__ trees next to the sources;
+# none of it belongs in a PR diff.
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/

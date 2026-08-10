@@ -1,0 +1,94 @@
+name: Validate IPTC Sport Schema
+
+# Gates the IPTC Sport Schema 1.1 foundation: the pinned upstream bytes, the shared
+# JSON-LD context, the offline validation harness, and the two checked-in reports.
+#
+# WHAT THIS WORKFLOW ASSERTS, AND WHY IT IS NOT "the baseline passes".
+# The baseline fixtures are EXPECTED to fail conformance — that is the recorded
+# finding of PR 1, not a defect. So the gate is that the recorded failure reports
+# are still exactly reproducible. A legacy fixture continuing to fail keeps CI
+# green; a changed count, or a report that no longer matches the harness, turns it
+# red. Pretending legacy output passes would make every later conformance claim
+# unfalsifiable.
+#
+# REPOSITORY-WIDE AI-ROUTE LINTS ARE DELIBERATELY NOT DUPLICATED HERE.
+# `scripts/check-no-openai.sh all` and `scripts/check-ai-command-inventory.py` are
+# owned by `.github/workflows/lint-no-openai.yml`, which triggers on EVERY
+# pull_request and on pushes to main with no path filter. It therefore already
+# covers every file this workflow touches. Re-running them behind the path filter
+# below would add no coverage and would actively mislead: a change outside these
+# paths would skip this workflow, so a reviewer could wrongly read a skipped run
+# as "the AI-route lint did not apply". One owner per check.
+
+on:
+  pull_request:
+    paths:
+      - "agent-templates/iptc-mappings/**"
+      - "tools/iptc/**"
+      - "tools/__init__.py"
+      - "tests/test_iptc_validation_harness.py"
+      - "docs/iptc/**"
+      - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
+      - "requirements-iptc-validator.txt"
+      - "requirements-validator.txt"
+      - ".github/workflows/validate-iptc-sport-schema.yml"
+  push:
+    paths:
+      - "agent-templates/iptc-mappings/**"
+      - "tools/iptc/**"
+      - "tools/__init__.py"
+      - "tests/test_iptc_validation_harness.py"
+      - "docs/iptc/**"
+      - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
+      - "requirements-iptc-validator.txt"
+      - "requirements-validator.txt"
+      - ".github/workflows/validate-iptc-sport-schema.yml"
+
+# This workflow only reads the tree and runs the offline harness. It publishes
+# nothing and needs no write scope.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Scoped to this workflow. requirements-iptc-validator.txt pulls in
+      # requirements-validator.txt itself, so the base pins stay in one place while
+      # the agent-builder workflow never installs rdflib/pyshacl.
+      - run: python -m pip install -r requirements-iptc-validator.txt
+
+      # The pin first: if a vendored upstream byte changed, every conformance
+      # result below is void and there is no point reading further.
+      - name: Verify the pinned upstream bytes and the shared context
+        run: python -m tools.iptc --verify-pin
+
+      # Run the file directly rather than via `-m unittest tests...`. `tests/` is a
+      # namespace directory with no `__init__.py`, so any installed distribution that
+      # ships a top-level regular `tests` package wins on sys.path and the module
+      # never resolves. Executing the file cannot be shadowed.
+      - name: Harness unit tests
+        run: python tests/test_iptc_validation_harness.py -v
+
+      # Reproducibility gate. Covers all four generated artefacts:
+      # docs/iptc/baseline-audit.json, docs/iptc/BASELINE-AUDIT.md,
+      # docs/iptc/inventory.json, docs/iptc/INVENTORY.md.
+      - name: Baseline audit and inventory are current
+        run: python -m tools.iptc --check
+
+      # Guards against __pycache__ or a regenerated report leaking into a PR as
+      # untracked or modified content.
+      - name: Working tree is clean after running the harness
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Running the harness left the working tree dirty:"
+            git status --porcelain
+            echo
+            echo "Either a generated report is stale (run: python3 -m tools.iptc)"
+            echo "or a cache artefact is not ignored."
+            exit 1
+          fi

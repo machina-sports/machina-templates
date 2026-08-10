@@ -1,0 +1,134 @@
+{
+  "@context": {
+    "sport": "https://www.sportschema.org/ontologies/sport#",
+    "schema": "https://schema.org/"
+  },
+  "@id": "urn:opta:sport_event:synthetic0matchid001",
+  "@type": [
+    "sport:Event",
+    "schema:SportsEvent"
+  ],
+  "name": "Synthetic Home United vs Synthetic Away Town",
+  "schema:startDate": "2026-03-01T20:00:00Z",
+  "schema:sportName": "football",
+  "sport:localDate": "2026-03-01",
+  "sport:localTime": "20:00:00",
+  "sport:coverageLevel": "13",
+  "sport:var": true,
+  "sport:status": "Played",
+  "sport:week": "27",
+  "sport:competition": {
+    "@id": "urn:opta:competition:synthetic0compid001",
+    "@type": "sport:Competition",
+    "name": "Synthetic Premier Division",
+    "sport:knownName": "Synthetic Premier Division",
+    "sport:competitionCode": "SPD",
+    "sport:competitionFormat": "Domestic league",
+    "sport:season": {
+      "@id": "urn:opta:season:synthetic0tcalid001",
+      "@type": "sport:Season",
+      "name": "2025/2026",
+      "sport:startDate": "2025-08-08",
+      "sport:endDate": "2026-05-24"
+    }
+  },
+  "sport:stage": {
+    "@id": "urn:opta:stage:synthetic0stageid01",
+    "@type": "sport:Stage",
+    "name": "Regular Season",
+    "sport:startDate": "2025-08-08",
+    "sport:endDate": "2026-05-24"
+  },
+  "sport:venue": {
+    "@type": "sport:Venue",
+    "@id": "urn:opta:venue:synthetic0venueid01",
+    "name": "Synthetic Home Ground",
+    "sport:shortName": "SHG",
+    "sport:neutral": "no",
+    "schema:latitude": 51.5,
+    "schema:longitude": -0.1
+  },
+  "sport:competitors": [
+    {
+      "@type": "sport:Team",
+      "@id": "urn:opta:team:synthetic0teamid001",
+      "name": "Synthetic Home United",
+      "sport:officialName": "Synthetic Home United FC",
+      "sport:shortName": "Home Utd",
+      "sport:code": "SHU",
+      "sport:qualifier": "home"
+    },
+    {
+      "@type": "sport:Team",
+      "@id": "urn:opta:team:synthetic0teamid002",
+      "name": "Synthetic Away Town",
+      "sport:officialName": "Synthetic Away Town FC",
+      "sport:shortName": "Away Twn",
+      "sport:code": "SAT",
+      "sport:qualifier": "away"
+    }
+  ],
+  "sport:score": {
+    "sport:homeScore": 2,
+    "sport:awayScore": 1,
+    "sport:halfTime": {
+      "sport:homeScore": 1,
+      "sport:awayScore": 0
+    },
+    "sport:penalties": null,
+    "sport:aggregate": null
+  },
+  "sport:matchInfo": {
+    "sport:numberOfPeriods": 2,
+    "sport:periodLength": 45,
+    "sport:attendance": "60123",
+    "sport:winner": "home"
+  },
+  "version_control": {
+    "processing": false,
+    "finished": false,
+    "counter": 0,
+    "consumer-update-timestamp": null
+  },
+  "sport:timeline": [
+    {
+      "@context": {
+        "sport": "https://sportschema.org/ontologies/main/"
+      },
+      "@id": "urn:opta:action:synthetic0eventid01",
+      "@type": "sport:Action",
+      "type": "G",
+      "competitor": "home",
+      "sport:label": "G at 23' - Period 1",
+      "sport:actionType": "http://cv.iptc.org/newscodes/spsocaction/g",
+      "sport:minutesElapsed": "23",
+      "sport:actionDateTime": "2026-03-01T20:23:11Z",
+      "sport:periodValue": "1",
+      "sport:participation": [
+        {
+          "@id": "urn:opta:team-participation:synthetic0teamid001",
+          "@type": "sport:TeamParticipation",
+          "sport:participationBy": {
+            "@id": "urn:opta:team:synthetic0teamid001",
+            "@type": "sport:Team",
+            "sport:label": "Synthetic Home United"
+          }
+        },
+        {
+          "@id": "urn:opta:player-participation:synthetic0persoid01",
+          "@type": "sport:IndividualParticipation",
+          "sport:participationBy": {
+            "@id": "urn:opta:player:synthetic0persoid01",
+            "@type": "sport:Athlete",
+            "sport:label": "Synthetic Scorer"
+          }
+        }
+      ],
+      "commentaries": [
+        {
+          "text": "Synthetic Scorer - G (23:11)"
+        }
+      ]
+    }
+  ]
+}
