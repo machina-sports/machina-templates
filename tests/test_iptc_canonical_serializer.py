@@ -1269,6 +1269,24 @@ class TestVendoringConstraints(unittest.TestCase):
                 self.assertTrue(path.is_file(), path)
                 json.loads(path.read_text(encoding="utf-8"))
 
+    def test_rfc_002_names_every_file_that_has_to_be_vendored(self):
+        """A vendoring list in prose that omits a runtime file is a broken install
+        of a published package, discovered by whoever copies the list.
+
+        Mechanical for the same reason RFC 002 §1.1's required list is: A7 added
+        two files to this boundary (``vocab.py``, because ``serialize.py`` needs
+        its tables and ``sports-skills`` cannot import this repository, and
+        ``shared-context.json``, because there is no ``tools.iptc.context``
+        downstream) and prose does not notice when that happens.
+        """
+        section = rfc_section(RFC_002_PATH, "10")
+        for name in VENDORED_RUNTIME_MODULES + VENDORED_RUNTIME_DATA:
+            with self.subTest(vendored=name):
+                self.assertIn(
+                    "`{0}`".format(name), section,
+                    "{0} is vendored and RFC 002 §10 does not name it".format(name),
+                )
+
     def test_no_vendored_module_imports_tools(self):
         for name in VENDORED_RUNTIME_MODULES:
             with self.subTest(module=name):

@@ -386,9 +386,17 @@ production rights must refuse such an envelope rather than downgrade quietly.
 ## 10. Vendoring
 
 `sports-skills` is a published zero-dependency package and cannot import this
-repository, so `observation.py`, `ids.py`, `capabilities.py`, `serialize.py` and
-`official-property-names.json` are vendored **byte-exact**, not reimplemented.
-Two reimplementations of one contract diverge; the only question is when.
+repository, so `observation.py`, `ids.py`, `capabilities.py`, `vocab.py`,
+`serialize.py`, `official-property-names.json` and `shared-context.json` are
+vendored **byte-exact**, not reimplemented. Two reimplementations of one contract
+diverge; the only question is when.
+
+`vocab.py` and `shared-context.json` joined that list when `serialize.py` landed.
+`serialize.py` emits NewsCodes through `vocab.newscode`, so inlining those tables
+would create exactly the second copy this section exists to prevent; and it inlines
+the shared JSON-LD context, which it cannot read from `tools.iptc.context` because
+there is no such module downstream. Both are therefore package-local, and a test in
+this repository asserts this list names every file the runtime actually needs.
 
 Those modules are therefore **Python 3.9-compatible and standard-library only**,
 and must not import `tools.*`. `export_official_terms.py` may — it is a
