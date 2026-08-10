@@ -120,12 +120,22 @@ package is not justified by a key walk.
   expands to nothing at all.
 - **`adapter.source_refs` is optional, and its values are endpoint classes.**
   Each entry carries `kind` and `value`, plus an optional `note`, and nothing
-  else. A `value` containing `://`, `?`, `&`, `key=`, `token=`, `secret` or
-  `Authorization` is an **error**: it is a request rather than an endpoint class,
-  and a request is how an API key or a licensed path ends up committed to a
-  fixture file. Rejected here rather than stripped by the serializer, because
-  stripping would let such a fixture validate clean and the fixture is the
-  artefact that gets published. Optional because most adapters have nothing to
+  else. Any of those three fields containing `://`, `?`, `&`, `api_key`,
+  `api-key`, `apikey`, `key=`, `token`, `authorization`, `bearer`, `secret`,
+  `password` or `cookie` is an **error**: it is a request or a credential rather
+  than an endpoint class, and a request is how an API key or a licensed path ends
+  up committed to a fixture file. **Matching is case-insensitive** (`str.casefold`
+  on both sides) and covers all three published fields. Both properties are the
+  fix for a real bypass: while the markers were matched as raw substrings against
+  `value` alone, `Authorization: …` was refused and `authorization: …` accepted,
+  `token=abc` refused and `TOKEN=abc` accepted, `key=abc` refused and
+  `API_KEY=abc` accepted — and an accepted value is serialized into
+  `provenance.source_refs` under a note reading "no URL, query or credential is
+  recorded". Rejected here rather than *only* stripped by the serializer, because
+  stripping alone would let such a fixture validate clean and the fixture is the
+  artefact that gets published; the serializer additionally drops any entry that
+  matches, reading the same rule, so that a caller invoking it without validating
+  first cannot publish one either. Optional because most adapters have nothing to
   add beyond their name and version, and a required field with nothing to say
   gets filled with a placeholder.
 - **Datetimes are validated for form**, including an explicit offset. A naive
@@ -269,7 +279,8 @@ for consumers reading RDF. Same facts.
 request-shaped artefact: it is how an API key, a licensed path or a customer
 identifier ends up committed to a fixture file. It is projected from
 `observation.adapter.source_refs` (§1.1), which is where the request-shape check
-lives, and it is **omitted entirely** when the adapter supplies none.
+lives, and it is **omitted entirely** when the adapter supplies none — including
+when every entry supplied was dropped for matching that check.
 
 `determinism` is **declared by the injected `id_resolver`**, not stated by the
 serializer. `surrogate_resolver` publishes it as `ids.STRATEGY`, and

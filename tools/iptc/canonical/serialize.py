@@ -50,6 +50,7 @@ from .observation import (
     PLACEHOLDERS,
     RESOLUTION_DEFAULT,
     RESOLUTION_METHODS,
+    source_ref_credential_findings,
     validate_observation,
 )
 from .vocab import (
@@ -719,16 +720,26 @@ SOURCE_REF_NOTE = "endpoint class only; no URL, query or credential is recorded"
 def _source_refs(adapter):
     """``adapter.source_refs`` reduced to ``kind``/``value``/``note``.
 
-    ``validate_observation`` has already refused anything request-shaped, so this
-    only has to project. Entries the adapter left unannotated get the note that
-    states the constraint they were accepted under.
+    Entries carrying a credential or a request are dropped rather than projected,
+    using ``observation.source_ref_credential_findings`` — the same rule that
+    refuses them at the boundary, not a second copy of it. Dropping here is not a
+    relaxation of that refusal: :func:`canonical_envelope` still raises, and
+    ``validate_observation`` still reports. It is what makes this function fail
+    closed when it is called on its own, which it can be — it used to project
+    whatever it was handed on the grounds that the validator had run, and nothing
+    made that true.
+
+    Entries the adapter left unannotated get the note that states the constraint
+    they were accepted under. That note reads "no URL, query or credential is
+    recorded", so stamping it onto an entry that holds one is the specific lie
+    this filter exists to prevent.
     """
     refs = adapter.get("source_refs")
     if not isinstance(refs, list):
         return []
     projected = []
     for ref in refs:
-        if not isinstance(ref, dict):
+        if not isinstance(ref, dict) or source_ref_credential_findings(ref):
             continue
         entry = {}
         _put(entry, "kind", _text(ref.get("kind")))
