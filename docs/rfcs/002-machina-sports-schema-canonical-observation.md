@@ -59,7 +59,8 @@ package is not justified by a key walk.
   "observation": {
     "provider":   { "namespace": "sports-skills/espn", "family": "open-data" },
     "observed_at": "2026-03-01T22:05:00+00:00",
-    "adapter":    { "name": "sports_skills.canonical.adapters.football", "version": "0.31.0" },
+    "adapter":    { "name": "sports_skills.canonical.adapters.football", "version": "0.31.0",
+                    "source_refs": [ { "kind": "endpoint-class", "value": "espn/summary" } ] },
     "rights":     { "data_class": "public-non-commercial", "prototype_only": true,
                     "commercial_use": false },
     "sport":      { "medtop": "20001065", "key": "soccer" },
@@ -117,6 +118,16 @@ package is not justified by a key walk.
   by nothing else, so a local-name check accepts `spsocstat:startDateTime`, and
   it accepts `notpinned:shotsTotal` — a CURIE under a prefix nothing binds, which
   expands to nothing at all.
+- **`adapter.source_refs` is optional, and its values are endpoint classes.**
+  Each entry carries `kind` and `value`, plus an optional `note`, and nothing
+  else. A `value` containing `://`, `?`, `&`, `key=`, `token=`, `secret` or
+  `Authorization` is an **error**: it is a request rather than an endpoint class,
+  and a request is how an API key or a licensed path ends up committed to a
+  fixture file. Rejected here rather than stripped by the serializer, because
+  stripping would let such a fixture validate clean and the fixture is the
+  artefact that gets published. Optional because most adapters have nothing to
+  add beyond their name and version, and a required field with nothing to say
+  gets filled with a placeholder.
 - **Datetimes are validated for form**, including an explicit offset. A naive
   timestamp is ambiguous by an unknown number of hours and is rejected.
 - **`observed_at` is an input**, never sampled. Nothing in this package reads the
@@ -233,7 +244,22 @@ for consumers reading RDF. Same facts.
 
 `source_refs` records an **endpoint class, never a URL**. A URL is a
 request-shaped artefact: it is how an API key, a licensed path or a customer
-identifier ends up committed to a fixture file.
+identifier ends up committed to a fixture file. It is projected from
+`observation.adapter.source_refs` (§1.1), which is where the request-shape check
+lives, and it is **omitted entirely** when the adapter supplies none.
+
+`determinism` is **declared by the injected `id_resolver`**, not stated by the
+serializer. `surrogate_resolver` publishes it as `ids.STRATEGY`, and
+`provenance_block` reads it off the callable it was handed. The resolver is
+injected precisely so a later phase can swap in the canonical identity service; a
+serializer that hard-coded the current resolver's digest would quietly start lying
+on the day that happens. A resolver that declares nothing produces **no
+`determinism` key** — omission over fabrication reaches provenance too.
+
+Because a vendored module cannot import `tools.iptc.reference`, the pin constants
+are carried in `tools/iptc/canonical/__init__.py` and a test asserts they equal
+the ones this repository actually verifies. A conformance claim citing a pin
+nobody checked is worse than no claim.
 
 Provider identifiers are **evidence attached to a Machina identity, never the
 identity**:

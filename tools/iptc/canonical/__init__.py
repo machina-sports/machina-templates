@@ -36,9 +36,25 @@ MACHINA_SCHEMA_VERSION = "machina-sports-schema/1"
 #: it is evidence in a document, not a number to compare.
 SERIALIZER_VERSION = "1"
 
+#: The serializer's name as provenance records it.
+SERIALIZER_NAME = "machina-iptc-serializer"
+
+#: The upstream pin every conformance claim cites. A second copy of
+#: ``tools.iptc.reference``'s constants, forced by the vendoring boundary: a
+#: vendored module cannot import ``tools.*``, and provenance has to name the pin.
+#: A test in this repository asserts the two agree, and that assertion is the only
+#: thing keeping a document from citing a pin nobody verified.
+UPSTREAM_REPOSITORY = "https://github.com/iptc/sport-schema"
+UPSTREAM_COMMIT = "0e77bf8678f3702fe81c28673bede35efe47d633"
+UPSTREAM_TARGET_VERSION = "1.1"
+
 __all__ = [
     "PROFILE_VERSION",
     "SCHEMA_VERSION",
     "MACHINA_SCHEMA_VERSION",
     "SERIALIZER_VERSION",
+    "SERIALIZER_NAME",
+    "UPSTREAM_REPOSITORY",
+    "UPSTREAM_COMMIT",
+    "UPSTREAM_TARGET_VERSION",
 ]

@@ -299,6 +299,54 @@ def _check_adapter(observation, errors):
     for key in ("name", "version"):
         if key not in adapter:
             errors.append("observation.adapter.{0}: required field is missing".format(key))
+    _check_source_refs(adapter, errors)
+
+
+#: Substrings that make a ``source_refs`` value a request rather than an endpoint
+#: class. A URL is how an API key, a licensed path or a customer identifier ends
+#: up committed to a fixture file, and a fixture is the artefact that gets
+#: published. Rejected here rather than stripped by the serializer: stripping
+#: would let such a fixture validate clean, which is the wrong place to be lenient.
+_REQUEST_SHAPED = ("://", "?", "&", "key=", "token=", "secret", "Authorization")
+
+
+def _check_source_refs(adapter, errors):
+    """``adapter.source_refs`` is optional; when present it names endpoint classes.
+
+    Optional because most adapters have nothing to add beyond their own name and
+    version, and a required field with nothing to say gets filled with a
+    placeholder.
+    """
+    refs = adapter.get("source_refs")
+    if refs is None:
+        return
+    if not isinstance(refs, list):
+        errors.append("observation.adapter.source_refs: expected an array")
+        return
+    for index, ref in enumerate(refs):
+        pointer = "observation.adapter.source_refs[{0}]".format(index)
+        if not isinstance(ref, dict):
+            errors.append("{0}: expected an object".format(pointer))
+            continue
+        extra = sorted(set(ref) - {"kind", "value", "note"})
+        if extra:
+            errors.append("{0}: unexpected key(s) {1}; only kind, value and note "
+                          "are recorded".format(pointer, ", ".join(extra)))
+        for key in ("kind", "value"):
+            if not isinstance(ref.get(key), str) or not ref.get(key):
+                errors.append("{0}.{1}: required non-empty string is missing".format(
+                    pointer, key))
+        value = ref.get("value")
+        if isinstance(value, str):
+            for marker in _REQUEST_SHAPED:
+                if marker in value:
+                    errors.append(
+                        "{0}.value: '{1}' looks like a request rather than an "
+                        "endpoint class (contains '{2}'). Record the endpoint "
+                        "class only; no URL, query or credential.".format(
+                            pointer, value, marker)
+                    )
+                    break
 
 
 def validate_observation(document):

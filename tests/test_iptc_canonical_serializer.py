@@ -61,6 +61,7 @@ from tools.iptc.canonical.observation import (  # noqa: E402
 from tools.iptc.canonical import vocab  # noqa: E402
 from tools.iptc.canonical.serialize import (  # noqa: E402
     SHARED_CONTEXT_PATH,
+    provenance_block,
     provider_identifiers,
     shared_context,
     sport_schema_graph,
@@ -840,7 +841,9 @@ def graph_observation():
         "observation": {
             "provider": {"namespace": "api-football", "family": "licensed"},
             "observed_at": "2026-03-01T22:05:00+00:00",
-            "adapter": {"name": "tests.synthetic", "version": "0"},
+            "adapter": {"name": "tests.synthetic", "version": "0",
+                        "source_refs": [{"kind": "endpoint-class",
+                                         "value": "api-football/fixtures"}]},
             "rights": {"data_class": "licensed-redistributable",
                        "prototype_only": False, "commercial_use": True},
             "sport": {"medtop": "20001065", "key": "soccer"},
@@ -1432,6 +1435,150 @@ class TestProviderIdAsResourceIdRule(unittest.TestCase):
             for token in sorted(profile_module.PROVIDER_NAMESPACE_TOKENS):
                 with self.subTest(node=node["@id"], token=token):
                     self.assertNotIn(token, node["@id"])
+
+
+class TestProvenanceBlock(unittest.TestCase):
+    """A10 — provenance appears twice for two audiences, with the same facts.
+
+    An envelope block for consumers reading JSON, one
+    ``machina:ObservationProvenance`` resource for consumers reading RDF (RFC 002
+    §5). Both are built from the observation, and a test below asserts they agree.
+    """
+
+    def block(self, document=None, resolver=None):
+        return provenance_block(document or MINIMAL,
+                                id_resolver=resolver or mint())["provenance"]
+
+    def test_the_block_cites_the_pin_and_the_profile(self):
+        block = self.block()
+        self.assertEqual(block["upstream_pin"]["commit"],
+                         "0e77bf8678f3702fe81c28673bede35efe47d633")
+        self.assertEqual(block["upstream_pin"]["target_version"], "1.1")
+        self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
+        self.assertEqual(block["observed_at"], "2026-03-01T22:05:00+00:00")
+        self.assertEqual(block["serializer"],
+                         {"name": "machina-iptc-serializer", "version": "1"})
+
+    def test_the_pin_the_vendored_package_carries_is_the_pin_this_repo_verifies(self):
+        """``serialize.py`` cannot import ``tools.iptc.reference``, so the package
+        carries the pin itself. Same discipline as ``PLACEHOLDERS`` and
+        ``shared-context.json``: a second copy is only safe while something
+        asserts it is a copy. A conformance claim citing a pin the repository does
+        not actually verify is worse than no claim.
+        """
+        from tools.iptc import reference
+
+        self.assertEqual(canonical.UPSTREAM_COMMIT, reference.UPSTREAM_COMMIT)
+        self.assertEqual(canonical.UPSTREAM_REPOSITORY, reference.UPSTREAM_REPOSITORY)
+        self.assertEqual(canonical.UPSTREAM_TARGET_VERSION, reference.TARGET_VERSION)
+
+    def test_the_observation_provider_and_adapter_are_carried_verbatim(self):
+        block = self.block()
+        self.assertEqual(block["provider"],
+                         {"namespace": "api-football", "family": "licensed"})
+        self.assertEqual(block["adapter"]["version"], "0.31.0")
+        self.assertEqual(block["rights"], MINIMAL["observation"]["rights"])
+
+    def test_no_url_or_credential_is_recorded(self):
+        """``source_refs`` records an endpoint *class*. A URL is a request-shaped
+        artefact, and it is how an API key or a licensed path ends up committed to
+        a fixture file."""
+        blob = json.dumps(self.block(graph_observation()))
+        blob = blob.replace("https://github.com/iptc/sport-schema", "")
+        for token in ("http://", "https://", "key=", "token=", "Authorization",
+                      "secret", "?"):
+            with self.subTest(token=token):
+                self.assertNotIn(token, blob)
+
+    def test_determinism_is_declared_by_the_resolver_not_asserted_here(self):
+        """The resolver is injected precisely so it can be swapped, so the
+        serializer cannot know its digest. It reads what the resolver declares
+        about itself instead of restating the current one from memory."""
+        block = self.block()
+        self.assertEqual(block["determinism"], {
+            "id_strategy": "provider-scoped-surrogate",
+            "digest": "blake2b-128",
+            "canonical_id_service": "not-available-in-this-phase",
+        })
+        self.assertEqual(surrogate_resolver("api-football").strategy,
+                         block["determinism"])
+
+    def test_a_resolver_that_declares_nothing_omits_the_determinism_block(self):
+        """Omission over fabrication reaches provenance too. A future injected
+        resolver that says nothing about itself must produce no claim, not the
+        previous resolver's claim."""
+        def anonymous(kind, *parts):
+            return "urn:machina:sports:{0}:x0".format(kind)
+
+        self.assertNotIn("determinism", self.block(resolver=anonymous))
+
+    def test_source_refs_are_omitted_when_the_adapter_supplies_none(self):
+        self.assertNotIn("source_refs", self.block())
+
+    def test_source_refs_carry_kind_value_and_note_and_nothing_else(self):
+        block = self.block(graph_observation())
+        self.assertEqual(block["source_refs"], [{
+            "kind": "endpoint-class",
+            "value": "api-football/fixtures",
+            "note": "endpoint class only; no URL, query or credential is recorded",
+        }])
+
+    def test_a_source_ref_holding_a_url_is_rejected_at_the_boundary(self):
+        """Stopped by ``validate_observation`` rather than stripped by the
+        serializer. Stripping would let a fixture carrying a credentialled URL
+        validate clean, and the fixture is the thing that gets committed."""
+        observation = copy.deepcopy(graph_observation())
+        observation["observation"]["adapter"]["source_refs"] = [
+            {"kind": "endpoint-class",
+             "value": "https://v3.football.api-sports.io/fixtures?id=9001"}
+        ]
+        errors = validate_observation(observation)
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("source_refs", errors[0])
+
+    def test_the_rich_fixture_with_source_refs_is_still_a_valid_observation(self):
+        self.assertEqual(validate_observation(graph_observation()), [])
+
+
+class TestProvenanceResource(unittest.TestCase):
+    """A10 — the RDF half of the same facts, on its own ``machina:`` resource."""
+
+    def setUp(self):
+        self.doc = sport_schema_graph(MINIMAL, id_resolver=mint())
+
+    def test_the_graph_carries_one_provenance_resource_describing_the_event(self):
+        event = typed(self.doc, "sport:Event")[0]
+        provenance = typed(self.doc, "machina:ObservationProvenance")
+        self.assertEqual(len(provenance), 1)
+        self.assertEqual(provenance[0]["machina:describes"], {"@id": event["@id"]})
+        self.assertEqual(provenance[0]["machina:observedAt"],
+                         {"@value": "2026-03-01T22:05:00+00:00",
+                          "@type": "xsd:dateTime"})
+
+    def test_the_provenance_resource_is_not_an_official_resource(self):
+        """It is `machina:`-typed and carries only `machina:` and `rdfs:` keys.
+        A `machina:` property on a `sport:` resource fails layer 2 for the whole
+        document, which is why this is a sibling and not an annotation."""
+        provenance = typed(self.doc, "machina:ObservationProvenance")[0]
+        for key in provenance:
+            with self.subTest(key=key):
+                self.assertFalse(key.startswith("sport:"))
+
+    def test_the_resource_and_the_block_agree_on_every_shared_fact(self):
+        """Two representations of one observation. They are allowed to carry
+        different amounts of detail; they are not allowed to disagree."""
+        provenance = typed(self.doc, "machina:ObservationProvenance")[0]
+        block = provenance_block(MINIMAL, id_resolver=mint())["provenance"]
+        self.assertEqual(provenance["machina:observedAt"]["@value"],
+                         block["observed_at"])
+        self.assertEqual(provenance["machina:providerNamespace"],
+                         block["provider"]["namespace"])
+        self.assertEqual(provenance["machina:adapterVersion"],
+                         block["adapter"]["version"])
+        self.assertEqual(provenance["machina:serializerVersion"],
+                         block["serializer"]["version"])
+        self.assertEqual(provenance["machina:rightsClass"],
+                         block["rights"]["data_class"])
 
 
 

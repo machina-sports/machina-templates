@@ -36,7 +36,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from . import SERIALIZER_VERSION
+from . import (
+    PROFILE_VERSION,
+    SERIALIZER_NAME,
+    SERIALIZER_VERSION,
+    UPSTREAM_COMMIT,
+    UPSTREAM_REPOSITORY,
+    UPSTREAM_TARGET_VERSION,
+)
 from .observation import PLACEHOLDERS
 from .vocab import (
     ACTION_CLASS,
@@ -516,6 +523,68 @@ def _crosswalk_entries(observation, ids):
         for kind, machina_id, provider_id, evidence in entries
         if machina_id and _text(provider_id) is not None
     ]
+
+
+#: The one note a ``source_refs`` entry carries when the adapter did not write its
+#: own, stating the constraint the value was accepted under.
+SOURCE_REF_NOTE = "endpoint class only; no URL, query or credential is recorded"
+
+
+def _source_refs(adapter):
+    """``adapter.source_refs`` reduced to ``kind``/``value``/``note``.
+
+    ``validate_observation`` has already refused anything request-shaped, so this
+    only has to project. Entries the adapter left unannotated get the note that
+    states the constraint they were accepted under.
+    """
+    refs = adapter.get("source_refs")
+    if not isinstance(refs, list):
+        return []
+    projected = []
+    for ref in refs:
+        if not isinstance(ref, dict):
+            continue
+        entry = {}
+        _put(entry, "kind", _text(ref.get("kind")))
+        _put(entry, "value", _text(ref.get("value")))
+        if not entry:
+            continue
+        entry["note"] = _text(ref.get("note")) or SOURCE_REF_NOTE
+        projected.append(entry)
+    return projected
+
+
+def provenance_block(document, *, id_resolver):
+    """The envelope's provenance block (RFC 002 §5).
+
+    Every conformance claim cites the profile **and** the pin, because "conforms
+    to Sport Schema 1.1" without a commit is a claim about a moving target.
+
+    ``determinism`` is read off ``id_resolver`` rather than stated here. The
+    resolver is injected so a later phase can swap in the canonical identity
+    service; a serializer that hard-coded the current resolver's digest would
+    quietly start lying on the day that happens, and a provenance block that can
+    be wrong is worse than one that omits.
+    """
+    observation = _observation(document)
+    adapter = _section(observation, "adapter")
+    block = {}
+    _put(block, "provider", dict(_section(observation, "provider")))
+    _put(block, "adapter", dict(adapter))
+    if isinstance(block.get("adapter"), dict):
+        block["adapter"].pop("source_refs", None)
+    block["serializer"] = {"name": SERIALIZER_NAME, "version": SERIALIZER_VERSION}
+    block["profile"] = PROFILE_VERSION
+    block["upstream_pin"] = {
+        "repository": UPSTREAM_REPOSITORY,
+        "commit": UPSTREAM_COMMIT,
+        "target_version": UPSTREAM_TARGET_VERSION,
+    }
+    _put(block, "observed_at", _text(observation.get("observed_at")))
+    _put(block, "source_refs", _source_refs(adapter))
+    _put(block, "rights", dict(_section(observation, "rights")))
+    _put(block, "determinism", dict(getattr(id_resolver, "strategy", None) or {}))
+    return {"provenance": block}
 
 
 def provider_identifiers(document, *, id_resolver):

@@ -41,6 +41,18 @@ URN_PREFIX = "urn:machina:sports"
 #: concern at any plausible fixture volume, narrow enough to stay readable.
 DIGEST_SIZE = 16
 
+#: How this resolver describes itself for the provenance block's ``determinism``.
+#:
+#: The resolver declares it rather than the serializer stating it, because the
+#: serializer takes ``id_resolver`` precisely so it can be swapped and therefore
+#: cannot know what it was handed. A resolver that declares nothing produces no
+#: determinism claim at all — omission over fabrication applies to provenance too.
+STRATEGY = {
+    "id_strategy": "provider-scoped-surrogate",
+    "digest": "blake2b-{0}".format(DIGEST_SIZE * 8),
+    "canonical_id_service": "not-available-in-this-phase",
+}
+
 
 def surrogate_resolver(namespace):
     """Return an ``id_resolver`` scoped to one provider namespace.
@@ -65,4 +77,8 @@ def surrogate_resolver(namespace):
         ).hexdigest()
         return "{0}:{1}:{2}{3}".format(URN_PREFIX, kind, SURROGATE_MARKER, digest)
 
+    # Attached to the callable so provenance can read the strategy off the
+    # resolver it was actually given, rather than restating the resolver that
+    # happened to exist when the serializer was written.
+    resolve.strategy = dict(STRATEGY)
     return resolve
