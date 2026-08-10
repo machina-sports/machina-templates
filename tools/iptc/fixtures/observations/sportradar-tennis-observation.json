@@ -1,0 +1,274 @@
+{
+  "schema_version": "canonical-observation/1",
+  "observation": {
+    "provider": {
+      "namespace": "sportradar-tennis",
+      "family": "licensed"
+    },
+    "observed_at": "2026-03-01T22:05:00+00:00",
+    "adapter": {
+      "name": "tools.iptc.canonical.adapters.sportradar_tennis",
+      "version": "1",
+      "source_refs": [
+        {
+          "kind": "legacy-mapping-output",
+          "value": "iptc-sportradar-tennis-event-mapping",
+          "note": "legacy mapping-contract shape, not raw provider data; no Sportradar endpoint was called and no credential exists"
+        }
+      ]
+    },
+    "rights": {
+      "data_class": "legacy-mapping-contract-shape",
+      "prototype_only": true,
+      "commercial_use": false
+    },
+    "sport": {
+      "medtop": "20001085",
+      "key": "tennis"
+    },
+    "competition": {
+      "provider_id": "sr:competition:9001",
+      "name": "Synthetic Open",
+      "season": {
+        "provider_id": "sr:season:9001",
+        "name": "Synthetic Open 2026"
+      }
+    },
+    "site": {
+      "provider_id": "sr:venue:9001",
+      "name": "Synthetic Centre Court",
+      "city": "Synthetic City",
+      "country": "Synthetica"
+    },
+    "event": {
+      "provider_id": "sr:sport_event:9000001",
+      "label": "Synthetic Player A vs Synthetic Player B",
+      "start_time": "2026-01-20T09:00:00+00:00",
+      "status": "closed"
+    },
+    "participants": [
+      {
+        "kind": "individual",
+        "provider_id": "sr:competitor:9101",
+        "name": "Synthetic Player A",
+        "alignment": "home",
+        "score": "2",
+        "outcome": "win"
+      },
+      {
+        "kind": "individual",
+        "provider_id": "sr:competitor:9102",
+        "name": "Synthetic Player B",
+        "alignment": "away",
+        "score": "1",
+        "outcome": "loss"
+      }
+    ],
+    "raw": {
+      "@context": {
+        "sport": "https://www.sportschema.org/ontologies/sport#",
+        "schema": "https://schema.org/"
+      },
+      "@id": "urn:sportradar:tennis:match:sr:sport_event:9000001",
+      "@type": [
+        "sport:Event",
+        "schema:SportsEvent"
+      ],
+      "name": "Synthetic Player A vs Synthetic Player B - Synthetic Open",
+      "schema:startDate": "2026-01-20T09:00:00+00:00",
+      "schema:sportName": "tennis",
+      "sport:status": "ended",
+      "sport:competition": {
+        "@id": "urn:sportradar:tennis:competition:sr:competition:9001",
+        "@type": "sport:Competition",
+        "name": "Synthetic Open",
+        "sport:season": {
+          "@id": "urn:sportradar:tennis:season:sr:season:9001",
+          "@type": "sport:Season",
+          "name": "Synthetic Open 2026",
+          "sport:year": "2026"
+        }
+      },
+      "sport:venue": {
+        "@type": "sport:Venue",
+        "@id": "urn:sportradar:tennis:venue:sr:venue:9001",
+        "name": "Synthetic Centre Court",
+        "schema:addressLocality": "Synthetic City",
+        "schema:addressCountry": "Synthetica",
+        "sport:timezone": "UTC"
+      },
+      "sport:competitors": [
+        {
+          "@type": "sport:Competitor",
+          "@id": "urn:sportradar:tennis:competitor:sr:competitor:9101",
+          "name": "Synthetic Player A",
+          "sport:qualifier": "home",
+          "sport:country": "Synthetica",
+          "sport:countryCode": "SYN",
+          "sport:abbreviation": "PLA",
+          "sport:seed": 3,
+          "sport:bracketNumber": 1
+        },
+        {
+          "@type": "sport:Competitor",
+          "@id": "urn:sportradar:tennis:competitor:sr:competitor:9102",
+          "name": "Synthetic Player B",
+          "sport:qualifier": "away",
+          "sport:country": "Synthetica",
+          "sport:countryCode": "SYN",
+          "sport:abbreviation": "PLB",
+          "sport:seed": null,
+          "sport:bracketNumber": 2
+        }
+      ],
+      "sport:score": {
+        "sport:homeScore": 2,
+        "sport:awayScore": 1,
+        "sport:periodScores": [
+          {
+            "sport:periodNumber": 1,
+            "sport:homeScore": 6,
+            "sport:awayScore": 4,
+            "sport:periodType": "set"
+          },
+          {
+            "sport:periodNumber": 2,
+            "sport:homeScore": 3,
+            "sport:awayScore": 6,
+            "sport:periodType": "set"
+          },
+          {
+            "sport:periodNumber": 3,
+            "sport:homeScore": 7,
+            "sport:awayScore": 5,
+            "sport:periodType": "set"
+          }
+        ]
+      },
+      "sport:gameInfo": {
+        "sport:round": "Quarterfinal",
+        "sport:roundNumber": 5,
+        "sport:stagePhase": "main_draw",
+        "sport:bestOf": 3,
+        "sport:totalSets": 3,
+        "sport:isFinished": true,
+        "sport:hasWinner": true,
+        "sport:winnerId": "sr:competitor:9101",
+        "sport:status": "closed"
+      },
+      "sport:sport": {
+        "@id": "urn:iptc:sport:tennis",
+        "@type": "sport:Sport",
+        "name": "Tennis"
+      },
+      "sport:competitionFormat": {
+        "sport:matchType": "singles",
+        "sport:genderCategory": "men",
+        "sport:level": "atp_250"
+      },
+      "sport:stage": {
+        "@type": "sport:Stage",
+        "sport:phase": "main_draw",
+        "sport:type": "cup",
+        "sport:order": 0,
+        "sport:startDate": "2026-01-12",
+        "sport:endDate": "2026-01-25"
+      },
+      "sport:coverage": {
+        "sport:detailedServeOutcomes": true,
+        "sport:enhancedStats": true,
+        "sport:playByPlay": true,
+        "sport:scores": "detailed"
+      },
+      "sport:statistics": {
+        "sport:competitorStats": [
+          {
+            "sport:competitorId": "sr:competitor:9101",
+            "sport:competitorName": "Synthetic Player A",
+            "sport:qualifier": "home",
+            "sport:abbreviation": "PLA",
+            "sport:statistics": {
+              "sport:aces": 9,
+              "sport:breakpointsWon": 4,
+              "sport:doubleFaults": 2,
+              "sport:firstServePointsWon": 51,
+              "sport:firstServeSuccessful": 68,
+              "sport:gamesWon": 16,
+              "sport:maxGamesInARow": 4,
+              "sport:maxPointsInARow": 7,
+              "sport:pointsWon": 104,
+              "sport:pointsWonFromLast10": 6,
+              "sport:secondServePointsWon": 19,
+              "sport:secondServeSuccessful": 31,
+              "sport:serviceGamesWon": 12,
+              "sport:servicePointsLost": 31,
+              "sport:servicePointsWon": 70,
+              "sport:tiebreaksWon": 0,
+              "sport:totalBreakpoints": 9
+            }
+          },
+          {
+            "sport:competitorId": "sr:competitor:9102",
+            "sport:competitorName": "Synthetic Player B",
+            "sport:qualifier": "away",
+            "sport:abbreviation": "PLB",
+            "sport:statistics": {
+              "sport:aces": 5,
+              "sport:breakpointsWon": 2,
+              "sport:doubleFaults": 5,
+              "sport:firstServePointsWon": 44,
+              "sport:firstServeSuccessful": 61,
+              "sport:gamesWon": 15,
+              "sport:maxGamesInARow": 3,
+              "sport:maxPointsInARow": 5,
+              "sport:pointsWon": 97,
+              "sport:pointsWonFromLast10": 4,
+              "sport:secondServePointsWon": 17,
+              "sport:secondServeSuccessful": 28,
+              "sport:serviceGamesWon": 11,
+              "sport:servicePointsLost": 35,
+              "sport:servicePointsWon": 61,
+              "sport:tiebreaksWon": 0,
+              "sport:totalBreakpoints": 7
+            }
+          }
+        ]
+      },
+      "sport:channels": [
+        {
+          "sport:channelName": "Synthetic Sports 1"
+        }
+      ],
+      "sport:groups": [],
+      "sport:mode": {
+        "sport:bestOf": 3
+      },
+      "sport:round": {
+        "sport:roundName": "Quarterfinal",
+        "sport:roundNumber": 5
+      },
+      "sport:category": {
+        "sport:categoryId": "sr:category:9001",
+        "sport:categoryName": "ATP Synthetic"
+      },
+      "sport:competitionContext": {
+        "sport:parentId": "sr:competition:9000",
+        "sport:competitionGender": "men",
+        "sport:competitionLevel": "atp_250",
+        "sport:competitionType": "singles"
+      },
+      "sport:seasonContext": {
+        "sport:seasonStartDate": "2026-01-12",
+        "sport:seasonEndDate": "2026-01-25"
+      },
+      "sport:eventDetails": {
+        "sport:estimated": false,
+        "sport:startTimeConfirmed": true,
+        "sport:startTime": "2026-01-20T09:00:00+00:00",
+        "sport:documentType": "sportradar-tennis:sport_event_summary",
+        "sport:selected": false,
+        "sport:title": "Unknown Title"
+      }
+    }
+  }
+}
