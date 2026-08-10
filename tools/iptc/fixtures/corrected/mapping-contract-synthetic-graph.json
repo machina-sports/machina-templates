@@ -1,0 +1,260 @@
+{
+  "@context": {
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "sh": "http://www.w3.org/ns/shacl#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "schema": "https://schema.org/",
+    "schemaorg": "https://schema.org/",
+    "sport": "https://sportschema.org/ontologies/main/",
+    "spstat": "https://sportschema.org/ontologies/corestatistics/",
+    "spfacet": "https://sportschema.org/ontologies/sport-facets/",
+    "spamfstat": "https://sportschema.org/ontologies/american-football/",
+    "spbblstat": "https://sportschema.org/ontologies/baseball/",
+    "spbkbstat": "https://sportschema.org/ontologies/basketball/",
+    "spespstat": "https://sportschema.org/ontologies/esports/",
+    "spgolf": "https://sportschema.org/ontologies/golf/",
+    "spgolstat": "https://sportschema.org/ontologies/golf/",
+    "spmcrstat": "https://sportschema.org/ontologies/motor-racing/",
+    "sprgxstat": "https://sportschema.org/ontologies/rugby/",
+    "spsocstat": "https://sportschema.org/ontologies/soccer/",
+    "sptenstat": "https://sportschema.org/ontologies/tennis/",
+    "spvolstat": "https://sportschema.org/ontologies/volleyball/",
+    "medtop": "http://cv.iptc.org/newscodes/mediatopic/",
+    "subj": "http://cv.iptc.org/newscodes/subjectcode/",
+    "ikos": "http://cv.iptc.org/newscodes/ikos/",
+    "aspfacet": "http://cv.iptc.org/newscodes/asportfacet/",
+    "aspfacetvalue": "http://cv.iptc.org/newscodes/asportfacetvalue/",
+    "spactionclass": "http://cv.iptc.org/newscodes/spactionclass/",
+    "spcompetitionscope": "http://cv.iptc.org/newscodes/spcompetitionscope/",
+    "spct": "http://cv.iptc.org/newscodes/spct/",
+    "spesaction": "http://cv.iptc.org/newscodes/spesaction/",
+    "speventoutcome": "http://cv.iptc.org/newscodes/speventoutcome/",
+    "speventoutcometype": "http://cv.iptc.org/newscodes/speventoutcometype/",
+    "speventstatus": "http://cv.iptc.org/newscodes/speventstatus/",
+    "spgolholetype": "http://cv.iptc.org/newscodes/spgolholetype/",
+    "sphorposition": "http://cv.iptc.org/newscodes/sphorposition/",
+    "spichposition": "http://cv.iptc.org/newscodes/spichposition/",
+    "spplayerstatus": "http://cv.iptc.org/newscodes/spplayerstatus/",
+    "spresulteffect": "http://cv.iptc.org/newscodes/spresulteffect/",
+    "spscoreunits": "http://cv.iptc.org/newscodes/spscoreunits/",
+    "spsocactiontype": "http://cv.iptc.org/newscodes/spsocaction/",
+    "spsocposition": "http://cv.iptc.org/newscodes/spsocposition/",
+    "spsocrole": "http://cv.iptc.org/newscodes/spsocrole/",
+    "sptournamentform": "http://cv.iptc.org/newscodes/sptournamentform/",
+    "sptournamentphase": "http://cv.iptc.org/newscodes/sptournamentphase/",
+    "machina": "https://machina.gg/ns/sport/1.0/"
+  },
+  "@graph": [
+    {
+      "@id": "urn:machina:sports:competition:x61fc52d70b36582b394db8c60d565f8d",
+      "@type": "sport:Competition",
+      "rdfs:label": "Synthetic Invitational",
+      "sport:sport": {
+        "@id": "medtop:20000940"
+      },
+      "sport:competitionType": {
+        "@id": "spct:tournament"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:competition:xc21021042867bf64cbbb33e25067c9c9",
+      "@type": "sport:Competition",
+      "rdfs:label": "Synthetic Invitational 2026",
+      "sport:sport": {
+        "@id": "medtop:20000940"
+      },
+      "sport:competitionType": {
+        "@id": "spct:season"
+      },
+      "sport:parent": {
+        "@id": "urn:machina:sports:competition:x61fc52d70b36582b394db8c60d565f8d"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:site:x86cfd5879cbd684a12332cbd2eefe384",
+      "@type": "sport:Site",
+      "rdfs:label": "Synthetic Links Course"
+    },
+    {
+      "@id": "urn:machina:sports:athlete:x7bca3cdff908381d955b73b1176bc6db",
+      "@type": "sport:Athlete",
+      "rdfs:label": "Synthetic Golfer A"
+    },
+    {
+      "@id": "urn:machina:sports:athlete:xdf2b5ca9673437db730f10f0009f488c",
+      "@type": "sport:Athlete",
+      "rdfs:label": "Synthetic Golfer B"
+    },
+    {
+      "@id": "urn:machina:sports:athlete:xf4f487e7546bd6b8cc06731ecdbeecd8",
+      "@type": "sport:Athlete",
+      "rdfs:label": "Synthetic Golfer C"
+    },
+    {
+      "@id": "urn:machina:sports:event:x5c3f7101c34e8dc47b31c18b58a6b844",
+      "@type": "sport:Event",
+      "rdfs:label": "Synthetic Invitational Final Round",
+      "sport:sport": {
+        "@id": "medtop:20000940"
+      },
+      "sport:eventInCompetition": {
+        "@id": "urn:machina:sports:competition:xc21021042867bf64cbbb33e25067c9c9"
+      },
+      "sport:location": {
+        "@id": "urn:machina:sports:site:x86cfd5879cbd684a12332cbd2eefe384"
+      },
+      "sport:startDateTime": {
+        "@value": "2026-02-28T12:00:00+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "sport:eventStatus": {
+        "@id": "speventstatus:post-event"
+      },
+      "sport:participation": [
+        {
+          "@id": "urn:machina:sports:participation:x2cf12d32c9ccc38ca0740d66778ce08c"
+        },
+        {
+          "@id": "urn:machina:sports:participation:x40a042fcd4db0158482dfe97ed3bed4e"
+        },
+        {
+          "@id": "urn:machina:sports:participation:x1d32335e2097bcc1e079aabf4515b943"
+        }
+      ]
+    },
+    {
+      "@id": "urn:machina:sports:participation:x2cf12d32c9ccc38ca0740d66778ce08c",
+      "@type": "sport:IndividualParticipation",
+      "rdfs:label": "Synthetic Golfer A participation in Synthetic Invitational Final Round",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:athlete:x7bca3cdff908381d955b73b1176bc6db"
+      },
+      "sport:score": "68",
+      "sport:eventOutcome": {
+        "@id": "speventoutcome:win"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:participation:x40a042fcd4db0158482dfe97ed3bed4e",
+      "@type": "sport:IndividualParticipation",
+      "rdfs:label": "Synthetic Golfer B participation in Synthetic Invitational Final Round",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:athlete:xdf2b5ca9673437db730f10f0009f488c"
+      },
+      "sport:score": "70",
+      "sport:eventOutcome": {
+        "@id": "speventoutcome:place"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:participation:x1d32335e2097bcc1e079aabf4515b943",
+      "@type": "sport:IndividualParticipation",
+      "rdfs:label": "Synthetic Golfer C participation in Synthetic Invitational Final Round",
+      "sport:participationBy": {
+        "@id": "urn:machina:sports:athlete:xf4f487e7546bd6b8cc06731ecdbeecd8"
+      },
+      "sport:score": "71",
+      "sport:eventOutcome": {
+        "@id": "speventoutcome:show"
+      }
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x3ad31a9ef27f638316165bf510f1ac59",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract competition synthetic-tour-1",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:competition:x61fc52d70b36582b394db8c60d565f8d"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "synthetic-tour-1",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x98fbb70a32d9cfc3935cf4347480c684",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract season synthetic-tour-1-2026",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:competition:xc21021042867bf64cbbb33e25067c9c9"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "synthetic-tour-1-2026",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x1858fd5d267d1c9454992791bbb3cb36",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract site synthetic-course-1",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:site:x86cfd5879cbd684a12332cbd2eefe384"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "synthetic-course-1",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x745e324c96b7df0af5f78bc0d7c34cd8",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract event 9801",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:event:x5c3f7101c34e8dc47b31c18b58a6b844"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "9801",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x3c894bc6a48da2f157234237cd0d3760",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract athlete 9811",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:athlete:x7bca3cdff908381d955b73b1176bc6db"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "9811",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x708a0c7c296e3b3adf300ff86edf4897",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract athlete 9812",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:athlete:xdf2b5ca9673437db730f10f0009f488c"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "9812",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:provider-identifier:x57af5dc94062191f02e3628146874c8a",
+      "@type": "machina:ProviderIdentifier",
+      "rdfs:label": "synthetic/mapping-contract athlete 9813",
+      "machina:identifies": {
+        "@id": "urn:machina:sports:athlete:xf4f487e7546bd6b8cc06731ecdbeecd8"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:providerId": "9813",
+      "machina:resolutionMethod": "declared"
+    },
+    {
+      "@id": "urn:machina:sports:observation-provenance:xa4b93d85af59496cf217634e31c905bb",
+      "@type": "machina:ObservationProvenance",
+      "rdfs:label": "synthetic/mapping-contract observation of event x5c3f7101c34e8dc47b31c18b58a6b844",
+      "machina:describes": {
+        "@id": "urn:machina:sports:event:x5c3f7101c34e8dc47b31c18b58a6b844"
+      },
+      "machina:providerNamespace": "synthetic/mapping-contract",
+      "machina:observedAt": {
+        "@value": "2026-03-01T22:05:00+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "machina:adapterVersion": "1",
+      "machina:serializerVersion": "1",
+      "machina:rightsClass": "mapping-contract-synthetic"
+    }
+  ]
+}

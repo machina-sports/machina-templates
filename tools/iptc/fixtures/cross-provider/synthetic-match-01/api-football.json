@@ -1,0 +1,69 @@
+{
+  "fixture": {
+    "id": 9501,
+    "referee": null,
+    "timezone": "UTC",
+    "date": "2026-03-01T20:00:00+00:00",
+    "timestamp": 1772395200,
+    "periods": {
+      "first": 1772395200,
+      "second": 1772398800
+    },
+    "venue": {
+      "id": 9701,
+      "name": "Synthetic Home Ground",
+      "city": "Synthetic City"
+    },
+    "status": {
+      "long": "Match Finished",
+      "short": "FT",
+      "elapsed": 90
+    }
+  },
+  "league": {
+    "id": 9601,
+    "name": "Synthetic Premier Division",
+    "country": "Syntheticland",
+    "logo": null,
+    "flag": null,
+    "season": 2026,
+    "round": "",
+    "standings": true
+  },
+  "teams": {
+    "home": {
+      "id": 9511,
+      "name": "Synthetic Home United",
+      "logo": null,
+      "winner": true
+    },
+    "away": {
+      "id": 9512,
+      "name": "Synthetic Away Town",
+      "logo": null,
+      "winner": false
+    }
+  },
+  "goals": {
+    "home": 2,
+    "away": 1
+  },
+  "score": {
+    "halftime": {
+      "home": 1,
+      "away": 0
+    },
+    "fulltime": {
+      "home": 2,
+      "away": 1
+    },
+    "extratime": {
+      "home": null,
+      "away": null
+    },
+    "penalty": {
+      "home": null,
+      "away": null
+    }
+  }
+}

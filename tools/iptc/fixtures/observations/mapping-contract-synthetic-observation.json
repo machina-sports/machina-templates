@@ -1,0 +1,81 @@
+{
+  "schema_version": "canonical-observation/1",
+  "observation": {
+    "provider": {
+      "namespace": "synthetic/mapping-contract",
+      "family": "synthetic"
+    },
+    "observed_at": "2026-03-01T22:05:00+00:00",
+    "adapter": {
+      "name": "hand-authored.mapping-contract-synthetic",
+      "version": "1",
+      "source_refs": [
+        {
+          "kind": "mapping-contract",
+          "value": "machina-sports-schema/canonical-observation-1",
+          "note": "hand-authored against the canonical observation contract; no provider payload was read, no endpoint was called and no adapter module exists"
+        }
+      ]
+    },
+    "rights": {
+      "data_class": "mapping-contract-synthetic",
+      "prototype_only": true,
+      "commercial_use": false
+    },
+    "sport": {
+      "medtop": "20000940",
+      "key": "golf"
+    },
+    "competition": {
+      "provider_id": "synthetic-tour-1",
+      "resolution_method": "declared",
+      "name": "Synthetic Invitational",
+      "type": "tournament",
+      "season": {
+        "provider_id": "synthetic-tour-1-2026",
+        "resolution_method": "declared",
+        "name": "Synthetic Invitational 2026"
+      }
+    },
+    "site": {
+      "provider_id": "synthetic-course-1",
+      "resolution_method": "declared",
+      "name": "Synthetic Links Course",
+      "city": "Synthetic City",
+      "country": "Syntheticland"
+    },
+    "event": {
+      "provider_id": "9801",
+      "resolution_method": "declared",
+      "label": "Synthetic Invitational Final Round",
+      "start_time": "2026-02-28T12:00:00+00:00",
+      "status": "closed"
+    },
+    "participants": [
+      {
+        "kind": "individual",
+        "provider_id": "9811",
+        "resolution_method": "declared",
+        "name": "Synthetic Golfer A",
+        "score": "68",
+        "outcome": "win"
+      },
+      {
+        "kind": "individual",
+        "provider_id": "9812",
+        "resolution_method": "declared",
+        "name": "Synthetic Golfer B",
+        "score": "70",
+        "outcome": "place"
+      },
+      {
+        "kind": "individual",
+        "provider_id": "9813",
+        "resolution_method": "declared",
+        "name": "Synthetic Golfer C",
+        "score": "71",
+        "outcome": "show"
+      }
+    ]
+  }
+}
