@@ -43,6 +43,14 @@ if str(REPO_ROOT) not in sys.path:
 from tools.iptc import canonical  # noqa: E402
 from tools.iptc import profile as profile_module  # noqa: E402
 from tools.iptc.canonical import export_official_terms  # noqa: E402
+from tools.iptc.canonical.capabilities import (  # noqa: E402
+    ALL_CAPABILITIES,
+    TIER_OPTIONAL,
+    TIER_ORDER,
+    TIER_REQUIRED,
+    capability_report,
+    check_compatibility,
+)
 from tools.iptc.canonical.ids import SURROGATE_MARKER, surrogate_resolver  # noqa: E402
 from tools.iptc.canonical.observation import (  # noqa: E402
     PLACEHOLDERS,
@@ -267,6 +275,160 @@ class TestObservationValidation(unittest.TestCase):
 
     def test_a_non_dict_document_is_an_error_and_not_an_exception(self):
         self.assertNotEqual(validate_observation([]), [])
+
+
+def rich_observation():
+    """MINIMAL plus everything the live and advanced tiers ask for."""
+    document = copy.deepcopy(MINIMAL)
+    observation = document["observation"]
+    observation["event"]["clock"] = {"minute": "90", "period": "2"}
+    observation["participants"][0]["outcome"] = "win"
+    observation["participants"][1]["outcome"] = "loss"
+    observation["participants"].append({
+        "kind": "individual", "provider_id": "9021", "name": "Synthetic Scorer",
+        "team_provider_id": "9011", "player_status": "starter", "position": "forward",
+        "statistics": {"spsocstat:goalsTotal": "1"},
+    })
+    observation["actions"] = [{
+        "ordinal": 1, "class": "score", "minute": "23", "period": "1",
+        "participant_provider_id": "9021", "label": "Goal",
+    }]
+    return document
+
+
+class TestCapabilities(unittest.TestCase):
+    """A5 — a consumer decides before it parses, and unknown names fail closed."""
+
+    def test_the_rich_fixture_is_itself_a_valid_observation(self):
+        """Otherwise the tier assertions below describe a document no adapter
+        could ever legally produce."""
+        self.assertEqual(validate_observation(rich_observation()), [])
+
+    def test_minimal_observation_reaches_core_only(self):
+        report = capability_report(MINIMAL)["capabilities"]
+        self.assertEqual(report["tier"], "core")
+        self.assertEqual(report["tiers_satisfied"], ["core"])
+        self.assertIn("event.clock", report["absent"])
+        self.assertEqual(report["violations"], [])
+
+    def test_core_required_capabilities_are_all_present_on_the_minimal_fixture(self):
+        report = capability_report(MINIMAL)["capabilities"]
+        for capability in TIER_REQUIRED["core"]:
+            with self.subTest(capability=capability):
+                self.assertIn(capability, report["present"])
+
+    def test_rich_observation_reaches_advanced(self):
+        report = capability_report(rich_observation())["capabilities"]
+        self.assertEqual(report["tier"], "advanced")
+        self.assertEqual(report["tiers_satisfied"], ["core", "live", "advanced"])
+
+    def test_tiers_do_not_skip(self):
+        """Advanced statistics without a clock is still core.
+
+        Reporting ``advanced`` there would tell a consumer it can rely on live
+        data that will never arrive.
+        """
+        document = rich_observation()
+        document["observation"]["event"].pop("clock")
+        report = capability_report(document)["capabilities"]
+        self.assertEqual(report["tier"], "core")
+        self.assertEqual(report["tiers_satisfied"], ["core"])
+        self.assertIn("participant.player_statistics", report["present"])
+
+    def test_an_observation_below_core_reports_no_tier_rather_than_core(self):
+        document = copy.deepcopy(MINIMAL)
+        document["observation"]["competition"].pop("provider_id")
+        report = capability_report(document)["capabilities"]
+        self.assertIsNone(report["tier"])
+        self.assertEqual(report["tiers_satisfied"], [])
+
+    def test_started_event_without_a_score_is_a_violation(self):
+        bad = copy.deepcopy(MINIMAL)
+        for participant in bad["observation"]["participants"]:
+            participant.pop("score")
+        self.assertIn(
+            "score-absent-on-started-event",
+            capability_report(bad)["capabilities"]["violations"],
+        )
+
+    def test_a_prelive_event_without_a_score_is_not_a_violation(self):
+        """The conditional rule is deliberately outside tier gating, so a
+        legitimate pre-match payload still reaches core."""
+        prelive = copy.deepcopy(MINIMAL)
+        prelive["observation"]["event"]["status"] = "not_started"
+        for participant in prelive["observation"]["participants"]:
+            participant.pop("score")
+        report = capability_report(prelive)["capabilities"]
+        self.assertEqual(report["violations"], [])
+        self.assertEqual(report["tier"], "core")
+
+    def test_present_and_absent_partition_every_known_capability(self):
+        report = capability_report(MINIMAL)["capabilities"]
+        self.assertEqual(
+            sorted(report["present"] + report["absent"]), sorted(ALL_CAPABILITIES)
+        )
+        self.assertEqual(set(report["present"]) & set(report["absent"]), set())
+
+    def test_capabilities_the_schema_cannot_carry_are_named_as_such(self):
+        """``event.tracking`` is absent because ``canonical-observation/1`` has
+        no field for it, not because the provider withheld it. A consumer that
+        cannot tell those apart will chase the wrong provider."""
+        report = capability_report(rich_observation())["capabilities"]
+        self.assertIn("event.tracking", report["not_expressible"])
+        self.assertIn("event.tracking", report["absent"])
+        for capability in report["not_expressible"]:
+            with self.subTest(capability=capability):
+                self.assertNotIn(capability, report["present"])
+
+    def test_by_tier_splits_required_from_optional(self):
+        report = capability_report(MINIMAL)["capabilities"]
+        core = report["by_tier"]["core"]
+        self.assertEqual(core["required_absent"], [])
+        self.assertEqual(core["required_present"], sorted(TIER_REQUIRED["core"]))
+        self.assertIn("event.score", core["optional_present"])
+        self.assertIn("event.result", core["optional_absent"])
+
+    def test_requires_is_checked_and_optional_is_only_reported(self):
+        caps = capability_report(MINIMAL)["capabilities"]
+        result = check_compatibility(
+            caps, requires=("event.status",), optional=("event.tracking",)
+        )
+        self.assertTrue(result["compatible"])
+        self.assertEqual(result["missing_optional"], ["event.tracking"])
+        self.assertEqual(result["missing_required"], [])
+
+    def test_a_missing_required_capability_makes_it_incompatible(self):
+        caps = capability_report(MINIMAL)["capabilities"]
+        result = check_compatibility(caps, requires=("event.clock",))
+        self.assertFalse(result["compatible"])
+        self.assertEqual(result["missing_required"], ["event.clock"])
+
+    def test_unknown_capability_fails_closed(self):
+        caps = capability_report(MINIMAL)["capabilities"]
+        result = check_compatibility(caps, requires=("event.staus",))
+        self.assertFalse(result["compatible"])
+        self.assertEqual(result["unknown_capabilities"], ["event.staus"])
+
+    def test_an_unknown_optional_capability_also_fails_closed(self):
+        """A typo is a typo wherever it appears. Reading an unknown optional as
+        'merely absent' is how a consumer ships against a capability that does
+        not exist."""
+        caps = capability_report(MINIMAL)["capabilities"]
+        result = check_compatibility(caps, optional=("event.trackng",))
+        self.assertFalse(result["compatible"])
+        self.assertEqual(result["unknown_capabilities"], ["event.trackng"])
+
+    def test_no_requirements_at_all_is_compatible(self):
+        caps = capability_report(MINIMAL)["capabilities"]
+        self.assertTrue(check_compatibility(caps)["compatible"])
+
+    def test_tier_tables_are_disjoint_and_cover_all_capabilities(self):
+        named = []
+        for tier in TIER_ORDER:
+            named.extend(TIER_REQUIRED[tier])
+            named.extend(TIER_OPTIONAL[tier])
+        self.assertEqual(sorted(named), sorted(set(named)), "a capability is in two tiers")
+        self.assertEqual(sorted(named), sorted(ALL_CAPABILITIES))
 
 
 class TestSurrogateIds(unittest.TestCase):

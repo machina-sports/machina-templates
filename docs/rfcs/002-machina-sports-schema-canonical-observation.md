@@ -315,6 +315,18 @@ including `T` has all of its required capabilities present. Tiers do not skip: a
 observation with advanced statistics but no clock is `core`, because claiming
 `advanced` would tell a consumer it can rely on live data it will not get.
 
+Presence is derived from the observation, one predicate per capability. Five
+capabilities have no predicate because `canonical-observation/1` has **no field
+that could carry them**: `event.coordinates`, `event.tracking`,
+`event.expected_metrics`, `event.formations`, and — as a schema-shape matter
+rather than a provider one — anything a later version adds. Those are reported
+absent, because they are, *and* listed under `not_expressible`.
+
+That second list is not decoration. "The provider did not supply tracking data"
+and "this contract cannot carry tracking data" send a consumer to two different
+places, and only one of them is a conversation with the provider. Collapsing them
+would have consumers chasing a provider for a field no adapter could ever emit.
+
 One conditional rule, kept **out** of tier gating so that a legitimate pre-match
 payload still reaches `core`: `event.score` MUST be present when `event.status`
 is `in_progress` or `closed`. Otherwise `violations` gains
