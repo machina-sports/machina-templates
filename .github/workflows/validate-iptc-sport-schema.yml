@@ -165,6 +165,31 @@ jobs:
             exit 1
           fi
 
+  # THE INSTALLED RUNTIME, NOT THE CHECKOUT COPY.
+  #
+  # This job builds the reviewed release, installs its wheel into a disposable
+  # Python 3.11 environment, and reruns the substantive canonical/provider
+  # contracts with `tools.iptc.canonical*` bound to that site-packages root.  The
+  # suite starts from a neutral directory and fails if any canonical alias reaches
+  # back into this checkout.  The validator requirements remain repository-side
+  # evidence; the package itself still has zero runtime dependencies.
+  installed-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+
+      # Only the two checked-in, exactly pinned closures: the offline validator
+      # used by the reused contracts and the frontend/backend that build the
+      # reviewed wheel.  The suite's wheel install is offline and dependency-free.
+      - run: python -m pip install -r requirements-iptc-validator.txt
+      - run: python -m pip install -r requirements-iptc-build.txt
+
+      - name: Canonical and provider contracts against the installed wheel
+        run: python tests/test_iptc_installed_conformance.py -v
+
   # THE PACKAGE PROOF, ON THE INTERPRETERS IT CLAIMS.
   #
   # `tests/test_iptc_canonical_package.py` repeats its clean-install proof on the

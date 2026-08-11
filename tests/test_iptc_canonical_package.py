@@ -79,6 +79,7 @@ import json
 import os
 import re
 import shutil
+import site
 import subprocess
 import sys
 import sysconfig
@@ -175,6 +176,7 @@ WORKFLOW_PATH = REPO_ROOT / ".github/workflows/validate-iptc-sport-schema.yml"
 #: for them three times would buy latency instead of coverage.
 VALIDATION_JOB = "validate"
 PACKAGE_PROOF_JOB = "package-proof"
+INSTALLED_CONFORMANCE_JOB = "installed-conformance"
 
 #: The interpreter the full validation job stays on. It remains the authority for
 #: the whole suite; the matrix below adds interpreters, it does not replace one.
@@ -225,6 +227,28 @@ BUILD_CLOSURE_BOOTSTRAP = ("pip",)
 
 #: This suite, as CI spells it.
 PACKAGE_PROOF_SUITE = "tests/test_iptc_canonical_package.py"
+
+#: The dedicated suite that reruns the canonical/provider contracts against the
+#: reviewed wheel installed in site-packages rather than this repository's
+#: ``tools/iptc/canonical`` source tree.
+INSTALLED_CONFORMANCE_SUITE = "tests/test_iptc_installed_conformance.py"
+
+#: The validator closure is needed by the reused four-layer conformance tests.
+#: Like the build closure, the workflow may install it only from its checked-in,
+#: exactly pinned requirements file.
+VALIDATOR_REQUIREMENTS = "requirements-iptc-validator.txt"
+
+#: The installed-conformance job executes checkout code and creates the isolated
+#: Python environment, so it uses the same reviewed immutable action commits as
+#: the release build rather than mutable major-version tags.
+CHECKOUT_ACTION = (
+    "uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
+    "  # v4"
+)
+SETUP_PYTHON_ACTION = (
+    "uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065"
+    "  # v5"
+)
 
 #: Every input this proof reads or builds from. A change to one of these that did
 #: not trigger the workflow would leave the package unproven for that commit,
@@ -658,6 +682,52 @@ def clean_install(python_exe: str, label: str) -> Path:
         if install.returncode != 0:
             raise AssertionError("offline install failed for {0}:\n{1}".format(
                 label, install.stdout + install.stderr))
+    _INSTALLS[label] = venv_python
+    return venv_python
+
+
+def clean_sdist_install(python_exe: str, label: str) -> Path:
+    """A separate venv with the built sdist installed through closed PEP 517.
+
+    The venv receives a path file naming the running interpreter's site-packages
+    solely so its build frontend can use the exact versions pinned by
+    ``requirements-iptc-build.txt``.  ``--no-build-isolation`` prevents pip from
+    creating a second, resolver-populated build environment; ``--no-index`` and
+    ``--no-deps`` close every remaining network/dependency path.  The install is
+    launched from a neutral directory, and the runtime probe comparing it with
+    the wheel is neutral too.
+    """
+    if label in _INSTALLS:
+        return _INSTALLS[label]
+    venv_dir = workspace() / "venv-{0}".format(label)
+    creation = subprocess.run(
+        [python_exe, "-m", "venv", str(venv_dir)],
+        capture_output=True, text=True, timeout=600)
+    if creation.returncode != 0:
+        raise AssertionError("could not create a venv for {0}:\n{1}".format(
+            label, creation.stdout + creation.stderr))
+    venv_python = venv_dir / ("Scripts" if os.name == "nt" else "bin") \
+        / ("python.exe" if os.name == "nt" else "python")
+    site_roots = [Path(path).resolve() for path in site.getsitepackages()]
+    for path in site_roots:
+        if path == REPO_ROOT or REPO_ROOT in path.parents:
+            raise AssertionError("current site-packages reaches repository: "
+                                 + str(path))
+    (purelib(venv_python) / "iptc-pinned-build-tooling.pth").write_text(
+        "".join("{0}\n".format(path) for path in site_roots), encoding="utf-8")
+    neutral = Path(tempfile.mkdtemp(prefix="iptc-sdist-install-"))
+    try:
+        install = subprocess.run(
+            [str(venv_python), "-m", "pip", "install", "--no-index",
+             "--no-deps", "--no-build-isolation", "--ignore-installed",
+             "--no-cache-dir", "--disable-pip-version-check",
+             str(built().sdist)],
+            cwd=str(neutral), capture_output=True, text=True, timeout=900)
+    finally:
+        shutil.rmtree(neutral, ignore_errors=True)
+    if install.returncode != 0:
+        raise AssertionError("offline sdist install failed for {0}:\n{1}".format(
+            label, install.stdout + install.stderr))
     _INSTALLS[label] = venv_python
     return venv_python
 
@@ -1519,6 +1589,33 @@ class TestTheInstalledBytesAreTheAuthoritativeBytes(unittest.TestCase):
         self.assertEqual(sorted(installed_members(self.venv_python)),
                          sorted(expected_runtime_members()))
 
+    def test_sdist_install_has_exactly_the_wheel_installs_members_and_bytes(self):
+        """An sdist install is a separate consumer path, even though the default
+        PEP 517 build already constructs the reviewed wheel from that sdist.
+
+        Install each artefact into its own clean environment, then compare the
+        installed package in both membership directions and byte-for-byte.  This
+        is intentionally wider than the source comparison above: it proves the
+        two distribution formats produce the same runtime, not merely that each
+        member we expected happened to appear in one of them.
+        """
+        wheel_python = clean_install(sys.executable, "parity-wheel")
+        sdist_python = clean_sdist_install(sys.executable, "parity-sdist")
+        wheel_root = installed_root(wheel_python)
+        sdist_root = installed_root(sdist_python)
+        wheel_members = installed_members(wheel_python)
+        sdist_members = installed_members(sdist_python)
+
+        self.assertNotEqual(wheel_root, sdist_root)
+        self.assertEqual(wheel_members - sdist_members, set(),
+                         "members installed only from the wheel")
+        self.assertEqual(sdist_members - wheel_members, set(),
+                         "members installed only from the sdist")
+        for member in sorted(wheel_members | sdist_members):
+            with self.subTest(member=member):
+                self.assertEqual((wheel_root / member).read_bytes(),
+                                 (sdist_root / member).read_bytes())
+
     def test_the_receipt_is_present_and_is_data_rather_than_code(self):
         receipt = self.root / "package-receipt.json"
         self.assertTrue(receipt.is_file())
@@ -1799,12 +1896,42 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
         self.jobs = workflow_jobs()
         self.proof = self.jobs.get(PACKAGE_PROOF_JOB, "")
         self.validation = self.jobs.get(VALIDATION_JOB, "")
+        self.installed = self.jobs.get(INSTALLED_CONFORMANCE_JOB, "")
 
     def test_a_dedicated_package_proof_job_exists_beside_the_validation_job(self):
         self.assertIn(VALIDATION_JOB, self.jobs)
         self.assertIn(PACKAGE_PROOF_JOB, self.jobs,
                       "no job runs the package proof on the declared "
                       "interpreters: {0}".format(sorted(self.jobs)))
+
+    def test_a_dedicated_installed_conformance_job_exists(self):
+        self.assertIn(INSTALLED_CONFORMANCE_JOB, self.jobs,
+                      "no dedicated job proves the installed wheel's canonical "
+                      "contracts: {0}".format(sorted(self.jobs)))
+
+    def test_the_installed_conformance_job_is_python_3_11_without_a_matrix(self):
+        self.assertIn('python-version: "3.11"', self.installed)
+        self.assertEqual(matrix_python_versions(self.installed), [])
+
+    def test_the_installed_conformance_job_uses_the_release_action_pins(self):
+        uses = []
+        for raw in self.installed.splitlines():
+            stripped = raw.strip()
+            if stripped.startswith("- "):
+                stripped = stripped[2:]
+            if stripped.startswith("uses:"):
+                uses.append(stripped)
+        self.assertEqual(uses, [CHECKOUT_ACTION, SETUP_PYTHON_ACTION])
+
+    def test_the_installed_conformance_job_installs_only_pinned_inputs_and_runs_the_suite(self):
+        commands = run_commands(self.installed)
+        installs = [command for command in commands if "pip install" in command]
+        self.assertEqual(installs, [
+            "python -m pip install -r {0}".format(VALIDATOR_REQUIREMENTS),
+            "python -m pip install -r {0}".format(BUILD_REQUIREMENTS),
+        ])
+        self.assertIn("python {0} -v".format(INSTALLED_CONFORMANCE_SUITE),
+                      commands)
 
     def test_the_proof_job_matrix_is_exactly_the_declared_interpreters(self):
         """The same pair the proofs above name, in the same order. A matrix that

@@ -75,6 +75,10 @@ SUITE_PATTERN = "tests/test_iptc_*.py"
 #: This file, as the manifest spells it. The self-registration gate.
 SELF = "tests/test_iptc_test_manifest.py"
 
+#: The remote acceptance suite that runs the canonical/provider contracts
+#: against the reviewed wheel from site-packages.
+INSTALLED_CONFORMANCE_SUITE = "tests/test_iptc_installed_conformance.py"
+
 #: Suites whose registration is called out by name rather than left to set
 #: equality. Each one is a gate a consumer or an auditor relies on, and each was
 #: outside CI before this task: the two source-fixture contracts, the credential
@@ -254,6 +258,13 @@ class TestTheManifestIsTheCompleteSuiteList(unittest.TestCase):
         self.assertEqual(SELF, Path(__file__).resolve()
                          .relative_to(REPO_ROOT).as_posix())
 
+    def test_the_installed_conformance_suite_is_registered(self):
+        self.assertIn(INSTALLED_CONFORMANCE_SUITE, self.paths)
+        entry = next((item for item in manifest()["suites"]
+                      if item["path"] == INSTALLED_CONFORMANCE_SUITE), None)
+        self.assertIsNotNone(entry)
+        self.assertGreater(entry.get("timeout_seconds", 0), 120)
+
     def test_the_suites_this_task_brings_into_ci_are_named_not_inferred(self):
         """Set equality already covers these. Naming them records what was
         outside CI before A18, so a later change that drops one has to argue with
@@ -328,11 +339,11 @@ class TestTheOrderIsDeterministicAndNotEditorial(unittest.TestCase):
                                          "tests/test_iptc_vendored_manifest.py"])
 
     def test_the_slowest_suite_runs_last(self):
-        """The SHACL harness is roughly half the wall clock of the whole run.
-        Ahead of the others it delays every cheap failure behind it."""
-        self.assertEqual(self.groups[-1], "harness")
+        """The installed proof rebuilds, installs and repeats the substantive
+        contracts. Ahead of the others it delays every cheap failure behind it."""
+        self.assertEqual(self.groups[-1], "installed")
         self.assertEqual(self.manifest["suites"][-1]["path"],
-                         "tests/test_iptc_validation_harness.py")
+                         INSTALLED_CONFORMANCE_SUITE)
 
 
 class TestOptionalMetadataIsWellFormed(unittest.TestCase):
