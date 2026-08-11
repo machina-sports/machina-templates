@@ -20,8 +20,20 @@
 # same bytes as a published zero-dependency 3.9+ package. Adding a dependency here
 # would fork that promise.
 
+# TWO LICENSES, ONE ARCHIVE. The Machina-authored runtime, adapters and build
+# tooling are MIT. Two packaged assets carry CC-BY-4.0 attribution obligations
+# instead: `official-property-names.json` is extracted and generated from IPTC
+# Sport Schema 1.1, and `shared-context.json` is Machina-authored but reproduces
+# that work's pinned namespace bindings. `NOTICE-IPTC.md` carries the attribution
+# and states the boundary. The expression below is a conjunction because both sets
+# of terms apply to different members of the same archive; CC BY is never placed
+# over the software.
+
+# `setuptools>=77` rather than `>=68`, because that is the release that
+# implements PEP 639 — the `license` expression string and `license-files` below
+# are silently something else on an older backend.
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -31,6 +43,20 @@ description = "Canonical Machina Sports Schema runtime: provider-neutral observa
 readme = "README-machina-sports-canonical.md"
 requires-python = ">=3.9"
 dependencies = []
+
+# PEP 639: an SPDX expression and the files it names, and no legacy `License`
+# field or `License ::` classifier beside them — two sources of truth for one
+# decision is how an expression and a classifier come to disagree.
+#
+# Named one by one rather than as `LICENSES/*`: a glob would publish whatever
+# appeared in that directory next, and what a distribution declares itself
+# licensed under should be an explicit act.
+license = "MIT AND CC-BY-4.0"
+license-files = [
+    "LICENSES/MIT.txt",
+    "LICENSES/CC-BY-4.0.txt",
+    "NOTICE-IPTC.md",
+]
 
 # The mapping that makes this a package without moving a file. Both packages are
 # listed explicitly rather than discovered: auto-discovery over a repository root

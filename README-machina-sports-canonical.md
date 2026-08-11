@@ -69,3 +69,25 @@ something it had no business transforming.
 `export_official_terms`, the generator that produces
 `official-property-names.json`, stays in the originating repository: it needs the
 pinned upstream ontologies, which are not part of this distribution.
+
+## License
+
+`MIT AND CC-BY-4.0`. A conjunction, because both sets of terms apply — to
+different files in the same archive.
+
+- **The software is MIT.** The Python runtime, the adapters and the build tooling
+  are Copyright (c) 2026 Machina Sports, under `LICENSES/MIT.txt`.
+- **Two packaged assets carry CC-BY-4.0 attribution obligations.**
+  `official-property-names.json` is extracted and generated from IPTC Sport
+  Schema 1.1, and `shared-context.json` is Machina-authored but reproduces that
+  work's pinned namespace bindings. The licence text is `LICENSES/CC-BY-4.0.txt`
+  — https://creativecommons.org/licenses/by/4.0/.
+
+The upstream work is IPTC Sport Schema 1.1 by the IPTC Sports Content Working
+Group. **`NOTICE-IPTC.md` ships in this distribution** and carries the full
+attribution: creator, copyright, the exact upstream commit, what was extracted or
+reproduced, and the boundary between the two licences. Read it before reusing
+either asset.
+
+CC BY does not reach the software, and none of this implies IPTC endorsement,
+sponsorship or affiliation.

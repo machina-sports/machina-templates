@@ -1,6 +1,6 @@
 # Releasing `machina-sports-canonical`
 
-How the distribution built from `tools/iptc/canonical/` reaches PyPI, and the two
+How the distribution built from `tools/iptc/canonical/` reaches PyPI, and the
 decisions that are not this document's to make.
 
 Automation: `.github/workflows/publish-machina-sports-canonical.yml`.
@@ -8,39 +8,84 @@ Proof suite: `tests/test_iptc_canonical_package.py`.
 
 ---
 
-## 🛑 BLOCKED — the first upload cannot happen yet
+## ✅ RESOLVED — the owner license decision
 
-**Nothing may be uploaded to PyPI until the owner explicitly chooses and approves
-license metadata for this distribution.**
+**The owner has decided the license for this distribution.** This is the one
+blocker on the list below that is closed. It closes nothing else.
 
-This repository has no root `LICENSE` file, so the package declares no license.
-Packaging must not invent one. `sports-skills` publishing the same canonical bytes
-under MIT is *evidence about another repository* — it is not authorization to
-relicense this source, and no automated step here may treat it as one. The IPTC
-`LICENSE.md` under `agent-templates/iptc-mappings/references/` covers the pinned
-upstream ontology bytes only and does not cover this code.
+The distribution is published under the exact aggregate expression:
 
-Until an owner decides:
+```
+MIT AND CC-BY-4.0
+```
 
-- The publish job **fails closed** at its "Refuse to publish without an approved
-  license" step. It reads the built wheel's `METADATA` and requires either a
-  `License-Expression` or a `License-File` field. Today the wheel has neither, so
-  a tagged run reaches the approval gate and then stops before the upload action.
-- That is intentional. The workflow is committed *in the blocked state* so the
-  release path is reviewable now and the decision is not rushed to unblock it.
+A conjunction, because both sets of terms apply to different members of the same
+archive:
 
-To unblock, an owner must decide — as a reviewed change, not as part of a release:
+- **MIT** covers the Machina-authored Python runtime, the provider adapters and
+  the build tooling. Copyright (c) 2026 Machina Sports.
+- **CC-BY-4.0** attribution obligations cover two packaged assets:
+  `official-property-names.json`, which is extracted and generated from IPTC
+  Sport Schema 1.1, and `shared-context.json`, which is Machina-authored but
+  reproduces that work's pinned namespace bindings.
 
-1. Which license the distribution is published under.
-2. Whether a `LICENSE` file is added to this repository, or the metadata carries a
-   `License-Expression` alone.
+CC BY is not placed over the software, and the software's MIT terms do not
+discharge the attribution owed on those two assets.
 
-Then the license metadata is added to `pyproject.toml` in its own pull request,
-`tests/test_iptc_canonical_package.py` is updated to assert the approved value,
-and the digests below are re-recorded because the wheel bytes change.
+### The upstream work being attributed
 
-A published version cannot be replaced. Uploading `0.1.0` under no license, or
-under the wrong one, spends the version number permanently.
+| | |
+|---|---|
+| Work | IPTC Sport Schema 1.1 |
+| Creator | IPTC Sports Content Working Group |
+| Copyright | Copyright (C) International Press Telecommunications Council 2024 |
+| Source | `https://github.com/iptc/sport-schema/tree/0e77bf8678f3702fe81c28673bede35efe47d633` |
+| Licence | `https://creativecommons.org/licenses/by/4.0/` |
+
+The upstream ontology files are **not shipped**; what ships is derived from them.
+Nothing anywhere claims IPTC endorsement, sponsorship or affiliation.
+
+### What carries the decision
+
+Three files, declared as `license-files` in `pyproject.toml` and shipped in both
+the wheel (under `.dist-info/licenses/`) and the sdist:
+
+| File | What it is |
+|---|---|
+| `LICENSES/MIT.txt` | the MIT text, byte-identical to the sibling `sports-skills/LICENSE` |
+| `LICENSES/CC-BY-4.0.txt` | the official Creative Commons CC BY 4.0 legal code, verbatim |
+| `NOTICE-IPTC.md` | the attribution notice, the file-level classification of both assets, and the MIT boundary |
+
+The publish job's "Refuse to publish without the approved license" step reads the
+built wheel's `METADATA` and requires the exact `License-Expression` above **and**
+all three `License-File` entries. It no longer accepts the mere presence of a
+license field: `MIT` alone, `CC-BY-4.0` alone, a reordered conjunction, an `OR`,
+or a missing notice are each rejected, and each rejection is an executed case in
+`tests/test_iptc_canonical_package.py`.
+
+---
+
+## 🛑 BLOCKED — the first upload still cannot happen
+
+**Resolving the license does not unblock the release.** Four holds remain, and
+every one of them is outside this repository or outside this process:
+
+1. **The pypi environment is not configured.** The `pypi` environment does not
+   exist with a required human reviewer, so nothing enforces the approval gate at
+   run time.
+2. **The trusted publisher is not registered.** PyPI has no pending publisher for
+   this project, so an upload would fail authentication — and registering one is
+   a deliberate act, not a release step.
+3. **The renewed digests have not been independently verified.** The rows in
+   `docs/iptc/machina-sports-canonical-0.1.0.sha256` were re-recorded when the
+   license metadata changed the artefact bytes, and they were produced by the
+   same process that recorded them. The earlier independent rebuild verified a
+   candidate that predates the license metadata and is now superseded.
+4. **No human has approved publication.** No owner has said "publish" having seen
+   the renewed digests and a green proof.
+
+**Do not publish** until all four are closed. A published version cannot be
+replaced: uploading `0.1.0` prematurely spends the version number permanently.
 
 ---
 
@@ -131,8 +176,13 @@ diffs against:
 
 | Artefact | SHA-256 |
 |---|---|
-| `machina_sports_canonical-0.1.0-py3-none-any.whl` | `3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b` |
-| `machina_sports_canonical-0.1.0.tar.gz` | `11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324` |
+| `machina_sports_canonical-0.1.0-py3-none-any.whl` | `c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf` |
+| `machina_sports_canonical-0.1.0.tar.gz` | `5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e` |
+
+These rows were **renewed for the license decision**. Declaring
+`License-Expression`, three `License-File` fields and three archive members
+changes both artefacts, so the digests recorded before that change are superseded
+— see the section below, which keeps them and says so.
 
 The file is written exactly as `sha256sum` writes it, with **basenames** and the
 wheel before the sdist, so one checked-in file is comparable byte-for-byte with
@@ -151,18 +201,25 @@ what any job generates. Three places read it:
   never reaches the approval gate.
 
 Reproduce them locally with the command above; the rows must match character for
-character. **If the wheel bytes change for any reason — including adding the
-license metadata this release is blocked on — these digests are stale and this
-file must be re-recorded as a reviewed change.**
+character. **If the wheel bytes change for any reason, these digests are stale and
+this file must be re-recorded as a reviewed change.** Adding the license metadata
+is exactly such a change, and it is why these rows differ from the ones below.
 
-### Independent verification of those digests
+### Independent verification — SUPERSEDED
+
+**This section is superseded evidence. It verifies a candidate this repository no
+longer builds.** It is kept, rather than deleted, because a releaser is entitled
+to see that the method works and that the pre-license candidate really was
+reproduced elsewhere. It does not vouch for the renewed rows above — nobody has
+rebuilt those independently, which is outstanding hold 3.
 
 Every automated comparison above diffs a build against rows this repository
 checked in, which proves the rows are stable — not that anyone other than the
-process that wrote them ever reproduced them. They have now been reproduced
-once, outside that process, before any approval:
+process that wrote them ever reproduced them. The pre-license candidate was
+reproduced once, outside that process, before any approval:
 
-- **Candidate:** `f46799c`, the exact commit these digests are recorded for.
+- **Candidate:** `f46799c`, the exact commit those digests were recorded for. It
+  predates the license metadata.
 - **Source:** obtained with `git archive f46799c` into separate isolated
   temporary trees, so no working tree, build cache or untracked file could
   contribute bytes.
@@ -176,23 +233,25 @@ once, outside that process, before any approval:
   `packaging/machina_sports_canonical/release.py` with
   `SOURCE_DATE_EPOCH=1786398569`.
 
-Each interpreter independently produced:
+Each interpreter independently produced the **superseded** digests — the bytes
+`f46799c` built, before any license metadata existed:
 
-| Artefact | SHA-256 |
+| Artefact (superseded) | SHA-256 |
 |---|---|
 | `machina_sports_canonical-0.1.0-py3-none-any.whl` | `3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b` |
 | `machina_sports_canonical-0.1.0.tar.gz` | `11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324` |
 
-Both matched `docs/iptc/machina-sports-canonical-0.1.0.sha256` byte for byte, and
-matched each other. The temporary trees and environments were removed; this
-repository's working tree was not modified.
+Those two rows are **not** what
+`docs/iptc/machina-sports-canonical-0.1.0.sha256` holds today. At the time they
+matched that file byte for byte, and matched each other. The temporary trees and
+environments were removed; this repository's working tree was not modified.
 
 **This is pre-approval evidence. It is not release approval.** It says the
-reviewed digests are what `f46799c` builds on an independent machine across both
-proven interpreters, and nothing more. It is not an owner's decision to publish,
-it does not stand in for the required reviewer on the `pypi` environment, and it
-is not a license decision. It decides nothing about the license blocker. Both 🛑
-blocks still hold.
+then-reviewed digests are what `f46799c` builds on an independent machine across
+both proven interpreters, and nothing more. It is not an owner's decision to
+publish, it does not stand in for the required reviewer on the `pypi`
+environment, and it is not a license decision — the owner made that separately,
+and this rebuild neither made it nor carries it. The 🛑 block above still holds.
 
 ---
 

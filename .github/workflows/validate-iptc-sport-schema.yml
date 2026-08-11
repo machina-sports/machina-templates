@@ -50,6 +50,23 @@ name: Validate IPTC Sport Schema
 # packaging configuration lives outside it: without `pyproject.toml`, `setup.py`
 # and `packaging/machina_sports_canonical/**` in the filter, a change to the
 # build filter or to the package metadata would skip the only job that builds it.
+#
+# `LICENSES/**` AND `NOTICE-IPTC.md` ARE IN THE FILTER FOR THAT SAME REASON.
+# `license-files` in `pyproject.toml` makes setuptools read all three at build
+# time and write them into both artefacts, so editing one changes the released
+# bytes and the reviewed digests. A change touching only the licence or the
+# attribution notice that skipped this workflow would leave the package unproven
+# for that commit — and the notice is what the CC-BY-4.0 half of the declared
+# expression rests on.
+#
+# `.gitattributes` IS LISTED BECAUSE IT DECIDES HOW A PACKAGE INPUT IS CHECKED.
+# It is what marks the vendored CC BY legal code exempt from diff and whitespace
+# checking, so the official trailing blank line survives review instead of being
+# trimmed into a file that is no longer the licence. Widening that rule over the
+# authored licence files, or dropping it, changes what CI and the pre-commit hook
+# accept for the packaged bytes; `tests/test_iptc_canonical_package.py` asserts
+# the rule reaches that one file and no other, and this entry is what makes that
+# suite run when the rule changes.
 on:
   pull_request:
     paths:
@@ -67,6 +84,9 @@ on:
       - "MANIFEST.in"
       - "packaging/machina_sports_canonical/**"
       - "README-machina-sports-canonical.md"
+      - "LICENSES/**"
+      - "NOTICE-IPTC.md"
+      - ".gitattributes"
       - ".github/workflows/validate-iptc-sport-schema.yml"
       - ".github/workflows/publish-machina-sports-canonical.yml"
   push:
@@ -85,6 +105,9 @@ on:
       - "MANIFEST.in"
       - "packaging/machina_sports_canonical/**"
       - "README-machina-sports-canonical.md"
+      - "LICENSES/**"
+      - "NOTICE-IPTC.md"
+      - ".gitattributes"
       - ".github/workflows/validate-iptc-sport-schema.yml"
       - ".github/workflows/publish-machina-sports-canonical.yml"
 

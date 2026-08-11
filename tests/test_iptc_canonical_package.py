@@ -138,14 +138,159 @@ JSON_RESOURCES = (
     "shared-context.json",
 )
 
+#: The owner-approved license decision for this distribution, and the three files
+#: that carry it.
+#:
+#: TWO LICENSES, ONE ARCHIVE. The Machina-authored Python runtime, the adapters and
+#: the build tooling are MIT. Two packaged assets carry CC-BY-4.0 attribution
+#: obligations instead: ``official-property-names.json`` is extracted and generated
+#: from IPTC Sport Schema 1.1, and ``shared-context.json`` is Machina-authored but
+#: reproduces that work's pinned namespace bindings. The distribution therefore
+#: expresses ``MIT AND CC-BY-4.0`` — a conjunction, because both sets of terms
+#: apply to different members of the same archive, and CC BY is never placed over
+#: the software.
+LICENSE_EXPRESSION = "MIT AND CC-BY-4.0"
+MIT_LICENSE_FILE = "LICENSES/MIT.txt"
+CC_BY_LICENSE_FILE = "LICENSES/CC-BY-4.0.txt"
+NOTICE_FILE = "NOTICE-IPTC.md"
+
+#: In declaration order, because ``License-File`` appears in METADATA in the order
+#: ``pyproject.toml`` lists it and this suite compares an ordered list rather than
+#: a set: a reordering is a metadata change and should read as one.
+LICENSE_FILES = (MIT_LICENSE_FILE, CC_BY_LICENSE_FILE, NOTICE_FILE)
+
+#: Where PEP 639 stores them inside the wheel. Under ``dist-info``, so the closed
+#: RECORD set above already accounts for them as distribution metadata rather than
+#: as importable payload — a license file inside the import namespace would be a
+#: module-shaped file a consumer could shadow.
+WHEEL_LICENSE_PREFIX = "{0}.dist-info/licenses/".format(ARTIFACT_STEM)
+
+#: The MIT text, exactly. Byte-identical to the sibling `sports-skills/LICENSE`,
+#: because the two distributions publish the same canonical bytes and a
+#: paraphrased MIT is not MIT. Written out here rather than read from that
+#: repository: this suite must hold with nothing beside this checkout.
+MIT_LICENSE_TEXT = '''MIT License
+
+Copyright (c) 2026 Machina Sports
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'''
+
+#: The official CC BY 4.0 legal code, pinned by digest rather than described.
+#:
+#: A license text this repository paraphrased, truncated or reflowed would not be
+#: the license it names in ``License-Expression``, and the failure mode is
+#: invisible: the file still reads like CC BY. So the bytes are pinned to the
+#: plain-text legal code published at
+#: ``https://creativecommons.org/licenses/by/4.0/legalcode.txt``, and the markers
+#: below make a red diff legible — a digest mismatch alone says nothing about
+#: which half of the text moved.
+CC_BY_LICENSE_SHA256 = \
+    "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+
+#: `.gitattributes`, and what the vendored rule for the CC BY legal code must set.
+#:
+#: THE OFFICIAL TEXT ENDS IN A BLANK LINE. That byte is part of what Creative
+#: Commons publishes and therefore part of the pinned digest above, and Git's
+#: whitespace check calls it an error — `new blank line at EOF`. Trimming it would
+#: make the file cheaper to commit and would stop it being the CC BY 4.0 legal
+#: code, silently, in a way that reads correctly. So Git is told to leave this one
+#: file alone, exactly as the repository already does for the pinned upstream
+#: ontologies, and the rule is asserted to reach nothing else.
+GITATTRIBUTES_FILE = ".gitattributes"
+GITATTRIBUTES_PATH = REPO_ROOT / GITATTRIBUTES_FILE
+VENDORED_ATTRIBUTES = ("linguist-vendored", "-diff", "-whitespace")
+CC_BY_LICENSE_LINES = 396
+CC_BY_LICENSE_MARKERS = (
+    "Attribution 4.0 International",
+    "Creative Commons Attribution 4.0 International Public License",
+    "Section 1 -- Definitions.",
+    "Section 2 -- Scope.",
+    "Section 3 -- License Conditions.",
+    "Section 4 -- Sui Generis Database Rights.",
+    "Section 5 -- Disclaimer of Warranties and Limitation of Liability.",
+    "Section 6 -- Term and Termination.",
+    "Section 7 -- Other Terms and Conditions.",
+    "Section 8 -- Interpretation.",
+)
+
+#: The upstream work the CC-BY-4.0 half of the expression attributes, spelled
+#: exactly as its own pinned bytes declare it. `agent-templates/iptc-mappings/
+#: references/iptc-sport-schema-1.1/` holds the declaration these strings come
+#: from; the ontology files themselves are NOT shipped in this distribution.
+UPSTREAM_WORK = "IPTC Sport Schema 1.1"
+UPSTREAM_CREATOR = "IPTC Sports Content Working Group"
+UPSTREAM_COPYRIGHT = (
+    "Copyright (C) International Press Telecommunications Council 2024")
+UPSTREAM_SOURCE_PIN = ("https://github.com/iptc/sport-schema/tree/"
+                       "0e77bf8678f3702fe81c28673bede35efe47d633")
+CC_BY_LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/"
+
+#: The two packaged assets the notice has to classify individually, and the phrase
+#: each classification turns on. A single blanket sentence over "the JSON
+#: resources" would be wrong in both directions: one file is extracted from the
+#: upstream work and the other is authored here and reproduces its bindings.
+ATTRIBUTION_ASSET_CLASSIFICATIONS = (
+    ("official-property-names.json", "extracted"),
+    ("shared-context.json", "Machina-authored"),
+)
+
+#: A blanket "no changes were made" is the one attribution claim this notice may
+#: not make. The upstream ontologies are not shipped at all; what ships is an
+#: allowlist extracted and generated from them and a context reproducing their
+#: bindings, so the CC BY "indicate if changes were made" obligation is discharged
+#: by saying what was done — never by denying that anything was.
+FORBIDDEN_NOTICE_CLAIMS = (
+    "no changes were made",
+    "no modifications were made",
+    "unmodified",
+)
+
+#: Nothing here may read as an IPTC endorsement of this distribution. Attribution
+#: is a requirement of the license; endorsement is a claim the license explicitly
+#: does not grant.
+FORBIDDEN_ENDORSEMENT_CLAIMS = (
+    "endorsed by iptc",
+    "endorsed by the iptc",
+    "iptc endorses",
+    "in partnership with iptc",
+    "approved by iptc",
+    "certified by iptc",
+)
+
 #: The complete set of build inputs, copied into the staging tree. A file the
 #: build needs that is missing here makes the build fail rather than silently
 #: succeed against the repository it was supposed to be isolated from.
+#:
+#: THE LICENSE FILES ARE BUILD INPUTS, NOT DOCUMENTATION. ``license-files`` in
+#: ``pyproject.toml`` makes setuptools read them at build time and write them into
+#: both artefacts, so a staging copy without them builds a wheel whose METADATA
+#: names three files the archive does not carry — or fails outright. Either way the
+#: staged build stops being the release build, which is the one thing this staging
+#: set exists to guarantee.
 PACKAGING_INPUTS = (
     "pyproject.toml",
     "setup.py",
     "MANIFEST.in",
     "README-machina-sports-canonical.md",
+    "LICENSES",
+    NOTICE_FILE,
     "packaging",
     "tools/iptc/canonical",
 )
@@ -157,6 +302,9 @@ REQUIRED_PACKAGING_FILES = (
     "setup.py",
     "packaging/machina_sports_canonical/build.py",
     "tools/iptc/canonical/package-receipt.json",
+    MIT_LICENSE_FILE,
+    CC_BY_LICENSE_FILE,
+    NOTICE_FILE,
 )
 
 #: Interpreters the clean-install proof is repeated on. Absence is an explicit,
@@ -264,6 +412,9 @@ PACKAGING_INPUTS_THE_FILTERS_MUST_REACH = (
     "tools/iptc/canonical/serialize.py",
     "tools/iptc/canonical/package-receipt.json",
     "tools/iptc/vendored-manifest.json",
+    MIT_LICENSE_FILE,
+    CC_BY_LICENSE_FILE,
+    NOTICE_FILE,
 )
 
 #: The tag that releases this version, spelled exactly. Distribution-scoped
@@ -279,6 +430,21 @@ RELEASE_TAG_GLOB = "{0}-v*".format(DISTRIBUTION)
 PUBLISH_WORKFLOW_PATH = (REPO_ROOT
                          / ".github/workflows/publish-machina-sports-canonical.yml")
 RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
+
+#: What still stops this release now that the license decision is made, each stated
+#: as its own sentence in `docs/iptc/RELEASING.md`.
+#:
+#: A resolved license blocker is the kind of change that reads like an unblocking.
+#: It is not one: the reviewer-gated environment does not exist yet, PyPI has no
+#: publisher registered for this project, the renewed digests have been rebuilt by
+#: exactly one process, and no owner has said "publish". Listing them individually
+#: is what keeps "still blocked" from being a sentence a releaser can argue past.
+UNRESOLVED_RELEASE_HOLDS = (
+    "the pypi environment is not configured",
+    "the trusted publisher is not registered",
+    "the renewed digests have not been independently verified",
+    "no human has approved publication",
+)
 
 #: Three jobs, because approval has to sit between building and uploading, and a
 #: GitHub Release must not claim bytes PyPI never accepted. The build job produces
@@ -337,6 +503,20 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: A path prefix would make each of those a different file and the comparison
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
+    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+     "c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf"),
+    ("{0}.tar.gz".format(ARTIFACT_STEM),
+     "5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e"),
+)
+
+#: The digests the reviewed file carried before the license decision, kept as a
+#: named constant for one reason: the independent verification recorded in
+#: `docs/iptc/RELEASING.md` reproduced *these* bytes, at a commit that predates the
+#: license metadata. Adding `License-Expression`, three `License-File` fields and
+#: three archive members changes both artefacts, so that evidence now describes a
+#: superseded candidate and the document has to say so rather than appear to vouch
+#: for rows nobody rebuilt.
+SUPERSEDED_RELEASE_DIGESTS = (
     ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
      "3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b"),
     ("{0}.tar.gz".format(ARTIFACT_STEM),
@@ -402,8 +582,16 @@ REPOSITORY_NOISE = ("README.md", "tests")
 #: out rather than counted: the members that leaked in were the repository's own
 #: README and twenty test suites, and a length check would have accepted them.
 #: `setup.cfg`, `PKG-INFO` and the `egg-info` members are generated by the backend.
+#:
+#: The three license members are added by ``setuptools`` from ``license-files``,
+#: not by ``MANIFEST.in``: PEP 639 makes them part of the distribution's metadata,
+#: so an sdist that could not rebuild its own ``License-File`` fields would be an
+#: sdist whose wheel is not the released wheel.
 EXPECTED_SDIST_MEMBERS = (
+    CC_BY_LICENSE_FILE,
+    MIT_LICENSE_FILE,
     "MANIFEST.in",
+    NOTICE_FILE,
     "PKG-INFO",
     "README-machina-sports-canonical.md",
     "machina_sports_canonical.egg-info/PKG-INFO",
@@ -417,11 +605,15 @@ EXPECTED_SDIST_MEMBERS = (
     "setup.py",
 )
 
-#: Either of these in the wheel `METADATA` means an owner has approved license
-#: metadata for this distribution. Today neither is there, deliberately: this
-#: repository has no root license and packaging must not invent one. So the
-#: publish job refuses to upload, and the refusal is a checked-in, executable
-#: gate rather than a note in a document.
+#: The two `METADATA` fields the publish preflight reads. Both are named here so
+#: the preflight command can be found in the workflow by the fields it inspects.
+#:
+#: THE GATE IS NO LONGER "ANY LICENSE FIELD". While it accepted the mere presence
+#: of `License-Expression` OR `License-File`, a wheel declaring
+#: `License-Expression: Proprietary` and no license file at all would have passed
+#: it — and so would the reverse. The owner decision is a specific expression and a
+#: specific set of three files, so the gate now requires exactly those, and the
+#: tests below feed it wrong expressions and dropped files one at a time.
 LICENSE_METADATA_FIELDS = ("License-Expression", "License-File")
 
 #: Ways a publish workflow can carry an upload credential of its own. Trusted
@@ -905,6 +1097,73 @@ def wheel_metadata(wheel: Path) -> str:
     with zipfile.ZipFile(wheel) as archive:
         return archive.read(
             "{0}.dist-info/METADATA".format(ARTIFACT_STEM)).decode("utf-8")
+
+
+def metadata_values(metadata: str, field: str) -> list:
+    """Every value ``field`` carries in ``metadata``, in file order.
+
+    A list rather than a set: ``License-File`` is repeatable, and the order it is
+    written in is the order ``pyproject.toml`` declares. A set would call a
+    reordering equal, and a reordering is a change to published metadata.
+    """
+    prefix = "{0}: ".format(field)
+    return [line[len(prefix):].strip() for line in metadata.splitlines()
+            if line.startswith(prefix)]
+
+
+def source_license_bytes() -> dict:
+    """The three checked-in license and notice files, keyed by declared path."""
+    return {relative: (REPO_ROOT / relative).read_bytes()
+            for relative in LICENSE_FILES}
+
+
+def wheel_license_members(wheel: Path) -> dict:
+    """What the wheel carries under ``dist-info/licenses/``, keyed as declared."""
+    with zipfile.ZipFile(wheel) as archive:
+        return {name[len(WHEEL_LICENSE_PREFIX):]: archive.read(name)
+                for name in archive.namelist()
+                if name.startswith(WHEEL_LICENSE_PREFIX)}
+
+
+def gitattributes_rules() -> list:
+    """``.gitattributes`` as ``(pattern, [attribute, ...])``, comments dropped.
+
+    Parsed rather than substring-matched so a rule can be asserted to reach one
+    path and no other: `assertIn("LICENSES/CC-BY-4.0.txt", text)` would be equally
+    satisfied by a `LICENSES/**` line that also exempted the MIT text from review.
+    """
+    rules = []
+    for line in GITATTRIBUTES_PATH.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        fields = stripped.split()
+        rules.append((fields[0], fields[1:]))
+    return rules
+
+
+def check_attr(*paths) -> list:
+    """``git check-attr`` for the attributes this suite cares about, as lines.
+
+    Git's own answer, not this suite's reading of the file: pattern syntax has
+    precedence rules, and a rule that parses correctly can still fail to apply.
+    """
+    result = subprocess.run(
+        ["git", "check-attr", "whitespace", "diff", "--"] + list(paths),
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=60)
+    if result.returncode != 0:
+        raise AssertionError("git check-attr failed: {0}{1}".format(
+            result.stdout, result.stderr))
+    return result.stdout.splitlines()
+
+
+def notice_text() -> str:
+    return (REPO_ROOT / NOTICE_FILE).read_text(encoding="utf-8")
+
+
+def package_readme_text() -> str:
+    return (REPO_ROOT / "README-machina-sports-canonical.md").read_text(
+        encoding="utf-8")
 
 
 def parses_on_python_39(source: str) -> bool:
@@ -1748,6 +2007,383 @@ class TestThePackagedCodeHoldsItsConstraints(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# The license decision: two licenses, three files, one aggregate expression
+# ---------------------------------------------------------------------------
+#
+# The owner decided this distribution is `MIT AND CC-BY-4.0`: MIT over the
+# Machina-authored Python runtime, adapters and build tooling; CC-BY-4.0
+# attribution obligations over the two packaged assets that derive from — or
+# reproduce bindings of — IPTC Sport Schema 1.1. The classes below hold that
+# decision to the artefacts rather than to a document: the expression as METADATA
+# spells it, the three files as METADATA names them, and the same bytes inside
+# both the wheel and the sdist.
+
+
+def pyproject() -> dict:
+    """``pyproject.toml``, parsed.
+
+    ``tomllib`` on 3.11+ and the pinned ``tomli`` below it — the same conditional
+    the build frontend itself resolves, so this needs nothing the declared floor
+    does not already install from ``requirements-iptc-build.txt``.
+    """
+    try:
+        import tomllib
+    except ImportError:  # the declared floor
+        import tomli as tomllib
+    return tomllib.loads(
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+
+class TestTheLicenseTextsAreTheRealOnes(unittest.TestCase):
+    """A license file this repository wrote from memory is not the license.
+
+    Both texts are held to their authoritative form: MIT byte-identical to the
+    sibling distribution publishing the same canonical bytes, and CC BY 4.0
+    byte-identical to the legal code Creative Commons publishes. Neither is
+    paraphrased, reflowed or summarized, because a summary of a license grants
+    nothing and the failure is invisible on reading.
+    """
+
+    def test_the_mit_text_is_the_standard_text_with_the_machina_copyright(self):
+        path = REPO_ROOT / MIT_LICENSE_FILE
+        self.assertTrue(path.is_file(), "missing: {0}".format(MIT_LICENSE_FILE))
+        self.assertEqual(path.read_text(encoding="utf-8"), MIT_LICENSE_TEXT)
+
+    def test_the_cc_by_text_is_the_official_legal_code(self):
+        path = REPO_ROOT / CC_BY_LICENSE_FILE
+        self.assertTrue(path.is_file(), "missing: {0}".format(CC_BY_LICENSE_FILE))
+        blob = path.read_bytes()
+        self.assertEqual(sha256_bytes(blob), CC_BY_LICENSE_SHA256,
+                         "this is not the official CC BY 4.0 legal code; it must "
+                         "be the text published by Creative Commons, never a "
+                         "paraphrase")
+        text = blob.decode("utf-8")
+        self.assertEqual(len(text.splitlines()), CC_BY_LICENSE_LINES)
+        for marker in CC_BY_LICENSE_MARKERS:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, text)
+
+    def test_the_cc_by_text_is_not_the_human_readable_summary(self):
+        """Guard the guard. The deed at ``creativecommons.org/licenses/by/4.0/``
+        is a summary and says so; shipping it in place of the legal code would
+        look right and grant nothing."""
+        text = (REPO_ROOT / CC_BY_LICENSE_FILE).read_text(encoding="utf-8")
+        for summary_marker in ("This deed highlights only some of the key features",
+                              "human-readable summary of (and not a substitute"):
+            with self.subTest(marker=summary_marker):
+                self.assertNotIn(summary_marker, text)
+
+    def test_the_official_text_ends_in_the_blank_line_git_objects_to(self):
+        """The reason the rule below has to exist, stated as bytes.
+
+        Creative Commons ends the legal code with a blank line. It is inside the
+        pinned digest, so removing it to satisfy a pre-commit whitespace check
+        would silently stop this file being CC BY 4.0 — the failure a reader
+        cannot see. This asserts the byte is there, so the exemption is never
+        "simplified" by deleting what it protects.
+        """
+        blob = (REPO_ROOT / CC_BY_LICENSE_FILE).read_bytes()
+        self.assertTrue(blob.endswith(b"\n\n"),
+                        "the official trailing blank line was trimmed; the file "
+                        "is no longer the published legal code")
+        self.assertEqual(sha256_bytes(blob), CC_BY_LICENSE_SHA256)
+
+    def test_git_is_told_to_leave_the_vendored_cc_by_text_alone(self):
+        """One rule, naming that one file, marking it vendored and turning diff
+        and whitespace checking off — the same treatment, for the same reason, as
+        the pinned upstream ontologies already declared in this file."""
+        matching = [attributes for pattern, attributes in gitattributes_rules()
+                    if pattern == CC_BY_LICENSE_FILE]
+        self.assertEqual(len(matching), 1,
+                         "expected exactly one {0} rule for {1}, found {2}".format(
+                             GITATTRIBUTES_FILE, CC_BY_LICENSE_FILE, matching))
+        self.assertEqual(matching[0], list(VENDORED_ATTRIBUTES))
+
+    def test_the_exemption_reaches_no_authored_file(self):
+        """`LICENSES/MIT.txt` and `NOTICE-IPTC.md` are Machina-authored and are
+        reviewed like anything else. A broad `LICENSES/**` rule would have fixed
+        the commit and quietly dropped both out of whitespace and diff review."""
+        patterns = [pattern for pattern, _ in gitattributes_rules()]
+        for authored in (MIT_LICENSE_FILE, NOTICE_FILE):
+            with self.subTest(authored=authored):
+                self.assertNotIn(authored, patterns)
+        for broad in ("LICENSES/*", "LICENSES/**", "LICENSES/", "LICENSES",
+                      "*.txt", "LICENSES/*.txt"):
+            with self.subTest(broad=broad):
+                self.assertNotIn(broad, patterns,
+                                 "{0} exempts more than the vendored legal "
+                                 "code".format(broad))
+
+    def test_git_itself_applies_the_exemption_to_that_file_and_no_other(self):
+        """Asked of Git rather than of the file, because a rule can parse and
+        still not apply — and because this is the behaviour the pre-commit hook
+        and CI actually observe."""
+        lines = check_attr(CC_BY_LICENSE_FILE, MIT_LICENSE_FILE, NOTICE_FILE)
+        for attribute in ("whitespace", "diff"):
+            with self.subTest(attribute=attribute, path=CC_BY_LICENSE_FILE):
+                self.assertIn("{0}: {1}: unset".format(CC_BY_LICENSE_FILE,
+                                                       attribute), lines)
+            for authored in (MIT_LICENSE_FILE, NOTICE_FILE):
+                with self.subTest(attribute=attribute, path=authored):
+                    self.assertIn("{0}: {1}: unspecified".format(authored,
+                                                                 attribute), lines)
+
+    def test_the_license_texts_are_not_mixed_up(self):
+        """Two files, two licenses. A copy-paste that put CC BY in ``MIT.txt``
+        would satisfy "both files exist" and misstate both halves."""
+        mit = (REPO_ROOT / MIT_LICENSE_FILE).read_text(encoding="utf-8")
+        cc_by = (REPO_ROOT / CC_BY_LICENSE_FILE).read_text(encoding="utf-8")
+        self.assertNotIn("Creative Commons", mit)
+        self.assertNotIn("MIT License", cc_by)
+
+
+class TestTheNoticeAttributesTheUpstreamWork(unittest.TestCase):
+    """`NOTICE-IPTC.md` is how the CC BY attribution obligation is discharged for
+    a consumer who has only the installed package.
+
+    CC BY 4.0 requires the creator, the copyright notice, a link to the license,
+    an identification of the material, and an indication of whether changes were
+    made. It grants no endorsement, and it does not reach the software. So the
+    notice is asserted for each of those, and asserted *not* to claim the two
+    things it must not: that nothing was changed, and that IPTC endorses this.
+    """
+
+    def setUp(self):
+        self.path = REPO_ROOT / NOTICE_FILE
+        self.assertTrue(self.path.is_file(), "missing: {0}".format(NOTICE_FILE))
+        self.text = notice_text()
+        self.lowered = self.text.lower()
+
+    def test_the_notice_names_the_work_creator_copyright_source_and_license(self):
+        for required in (UPSTREAM_WORK, UPSTREAM_CREATOR, UPSTREAM_COPYRIGHT,
+                         UPSTREAM_SOURCE_PIN, CC_BY_LICENSE_URL, "CC-BY-4.0"):
+            with self.subTest(required=required):
+                self.assertIn(required, self.text,
+                              "{0} does not state: {1!r}".format(NOTICE_FILE,
+                                                                 required))
+
+    def test_the_source_pin_is_the_exact_commit_and_not_a_moving_ref(self):
+        """A link to the default branch attributes whatever upstream looks like
+        today. The allowlist was extracted from one commit, and that commit is the
+        only honest source statement."""
+        self.assertIn("0e77bf8678f3702fe81c28673bede35efe47d633", self.text)
+        for moving in ("/tree/main", "/tree/master", "/tree/HEAD"):
+            with self.subTest(ref=moving):
+                self.assertNotIn(moving, self.text)
+
+    def test_the_notice_classifies_each_attribution_bearing_asset_by_name(self):
+        """File level, not archive level. The two assets carry the CC BY
+        obligation for different reasons, and a reader deciding how to reuse one
+        of them cannot act on a sentence about "the JSON resources"."""
+        for asset, classification in ATTRIBUTION_ASSET_CLASSIFICATIONS:
+            with self.subTest(asset=asset):
+                self.assertIn(asset, self.text,
+                              "{0} does not classify {1}".format(NOTICE_FILE,
+                                                                 asset))
+                self.assertIn(classification.lower(), self.lowered,
+                              "{0} does not say {1} is {2}".format(
+                                  NOTICE_FILE, asset, classification))
+
+    def test_the_notice_states_the_extraction_rather_than_denying_change(self):
+        """The obligation is to indicate whether changes were made, and the true
+        answer here is not "none": the upstream ontology files are not shipped, the
+        allowlist is extracted and generated from them, and the context reproduces
+        their bindings. A blanket "no changes" would be a false attribution
+        statement about material that was in fact derived."""
+        for phrase in ("extract", "generat", "reproduc"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, self.lowered,
+                              "{0} does not say what was done to the upstream "
+                              "material".format(NOTICE_FILE))
+        for forbidden in FORBIDDEN_NOTICE_CLAIMS:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, self.lowered,
+                                 "{0} makes a blanket no-change claim, which is "
+                                 "not true of extracted or reproduced "
+                                 "material".format(NOTICE_FILE))
+
+    def test_the_notice_says_the_upstream_ontology_files_are_not_shipped(self):
+        """What is attributed matters as much as who is attributed: a reader must
+        not conclude that the pinned ``.ttl`` bytes are inside this wheel."""
+        self.assertIn("not shipped", self.lowered)
+        self.assertIn("ontolog", self.lowered)
+
+    def test_the_notice_keeps_the_software_under_mit(self):
+        """CC BY must not be read as covering the Python runtime. The boundary is
+        stated in the notice itself, because the notice is the file a consumer
+        reads when they see ``CC-BY-4.0`` in the expression and go looking for what
+        it applies to."""
+        self.assertIn("MIT", self.text)
+        for phrase in ("mit", "software"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, self.lowered)
+        self.assertIn(MIT_LICENSE_FILE, self.text)
+        self.assertIn(LICENSE_EXPRESSION, self.text)
+
+    def test_the_notice_makes_no_endorsement_claim(self):
+        """Attribution is required; endorsement is not granted. The notice says so
+        explicitly, and says nothing that reads the other way."""
+        self.assertIn("endors", self.lowered)
+        for forbidden in FORBIDDEN_ENDORSEMENT_CLAIMS:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, self.lowered,
+                                 "{0} implies IPTC endorsement".format(NOTICE_FILE))
+
+
+class TestTheDistributionDeclaresTheApprovedLicense(unittest.TestCase):
+    """The decision as the index, the installer and a consumer's tooling see it.
+
+    Read off the built wheel's ``METADATA`` and off the installed ``dist-info``,
+    not off ``pyproject.toml``: what a resolver reports and what an audit tool
+    scans is the generated metadata, and a build hook could have produced
+    something else.
+    """
+
+    def setUp(self):
+        self.metadata = wheel_metadata(built().wheel)
+
+    def test_the_metadata_declares_the_exact_aggregate_expression(self):
+        self.assertIn("\nLicense-Expression: {0}\n".format(LICENSE_EXPRESSION),
+                      "\n" + self.metadata)
+        self.assertEqual(metadata_values(self.metadata, "License-Expression"),
+                         [LICENSE_EXPRESSION])
+
+    def test_the_metadata_version_supports_a_license_expression(self):
+        """``License-Expression`` is PEP 639 and only defined from 2.4. A 2.3
+        wheel carrying the field is metadata a strict consumer may reject."""
+        self.assertEqual(metadata_values(self.metadata, "Metadata-Version"),
+                         ["2.4"])
+
+    def test_the_metadata_names_exactly_the_three_license_files_in_order(self):
+        self.assertEqual(metadata_values(self.metadata, "License-File"),
+                         list(LICENSE_FILES))
+
+    def test_the_metadata_carries_no_legacy_license_classifier_or_field(self):
+        """PEP 639 deprecates both. Two sources of truth for one decision is how
+        an expression and a classifier come to disagree."""
+        self.assertEqual(metadata_values(self.metadata, "License"), [])
+        for line in self.metadata.splitlines():
+            if line.startswith("Classifier: License ::"):
+                self.fail("legacy license classifier: {0}".format(line))
+
+    def test_pyproject_declares_the_expression_and_the_three_files(self):
+        """The source side of the same claim, so a red test names the file to edit
+        rather than only the artefact that came out wrong."""
+        project = pyproject()["project"]
+        self.assertEqual(project["license"], LICENSE_EXPRESSION)
+        self.assertEqual(list(project["license-files"]), list(LICENSE_FILES))
+
+    def test_the_installed_metadata_declares_the_same_license(self):
+        venv_python = clean_install(sys.executable, "primary")
+        distinfo = purelib(venv_python) / "{0}.dist-info".format(ARTIFACT_STEM)
+        installed = (distinfo / "METADATA").read_text(encoding="utf-8")
+        self.assertEqual(metadata_values(installed, "License-Expression"),
+                         [LICENSE_EXPRESSION])
+        self.assertEqual(metadata_values(installed, "License-File"),
+                         list(LICENSE_FILES))
+
+    def test_the_license_decision_did_not_add_a_runtime_dependency(self):
+        """The zero-dependency contract is unrelated to licensing and must survive
+        it. Stated here because this is the change that rewrote the metadata."""
+        self.assertEqual(metadata_values(self.metadata, "Requires-Dist"), [])
+        self.assertEqual(metadata_values(self.metadata, "Requires-Python"),
+                         [">=3.9"])
+
+
+class TestTheLicenseFilesShipInBothArtefacts(unittest.TestCase):
+    """Metadata that names a license file the archive does not carry is an
+    attribution promise nothing keeps.
+
+    So the bytes are compared, in both distribution formats, against the
+    checked-in files — the same standard the canonical runtime is held to.
+    """
+
+    def test_the_wheel_carries_exactly_the_declared_license_files(self):
+        self.assertEqual(sorted(wheel_license_members(built().wheel)),
+                         sorted(LICENSE_FILES))
+
+    def test_every_license_file_in_the_wheel_is_byte_equal_to_its_source(self):
+        shipped = wheel_license_members(built().wheel)
+        for relative, blob in sorted(source_license_bytes().items()):
+            with self.subTest(member=relative):
+                self.assertIn(relative, shipped)
+                self.assertEqual(shipped[relative], blob)
+
+    def test_the_sdist_carries_the_license_files_byte_equal_to_their_source(self):
+        payloads = tar_payloads(built().sdist)
+        for relative, blob in sorted(source_license_bytes().items()):
+            member = "{0}/{1}".format(ARTIFACT_STEM, relative)
+            with self.subTest(member=member):
+                self.assertIn(member, payloads)
+                self.assertEqual(payloads[member], blob)
+
+    def test_the_metadata_names_no_license_file_the_wheel_omits(self):
+        """Both directions, off the generated metadata rather than off the
+        constant: a fourth ``License-File`` added without the file is exactly the
+        broken promise this class exists to catch."""
+        declared = metadata_values(wheel_metadata(built().wheel), "License-File")
+        shipped = wheel_license_members(built().wheel)
+        self.assertEqual(sorted(declared), sorted(shipped))
+
+    def test_no_license_file_lands_inside_the_import_namespace(self):
+        """They are distribution metadata, not package data. A ``NOTICE-IPTC.md``
+        inside ``machina_sports_canonical/`` would join the closed runtime member
+        set and become something a consumer could import over."""
+        for member in wheel_record(built().wheel):
+            if not member.startswith(IMPORT_NAME + "/"):
+                continue
+            with self.subTest(member=member):
+                self.assertNotIn("LICENSE", member.upper())
+                self.assertNotIn("NOTICE", member.upper())
+
+    def test_the_license_files_are_not_readable_through_the_installed_package(self):
+        """The corollary, on the installed tree: the runtime member set is closed
+        and unchanged, so nothing licensing added is importable."""
+        venv_python = clean_install(sys.executable, "primary")
+        self.assertEqual(sorted(installed_members(venv_python)),
+                         sorted(expected_runtime_members()))
+
+
+class TestThePackageReadmeStatesTheLicenseAndPointsAtTheNotice(unittest.TestCase):
+    """The README is the package's front page on the index — `[project] readme`
+    puts these bytes in the metadata a consumer reads before installing.
+
+    It carries the aggregate expression and a pointer to the packaged notice, so
+    the CC-BY-4.0 half of the expression is explicable without cloning this
+    repository.
+    """
+
+    def setUp(self):
+        self.text = package_readme_text()
+
+    def test_the_readme_states_the_aggregate_expression(self):
+        self.assertIn(LICENSE_EXPRESSION, self.text)
+
+    def test_the_readme_points_at_the_packaged_notice(self):
+        self.assertIn(NOTICE_FILE, self.text)
+
+    def test_the_readme_names_both_license_files(self):
+        for relative in (MIT_LICENSE_FILE, CC_BY_LICENSE_FILE):
+            with self.subTest(relative=relative):
+                self.assertIn(relative, self.text)
+
+    def test_the_readme_attributes_the_upstream_work_without_claiming_endorsement(self):
+        self.assertIn(UPSTREAM_WORK, self.text)
+        self.assertIn(CC_BY_LICENSE_URL, self.text)
+        lowered = self.text.lower()
+        for forbidden in FORBIDDEN_ENDORSEMENT_CLAIMS:
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, lowered)
+
+    def test_the_readme_reaches_the_metadata_it_claims_to_describe(self):
+        """Guard the pointer: the README is the declared readme, so these bytes
+        really are the ``Description`` a consumer sees."""
+        self.assertEqual(pyproject()["project"]["readme"],
+                         "README-machina-sports-canonical.md")
+        self.assertIn(NOTICE_FILE, wheel_metadata(built().wheel))
+
+
+# ---------------------------------------------------------------------------
 # 8. The wheel is a closed set and the filter has exactly one exclusion
 # ---------------------------------------------------------------------------
 
@@ -1764,6 +2400,16 @@ class TestTheWheelIsAClosedSet(unittest.TestCase):
 
     def test_the_record_lists_exactly_the_expected_runtime_members(self):
         self.assertEqual(self.runtime, sorted(expected_runtime_members()))
+
+    def test_the_record_accounts_for_exactly_the_declared_license_files(self):
+        """The closed set has to close over the license members too. They are the
+        only thing licensing adds to the archive, and a RECORD that listed a fourth
+        — or dropped one METADATA names — would be a distribution whose attribution
+        no installer verifies."""
+        licenses = sorted(entry[len(WHEEL_LICENSE_PREFIX):]
+                          for entry in self.record
+                          if entry.startswith(WHEEL_LICENSE_PREFIX))
+        self.assertEqual(licenses, sorted(LICENSE_FILES))
 
     def test_wheel_record_excludes_the_generator(self):
         self.assertNotIn("{0}/{1}".format(IMPORT_NAME, GENERATOR_MODULE),
@@ -2565,10 +3211,14 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
       once with no upload scope, and the job that has the upload scope downloads
       those exact bytes behind a reviewer-gated environment. It cannot rebuild:
       publishing a rebuild publishes bytes nobody approved.
-    - **It refuses to publish today.** The distribution declares no license,
-      because this repository has none to declare and packaging must not invent
-      one. That refusal is an executable step in front of the upload, so the
-      workflow can be committed while the release stays blocked.
+    - **It publishes only the approved license.** The owner decided
+      ``MIT AND CC-BY-4.0`` with three named license files, so the preflight
+      requires *that* expression and *all three* ``License-File`` entries. The
+      earlier gate accepted the presence of either field, which would have admitted
+      a wheel declaring any expression at all — including one that placed CC BY
+      over the software, or MIT over the attribution-bearing assets. An upload
+      under the wrong license cannot be taken back: PyPI does not free a version
+      number.
     """
 
     # No skip when the workflow is absent, and no `is_file()` guard that turns
@@ -2792,52 +3442,201 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
                 with self.subTest(command=command, marker=marker):
                     self.assertNotIn(marker, command)
 
-    def test_the_publish_job_refuses_a_wheel_with_no_approved_license_metadata(self):
+    def test_the_publish_job_refuses_a_wheel_without_the_approved_license(self):
         gate = self.license_gate_command()
         self.assertIn("exit 1", gate)
         self.assertLess(line_index(self.publish, gate),
                         line_index(self.publish, TRUSTED_PUBLISHER_ACTION),
                         "a license gate after the upload is not a gate")
 
-    def test_the_license_gate_stops_the_wheel_this_repository_builds_today(self):
-        """The point of the gate, executed rather than described: the wheel this
-        commit produces declares no license, so the publish job stops before the
-        upload action. This is the local proof that the release is blocked."""
-        metadata = "\n" + wheel_metadata(built().wheel)
-        for field in LICENSE_METADATA_FIELDS:
-            with self.subTest(field=field):
-                self.assertNotIn("\n{0}:".format(field), metadata,
-                                 "license metadata appeared without an owner "
-                                 "decision recorded in docs/iptc/RELEASING.md")
+    def test_the_gate_requires_the_exact_expression_and_all_three_files(self):
+        """Read off the command itself, so a gate that only looked for the *word*
+        ``License-Expression`` could not satisfy the executed cases below by
+        accident. Every value the owner approved is named in the step."""
+        gate = self.license_gate_command()
+        self.assertIn(LICENSE_EXPRESSION, gate)
+        for relative in LICENSE_FILES:
+            with self.subTest(relative=relative):
+                self.assertIn(relative, gate)
+
+    def test_the_license_gate_admits_the_wheel_this_repository_now_builds(self):
+        """The owner decision, executed end to end: the wheel this commit produces
+        carries the approved expression and the three approved files, so the
+        preflight lets it through. Every rejection case below is measured against
+        this one — a gate that always failed would satisfy them all and block every
+        release for the wrong reason."""
+        metadata = wheel_metadata(built().wheel)
+        self.assertEqual(metadata_values(metadata, "License-Expression"),
+                         [LICENSE_EXPRESSION])
+        self.assertEqual(metadata_values(metadata, "License-File"),
+                         list(LICENSE_FILES))
         result = self.run_gate(built().wheel)
+        self.assertEqual(result.returncode, 0,
+                         "the gate rejected the approved wheel:\n{0}{1}".format(
+                             result.stdout, result.stderr))
+
+    def test_the_license_gate_refuses_a_wheel_that_declares_no_license(self):
+        """The state this repository was in before the decision. It must stay
+        rejected: an upload under no license cannot be withdrawn."""
+        result = self.run_gate(self.synthetic_wheel([]))
         self.assertNotEqual(result.returncode, 0,
-                            "the gate let today's unlicensed wheel through:\n"
-                            "{0}{1}".format(result.stdout, result.stderr))
+                            "the gate let an unlicensed wheel through:\n{0}{1}"
+                            .format(result.stdout, result.stderr))
         self.assertIn("BLOCKED", result.stdout + result.stderr)
 
-    def test_the_license_gate_admits_a_wheel_that_declares_a_license(self):
-        """Guard the guard. A step that always fails would satisfy the test above
-        and would also make every future release impossible for the wrong
-        reason. The synthetic metadata here chooses nothing for this
-        distribution — it exercises the matcher."""
+    def test_the_license_gate_refuses_any_expression_but_the_approved_one(self):
+        """The hole the old gate had. It accepted the mere presence of a license
+        field, so each of these would have published: MIT alone drops the
+        attribution obligation on the two IPTC-derived assets, CC-BY-4.0 alone
+        places CC BY over the software, ``OR`` lets a consumer choose one, and a
+        reordered conjunction is not the string the owner approved."""
+        for wrong in ("MIT", "CC-BY-4.0", "MIT OR CC-BY-4.0",
+                      "CC-BY-4.0 AND MIT", "Proprietary"):
+            with self.subTest(expression=wrong):
+                lines = ["License-Expression: {0}".format(wrong)]
+                lines += ["License-File: {0}".format(relative)
+                          for relative in LICENSE_FILES]
+                result = self.run_gate(self.synthetic_wheel(lines))
+                self.assertNotEqual(
+                    result.returncode, 0,
+                    "the gate admitted {0!r}:\n{1}{2}".format(
+                        wrong, result.stdout, result.stderr))
+                self.assertIn("BLOCKED", result.stdout + result.stderr)
+
+    def test_the_license_gate_refuses_a_wheel_missing_any_one_license_file(self):
+        """Three files, each dropped in turn. A wheel whose METADATA names the
+        expression but not the notice would publish ``CC-BY-4.0`` with no
+        attribution reachable from the artefact."""
+        for dropped in LICENSE_FILES:
+            with self.subTest(dropped=dropped):
+                lines = ["License-Expression: {0}".format(LICENSE_EXPRESSION)]
+                lines += ["License-File: {0}".format(relative)
+                          for relative in LICENSE_FILES if relative != dropped]
+                result = self.run_gate(self.synthetic_wheel(lines))
+                self.assertNotEqual(
+                    result.returncode, 0,
+                    "the gate admitted a wheel without {0}:\n{1}{2}".format(
+                        dropped, result.stdout, result.stderr))
+                self.assertIn("BLOCKED", result.stdout + result.stderr)
+
+    def test_the_license_gate_refuses_the_shape_the_old_gate_admitted(self):
+        """Named as its own case because it is the regression: a single license
+        field with an arbitrary value used to pass."""
         for field in LICENSE_METADATA_FIELDS:
             with self.subTest(field=field):
-                staged = Path(tempfile.mkdtemp(prefix="iptc-license-fixture-"))
-                try:
-                    wheel = staged / built().wheel.name
-                    with zipfile.ZipFile(wheel, "w") as archive:
-                        archive.writestr(
-                            "{0}.dist-info/METADATA".format(ARTIFACT_STEM),
-                            "Metadata-Version: 2.4\nName: {0}\nVersion: {1}\n"
-                            "{2}: SYNTHETIC-FIXTURE\n".format(
-                                DISTRIBUTION, VERSION, field))
-                    result = self.run_gate(wheel)
-                    self.assertEqual(
+                result = self.run_gate(self.synthetic_wheel(
+                    ["{0}: SYNTHETIC-FIXTURE".format(field)]))
+                self.assertNotEqual(
+                    result.returncode, 0,
+                    "the gate still admits a bare {0}:\n{1}{2}".format(
+                        field, result.stdout, result.stderr))
+
+    def test_the_license_gate_refuses_a_duplicated_license_expression(self):
+        """`License-Expression` is single-use in the metadata spec, and a
+        presence-only matcher cannot see a second one.
+
+        A wheel carrying the approved expression *and* a second one is a wheel
+        whose license a consumer's tooling resolves by which line it happens to
+        read first — and the second line is where a wrong license hides behind a
+        right one. Both orders are exercised, because a matcher that stops at the
+        first hit is fooled by exactly one of them.
+        """
+        for extra in (LICENSE_EXPRESSION, "Proprietary"):
+            for first in (LICENSE_EXPRESSION, extra):
+                second = extra if first == LICENSE_EXPRESSION else LICENSE_EXPRESSION
+                with self.subTest(first=first, second=second):
+                    lines = ["License-Expression: {0}".format(first),
+                             "License-Expression: {0}".format(second)]
+                    lines += ["License-File: {0}".format(relative)
+                              for relative in LICENSE_FILES]
+                    result = self.run_gate(self.synthetic_wheel(lines))
+                    self.assertNotEqual(
                         result.returncode, 0,
-                        "the gate rejected a wheel that declares {0}:\n{1}{2}"
-                        .format(field, result.stdout, result.stderr))
-                finally:
-                    shutil.rmtree(staged, ignore_errors=True)
+                        "the gate admitted two License-Expression values "
+                        "({0!r}, {1!r}):\n{2}{3}".format(
+                            first, second, result.stdout, result.stderr))
+                    self.assertIn("BLOCKED", result.stdout + result.stderr)
+
+    def test_the_license_gate_refuses_a_license_file_the_owner_did_not_approve(self):
+        """The approved set is closed. A fourth `License-File` is a fourth claim
+        about what licenses this distribution — and the file it names ships in the
+        wheel, so the extra entry is not cosmetic."""
+        for unapproved in ("LICENSES/APACHE-2.0.txt", "LICENSE",
+                           "LICENSES/CC-BY-NC-4.0.txt"):
+            with self.subTest(unapproved=unapproved):
+                lines = ["License-Expression: {0}".format(LICENSE_EXPRESSION)]
+                lines += ["License-File: {0}".format(relative)
+                          for relative in LICENSE_FILES]
+                lines.append("License-File: {0}".format(unapproved))
+                result = self.run_gate(self.synthetic_wheel(lines))
+                self.assertNotEqual(
+                    result.returncode, 0,
+                    "the gate admitted an unapproved license file {0}:\n{1}{2}"
+                    .format(unapproved, result.stdout, result.stderr))
+                self.assertIn("BLOCKED", result.stdout + result.stderr)
+
+    def test_the_license_gate_refuses_a_duplicated_license_file(self):
+        """Each approved file, listed twice. A duplicate is how an entry survives
+        a review that counted names rather than values, and a gate satisfied by
+        "all three are present" cannot tell three from four."""
+        for duplicated in LICENSE_FILES:
+            with self.subTest(duplicated=duplicated):
+                lines = ["License-Expression: {0}".format(LICENSE_EXPRESSION)]
+                lines += ["License-File: {0}".format(relative)
+                          for relative in LICENSE_FILES]
+                lines.append("License-File: {0}".format(duplicated))
+                result = self.run_gate(self.synthetic_wheel(lines))
+                self.assertNotEqual(
+                    result.returncode, 0,
+                    "the gate admitted a duplicated {0}:\n{1}{2}".format(
+                        duplicated, result.stdout, result.stderr))
+                self.assertIn("BLOCKED", result.stdout + result.stderr)
+
+    def test_the_license_gate_reads_metadata_as_metadata_not_as_text(self):
+        """The gate must parse the METADATA headers, not scan the archive for
+        strings.
+
+        A wheel's `Description` is the README, verbatim, in the same file as the
+        headers. This repository's README *names the approved expression and all
+        three files* — so a line-scanner that did not stop at the header/body
+        boundary would find every value it was looking for in prose and admit a
+        wheel that declares nothing at all.
+        """
+        prose = "\n".join(
+            ["License-Expression: {0}".format(LICENSE_EXPRESSION)]
+            + ["License-File: {0}".format(relative)
+               for relative in LICENSE_FILES])
+        wheel = self.synthetic_wheel([], body=prose)
+        result = self.run_gate(wheel)
+        self.assertNotEqual(
+            result.returncode, 0,
+            "the gate read the description body as license metadata:\n{0}{1}"
+            .format(result.stdout, result.stderr))
+        self.assertIn("BLOCKED", result.stdout + result.stderr)
+
+    def synthetic_wheel(self, metadata_lines, body: str = "") -> Path:
+        """A wheel-shaped zip carrying only ``metadata_lines`` as license fields.
+
+        Synthetic on purpose: the rejection cases have to be metadata this
+        repository would never build, and rebuilding the real wheel with a wrong
+        license to test the gate would mean producing an artefact that misstates
+        the owner decision.
+
+        ``body`` is the ``Description`` — the README, in a real wheel — placed
+        after the blank line that ends the headers. It is a parameter so a
+        rejection case can put license-shaped prose where a header scanner would
+        wrongly find it.
+        """
+        staged = Path(tempfile.mkdtemp(prefix="iptc-license-fixture-"))
+        self.addCleanup(shutil.rmtree, staged, ignore_errors=True)
+        wheel = staged / built().wheel.name
+        headers = "".join("{0}\n".format(line) for line in metadata_lines)
+        with zipfile.ZipFile(wheel, "w") as archive:
+            archive.writestr(
+                "{0}.dist-info/METADATA".format(ARTIFACT_STEM),
+                "Metadata-Version: 2.4\nName: {0}\nVersion: {1}\n{2}\n{3}".format(
+                    DISTRIBUTION, VERSION, headers, body))
+        return wheel
 
     def run_gate(self, wheel: Path):
         """Run the workflow's own license preflight over ``wheel``.
@@ -2863,8 +3662,14 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
 
 
 class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
-    """Automation cannot hold the two decisions this release still needs: whether
-    an owner approves publishing at all, and under which license.
+    """One of the two decisions this release needed is now made; the other is not.
+
+    The owner has chosen ``MIT AND CC-BY-4.0`` with three named license files, so
+    the license blocker is recorded as resolved rather than left standing as a
+    blocker nobody can close. Everything else still holds: the ``pypi`` environment
+    is not configured, the trusted publisher is not registered, the renewed digests
+    have not been independently verified, and no human has approved publication.
+    Marking the license decision done must not read as "the release is unblocked".
 
     So the document is asserted for the things a releaser would otherwise have to
     guess — how the trusted publisher is registered, that the environment must
@@ -2906,15 +3711,34 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         )
         self.assertMentions("no api token", "pending publisher")
 
-    def test_the_docs_block_the_first_upload_on_the_license_decision(self):
-        """The blocker, stated where a releaser reads it and in the same terms the
-        workflow enforces: the owner has to choose license metadata, and nothing
-        in this repository may choose it for them."""
-        self.assertIn("BLOCKED", self.text)
-        self.assertMentions("license", "owner")
+    def test_the_docs_record_the_owner_license_decision_as_resolved(self):
+        """The decision, stated where a releaser reads it and in the same terms the
+        workflow enforces: the exact expression, the three files it names, and the
+        packaged notice that carries the attribution."""
+        self.assertMentions("license", "owner", "resolved")
+        self.assertIn(LICENSE_EXPRESSION, self.text)
+        for relative in LICENSE_FILES:
+            with self.subTest(relative=relative):
+                self.assertIn(relative, self.text)
         for field in LICENSE_METADATA_FIELDS:
             with self.subTest(field=field):
                 self.assertIn(field, self.text)
+
+    def test_the_docs_record_the_upstream_attribution_and_the_mit_boundary(self):
+        """A releaser reading only this document must be able to see what the
+        CC-BY-4.0 half attributes and that it does not reach the software."""
+        self.assertIn(UPSTREAM_WORK, self.text)
+        self.assertIn(UPSTREAM_CREATOR, self.text)
+        self.assertIn(NOTICE_FILE, self.text)
+        self.assertMentions("mit", "attribution")
+
+    def test_the_docs_still_block_the_release_on_everything_else(self):
+        """Resolving the license must not read as unblocking the release. The
+        remaining holds are named individually, because "still blocked" without a
+        list is a sentence a releaser can talk themselves past."""
+        self.assertIn("BLOCKED", self.text)
+        self.assertMentions(*UNRESOLVED_RELEASE_HOLDS)
+        self.assertMentions("do not publish")
 
     def step_line(self, phrase: str) -> int:
         """The line the release step ``phrase`` is on.
@@ -2980,18 +3804,20 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
 
-    def test_the_docs_record_the_independent_pre_approval_hash_verification(self):
-        """The reviewed rows were produced by the same process that recorded them.
+    def test_the_docs_record_the_independent_verification_as_superseded(self):
+        """The independent rebuild happened, and it rebuilt different bytes.
 
-        Reproducing them once, elsewhere, from a clean export of the exact
-        candidate, is what turns "these digests are stable" into "these digests
-        are what this commit builds on someone else's machine". A releaser can
-        only weigh that evidence if the document says which commit, which two
-        interpreters, how the source was obtained — and, just as importantly,
-        that a rebuild is not permission to upload.
+        `f46799c` predates the license metadata. Adding an expression, three
+        ``License-File`` fields and three archive members changes both artefacts, so
+        that evidence now describes a candidate this repository no longer builds.
+        The document keeps it — a releaser is entitled to see that the method
+        works and that the pre-license candidate was reproduced — but it must be
+        labelled superseded and carry the digests it actually verified, or it reads
+        as vouching for rows nobody has rebuilt.
         """
         self.assertIn(INDEPENDENT_VERIFICATION_COMMIT, self.text)
-        self.assertMentions("independent", "git archive", "temporary trees")
+        self.assertMentions("independent", "git archive", "temporary trees",
+                            "superseded")
         for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
             with self.subTest(interpreter=version):
                 self.assertIn(version, self.text)
@@ -2999,12 +3825,37 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
             with self.subTest(build_pin=distribution):
                 self.assertIn("{0}=={1}".format(distribution, version),
                               self.text)
-        for name, digest in REVIEWED_RELEASE_DIGESTS:
-            with self.subTest(artefact=name):
+        for name, digest in SUPERSEDED_RELEASE_DIGESTS:
+            with self.subTest(superseded=name):
                 self.assertIn(digest, self.text)
         self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
         self.assertIn(RELEASE_CHECKSUM_FILE, self.text)
         self.assertMentions("not release approval", "not a license decision")
+
+    def test_the_docs_state_that_the_renewed_digests_are_not_yet_independent(self):
+        """The hold that replaced the license one. The renewed rows were produced
+        by the same process that recorded them, which is exactly the gap the
+        superseded section was written to close — so it is named as an outstanding
+        hold rather than left for a releaser to notice."""
+        self.assertMentions(
+            "the renewed digests have not been independently verified")
+        for name, digest in REVIEWED_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(name, self.text)
+                self.assertIn(digest, self.text)
+
+    def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
+        """Two digest pairs in one document is a reading hazard. The reviewed file
+        is named as the authority, and the superseded rows must not be the ones
+        `docs/iptc/machina-sports-canonical-0.1.0.sha256` is said to hold."""
+        current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
+        stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
+        self.assertEqual(current & stale, set(),
+                         "the renewed digests were never re-recorded")
+        for digest in stale:
+            with self.subTest(digest=digest):
+                self.assertNotIn(digest, RELEASE_CHECKSUM_PATH.read_text(
+                    encoding="utf-8"))
 
     def test_the_docs_record_the_reproducible_build_epoch(self):
         """The releaser has to be able to rebuild the reviewed bytes locally, and

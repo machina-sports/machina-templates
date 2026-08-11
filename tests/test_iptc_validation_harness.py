@@ -745,6 +745,25 @@ class TestPublicSanitization(unittest.TestCase):
             if path.is_file():
                 found.append(path)
         found.extend([
+            # The licence and attribution files are as public as the rest of the
+            # diff, and `NOTICE-IPTC.md` is authored prose that ships inside the
+            # published wheel — the likeliest of the three to carry an internal
+            # name. The CC BY legal code is vendored verbatim and cannot contain
+            # one, but it is scanned rather than exempted: an exemption is a rule
+            # to maintain, and this file's bytes are already pinned by digest in
+            # `tests/test_iptc_canonical_package.py`.
+            REPO_ROOT / "LICENSES" / "MIT.txt",
+            REPO_ROOT / "LICENSES" / "CC-BY-4.0.txt",
+            REPO_ROOT / "NOTICE-IPTC.md",
+            # The published surface, which was outside this scan while being the
+            # most exposed authored prose in the repository. The README's bytes
+            # are the wheel's `Description`; `pyproject.toml` carries the
+            # description string; the publish workflow is the only file that can
+            # upload. A leak in any of them reaches an index, not just a diff.
+            REPO_ROOT / "README-machina-sports-canonical.md",
+            REPO_ROOT / "pyproject.toml",
+            REPO_ROOT / ".github" / "workflows"
+            / "publish-machina-sports-canonical.yml",
             REPO_ROOT / "tools" / "__init__.py",
             REPO_ROOT / "docs" / "rfcs" / "001-machina-iptc-sport-schema-profile.md",
             REPO_ROOT / ".github" / "workflows" / "validate-iptc-sport-schema.yml",
@@ -780,6 +799,19 @@ class TestPublicSanitization(unittest.TestCase):
             "agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld",
             # Root-level authored files are as public as the rest of the diff.
             ".gitattributes", ".gitignore", "requirements-iptc-validator.txt",
+            # Every file the license decision added, so a new public file cannot
+            # be added to the distribution without the scan reaching it.
+            "LICENSES/MIT.txt", "LICENSES/CC-BY-4.0.txt", "NOTICE-IPTC.md",
+            # THE PUBLISHED SURFACE. These three were outside the scan while
+            # being the most exposed authored files in the repository: the README
+            # is the distribution's front page on PyPI and its bytes ARE the
+            # `Description` in the wheel's METADATA, `pyproject.toml` carries the
+            # description string beside it, and the publish workflow is the one
+            # file that can upload. An internal identifier surviving in any of
+            # them ships to an index rather than sitting in a repository.
+            "README-machina-sports-canonical.md",
+            "pyproject.toml",
+            ".github/workflows/publish-machina-sports-canonical.yml",
             # The denylist holder is no longer exempt from the denylist.
             Path(__file__).resolve().relative_to(REPO_ROOT).as_posix(),
         ):

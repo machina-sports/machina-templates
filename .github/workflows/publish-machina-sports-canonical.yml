@@ -1,17 +1,17 @@
 name: Publish machina-sports-canonical
 
 # Releases the distribution `machina-sports-canonical` to PyPI and then creates
-# the matching GitHub Release, and refuses to until two things outside this
+# the matching GitHub Release, and refuses to until the things outside this
 # repository have happened.
 #
-# THE FIRST UPLOAD IS BLOCKED ON A LICENSE DECISION. This repository has no root
-# license, so the distribution declares none, and packaging must not invent one:
-# `sports-skills` being MIT is evidence about another repository, not permission to
-# relicense this source. The publish job therefore inspects the built wheel's
-# METADATA and stops before the upload unless an owner-approved
-# `License-Expression` or `License-File` is present. That is why this workflow can
-# be committed while the release stays deliberately blocked — the gate is
-# executable, not a note. `docs/iptc/RELEASING.md` records what has to be decided.
+# IT PUBLISHES ONLY THE APPROVED LICENSE. The owner decided this distribution is
+# `MIT AND CC-BY-4.0`: MIT over the Machina-authored runtime, adapters and build
+# tooling, and CC-BY-4.0 attribution obligations over the two packaged assets that
+# derive from — or reproduce the namespace bindings of — IPTC Sport Schema 1.1.
+# The publish job therefore inspects the built wheel's METADATA and stops before
+# the upload unless it carries that exact expression and all three approved
+# `License-File` entries. The gate is executable, not a note, and
+# `docs/iptc/RELEASING.md` records both the decision and the holds that remain.
 #
 # NO CREDENTIAL LIVES HERE. Uploading is authorized by the publish job's own
 # short-lived OIDC token, exchanged by `pypa/gh-action-pypi-publish` for an upload
@@ -164,18 +164,43 @@ jobs:
       - name: The downloaded bytes are the ones that were reviewed
         run: cd dist && sha256sum --check --strict ../SHA256SUMS
 
-      # THE LICENSE GATE. Fail-closed and last before the upload: no
-      # `License-Expression` and no `License-File` in the wheel's METADATA means
-      # no owner has decided what this distribution is licensed as, and an upload
-      # under no license cannot be taken back — PyPI does not free a version
-      # number. As of this commit the wheel has neither field, so this step stops
-      # the release here, on purpose.
+      # THE LICENSE GATE. Fail-closed and last before the upload: the wheel's
+      # METADATA must carry the exact expression the owner approved AND all three
+      # of the `License-File` entries that expression rests on. An upload under
+      # the wrong license cannot be taken back — PyPI does not free a version
+      # number.
       #
-      # `tests/test_iptc_canonical_package.py` reads this command out of this file
-      # and runs it against the wheel the repository builds today, so the refusal
-      # is proved locally rather than asserted.
-      - name: Refuse to publish without an approved license
-        run: unzip -p dist/*.whl "*.dist-info/METADATA" | grep -Eq "^(License-Expression|License-File):" || (echo "BLOCKED - the built wheel declares no approved license metadata; see docs/iptc/RELEASING.md" && exit 1)
+      # IT IS AN EXACT MATCH, NOT A PRESENCE CHECK. Two earlier shapes of this
+      # step were too weak to state the owner decision:
+      #
+      #   - matching the mere presence of `License-Expression` or `License-File`
+      #     admitted `Proprietary`, `MIT` alone (dropping the CC BY attribution
+      #     owed on the two IPTC-derived assets) and `CC-BY-4.0` alone (placing CC
+      #     BY over the software);
+      #   - grepping for the four approved lines admitted a wheel that ALSO
+      #     carried a second `License-Expression`, an unapproved fourth
+      #     `License-File`, or a duplicate — because "all four are present" cannot
+      #     tell three entries from four.
+      #
+      # So the check now requires the field VALUES to equal the approved sets
+      # exactly. `d.get_all` returns every occurrence, so a duplicate or an extra
+      # changes the list and fails.
+      #
+      # PARSED AS METADATA, NOT SCANNED AS TEXT. A wheel's `Description` is the
+      # README verbatim, in the same file as the headers — and this project's
+      # README names the approved expression and all three files. A line-scanner
+      # would find every value it wanted in that prose and admit a wheel that
+      # declares nothing, which is an executed rejection case in
+      # `tests/test_iptc_canonical_package.py`. `email.message_from_string` stops
+      # at the blank line that ends the headers, so the body cannot satisfy it.
+      #
+      # The suite reads this command out of this file and runs it verbatim against
+      # synthetic wheels and against the wheel this repository builds, so the gate
+      # is proved rather than asserted. The shell keeps the `exit 1`, so any
+      # failure — including a malformed or absent wheel raising in Python — is
+      # fail-closed with one message.
+      - name: Refuse to publish without the approved license
+        run: python3 -c 'import email,glob,sys,zipfile;a=["LICENSES/MIT.txt","LICENSES/CC-BY-4.0.txt","NOTICE-IPTC.md"];w=glob.glob("dist/*.whl");z=zipfile.ZipFile(w[0]) if len(w)==1 else sys.exit(1);n=[m for m in z.namelist() if m.endswith(".dist-info/METADATA")];d=email.message_from_string(z.read(n[0]).decode("utf-8")) if len(n)==1 else sys.exit(1);sys.exit(0 if d.get_all("License-Expression")==["MIT AND CC-BY-4.0"] and sorted(d.get_all("License-File") or [])==sorted(a) else 1)' || (echo "BLOCKED - the built wheel must declare exactly one License-Expression MIT AND CC-BY-4.0 and exactly the three approved License-File values (LICENSES/MIT.txt, LICENSES/CC-BY-4.0.txt, NOTICE-IPTC.md), with no extras and no duplicates. See docs/iptc/RELEASING.md" && exit 1)
 
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # release/v1
         with:

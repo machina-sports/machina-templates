@@ -38,11 +38,18 @@ RELEASE_SOURCE_DATE_EPOCH = "1786398569"
 
 # The same closed staging set as the package proof.  Building a disposable copy
 # avoids setuptools writing egg-info into the checkout.
+#
+# `LICENSES` and `NOTICE-IPTC.md` are build inputs, not documentation:
+# `license-files` in `pyproject.toml` makes setuptools read all three at build
+# time, so a staging copy without them does not build the reviewed release and
+# the digest comparison below would be measuring a different artefact.
 PACKAGING_INPUTS = (
     "pyproject.toml",
     "setup.py",
     "MANIFEST.in",
     "README-machina-sports-canonical.md",
+    "LICENSES",
+    "NOTICE-IPTC.md",
     "packaging",
     "tools/iptc/canonical",
 )

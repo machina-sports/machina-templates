@@ -120,6 +120,23 @@ INPUTS_THE_FILTERS_MUST_REACH = (
     "docs/iptc/BASELINE-AUDIT.md",
     "docs/iptc/machina-sports-canonical-0.1.0.sha256",
     ".github/workflows/publish-machina-sports-canonical.yml",
+    #: THE LICENSE FILES ARE PACKAGE INPUTS. `license-files` in `pyproject.toml`
+    #: makes setuptools read all three at build time and write them into the wheel
+    #: and the sdist, so editing one changes the released bytes and the reviewed
+    #: digests. A change touching only `LICENSES/` or `NOTICE-IPTC.md` that skipped
+    #: this workflow would leave the package unproven for that commit — and it is
+    #: the attribution the CC-BY-4.0 half of the expression rests on.
+    "LICENSES/MIT.txt",
+    "LICENSES/CC-BY-4.0.txt",
+    "NOTICE-IPTC.md",
+    #: `.gitattributes` DECIDES HOW A PACKAGE INPUT IS READ AND CHECKED. It is
+    #: what marks the CC BY legal code vendored and exempt from diff and
+    #: whitespace checking, so the official trailing blank line survives review
+    #: instead of being trimmed into a file that is no longer the licence. Editing
+    #: that rule — widening it over the authored licence files, or dropping it —
+    #: changes what CI and the pre-commit hook will accept for the packaged bytes,
+    #: and must not be a change that skips the workflow proving them.
+    ".gitattributes",
 )
 
 #: The keys a suite entry may carry. ``group`` and ``timeout_seconds`` are

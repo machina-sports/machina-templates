@@ -30,6 +30,19 @@ agent-templates/iptc-mappings/references/iptc-sport-schema-1.1/credits.markdown 
 # is NOT marked vendored: it is a Machina-authored fixture and is reviewed as one.
 tools/iptc/fixtures/baseline/api-football-soccer-event-nulls.json -whitespace
 
+# The official Creative Commons CC BY 4.0 legal code, published verbatim in this
+# distribution because `pyproject.toml` names it in `license-files`. Creative
+# Commons ends the text with a blank line, so Git's whitespace check reports
+# `new blank line at EOF` and a pre-commit hook refuses the file. Trimming that
+# byte would satisfy the hook and stop this being the CC BY 4.0 legal code — it
+# would break the pinned sha256 the package proof asserts, and a licence this
+# repository edited is not the licence it names in `License-Expression`.
+#
+# So: same treatment as the pinned upstream ontologies above, for this ONE file.
+# `LICENSES/MIT.txt` and `NOTICE-IPTC.md` are Machina-authored and stay fully
+# reviewed — no glob here may widen over them.
+LICENSES/CC-BY-4.0.txt linguist-vendored -diff -whitespace
+
 # Machina-authored, and therefore deliberately NOT vendored: these are reviewed
 # like any other file in the repository, with diff and whitespace checks on. They
 # are the three files upstream-commit.json does not hash, and the same three names
