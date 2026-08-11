@@ -93,7 +93,7 @@
     {
       "path": "tests/test_iptc_installed_conformance.py",
       "group": "installed",
-      "timeout_seconds": 1800
+      "timeout_seconds": 300
     }
   ]
 }

@@ -16,6 +16,7 @@ before and after the run.  Any alias whose origin is under the repository's
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import site
@@ -46,11 +47,11 @@ PACKAGING_INPUTS = (
     "tools/iptc/canonical",
 )
 
-# Exact order is intentional: core contracts first, then cross-cutting contracts,
-# then every packaged provider adapter.  The manifest gives this outer suite its
-# place in the repository-wide order; this tuple gives the reused contracts their
-# order inside the installed proof.
-CONFORMANCE_SUITES = (
+# Exact order is intentional: core contracts first, then cross-cutting contracts.
+# The adapter mapping below closes the packaged adapter inventory separately so a
+# future installed adapter cannot inherit conformance by being absent from a loose
+# suite list.
+CORE_CONFORMANCE_SUITES = (
     "tests/test_iptc_canonical_serializer.py",
     "tests/test_iptc_capability_matrix.py",
     "tests/test_iptc_cli_rights_gate.py",
@@ -59,15 +60,21 @@ CONFORMANCE_SUITES = (
     "tests/test_iptc_multi_participant_contract.py",
     "tests/test_iptc_source_ref_credentials.py",
     "tests/test_iptc_sports_skills_reference_contract.py",
-    "tests/test_iptc_api_football_adapter.py",
-    "tests/test_iptc_sportradar_mlb_adapter.py",
-    "tests/test_iptc_sportradar_nfl_adapter.py",
-    "tests/test_iptc_sportradar_soccer_adapter.py",
-    "tests/test_iptc_sportradar_tennis_adapter.py",
-    "tests/test_iptc_stats_perform_opta_adapter.py",
 )
 
+ADAPTER_CONFORMANCE_SUITES = {
+    "api_football": "tests/test_iptc_api_football_adapter.py",
+    "sportradar_mlb": "tests/test_iptc_sportradar_mlb_adapter.py",
+    "sportradar_nfl": "tests/test_iptc_sportradar_nfl_adapter.py",
+    "sportradar_soccer": "tests/test_iptc_sportradar_soccer_adapter.py",
+    "sportradar_tennis": "tests/test_iptc_sportradar_tennis_adapter.py",
+    "stats_perform_opta": "tests/test_iptc_stats_perform_opta_adapter.py",
+}
+
 GENERATOR_ONLY_CLASS = "TestOfficialTermExport"
+CHILD_CONFORMANCE_TIMEOUT_SECONDS = 180
+INSTALLED_CONFORMANCE_MANIFEST_TIMEOUT_SECONDS = 300
+MINIMUM_SETUP_TIMEOUT_HEADROOM_SECONDS = 60
 
 
 BOOTSTRAP = r'''\
@@ -75,11 +82,73 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import json
+import pkgutil
+import socket
 import sys
 import sysconfig
 import types
 import unittest
 from pathlib import Path
+
+
+sys.dont_write_bytecode = True
+
+
+class NetworkAccessBlocked(RuntimeError):
+    """The installed conformance proof attempted a forbidden network API."""
+
+
+def blocked_network_api(name):
+    def refuse(*args, **kwargs):
+        raise NetworkAccessBlocked(
+            "installed conformance forbids network access via {0}".format(name))
+    return refuse
+
+
+class RefusingSocket(socket.socket):
+    def __new__(cls, *args, **kwargs):
+        raise NetworkAccessBlocked(
+            "installed conformance forbids network access via socket.socket")
+
+
+def install_network_guard():
+    guarded = (
+        "create_connection",
+        "getaddrinfo",
+        "gethostbyname",
+        "gethostbyname_ex",
+        "gethostbyaddr",
+        "getnameinfo",
+    )
+    socket.socket = RefusingSocket
+    for name in guarded:
+        setattr(socket, name, blocked_network_api("socket." + name))
+
+
+def probe_network_guard():
+    install_network_guard()
+    probes = (
+        ("socket.socket", lambda: socket.socket(-1)),
+        ("socket.create_connection", lambda: socket.create_connection(None)),
+        ("socket.getaddrinfo", lambda: socket.getaddrinfo(object(), object())),
+    )
+    for name, probe in probes:
+        try:
+            probe()
+        except NetworkAccessBlocked as error:
+            if name not in str(error):
+                raise SystemExit(
+                    "network guard raised an unclear exception for {0}: {1}".format(
+                        name, error))
+            print("blocked {0}".format(name), flush=True)
+        except Exception as error:
+            raise SystemExit(
+                "network guard did not intercept {0}: {1}: {2}".format(
+                    name, type(error).__name__, error))
+        else:
+            raise SystemExit("network guard did not intercept {0}".format(name))
+    return 0
 
 
 def beneath(path, root):
@@ -113,113 +182,221 @@ def iter_cases(suite):
             yield item
 
 
-repo_root = Path(sys.argv[1]).resolve()
-suite_paths = [Path(value).resolve() for value in sys.argv[2:]]
-source_root = (repo_root / "tools/iptc/canonical").resolve()
-sys.dont_write_bytecode = True
-
-# Import the wheel before the checkout is made importable.  Under ``-I`` and
-# from the neutral directory, this can only be the venv's site-packages copy.
-installed_distribution = importlib.import_module("machina_sports_canonical")
-installed_root = Path(installed_distribution.__file__).resolve().parent
-purelib = Path(sysconfig.get_paths()["purelib"]).resolve()
-if installed_root.parent != purelib:
-    raise SystemExit("installed package is not in this venv: {0}".format(
-        installed_root))
-if beneath(installed_root, repo_root):
-    raise SystemExit("installed package resolved under the repository: {0}".format(
-        installed_root))
-
-# The tests and offline validator remain repository evidence.  Load the installed
-# package bytes under the alias's own spec name: merely storing a package whose
-# spec still says ``machina_sports_canonical`` under a second sys.modules key can
-# load its children twice and invalidate the single-implementation contracts.
-sys.path.insert(0, str(repo_root))
-import tools.iptc as iptc
-canonical_spec = importlib.util.spec_from_file_location(
-    "tools.iptc.canonical", str(installed_root / "__init__.py"),
-    submodule_search_locations=[str(installed_root)])
-if canonical_spec is None or canonical_spec.loader is None:
-    raise SystemExit("cannot alias installed canonical package: {0}".format(
-        installed_root))
-canonical = importlib.util.module_from_spec(canonical_spec)
-sys.modules["tools.iptc.canonical"] = canonical
-canonical_spec.loader.exec_module(canonical)
-setattr(iptc, "canonical", canonical)
-
-# ``test_iptc_canonical_serializer`` imports its generator at module load before
-# unittest can exclude that class.  A pathless neutral stub permits discovery;
-# no selected test uses it, and no repository generator module is imported.
-generator_name = "tools.iptc.canonical.export_official_terms"
-generator = types.ModuleType(generator_name)
-generator.__file__ = str(Path(__file__).resolve().parent /
-                         "excluded_export_official_terms.py")
-sys.modules[generator_name] = generator
-setattr(canonical, "export_official_terms", generator)
-
-# The reused command tests intentionally pass repository-relative paths.  Their
-# ordinary runner has the checkout as cwd; this proof must keep a neutral cwd, so
-# resolve those same arguments against the explicit repository root instead of
-# ambient process state.
-from tools.iptc import cli_support
+def adapter_modules(adapters_root):
+    if not adapters_root.is_dir():
+        raise SystemExit(
+            "installed adapter package is missing: {0}".format(adapters_root))
+    return {module.name for module in pkgutil.iter_modules([str(adapters_root)])
+            if module.name != "__init__"}
 
 
-def neutral_iter_targets(args):
-    if args.all:
-        return cli_support.registered_fixtures(args.section)
-    if not args.documents:
-        raise SystemExit("nothing to check: pass one or more documents, or --all")
-    resolved = []
-    for path in args.documents:
-        target = path if path.is_absolute() else (repo_root / path)
-        if not target.is_file():
-            raise SystemExit("not a file: {0}".format(path))
-        try:
-            label = str(target.resolve().relative_to(repo_root))
-        except ValueError:
-            label = str(target)
-        resolved.append((label, target.resolve()))
-    return resolved
+def require_closed_adapter_inventory(adapters_root, declared):
+    if not isinstance(declared, dict) or any(
+            not isinstance(module, str) or not isinstance(suite, str)
+            for module, suite in declared.items()):
+        raise SystemExit(
+            "declared adapter conformance mapping must contain string pairs")
+    installed = adapter_modules(adapters_root)
+    declared_modules = set(declared)
+    problems = []
+    undeclared = sorted(installed - declared_modules)
+    absent = sorted(declared_modules - installed)
+    if undeclared:
+        problems.append(
+            "installed adapters without declared conformance suites: " +
+            ", ".join(undeclared))
+    if absent:
+        problems.append(
+            "declared adapter conformance suites absent from installed package: " +
+            ", ".join(absent))
+    if problems:
+        raise SystemExit("packaged adapter inventory mismatch:\n" +
+                         "\n".join(problems))
 
 
-cli_support.iter_targets = neutral_iter_targets
+def load_selected_suites(suite_paths, generator_only_class):
+    selected = unittest.TestSuite()
+    excluded_cases = []
+    excluded_classes = set()
+    discovered_count = 0
+    for index, path in enumerate(suite_paths):
+        name = "installed_contract_{0:02d}_{1}".format(index, path.stem)
+        spec = importlib.util.spec_from_file_location(name, str(path))
+        if spec is None or spec.loader is None:
+            raise SystemExit("cannot load conformance suite: {0}".format(path))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+        discovered = unittest.defaultTestLoader.loadTestsFromModule(module)
+        for case in iter_cases(discovered):
+            discovered_count += 1
+            if case.__class__.__name__ == generator_only_class:
+                excluded_cases.append(case)
+                excluded_classes.add(case.__class__)
+                continue
+            selected.addTest(case)
 
-selected = unittest.TestSuite()
-excluded = 0
-for index, path in enumerate(suite_paths):
-    name = "installed_contract_{0:02d}_{1}".format(index, path.stem)
-    spec = importlib.util.spec_from_file_location(name, str(path))
-    if spec is None or spec.loader is None:
-        raise SystemExit("cannot load conformance suite: {0}".format(path))
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    discovered = unittest.defaultTestLoader.loadTestsFromModule(module)
-    for case in iter_cases(discovered):
-        if ".{0}.".format("TestOfficialTermExport") in case.id():
-            excluded += 1
-            continue
-        selected.addTest(case)
+    if len(excluded_classes) != 1 or {
+            item.__name__ for item in excluded_classes} != {generator_only_class}:
+        raise SystemExit(
+            "expected exactly one discovered generator-only class named {0}; "
+            "found {1}".format(
+                generator_only_class,
+                sorted(item.__name__ for item in excluded_classes)))
+    if discovered_count != selected.countTestCases() + len(excluded_cases):
+        raise SystemExit("conformance selection lost a discovered test")
+    return selected, len(excluded_cases)
 
-if excluded == 0:
-    raise SystemExit("the generator-only class was not found to exclude")
-bad = canonical_source_resolutions(source_root)
-if bad:
-    raise SystemExit("canonical imports reached repository source:\n" +
-                     "\n".join(bad))
 
-print("installed canonical root: {0}".format(installed_root), flush=True)
-print("installed conformance test count: {0}".format(
-    selected.countTestCases()), flush=True)
-result = unittest.TextTestRunner(verbosity=1).run(selected)
+def probe_adapter_inventory(arguments):
+    if len(arguments) != 2:
+        raise SystemExit(
+            "usage: --probe-adapter-inventory ADAPTER_DIR DECLARED_JSON")
+    require_closed_adapter_inventory(
+        Path(arguments[0]).resolve(), json.loads(arguments[1]))
+    return 0
 
-bad = canonical_source_resolutions(source_root)
-if bad:
-    print("canonical imports reached repository source after the run:",
-          file=sys.stderr)
-    for problem in bad:
-        print("  " + problem, file=sys.stderr)
-raise SystemExit(0 if result.wasSuccessful() and not bad else 1)
+
+def probe_generator_exclusion(arguments):
+    if len(arguments) != 2:
+        raise SystemExit(
+            "usage: --probe-generator-exclusion CLASS SUITE_PATH")
+    selected, excluded = load_selected_suites(
+        [Path(arguments[1]).resolve()], arguments[0])
+    print("selected tests: {0}".format(selected.countTestCases()), flush=True)
+    print("excluded generator-only class: {0} ({1} tests)".format(
+        arguments[0], excluded), flush=True)
+    return 0
+
+
+def run_installed_conformance(arguments):
+    if len(arguments) < 4:
+        raise SystemExit(
+            "usage: REPO_ROOT GENERATOR_ONLY_CLASS ADAPTER_MAPPING_JSON "
+            "CORE_SUITE...")
+    repo_root = Path(arguments[0]).resolve()
+    generator_only_class = arguments[1]
+    declared_adapters = json.loads(arguments[2])
+    core_suite_paths = [Path(value).resolve() for value in arguments[3:]]
+    source_root = (repo_root / "tools/iptc/canonical").resolve()
+
+    # This must precede importing the wheel or any repository contract.  The
+    # contracts therefore cannot open a socket or resolve a host even if a future
+    # test introduces a network path.
+    install_network_guard()
+
+    # Import the wheel before the checkout is made importable.  Under ``-I`` and
+    # from the neutral directory, this can only be the venv's site-packages copy.
+    installed_distribution = importlib.import_module("machina_sports_canonical")
+    installed_root = Path(installed_distribution.__file__).resolve().parent
+    purelib = Path(sysconfig.get_paths()["purelib"]).resolve()
+    if installed_root.parent != purelib:
+        raise SystemExit("installed package is not in this venv: {0}".format(
+            installed_root))
+    if beneath(installed_root, repo_root):
+        raise SystemExit(
+            "installed package resolved under the repository: {0}".format(
+                installed_root))
+
+    require_closed_adapter_inventory(
+        installed_root / "adapters", declared_adapters)
+    adapter_suite_paths = [
+        (repo_root / declared_adapters[module]).resolve()
+        for module in sorted(declared_adapters)
+    ]
+    suite_paths = core_suite_paths + adapter_suite_paths
+
+    # The tests and offline validator remain repository evidence.  Load the
+    # installed package bytes under the alias's own spec name: merely storing a
+    # package whose spec still says ``machina_sports_canonical`` under a second
+    # sys.modules key can load its children twice and invalidate the
+    # single-implementation contracts.
+    sys.path.insert(0, str(repo_root))
+    import tools.iptc as iptc
+    canonical_spec = importlib.util.spec_from_file_location(
+        "tools.iptc.canonical", str(installed_root / "__init__.py"),
+        submodule_search_locations=[str(installed_root)])
+    if canonical_spec is None or canonical_spec.loader is None:
+        raise SystemExit("cannot alias installed canonical package: {0}".format(
+            installed_root))
+    canonical = importlib.util.module_from_spec(canonical_spec)
+    sys.modules["tools.iptc.canonical"] = canonical
+    canonical_spec.loader.exec_module(canonical)
+    setattr(iptc, "canonical", canonical)
+
+    # ``test_iptc_canonical_serializer`` imports its generator at module load
+    # before unittest can exclude that class.  A pathless neutral stub permits
+    # discovery; no selected test uses it, and no repository generator module is
+    # imported.
+    generator_name = "tools.iptc.canonical.export_official_terms"
+    generator = types.ModuleType(generator_name)
+    generator.__file__ = str(Path(__file__).resolve().parent /
+                             "excluded_export_official_terms.py")
+    sys.modules[generator_name] = generator
+    setattr(canonical, "export_official_terms", generator)
+
+    # The reused command tests intentionally pass repository-relative paths.
+    # Their ordinary runner has the checkout as cwd; this proof must keep a
+    # neutral cwd, so resolve those same arguments against the explicit
+    # repository root instead of ambient process state.
+    from tools.iptc import cli_support
+
+    def neutral_iter_targets(args):
+        if args.all:
+            return cli_support.registered_fixtures(args.section)
+        if not args.documents:
+            raise SystemExit(
+                "nothing to check: pass one or more documents, or --all")
+        resolved = []
+        for path in args.documents:
+            target = path if path.is_absolute() else (repo_root / path)
+            if not target.is_file():
+                raise SystemExit("not a file: {0}".format(path))
+            try:
+                label = str(target.resolve().relative_to(repo_root))
+            except ValueError:
+                label = str(target)
+            resolved.append((label, target.resolve()))
+        return resolved
+
+    cli_support.iter_targets = neutral_iter_targets
+
+    selected, excluded = load_selected_suites(
+        suite_paths, generator_only_class)
+    bad = canonical_source_resolutions(source_root)
+    if bad:
+        raise SystemExit("canonical imports reached repository source:\n" +
+                         "\n".join(bad))
+
+    print("installed canonical root: {0}".format(installed_root), flush=True)
+    print("excluded generator-only class: {0} ({1} tests)".format(
+        generator_only_class, excluded), flush=True)
+    print("installed conformance test count: {0}".format(
+        selected.countTestCases()), flush=True)
+    result = unittest.TextTestRunner(verbosity=1).run(selected)
+
+    bad = canonical_source_resolutions(source_root)
+    if bad:
+        print("canonical imports reached repository source after the run:",
+              file=sys.stderr)
+        for problem in bad:
+            print("  " + problem, file=sys.stderr)
+    return 0 if result.wasSuccessful() and not bad else 1
+
+
+def main():
+    arguments = sys.argv[1:]
+    if arguments == ["--probe-network-guard"]:
+        return probe_network_guard()
+    if arguments and arguments[0] == "--probe-adapter-inventory":
+        return probe_adapter_inventory(arguments[1:])
+    if arguments and arguments[0] == "--probe-generator-exclusion":
+        return probe_generator_exclusion(arguments[1:])
+    return run_installed_conformance(arguments)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 '''
 
 
@@ -345,10 +522,15 @@ class TestInstalledCanonicalConformance(unittest.TestCase):
         cls.bootstrap.write_text(textwrap.dedent(BOOTSTRAP), encoding="utf-8")
 
     def test_reviewed_wheel_passes_the_canonical_and_provider_contracts(self):
-        command = [str(self.python), "-I", str(self.bootstrap), str(REPO_ROOT)]
+        command = [
+            str(self.python), "-I", str(self.bootstrap), str(REPO_ROOT),
+            GENERATOR_ONLY_CLASS, json.dumps(ADAPTER_CONFORMANCE_SUITES),
+        ]
         command.extend(str(REPO_ROOT / relative)
-                       for relative in CONFORMANCE_SUITES)
-        result = subprocess.run(command, cwd=str(self.neutral), timeout=1800)
+                       for relative in CORE_CONFORMANCE_SUITES)
+        result = subprocess.run(
+            command, cwd=str(self.neutral),
+            timeout=CHILD_CONFORMANCE_TIMEOUT_SECONDS)
         self.assertEqual(result.returncode, 0,
                          "installed conformance child exited {0}".format(
                              result.returncode))
