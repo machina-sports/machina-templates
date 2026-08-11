@@ -745,6 +745,25 @@ class TestPublicSanitization(unittest.TestCase):
             if path.is_file():
                 found.append(path)
         found.extend([
+            # The licence and attribution files are as public as the rest of the
+            # diff, and `NOTICE-IPTC.md` is authored prose that ships inside the
+            # published wheel — the likeliest of the three to carry an internal
+            # name. The CC BY legal code is vendored verbatim and cannot contain
+            # one, but it is scanned rather than exempted: an exemption is a rule
+            # to maintain, and this file's bytes are already pinned by digest in
+            # `tests/test_iptc_canonical_package.py`.
+            REPO_ROOT / "LICENSES" / "MIT.txt",
+            REPO_ROOT / "LICENSES" / "CC-BY-4.0.txt",
+            REPO_ROOT / "NOTICE-IPTC.md",
+            # The published surface, which was outside this scan while being the
+            # most exposed authored prose in the repository. The README's bytes
+            # are the wheel's `Description`; `pyproject.toml` carries the
+            # description string; the publish workflow is the only file that can
+            # upload. A leak in any of them reaches an index, not just a diff.
+            REPO_ROOT / "README-machina-sports-canonical.md",
+            REPO_ROOT / "pyproject.toml",
+            REPO_ROOT / ".github" / "workflows"
+            / "publish-machina-sports-canonical.yml",
             REPO_ROOT / "tools" / "__init__.py",
             REPO_ROOT / "docs" / "rfcs" / "001-machina-iptc-sport-schema-profile.md",
             REPO_ROOT / ".github" / "workflows" / "validate-iptc-sport-schema.yml",
@@ -780,6 +799,19 @@ class TestPublicSanitization(unittest.TestCase):
             "agent-templates/iptc-mappings/contexts/iptc-sport-schema-1.1.context.jsonld",
             # Root-level authored files are as public as the rest of the diff.
             ".gitattributes", ".gitignore", "requirements-iptc-validator.txt",
+            # Every file the license decision added, so a new public file cannot
+            # be added to the distribution without the scan reaching it.
+            "LICENSES/MIT.txt", "LICENSES/CC-BY-4.0.txt", "NOTICE-IPTC.md",
+            # THE PUBLISHED SURFACE. These three were outside the scan while
+            # being the most exposed authored files in the repository: the README
+            # is the distribution's front page on PyPI and its bytes ARE the
+            # `Description` in the wheel's METADATA, `pyproject.toml` carries the
+            # description string beside it, and the publish workflow is the one
+            # file that can upload. An internal identifier surviving in any of
+            # them ships to an index rather than sitting in a repository.
+            "README-machina-sports-canonical.md",
+            "pyproject.toml",
+            ".github/workflows/publish-machina-sports-canonical.yml",
             # The denylist holder is no longer exempt from the denylist.
             Path(__file__).resolve().relative_to(REPO_ROOT).as_posix(),
         ):
@@ -1242,16 +1274,49 @@ class TestArtifactOwnership(unittest.TestCase):
                          / "validate-machina-agent-builder.yml").read_text(encoding="utf-8")
         self.assertNotIn("requirements-iptc-validator.txt", agent_builder)
 
-    def test_no_suite_is_named_in_the_workflow_beside_the_runner(self):
+    @staticmethod
+    def job_block(workflow: str, job: str) -> str:
+        """One job's own lines, by job id.
+
+        The workflow now has a second job. `package-proof` runs one suite by name
+        on each declared interpreter — deliberately, because a matrix over the
+        whole tree would re-run the slow conformance suites to learn nothing — so
+        a whole-file scan can no longer answer a question about the job that runs
+        the manifest runner. Job ids are the only two-space-indented keys under
+        `jobs:`; everything inside a job is deeper.
+        """
+        lines = []
+        inside = False
+        for raw in workflow.splitlines():
+            stripped = raw.strip()
+            indent = len(raw) - len(raw.lstrip())
+            if indent == 2 and stripped.endswith(":") \
+                    and not stripped.startswith("- "):
+                inside = stripped[:-1] == job
+                continue
+            if inside:
+                lines.append(raw)
+        return "\n".join(lines)
+
+    def test_no_suite_is_named_in_the_validation_job_beside_the_runner(self):
         """A18 replaced a hard-coded harness step with the manifest runner, and a
         leftover step naming a suite by hand would run it twice: once on its own
         and once through the runner. Doubling the slowest suite in the tree is the
         visible cost; the invisible one is that a hand-named step looks like
         coverage while the manifest is what actually decides.
+
+        Scoped to `validate`, which is the job that claim is about. The
+        package-proof job names exactly one suite and runs no manifest runner at
+        all, so it cannot double anything; that it names that one and only that
+        one is asserted in `tests/test_iptc_canonical_package.py`.
         """
         workflow = (REPO_ROOT / ".github" / "workflows"
                     / "validate-iptc-sport-schema.yml").read_text(encoding="utf-8")
-        for command in self.workflow_run_commands(workflow):
+        commands = self.workflow_run_commands(self.job_block(workflow, "validate"))
+        # Non-vacuous: a slice that returned nothing would pass the loop below
+        # while asserting nothing about the job it is named for.
+        self.assertIn("python tools/iptc/run_test_suites.py --verbose", commands)
+        for command in commands:
             with self.subTest(command=command):
                 self.assertNotIn("tests/test_iptc_", command)
 

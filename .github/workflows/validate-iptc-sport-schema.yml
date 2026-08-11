@@ -29,7 +29,44 @@ name: Validate IPTC Sport Schema
 # every fixture; `docs/iptc/**` reaches the four generated reports. Those are not
 # restated as separate entries: an overlapping glob is one more thing to keep in
 # step with a directory move. `tests/test_iptc_test_manifest.py` asserts that each
-# of those concrete inputs is in fact reached.
+# of those concrete inputs is in fact reached — including
+# `docs/iptc/machina-sports-canonical-0.1.0.sha256`, the reviewed release digests
+# both the package-proof job and the release job diff against, which is under
+# `docs/iptc/**` and is therefore asserted rather than restated.
+#
+# THE PUBLISH WORKFLOW IS LISTED, BECAUSE NOTHING ELSE HERE REACHED IT. Every
+# property of `.github/workflows/publish-machina-sports-canonical.yml` that matters
+# — trusted publishing with no credential of its own, the reviewer-gated
+# environment, no rebuild after approval, the license refusal, the pinned action
+# SHAs — is asserted by `tests/test_iptc_canonical_package.py`, which this workflow
+# runs. While that file was outside both filters, a change touching only it skipped
+# the workflow that checks it: a security regression in the one file that can upload
+# to PyPI could merge with CI green because CI never ran.
+#
+# THE PACKAGING PATHS ARE LISTED BECAUSE THE WHEEL IS WHAT CONSUMERS RUN.
+# `tests/test_iptc_canonical_package.py` builds the distribution and proves the
+# installed bytes against `tools/iptc/vendored-manifest.json`. `tools/iptc/**`
+# already reaches the canonical source and the package receipt, but the root
+# packaging configuration lives outside it: without `pyproject.toml`, `setup.py`
+# and `packaging/machina_sports_canonical/**` in the filter, a change to the
+# build filter or to the package metadata would skip the only job that builds it.
+#
+# `LICENSES/**` AND `NOTICE-IPTC.md` ARE IN THE FILTER FOR THAT SAME REASON.
+# `license-files` in `pyproject.toml` makes setuptools read all three at build
+# time and write them into both artefacts, so editing one changes the released
+# bytes and the reviewed digests. A change touching only the licence or the
+# attribution notice that skipped this workflow would leave the package unproven
+# for that commit — and the notice is what the CC-BY-4.0 half of the declared
+# expression rests on.
+#
+# `.gitattributes` IS LISTED BECAUSE IT DECIDES HOW A PACKAGE INPUT IS CHECKED.
+# It is what marks the vendored CC BY legal code exempt from diff and whitespace
+# checking, so the official trailing blank line survives review instead of being
+# trimmed into a file that is no longer the licence. Widening that rule over the
+# authored licence files, or dropping it, changes what CI and the pre-commit hook
+# accept for the packaged bytes; `tests/test_iptc_canonical_package.py` asserts
+# the rule reaches that one file and no other, and this entry is what makes that
+# suite run when the rule changes.
 on:
   pull_request:
     paths:
@@ -40,8 +77,18 @@ on:
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
+      - "requirements-iptc-build.txt"
       - "requirements-validator.txt"
+      - "pyproject.toml"
+      - "setup.py"
+      - "MANIFEST.in"
+      - "packaging/machina_sports_canonical/**"
+      - "README-machina-sports-canonical.md"
+      - "LICENSES/**"
+      - "NOTICE-IPTC.md"
+      - ".gitattributes"
       - ".github/workflows/validate-iptc-sport-schema.yml"
+      - ".github/workflows/publish-machina-sports-canonical.yml"
   push:
     paths:
       - "agent-templates/iptc-mappings/**"
@@ -51,8 +98,18 @@ on:
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
+      - "requirements-iptc-build.txt"
       - "requirements-validator.txt"
+      - "pyproject.toml"
+      - "setup.py"
+      - "MANIFEST.in"
+      - "packaging/machina_sports_canonical/**"
+      - "README-machina-sports-canonical.md"
+      - "LICENSES/**"
+      - "NOTICE-IPTC.md"
+      - ".gitattributes"
       - ".github/workflows/validate-iptc-sport-schema.yml"
+      - ".github/workflows/publish-machina-sports-canonical.yml"
 
 # This workflow only reads the tree and runs the offline harness. It publishes
 # nothing and needs no write scope.
@@ -71,6 +128,21 @@ jobs:
       # requirements-validator.txt itself, so the base pins stay in one place while
       # the agent-builder workflow never installs rdflib/pyshacl.
       - run: python -m pip install -r requirements-iptc-validator.txt
+
+      # The PEP 517 frontend and its backend, for the packaging proof suite only.
+      # `tests/test_iptc_canonical_package.py` builds with `--no-isolation` so the
+      # build stays offline and deterministic, which means the frontend and the
+      # backend have to be here rather than fetched per build. These are build
+      # tooling for CI; the distribution itself declares no dependency at all, and
+      # `test_zero_runtime_dependencies` reads that off the installed metadata.
+      #
+      # FROM A CHECKED-IN FILE, EXACTLY PINNED. These used to be three inline
+      # arguments — `build>=1.0`, `setuptools>=68` and a bare `wheel` — so the
+      # frontend and the backend could change between two runs of the same commit
+      # with nothing in the diff to show it. The same file is installed by the
+      # package-proof job below, which is what makes "the same build tooling on
+      # every interpreter" a fact rather than a coincidence.
+      - run: python -m pip install -r requirements-iptc-build.txt
 
       # The pin first: if a vendored upstream byte changed, every conformance
       # result below is void and there is no point reading further.
@@ -113,5 +185,120 @@ jobs:
             echo
             echo "Either a generated report is stale (run: python3 -m tools.iptc)"
             echo "or a cache artefact is not ignored."
+            exit 1
+          fi
+
+  # THE INSTALLED RUNTIME, NOT THE CHECKOUT COPY.
+  #
+  # This job builds the reviewed release, installs its wheel into a disposable
+  # Python 3.11 environment, and reruns the substantive canonical/provider
+  # contracts with `tools.iptc.canonical*` bound to that site-packages root.  The
+  # suite starts from a neutral directory and fails if any canonical alias reaches
+  # back into this checkout.  The validator requirements remain repository-side
+  # evidence; the package itself still has zero runtime dependencies.
+  installed-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.11"
+
+      # Only the two checked-in, exactly pinned closures: the offline validator
+      # used by the reused contracts and the frontend/backend that build the
+      # reviewed wheel.  The suite's wheel install is offline and dependency-free.
+      - run: python -m pip install -r requirements-iptc-validator.txt
+      - run: python -m pip install -r requirements-iptc-build.txt
+
+      - name: Canonical and provider contracts against the installed wheel
+        run: python tests/test_iptc_installed_conformance.py -v
+
+  # THE PACKAGE PROOF, ON THE INTERPRETERS IT CLAIMS.
+  #
+  # `tests/test_iptc_canonical_package.py` repeats its clean-install proof on the
+  # published floor (3.9) and on the interpreter the client image runs (3.11), and
+  # an interpreter that is not installed is an explicit skip. A skip is green. So
+  # while `validate` above was the only job, both of those proofs were reported as
+  # passing by every remote run without either one executing: the floor in
+  # `Requires-Python: >=3.9` and the client-image claim were held up by developer
+  # machines alone. This job selects those interpreters so the proof runs remotely.
+  #
+  # IT IS A SECOND JOB RATHER THAN A MATRIX OVER `validate`. The conformance
+  # suites, the pin check and the report reproducibility gate answer nothing new
+  # on a second interpreter; running them three times would buy latency. `validate`
+  # stays the single authority for the whole tree on one interpreter, and this job
+  # adds the two the distribution promises.
+  #
+  # NAMING ONE SUITE HERE IS THE POINT, NOT AN OVERSIGHT. `validate` runs the
+  # manifest runner and must never name a suite by hand — a hand-named step there
+  # would run it twice and look like the coverage while the manifest decides.
+  # `tests/test_iptc_validation_harness.py` asserts that, scoped to that job.
+  package-proof:
+    runs-on: ubuntu-latest
+    strategy:
+      # Every declared interpreter reports. Cancelling 3.11 because 3.9 failed
+      # would hide whether the fault is the floor or the package.
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # The same exact pins `validate` installs. Nothing else: this suite is
+      # standard library only by design, and installing the harness tree here
+      # would let a floor proof pass on a dependency the floor cannot have.
+      - run: python -m pip install -r requirements-iptc-build.txt
+
+      # Run as a FILE, for the reason the manifest runner does the same: `tests/`
+      # is a namespace directory with no `__init__.py`, so `-m unittest tests...`
+      # can be shadowed by an installed distribution shipping a top-level regular
+      # `tests` package.
+      - name: The package proof, on this interpreter
+        run: python tests/test_iptc_canonical_package.py -v
+
+      # CROSS-INTERPRETER REPRODUCIBILITY, AGAINST A THIRD THING A HUMAN APPROVED.
+      #
+      # The step above proves this interpreter's build is reproducible on this
+      # interpreter. That is what each leg proved and all it proved: 3.9 and 3.11
+      # could each have been stably building DIFFERENT bytes with both legs green,
+      # because nothing compared one leg with the other. So each leg now builds a
+      # release through the same helper and the same epoch the release job uses and
+      # diffs its digests against the reviewed ones checked in at
+      # docs/iptc/machina-sports-canonical-0.1.0.sha256. A divergent interpreter
+      # fails its own job, against the file the other one passes.
+      #
+      # INTO $RUNNER_TEMP, AND BASENAMES. The next step is a clean-tree gate, so an
+      # artefact left in a tracked path would turn a passing proof into a red gate
+      # one step later. The rows are computed from inside the output directory
+      # because the reviewed file carries basenames: that is what lets one checked-in
+      # file be the authority here, in the release job's `dist`, and in the publish
+      # job's `sha256sum --check` after download.
+      #
+      # THE `rm -rf` IS NOT A CONVENIENCE. `setuptools`' sdist step writes
+      # `machina_sports_canonical.egg-info/` into the directory it builds, and this
+      # is the one job that builds from the checkout root — the way the release job
+      # does. It is removed by the step that created it rather than added to
+      # `.gitignore`, so the gate below keeps its full meaning for everything else.
+      # A failed diff leaves it behind and reddens that gate too; that is noise on
+      # an already-failing run, not a missed failure.
+      - name: This interpreter builds the reviewed release digests
+        run: |
+          python packaging/machina_sports_canonical/release.py . "$RUNNER_TEMP/release"
+          (cd "$RUNNER_TEMP/release" && sha256sum *.whl *.tar.gz) | tee "$RUNNER_TEMP/SHA256SUMS"
+          diff -u docs/iptc/machina-sports-canonical-0.1.0.sha256 "$RUNNER_TEMP/SHA256SUMS"
+          rm -rf machina_sports_canonical.egg-info
+        env:
+          SOURCE_DATE_EPOCH: "1786398569"
+
+      # The suite builds and installs into disposable trees and removes them, so
+      # this asserts what it claims about not polluting a checkout.
+      - name: Working tree is clean after building the distribution
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "The package proof left the working tree dirty:"
+            git status --porcelain
             exit 1
           fi

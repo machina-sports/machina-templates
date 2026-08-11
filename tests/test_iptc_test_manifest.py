@@ -56,6 +56,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -75,6 +76,11 @@ SUITE_PATTERN = "tests/test_iptc_*.py"
 #: This file, as the manifest spells it. The self-registration gate.
 SELF = "tests/test_iptc_test_manifest.py"
 
+#: The remote acceptance suite that runs the canonical/provider contracts
+#: against the reviewed wheel from site-packages.
+INSTALLED_CONFORMANCE_SUITE = "tests/test_iptc_installed_conformance.py"
+INSTALLED_CONFORMANCE_PATH = REPO_ROOT / INSTALLED_CONFORMANCE_SUITE
+
 #: Suites whose registration is called out by name rather than left to set
 #: equality. Each one is a gate a consumer or an auditor relies on, and each was
 #: outside CI before this task: the two source-fixture contracts, the credential
@@ -91,6 +97,18 @@ SUITES_THIS_TASK_BRINGS_INTO_CI = (
 #: Concrete inputs whose change must not be able to skip this workflow. Asserted
 #: against the path filters so a runtime byte, a fixture or a report cannot move
 #: without the job that checks it running.
+#:
+#: THE LAST TWO ARE THE RELEASE PATH, AND THEY WERE THE GAP. Every property of
+#: `.github/workflows/publish-machina-sports-canonical.yml` that matters — trusted
+#: publishing with no credential of its own, the reviewer-gated environment, no
+#: rebuild after approval, the license refusal, the pinned action SHAs — is
+#: asserted by `tests/test_iptc_canonical_package.py`, which this workflow runs.
+#: Nothing in either filter reached that file, so a change touching only the
+#: publish workflow skipped the workflow that checks it: a security regression in
+#: the one file that can upload to PyPI could merge with CI green because CI never
+#: ran. The reviewed digests are here for the same reason — they are what the proof
+#: job and the release job diff against, so an edit to them must run the jobs that
+#: read them.
 INPUTS_THE_FILTERS_MUST_REACH = (
     "tools/iptc/test-suites.json",
     "tools/iptc/run_test_suites.py",
@@ -100,6 +118,25 @@ INPUTS_THE_FILTERS_MUST_REACH = (
     "tools/iptc/fixtures/corrected/sports-skills-espn-soccer-graph.json",
     "docs/iptc/baseline-audit.json",
     "docs/iptc/BASELINE-AUDIT.md",
+    "docs/iptc/machina-sports-canonical-0.1.0.sha256",
+    ".github/workflows/publish-machina-sports-canonical.yml",
+    #: THE LICENSE FILES ARE PACKAGE INPUTS. `license-files` in `pyproject.toml`
+    #: makes setuptools read all three at build time and write them into the wheel
+    #: and the sdist, so editing one changes the released bytes and the reviewed
+    #: digests. A change touching only `LICENSES/` or `NOTICE-IPTC.md` that skipped
+    #: this workflow would leave the package unproven for that commit — and it is
+    #: the attribution the CC-BY-4.0 half of the expression rests on.
+    "LICENSES/MIT.txt",
+    "LICENSES/CC-BY-4.0.txt",
+    "NOTICE-IPTC.md",
+    #: `.gitattributes` DECIDES HOW A PACKAGE INPUT IS READ AND CHECKED. It is
+    #: what marks the CC BY legal code vendored and exempt from diff and
+    #: whitespace checking, so the official trailing blank line survives review
+    #: instead of being trimmed into a file that is no longer the licence. Editing
+    #: that rule — widening it over the authored licence files, or dropping it —
+    #: changes what CI and the pre-commit hook will accept for the packaged bytes,
+    #: and must not be a change that skips the workflow proving them.
+    ".gitattributes",
 )
 
 #: The keys a suite entry may carry. ``group`` and ``timeout_seconds`` are
@@ -123,6 +160,15 @@ def runner():
 
 def manifest():
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def installed_conformance():
+    """Load the installed bootstrap definition without running its outer proof."""
+    spec = importlib.util.spec_from_file_location(
+        "iptc_installed_conformance_guard_target", INSTALLED_CONFORMANCE_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def suite_paths():
@@ -240,6 +286,13 @@ class TestTheManifestIsTheCompleteSuiteList(unittest.TestCase):
         self.assertEqual(SELF, Path(__file__).resolve()
                          .relative_to(REPO_ROOT).as_posix())
 
+    def test_the_installed_conformance_suite_is_registered(self):
+        self.assertIn(INSTALLED_CONFORMANCE_SUITE, self.paths)
+        entry = next((item for item in manifest()["suites"]
+                      if item["path"] == INSTALLED_CONFORMANCE_SUITE), None)
+        self.assertIsNotNone(entry)
+        self.assertGreater(entry.get("timeout_seconds", 0), 120)
+
     def test_the_suites_this_task_brings_into_ci_are_named_not_inferred(self):
         """Set equality already covers these. Naming them records what was
         outside CI before A18, so a later change that drops one has to argue with
@@ -314,11 +367,11 @@ class TestTheOrderIsDeterministicAndNotEditorial(unittest.TestCase):
                                          "tests/test_iptc_vendored_manifest.py"])
 
     def test_the_slowest_suite_runs_last(self):
-        """The SHACL harness is roughly half the wall clock of the whole run.
-        Ahead of the others it delays every cheap failure behind it."""
-        self.assertEqual(self.groups[-1], "harness")
+        """The installed proof rebuilds, installs and repeats the substantive
+        contracts. Ahead of the others it delays every cheap failure behind it."""
+        self.assertEqual(self.groups[-1], "installed")
         self.assertEqual(self.manifest["suites"][-1]["path"],
-                         "tests/test_iptc_validation_harness.py")
+                         INSTALLED_CONFORMANCE_SUITE)
 
 
 class TestOptionalMetadataIsWellFormed(unittest.TestCase):
@@ -364,6 +417,109 @@ class TestOptionalMetadataIsWellFormed(unittest.TestCase):
         flakes, and the schema allows absence precisely to avoid them."""
         without = [e["path"] for e in self.suites if "timeout_seconds" not in e]
         self.assertTrue(without)
+
+
+class TestInstalledConformanceBootstrapGuardrails(unittest.TestCase):
+    """Executable controls around the installed proof's own controls."""
+
+    def setUp(self):
+        self.target = installed_conformance()
+        self.temporary = tempfile.TemporaryDirectory(
+            prefix="iptc-installed-bootstrap-guard-")
+        self.addCleanup(self.temporary.cleanup)
+        self.workspace = Path(self.temporary.name)
+        self.bootstrap = self.workspace / "installed_conformance_bootstrap.py"
+        self.bootstrap.write_text(
+            textwrap.dedent(self.target.BOOTSTRAP), encoding="utf-8")
+
+    def run_bootstrap_probe(self, *arguments):
+        return subprocess.run(
+            [sys.executable, "-I", str(self.bootstrap)] + list(arguments),
+            cwd=str(self.workspace), capture_output=True, text=True, timeout=30)
+
+    def test_the_bootstrap_refuses_socket_connection_and_dns_apis(self):
+        result = self.run_bootstrap_probe("--probe-network-guard")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("blocked socket.socket", result.stdout)
+        self.assertIn("blocked socket.create_connection", result.stdout)
+        self.assertIn("blocked socket.getaddrinfo", result.stdout)
+
+    def test_packaged_adapter_mapping_closes_the_staged_source_inventory(self):
+        adapters = REPO_ROOT / "tools/iptc/canonical/adapters"
+        packaged = {
+            path.stem for path in adapters.iterdir()
+            if path.is_file() and path.suffix == ".py"
+            and path.name != "__init__.py"
+        }
+        declared = self.target.ADAPTER_CONFORMANCE_SUITES
+        self.assertEqual(set(declared), packaged)
+        self.assertEqual(len(set(declared.values())), len(declared))
+        for module, suite in declared.items():
+            with self.subTest(module=module, suite=suite):
+                self.assertTrue((REPO_ROOT / suite).is_file())
+
+    def test_adapter_inventory_guard_reports_both_mismatch_directions(self):
+        adapters = self.workspace / "adapters"
+        adapters.mkdir()
+        (adapters / "__init__.py").write_text("", encoding="utf-8")
+        (adapters / "covered.py").write_text("", encoding="utf-8")
+        (adapters / "installed_only.py").write_text("", encoding="utf-8")
+        declared = json.dumps({
+            "covered": "tests/test_covered.py",
+            "declared_only": "tests/test_declared_only.py",
+        })
+
+        result = self.run_bootstrap_probe(
+            "--probe-adapter-inventory", str(adapters), declared)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        output = result.stdout + result.stderr
+        self.assertIn(
+            "installed adapters without declared conformance suites: "
+            "installed_only", output)
+        self.assertIn(
+            "declared adapter conformance suites absent from installed package: "
+            "declared_only", output)
+
+    def test_generator_exclusion_uses_the_passed_class_and_only_that_class(self):
+        suite = self.workspace / "synthetic_generator_contract.py"
+        suite.write_text(textwrap.dedent("""\
+            import unittest
+
+
+            class KeepContract(unittest.TestCase):
+                def test_kept(self):
+                    pass
+
+
+            class SyntheticGeneratorOnly(unittest.TestCase):
+                def test_excluded_one(self):
+                    pass
+
+                def test_excluded_two(self):
+                    pass
+            """), encoding="utf-8")
+
+        result = self.run_bootstrap_probe(
+            "--probe-generator-exclusion", "SyntheticGeneratorOnly", str(suite))
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("selected tests: 1", result.stdout)
+        self.assertIn(
+            "excluded generator-only class: SyntheticGeneratorOnly (2 tests)",
+            result.stdout)
+
+    def test_manifest_timeout_leaves_named_headroom_above_the_child(self):
+        entry = next(
+            item for item in manifest()["suites"]
+            if item["path"] == INSTALLED_CONFORMANCE_SUITE)
+        outer = entry["timeout_seconds"]
+        self.assertEqual(
+            outer,
+            self.target.INSTALLED_CONFORMANCE_MANIFEST_TIMEOUT_SECONDS)
+        self.assertGreaterEqual(
+            outer - self.target.CHILD_CONFORMANCE_TIMEOUT_SECONDS,
+            self.target.MINIMUM_SETUP_TIMEOUT_HEADROOM_SECONDS)
 
 
 class TestTheValidatorCatchesEveryBypass(unittest.TestCase):

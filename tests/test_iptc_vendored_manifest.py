@@ -104,6 +104,15 @@ NOT_VENDORED_FILES = {
     # the pinned upstream ontologies, which only exist in this repository.
     # ``canonical/__init__.py`` names it as the one deliberate exception.
     "export_official_terms.py",
+    # Package metadata for the `machina-sports-canonical` distribution, not
+    # runtime and not part of the contract sports-skills vendors. It ships in the
+    # wheel and it *restates* this manifest's nine-file receipt, so vendoring it
+    # would put a second copy of these hashes inside the consumer — a receipt
+    # describing a receipt, which is exactly the "the record is also the
+    # specification" failure this suite's docstring exists to prevent. The core
+    # manifest stays nine files; `tests/test_iptc_canonical_package.py` asserts
+    # the shipped receipt equals it key for key and hash for hash.
+    "package-receipt.json",
 }
 
 #: Subtrees under the vendoring root that are deliberately not vendored. A prefix

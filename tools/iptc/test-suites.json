@@ -6,7 +6,8 @@
     "manifest",
     "canonical",
     "adapters",
-    "harness"
+    "harness",
+    "installed"
   ],
   "suites": [
     {
@@ -16,6 +17,11 @@
     {
       "path": "tests/test_iptc_vendored_manifest.py",
       "group": "manifest"
+    },
+    {
+      "path": "tests/test_iptc_canonical_package.py",
+      "group": "canonical",
+      "timeout_seconds": 900
     },
     {
       "path": "tests/test_iptc_canonical_serializer.py",
@@ -82,6 +88,11 @@
     {
       "path": "tests/test_iptc_validation_harness.py",
       "group": "harness",
+      "timeout_seconds": 900
+    },
+    {
+      "path": "tests/test_iptc_installed_conformance.py",
+      "group": "installed",
       "timeout_seconds": 900
     }
   ]
