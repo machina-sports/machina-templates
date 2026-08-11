@@ -1,4 +1,9 @@
-"""Coupling detection in the consumer inventory (PR 3-A, task 1).
+"""Coupling detection in the consumer inventory (PR 3-A, tasks 1 and 2).
+
+Task 1 is the scan (everything up to :class:`TestTheInventoryExposesCouplings`).
+Task 2 is the review ledger it feeds — ``docs/iptc/consumer-review.json``, which
+has to account for every dependency the generated inventory records; see
+:class:`ReviewLedgerTestCase` onwards.
 
 Run from the repository root:
 
@@ -47,6 +52,7 @@ description's job is to name the very path it is describing.
 
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 import tempfile
@@ -409,6 +415,242 @@ class TestTheInventoryExposesCouplings(unittest.TestCase):
             ["inventory_version", "inventory_kind", "reproduce", "pin",
              "categories", "scope_boundary", "known_gaps", "totals",
              "sport_namespace_usage", "emitters", "consumers"])
+
+
+#: The review ledger task 2 adds. Hand-authored data, not a generated artefact.
+LEDGER_PATH = REPO_ROOT / "docs/iptc/consumer-review.json"
+
+#: The generated artefact the ledger is checked against. Read off disk rather than
+#: from :func:`build_inventory`, because the point is that the *committed* artefact
+#: and the *committed* ledger agree — a ledger that only agrees with a fresh
+#: in-memory scan would let a stale artefact ship.
+INVENTORY_JSON_PATH = REPO_ROOT / "docs/iptc/inventory.json"
+
+LEDGER_SCHEMA = "machina.iptc.consumer-review/v1"
+
+#: No fifth disposition. A row nobody can place is ``excluded`` with a reason.
+ALLOWED_DISPOSITIONS = ("migrate", "compat-alias", "no-change", "excluded")
+
+#: This repository. The ledger carries ``repo`` because later PR 3 lanes review
+#: cross-repository consumers, and a bare path would then be ambiguous.
+REPO = "machina-templates"
+
+#: The generated inventory sections that record a file-level dependency on the
+#: legacy shape: files that read it, files that emit it, files welded to the
+#: document name or the storage predicate.
+DEPENDENCY_SECTIONS = ("consumers", "emitters", "couplings")
+
+#: Owner label for a dependency whose ownership cannot be grounded. Paired with
+#: ``disposition: excluded`` — inventing an owner is worse than admitting there
+#: isn't one, because an invented owner reads as a commitment somebody made.
+UNASSIGNED = "UNASSIGNED"
+
+
+class ReviewLedgerTestCase(unittest.TestCase):
+    """Base for the ledger cases.
+
+    Every test loads the ledger **first**. That ordering is deliberate: before
+    ``docs/iptc/consumer-review.json`` exists, the failure has to be the missing
+    ledger (``FileNotFoundError``) and not some incidental complaint about the
+    inventory artefact, or the RED step proves nothing about the file under test.
+    """
+
+    def load_ledger(self) -> dict:
+        with LEDGER_PATH.open(encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def entries(self) -> list:
+        return self.load_ledger()["entries"]
+
+    def load_inventory(self) -> dict:
+        inventory = json.loads(INVENTORY_JSON_PATH.read_text(encoding="utf-8"))
+        for section in DEPENDENCY_SECTIONS:
+            self.assertIn(
+                section, inventory,
+                "docs/iptc/inventory.json is stale — regenerate it with "
+                "`python3 -m tools.iptc`")
+        return inventory
+
+    def generated_dependencies(self) -> set:
+        """Every ``(repo, path)`` the generated inventory records as depending on
+        the legacy shape."""
+        inventory = self.load_inventory()
+        return {
+            (REPO, row["file"])
+            for section in DEPENDENCY_SECTIONS
+            for row in inventory[section]
+        }
+
+    def reviewed(self, entry: dict) -> bool:
+        """A row counts as reviewed only if it carries a disposition from the
+        allowed set *and* evidence. A row with a blank ``evidence`` is a row
+        somebody ticked, not a row somebody reviewed."""
+        return (entry.get("disposition") in ALLOWED_DISPOSITIONS
+                and isinstance(entry.get("evidence"), str)
+                and bool(entry["evidence"].strip()))
+
+
+class TestTheReviewLedgerIsWellFormed(ReviewLedgerTestCase):
+
+    def test_review_ledger_exists_and_has_schema_and_version(self):
+        ledger = self.load_ledger()
+        self.assertEqual(ledger["schema"], LEDGER_SCHEMA)
+        self.assertIsInstance(ledger["version"], str)
+        self.assertTrue(ledger["version"].strip())
+        self.assertIsInstance(ledger["entries"], list)
+        self.assertTrue(ledger["entries"], "a ledger with no entries reviews nothing")
+
+    def test_every_entry_has_required_fields(self):
+        for entry in self.entries():
+            with self.subTest(entry=entry.get("path"), category=entry.get("category")):
+                for field in ("repo", "path", "category", "owner", "disposition",
+                              "evidence"):
+                    self.assertIsInstance(entry.get(field), str, field)
+                    self.assertTrue(entry[field].strip(), field)
+                self.assertIn(entry["disposition"], ALLOWED_DISPOSITIONS)
+                self.assertEqual(entry["repo"], REPO)
+
+    def test_every_owner_is_grounded_in_the_path_it_owns(self):
+        """Ownership is a claim, so it has to be checkable. An owner is either
+        ``UNASSIGNED`` — which forces ``excluded`` — or a
+        ``<repo>:<surface-directory>`` label that the reviewed path actually lives
+        under. This is what stops the ledger naming a person, a team that owns
+        nothing here, or a directory the row is not in."""
+        for entry in self.entries():
+            with self.subTest(path=entry["path"], owner=entry["owner"]):
+                if entry["owner"] == UNASSIGNED:
+                    self.assertEqual(entry["disposition"], "excluded")
+                    continue
+                repo, separator, surface = entry["owner"].partition(":")
+                self.assertEqual(repo, REPO)
+                self.assertTrue(separator, "owner must be <repo>:<surface>")
+                self.assertTrue(
+                    entry["path"].startswith(surface + "/"),
+                    "{0} does not live under its claimed owner {1}".format(
+                        entry["path"], surface))
+
+
+class TestTheLedgerCoversEveryGeneratedDependency(ReviewLedgerTestCase):
+
+    def test_every_generated_dependency_is_reviewed_or_excluded(self):
+        ledger_keys = {(entry["repo"], entry["path"]) for entry in self.entries()}
+        missing = sorted(self.generated_dependencies() - ledger_keys)
+        self.assertEqual(missing, [],
+                         "{0} generated dependencies are absent from the "
+                         "ledger".format(len(missing)))
+
+    def test_unreviewed_count_is_zero(self):
+        """The headline number. A dependency is unreviewed when no ledger entry
+        for it carries both a disposition and evidence."""
+        reviewed_keys = {(entry["repo"], entry["path"]) for entry in self.entries()
+                         if self.reviewed(entry)}
+        unreviewed = sorted(self.generated_dependencies() - reviewed_keys)
+        self.assertEqual(len(unreviewed), 0, "unreviewed: {0}".format(unreviewed))
+
+    def test_no_orphan_ledger_entries(self):
+        """A ledger that drifts ahead of reality is worse than no ledger: it
+        reports work as accounted for against paths that no longer exist.
+        ``excluded`` rows are exempt, since exclusion is how a row that is *not*
+        a generated dependency gets recorded."""
+        entries = self.entries()
+        generated = self.generated_dependencies()
+        orphans = sorted(
+            (entry["repo"], entry["path"], entry["category"])
+            for entry in entries
+            if entry["disposition"] != "excluded"
+            and (entry["repo"], entry["path"]) not in generated)
+        self.assertEqual(orphans, [])
+
+
+class TestTheLedgerAgreesWithTheGeneratedEvidence(ReviewLedgerTestCase):
+    """Coverage is necessary and not sufficient. These hold the ledger to the
+    *category* the inventory recorded, in both directions, so a row cannot be
+    filed under a dependency it does not have."""
+
+    def coupling_triples(self) -> set:
+        return {(finding["file"], finding["category"],
+                 finding.get("literal") or finding.get("path"))
+                for finding in self.load_inventory()["couplings"]}
+
+    def test_the_coupling_entries_and_the_generated_findings_agree(self):
+        entries = self.entries()
+        ledger_triples = {
+            (entry["path"], entry["category"], entry.get("literal"))
+            for entry in entries
+            if entry["category"] in (COUPLING_DOCUMENT_NAME,
+                                     COUPLING_STORAGE_PREDICATE)}
+        generated = self.coupling_triples()
+        self.assertEqual(sorted(ledger_triples - generated), [],
+                         "ledger claims couplings the inventory does not record")
+        self.assertEqual(sorted(generated - ledger_triples), [],
+                         "inventory records couplings the ledger does not review")
+
+    def test_read_and_emitter_entries_match_their_inventory_section(self):
+        entries = self.entries()
+        inventory = self.load_inventory()
+        field_readers = {c["file"] for c in inventory["consumers"]
+                         if c["reads_field_paths"]}
+        payload_readers = {c["file"] for c in inventory["consumers"]
+                           if c["reads_payload_keys"]}
+        emitters = {e["file"] for e in inventory["emitters"]}
+        expected = {"field-path-read": field_readers,
+                    "payload-key-read": payload_readers,
+                    "emitter": emitters}
+        actual = {category: set() for category in expected}
+        for entry in entries:
+            if entry["category"] in actual:
+                actual[entry["category"]].add(entry["path"])
+        self.assertEqual(actual, expected)
+
+
+class TestTheDispositionsFollowTheDependencyCategory(ReviewLedgerTestCase):
+    """The failure mode this guards against is a ledger filled in with one
+    disposition everywhere, which satisfies coverage while recording no decision.
+    Each case below pins a disposition the PR 3 plan actually commits to."""
+
+    def dispositions_for(self, category, literal=None, path_prefix="") -> set:
+        return {entry["disposition"] for entry in self.entries()
+                if entry["category"] == category
+                and (literal is None or entry.get("literal") == literal)
+                and entry["path"].startswith(path_prefix)}
+
+    def test_the_worldcup_event_document_name_is_kept_by_compatibility_alias(self):
+        """The plan keeps the ``worldcup:event`` document name unchanged and
+        derives exact-path compatibility aliases underneath it. So every WCI row
+        coupled to that literal is ``compat-alias`` — not ``migrate``, which would
+        mean renaming the document, and not ``no-change``, which would mean the
+        alias requirement did not exist."""
+        dispositions = self.dispositions_for(
+            COUPLING_DOCUMENT_NAME, literal="worldcup:event",
+            path_prefix=WCI_ROOT + "/")
+        self.assertTrue(dispositions, "no worldcup:event document-name rows")
+        self.assertEqual(dispositions, {"compat-alias"})
+
+    def test_the_storage_predicates_are_owned_by_the_connector_surfaces(self):
+        """Task 1's evidence amendment, carried into the ledger: the consumers
+        welded to the persisted event shape are provider connector workflows, so
+        those connector paths — not WCI — are what carries an owner and a
+        disposition for ``value.schema:startDate`` and ``value.sport:status``."""
+        for literal in ("value.schema:startDate", "value.sport:status"):
+            with self.subTest(literal=literal):
+                owners = {entry["owner"] for entry in self.entries()
+                          if entry["category"] == COUPLING_STORAGE_PREDICATE
+                          and entry.get("literal") == literal
+                          and entry["path"].startswith("connectors/")}
+                self.assertTrue(owners, "no connector owner for " + literal)
+                for owner in owners:
+                    self.assertTrue(owner.startswith(REPO + ":connectors/"), owner)
+                self.assertEqual(
+                    self.dispositions_for(COUPLING_STORAGE_PREDICATE,
+                                          literal=literal,
+                                          path_prefix="connectors/"),
+                    {"compat-alias"})
+
+    def test_the_dispositions_are_not_uniform(self):
+        """Belt and braces on the same failure mode, measured over the whole
+        ledger rather than per case."""
+        used = {entry["disposition"] for entry in self.entries()}
+        self.assertEqual(used, set(ALLOWED_DISPOSITIONS))
 
 
 if __name__ == "__main__":
