@@ -98,10 +98,27 @@ jobs:
       - name: The tag names the version that was built
         run: ls dist/machina_sports_canonical-${GITHUB_REF_NAME#machina-sports-canonical-v}-py3-none-any.whl
 
-      # The release's identity, recorded by the job that produced the bytes and
-      # left in the log where a reviewer reads it before approving.
-      - name: Record the digests
-        run: sha256sum dist/*.whl dist/*.tar.gz | tee SHA256SUMS
+      # THE RELEASE'S IDENTITY, CHECKED RATHER THAN JUST RECORDED.
+      #
+      # Recording the digests put them in a log. It did not check them: the
+      # reviewer was asked to compare that log, by eye and under release pressure,
+      # with digests they had seen somewhere else — and if this job produced
+      # different bytes, nothing in the run said so. The rows are now diffed
+      # against the reviewed digests checked in at
+      # docs/iptc/machina-sports-canonical-0.1.0.sha256, in the job that built
+      # them and before the artefact is uploaded, so a release whose bytes are not
+      # the approved bytes never reaches the approval gate at all.
+      #
+      # BASENAMES, COMPUTED FROM INSIDE `dist`. The same two rows are the
+      # authority for the package-proof legs (which build into `$RUNNER_TEMP`),
+      # for this job, and for the publish job's `sha256sum --check` after
+      # download. A `dist/` prefix would make those three different files.
+      # `tee` runs outside the subshell, so SHA256SUMS is written beside `dist`
+      # where the upload below expects it.
+      - name: The digests are the reviewed ones
+        run: |
+          (cd dist && sha256sum *.whl *.tar.gz) | tee SHA256SUMS
+          diff -u docs/iptc/machina-sports-canonical-0.1.0.sha256 SHA256SUMS
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
@@ -133,11 +150,17 @@ jobs:
         with:
           name: machina-sports-canonical-release
 
-      # The bytes are the ones the build job hashed. A mismatch here means the
-      # artefact changed between building and approving, which is the case this
-      # whole two-job shape exists to catch.
+      # The bytes are the ones the build job hashed — and, because that job diffed
+      # its rows against the checked-in reviewed digests, the ones a human
+      # approved. A mismatch here means the artefact changed between building and
+      # approving, which is the case this whole two-job shape exists to catch.
+      #
+      # From inside `dist`, because the rows carry basenames. This job does not
+      # check the repository out, so it cannot read the reviewed file itself; the
+      # build job is where that comparison belongs, and this is the second half of
+      # the same chain.
       - name: The downloaded bytes are the ones that were reviewed
-        run: sha256sum --check --strict SHA256SUMS
+        run: cd dist && sha256sum --check --strict ../SHA256SUMS
 
       # THE LICENSE GATE. Fail-closed and last before the upload: no
       # `License-Expression` and no `License-File` in the wheel's METADATA means

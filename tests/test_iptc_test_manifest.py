@@ -91,6 +91,18 @@ SUITES_THIS_TASK_BRINGS_INTO_CI = (
 #: Concrete inputs whose change must not be able to skip this workflow. Asserted
 #: against the path filters so a runtime byte, a fixture or a report cannot move
 #: without the job that checks it running.
+#:
+#: THE LAST TWO ARE THE RELEASE PATH, AND THEY WERE THE GAP. Every property of
+#: `.github/workflows/publish-machina-sports-canonical.yml` that matters — trusted
+#: publishing with no credential of its own, the reviewer-gated environment, no
+#: rebuild after approval, the license refusal, the pinned action SHAs — is
+#: asserted by `tests/test_iptc_canonical_package.py`, which this workflow runs.
+#: Nothing in either filter reached that file, so a change touching only the
+#: publish workflow skipped the workflow that checks it: a security regression in
+#: the one file that can upload to PyPI could merge with CI green because CI never
+#: ran. The reviewed digests are here for the same reason — they are what the proof
+#: job and the release job diff against, so an edit to them must run the jobs that
+#: read them.
 INPUTS_THE_FILTERS_MUST_REACH = (
     "tools/iptc/test-suites.json",
     "tools/iptc/run_test_suites.py",
@@ -100,6 +112,8 @@ INPUTS_THE_FILTERS_MUST_REACH = (
     "tools/iptc/fixtures/corrected/sports-skills-espn-soccer-graph.json",
     "docs/iptc/baseline-audit.json",
     "docs/iptc/BASELINE-AUDIT.md",
+    "docs/iptc/machina-sports-canonical-0.1.0.sha256",
+    ".github/workflows/publish-machina-sports-canonical.yml",
 )
 
 #: The keys a suite entry may carry. ``group`` and ``timeout_seconds`` are

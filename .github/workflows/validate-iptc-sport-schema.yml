@@ -29,7 +29,19 @@ name: Validate IPTC Sport Schema
 # every fixture; `docs/iptc/**` reaches the four generated reports. Those are not
 # restated as separate entries: an overlapping glob is one more thing to keep in
 # step with a directory move. `tests/test_iptc_test_manifest.py` asserts that each
-# of those concrete inputs is in fact reached.
+# of those concrete inputs is in fact reached — including
+# `docs/iptc/machina-sports-canonical-0.1.0.sha256`, the reviewed release digests
+# both the package-proof job and the release job diff against, which is under
+# `docs/iptc/**` and is therefore asserted rather than restated.
+#
+# THE PUBLISH WORKFLOW IS LISTED, BECAUSE NOTHING ELSE HERE REACHED IT. Every
+# property of `.github/workflows/publish-machina-sports-canonical.yml` that matters
+# — trusted publishing with no credential of its own, the reviewer-gated
+# environment, no rebuild after approval, the license refusal, the pinned action
+# SHAs — is asserted by `tests/test_iptc_canonical_package.py`, which this workflow
+# runs. While that file was outside both filters, a change touching only it skipped
+# the workflow that checks it: a security regression in the one file that can upload
+# to PyPI could merge with CI green because CI never ran.
 #
 # THE PACKAGING PATHS ARE LISTED BECAUSE THE WHEEL IS WHAT CONSUMERS RUN.
 # `tests/test_iptc_canonical_package.py` builds the distribution and proves the
@@ -56,6 +68,7 @@ on:
       - "packaging/machina_sports_canonical/**"
       - "README-machina-sports-canonical.md"
       - ".github/workflows/validate-iptc-sport-schema.yml"
+      - ".github/workflows/publish-machina-sports-canonical.yml"
   push:
     paths:
       - "agent-templates/iptc-mappings/**"
@@ -73,6 +86,7 @@ on:
       - "packaging/machina_sports_canonical/**"
       - "README-machina-sports-canonical.md"
       - ".github/workflows/validate-iptc-sport-schema.yml"
+      - ".github/workflows/publish-machina-sports-canonical.yml"
 
 # This workflow only reads the tree and runs the offline harness. It publishes
 # nothing and needs no write scope.
@@ -196,6 +210,40 @@ jobs:
       # `tests` package.
       - name: The package proof, on this interpreter
         run: python tests/test_iptc_canonical_package.py -v
+
+      # CROSS-INTERPRETER REPRODUCIBILITY, AGAINST A THIRD THING A HUMAN APPROVED.
+      #
+      # The step above proves this interpreter's build is reproducible on this
+      # interpreter. That is what each leg proved and all it proved: 3.9 and 3.11
+      # could each have been stably building DIFFERENT bytes with both legs green,
+      # because nothing compared one leg with the other. So each leg now builds a
+      # release through the same helper and the same epoch the release job uses and
+      # diffs its digests against the reviewed ones checked in at
+      # docs/iptc/machina-sports-canonical-0.1.0.sha256. A divergent interpreter
+      # fails its own job, against the file the other one passes.
+      #
+      # INTO $RUNNER_TEMP, AND BASENAMES. The next step is a clean-tree gate, so an
+      # artefact left in a tracked path would turn a passing proof into a red gate
+      # one step later. The rows are computed from inside the output directory
+      # because the reviewed file carries basenames: that is what lets one checked-in
+      # file be the authority here, in the release job's `dist`, and in the publish
+      # job's `sha256sum --check` after download.
+      #
+      # THE `rm -rf` IS NOT A CONVENIENCE. `setuptools`' sdist step writes
+      # `machina_sports_canonical.egg-info/` into the directory it builds, and this
+      # is the one job that builds from the checkout root — the way the release job
+      # does. It is removed by the step that created it rather than added to
+      # `.gitignore`, so the gate below keeps its full meaning for everything else.
+      # A failed diff leaves it behind and reddens that gate too; that is noise on
+      # an already-failing run, not a missed failure.
+      - name: This interpreter builds the reviewed release digests
+        run: |
+          python packaging/machina_sports_canonical/release.py . "$RUNNER_TEMP/release"
+          (cd "$RUNNER_TEMP/release" && sha256sum *.whl *.tar.gz) | tee "$RUNNER_TEMP/SHA256SUMS"
+          diff -u docs/iptc/machina-sports-canonical-0.1.0.sha256 "$RUNNER_TEMP/SHA256SUMS"
+          rm -rf machina_sports_canonical.egg-info
+        env:
+          SOURCE_DATE_EPOCH: "1786398569"
 
       # The suite builds and installs into disposable trees and removes them, so
       # this asserts what it claims about not polluting a checkout.

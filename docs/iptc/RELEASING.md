@@ -123,6 +123,38 @@ tooling from `requirements-iptc-build.txt`. `python -m build` on its own, withou
 the epoch, produces **irreproducible** archives — do not use it to generate
 digests for review.
 
+### The reviewed digests
+
+`docs/iptc/machina-sports-canonical-0.1.0.sha256` holds the **reviewed 0.1.0
+release candidate** digests, and it is the authority every automated comparison
+diffs against:
+
+| Artefact | SHA-256 |
+|---|---|
+| `machina_sports_canonical-0.1.0-py3-none-any.whl` | `3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b` |
+| `machina_sports_canonical-0.1.0.tar.gz` | `11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324` |
+
+The file is written exactly as `sha256sum` writes it, with **basenames** and the
+wheel before the sdist, so one checked-in file is comparable byte-for-byte with
+what any job generates. Three places read it:
+
+- Both **package-proof** matrix legs (Python 3.9 and 3.11) build a release into
+  `$RUNNER_TEMP` and `diff -u` their digests against it. Before this file existed
+  each leg only compared its own build with its own build, so the two
+  interpreters could have been stably producing *different* bytes with both legs
+  green. Cross-interpreter reproducibility is now falsifiable: a divergent
+  interpreter fails its own job.
+- `tests/test_iptc_canonical_package.py` asserts the artefacts the running
+  interpreter builds hash to exactly these rows.
+- The release **build** job diffs its own `SHA256SUMS` against it *before*
+  uploading the artefact, so a release whose bytes are not the approved bytes
+  never reaches the approval gate.
+
+Reproduce them locally with the command above; the rows must match character for
+character. **If the wheel bytes change for any reason — including adding the
+license metadata this release is blocked on — these digests are stale and this
+file must be re-recorded as a reviewed change.**
+
 ---
 
 ## 🛑 Human release checkpoint
@@ -154,9 +186,11 @@ Do these in order. Each step depends on the one before it.
    This starts the workflow. The `build` job builds, checks the tag against the
    built version, records `SHA256SUMS` and uploads the artefact. It has no upload
    scope.
-3. **Read the digests** in the `build` job log and compare them with the digests
-   reviewed at the checkpoint above. They must be identical. If they are not,
-   **stop** — do not approve.
+3. **Read the digests** in the `build` job log and compare them with
+   `docs/iptc/machina-sports-canonical-0.1.0.sha256`. That job already diffed them
+   against that file and would have failed on a mismatch, so this is a
+   confirmation rather than the only check — but confirm it. If they are not
+   identical, **stop** — do not approve.
 4. **Approve the** deployment to the `pypi` environment. Only now does the
    `publish` job run: it downloads the reviewed artefact, verifies it with
    `sha256sum --check --strict SHA256SUMS`, applies the license gate, and uploads.

@@ -277,6 +277,34 @@ TRUSTED_PUBLISHER_ACTION = "pypa/gh-action-pypi-publish"
 #: reviewer can compare what PyPI serves with what was approved.
 RELEASE_DIGEST_FILE = "SHA256SUMS"
 
+#: The reviewed digests, checked in. `RELEASE_DIGEST_FILE` is what a run
+#: *produces*; this file is what a human *approved*, and without it every check in
+#: this repository compared a build with itself. Each 3.9 and 3.11 matrix leg
+#: proved only that its own build was stable, `docs/iptc/RELEASING.md` promised
+#: "the digests below" and had none, and the release checklist's "compare the
+#: published digest with the reviewed one" named no artefact to compare against.
+#: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
+#: whose bytes differ fails against the same rows every other leg passes against.
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.1.0.sha256"
+RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
+
+#: Exactly the rows that file carries, in exactly that order: the wheel, then the
+#: sdist — the order `sha256sum *.whl *.tar.gz` produces, so the file is byte-equal
+#: to what every job generates and `diff -u` reports a real difference rather than
+#: a reordering.
+#:
+#: BASENAMES, NOT PATHS. The same two rows have to be the authority for a build in
+#: a checkout root (`dist/`), a build into `$RUNNER_TEMP` (an absolute path) and
+#: the `sha256sum --check` the publish job runs from inside the downloaded `dist`.
+#: A path prefix would make each of those a different file and the comparison
+#: unperformable in two of the three.
+REVIEWED_RELEASE_DIGESTS = (
+    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+     "3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b"),
+    ("{0}.tar.gz".format(ARTIFACT_STEM),
+     "11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324"),
+)
+
 #: The one artefact that crosses the approval gate. The publish job downloads it
 #: and uploads those bytes; it never builds. Version-free, so releasing 0.1.1
 #: needs no edit to the workflow — the tag pattern is version-open too.
@@ -995,6 +1023,20 @@ def workflow_uses(text: str) -> list:
 
 def release_docs_text() -> str:
     return RELEASE_DOCS_PATH.read_text(encoding="utf-8")
+
+
+def reviewed_digest_rows() -> list:
+    """The checked-in checksum file, parsed the way ``sha256sum`` writes it.
+
+    Read rather than reconstructed: the constants above say what the rows should
+    be, and this says what the file on disk actually holds. A test that compared
+    the constants with themselves would be green with no file checked in at all.
+    """
+    rows = []
+    for line in RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8").splitlines():
+        digest, separator, name = line.partition("  ")
+        rows.append((name, digest) if separator else (line, ""))
+    return rows
 
 
 def line_index(block: str, needle: str) -> int:
@@ -1739,6 +1781,54 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                  if "tests/test_iptc_" in command]
         self.assertEqual(named, ["python {0} -v".format(PACKAGE_PROOF_SUITE)])
 
+    def test_the_proof_job_compares_its_release_build_with_the_reviewed_digests(self):
+        """What made the matrix worth having, and what it was missing.
+
+        Each leg ran the suite and proved its own build reproducible on its own
+        interpreter. Nothing compared the two, so 3.9 and 3.11 could each have
+        been stably building *different* bytes with both legs green. The leg now
+        builds a release through the same helper and the same epoch the release
+        job uses and diffs the result against the reviewed digests, so a divergent
+        interpreter fails its own job against the file the other one passes.
+
+        Into ``$RUNNER_TEMP`` rather than into the checkout: this job's last step
+        is a clean-tree gate, and an artefact left in a tracked path would turn a
+        successful proof into a red gate one step later.
+        """
+        commands = run_commands(self.proof)
+        builds = [command for command in commands
+                  if RELEASE_HELPER in command or "-m build" in command]
+        self.assertEqual(len(builds), 1,
+                         "expected exactly one release build in the proof job, "
+                         "through the release helper: {0}".format(builds))
+        self.assertIn("$RUNNER_TEMP", builds[0],
+                      "the release build must write outside the checkout")
+        self.assertIn('SOURCE_DATE_EPOCH: "{0}"'.format(RELEASE_SOURCE_DATE_EPOCH),
+                      self.proof,
+                      "a build without the release epoch is not the release")
+        digests = [command for command in commands if "sha256sum" in command]
+        self.assertEqual(len(digests), 1, digests)
+        self.assertNotIn("dist/", digests[0],
+                         "the generated rows must carry basenames, or they can "
+                         "never diff equal against the checked-in file")
+        comparisons = [command for command in commands
+                       if command.startswith("diff -u")]
+        self.assertEqual(len(comparisons), 1, comparisons)
+        self.assertIn(RELEASE_CHECKSUM_FILE, comparisons[0])
+
+    def test_the_proof_job_keeps_its_clean_tree_gate_after_the_release_build(self):
+        """The gate is what catches a build byproduct the step above did not clean
+        up, so it has to run after it rather than before."""
+        commands = run_commands(self.proof)
+        self.assertTrue(any("git status --porcelain" in command
+                            for command in commands), commands)
+        comparison = line_index(self.proof, "diff -u")
+        self.assertNotEqual(comparison, -1,
+                            "the proof job compares nothing with the reviewed "
+                            "digests")
+        self.assertLess(comparison,
+                        line_index(self.proof, "git status --porcelain"))
+
     def test_the_validation_job_stays_on_one_interpreter_and_keeps_every_gate(self):
         """The matrix is additive. If proving two more interpreters cost the pin
         check, the manifest run or the clean-tree check, the trade would be a bad
@@ -2197,6 +2287,84 @@ class TestTheReleaseArtefactsAreReproducible(unittest.TestCase):
         self.assertEqual(found.stdout.strip(), RELEASE_SOURCE_DATE_EPOCH)
 
 
+class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
+    """Reproducibility was proved, and never proved *against anything*.
+
+    The class above shows that two builds in one process agree, and the matrix
+    repeats that on 3.9 and on 3.11 — but each leg only ever compared its own
+    build with its own build. Two interpreters that each reproduced a *different*
+    artefact would both be green, and `docs/iptc/RELEASING.md` said "the digests
+    below" while listing none, so the release checklist's central step — compare
+    the digest PyPI serves with the digest you reviewed — named nothing to compare
+    with.
+
+    So the reviewed digests are checked in, and this class is what makes that file
+    binding: the artefacts this interpreter builds must hash to exactly those rows.
+    Running this suite on both declared interpreters therefore compares them with
+    each other, through a third thing a human approved.
+    """
+
+    def test_the_checksum_file_is_checked_in_as_sha256sum_writes_it(self):
+        """Byte-exact, because every job compares it with ``diff -u`` against
+        generated output. A stray blank line, a single-space separator or a
+        trailing space is a red diff on a release whose bytes are correct."""
+        self.assertTrue(RELEASE_CHECKSUM_PATH.is_file(),
+                        "no reviewed digests are checked in: {0}".format(
+                            RELEASE_CHECKSUM_FILE))
+        self.assertEqual(
+            RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8"),
+            "".join("{0}  {1}\n".format(digest, name)
+                    for name, digest in REVIEWED_RELEASE_DIGESTS))
+
+    def test_the_rows_are_the_two_artefacts_of_this_version_in_a_stable_order(self):
+        """The wheel then the sdist — the order ``sha256sum *.whl *.tar.gz``
+        produces on every leg. Order is part of the file because the comparison is
+        a diff, not a set membership test."""
+        self.assertEqual([name for name, _ in reviewed_digest_rows()],
+                         ["{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+                          "{0}.tar.gz".format(ARTIFACT_STEM)])
+
+    def test_every_row_names_a_basename_so_one_file_is_every_jobs_authority(self):
+        """The proof job builds into ``$RUNNER_TEMP``, the release job into
+        ``dist``, and the publish job checks from inside a downloaded ``dist``. A
+        path prefix would make those three different files."""
+        for name, digest in reviewed_digest_rows():
+            with self.subTest(name=name):
+                self.assertNotIn("/", name)
+                self.assertRegex(digest, r"^[0-9a-f]{64}$")
+
+    def test_the_release_this_interpreter_builds_is_the_reviewed_release(self):
+        """The gate itself, and — because the proof job runs this suite on 3.9 and
+        on 3.11 — the cross-interpreter comparison. Either interpreter drifting
+        fails its own leg against the rows the other one passes against."""
+        recorded = dict(reviewed_digest_rows())
+        for artefact in (built().wheel, built().sdist):
+            with self.subTest(artefact=artefact.name):
+                self.assertIn(artefact.name, recorded,
+                              "the build produced an artefact the reviewed "
+                              "digests do not name")
+                self.assertEqual(
+                    sha256_bytes(artefact.read_bytes()), recorded[artefact.name],
+                    "this interpreter built bytes that are not the reviewed "
+                    "release; see {0}".format(RELEASE_CHECKSUM_FILE))
+
+    def test_the_checksum_file_is_outside_the_artefacts_it_describes(self):
+        """A checksum shipped inside the archive it hashes cannot hash it, and a
+        row for the file itself is a digest nothing can ever verify. Neither is
+        possible while the file lives under ``docs/`` and nothing packages
+        ``docs/`` — which is what this asserts rather than assumes."""
+        basename = Path(RELEASE_CHECKSUM_FILE).name
+        for name, _ in reviewed_digest_rows():
+            with self.subTest(name=name):
+                self.assertNotEqual(name, basename)
+        for member in wheel_record(built().wheel):
+            with self.subTest(member=member):
+                self.assertNotIn(basename, member)
+        for member in tar_members(built().sdist):
+            with self.subTest(member=member.name):
+                self.assertNotIn(basename, member.name)
+
+
 # ---------------------------------------------------------------------------
 # The release automation: OIDC only, approved by a human, and blocked on license
 # ---------------------------------------------------------------------------
@@ -2342,6 +2510,32 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertIn("name: {0}".format(RELEASE_ARTIFACT_NAME), self.build)
         self.assertIn("if-no-files-found: error", self.build)
 
+    def test_the_build_job_refuses_a_release_that_is_not_the_reviewed_one(self):
+        """Recording the digests put them in a log. It did not check them.
+
+        The reviewer was asked to compare the log with digests they had seen
+        somewhere, by eye, under release pressure — and if the build job produced
+        different bytes, nothing in the run said so. The digests are now diffed
+        against the checked-in reviewed file, in the job that built them and before
+        the artefact is uploaded, so a release whose bytes are not the approved
+        bytes never reaches the approval gate at all.
+        """
+        commands = run_commands(self.build)
+        digests = [command for command in commands if "sha256sum" in command]
+        self.assertEqual(len(digests), 1, digests)
+        self.assertIn(RELEASE_DIGEST_FILE, digests[0])
+        self.assertNotIn("dist/*", digests[0],
+                         "the recorded rows must carry basenames, so one checked-"
+                         "in file is the authority for every job that hashes them")
+        comparisons = [command for command in commands
+                       if command.startswith("diff -u")]
+        self.assertEqual(len(comparisons), 1, comparisons)
+        self.assertIn(RELEASE_CHECKSUM_FILE, comparisons[0])
+        self.assertIn(RELEASE_DIGEST_FILE, comparisons[0])
+        self.assertLess(line_index(self.build, comparisons[0]),
+                        line_index(self.build, "upload-artifact"),
+                        "a digest gate after the upload is not a gate")
+
     def test_the_publish_job_uploads_the_downloaded_bytes_and_nothing_else(self):
         self.assertIn("uses: actions/download-artifact@", self.publish)
         self.assertIn("name: {0}".format(RELEASE_ARTIFACT_NAME), self.publish)
@@ -2352,9 +2546,11 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
                   if "sha256sum" in command and RELEASE_DIGEST_FILE in command]
         self.assertEqual(
             checks,
-            ["sha256sum --check --strict {0}".format(RELEASE_DIGEST_FILE)],
+            ["cd dist && sha256sum --check --strict ../{0}".format(
+                RELEASE_DIGEST_FILE)],
             "the publish job must verify the artefact it downloaded against the "
-            "digests the build job recorded")
+            "digests the build job recorded — from inside `dist`, because those "
+            "rows carry basenames so one checked-in file is every job's authority")
         self.assertLess(line_index(self.publish, checks[0]),
                         line_index(self.publish, TRUSTED_PUBLISHER_ACTION))
 
@@ -2526,6 +2722,22 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         """A bad 0.1.0 cannot be replaced; deleting it does not free the version.
         A document that omits that invites exactly the wrong recovery."""
         self.assertMentions("yank", "0.1.1", "cannot")
+
+    def test_the_docs_record_the_reviewed_digests_and_name_the_file_that_holds_them(self):
+        """The document said "the digests below" and listed none.
+
+        So the checklist's own compare step — "read the digests in the build job
+        log and compare them with the digests reviewed at the checkpoint above" —
+        had nothing on either side of the comparison, and a releaser could only
+        approve on trust. Both artefact names, both full hashes, and the checksum
+        file named as the authority the automation diffs against.
+        """
+        self.assertIn(RELEASE_CHECKSUM_FILE, self.text)
+        self.assertMentions("release candidate", "reviewed")
+        for name, digest in REVIEWED_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(name, self.text)
+                self.assertIn(digest, self.text)
 
     def test_the_docs_record_the_reproducible_build_epoch(self):
         """The releaser has to be able to rebuild the reviewed bytes locally, and
