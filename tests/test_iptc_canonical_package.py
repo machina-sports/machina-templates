@@ -256,11 +256,14 @@ PUBLISH_WORKFLOW_PATH = (REPO_ROOT
                          / ".github/workflows/publish-machina-sports-canonical.yml")
 RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
 
-#: Two jobs, because approval has to sit between building and uploading. The
-#: build job produces the artefacts with no upload scope at all; the publish job
-#: has the OIDC scope and does nothing but verify and upload.
+#: Three jobs, because approval has to sit between building and uploading, and a
+#: GitHub Release must not claim bytes PyPI never accepted. The build job produces
+#: the artefacts with no upload scope at all; the publish job has the OIDC scope
+#: and uploads them; the release job runs only after that succeeds and attaches
+#: the same downloaded bytes to the tag.
 RELEASE_BUILD_JOB = "build"
 RELEASE_PUBLISH_JOB = "publish"
+RELEASE_GITHUB_JOB = "release"
 
 #: The GitHub environment the publish job runs in. The reviewer requirement lives
 #: on the environment, not in this repository — which is exactly why
@@ -271,6 +274,17 @@ PYPI_ENVIRONMENT = "pypi"
 #: The action that exchanges the job's short-lived OIDC token for an upload
 #: token. No password, no username, no long-lived secret in this repository.
 TRUSTED_PUBLISHER_ACTION = "pypa/gh-action-pypi-publish"
+
+#: The two actions the release job is allowed to run, at the reviewed immutable
+#: commits. The download pin is deliberately the same one the publish job uses.
+DOWNLOAD_ARTIFACT_ACTION = (
+    "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
+    "  # v4"
+)
+GITHUB_RELEASE_ACTION = (
+    "softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65"
+    "  # v2"
+)
 
 #: What the build job records beside the artefacts, and what the publish job
 #: checks before uploading them. The point of publishing the digests is that a
@@ -320,6 +334,11 @@ INDEPENDENT_VERIFICATION_INTERPRETERS = ("3.9.25", "3.11.14")
 #: and uploads those bytes; it never builds. Version-free, so releasing 0.1.1
 #: needs no edit to the workflow — the tag pattern is version-open too.
 RELEASE_ARTIFACT_NAME = "{0}-release".format(DISTRIBUTION)
+
+#: Exactly what the GitHub Release exposes. Patterns stay version-open, while
+#: the build helper and the package proof enforce exactly one wheel and one sdist.
+GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
+                              RELEASE_DIGEST_FILE)
 
 #: The commit the canonical source bytes come from, as `package-receipt.json`
 #: records it, and its committer timestamp.
@@ -949,6 +968,30 @@ def run_commands(block: str) -> list:
         elif body:
             commands.append(body)
     return commands
+
+
+def literal_block_lines(block: str, key: str) -> list:
+    """The non-comment lines in a job's ``key: |`` scalar.
+
+    This keeps the release attachment assertion exact without importing a YAML
+    parser into the Python 3.9 package-proof environment.
+    """
+    lines = block.splitlines()
+    for index, raw in enumerate(lines):
+        if raw.strip() != "{0}: |".format(key):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        found = []
+        for child in lines[index + 1:]:
+            if not child.strip():
+                continue
+            child_indent = len(child) - len(child.lstrip())
+            if child_indent <= indent:
+                break
+            if not child.strip().startswith("#"):
+                found.append(child.strip())
+        return found
+    return []
 
 
 def matrix_python_versions(block: str) -> list:
@@ -2410,6 +2453,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.jobs = workflow_jobs(self.text)
         self.build = self.jobs.get(RELEASE_BUILD_JOB, "")
         self.publish = self.jobs.get(RELEASE_PUBLISH_JOB, "")
+        self.release = self.jobs.get(RELEASE_GITHUB_JOB, "")
 
     def license_gate_command(self) -> str:
         """The publish job's license preflight, as the workflow spells it."""
@@ -2444,7 +2488,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         a third party's tag points at on the day the tag is pushed.
         """
         found = workflow_uses(self.text)
-        self.assertEqual(len(found), 5, found)
+        self.assertEqual(len(found), 7, found)
         for line in found:
             with self.subTest(uses=line):
                 self.assertRegex(
@@ -2465,16 +2509,64 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
         self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.1.0")
 
-    def test_the_workflow_default_is_read_only_and_only_publish_may_upload(self):
+    def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
-        every job in it, including the one that runs a build backend."""
+        every job in it, including the one that runs a build backend. Likewise,
+        only the final job may write the GitHub Release."""
         self.assertIn("permissions:", self.header)
         self.assertIn("contents: read", self.header)
         self.assertNotIn("id-token", self.header)
         self.assertNotIn("id-token", self.build)
-        for extra in ("contents: write", "packages: write", "write-all"):
+        self.assertNotIn("contents: write", self.build)
+        self.assertIn("id-token: write", self.publish)
+        self.assertNotIn("contents: write", self.publish)
+        self.assertNotIn("id-token", self.release)
+        self.assertIn("contents: write", self.release)
+        self.assertEqual(self.text.count("contents: write"), 1)
+        for extra in ("packages: write", "write-all"):
             with self.subTest(scope=extra):
                 self.assertNotIn(extra, self.text)
+
+    def test_a_third_job_creates_the_github_release_only_after_publish_succeeds(self):
+        self.assertEqual(
+            list(self.jobs),
+            [RELEASE_BUILD_JOB, RELEASE_PUBLISH_JOB, RELEASE_GITHUB_JOB],
+            "release automation must be the third job, after build and publish")
+        self.assertIn("needs: {0}".format(RELEASE_PUBLISH_JOB), self.release)
+        self.assertNotIn("if:", self.release,
+                         "the default success condition must not be bypassed")
+
+    def test_the_release_job_has_no_oidc_checkout_build_or_credential(self):
+        self.assertTrue(self.release, "release job missing")
+        self.assertNotIn("id-token", self.release)
+        self.assertNotIn("actions/checkout@", self.release)
+        self.assertNotIn(TRUSTED_PUBLISHER_ACTION, self.release)
+        for command in run_commands(self.release):
+            for marker in REBUILD_MARKERS:
+                with self.subTest(command=command, marker=marker):
+                    self.assertNotIn(marker, command)
+        for marker in CREDENTIAL_MARKERS:
+            with self.subTest(marker=marker):
+                self.assertNotIn(marker, self.release)
+
+    def test_the_release_job_downloads_and_verifies_the_same_artifact(self):
+        self.assertIn("uses: {0}".format(DOWNLOAD_ARTIFACT_ACTION), self.release)
+        self.assertIn("name: {0}".format(RELEASE_ARTIFACT_NAME), self.release)
+        checks = [command for command in run_commands(self.release)
+                  if "sha256sum" in command and RELEASE_DIGEST_FILE in command]
+        self.assertEqual(
+            checks,
+            ["cd dist && sha256sum --check --strict ../{0}".format(
+                RELEASE_DIGEST_FILE)])
+        self.assertLess(line_index(self.release, checks[0]),
+                        line_index(self.release, GITHUB_RELEASE_ACTION))
+
+    def test_the_release_job_attaches_exactly_the_built_distributions_and_digests(self):
+        self.assertIn("uses: {0}".format(GITHUB_RELEASE_ACTION), self.release)
+        self.assertIn("tag_name: ${{ github.ref_name }}", self.release)
+        self.assertEqual(literal_block_lines(self.release, "files"),
+                         list(GITHUB_RELEASE_ATTACHMENTS))
+        self.assertIn("fail_on_unmatched_files: true", self.release)
 
     def test_the_publish_job_is_bound_to_the_reviewer_gated_environment(self):
         """The environment is where the human approval is enforced. Without this
@@ -2721,6 +2813,17 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
     def test_the_docs_require_comparing_the_published_bytes_with_the_reviewed_ones(self):
         self.assertMentions(RELEASE_DIGEST_FILE, "sha256", "compare")
         self.assertMentions("pypi.org/pypi/machina-sports-canonical/json")
+
+    def test_the_docs_require_verifying_an_actual_github_release_and_attachments(self):
+        self.assertNotIn("release/run", self.lowered)
+        self.assertMentions("GitHub Release", "exists", RELEASE_TAG,
+                            "exactly three attachments")
+        attachments = [name for name, _ in REVIEWED_RELEASE_DIGESTS]
+        attachments.append(RELEASE_DIGEST_FILE)
+        for attachment in attachments:
+            with self.subTest(attachment=attachment):
+                self.assertIn(attachment, self.text)
+        self.assertMentions("sha256sum --check --strict")
 
     def test_the_docs_require_a_clean_install_from_the_index_afterwards(self):
         self.assertMentions(

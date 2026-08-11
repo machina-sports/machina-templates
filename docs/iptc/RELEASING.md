@@ -234,18 +234,31 @@ Do these in order. Each step depends on the one before it.
    `publish` job run: it downloads the reviewed artefact, verifies it with
    `sha256sum --check --strict SHA256SUMS`, applies the license gate, and uploads.
    It never rebuilds — publishing a rebuild publishes bytes nobody approved.
+5. After `publish` succeeds, the `release` job downloads that same named workflow
+   artefact, verifies `SHA256SUMS` again, and creates the GitHub Release for
+   `machina-sports-canonical-v0.1.0`. It never checks out or rebuilds the source.
+   Because it needs a successful `publish`, no GitHub Release is created for a
+   distribution PyPI rejected.
 
 ---
 
 ## After publishing
 
-1. The GitHub release/run references the uploaded artefacts, and the publish job
-   printed their hashes.
-2. `https://pypi.org/pypi/machina-sports-canonical/json` returns `0.1.0`.
-3. **Compare** the `digests.sha256` values in that JSON, for both the wheel and
+1. Open the repository's Releases page and verify an actual **GitHub Release
+   exists** for the exact tag `machina-sports-canonical-v0.1.0`.
+2. Verify its uploaded assets contain **exactly three attachments** (GitHub's
+   automatically generated source-code links are not uploaded attachments):
+   - `machina_sports_canonical-0.1.0-py3-none-any.whl`
+   - `machina_sports_canonical-0.1.0.tar.gz`
+   - `SHA256SUMS`
+3. Download those three attachments into a clean directory and run
+   `sha256sum --check --strict SHA256SUMS`. Both distribution files must pass;
+   this proves the GitHub Release exposes the exact bytes the build job hashed.
+4. `https://pypi.org/pypi/machina-sports-canonical/json` returns `0.1.0`.
+5. **Compare** the `digests.sha256` values in that JSON, for both the wheel and
    the sdist, against `SHA256SUMS` from the approved run. They must match exactly.
    A mismatch means what PyPI serves is not what was approved.
-4. Verify a **clean** install from the index, in a throwaway virtual environment
+6. Verify a **clean** install from the index, in a throwaway virtual environment
    with nothing else in it:
    ```sh
    pip install machina-sports-canonical==0.1.0
@@ -255,7 +268,7 @@ Do these in order. Each step depends on the one before it.
    `shared-context.json` and `official-property-names.json` through the installed
    package, from a directory outside this repository.
 
-Only when all four pass is the version usable as a pin.
+Only when all six pass is the version usable as a pin.
 
 ---
 

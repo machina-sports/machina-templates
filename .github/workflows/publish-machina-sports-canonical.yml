@@ -1,7 +1,8 @@
 name: Publish machina-sports-canonical
 
-# Releases the distribution `machina-sports-canonical` to PyPI, and refuses to
-# until two things outside this repository have happened.
+# Releases the distribution `machina-sports-canonical` to PyPI and then creates
+# the matching GitHub Release, and refuses to until two things outside this
+# repository have happened.
 #
 # THE FIRST UPLOAD IS BLOCKED ON A LICENSE DECISION. This repository has no root
 # license, so the distribution declares none, and packaging must not invent one:
@@ -25,6 +26,7 @@ name: Publish machina-sports-canonical
 # runs in the `pypi` environment — which MUST be configured with a required
 # reviewer, in repository settings, or this workflow uploads the moment a tag is
 # pushed — and does nothing but verify digests and upload the bytes it downloaded.
+# Only after that succeeds may `release` attach the same bytes to the tag.
 #
 # IT CANNOT REBUILD AFTER APPROVAL. The publish job does not check this repository
 # out and never runs a build. Publishing a rebuild would publish bytes nobody
@@ -181,3 +183,38 @@ jobs:
           # Puts the published digests in the release log, beside the SHA256SUMS
           # the reviewer approved and the digests PyPI will serve.
           print-hash: true
+
+  release:
+    # A GitHub Release must never claim a distribution that PyPI rejected. With
+    # no `if:` override, GitHub runs this job only after `publish` succeeds.
+    needs: publish
+    runs-on: ubuntu-latest
+
+    # This job needs only the repository scope that creates a GitHub Release. It
+    # has no OIDC identity, credential secret, checkout, build, or environment.
+    permissions:
+      contents: write
+
+    steps:
+      # Download the same named workflow artefact the publish job consumed.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: machina-sports-canonical-release
+
+      # Verify the downloaded wheel and sdist before exposing them as release
+      # attachments. The checksum rows carry basenames, so check from `dist`.
+      - name: The GitHub Release bytes are the ones that were reviewed
+        run: cd dist && sha256sum --check --strict ../SHA256SUMS
+
+      # `release.py` and the package proof require exactly one wheel and one
+      # sdist. These version-open patterns select those exact built files, while
+      # fail-on-unmatched keeps a missing distribution or checksum from creating
+      # a partial release.
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            SHA256SUMS
+          fail_on_unmatched_files: true
