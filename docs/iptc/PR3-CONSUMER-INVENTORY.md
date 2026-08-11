@@ -7,7 +7,8 @@ a **migration order**, and the **seam** every migrated consumer will call.
 
 Nothing here changes production code, mapping YAML, workflows, connectors, install
 manifests, tests, or the generated inventory. This is the classification gate that
-Design Log #027 and `.claude/tasks/CURRENT.md` require before any PR 3 refactor starts.
+the internal design-decision record and `.claude/tasks/CURRENT.md` require before any
+PR 3 refactor starts.
 
 ---
 
@@ -248,7 +249,7 @@ found. The lane exists so PR 3 can state what would break, not so PR 3 can chang
 
 | Surface | Why excluded | Proof |
 |---|---|---|
-| `machina-templates-iptc-1.1-foundation`, `machina-templates-iptc-1.1-mappings`, and this worktree | All three share one `.git` common dir with `machina-templates`. They are PR 1 / PR 2 / PR 3 worktrees of **one** repository | `git worktree list` in `machina-templates` |
+| The two sibling local worktree checkouts for the PR 1 and PR 2 lanes, and this worktree | All three share one `.git` common dir with `machina-templates`. They are PR 1 / PR 2 / PR 3 worktrees of **one** repository | `git worktree list` in `machina-templates` |
 | `sportsclaw-pr136`, `sportsclaw-pr137`, `sportsclaw-pr138`, `sportsclaw-v0292` | Registered worktrees of the single `sportsclaw` repo (plus two `prunable` temp worktrees) | `git worktree list` in `sportsclaw` |
 | `sports-skills-machina-schema` | Checkout of the `sports-skills` PR 2 branch, superseded by `origin/main` @ `944c14e` | branch `feat/machina-sports-schema` |
 | `agent-templates/world-cup-intelligence/**/__pycache__/*.pyc` | Byte-compiled output of a file already counted | matched only by content |
@@ -375,7 +376,7 @@ fails-closed gate into an outage.
 Every candidate directory was resolved to a repository before being counted:
 `git rev-parse --git-common-dir` for shared worktrees, `git worktree list` for
 registrations, and branch/ref inspection for stale checkouts. The result is §3.7. Four
-`sportsclaw-*` directories, two `machina-templates-iptc-*` directories, this worktree, and
+`sportsclaw-*` directories, two sibling PR-lane worktree directories, this worktree, and
 `sports-skills-machina-schema` collapse to **three** repositories: `sportsclaw`,
 `machina-templates`, `sports-skills`. Generated JS, `.d.ts`, `.map` and `__pycache__`
 artefacts are excluded on the same principle: they are a second copy of a counted source.
@@ -502,9 +503,9 @@ made one.
 PR 3 does **not**:
 
 - change the canonical schema, its terms, its capability names, its envelope, or the
-  rights model — the canonical layer is frozen per Design Log #027, except bugs and
-  standards/provider corrections;
-- touch Sports Moment, Experience, or Coach Mode;
+  rights model — the canonical layer is frozen per the internal design-decision record,
+  except bugs and standards/provider corrections;
+- touch Experience or any other adjacent product surface;
 - rewrite customer repositories for purity — `dazn-templates`, `entain-templates`,
   `SINCH`, `sportingbot-web` and `sportsclaw-machina` get a plan, not a refactor;
 - change any frontend;
