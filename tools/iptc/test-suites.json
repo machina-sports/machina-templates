@@ -32,6 +32,10 @@
       "timeout_seconds": 600
     },
     {
+      "path": "tests/test_iptc_consumer_inventory.py",
+      "group": "canonical"
+    },
+    {
       "path": "tests/test_iptc_cross_provider_equivalence.py",
       "group": "canonical"
     },
