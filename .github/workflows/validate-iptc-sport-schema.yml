@@ -30,6 +30,14 @@ name: Validate IPTC Sport Schema
 # restated as separate entries: an overlapping glob is one more thing to keep in
 # step with a directory move. `tests/test_iptc_test_manifest.py` asserts that each
 # of those concrete inputs is in fact reached.
+#
+# THE PACKAGING PATHS ARE LISTED BECAUSE THE WHEEL IS WHAT CONSUMERS RUN.
+# `tests/test_iptc_canonical_package.py` builds the distribution and proves the
+# installed bytes against `tools/iptc/vendored-manifest.json`. `tools/iptc/**`
+# already reaches the canonical source and the package receipt, but the root
+# packaging configuration lives outside it: without `pyproject.toml`, `setup.py`
+# and `packaging/machina_sports_canonical/**` in the filter, a change to the
+# build filter or to the package metadata would skip the only job that builds it.
 on:
   pull_request:
     paths:
@@ -41,6 +49,11 @@ on:
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
       - "requirements-validator.txt"
+      - "pyproject.toml"
+      - "setup.py"
+      - "MANIFEST.in"
+      - "packaging/machina_sports_canonical/**"
+      - "README-machina-sports-canonical.md"
       - ".github/workflows/validate-iptc-sport-schema.yml"
   push:
     paths:
@@ -52,6 +65,11 @@ on:
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
       - "requirements-validator.txt"
+      - "pyproject.toml"
+      - "setup.py"
+      - "MANIFEST.in"
+      - "packaging/machina_sports_canonical/**"
+      - "README-machina-sports-canonical.md"
       - ".github/workflows/validate-iptc-sport-schema.yml"
 
 # This workflow only reads the tree and runs the offline harness. It publishes
@@ -71,6 +89,14 @@ jobs:
       # requirements-validator.txt itself, so the base pins stay in one place while
       # the agent-builder workflow never installs rdflib/pyshacl.
       - run: python -m pip install -r requirements-iptc-validator.txt
+
+      # The PEP 517 frontend and its backend, for the packaging proof suite only.
+      # `tests/test_iptc_canonical_package.py` builds with `--no-isolation` so the
+      # build stays offline and deterministic, which means the frontend and the
+      # backend have to be here rather than fetched per build. These are build
+      # tooling for CI; the distribution itself declares no dependency at all, and
+      # `test_zero_runtime_dependencies` reads that off the installed metadata.
+      - run: python -m pip install "build>=1.0" "setuptools>=68" wheel
 
       # The pin first: if a vendored upstream byte changed, every conformance
       # result below is void and there is no point reading further.

@@ -18,6 +18,11 @@
       "group": "manifest"
     },
     {
+      "path": "tests/test_iptc_canonical_package.py",
+      "group": "canonical",
+      "timeout_seconds": 900
+    },
+    {
       "path": "tests/test_iptc_canonical_serializer.py",
       "group": "canonical",
       "timeout_seconds": 600
