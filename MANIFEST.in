@@ -8,8 +8,34 @@
 # `packaging/machina_sports_canonical/build.py`, and the wheel build dies in the
 # backend — which is how this line came to be written rather than assumed.
 #
+# The release helper is the second and last line, and it is here for a different
+# reason: the build does not need it, a rebuild *of the release* does.
+# `release.py` is what makes the sdist reproducible — it builds with the release
+# epoch and rewrites the builder's mtimes, ownership and umask out of the tar —
+# so an sdist that omitted it would be an artefact nobody could rebuild
+# byte-for-byte from itself. It is build support, not runtime: it is not a package
+# module, it is not package data, and `tests/test_iptc_canonical_package.py`
+# asserts it is absent from the wheel.
+#
 # Nothing else is added. The canonical modules and the three JSON resources reach
 # the sdist through the package configuration in `pyproject.toml`, and a
 # `recursive-include` over `tools/` would additionally sweep in the harness, the
 # fixtures and the reports, none of which belong in a published artefact.
 include packaging/machina_sports_canonical/build.py
+include packaging/machina_sports_canonical/release.py
+
+# THE TWO EXCLUSIONS BELOW ARE WHAT MAKES A RELEASE BUILD AND A PROOF BUILD THE
+# SAME ARTEFACT. `setuptools`' sdist defaults sweep in every root `README*` and
+# every `tests/test*.py` on their own. The proof suite builds from a staged copy
+# holding only the declared packaging inputs, so it never saw either; the release
+# workflow builds from a checkout root, so it got both — the templates
+# repository's own README and all twenty IPTC suites, inside a published
+# distribution. Two different artefacts with one version number, and the release
+# checklist comparing the digest of the one nobody proved.
+#
+# `README.md` here is the repository's README, not the package's:
+# `README-machina-sports-canonical.md` is named by `[project] readme` and is added
+# by setuptools itself. Nothing about the declared readme or the description bytes
+# changes.
+exclude README.md
+prune tests

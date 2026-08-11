@@ -1,0 +1,160 @@
+name: Publish machina-sports-canonical
+
+# Releases the distribution `machina-sports-canonical` to PyPI, and refuses to
+# until two things outside this repository have happened.
+#
+# THE FIRST UPLOAD IS BLOCKED ON A LICENSE DECISION. This repository has no root
+# license, so the distribution declares none, and packaging must not invent one:
+# `sports-skills` being MIT is evidence about another repository, not permission to
+# relicense this source. The publish job therefore inspects the built wheel's
+# METADATA and stops before the upload unless an owner-approved
+# `License-Expression` or `License-File` is present. That is why this workflow can
+# be committed while the release stays deliberately blocked — the gate is
+# executable, not a note. `docs/iptc/RELEASING.md` records what has to be decided.
+#
+# NO CREDENTIAL LIVES HERE. Uploading is authorized by the publish job's own
+# short-lived OIDC token, exchanged by `pypa/gh-action-pypi-publish` for an upload
+# token PyPI issues to this repository, this workflow file and the `pypi`
+# environment. There is no API token in a repository secret, because a standing
+# credential outlives the release it was added for and is stealable in the
+# meantime. `tests/test_iptc_canonical_package.py` fails if any credential marker
+# appears in this file.
+#
+# A HUMAN STANDS BETWEEN BUILDING AND UPLOADING. The `build` job produces the
+# artefacts with no upload scope at all. The `publish` job holds the OIDC scope,
+# runs in the `pypi` environment — which MUST be configured with a required
+# reviewer, in repository settings, or this workflow uploads the moment a tag is
+# pushed — and does nothing but verify digests and upload the bytes it downloaded.
+#
+# IT CANNOT REBUILD AFTER APPROVAL. The publish job does not check this repository
+# out and never runs a build. Publishing a rebuild would publish bytes nobody
+# approved, and reproducibility makes that mistake look harmless rather than
+# making it safe.
+#
+# EVERY ACTION IS PINNED TO A COMMIT, NOT A TAG. A tag is a mutable ref: whoever
+# controls the action's repository can move it after this file was reviewed, and
+# these actions run in the job that produces the released bytes and in the job
+# holding the OIDC identity PyPI accepts for this distribution. Pinning the
+# artefact while leaving the code that builds and uploads it floating would secure
+# the wrong half. The comment beside each SHA names the ref it was taken from, so
+# the pins stay legible enough to update deliberately.
+on:
+  push:
+    tags:
+      - "machina-sports-canonical-v*"
+
+# Distribution-scoped tags, not a bare `v*`: this repository also releases
+# templates, and a shared tag namespace would make one release fire the other's
+# workflow. `0.1.0` releases under exactly `machina-sports-canonical-v0.1.0`.
+
+# Read-only by default, so the OIDC identity below is an addition to a read-only
+# workflow rather than a narrowing of a permissive one. `id-token: write` at this
+# level would hand the upload identity to the job that runs a build backend.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          # The interpreter the client image runs, and one of the two the package
+          # proof covers. The wheel is `py3-none-any`, so this decides nothing
+          # about what installs — it decides which interpreter's pinned tooling
+          # produced the released bytes.
+          python-version: "3.11"
+
+      # The same exactly pinned closure every other job in this repository builds
+      # with, from the same checked-in file. A release built with a resolver-chosen
+      # frontend is a release whose tooling nothing recorded.
+      - run: python -m pip install -r requirements-iptc-build.txt
+
+      # ONE BUILD, THROUGH THE RELEASE HELPER, WITH THE RELEASE EPOCH.
+      #
+      # `SOURCE_DATE_EPOCH` is the committer timestamp of the canonical source
+      # commit `package-receipt.json` records, so the number is re-derivable from
+      # the tree it describes rather than arbitrary. `wheel` reads it and stamps
+      # every zip entry with it; this backend's sdist ignores it entirely, so the
+      # helper rewrites the builder's mtimes, uid, gid and umask out of the tar
+      # afterwards, touching no payload and no member order.
+      #
+      # Without both halves, two builds of one commit produce two digests — and
+      # then the release checklist's "the digest PyPI serves equals the digest you
+      # reviewed" is a step nobody can perform, which is the same as having no
+      # check on what was uploaded. `tests/test_iptc_canonical_package.py` runs
+      # this exact command with this exact epoch and asserts the two builds agree.
+      - name: Build the release artefacts reproducibly
+        run: python packaging/machina_sports_canonical/release.py . dist
+        env:
+          SOURCE_DATE_EPOCH: "1786398569"
+
+      # Fails, printing the filename it expected, when the tag names a version the
+      # build did not produce. A `-v0.2.0` tag on a tree that still declares 0.1.0
+      # would otherwise publish 0.1.0 and burn the wrong version number.
+      # `GITHUB_REF_NAME` as an environment variable rather than a `${{ }}`
+      # expression, so a tag name cannot be interpolated into this shell.
+      - name: The tag names the version that was built
+        run: ls dist/machina_sports_canonical-${GITHUB_REF_NAME#machina-sports-canonical-v}-py3-none-any.whl
+
+      # The release's identity, recorded by the job that produced the bytes and
+      # left in the log where a reviewer reads it before approving.
+      - name: Record the digests
+        run: sha256sum dist/*.whl dist/*.tar.gz | tee SHA256SUMS
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: machina-sports-canonical-release
+          path: |
+            dist
+            SHA256SUMS
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+
+    # WHERE THE HUMAN GATE IS ENFORCED. The reviewer requirement lives on the
+    # environment in repository settings, not in this file — so this binding is
+    # necessary and not sufficient, and `docs/iptc/RELEASING.md` states that the
+    # environment must require a reviewer before a tag is ever pushed.
+    environment: pypi
+
+    # The upload identity, on the one job that uploads. Nothing else is granted:
+    # this job does not check the repository out and has no reason to write to it.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      # The artefacts the reviewer approved, not a rebuild of them.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: machina-sports-canonical-release
+
+      # The bytes are the ones the build job hashed. A mismatch here means the
+      # artefact changed between building and approving, which is the case this
+      # whole two-job shape exists to catch.
+      - name: The downloaded bytes are the ones that were reviewed
+        run: sha256sum --check --strict SHA256SUMS
+
+      # THE LICENSE GATE. Fail-closed and last before the upload: no
+      # `License-Expression` and no `License-File` in the wheel's METADATA means
+      # no owner has decided what this distribution is licensed as, and an upload
+      # under no license cannot be taken back — PyPI does not free a version
+      # number. As of this commit the wheel has neither field, so this step stops
+      # the release here, on purpose.
+      #
+      # `tests/test_iptc_canonical_package.py` reads this command out of this file
+      # and runs it against the wheel the repository builds today, so the refusal
+      # is proved locally rather than asserted.
+      - name: Refuse to publish without an approved license
+        run: unzip -p dist/*.whl "*.dist-info/METADATA" | grep -Eq "^(License-Expression|License-File):" || (echo "BLOCKED - the built wheel declares no approved license metadata; see docs/iptc/RELEASING.md" && exit 1)
+
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # release/v1
+        with:
+          packages-dir: dist
+          # Puts the published digests in the release log, beside the SHA256SUMS
+          # the reviewer approved and the digests PyPI will serve.
+          print-hash: true
