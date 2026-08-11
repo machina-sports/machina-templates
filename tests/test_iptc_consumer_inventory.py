@@ -34,8 +34,15 @@ over this repository — docstrings, ``description:`` fields, disabled tasks. A
 substring-anywhere matcher would report those, and an inventory that cries wolf
 is an inventory whose findings get skimmed. So detection keys on *position*: a
 document-name literal is only a finding under a document-name key, and a storage
-predicate is only a finding on a line that is not a comment. Two tests below
-exist purely to hold that line.
+predicate is only a finding on a line that is neither a comment nor part of a
+``description:`` scalar. Several tests below exist purely to hold that line.
+
+The ``description:`` exclusion was **missing** from the first version of this
+suite, and the resulting false positive
+(``connectors/sportradar-mlb/sync-results.yml:7``) survived review — see
+:class:`TestDescriptionProseIsNotAStoragePredicate`. Anchoring on ``value.`` was
+assumed to be enough to keep the matcher off prose. It is not, because a
+description's job is to name the very path it is describing.
 """
 
 from __future__ import annotations
@@ -87,6 +94,33 @@ workflow:
       filters:
         value.schema:startDate: "{'$gt': 'now'}"
         value.sport:status: "{'$in': ['not_started']}"
+"""
+
+
+#: A multi-line ``description:`` scalar that names storage paths in prose, plus a
+#: real filter after the scalar ends. Modelled on
+#: ``connectors/sportradar-mlb/sync-results.yml``, where the description explains
+#: which storage path a *downstream* workflow reads. Explaining a path is not
+#: evaluating one, so nothing in the scalar is a coupling; the ``filters:`` key
+#: below it is.
+DESCRIPTION_PROSE_SNIPPET = """\
+workflow:
+  name: sportradar-mlb-sync-results
+  description: 'Companion to sportradar-mlb-sync-games. The season schedule.json
+    carries NO runs, so this merges the score onto the existing docs.
+
+    Without this, extract-team-stats has nothing to read — it needs
+    value.sport:score.sport:homeScore / sport:awayScore — so no team stats.
+
+    Merge-not-replace: only value.sport:matchStatus is written, so version_control
+    survives.'
+  tasks:
+  - type: document
+    name: load-upcoming
+    description: |
+      A block scalar names value.sport:competition without evaluating it either.
+    filters:
+      value.sport:status: "{'$in': ['not_started']}"
 """
 
 
@@ -177,6 +211,43 @@ workflow:
 """)
         self.assertEqual(self.of_category(findings, COUPLING_STORAGE_PREDICATE),
                          [])
+
+
+class TestDescriptionProseIsNotAStoragePredicate(CouplingScanTestCase):
+    """Regression. ``value.`` anchoring was assumed to keep the storage-predicate
+    matcher off prose, and it does not: a ``description:`` scalar is prose that
+    happens to quote the storage path, and a multi-line one puts that quote on an
+    indented continuation line that looks exactly like a nested mapping key.
+
+    The narrowness claim in this module's docstring — and the "0 prose false
+    positives" claim in the commit that introduced the scan — were therefore
+    wrong for description scalars. This holds the corrected line.
+    """
+
+    def test_a_multi_line_description_scalar_is_not_a_storage_predicate(self):
+        """Prose inside the scalar is skipped; the ``filters:`` key that follows
+        it is still reported. Asserted as an exact list, because a fix that
+        swallowed the real filter along with the prose would pass a
+        ``assertNotIn`` and still be wrong."""
+        findings = self.scan_snippet("consumer.yml", DESCRIPTION_PROSE_SNIPPET)
+        predicates = self.of_category(findings, COUPLING_STORAGE_PREDICATE)
+        self.assertEqual([f["path"] for f in predicates], ["value.sport:status"])
+
+    def test_the_sportradar_mlb_description_line_is_not_reported(self):
+        """The real-repo instance the review found: line 7 of
+        ``connectors/sportradar-mlb/sync-results.yml`` is a continuation line of
+        the ``description:`` scalar opened on line 4."""
+        source = (REPO_ROOT / "connectors/sportradar-mlb/sync-results.yml").read_text(
+            encoding="utf-8").splitlines()
+        self.assertIn(
+            "value.sport:score", source[6],
+            "line 7 no longer carries the prose this regression is about; "
+            "re-point the assertion rather than deleting it")
+        self.assertEqual(
+            [f for f in scan_couplings("connectors")
+             if f["file"] == "connectors/sportradar-mlb/sync-results.yml"
+             and f["line"] == 7],
+            [])
 
 
 class TestEveryFindingCanBeLocated(CouplingScanTestCase):
