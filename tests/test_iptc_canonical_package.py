@@ -305,6 +305,17 @@ REVIEWED_RELEASE_DIGESTS = (
      "11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324"),
 )
 
+#: The candidate whose digests were rebuilt outside the agent that produced them,
+#: and the two patch-level interpreters that rebuilt it.
+#:
+#: Every check above compares a build with rows this repository checked in — which
+#: proves the rows are reproducible, not that they were ever reproduced by anyone
+#: other than the process that wrote them. A releaser approving the upload is
+#: entitled to know that someone rebuilt the exact candidate from a clean export,
+#: with what, and that the rebuild is evidence rather than the approval itself.
+INDEPENDENT_VERIFICATION_COMMIT = "f46799c"
+INDEPENDENT_VERIFICATION_INTERPRETERS = ("3.9.25", "3.11.14")
+
 #: The one artefact that crosses the approval gate. The publish job downloads it
 #: and uploads those bytes; it never builds. Version-free, so releasing 0.1.1
 #: needs no edit to the workflow — the tag pattern is version-open too.
@@ -2738,6 +2749,32 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
+
+    def test_the_docs_record_the_independent_pre_approval_hash_verification(self):
+        """The reviewed rows were produced by the same process that recorded them.
+
+        Reproducing them once, elsewhere, from a clean export of the exact
+        candidate, is what turns "these digests are stable" into "these digests
+        are what this commit builds on someone else's machine". A releaser can
+        only weigh that evidence if the document says which commit, which two
+        interpreters, how the source was obtained — and, just as importantly,
+        that a rebuild is not permission to upload.
+        """
+        self.assertIn(INDEPENDENT_VERIFICATION_COMMIT, self.text)
+        self.assertMentions("independent", "git archive", "temporary trees")
+        for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
+            with self.subTest(interpreter=version):
+                self.assertIn(version, self.text)
+        for distribution, version, _ in BUILD_REQUIREMENT_CLOSURE:
+            with self.subTest(build_pin=distribution):
+                self.assertIn("{0}=={1}".format(distribution, version),
+                              self.text)
+        for name, digest in REVIEWED_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(digest, self.text)
+        self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        self.assertIn(RELEASE_CHECKSUM_FILE, self.text)
+        self.assertMentions("not release approval", "not a license decision")
 
     def test_the_docs_record_the_reproducible_build_epoch(self):
         """The releaser has to be able to rebuild the reviewed bytes locally, and

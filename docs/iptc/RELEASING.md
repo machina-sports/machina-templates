@@ -155,6 +155,45 @@ character. **If the wheel bytes change for any reason — including adding the
 license metadata this release is blocked on — these digests are stale and this
 file must be re-recorded as a reviewed change.**
 
+### Independent verification of those digests
+
+Every automated comparison above diffs a build against rows this repository
+checked in, which proves the rows are stable — not that anyone other than the
+process that wrote them ever reproduced them. They have now been reproduced
+once, outside that process, before any approval:
+
+- **Candidate:** `f46799c`, the exact commit these digests are recorded for.
+- **Source:** obtained with `git archive f46799c` into separate isolated
+  temporary trees, so no working tree, build cache or untracked file could
+  contribute bytes.
+- **Environment:** fresh disposable virtual environments, each installing the
+  checked-in `requirements-iptc-build.txt` unchanged.
+- **Build pins:** `build==1.4.4`, `setuptools==82.0.1`, `wheel==0.47.0`,
+  `packaging==26.3`, `pyproject-hooks==1.2.0`, `importlib-metadata==8.7.0`,
+  `tomli==2.2.1`, `zipp==3.23.0` and `colorama==0.4.6`, with the checked-in
+  environment markers unchanged.
+- **Interpreters:** Python **3.9.25** and Python **3.11.14**, each running
+  `packaging/machina_sports_canonical/release.py` with
+  `SOURCE_DATE_EPOCH=1786398569`.
+
+Each interpreter independently produced:
+
+| Artefact | SHA-256 |
+|---|---|
+| `machina_sports_canonical-0.1.0-py3-none-any.whl` | `3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b` |
+| `machina_sports_canonical-0.1.0.tar.gz` | `11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324` |
+
+Both matched `docs/iptc/machina-sports-canonical-0.1.0.sha256` byte for byte, and
+matched each other. The temporary trees and environments were removed; this
+repository's working tree was not modified.
+
+**This is pre-approval evidence. It is not release approval.** It says the
+reviewed digests are what `f46799c` builds on an independent machine across both
+proven interpreters, and nothing more. It is not an owner's decision to publish,
+it does not stand in for the required reviewer on the `pypi` environment, and it
+is not a license decision. It decides nothing about the license blocker. Both 🛑
+blocks still hold.
+
 ---
 
 ## 🛑 Human release checkpoint
