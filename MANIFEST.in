@@ -1,0 +1,15 @@
+# The sdist must be able to rebuild itself.
+#
+# `python -m build` produces the sdist first and then builds the wheel FROM that
+# sdist, so anything `setup.py` reaches for has to be inside it. `pyproject.toml`,
+# `setup.py` and the README named by `[project] readme` are added by setuptools
+# itself; the build filter is not, because it is neither a package module nor
+# package data. Without this line the sdist unpacks, `setup.py` fails to load
+# `packaging/machina_sports_canonical/build.py`, and the wheel build dies in the
+# backend — which is how this line came to be written rather than assumed.
+#
+# Nothing else is added. The canonical modules and the three JSON resources reach
+# the sdist through the package configuration in `pyproject.toml`, and a
+# `recursive-include` over `tools/` would additionally sweep in the harness, the
+# fixtures and the reports, none of which belong in a published artefact.
+include packaging/machina_sports_canonical/build.py

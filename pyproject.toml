@@ -1,0 +1,52 @@
+# Packaging configuration for the distribution `machina-sports-canonical`.
+#
+# THIS FILE PUBLISHES EXISTING BYTES. IT DOES NOT OWN THEM.
+# The canonical runtime lives at `tools/iptc/canonical/` and is authoritative
+# there. Nothing is moved, copied or rewritten to build this distribution: the
+# import namespace `machina_sports_canonical` is mapped straight onto that
+# directory by `package-dir`. `tests/test_iptc_canonical_package.py` hashes the
+# installed files against `tools/iptc/vendored-manifest.json`, so a packaging step
+# that transformed a source file would be a red test rather than a silent
+# divergence between what this repository reviews and what a consumer runs.
+#
+# WHY IT IS PACKAGED AT ALL. `machina-client-api` execs a pyscript connector
+# sidecar in-process, in the image's own interpreter. There is no per-template
+# dependency install and no sys.path injection at execution time, so a connector
+# can only `import machina_sports_canonical` if a wheel was installed into the
+# image.
+#
+# ZERO DEPENDENCIES IS A CONTRACT, NOT AN ACCIDENT. The canonical core is standard
+# library only and its floor is Python 3.9, because `sports-skills` vendors the
+# same bytes as a published zero-dependency 3.9+ package. Adding a dependency here
+# would fork that promise.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machina-sports-canonical"
+version = "0.1.0"
+description = "Canonical Machina Sports Schema runtime: provider-neutral observations, IPTC Sport Schema 1.1 serialization, and the shared JSON-LD context."
+readme = "README-machina-sports-canonical.md"
+requires-python = ">=3.9"
+dependencies = []
+
+# The mapping that makes this a package without moving a file. Both packages are
+# listed explicitly rather than discovered: auto-discovery over a repository root
+# that also holds `tools/`, `tests/`, `scripts/` and `packaging/` would guess, and
+# a guess is not something a release should depend on.
+[tool.setuptools]
+packages = ["machina_sports_canonical", "machina_sports_canonical.adapters"]
+package-dir = {machina_sports_canonical = "tools/iptc/canonical"}
+include-package-data = false
+
+# The three non-Python files the runtime reads through `__file__`. Named one by
+# one: a glob here would absorb whatever appeared beside them next, and what ships
+# in a published package should be an explicit act.
+[tool.setuptools.package-data]
+machina_sports_canonical = [
+    "official-property-names.json",
+    "package-receipt.json",
+    "shared-context.json",
+]
