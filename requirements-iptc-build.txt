@@ -13,19 +13,34 @@
 # `tests/test_iptc_canonical_package.py` reads every pin here and rejects
 # anything that is not `==`.
 #
-# THESE VERSIONS INSTALL AND BUILD ON BOTH DECLARED INTERPRETERS. 3.9 is the
-# published floor and 3.11 is what the client image runs, so each pin is the
-# newest release that still supports 3.9: `build` 1.5.0 already requires 3.10, and
-# `setuptools` 83 and later no longer publish for 3.9. Raising either past those
-# lines would silently drop the floor leg rather than fail it.
+# THE WHOLE EXECUTION CLOSURE, NOT JUST THE THREE ROOTS. `build` does not run on
+# `build` alone: it imports `packaging` and `pyproject_hooks` on every
+# interpreter, and falls back to `tomli`, `importlib-metadata` and `zipp` below
+# 3.11/3.10.2. While those were left to the resolver, the validate leg and the
+# two proof legs could each build with a different frontend closure while the
+# diff showed one pinned file — so "identical build tooling on every leg" was not
+# a claim this repository could support. Every distribution the build executes is
+# pinned below, and the proof suite walks the *installed* metadata from the three
+# roots outwards: a future `build` release that resolves one more helper turns
+# red here until this file is updated, rather than resolving it silently.
 #
-# THE FRONTEND'S OWN HELPERS ARE NOT RESTATED HERE. `build` resolves `packaging`,
-# `pyproject_hooks` and — on 3.9 only — `tomli` and `importlib-metadata`. They are
-# left to the resolver rather than pinned, and unlike the harness's reports that
-# is safe to do: this file's output is a wheel whose every member is hashed
-# against `tools/iptc/vendored-manifest.json` and compared byte-for-byte with
-# `tools/iptc/canonical/` by the suite that installs it. A helper that changed the
-# artefact would turn that suite red, not change a recorded number quietly.
+# BYTE GATES DO NOT REPLACE DEPENDENCY LOCKING. This file's output is a wheel
+# whose payload — every member under the import namespace — is hashed against
+# `tools/iptc/vendored-manifest.json` and compared byte-for-byte with
+# `tools/iptc/canonical/`. That is necessary and it is not sufficient: the
+# `.dist-info` directory the backend generates and the sdist's own bytes are
+# outside those comparisons, so a helper that changed only generated metadata
+# would change the release without turning anything red. Locking the closure is
+# what makes the tooling side of the build reproducible; the payload gates are
+# what makes the source side faithful. Neither substitutes for the other.
+#
+# THESE VERSIONS INSTALL AND BUILD ON BOTH DECLARED INTERPRETERS. 3.9 is the
+# published floor and 3.11 is what the client image runs, so each pin active on
+# Linux or macOS is a release that still publishes for 3.9: `build` 1.5.0 already
+# requires 3.10, and `setuptools` 83 and later no longer publish for 3.9. Raising
+# either past those lines would silently drop the floor leg rather than fail it.
+# `packaging` is held at the version `requirements-iptc-validator.txt` already
+# pins, so the two files installed into one interpreter cannot fight over it.
 
 # The PEP 517 frontend the proof suite drives with `--no-isolation`.
 build==1.4.4
@@ -34,3 +49,20 @@ build==1.4.4
 # listed beside it there.
 setuptools==82.0.1
 wheel==0.47.0
+
+# What the frontend resolves underneath itself on every interpreter.
+packaging==26.3
+pyproject-hooks==1.2.0
+
+# What it resolves only where the standard library is short of it: `tomllib`
+# arrived in 3.11, and `importlib.metadata` (with its own `zipp`) is only new
+# enough for `build` from 3.10.2. Markers, not separate files, so one checked-in
+# closure installs unchanged on the floor and on the image interpreter.
+importlib-metadata==8.7.0; python_full_version < "3.10.2"
+tomli==2.2.1; python_version < "3.11"
+zipp==3.23.0; python_full_version < "3.10.2"
+
+# Windows-only, and pinned rather than omitted: CI runs on Linux, but an
+# unpinned name that appears on one developer's machine is the drift this file
+# exists to remove.
+colorama==0.4.6; os_name == "nt"

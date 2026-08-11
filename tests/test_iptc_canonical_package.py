@@ -60,7 +60,10 @@ left out of it makes the build fail here.
 **Offline and deterministic.** ``--no-isolation`` (the build frontend and
 ``setuptools``/``wheel`` come from the interpreter running the suite, not from
 PyPI) and ``--no-index`` on every install. The build runs once per process and is
-shared; the disposable tree is removed in ``tearDownModule``.
+shared; the disposable tree is removed in ``tearDownModule``. *Which* frontend
+closure that is, is itself gated: ``requirements-iptc-build.txt`` pins every
+distribution the frontend executes, and this suite walks the installed metadata
+to prove the pinned set is still the whole set.
 """
 
 from __future__ import annotations
@@ -69,6 +72,7 @@ import ast
 import csv
 import fnmatch
 import hashlib
+import importlib.metadata
 import importlib.util
 import io
 import json
@@ -82,6 +86,18 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+
+# Not an outside dependency this suite reaches for: `packaging` is a member of
+# the closure it checks below, pinned in `requirements-iptc-build.txt` and
+# imported by `build` itself, so every leg that can run this file at all has it.
+# Hand-rolling requirement parsing and marker evaluation instead would mean this
+# suite decided what `python_version < "3.11"` means and then proved its own
+# opinion. Imported before `REPO_ROOT` is put on `sys.path` below, so the
+# repository's own root `packaging/` directory cannot get in the way.
+import packaging
+from packaging.markers import Marker
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -168,10 +184,43 @@ VALIDATION_PYTHON = "3.12"
 #: commit, with nothing in the diff to show it.
 BUILD_REQUIREMENTS = "requirements-iptc-build.txt"
 
-#: What that file exists to pin: the PEP 517 frontend, the backend
+#: The roots of what that file pins: the PEP 517 frontend, the backend
 #: `pyproject.toml` names, and the helper its `build-system.requires` lists
-#: beside that backend.
+#: beside that backend. Roots, not the whole set — the frontend executes more
+#: than itself, and the closure below is what actually runs.
 BUILD_REQUIREMENT_NAMES = ("build", "setuptools", "wheel")
+
+#: The complete pinned execution closure: the three roots and every distribution
+#: `build` resolves underneath them, each with the marker that says when it is
+#: needed. Pinning only the roots left the frontend's own helpers to the
+#: resolver, so the validate leg, the 3.9 leg and the 3.11 leg could each build
+#: with a different `packaging`, `pyproject_hooks` or `tomli` while the diff
+#: showed one pinned file — which made "identical build tooling on every leg" a
+#: claim this repository could not support.
+#:
+#: The conditional four are conditional for a reason, not for symmetry.
+#: `importlib-metadata` and its own `zipp` are what `build` falls back to below
+#: 3.10.2; `tomli` is the TOML reader before `tomllib` existed in 3.11; and
+#: `colorama` is Windows-only. Every pin here that is active on Linux or macOS
+#: publishes wheels for 3.9, so the declared floor installs this file unchanged.
+BUILD_REQUIREMENT_CLOSURE = (
+    ("build", "1.4.4", ""),
+    ("packaging", "26.3", ""),
+    ("pyproject-hooks", "1.2.0", ""),
+    ("setuptools", "82.0.1", ""),
+    ("wheel", "0.47.0", ""),
+    ("colorama", "0.4.6", 'os_name == "nt"'),
+    ("importlib-metadata", "8.7.0", 'python_full_version < "3.10.2"'),
+    ("tomli", "2.2.1", 'python_version < "3.11"'),
+    ("zipp", "3.23.0", 'python_full_version < "3.10.2"'),
+)
+
+#: The only name the closure walk does not require a pin for. Every venv is
+#: created with `pip` in it whether a requirements file names it or not, so
+#: demanding a pin for it would fail on a correct install. Nothing else is
+#: exempt: `setuptools` and `wheel` also arrive with some venvs, and they are
+#: pinned anyway, because the build imports them.
+BUILD_CLOSURE_BOOTSTRAP = ("pip",)
 
 #: This suite, as CI spells it.
 PACKAGE_PROOF_SUITE = "tests/test_iptc_canonical_package.py"
@@ -660,6 +709,189 @@ def reached_by(path: str, globs) -> bool:
     """
     return any(fnmatch.fnmatch(path, pattern.replace("**", "*"))
                for pattern in globs)
+
+
+# ---------------------------------------------------------------------------
+# The pinned build closure: what the file says, and what is actually running
+# ---------------------------------------------------------------------------
+#
+# Two independent readings, because they answer different questions. The file
+# reader says whether `requirements-iptc-build.txt` still is the closure this
+# repository decided on. The metadata walk says whether that decision is still
+# true — a `build` release that resolves one more distribution would leave a
+# nine-pin file passing the first check while the tenth arrived from the index.
+
+
+def marker_environment(environment: dict = None) -> dict:
+    """This interpreter's marker environment, with extras switched off.
+
+    ``extra`` is set to the empty string rather than left undefined so an
+    ``extra == "test"`` requirement evaluates false instead of raising.
+    ``setuptools`` declares its entire dependency list behind extras, and
+    installing its test extra is not what building a wheel needs.
+
+    ``environment`` overrides individual keys, which is how the marker selection
+    can be stated for the floor and for Windows from whichever interpreter runs.
+    """
+    resolved = {"extra": ""}
+    if environment:
+        resolved.update(environment)
+    return resolved
+
+
+def expected_closure() -> dict:
+    """``BUILD_REQUIREMENT_CLOSURE`` as canonical name -> (version, marker).
+
+    Markers go through ``Marker`` in both directions, so a comparison answers
+    "does this mean the same thing" rather than "was it typed the same way".
+    """
+    return {canonicalize_name(name):
+            (version, str(Marker(marker)) if marker else "")
+            for name, version, marker in BUILD_REQUIREMENT_CLOSURE}
+
+
+def read_pinned_closure(text: str) -> tuple:
+    """``text`` read as canonical name -> (version, marker), plus its problems.
+
+    One reader for the checked-in file and for the drifted files the guard test
+    feeds it, so that guard proves the reader CI actually runs.
+    """
+    found = {}
+    problems = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            requirement = Requirement(line)
+        except InvalidRequirement:
+            problems.append("not a requirement: {0}".format(line))
+            continue
+        specifiers = list(requirement.specifier)
+        if (requirement.url or requirement.extras or len(specifiers) != 1
+                or specifiers[0].operator != "=="):
+            problems.append("not an exact pin: {0}".format(line))
+            continue
+        name = canonicalize_name(requirement.name)
+        if name in found:
+            problems.append("pinned twice: {0}".format(name))
+            continue
+        found[name] = (specifiers[0].version,
+                       str(requirement.marker) if requirement.marker else "")
+    return found, problems
+
+
+def closure_problems(text: str) -> list:
+    """Every way ``text`` differs from ``BUILD_REQUIREMENT_CLOSURE``, sorted."""
+    found, problems = read_pinned_closure(text)
+    expected = expected_closure()
+    for name in sorted(set(expected) - set(found)):
+        problems.append("missing from the file: {0}".format(name))
+    for name in sorted(set(found) - set(expected)):
+        problems.append("pinned but not part of the closure: {0}".format(name))
+    for name in sorted(set(found) & set(expected)):
+        if found[name][0] != expected[name][0]:
+            problems.append("{0} is pinned at {1}, the closure says {2}".format(
+                name, found[name][0], expected[name][0]))
+        if found[name][1] != expected[name][1]:
+            problems.append(
+                "{0} carries marker {1!r}, the closure says {2!r}".format(
+                    name, found[name][1], expected[name][1]))
+    return sorted(problems)
+
+
+def active_pins(text: str, environment: dict = None) -> dict:
+    """The pins in ``text`` whose marker holds, canonical name -> version.
+
+    Read off the file rather than off ``BUILD_REQUIREMENT_CLOSURE``, so the walk
+    below goes red when the file is the thing that is short a pin.
+    """
+    active = {}
+    for name, (version, marker) in read_pinned_closure(text)[0].items():
+        if marker and not Marker(marker).evaluate(marker_environment(environment)):
+            continue
+        active[name] = version
+    return active
+
+
+def installed_build_distributions() -> dict:
+    """Canonical name -> (version, requirement strings) for what is installed.
+
+    Collected in one pass over ``importlib.metadata.distributions()`` rather than
+    asked for by name: on the declared floor, looking up ``pyproject-hooks`` means
+    normalizing a name spelled with an underscore on disk, and this way the suite
+    does not depend on which release learned to do that. Nothing is imported —
+    reading metadata must not change the interpreter it is reading.
+    """
+    found = {}
+    for distribution in importlib.metadata.distributions():
+        name = distribution.metadata["Name"]
+        if not name:
+            continue
+        found.setdefault(
+            canonicalize_name(name),
+            (distribution.version, tuple(distribution.requires or ())))
+    return found
+
+
+def walk_active_closure(declared: dict) -> tuple:
+    """Walk the installed build tooling from the roots out.
+
+    ``declared`` is the marker-selected pin set, canonical name -> version.
+    Returns what the walk reached and every disagreement between the installed
+    metadata and that set:
+
+    - a dependency the metadata declares as active here and the pins do not,
+      which is how a future ``build`` release that grows a helper turns red;
+    - a version installed that is not the pinned one, including a root;
+    - a version installed that its own dependant refuses;
+    - a pin nothing in the closure needs on this interpreter.
+    """
+    installed = installed_build_distributions()
+    bootstrap = {canonicalize_name(name) for name in BUILD_CLOSURE_BOOTSTRAP}
+    problems = []
+    reached = {}
+    attempted = set()
+    queue = [canonicalize_name(name) for name in BUILD_REQUIREMENT_NAMES]
+    while queue:
+        name = queue.pop(0)
+        attempted.add(name)
+        if name in reached:
+            continue
+        if name not in installed:
+            problems.append("{0} is pinned but not installed".format(name))
+            continue
+        version, requires = installed[name]
+        reached[name] = version
+        for raw in requires:
+            requirement = Requirement(raw)
+            if (requirement.marker is not None
+                    and not requirement.marker.evaluate(marker_environment())):
+                continue
+            child = canonicalize_name(requirement.name)
+            if child in bootstrap:
+                continue
+            if child not in declared:
+                problems.append("{0} requires {1} here, which the pinned file "
+                                "does not declare".format(name, child))
+                continue
+            child_version = installed.get(child, (None, ()))[0]
+            if (child_version is not None and requirement.specifier
+                    and not requirement.specifier.contains(child_version,
+                                                           prereleases=True)):
+                problems.append("{0} requires {1}{2}, and {1} {3} is "
+                                "installed".format(name, child,
+                                                   requirement.specifier,
+                                                   child_version))
+            queue.append(child)
+    for name in sorted(reached):
+        if reached[name] != declared.get(name):
+            problems.append("{0} {1} is installed, the file pins {2}".format(
+                name, reached[name], declared.get(name)))
+    for name in sorted(set(declared) - attempted):
+        problems.append("the file pins {0}, which nothing in the build closure "
+                        "needs here".format(name))
+    return reached, sorted(problems)
 
 
 # ---------------------------------------------------------------------------
@@ -1246,18 +1478,12 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
                         "install neither pinned nor from a checked-in file")
 
     def test_the_build_requirements_file_is_checked_in_and_exactly_pinned(self):
+        """Stated here because this is where the workflow's install step is read:
+        the file every job installs has to be the closure. What "the closure"
+        means is the two classes below."""
         path = REPO_ROOT / BUILD_REQUIREMENTS
         self.assertTrue(path.is_file(), "missing: {0}".format(BUILD_REQUIREMENTS))
-        pinned = []
-        for line in path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            with self.subTest(requirement=line):
-                self.assertRegex(line, r"^[A-Za-z0-9][A-Za-z0-9._-]*==[0-9][^ ]*$",
-                                 "not an exact pin: {0}".format(line))
-            pinned.append(line.split("==")[0].lower())
-        self.assertEqual(sorted(pinned), sorted(BUILD_REQUIREMENT_NAMES))
+        self.assertEqual(closure_problems(path.read_text(encoding="utf-8")), [])
 
     def test_both_path_filters_reach_every_input_this_proof_depends_on(self):
         blocks = path_filter_blocks()
@@ -1305,6 +1531,175 @@ class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
         self.assertEqual(matrix_python_versions(jobs["package-proof"]),
                          ["3.9", "3.11"])
         self.assertEqual(matrix_python_versions(jobs["validate"]), [])
+
+
+# ---------------------------------------------------------------------------
+# The pinned file is the whole closure, and the whole closure is what runs
+# ---------------------------------------------------------------------------
+
+
+class TestThePinnedBuildClosureIsDeclaredInFull(unittest.TestCase):
+    """``requirements-iptc-build.txt`` has to pin the execution closure, not the
+    three names on the tin.
+
+    ``build`` does not run on ``build`` alone. It imports ``packaging`` and
+    ``pyproject_hooks`` on every interpreter, and ``tomli``,
+    ``importlib-metadata`` and ``zipp`` on the declared floor. While those were
+    left to the resolver, the validate leg and the two proof legs could each
+    build with a different frontend closure and the diff would show one pinned
+    file, so "identical build tooling across the legs" was not something this
+    repository could claim. The reasoning that it was safe rested on a further
+    error: the byte gates cover the wheel's *payload*, not its ``dist-info`` or
+    the sdist, so a helper that changed only generated metadata changed the
+    release without turning anything red.
+    """
+
+    def setUp(self):
+        self.text = (REPO_ROOT / BUILD_REQUIREMENTS).read_text(encoding="utf-8")
+
+    def test_the_file_pins_exactly_the_checked_in_closure(self):
+        """Closed in both directions: a name missing, a name too many, a version
+        that drifted or a marker that widened is one report each."""
+        self.assertEqual(closure_problems(self.text), [])
+
+    def test_the_roots_are_pinned_unconditionally(self):
+        """A marker on a root would make the frontend or the backend conditional,
+        and every leg builds."""
+        found = read_pinned_closure(self.text)[0]
+        for root in BUILD_REQUIREMENT_NAMES:
+            name = canonicalize_name(root)
+            with self.subTest(root=root):
+                self.assertIn(name, found)
+                self.assertEqual(found[name][1], "")
+
+    def test_the_conditional_helpers_are_selected_by_interpreter_and_platform(self):
+        """The markers are load-bearing, not decorative: they keep the floor's
+        helpers off 3.11 and Windows' ``colorama`` off Linux, and they are what
+        makes one checked-in file installable on both declared interpreters.
+
+        Evaluated against stated environments rather than against the running
+        one, so the claim holds on whichever interpreter runs the suite.
+        """
+        floor = active_pins(self.text, {"python_version": "3.9",
+                                        "python_full_version": "3.9.25",
+                                        "os_name": "posix"})
+        image = active_pins(self.text, {"python_version": "3.11",
+                                        "python_full_version": "3.11.14",
+                                        "os_name": "posix"})
+        windows = active_pins(self.text, {"python_version": "3.11",
+                                          "python_full_version": "3.11.14",
+                                          "os_name": "nt"})
+        self.assertEqual(sorted(floor),
+                         ["build", "importlib-metadata", "packaging",
+                          "pyproject-hooks", "setuptools", "tomli", "wheel",
+                          "zipp"])
+        self.assertEqual(sorted(image),
+                         ["build", "packaging", "pyproject-hooks", "setuptools",
+                          "wheel"])
+        self.assertEqual(sorted(set(windows) - set(image)), ["colorama"])
+        self.assertEqual(sorted(set(image) - set(windows)), [])
+
+    def test_the_closure_reader_rejects_every_way_the_file_could_drift(self):
+        """Guard the guard. The assertion above is worth exactly what this one
+        proves: a reader that shrugged at a range or absorbed an extra name would
+        report a clean closure for a file that is not one. Each case is fed to
+        the same reader the checked-in file goes through.
+        """
+        complete = "".join(
+            "{0}=={1}{2}\n".format(name, version,
+                                   "; {0}".format(marker) if marker else "")
+            for name, version, marker in BUILD_REQUIREMENT_CLOSURE)
+        self.assertEqual(closure_problems(complete), [],
+                         "the closure constant does not read back as itself")
+        pinned_tomli = 'tomli==2.2.1; python_version < "3.11"'
+        drifted = {
+            "missing": complete.replace("pyproject-hooks==1.2.0\n", ""),
+            "extra": complete + "rdflib==7.1.4\n",
+            "ranged": complete.replace("packaging==26.3", "packaging>=26.3"),
+            "unpinned": complete.replace("wheel==0.47.0", "wheel"),
+            "duplicate": complete + "wheel==0.47.0\n",
+            "version drift": complete.replace("build==1.4.4", "build==1.5.0"),
+            "marker dropped": complete.replace(pinned_tomli, "tomli==2.2.1"),
+            "marker widened": complete.replace(
+                pinned_tomli, 'tomli==2.2.1; python_version < "3.12"'),
+        }
+        for label, text in sorted(drifted.items()):
+            with self.subTest(drift=label):
+                self.assertNotEqual(text, complete, "the drift case is a no-op")
+                self.assertNotEqual(closure_problems(text), [])
+
+
+class TestThePinnedClosureIsTheOneThisInterpreterBuildsWith(unittest.TestCase):
+    """Read off the installed metadata, not off the file.
+
+    The class above proves the file still says what this repository decided. It
+    cannot prove the decision is still true: ``build`` could publish a release
+    that resolves one more distribution, and a file pinning nine names would go
+    on passing while the tenth arrived from the index at whatever version the
+    resolver liked. So the frontend's own metadata is walked here, from the three
+    roots outwards, and every dependency active on this interpreter has to be a
+    pin in the file, installed at exactly that version.
+    """
+
+    def setUp(self):
+        self.text = (REPO_ROOT / BUILD_REQUIREMENTS).read_text(encoding="utf-8")
+        self.declared = active_pins(self.text)
+
+    def test_every_active_build_dependency_is_pinned_and_installed_at_its_pin(self):
+        reached, problems = walk_active_closure(self.declared)
+        self.assertEqual(problems, [])
+        self.assertEqual(sorted(reached), sorted(self.declared))
+
+    def test_the_walk_leaves_the_roots_and_reaches_the_frontend_helpers(self):
+        """A walk that stopped at the three roots would report a complete closure
+        for the three-pin file this pair of classes exists to reject."""
+        reached = walk_active_closure(self.declared)[0]
+        for helper in ("packaging", "pyproject-hooks"):
+            with self.subTest(helper=helper):
+                self.assertIn(helper, reached)
+        self.assertTrue(set(reached) > {canonicalize_name(root)
+                                        for root in BUILD_REQUIREMENT_NAMES})
+
+    def test_the_walk_reports_a_dependency_the_pins_do_not_declare(self):
+        """Guard the guard, on the exact regression: this is what the walk says
+        about a file that pins the roots and leaves their closure open."""
+        roots_only = {canonicalize_name(root): self.declared[canonicalize_name(root)]
+                      for root in BUILD_REQUIREMENT_NAMES}
+        problems = walk_active_closure(roots_only)[1]
+        self.assertTrue(any("packaging" in problem for problem in problems),
+                        problems)
+        self.assertTrue(any("pyproject-hooks" in problem for problem in problems),
+                        problems)
+
+    def test_the_walk_reports_a_pin_at_a_version_that_is_not_installed(self):
+        problems = walk_active_closure(dict(self.declared, packaging="0.0.0"))[1]
+        self.assertTrue(any("packaging" in problem for problem in problems),
+                        problems)
+
+    def test_the_walk_reports_a_pin_nothing_in_the_closure_needs(self):
+        """The other direction. A pin kept after the frontend stopped needing it
+        is a version every leg installs for no stated reason, and the file would
+        be the only place saying it is build tooling at all."""
+        problems = walk_active_closure(dict(self.declared, rdflib="7.1.4"))[1]
+        self.assertTrue(any("rdflib" in problem for problem in problems),
+                        problems)
+
+    def test_only_the_venv_bootstrap_is_left_out_of_the_walk(self):
+        """Named as a constant so the exemption cannot grow quietly. ``pip`` is in
+        every venv whether a requirements file says so or not; ``setuptools`` and
+        ``wheel`` arrive with some venvs too, and they are pinned anyway."""
+        self.assertEqual(BUILD_CLOSURE_BOOTSTRAP, ("pip",))
+
+    def test_the_packaging_library_doing_the_reading_is_the_pinned_one(self):
+        """Every claim in both classes is evaluated by ``packaging``, and this
+        repository has a root ``packaging/`` directory that ``sys.path`` reaches.
+        It has no ``__init__.py``, so an installed distribution wins — asserted
+        rather than assumed, because on the day it gains one this suite would be
+        taking marker semantics from a build helper."""
+        location = Path(packaging.__file__).resolve()
+        self.assertFalse(location == REPO_ROOT or REPO_ROOT in location.parents,
+                         location)
+        self.assertEqual(packaging.__version__, self.declared["packaging"])
 
 
 if __name__ == "__main__":
