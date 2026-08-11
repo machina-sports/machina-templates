@@ -123,6 +123,142 @@ CATEGORIES = {
 CV_PREFIX_STEM = NEWSCODE_STEM
 STAT_NAMESPACE_STEM = "https://sportschema.org/ontologies/"
 
+#: A consumer welded to a literal document name — ``worldcup:event`` in a save,
+#: load or query position. Rename the document and every one of these reads
+#: nothing, silently.
+COUPLING_DOCUMENT_NAME = "document-name"
+
+#: A consumer welded to the *storage* shape through a filter, sorter or query
+#: path such as ``value.schema:startDate``. A projection that supplies the field
+#: only nested under a canonical envelope breaks these while every field-path
+#: check in :func:`build_consumers` still passes.
+COUPLING_STORAGE_PREDICATE = "storage-predicate"
+
+#: The keys whose value is a document name. This allowlist is the whole reason
+#: the document-name matcher does not fire in prose: ``worldcup:event`` appears in
+#: docstrings and ``description:`` fields throughout this repository, and only a
+#: ``name``/``document_name`` key puts it in a save, load or query position.
+_DOCUMENT_NAME_KEY = re.compile(
+    r'^\s*(?:-\s*)?"?(?:name|document_name|document-name)"?\s*:\s*(\S.*)$')
+
+#: A ``prefix:localName`` literal inside a document-name value. The lookbehind and
+#: lookahead keep it from matching a segment of a longer colon-delimited token, so
+#: a URN value yields nothing rather than yielding its first two segments.
+_DOCUMENT_NAME_LITERAL = re.compile(
+    r'(?<![\w.:-])([a-z][a-z0-9_-]*):([A-Za-z][A-Za-z0-9_-]*)(?![\w:-])')
+
+#: A ``value.…prefix:localName`` storage path, as it appears both as a filter key
+#: and inside a ``search-sorters`` list. Anchored on the ``value.`` root the
+#: document store actually uses, which keeps it off most prose — but NOT off a
+#: ``description:`` scalar, which is prose whose whole job is to name the storage
+#: path a downstream workflow reads. See :data:`_DESCRIPTION_KEY`.
+_STORAGE_PREDICATE_PATH = re.compile(
+    r'(?<![\w.])value(?:\.[A-Za-z0-9_@$-]+)*'
+    r'\.[A-Za-z][A-Za-z0-9_-]*:[A-Za-z][A-Za-z0-9_-]+')
+
+#: A ``description:`` key, capturing everything before it so its column is known.
+#: The column is what makes the skip safe: a YAML scalar's continuation lines are
+#: always indented *past* their key's column, so the scalar ends at the first
+#: subsequent line indented at or before it — which is the sibling key, and a
+#: sibling key is a real task parameter that must still be scanned.
+_DESCRIPTION_KEY = re.compile(r'^(\s*(?:-\s+)?)"?description"?\s*:')
+
+
+def _description_scalar_lines(lines: list[str]) -> set[int]:
+    """1-based line numbers occupied by a ``description:`` key and its scalar.
+
+    Covers every scalar style the repository uses — single-quoted spanning
+    several lines, block (``|`` / ``>``) and plain — because none of them need
+    telling apart: all three continue on lines indented past the key's column and
+    all three end at the first line that is not.
+    """
+    inside: set[int] = set()
+    column: int | None = None
+    for number, line in enumerate(lines, start=1):
+        if column is not None:
+            if not line.strip():
+                inside.add(number)
+                continue
+            if len(line) - len(line.lstrip()) > column:
+                inside.add(number)
+                continue
+            column = None
+        match = _DESCRIPTION_KEY.match(line)
+        if match:
+            column = len(match.group(1))
+            inside.add(number)
+    return inside
+
+
+def _coupling_files(root: Path) -> list[Path]:
+    found = [
+        path
+        for pattern in ("*.yml", "*.py")
+        for path in root.rglob(pattern)
+        if path.is_file() and "__pycache__" not in path.parts
+    ]
+    return sorted(set(found))
+
+
+def scan_couplings(root: str) -> list[dict]:
+    """Every document-name and storage-predicate coupling under ``root``.
+
+    Returns findings of the form
+    ``{file, line, category, literal|path, snippet}`` — ``literal`` for a
+    document name, ``path`` for a storage predicate.
+
+    ``root`` is repository-relative or absolute.
+
+    Detection is deliberately **position-aware rather than substring-anywhere**.
+    Both ``worldcup:event`` and ``sport:status`` occur constantly in prose,
+    docstrings and commented-out tasks here, so a substring scan would report
+    dozens of lines nobody has to change — and an inventory whose findings are
+    mostly noise is one whose findings get skimmed. A document name therefore
+    counts only under a document-name key, a storage predicate only when rooted at
+    the ``value.`` path the document store uses, and neither counts on a comment
+    line or inside a ``description:`` scalar.
+
+    The description skip is the one exclusion that is not about the *shape* of the
+    text. ``value.sport:score`` inside a description is spelled exactly like a
+    filter key, and on a multi-line scalar it even sits on an indented
+    continuation line — so position alone cannot separate the two. What separates
+    them is that a description explains a path rather than evaluating one.
+    """
+    base = Path(root)
+    if not base.is_absolute():
+        base = REPO_ROOT / base
+    findings: list[dict] = []
+    for path in _coupling_files(base):
+        try:
+            relative = str(path.relative_to(REPO_ROOT))
+        except ValueError:
+            relative = str(path.relative_to(base))
+        text = path.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
+        described = _description_scalar_lines(lines)
+        for number, line in enumerate(lines, start=1):
+            if line.lstrip().startswith("#") or number in described:
+                continue
+            snippet = line.strip()
+            key_match = _DOCUMENT_NAME_KEY.match(line)
+            if key_match:
+                for prefix, local in _DOCUMENT_NAME_LITERAL.findall(
+                        key_match.group(1)):
+                    if prefix in URI_SCHEMES:
+                        continue
+                    findings.append({
+                        "file": relative, "line": number,
+                        "category": COUPLING_DOCUMENT_NAME,
+                        "literal": f"{prefix}:{local}", "snippet": snippet,
+                    })
+            for predicate in _STORAGE_PREDICATE_PATH.findall(line):
+                findings.append({
+                    "file": relative, "line": number,
+                    "category": COUPLING_STORAGE_PREDICATE,
+                    "path": predicate, "snippet": snippet,
+                })
+    return findings
+
 
 def _mapping_files() -> list[Path]:
     found: list[Path] = []
@@ -399,6 +535,14 @@ def build_inventory() -> dict:
         "sport_namespace_usage": {k: sorted(v) for k, v in sorted(namespaces.items())},
         "emitters": emitters,
         "consumers": consumers,
+        # Additive. The field-path scan above cannot see a literal document name
+        # or a storage-predicate path, and both are consumer dependencies the
+        # migration has to carry. Kept as its own list rather than folded into
+        # `consumers` because a coupled file is not necessarily a field-path
+        # consumer — `_folders.yml` names the document and reads no field at all.
+        "couplings": [
+            finding for root in SCAN_ROOTS for finding in scan_couplings(root)
+        ],
     }
 
 

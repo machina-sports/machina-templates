@@ -882,6 +882,1884 @@
       ]
     }
   ],
+  "couplings": [
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/_folders.yml",
+      "line": 122,
+      "literal": "sport:Event",
+      "snippet": "\"name\": [\"sport:Event\"]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/_folders.yml",
+      "line": 133,
+      "literal": "sport:Team",
+      "snippet": "\"name\": [\"sport:Team\"]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/_folders.yml",
+      "line": 144,
+      "literal": "season:Schedule",
+      "snippet": "\"name\": [\"season:Schedule\"]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/event-matcher.yml",
+      "line": 77,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/event-matcher.yml",
+      "line": 79,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: $.get('externalCompetitionId')"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/event-matcher.yml",
+      "line": 81,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$nin': ['Played', 'closed', 'ended']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/event-matcher.yml",
+      "line": 82,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: |"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/event-matcher.yml",
+      "line": 88,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 77,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", -1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 86,
+      "path": "value.sport:status",
+      "snippet": "\"value.sport:status\": \"{'$in': ['Played', 'closed', 'ended']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 87,
+      "path": "value.schema:startDate",
+      "snippet": "\"value.schema:startDate\": |"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 93,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 137,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", -1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 146,
+      "path": "value.sport:status",
+      "snippet": "\"value.sport:status\": \"{'$in': ['Played', 'closed', 'ended']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 147,
+      "path": "value.schema:startDate",
+      "snippet": "\"value.schema:startDate\": |"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/find-historical.yml",
+      "line": 153,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 50,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 52,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 55,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$ne': 'closed'}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 70,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", -1]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 72,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 73,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$ne': 'closed'}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 92,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 94,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-odds.yml",
+      "line": 95,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$ne': 'closed'}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-upcoming.yml",
+      "line": 77,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/assistant-tools/tools/find-upcoming.yml",
+      "line": 86,
+      "path": "value.schema:startDate",
+      "snippet": "\"value.schema:startDate\": |"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/tools/find-upcoming.yml",
+      "line": 92,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/assistant-tools/workflows/chat-reasoning.yml",
+      "line": 85,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/chat-completion/workflows/chat-moderator.yml",
+      "line": 64,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/chat-completion/workflows/chat-moderator.yml",
+      "line": 67,
+      "path": "value.schema:startDate",
+      "snippet": "\"value.schema:startDate\": |"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/chat-completion/workflows/chat-moderator.yml",
+      "line": 117,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/chat-completion/workflows/chat-moderator.yml",
+      "line": 177,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/chat-completion/workflows/event-search.yml",
+      "line": 39,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/coverage-tools/tools/soccer/preview-boxes.yml",
+      "line": 38,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/iptc-mappings/any-source/custom-event-test.yml",
+      "line": 67,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/kalshi-market-agent/_folders.yml",
+      "line": 56,
+      "literal": "sport:Event",
+      "snippet": "\"name\": [\"sport:Event\"]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/combo-analysis/executor.yml",
+      "line": 30,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/combo-analysis/executor.yml",
+      "line": 32,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: \"{'$in': [$.get('seasonId')]}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/combo-analysis/executor.yml",
+      "line": 33,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['NS']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/kalshi-market-agent/workflows/combo-analysis/executor.yml",
+      "line": 35,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/event-matcher.yml",
+      "line": 71,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/event-matcher.yml",
+      "line": 73,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.sport:season.@id: $.get('seasonId')"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/event-matcher.yml",
+      "line": 74,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$nin': ['Played', 'closed', 'ended', 'FT']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/event-matcher.yml",
+      "line": 75,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: |"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/kalshi-market-agent/workflows/event-matcher.yml",
+      "line": 81,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/consumer.yml",
+      "line": 31,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/consumer.yml",
+      "line": 51,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=60)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=60)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/consumer.yml",
+      "line": 53,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/consumer.yml",
+      "line": 57,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/executor.yml",
+      "line": 54,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", -1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/executor.yml",
+      "line": 56,
+      "path": "value.sport:competitors",
+      "snippet": "value.sport:competitors.@id: \"{'$in': $.get('event_competititors')}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/executor.yml",
+      "line": 57,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['closed', 'ended', 'FT']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/kalshi-market-agent/workflows/market-analysis/executor.yml",
+      "line": 59,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/_folders.yml",
+      "line": 34,
+      "literal": "worldcup:event",
+      "snippet": "\"name\": [\"worldcup:event\"]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/_folders.yml",
+      "line": 45,
+      "literal": "worldcup:market-cache",
+      "snippet": "\"name\": [\"worldcup:market-cache\"]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/_folders.yml",
+      "line": 56,
+      "literal": "worldcup:social-cache",
+      "snippet": "\"name\": [\"worldcup:social-cache\"]"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml",
+      "line": 34,
+      "literal": "worldcup:bracket-simulation",
+      "snippet": "name: \"'worldcup:bracket-simulation'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml",
+      "line": 52,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-enrich-teams.yml",
+      "line": 93,
+      "literal": "worldcup:team-adjustment",
+      "snippet": "document_name: \"'worldcup:team-adjustment'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-get-bracket.yml",
+      "line": 26,
+      "literal": "worldcup:bracket-simulation",
+      "snippet": "name: \"'worldcup:bracket-simulation'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml",
+      "line": 59,
+      "literal": "worldcup:fifa-ranking",
+      "snippet": "name: \"'worldcup:fifa-ranking'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml",
+      "line": 89,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml",
+      "line": 120,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml",
+      "line": 149,
+      "literal": "worldcup:team-adjustment",
+      "snippet": "name: \"'worldcup:team-adjustment'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/wcbracket-simulate.yml",
+      "line": 211,
+      "literal": "worldcup:bracket-simulation",
+      "snippet": "name: \"'worldcup:bracket-simulation'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 51,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 77,
+      "literal": "worldcup:forecast-audit",
+      "snippet": "document_name: \"'worldcup:forecast-audit'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 106,
+      "literal": "worldcup:forecast-audit",
+      "snippet": "document_name: \"'worldcup:forecast-audit'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 122,
+      "literal": "worldcup:signal-ledger",
+      "snippet": "name: \"'worldcup:signal-ledger'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 135,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "name: \"'worldcup:market-snapshot'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 162,
+      "literal": "worldcup:signal-ledger",
+      "snippet": "document_name: \"'worldcup:signal-ledger'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-backtest-forecasts.yml",
+      "line": 190,
+      "literal": "worldcup:clv-report",
+      "snippet": "document_name: \"'worldcup:clv-report'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-compare-market-sources.yml",
+      "line": 30,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-coverage-gateway.yml",
+      "line": 31,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-explain-market-move.yml",
+      "line": 37,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-fan-pulse.yml",
+      "line": 48,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-fan-pulse.yml",
+      "line": 79,
+      "literal": "worldcup:skill-fan-pulse",
+      "snippet": "name: \"'worldcup:skill-fan-pulse'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-fan-pulse.yml",
+      "line": 96,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-fan-pulse.yml",
+      "line": 175,
+      "literal": "worldcup:skill-fan-pulse",
+      "snippet": "document_name: \"'worldcup:skill-fan-pulse'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-fan-sentiment-context.yml",
+      "line": 30,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-fan-sentiment-context.yml",
+      "line": 120,
+      "literal": "worldcup:social-cache",
+      "snippet": "name: \"'worldcup:social-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-find-market-edges.yml",
+      "line": 31,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-find-market-edges.yml",
+      "line": 57,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-generate-market-brief.yml",
+      "line": 32,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-generate-market-brief.yml",
+      "line": 45,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "line": 34,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-event-context.yml",
+      "line": 66,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "line": 29,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-injuries.yml",
+      "line": 48,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-iptc-event-context.yml",
+      "line": 26,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-market-state.yml",
+      "line": 43,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-market-state.yml",
+      "line": 214,
+      "literal": "worldcup:market-cache",
+      "snippet": "document_name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 36,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-match-forecast.yml",
+      "line": 51,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-player-performance-context.yml",
+      "line": 30,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-schedule.yml",
+      "line": 28,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml",
+      "line": 46,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml",
+      "line": 77,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-signal.yml",
+      "line": 92,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 29,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-squads.yml",
+      "line": 47,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-get-standings.yml",
+      "line": 29,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
+      "line": 56,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
+      "line": 83,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-ingest-fixtures.yml",
+      "line": 172,
+      "literal": "worldcup:event",
+      "snippet": "document_name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 29,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 41,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 53,
+      "literal": "worldcup:signal-ledger",
+      "snippet": "name: \"'worldcup:signal-ledger'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-log-signals.yml",
+      "line": 80,
+      "literal": "worldcup:signal-ledger",
+      "snippet": "document_name: \"'worldcup:signal-ledger'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-movers.yml",
+      "line": 28,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-movers.yml",
+      "line": 40,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "name: \"'worldcup:market-snapshot'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-watch.yml",
+      "line": 31,
+      "literal": "worldcup:skill-market-watch",
+      "snippet": "name: \"'worldcup:skill-market-watch'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-watch.yml",
+      "line": 46,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-watch.yml",
+      "line": 60,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "name: \"'worldcup:market-snapshot'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-watch.yml",
+      "line": 75,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-market-watch.yml",
+      "line": 135,
+      "literal": "worldcup:skill-market-watch",
+      "snippet": "document_name: \"'worldcup:skill-market-watch'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-preview.yml",
+      "line": 41,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-preview.yml",
+      "line": 72,
+      "literal": "worldcup:skill-match-preview",
+      "snippet": "name: \"'worldcup:skill-match-preview'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-preview.yml",
+      "line": 87,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-preview.yml",
+      "line": 102,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-preview.yml",
+      "line": 117,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-preview.yml",
+      "line": 167,
+      "literal": "worldcup:skill-match-preview",
+      "snippet": "document_name: \"'worldcup:skill-match-preview'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 39,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 70,
+      "literal": "worldcup:skill-match-recap",
+      "snippet": "name: \"'worldcup:skill-match-recap'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 85,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 101,
+      "literal": "worldcup:model-forecast",
+      "snippet": "name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-match-recap.yml",
+      "line": 150,
+      "literal": "worldcup:skill-match-recap",
+      "snippet": "document_name: \"'worldcup:skill-match-recap'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 38,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 69,
+      "literal": "worldcup:skill-player-spotlight",
+      "snippet": "name: \"'worldcup:skill-player-spotlight'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 84,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-player-spotlight.yml",
+      "line": 132,
+      "literal": "worldcup:skill-player-spotlight",
+      "snippet": "document_name: \"'worldcup:skill-player-spotlight'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-refresh-live-status.yml",
+      "line": 44,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-refresh-live-status.yml",
+      "line": 81,
+      "literal": "worldcup:event",
+      "snippet": "document_name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-refresh-prematch-enrichment.yml",
+      "line": 28,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-refresh-prematch-enrichment.yml",
+      "line": 92,
+      "literal": "worldcup:event",
+      "snippet": "document_name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
+      "line": 32,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: {\"$in\": [\"worldcup:identity-crosswalk\", \"worldcup:event\"]}"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-resolve.yml",
+      "line": 32,
+      "literal": "worldcup:event",
+      "snippet": "name: {\"$in\": [\"worldcup:identity-crosswalk\", \"worldcup:event\"]}"
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-search-markets.yml",
+      "line": 38,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-seed-fifa-ranking.yml",
+      "line": 32,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-seed-fifa-ranking.yml",
+      "line": 92,
+      "literal": "worldcup:fifa-ranking",
+      "snippet": "document_name: \"'worldcup:fifa-ranking'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-stable-markets.yml",
+      "line": 39,
+      "literal": "worldcup:market-cache",
+      "snippet": "name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-stable-markets.yml",
+      "line": 51,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "name: \"'worldcup:market-snapshot'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-event-crosswalk.yml",
+      "line": 38,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-event-crosswalk.yml",
+      "line": 51,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-event-crosswalk.yml",
+      "line": 137,
+      "literal": "worldcup:event",
+      "snippet": "document_name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-identity-crosswalk.yml",
+      "line": 37,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "document_name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
+      "line": 84,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
+      "line": 197,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
+      "line": 224,
+      "literal": "worldcup:market-cache",
+      "snippet": "document_name: \"'worldcup:market-cache'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-market-sources.yml",
+      "line": 250,
+      "literal": "worldcup:market-snapshot",
+      "snippet": "document_name: \"'worldcup:market-snapshot'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
+      "line": 46,
+      "literal": "worldcup:fifa-ranking",
+      "snippet": "name: \"'worldcup:fifa-ranking'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
+      "line": 72,
+      "literal": "worldcup:event",
+      "snippet": "name: \"'worldcup:event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-model-forecasts.yml",
+      "line": 97,
+      "literal": "worldcup:model-forecast",
+      "snippet": "document_name: \"'worldcup:model-forecast'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-player-crosswalk.yml",
+      "line": 36,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-player-crosswalk.yml",
+      "line": 49,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-player-crosswalk.yml",
+      "line": 184,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "document_name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "agent-templates/world-cup-intelligence/workflows/worldcup-sync-team-crosswalk.yml",
+      "line": 151,
+      "literal": "worldcup:identity-crosswalk",
+      "snippet": "document_name: \"'worldcup:identity-crosswalk'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/american-football/workflows/sync-games.yml",
+      "line": 86,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/sync-fixtures-events.yml",
+      "line": 79,
+      "literal": "sport:Action",
+      "snippet": "document_name: \"'sport:Action'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/sync-fixtures-players-statistics.yml",
+      "line": 77,
+      "literal": "sport:IndividualParticipation",
+      "snippet": "document_name: \"'sport:IndividualParticipation'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/sync-fixtures-teams-statistics.yml",
+      "line": 77,
+      "literal": "sport:TeamParticipation",
+      "snippet": "document_name: \"'sport:TeamParticipation'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/sync-fixtures.yml",
+      "line": 86,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 32,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 34,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 66,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 68,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 69,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=6)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=6)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 70,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE', 'live']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 74,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: |"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/workflows/event-consumer-live.yml",
+      "line": 93,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 32,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 34,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 66,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 68,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 69,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 70,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['NS', 'TBD', 'not_started']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-consumer-prelive.yml",
+      "line": 74,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: |"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-sync-markets.yml",
+      "line": 30,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-synchronize.yml",
+      "line": 30,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/api-football/workflows/event-update.yml",
+      "line": 31,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-mlb/sync-games.yml",
+      "line": 91,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-mlb/sync-games.yml",
+      "line": 132,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-mlb/sync-pitchers.yml",
+      "line": 115,
+      "literal": "sport:Event",
+      "snippet": "name: '''sport:Event'''"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-mlb/sync-results.yml",
+      "line": 63,
+      "literal": "sport:Event",
+      "snippet": "name: '''sport:Event'''"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/sync-games.yml",
+      "line": 93,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/sync-games.yml",
+      "line": 130,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 35,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 67,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 69,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 70,
+      "path": "value.schema:sportName",
+      "snippet": "value.schema:sportName: \"{'$in': ['nfl']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 71,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started', 'scheduled', 'live', 'interrupted']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 72,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=2)).isoformat() + '+00:00', '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat() + '+00:00'}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 76,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: |"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-live.yml",
+      "line": 95,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 35,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 67,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 69,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 70,
+      "path": "value.schema:sportName",
+      "snippet": "value.schema:sportName: \"{'$in': ['nfl']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 71,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat() + '+00:00', '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat() + '+00:00'}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 72,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started', 'scheduled']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-nfl/workflows/event-consumer-prelive.yml",
+      "line": 76,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: |"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 34,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 66,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [[\"value.version_control.consumer-update-timestamp\", 1], [\"value.schema:startDate\", 1]]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 68,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 69,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=1)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 70,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started', 'live', 'interrupted']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 74,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: |"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-live.yml",
+      "line": 93,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "line": 34,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "line": 66,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [[\"value.version_control.consumer-update-timestamp\", 1], [\"value.schema:startDate\", 1]]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "line": 68,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "line": 69,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "line": 70,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer-prelive.yml",
+      "line": 74,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: |"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 34,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 53,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 54,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 55,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['live', 'interrupted']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 76,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 77,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=8)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 78,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 99,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 100,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 101,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['closed', 'ended']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 122,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 123,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() + timedelta(hours=8)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=72)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 124,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['not_started']}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/event-consumer.yml",
+      "line": 145,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/load-round-events.yml",
+      "line": 28,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/load-round-events.yml",
+      "line": 30,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/load-round-events.yml",
+      "line": 31,
+      "path": "value.sport:round",
+      "snippet": "value.sport:round.sport:number: \"int($.get('round_number'))\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/sportradar-soccer/workflows/load-round-events.yml",
+      "line": 32,
+      "path": "value.sport:competition",
+      "snippet": "value.sport:competition.@id: \"$.get('competition_id') if $.get('competition_id') else None\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/sync-competitors.yml",
+      "line": 100,
+      "literal": "sport:Team",
+      "snippet": "document_name: 'sport:Team'"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/sync-schedules.yml",
+      "line": 66,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/sync-schedules.yml",
+      "line": 90,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/sync-season-schedules.yml",
+      "line": 63,
+      "literal": "season:Schedule",
+      "snippet": "name: \"'season:Schedule'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-soccer/workflows/sync-season-schedules.yml",
+      "line": 87,
+      "literal": "season:Schedule",
+      "snippet": "document_name: \"'season:Schedule'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-tennis/workflows/sync-season-info.yml",
+      "line": 77,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/sportradar-tennis/workflows/sync-season-summaries.yml",
+      "line": 59,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 30,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 32,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 49,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 51,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 52,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=2)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 53,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['Fixture', 'Playing']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 72,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-live.yml",
+      "line": 74,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "line": 30,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "line": 32,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "line": 49,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.version_control.consumer-update-timestamp\", 1, \"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "line": 51,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "line": 52,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"{'$gt': (datetime.utcnow() - timedelta(hours=80)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=240)).isoformat()}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-consumer-prelive.yml",
+      "line": 53,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"{'$in': ['Fixture']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-sync-markets.yml",
+      "line": 31,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-synchronize.yml",
+      "line": 29,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sp-opta-event-update.yml",
+      "line": 29,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-players.yml",
+      "line": 127,
+      "literal": "sport:Player",
+      "snippet": "name: \"'sport:Player'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-players.yml",
+      "line": 146,
+      "literal": "sport:Player",
+      "snippet": "document_name: \"'sport:Player'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-schedules.yml",
+      "line": 88,
+      "literal": "sport:Event",
+      "snippet": "name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-schedules.yml",
+      "line": 112,
+      "literal": "sport:Event",
+      "snippet": "document_name: \"'sport:Event'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-teams.yml",
+      "line": 72,
+      "literal": "sport:Team",
+      "snippet": "name: \"'sport:Team'\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-teams.yml",
+      "line": 96,
+      "literal": "sport:Team",
+      "snippet": "document_name: \"'sport:Team'\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sync-update-live.yml",
+      "line": 36,
+      "path": "value.schema:startDate",
+      "snippet": "search-sorters: [\"value.schema:startDate\", 1]"
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-update-live.yml",
+      "line": 40,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sync-update-live.yml",
+      "line": 62,
+      "path": "value.sport:status",
+      "snippet": "value.sport:status: \"$.get('sport_status') if $.get('sport_status') is not None else {'$in': ['Fixture', 'Playing']}\""
+    },
+    {
+      "category": "storage-predicate",
+      "file": "connectors/stats-perform/workflows/sync-update-live.yml",
+      "line": 63,
+      "path": "value.schema:startDate",
+      "snippet": "value.schema:startDate: \"$.get('start_date') if $.get('start_date') is not None else {'$gt': (datetime.utcnow() - timedelta(hours=24)).isoformat(), '$lt': (datetime.utcnow() + timedelta(hours=24)).isoformat()}\""
+    },
+    {
+      "category": "document-name",
+      "file": "connectors/stats-perform/workflows/sync-update-live.yml",
+      "line": 68,
+      "literal": "sport:Event",
+      "snippet": "name: \"{'$in': ['sport:Event']}\""
+    }
+  ],
   "emitters": [
     {
       "declared_prefixes": {
