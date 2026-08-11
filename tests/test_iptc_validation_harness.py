@@ -1242,16 +1242,49 @@ class TestArtifactOwnership(unittest.TestCase):
                          / "validate-machina-agent-builder.yml").read_text(encoding="utf-8")
         self.assertNotIn("requirements-iptc-validator.txt", agent_builder)
 
-    def test_no_suite_is_named_in_the_workflow_beside_the_runner(self):
+    @staticmethod
+    def job_block(workflow: str, job: str) -> str:
+        """One job's own lines, by job id.
+
+        The workflow now has a second job. `package-proof` runs one suite by name
+        on each declared interpreter — deliberately, because a matrix over the
+        whole tree would re-run the slow conformance suites to learn nothing — so
+        a whole-file scan can no longer answer a question about the job that runs
+        the manifest runner. Job ids are the only two-space-indented keys under
+        `jobs:`; everything inside a job is deeper.
+        """
+        lines = []
+        inside = False
+        for raw in workflow.splitlines():
+            stripped = raw.strip()
+            indent = len(raw) - len(raw.lstrip())
+            if indent == 2 and stripped.endswith(":") \
+                    and not stripped.startswith("- "):
+                inside = stripped[:-1] == job
+                continue
+            if inside:
+                lines.append(raw)
+        return "\n".join(lines)
+
+    def test_no_suite_is_named_in_the_validation_job_beside_the_runner(self):
         """A18 replaced a hard-coded harness step with the manifest runner, and a
         leftover step naming a suite by hand would run it twice: once on its own
         and once through the runner. Doubling the slowest suite in the tree is the
         visible cost; the invisible one is that a hand-named step looks like
         coverage while the manifest is what actually decides.
+
+        Scoped to `validate`, which is the job that claim is about. The
+        package-proof job names exactly one suite and runs no manifest runner at
+        all, so it cannot double anything; that it names that one and only that
+        one is asserted in `tests/test_iptc_canonical_package.py`.
         """
         workflow = (REPO_ROOT / ".github" / "workflows"
                     / "validate-iptc-sport-schema.yml").read_text(encoding="utf-8")
-        for command in self.workflow_run_commands(workflow):
+        commands = self.workflow_run_commands(self.job_block(workflow, "validate"))
+        # Non-vacuous: a slice that returned nothing would pass the loop below
+        # while asserting nothing about the job it is named for.
+        self.assertIn("python tools/iptc/run_test_suites.py --verbose", commands)
+        for command in commands:
             with self.subTest(command=command):
                 self.assertNotIn("tests/test_iptc_", command)
 

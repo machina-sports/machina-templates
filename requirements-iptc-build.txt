@@ -1,0 +1,36 @@
+# Build tooling for the `machina-sports-canonical` packaging proof.
+#
+# SEPARATE FROM requirements-iptc-validator.txt ON PURPOSE. That file pins the
+# conformance harness — rdflib, pyshacl and their tree — and is installed only by
+# the job that runs the harness on Python 3.12. This file is the PEP 517 frontend
+# and backend, and it is installed by every job that builds the distribution,
+# including the ones on the declared floor. Merging the two would make the floor
+# proof depend on a dependency tree the floor never needs.
+#
+# EXACT PINS, NO RANGES. The workflow used to install `build>=1.0`,
+# `setuptools>=68` and an unpinned `wheel`, so the frontend and the backend could
+# change between two runs of the same commit with nothing in the diff to show it.
+# `tests/test_iptc_canonical_package.py` reads every pin here and rejects
+# anything that is not `==`.
+#
+# THESE VERSIONS INSTALL AND BUILD ON BOTH DECLARED INTERPRETERS. 3.9 is the
+# published floor and 3.11 is what the client image runs, so each pin is the
+# newest release that still supports 3.9: `build` 1.5.0 already requires 3.10, and
+# `setuptools` 83 and later no longer publish for 3.9. Raising either past those
+# lines would silently drop the floor leg rather than fail it.
+#
+# THE FRONTEND'S OWN HELPERS ARE NOT RESTATED HERE. `build` resolves `packaging`,
+# `pyproject_hooks` and — on 3.9 only — `tomli` and `importlib-metadata`. They are
+# left to the resolver rather than pinned, and unlike the harness's reports that
+# is safe to do: this file's output is a wheel whose every member is hashed
+# against `tools/iptc/vendored-manifest.json` and compared byte-for-byte with
+# `tools/iptc/canonical/` by the suite that installs it. A helper that changed the
+# artefact would turn that suite red, not change a recorded number quietly.
+
+# The PEP 517 frontend the proof suite drives with `--no-isolation`.
+build==1.4.4
+
+# The backend named by `pyproject.toml`'s `build-system.requires`, and the helper
+# listed beside it there.
+setuptools==82.0.1
+wheel==0.47.0

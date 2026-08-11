@@ -48,6 +48,7 @@ on:
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
+      - "requirements-iptc-build.txt"
       - "requirements-validator.txt"
       - "pyproject.toml"
       - "setup.py"
@@ -64,6 +65,7 @@ on:
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
       - "requirements-iptc-validator.txt"
+      - "requirements-iptc-build.txt"
       - "requirements-validator.txt"
       - "pyproject.toml"
       - "setup.py"
@@ -96,7 +98,14 @@ jobs:
       # backend have to be here rather than fetched per build. These are build
       # tooling for CI; the distribution itself declares no dependency at all, and
       # `test_zero_runtime_dependencies` reads that off the installed metadata.
-      - run: python -m pip install "build>=1.0" "setuptools>=68" wheel
+      #
+      # FROM A CHECKED-IN FILE, EXACTLY PINNED. These used to be three inline
+      # arguments — `build>=1.0`, `setuptools>=68` and a bare `wheel` — so the
+      # frontend and the backend could change between two runs of the same commit
+      # with nothing in the diff to show it. The same file is installed by the
+      # package-proof job below, which is what makes "the same build tooling on
+      # every interpreter" a fact rather than a coincidence.
+      - run: python -m pip install -r requirements-iptc-build.txt
 
       # The pin first: if a vendored upstream byte changed, every conformance
       # result below is void and there is no point reading further.
@@ -139,5 +148,61 @@ jobs:
             echo
             echo "Either a generated report is stale (run: python3 -m tools.iptc)"
             echo "or a cache artefact is not ignored."
+            exit 1
+          fi
+
+  # THE PACKAGE PROOF, ON THE INTERPRETERS IT CLAIMS.
+  #
+  # `tests/test_iptc_canonical_package.py` repeats its clean-install proof on the
+  # published floor (3.9) and on the interpreter the client image runs (3.11), and
+  # an interpreter that is not installed is an explicit skip. A skip is green. So
+  # while `validate` above was the only job, both of those proofs were reported as
+  # passing by every remote run without either one executing: the floor in
+  # `Requires-Python: >=3.9` and the client-image claim were held up by developer
+  # machines alone. This job selects those interpreters so the proof runs remotely.
+  #
+  # IT IS A SECOND JOB RATHER THAN A MATRIX OVER `validate`. The conformance
+  # suites, the pin check and the report reproducibility gate answer nothing new
+  # on a second interpreter; running them three times would buy latency. `validate`
+  # stays the single authority for the whole tree on one interpreter, and this job
+  # adds the two the distribution promises.
+  #
+  # NAMING ONE SUITE HERE IS THE POINT, NOT AN OVERSIGHT. `validate` runs the
+  # manifest runner and must never name a suite by hand — a hand-named step there
+  # would run it twice and look like the coverage while the manifest decides.
+  # `tests/test_iptc_validation_harness.py` asserts that, scoped to that job.
+  package-proof:
+    runs-on: ubuntu-latest
+    strategy:
+      # Every declared interpreter reports. Cancelling 3.11 because 3.9 failed
+      # would hide whether the fault is the floor or the package.
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # The same exact pins `validate` installs. Nothing else: this suite is
+      # standard library only by design, and installing the harness tree here
+      # would let a floor proof pass on a dependency the floor cannot have.
+      - run: python -m pip install -r requirements-iptc-build.txt
+
+      # Run as a FILE, for the reason the manifest runner does the same: `tests/`
+      # is a namespace directory with no `__init__.py`, so `-m unittest tests...`
+      # can be shadowed by an installed distribution shipping a top-level regular
+      # `tests` package.
+      - name: The package proof, on this interpreter
+        run: python tests/test_iptc_canonical_package.py -v
+
+      # The suite builds and installs into disposable trees and removes them, so
+      # this asserts what it claims about not polluting a checkout.
+      - name: Working tree is clean after building the distribution
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "The package proof left the working tree dirty:"
+            git status --porcelain
             exit 1
           fi

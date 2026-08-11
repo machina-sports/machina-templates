@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import ast
 import csv
+import fnmatch
 import hashlib
 import importlib.util
 import io
@@ -75,6 +76,7 @@ import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 import tarfile
 import tempfile
 import unittest
@@ -143,6 +145,58 @@ REQUIRED_PACKAGING_FILES = (
 #: printed skip — never a silent pass. 3.9 is the declared floor; 3.11 is what the
 #: client image runs.
 PROVEN_INTERPRETERS = ("3.9", "3.11")
+
+#: The workflow that decides which interpreters remotely exist. Asserted here
+#: rather than assumed, because the two proofs above degrade to a skip on an
+#: interpreter that is not installed — and a skip is green. A workflow whose only
+#: job selects 3.12 therefore reports a passing 3.9 floor it never ran.
+WORKFLOW_PATH = REPO_ROOT / ".github/workflows/validate-iptc-sport-schema.yml"
+
+#: The job that runs the whole tree once, and the job that runs this suite on
+#: each declared interpreter. Two jobs rather than a matrix over everything: the
+#: slow conformance suites answer nothing new on a second interpreter, and paying
+#: for them three times would buy latency instead of coverage.
+VALIDATION_JOB = "validate"
+PACKAGE_PROOF_JOB = "package-proof"
+
+#: The interpreter the full validation job stays on. It remains the authority for
+#: the whole suite; the matrix below adds interpreters, it does not replace one.
+VALIDATION_PYTHON = "3.12"
+
+#: Exactly pinned build tooling, checked in. `pip install "build>=1.0"` in a
+#: workflow is a build frontend that can change between two runs of the same
+#: commit, with nothing in the diff to show it.
+BUILD_REQUIREMENTS = "requirements-iptc-build.txt"
+
+#: What that file exists to pin: the PEP 517 frontend, the backend
+#: `pyproject.toml` names, and the helper its `build-system.requires` lists
+#: beside that backend.
+BUILD_REQUIREMENT_NAMES = ("build", "setuptools", "wheel")
+
+#: This suite, as CI spells it.
+PACKAGE_PROOF_SUITE = "tests/test_iptc_canonical_package.py"
+
+#: Every input this proof reads or builds from. A change to one of these that did
+#: not trigger the workflow would leave the package unproven for that commit,
+#: which is the same gap as not having the job at all.
+PACKAGING_INPUTS_THE_FILTERS_MUST_REACH = (
+    BUILD_REQUIREMENTS,
+    PACKAGE_PROOF_SUITE,
+    "pyproject.toml",
+    "setup.py",
+    "MANIFEST.in",
+    "README-machina-sports-canonical.md",
+    "packaging/machina_sports_canonical/build.py",
+    "tools/iptc/canonical/serialize.py",
+    "tools/iptc/canonical/package-receipt.json",
+    "tools/iptc/vendored-manifest.json",
+)
+
+#: Attributes this suite must never reach for, because the declared floor does
+#: not have them. `sys.stdlib_module_names` is 3.10+: on 3.9 it raised
+#: AttributeError before the constraint it was checking could be answered, so the
+#: floor was unprovable by the very suite that claims it.
+FLOOR_HOSTILE_ATTRIBUTES = ("stdlib_module_names",)
 
 #: Prepended to every probe that runs inside an installed venv. A canonical
 #: module that reached a network would do it while loading a JSON resource, which
@@ -257,10 +311,18 @@ def built() -> Built:
 def interpreter(version: str):
     """A real interpreter for ``version``, or ``None``.
 
-    Resolved by asking the candidate what it is rather than trusting its name: a
-    ``python3.9`` on PATH that is a shim for something else would otherwise turn
-    the 3.9 proof into a 3.12 one.
+    The interpreter running this suite answers for its own version first. On a CI
+    matrix leg that is the whole point: the leg selected an interpreter, installed
+    the pinned build tooling into it and ran this file with it, so resolving
+    ``python3.9`` on PATH instead could prove a *different* 3.9 — or find none and
+    reduce that leg's own proof to a skip, which is green.
+
+    Otherwise resolved by asking the candidate what it is rather than trusting its
+    name: a ``python3.9`` on PATH that is a shim for something else would turn the
+    3.9 proof into a 3.12 one.
     """
+    if "{0}.{1}".format(*sys.version_info[:2]) == version:
+        return sys.executable
     candidate = shutil.which("python{0}".format(version))
     if candidate is None:
         return None
@@ -438,6 +500,41 @@ def parses_on_python_39(source: str) -> bool:
     return True
 
 
+def is_standard_library(root: str) -> bool:
+    """Whether ``root`` is a standard library top-level module *here*.
+
+    Asked of the running interpreter rather than read off a table, because the
+    table does not exist on the interpreter that matters: ``sys.stdlib_module_names``
+    arrived in 3.10 and the declared floor is 3.9. A permissive fallback would be
+    worse than the AttributeError it replaced — it would answer "yes" for every
+    third-party import and quietly retire the zero-dependency claim.
+
+    Three questions, in the order that keeps a false "yes" impossible: is it
+    built into this interpreter; does it resolve at all; and does it resolve
+    inside this interpreter's own standard library directory rather than in a
+    site directory. The site check comes first because a system install puts
+    ``site-packages`` *underneath* the stdlib path, where a containment test
+    alone would call every installed distribution standard library.
+    """
+    if root in sys.builtin_module_names:
+        return True
+    try:
+        spec = importlib.util.find_spec(root)
+    except (ImportError, ValueError):
+        return False
+    if spec is None:
+        return False
+    if spec.origin in ("built-in", "frozen"):
+        return True
+    if spec.origin is None:
+        return False
+    location = Path(spec.origin).resolve()
+    if {"site-packages", "dist-packages"} & set(location.parts):
+        return False
+    stdlib = Path(sysconfig.get_paths()["stdlib"]).resolve()
+    return location == stdlib or stdlib in location.parents
+
+
 def absolute_import_roots(tree: ast.Module) -> list:
     roots = []
     for node in ast.walk(tree):
@@ -446,6 +543,123 @@ def absolute_import_roots(tree: ast.Module) -> list:
         elif isinstance(node, ast.ImportFrom) and not node.level:
             roots.append((node.module or "").split(".")[0])
     return roots
+
+
+# ---------------------------------------------------------------------------
+# Reading the workflow, with the standard library only
+# ---------------------------------------------------------------------------
+#
+# Not a YAML parse, and not borrowed from `tests/test_iptc_validation_harness.py`
+# which reads the same file for its own assertions. This is the one suite CI runs
+# on the floor interpreter with the pinned build tooling and nothing else
+# installed: it can import no YAML library, and reaching into a suite whose
+# module-level imports pull the harness's dependency tree would make the floor
+# proof depend on the very install it is meant to run without. The shapes read
+# here are a flat `jobs:` mapping and two flat `paths:` lists.
+
+
+def workflow_text() -> str:
+    return WORKFLOW_PATH.read_text(encoding="utf-8")
+
+
+def workflow_jobs(text: str = None) -> dict:
+    """Each job's own lines, keyed by job id.
+
+    Job-scoped on purpose. "The workflow installs the pinned requirements"
+    is not the claim that matters — every job that builds has to install them,
+    and a whole-file scan cannot tell one job's steps from another's.
+
+    Comment lines are dropped here, so no assertion below can be satisfied — or
+    broken — by prose explaining a step rather than by the step.
+    """
+    jobs = {}
+    current = None
+    in_jobs = False
+    for raw in (workflow_text() if text is None else text).splitlines():
+        if not raw.strip() or raw.strip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        stripped = raw.strip()
+        if indent == 0:
+            in_jobs = stripped == "jobs:"
+            current = None
+            continue
+        if not in_jobs:
+            continue
+        if indent == 2 and stripped.endswith(":") and not stripped.startswith("-"):
+            current = jobs.setdefault(stripped[:-1], [])
+            continue
+        if current is not None:
+            current.append(raw)
+    return {name: "\n".join(lines) for name, lines in jobs.items()}
+
+
+def run_commands(block: str) -> list:
+    """Every shell line a job actually executes, block scalars included."""
+    commands = []
+    block_indent = None
+    for raw in block.splitlines():
+        if not raw.strip():
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        if block_indent is not None:
+            if indent > block_indent:
+                commands.append(raw.strip())
+                continue
+            block_indent = None
+        stripped = raw.strip()
+        if stripped.startswith("- "):
+            stripped = stripped[2:]
+        if not stripped.startswith("run:"):
+            continue
+        body = stripped[len("run:"):].strip()
+        if body in ("|", ">", "|-", ">-", "|+", ">+"):
+            block_indent = indent
+        elif body:
+            commands.append(body)
+    return commands
+
+
+def matrix_python_versions(block: str) -> list:
+    """The interpreters a job's matrix declares, in declaration order."""
+    for raw in block.splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("python-version:") and "[" in stripped:
+            inside = stripped[stripped.index("[") + 1:stripped.rindex("]")]
+            return [item.strip().strip('"').strip("'")
+                    for item in inside.split(",") if item.strip()]
+    return []
+
+
+def path_filter_blocks() -> list:
+    """Every ``paths:`` list in the trigger section — ``pull_request``, ``push``."""
+    blocks = []
+    current = None
+    for raw in workflow_text().splitlines():
+        stripped = raw.strip()
+        if stripped == "paths:":
+            current = []
+            blocks.append(current)
+            continue
+        if current is None:
+            continue
+        if stripped.startswith('- "') and stripped.endswith('"'):
+            current.append(stripped[3:-1])
+        elif stripped and not stripped.startswith("#"):
+            current = None
+    return blocks
+
+
+def reached_by(path: str, globs) -> bool:
+    """Whether any filter glob reaches ``path``.
+
+    ``fnmatch`` is not GitHub's matcher — it reads ``**`` as ``*`` and lets ``*``
+    cross a separator — so this is permissive. That is the safe direction here: it
+    can only fail to report a gap if GitHub is stricter, and every glob asserted
+    against is a plain prefix wildcard where the two agree.
+    """
+    return any(fnmatch.fnmatch(path, pattern.replace("**", "*"))
+               for pattern in globs)
 
 
 # ---------------------------------------------------------------------------
@@ -727,8 +941,51 @@ class TestThePackagedCodeHoldsItsConstraints(unittest.TestCase):
                                 "{0} uses syntax Python 3.9 rejects".format(member))
             for root in absolute_import_roots(ast.parse(source, filename=member)):
                 with self.subTest(member=member, imports=root):
-                    self.assertIn(root,
-                                  set(sys.stdlib_module_names) | {IMPORT_NAME})
+                    self.assertTrue(
+                        root == IMPORT_NAME or is_standard_library(root),
+                        "{0} imports {1}, which is neither the standard library "
+                        "of this interpreter nor the package itself".format(
+                            member, root))
+
+    def test_the_standard_library_check_is_real_and_not_permissive(self):
+        """The dependency claim is only worth the check behind it.
+
+        A check that answered "standard library" for everything would make
+        ``test_python39_parse_and_stdlib_only`` pass while a packaged module
+        imported ``rdflib``. So both directions are proved on whichever
+        interpreter is running: real standard library modules in, and the two
+        distributions ``requirements-iptc-build.txt`` guarantees are installed on
+        every leg out.
+
+        Those two and no others. ``pip`` is the obvious third probe and it is
+        deliberately not used: on Python before 3.12, resolving the name ``pip``
+        makes setuptools' distutils shim stand down for the rest of the process,
+        so a later ``import setuptools`` — which the build filter does — dies on
+        an assertion inside ``_distutils_hack``. Probing for a negative must not
+        change the interpreter it is probing.
+        """
+        for name in ("ast", "collections", "hashlib", "importlib", "json",
+                     "os", "pathlib", "re", "sys", "typing"):
+            with self.subTest(stdlib=name):
+                self.assertTrue(is_standard_library(name))
+        for name in ("build", "setuptools"):
+            with self.subTest(third_party=name):
+                self.assertFalse(is_standard_library(name))
+        self.assertFalse(is_standard_library(IMPORT_NAME))
+        self.assertFalse(is_standard_library("no_such_top_level_module_at_all"))
+
+    def test_no_test_helper_reaches_for_an_attribute_the_floor_lacks(self):
+        """The regression this locks: ``sys.stdlib_module_names`` is 3.10+, so on
+        the declared floor this suite raised AttributeError twenty times over
+        before it could answer anything about the floor. Invisible on 3.12, which
+        is why it is asserted rather than remembered. Prose may name the
+        attribute; code may not — the scan reads attribute nodes, not text.
+        """
+        tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+        offenders = sorted({node.attr for node in ast.walk(tree)
+                            if isinstance(node, ast.Attribute)
+                            and node.attr in FLOOR_HOSTILE_ATTRIBUTES})
+        self.assertEqual(offenders, [])
 
     def test_the_python_39_check_rejects_newer_syntax(self):
         """Guard the guard: without ``feature_version`` every one of these parses
@@ -881,6 +1138,173 @@ class TestTheProofHoldsOnEveryDeclaredInterpreter(unittest.TestCase):
     def test_the_declared_interpreters_are_the_ones_the_proof_runs(self):
         """So the pair cannot shrink to one without the change being visible."""
         self.assertEqual(PROVEN_INTERPRETERS, ("3.9", "3.11"))
+
+    def test_the_running_interpreter_proves_itself_rather_than_one_found_on_path(self):
+        """On a matrix leg, the interpreter under proof is the one running this
+        suite — the one the job selected and installed the pinned tooling into.
+
+        Resolving ``python<version>`` on PATH instead answers a different
+        question twice over: it can find a *different* build of the same version,
+        and it can find nothing at all and turn that leg's own proof into a skip.
+        A skipped proof on the leg that exists to run it is the exact failure this
+        assertion exists to prevent, so it is stated for whatever is running,
+        3.12 included.
+        """
+        running = "{0}.{1}".format(*sys.version_info[:2])
+        self.assertEqual(interpreter(running), sys.executable)
+
+
+# ---------------------------------------------------------------------------
+# CI actually runs the proof above on those interpreters
+# ---------------------------------------------------------------------------
+
+
+class TestCiRunsThisProofOnEveryDeclaredInterpreter(unittest.TestCase):
+    """Everything above degrades to a skip on an interpreter that is not
+    installed, and a skip is green.
+
+    While the only job in this workflow selected 3.12, the 3.9 floor and the 3.11
+    client-image claim were proved on developer machines and nowhere else: the
+    remote run reported them passing without executing either. So the shape of
+    the workflow is asserted here, beside the proofs whose truth depends on it.
+    """
+
+    def setUp(self):
+        self.jobs = workflow_jobs()
+        self.proof = self.jobs.get(PACKAGE_PROOF_JOB, "")
+        self.validation = self.jobs.get(VALIDATION_JOB, "")
+
+    def test_a_dedicated_package_proof_job_exists_beside_the_validation_job(self):
+        self.assertIn(VALIDATION_JOB, self.jobs)
+        self.assertIn(PACKAGE_PROOF_JOB, self.jobs,
+                      "no job runs the package proof on the declared "
+                      "interpreters: {0}".format(sorted(self.jobs)))
+
+    def test_the_proof_job_matrix_is_exactly_the_declared_interpreters(self):
+        """The same pair the proofs above name, in the same order. A matrix that
+        drifted from ``PROVEN_INTERPRETERS`` would run one set and claim the
+        other."""
+        self.assertEqual(matrix_python_versions(self.proof),
+                         list(PROVEN_INTERPRETERS))
+
+    def test_the_proof_job_selects_the_matrix_interpreter(self):
+        """A matrix that every leg ignores is three identical runs of one
+        interpreter wearing three names."""
+        self.assertIn("python-version: ${{ matrix.python-version }}", self.proof)
+
+    def test_the_proof_job_installs_the_pinned_build_tooling_and_runs_this_suite(self):
+        commands = run_commands(self.proof)
+        self.assertIn("python -m pip install -r {0}".format(BUILD_REQUIREMENTS),
+                      commands)
+        self.assertIn("python {0} -v".format(PACKAGE_PROOF_SUITE), commands)
+
+    def test_the_proof_job_stays_focused_on_this_suite(self):
+        """It is the same suite three times over, so it buys nothing by running
+        the rest of the tree again — and the manifest runner is the validation
+        job's answer, not this one's."""
+        for command in run_commands(self.proof):
+            with self.subTest(command=command):
+                self.assertNotIn("run_test_suites.py", command)
+        named = [command for command in run_commands(self.proof)
+                 if "tests/test_iptc_" in command]
+        self.assertEqual(named, ["python {0} -v".format(PACKAGE_PROOF_SUITE)])
+
+    def test_the_validation_job_stays_on_one_interpreter_and_keeps_every_gate(self):
+        """The matrix is additive. If proving two more interpreters cost the pin
+        check, the manifest run or the clean-tree check, the trade would be a bad
+        one."""
+        self.assertIn('python-version: "{0}"'.format(VALIDATION_PYTHON),
+                      self.validation)
+        self.assertEqual(matrix_python_versions(self.validation), [])
+        commands = run_commands(self.validation)
+        for gate in ("python -m pip install -r requirements-iptc-validator.txt",
+                     "python -m tools.iptc --verify-pin",
+                     "python tools/iptc/run_test_suites.py --list",
+                     "python tools/iptc/run_test_suites.py --verbose",
+                     "python -m tools.iptc --check"):
+            with self.subTest(gate=gate):
+                self.assertIn(gate, commands)
+        self.assertTrue(any("git status --porcelain" in command
+                            for command in commands))
+
+    def test_the_validation_job_installs_build_tooling_only_from_the_pinned_file(self):
+        self.assertIn("python -m pip install -r {0}".format(BUILD_REQUIREMENTS),
+                      run_commands(self.validation))
+
+    def test_no_install_step_in_this_workflow_is_ranged_or_unpinned(self):
+        """The second finding, stated as a property of every job rather than of
+        the one line that had it: an install argument that is not a checked-in
+        requirements file is a version this repository does not record."""
+        for name, block in sorted(self.jobs.items()):
+            for command in run_commands(block):
+                if "pip install" not in command:
+                    continue
+                with self.subTest(job=name, command=command):
+                    self.assertRegex(
+                        command,
+                        r"^python -m pip install -r [A-Za-z0-9._/-]+\.txt$",
+                        "install neither pinned nor from a checked-in file")
+
+    def test_the_build_requirements_file_is_checked_in_and_exactly_pinned(self):
+        path = REPO_ROOT / BUILD_REQUIREMENTS
+        self.assertTrue(path.is_file(), "missing: {0}".format(BUILD_REQUIREMENTS))
+        pinned = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            with self.subTest(requirement=line):
+                self.assertRegex(line, r"^[A-Za-z0-9][A-Za-z0-9._-]*==[0-9][^ ]*$",
+                                 "not an exact pin: {0}".format(line))
+            pinned.append(line.split("==")[0].lower())
+        self.assertEqual(sorted(pinned), sorted(BUILD_REQUIREMENT_NAMES))
+
+    def test_both_path_filters_reach_every_input_this_proof_depends_on(self):
+        blocks = path_filter_blocks()
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(blocks[0], blocks[1],
+                         "one trigger is narrower than the other, so the gate "
+                         "depends on how the change arrived")
+        for path in PACKAGING_INPUTS_THE_FILTERS_MUST_REACH:
+            with self.subTest(path=path):
+                self.assertTrue(reached_by(path, blocks[0]),
+                                "no path filter reaches {0}".format(path))
+
+    def test_the_workflow_reader_separates_jobs_and_reads_steps_not_prose(self):
+        """Guard the guard. Every assertion in this class is only as good as the
+        two readers under it: one that told jobs apart wrongly would let a step in
+        one job satisfy a claim about another, and one that read comments would
+        let the explanation of a step stand in for the step."""
+        sample = (
+            "jobs:\n"
+            "  validate:\n"
+            "    steps:\n"
+            "      # run: python -m pip install \"build>=1.0\"\n"
+            "      - run: python -m pip install -r requirements-iptc-build.txt\n"
+            "      - run: |\n"
+            "          if [ -n \"$(git status --porcelain)\" ]; then\n"
+            "            exit 1\n"
+            "          fi\n"
+            "  package-proof:\n"
+            "    strategy:\n"
+            "      matrix:\n"
+            "        python-version: [\"3.9\", \"3.11\"]\n"
+            "    steps:\n"
+            "      - run: python tests/test_iptc_canonical_package.py -v\n"
+        )
+        jobs = workflow_jobs(sample)
+        self.assertEqual(sorted(jobs), ["package-proof", "validate"])
+        self.assertEqual(run_commands(jobs["validate"]), [
+            "python -m pip install -r requirements-iptc-build.txt",
+            'if [ -n "$(git status --porcelain)" ]; then',
+            "exit 1",
+            "fi",
+        ])
+        self.assertEqual(run_commands(jobs["package-proof"]),
+                         ["python tests/test_iptc_canonical_package.py -v"])
+        self.assertEqual(matrix_python_versions(jobs["package-proof"]),
+                         ["3.9", "3.11"])
+        self.assertEqual(matrix_python_versions(jobs["validate"]), [])
 
 
 if __name__ == "__main__":
