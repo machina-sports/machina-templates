@@ -739,6 +739,11 @@ class TestPublicSanitization(unittest.TestCase):
             for path in sorted((REPO_ROOT / directory).rglob("*")):
                 if path.is_file() and "__pycache__" not in path.parts:
                     found.append(path)
+        # Authored plan prose. Restricted to Markdown so the scan picks up the
+        # documents without reaching into any binary or generated companion.
+        for path in sorted((REPO_ROOT / "docs" / "plans").rglob("*.md")):
+            if path.is_file():
+                found.append(path)
         found.extend([
             REPO_ROOT / "tools" / "__init__.py",
             REPO_ROOT / "docs" / "rfcs" / "001-machina-iptc-sport-schema-profile.md",
@@ -780,6 +785,21 @@ class TestPublicSanitization(unittest.TestCase):
         ):
             self.assertIn(required, scanned)
         self.assertGreater(len(scanned), 40)
+
+    def test_the_scan_covers_authored_plan_documents(self):
+        """Plan documents are authored prose that ships in this PUBLIC repo.
+
+        They are the likeliest place for internal identifiers and roadmap names
+        to survive, so leaving `docs/plans` outside the scan makes the
+        sanitization gate pass for the wrong reason.
+        """
+        scanned = {p.relative_to(REPO_ROOT).as_posix() for p in self.scanned_files()}
+        plans = {p for p in scanned if p.startswith("docs/plans/")}
+        self.assertIn(
+            "docs/plans/"
+            "2026-08-10-iptc-pr3-canonical-runtime-wci-provider-substitution.md",
+            plans,
+        )
 
     def test_the_only_exclusion_is_the_byte_exact_vendored_upstream(self):
         """The three Machina-authored reference files are scanned; the pin is not."""

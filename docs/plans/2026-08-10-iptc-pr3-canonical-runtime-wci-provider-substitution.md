@@ -8,7 +8,7 @@
 
 ## Authority and scope
 
-The full approved architecture is **Chief of Staff Design Log #027 Amendment B**; treat it as authority. Where this plan and Amendment B disagree, Amendment B wins and this plan is amended before implementation continues.
+The full approved architecture is held in the **internal architecture decision record (revision B)** that governs this work; treat that record as authority. Where this plan and that record disagree, the record wins and this plan is amended before implementation continues.
 
 This plan contains **17 tasks** across four physical PRs (PR3-A .. PR3-D) plus a stop/review gate. Every task is **strict TDD**: the RED test is written and observed failing for the stated reason before any implementation line is written. A task is not complete until its GREEN commands pass and its commit is made.
 
@@ -820,7 +820,7 @@ Do not import to or execute in the Machina sandbox. Report: all command outputs,
 - **G** — Sports TV
 - Customer migration and alias-removal plans
 
-**Explicitly out of scope:** Sports Moment, Sports Experience, Coach Mode.
+**Explicitly out of scope:** Sports Experience, plus the other adjacent internal product surfaces that are not named in the later-work outline above.
 
 **Commit message:** `docs(iptc): record PR3 stop-and-review outcome`
 
