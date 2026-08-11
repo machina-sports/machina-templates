@@ -37,14 +37,16 @@ These facts constrain the design and must not be re-litigated during implementat
 
 # PR3-A — Architecture/inventory hardening (current `machina-templates` branch)
 
-Branch: `refactor/iptc-consumers-and-compatibility` (existing, HEAD `d38baeb`).
+Branch: `refactor/iptc-consumers-and-compatibility` (existing). The branch was opened at
+inventory commit `d38baeb`; the reviewed plan commit `02fe533` sits on top of it, so the
+branch tip is not `d38baeb` and no task should assert that it is.
 No consumers are modified in this PR. Only inventory tooling, review ledger, and regenerated artifacts.
 
 ---
 
 ## Task 1 — Document-name and storage-predicate detection in the inventory tool
 
-**Prerequisite:** HEAD is `d38baeb` (inventory commit) on `refactor/iptc-consumers-and-compatibility`; working tree clean apart from ignored `.claude/tasks/CURRENT.md`.
+**Prerequisite:** On `refactor/iptc-consumers-and-compatibility`, with inventory commit `d38baeb` present and the reviewed plan commit `02fe533` applied on top of it — `02fe533` is the base this task builds on, not `d38baeb`. Working tree clean apart from ignored `.claude/tasks/CURRENT.md`.
 
 **Objective:** Teach `tools/iptc/inventory.py` to detect two coupling classes the current scan misses: (a) **document-name coupling** — literal document names such as `worldcup:event` used in save/load/query positions; (b) **storage-predicate coupling** — filter/sorter/query paths such as `value.schema:startDate` and `value.sport:status` that bind a consumer to the persisted document shape. Detection must be evidence-bearing: each hit records file, line, matched literal, and coupling category.
 
@@ -53,6 +55,7 @@ No consumers are modified in this PR. Only inventory tooling, review ledger, and
 
 **Modify:**
 - `tools/iptc/inventory.py`
+- `tools/iptc/test-suites.json` — **mechanically required, not discretionary.** `tests/test_iptc_test_manifest.py` asserts exact set equality between the manifest and the `tests/test_iptc_*.py` files on disk, so creating the new suite without registering it fails the manifest gate and `run_test_suites` refuses to start. Register the new suite in its existing group at its sorted position; touch no other manifest field.
 
 **Test paths:**
 - `tests/test_iptc_consumer_inventory.py`
@@ -65,7 +68,10 @@ Write `tests/test_iptc_consumer_inventory.py` with at minimum these cases:
 2. `test_detects_storage_predicate_startdate` — a snippet containing `value.schema:startDate` in a filter/sorter yields `category == "storage-predicate"` and `path == "value.schema:startDate"`.
 3. `test_detects_storage_predicate_status` — same for `value.sport:status`.
 4. `test_findings_carry_file_and_line_evidence` — every finding has non-empty `file` and integer `line >= 1`.
-5. `test_real_repo_scan_detects_worldcup_event_couplings` — scanning the real `agent-templates/world-cup-intelligence/` tree returns at least one `document-name` finding for `worldcup:event` and at least one `storage-predicate` finding each for `value.schema:startDate` and `value.sport:status`.
+5. `test_real_repo_scan_detects_worldcup_event_couplings` — a real-repo scan returns findings at their **verified** locations, which are two different trees:
+   - at least one `document-name` finding for the literal `worldcup:event` from `agent-templates/world-cup-intelligence/`;
+   - at least one `storage-predicate` finding for the exact path `value.schema:startDate` **and** at least one for the exact path `value.sport:status`, both from the real `connectors/` tree — `connectors/sportradar-soccer/` and `connectors/stats-perform/` are the confirmed carriers of both paths.
+6. `test_the_storage_predicates_are_absent_from_wci_and_present_in_connectors` — a separate guard asserting the inverse: scanning `agent-templates/world-cup-intelligence/` alone yields **zero** `storage-predicate` findings for either exact path, while the connectors scan yields both. WCI filters on `name`, `value._id`, `value.@type`, `value.event_urn`, `value.subject_urn`, `value.status` and `value.ts`; it reads `schema:startDate` and `sport:status` in Python off an already-loaded document, which is not a storage predicate. This guard exists so that a later change moving a predicate into WCI fails loudly, and so that case 5 can never be made to pass by broadening the matcher — matching a bare `sport:status` or `schema:startDate` anywhere in a file is the forbidden false-positive matcher and must not be used to manufacture a WCI hit.
 
 Command:
 ```
@@ -84,7 +90,7 @@ COUPLING_STORAGE_PREDICATE = "storage-predicate"
 def scan_couplings(root: str) -> list[dict]:
     """Return findings: {file, line, category, literal|path, snippet}."""
 ```
-plus the two narrow matchers it needs. Wire `scan_couplings` into the existing inventory generation so its findings land in the generated dependency records under an added `couplings` key. Do **not** restructure the existing scanner, rename existing fields, or change existing output ordering beyond the added key.
+plus the two narrow matchers it needs. Wire `scan_couplings` into the existing inventory generation so its findings land in the generated inventory under an added **top-level** `couplings` key — a sibling of the existing top-level keys, appended after them. Every pre-existing top-level key must survive unchanged, with its existing position preserved; a test pins that key set and its order. Do **not** restructure the existing scanner, rename existing fields, or change existing output ordering beyond appending the one additive key.
 
 **GREEN commands:**
 - Focused: `python3 -m pytest tests/test_iptc_consumer_inventory.py -q`
@@ -92,7 +98,15 @@ plus the two narrow matchers it needs. Wire `scan_couplings` into the existing i
 
 **Commit message:** `test(iptc): detect document-name and storage-predicate couplings`
 
-**Rollback / stop condition:** If wiring `couplings` into generation changes any pre-existing field of `inventory.json` other than the additive key, revert the wiring, keep `scan_couplings` standalone, and record the deviation in the commit body. Stop and report if the real-repo scan case (5) cannot pass without loosening matchers to substring-anywhere matching — a matcher that fires inside prose/comments is a false-positive generator and must not ship.
+**Rollback / stop condition:** If wiring `couplings` into generation changes any pre-existing top-level key of `inventory.json` — its presence, its value or its position — other than appending the additive `couplings` key, revert the wiring, keep `scan_couplings` standalone, and record the deviation in the commit body.
+
+Stop and report if case 5 cannot pass **against its corrected evidence roots**: the `document-name` finding from `agent-templates/world-cup-intelligence/`, and both exact `value.*` `storage-predicate` findings from the real `connectors/` tree. Do not relocate an assertion to a root the evidence does not support, and do not loosen matchers to substring-anywhere matching to force a hit — a matcher that fires inside prose, docstrings, `description:` fields or commented-out tasks is a false-positive generator and must not ship.
+
+### ⚠️ Task 1 evidence amendment / implementation deviation
+
+The approved spec asserted that both `value.schema:startDate` and `value.sport:status` storage-predicate couplings exist inside `agent-templates/world-cup-intelligence`. Verified repository evidence says otherwise: WCI carries `worldcup:event` document-name couplings, but neither of those two exact `value.*` paths. They live in the provider connector trees, principally `connectors/sportradar-soccer/` and `connectors/stats-perform/`. **The code candidate remains `9f563a0`; no code change was required** — it already used narrow, context-aware matchers and already pinned the WCI absence with its own test, so the plan was wrong and the code was right. Two consequences carry forward and must be honoured downstream: **Task 2** must assign owners and dispositions for those provider connector consumers, not treat WCI as the coupled party; and **Task 12** cannot reason about alias closure from WCI alone, because the readers that filter on the persisted storage shape are those connector workflows.
+
+**Recorded history:** candidate commit `9f563a0` triggered this correction. It ran against the earlier version of case 5, which asserted all three findings inside `agent-templates/world-cup-intelligence/`; the repository evidence contradicted that premise. The plan has been amended to the verified roots above. The prohibition on broad matching is unchanged and still absolute — broadening was, and remains, the wrong way to satisfy the old assertion.
 
 ---
 
@@ -583,7 +597,9 @@ Expected failure (RED): `FileNotFoundError` for the resolver workflow; then case
 
 **Prerequisite:** Task 11 green.
 
-**Objective:** Add exactly **one** explicit, versioned, deprecated compatibility projection derived **only** from `event_view`. The persisted document name stays `worldcup:event`. The document root value is the canonical envelope **plus** the exact legacy top-level aliases that existing filters/readers require. Nested-only compatibility is **forbidden** — the storage-predicate findings from Task 1 prove readers filter on top-level paths.
+**Objective:** Add exactly **one** explicit, versioned, deprecated compatibility projection derived **only** from `event_view`. The persisted document name stays `worldcup:event`. The document root value is the canonical envelope **plus** the exact legacy top-level aliases that existing filters/readers require. Nested-only compatibility is **forbidden** — the Task 1 storage-predicate findings prove readers filter on top-level paths.
+
+The consumers those findings name are **provider connector workflows**, principally under `connectors/sportradar-soccer/` and `connectors/stats-perform/`, not WCI itself: WCI reads `schema:startDate` and `sport:status` in Python from an already-loaded document. Top-level aliases therefore remain necessary, but the compatibility they preserve is owed to those real provider connector consumers. This does **not** widen the task: the scope stays the single WCI projection under the unchanged document name `worldcup:event`, and no connector workflow is modified here. Migrating those consumers is later work outside this plan.
 
 **Create:**
 - Compatibility projection definition (mapping or workflow fragment) under `agent-templates/world-cup-intelligence/mappings/` — exact filename chosen at implementation time and recorded in the commit body
@@ -601,7 +617,7 @@ Expected failure (RED): `FileNotFoundError` for the resolver workflow; then case
 4. `test_nested_only_compatibility_rejected` — a projection that nests the aliases fails the check (guards regression).
 5. `test_snapshot_per_alias_with_removal_owner` — one snapshot test per alias; each alias carries a documented removal owner and deprecation version.
 6. `test_no_rename_and_no_index_removal` — no document rename and no index removal in the diff.
-7. `test_storage_predicates_still_resolve` — `value.schema:startDate` and `value.sport:status` resolve against the projected document (direct tie-back to Task 1 findings).
+7. `test_storage_predicates_still_resolve` — the exact predicates `value.schema:startDate` and `value.sport:status`, as written by the real provider connector consumers Task 1 located under `connectors/sportradar-soccer/` and `connectors/stats-perform/`, still resolve against the projected document. Direct tie-back to the Task 1 findings at their verified locations; assert against the predicate paths those connectors actually use, not against a WCI-authored predicate, which does not exist.
 
 Command:
 ```
