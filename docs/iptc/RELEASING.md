@@ -67,8 +67,9 @@ or a missing notice are each rejected, and each rejection is an executed case in
 
 ## 🛑 BLOCKED — the first upload still cannot happen
 
-**Resolving the license does not unblock the release.** Four holds remain, and
-every one of them is outside this repository or outside this process:
+**Neither the license decision nor the digest verification unblocks the
+release.** Three holds remain, and **every one of them needs an action outside
+this repository** — which is exactly why none of them can be closed by a commit:
 
 1. **The pypi environment is not configured.** The `pypi` environment does not
    exist with a required human reviewer, so nothing enforces the approval gate at
@@ -76,15 +77,10 @@ every one of them is outside this repository or outside this process:
 2. **The trusted publisher is not registered.** PyPI has no pending publisher for
    this project, so an upload would fail authentication — and registering one is
    a deliberate act, not a release step.
-3. **The renewed digests have not been independently verified.** The rows in
-   `docs/iptc/machina-sports-canonical-0.1.0.sha256` were re-recorded when the
-   license metadata changed the artefact bytes, and they were produced by the
-   same process that recorded them. The earlier independent rebuild verified a
-   candidate that predates the license metadata and is now superseded.
-4. **No human has approved publication.** No owner has said "publish" having seen
-   the renewed digests and a green proof.
+3. **No human has approved publication.** No owner has said "publish" having seen
+   the verified digests and a green proof.
 
-**Do not publish** until all four are closed. A published version cannot be
+**Do not publish** until all three are closed. A published version cannot be
 replaced: uploading `0.1.0` prematurely spends the version number permanently.
 
 ---
@@ -182,7 +178,9 @@ diffs against:
 These rows were **renewed for the license decision**. Declaring
 `License-Expression`, three `License-File` fields and three archive members
 changes both artefacts, so the digests recorded before that change are superseded
-— see the section below, which keeps them and says so.
+— see the second verification section below, which keeps them and says so. The
+renewed rows have since been **independently verified**; that section comes
+first.
 
 The file is written exactly as `sha256sum` writes it, with **basenames** and the
 wheel before the sdist, so one checked-in file is comparable byte-for-byte with
@@ -205,13 +203,47 @@ character. **If the wheel bytes change for any reason, these digests are stale a
 this file must be re-recorded as a reviewed change.** Adding the license metadata
 is exactly such a change, and it is why these rows differ from the ones below.
 
-### Independent verification — SUPERSEDED
+### Independent verification of the renewed digests — ✅ RESOLVED
+
+**The renewed rows above have been reproduced independently, and this hold is
+closed.** Until this rebuild they had been produced by exactly one process — the
+one that also recorded them — which is not evidence that anyone else can build
+them.
+
+- **Candidate:** `acf9955029652c493f10ecd46cb7936dd44d6662`, the commit that added
+  the approved licensing and therefore the commit whose package inputs produce
+  these bytes. Named in full, because an abbreviation is a claim about a prefix.
+- **Source:** obtained with `git archive` into separate isolated temporary trees,
+  so no working tree, build cache or untracked file could contribute bytes.
+- **Environment:** fresh disposable virtual environments, each installing the
+  checked-in `requirements-iptc-build.txt` unchanged.
+- **Interpreters:** Python **3.9.25** and Python **3.11.14**, each running
+  `packaging/machina_sports_canonical/release.py` with
+  `SOURCE_DATE_EPOCH=1786398569`.
+
+Each interpreter independently produced:
+
+| Artefact | SHA-256 |
+|---|---|
+| `machina_sports_canonical-0.1.0-py3-none-any.whl` | `c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf` |
+| `machina_sports_canonical-0.1.0.tar.gz` | `5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e` |
+
+Both matched `docs/iptc/machina-sports-canonical-0.1.0.sha256` byte for byte, and
+matched each other. The temporary trees and environments were removed; this
+repository's working tree was not modified.
+
+**This closes the digest hold and nothing else. It is not release approval.** It
+says the reviewed digests are what `acf9955` builds on an independent machine
+across both proven interpreters, and nothing more. The three holds above still
+stand, and **do not publish** until they are closed.
+
+### Independent verification of the pre-license digests — SUPERSEDED
 
 **This section is superseded evidence. It verifies a candidate this repository no
 longer builds.** It is kept, rather than deleted, because a releaser is entitled
 to see that the method works and that the pre-license candidate really was
-reproduced elsewhere. It does not vouch for the renewed rows above — nobody has
-rebuilt those independently, which is outstanding hold 3.
+reproduced elsewhere. It is not the evidence for the current rows — that is the
+section immediately above.
 
 Every automated comparison above diffs a build against rows this repository
 checked in, which proves the rows are stable — not that anyone other than the

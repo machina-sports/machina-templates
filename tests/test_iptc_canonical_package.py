@@ -434,17 +434,36 @@ RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
 #: What still stops this release now that the license decision is made, each stated
 #: as its own sentence in `docs/iptc/RELEASING.md`.
 #:
-#: A resolved license blocker is the kind of change that reads like an unblocking.
-#: It is not one: the reviewer-gated environment does not exist yet, PyPI has no
-#: publisher registered for this project, the renewed digests have been rebuilt by
-#: exactly one process, and no owner has said "publish". Listing them individually
-#: is what keeps "still blocked" from being a sentence a releaser can argue past.
+#: A resolved blocker is the kind of change that reads like an unblocking. It is
+#: not one: the reviewer-gated environment does not exist yet, PyPI has no
+#: publisher registered for this project, and no owner has said "publish". Listing
+#: them individually is what keeps "still blocked" from being a sentence a
+#: releaser can argue past.
+#:
+#: THREE, NOT FOUR. The digest hold below has been closed on evidence — the
+#: renewed rows were rebuilt independently from a clean export of the exact
+#: package-input candidate on both proven interpreters. Every remaining hold needs
+#: an action outside this repository, which is precisely why none of them can be
+#: closed by a commit.
 UNRESOLVED_RELEASE_HOLDS = (
     "the pypi environment is not configured",
     "the trusted publisher is not registered",
-    "the renewed digests have not been independently verified",
     "no human has approved publication",
 )
+
+#: The hold the renewed verification closed, spelled as the document used to state
+#: it. Asserted ABSENT: a document that records the rebuild and still carries the
+#: sentence saying it never happened is a document a releaser cannot act on, and
+#: leaving the stale claim in is the likeliest way this follow-up goes wrong.
+CLOSED_RELEASE_HOLD = "the renewed digests have not been independently verified"
+
+#: The candidate the renewed digests were independently rebuilt from, in full.
+#:
+#: The full forty characters rather than a short prefix: this is the commit whose
+#: package inputs produced the bytes the release will upload, and an abbreviation
+#: is a claim about a prefix. `acf9955` is the commit that added the approved
+#: licensing, which is what changed the artefacts in the first place.
+RENEWED_VERIFICATION_COMMIT = "acf9955029652c493f10ecd46cb7936dd44d6662"
 
 #: Three jobs, because approval has to sit between building and uploading, and a
 #: GitHub Release must not claim bytes PyPI never accepted. The build job produces
@@ -3832,17 +3851,61 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         self.assertIn(RELEASE_CHECKSUM_FILE, self.text)
         self.assertMentions("not release approval", "not a license decision")
 
-    def test_the_docs_state_that_the_renewed_digests_are_not_yet_independent(self):
-        """The hold that replaced the license one. The renewed rows were produced
-        by the same process that recorded them, which is exactly the gap the
-        superseded section was written to close — so it is named as an outstanding
-        hold rather than left for a releaser to notice."""
-        self.assertMentions(
-            "the renewed digests have not been independently verified")
+    def test_the_docs_record_the_renewed_digests_as_independently_verified(self):
+        """The hold the license decision opened, now closed on evidence.
+
+        The renewed rows were produced by the same process that recorded them,
+        which was the whole gap. They have since been rebuilt from a clean export
+        of the exact package-input candidate, on both proven interpreters, and
+        both reproduced the checked-in rows. A releaser can only weigh that the
+        way they weighed the first rebuild: by seeing which commit, which two
+        interpreters, how the source was obtained, and which digests came out.
+        """
+        self.assertIn(RENEWED_VERIFICATION_COMMIT, self.text)
+        self.assertMentions("independent", "git archive")
+        for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
+            with self.subTest(interpreter=version):
+                self.assertIn(version, self.text)
         for name, digest in REVIEWED_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
+
+    def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
+        """The stale sentence, asserted gone.
+
+        Recording the rebuild while leaving the claim that it never happened is
+        not a half-finished edit — it is a document that contradicts itself about
+        the one thing a releaser reads it for.
+        """
+        self.assertNotIn(CLOSED_RELEASE_HOLD, self.lowered)
+
+    def test_the_closed_digest_hold_is_not_still_listed_as_a_hold(self):
+        """Guard the guard. The holds list is what "still blocked" means here, so
+        the closed hold must be out of the list and the remaining three must be
+        exactly what is left — a document naming four holds while one is closed
+        teaches a releaser to discount the list."""
+        self.assertNotIn(CLOSED_RELEASE_HOLD, [hold.lower()
+                                               for hold in UNRESOLVED_RELEASE_HOLDS])
+        self.assertEqual(len(UNRESOLVED_RELEASE_HOLDS), 3)
+        self.assertMentions(*UNRESOLVED_RELEASE_HOLDS)
+
+    def test_the_verified_digests_are_the_ones_the_authority_holds(self):
+        """The rebuild is only evidence about this release if the rows it
+        reproduced are the rows every automated comparison diffs against. Read off
+        the checked-in authority rather than off the prose, so a document that
+        recorded a verification of some other bytes is red."""
+        authority = RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8")
+        for name, digest in REVIEWED_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn("{0}  {1}".format(digest, name), authority)
+
+    def test_the_resolved_digest_gate_does_not_authorize_a_release(self):
+        """Closing a hold is not permission. The document has to keep saying so in
+        the same breath, because "independently verified" is the phrase most
+        likely to be read as "ready to publish"."""
+        self.assertIn("BLOCKED", self.text)
+        self.assertMentions("do not publish", "not release approval")
 
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
