@@ -70,3 +70,23 @@ PROPHETX_API_SANDBOX=... python3 connectors/prophetx/tests/smoke_sandbox.py
 The production smoke is read-only, bounded, and **separately approved** —
 `python3 connectors/prophetx/tests/smoke_sandbox.py --environment production`
 only after that approval.
+
+## Demo — odds screen + Auto-Fill handoff (reproducible)
+
+```bash
+# terminal demo: renders the odds screen and builds the handoff links
+# (defaults: sandbox, game tournaments MLB=109/NFL=31/NBA=132/NHL=234,
+#  partner_id "machina-sports")
+PROPHETX_API_SANDBOX=... python3 connectors/prophetx/tests/demo_odds_screen.py
+
+# in-platform demo (after vault setup):
+# run workflow prophetx-demo-autofill-handoff with inputs
+#   {"event_id": <id>, "partner_id": "machina-sports"}
+# outputs: odds_screen (market/selection/odds/prob/stake rows),
+#          selected_line, autofill_links (app / OneLink / web)
+```
+
+Machina's involvement in bet placement ends at the Auto-Fill links — account,
+geolocation, wallet, and wager execution are entirely ProphetX's. The legacy
+Medium "Direct Play" flow (partner-managed session + private wager POST) is
+intentionally NOT implemented.
