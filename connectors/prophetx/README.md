@@ -42,10 +42,13 @@ commit or log token values.
 | `build_autofill_link` | Pure: `line_id(s)` + `partner_id` (+ optional odds) → official app/OneLink/web handoff links |
 | `health` | One bounded authenticated GET — credential + reachability check |
 
-Normalized records preserve `_raw`, keep `line_id` **verbatim** (it is the
-Auto-Fill handoff currency), and do **not** derive implied probability yet —
-official examples disagree on the odds format (American vs decimal) and the
-sandbox smoke settles it before any conversion is added.
+Normalized records preserve `_raw` and keep `line_id` **verbatim** (it is the
+Auto-Fill handoff currency). Odds format was **resolved by the sandbox smoke
+(2026-08-13): American** (`-375` / `+320`; `adjusted_odds` = commission-adjusted
+float; `stake` = available liquidity per level) — `implied_probability` is
+derived when odds are present. Selection `updated_at` is epoch **nanoseconds**;
+`updated_at_s` carries the seconds-normalized value. Auth resolved as **raw
+key** (no `Bearer`) — the `bearer` opt-in stays available for drift.
 
 Upstream limits honored: 50 req/s account budget (client backs off on 429 and
 honors `Retry-After`), `event_ids` ≤ 50, no pagination on this API.

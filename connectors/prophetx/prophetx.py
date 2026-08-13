@@ -28,10 +28,12 @@ API. The multiple-markets response schema is empty in the official spec; the
 real shape is a dict keyed by event id that may occasionally arrive as a flat
 list — both shapes are parsed defensively.
 
-Odds format note: official examples disagree (American ``-470`` vs "decimal
-price" ``1.95``). Until the sandbox smoke settles it per version, ``odds`` is
-passed through verbatim (plus ``display_odds``) and NO implied probability is
-derived here.
+Odds format — RESOLVED by the sandbox smoke (2026-08-13): ``odds`` is
+**American** (e.g. ``-375`` / ``+320``; ``display_odds`` carries the sign,
+``adjusted_odds`` is a commission-adjusted float, ``stake`` is the available
+liquidity at that level). ``implied_probability`` is derived from the American
+``odds`` when present. Selection ``updated_at`` is epoch **nanoseconds**
+(normalized to seconds in ``updated_at_s``).
 
 Credentials are injected by the workflow runtime from vault context variables
 (MACHINA_CONTEXT_VARIABLE_PROPHETX_*). They are never logged, never echoed in
@@ -64,6 +66,22 @@ _AUTOFILL_WEB = "https://www.prophetx.co/"
 # Mode-B session cache: (environment, access_key) -> token record.
 _token_cache = {}
 _token_lock = threading.Lock()
+
+
+def _american_to_probability(odds):
+    """Implied probability from American odds (format confirmed live).
+
+    Returns None when odds are absent/zero/non-numeric.
+    """
+    try:
+        value = float(odds)
+    except (TypeError, ValueError):
+        return None
+    if value == 0:
+        return None
+    if value > 0:
+        return round(100.0 / (value + 100.0), 4)
+    return round(-value / (-value + 100.0), 4)
 
 
 # ============================================================
@@ -381,10 +399,13 @@ def _normalize_selection(selection, api_version):
         "name": selection.get("display_name") or selection.get("name", ""),
         "odds": odds,
         "display_odds": display_odds,
+        "adjusted_odds": selection.get("adjusted_price") if api_version == "v4" else selection.get("adjusted_odds"),
+        "implied_probability": _american_to_probability(odds),
         "line": line,
         "display_line": display_line,
         "stake": stake,
         "updated_at": selection.get("updated_at"),
+        "updated_at_s": _as_epoch_seconds(selection.get("updated_at")) or None,
         "_raw": selection,
     }
 
@@ -443,16 +464,27 @@ def _extract_markets_payload(payload):
 
 def _extract_multiple_markets_payload(payload, requested_ids):
     """Multiple-events markets: officially a dict keyed by event id, but 'a
-    small number of responses may come back as a flat list' (official guide).
-    The spec schema is empty, so both shapes are handled. Returns dict
-    str(event_id) -> [raw markets] or None on drift."""
+    small number of responses may come back as a flat list' (official guide),
+    and per-event values have been observed varying too. The spec schema is
+    empty, so parsing is defensive: null values become empty lists and any
+    other odd per-event value lands in '_unattributed' instead of failing the
+    whole batch. Returns dict str(event_id) -> [raw markets] or None only
+    when `data` itself is neither dict nor list (true drift)."""
     data = payload.get("data") if isinstance(payload, dict) else None
     if isinstance(data, dict):
         grouped = {}
+        oddities = []
         for key, value in data.items():
-            if not isinstance(value, list):
-                return None
-            grouped[str(key)] = value
+            if value is None:
+                grouped[str(key)] = []
+            elif isinstance(value, list):
+                grouped[str(key)] = value
+            elif isinstance(value, dict):
+                grouped[str(key)] = [value]
+            else:
+                oddities.append({"event_key": str(key), "value": value})
+        if oddities:
+            grouped.setdefault("_unattributed", []).extend(oddities)
         return grouped
     if isinstance(data, list):
         grouped = {str(eid): [] for eid in requested_ids}
@@ -703,7 +735,11 @@ def get_multiple_markets(request_data):
             return _error("Unexpected multiple-markets payload shape", error_class="provider_bad_response")
         if _want_normalize(params):
             grouped = {
-                key: [_normalize_market(m, key, api_version) for m in markets]
+                key: (
+                    markets  # oddities/orphans stay raw — never fake-normalized
+                    if key == "_unattributed"
+                    else [_normalize_market(m, key, api_version) for m in markets]
+                )
                 for key, markets in grouped.items()
             }
         total = sum(len(markets) for markets in grouped.values())

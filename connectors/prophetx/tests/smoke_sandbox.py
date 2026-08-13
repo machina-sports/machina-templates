@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bounded read-only smoke test for the ProphetX Affiliate connector.
 
-Answers the design log's open questions empirically, with ~8 GETs max:
+Answers the design log's open questions empirically, with ~15 GETs max:
   1. auth scheme: raw key vs `Bearer` prefix (tries raw first, bearer on 401)
   2. odds format evidence (American-looking ints vs decimal floats)
   3. `updated_at` unit (s/ms/ns magnitude)
@@ -149,13 +149,22 @@ def main() -> int:
             {"step": "get_tournaments(all)", "ok": fallback.get("status"), "count": len(tournament_list)}
         )
 
-    # ---- Step 3: events of the first active tournament ----
-    events = []
-    tournament_id = None
-    for tournament in tournament_list[:3]:
+    # ---- Step 3: find an event that actually carries markets ----
+    # Futures/outright tournaments can list events with zero markets; scan a
+    # few tournaments (soonest events first) until v3 returns markets, within
+    # a hard request budget.
+    event_id = None
+    sibling_event_id = None
+    markets_v3 = None
+    v3_list = []
+    market_probes = 0
+    seen_event_ids = []
+    for tournament in tournament_list[:6]:
         tournament_id = tournament.get("id")
         if tournament_id is None:
             continue
+        if market_probes >= 5:
+            break
         events_result = px.get_sport_events(request_data(scheme_used, tournament_id=tournament_id))
         report["requests_used"] += 1
         events = (events_result.get("data") or {}).get("sport_events") or []
@@ -166,21 +175,42 @@ def main() -> int:
                 "count": len(events),
             }
         )
-        if events:
-            break
-    if not events:
-        report["findings"]["note"] = "no events found in first active tournaments — markets steps skipped"
-        print(json.dumps(report, indent=2))
-        return 0
+        events = sorted(events, key=lambda e: e.get("scheduled") or "9999")
+        seen_event_ids.extend(e.get("event_id") for e in events if e.get("event_id"))
+        if event_id is not None:
+            continue  # markets already found — keep collecting ids for step 6
+        for event in events[:3]:
+            candidate_id = event.get("event_id")
+            if candidate_id is None or market_probes >= 5:
+                continue
+            probe = px.get_markets(request_data(scheme_used, event_id=candidate_id, api_version="v3"))
+            report["requests_used"] += 1
+            market_probes += 1
+            probe_list = (probe.get("data") or {}).get("markets") or []
+            report["steps"].append(
+                {"step": f"get_markets(v3, event={candidate_id})", "ok": probe.get("status"), "count": len(probe_list)}
+            )
+            if probe_list:
+                event_id = candidate_id
+                markets_v3 = probe
+                v3_list = probe_list
+                siblings = [e.get("event_id") for e in events if e.get("event_id") not in (None, candidate_id)]
+                sibling_event_id = siblings[0] if siblings else None
+                report["findings"]["sample_event"] = {
+                    "event_id": candidate_id,
+                    "scheduled": event.get("scheduled"),
+                    "tournament_id": tournament_id,
+                }
+                break
 
-    event_id = events[0].get("event_id")
-    scheduled = events[0].get("scheduled")
-    report["findings"]["sample_event"] = {"event_id": event_id, "scheduled": scheduled}
-
-    # ---- Step 4: markets v3 (default) ----
-    markets_v3 = px.get_markets(request_data(scheme_used, event_id=event_id, api_version="v3"))
-    report["requests_used"] += 1
-    v3_list = (markets_v3.get("data") or {}).get("markets") or []
+    if event_id is None:
+        report["findings"]["note"] = "no event with markets found within the probe budget — odds questions remain open"
+        report["status"] = "PARTIAL"
+        output = json.dumps(report, indent=2)
+        print(output)
+        if args.out:
+            Path(args.out).write_text(output + "\n")
+        return 1
     odds_values = []
     nesting = {"markets": len(v3_list), "sides_max": 0, "levels_max": 0}
     updated_at_sample = None
@@ -194,9 +224,8 @@ def main() -> int:
                 if isinstance(level, dict):
                     if level.get("odds") is not None:
                         odds_values.append(level["odds"])
-                    if updated_at_sample is None and level.get("updated_at") is not None:
+                    if updated_at_sample is None and level.get("updated_at"):
                         updated_at_sample = level["updated_at"]
-    report["steps"].append({"step": "get_markets(v3)", "ok": markets_v3.get("status"), "count": len(v3_list)})
     report["findings"]["v3_nesting"] = nesting
     report["findings"]["odds_format_evidence"] = {
         "sampled": len(odds_values),
@@ -222,22 +251,46 @@ def main() -> int:
     report["steps"].append({"step": "get_markets(v4)", "ok": markets_v4.get("status"), "count": len(v4_list)})
     report["findings"]["v4_cftc_mapping_populated"] = v4_mapped
 
-    # ---- Step 6: multiple markets dual-shape check (2 ids) ----
-    ids = [event_id] + [e.get("event_id") for e in events[1:2] if e.get("event_id")]
+    # ---- Step 6: multiple markets dual-shape check + broad odds evidence ----
+    # One batched call over up to 25 seen events: exercises the dual-shape
+    # parser and gives the odds/updated_at questions a much wider sample than
+    # the single probed event.
+    ordered_ids = [event_id] + [eid for eid in seen_event_ids if eid != event_id]
+    ids = list(dict.fromkeys(ordered_ids))[:25]
     multi = px.get_multiple_markets(request_data(scheme_used, event_ids=ids, api_version="v3"))
     report["requests_used"] += 1
     multi_data = multi.get("data") or {}
+    grouped = multi_data.get("markets_by_event") or {}
     report["steps"].append(
         {
             "step": f"get_multiple_markets({len(ids)} ids)",
             "ok": multi.get("status"),
             "market_count": multi_data.get("market_count"),
-            "unattributed": len((multi_data.get("markets_by_event") or {}).get("_unattributed", [])),
+            "unattributed": len(grouped.get("_unattributed", [])),
         }
     )
     report["findings"]["multiple_markets_shape"] = (
-        "dict-by-event" if multi.get("status") and "_unattributed" not in (multi_data.get("markets_by_event") or {}) else "flat-list-or-error"
+        "dict-by-event" if multi.get("status") and "_unattributed" not in grouped else "flat-list-or-error"
     )
+    batch_odds = []
+    for key, markets in grouped.items():
+        if key == "_unattributed":
+            continue
+        for market in markets:
+            for side in market.get("selections") or []:
+                for level in (side if isinstance(side, list) else [side]):
+                    if isinstance(level, dict):
+                        if level.get("odds") not in (None, 0):
+                            batch_odds.append(level["odds"])
+                        if updated_at_sample is None and level.get("updated_at"):
+                            updated_at_sample = level["updated_at"]
+    if batch_odds:
+        report["findings"]["odds_format_evidence"] = {
+            "sampled": len(batch_odds),
+            "classification": classify_odds(batch_odds),
+            "sample_values": batch_odds[:6],
+        }
+    report["findings"]["updated_at_unit"] = updated_at_unit(updated_at_sample)
 
     report["status"] = "PASSED" if all(step.get("ok") for step in report["steps"]) else "PARTIAL"
     output = json.dumps(report, indent=2)

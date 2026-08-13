@@ -363,6 +363,7 @@ class TestMarkets:
         level = market["selections"][0][0]
         assert level["line_id"] == "abc123"
         assert level["odds"] == -150
+        assert level["implied_probability"] == 0.6  # American odds confirmed live
         assert level["stake"] == 250.0
         assert level["_raw"]["line_id"] == "abc123"
 
@@ -372,7 +373,25 @@ class TestMarkets:
         level = result["data"]["markets"][0]["selections"][0][0]
         assert level["line_id"] == "abc123"  # strike_id mapped
         assert level["odds"] == -150  # price mapped
+        assert level["implied_probability"] == 0.6
         assert level["stake"] == 250.0  # quantity mapped
+
+    def test_implied_probability_absent_when_no_odds(self, fake):
+        market = _market_v3()
+        market["selections"] = [[{"line_id": "x", "odds": None, "stake": 0}]]
+        fake.queue(FakeResponse(200, {"data": {"event_id": 101, "markets": [market]}}))
+        result = px.get_markets(_req(params={"event_id": 101, "api_version": "v3"}))
+        level = result["data"]["markets"][0]["selections"][0][0]
+        assert level["implied_probability"] is None
+
+    def test_updated_at_ns_normalized_to_seconds(self, fake):
+        market = _market_v3()
+        market["selections"] = [[{"line_id": "x", "odds": -110, "updated_at": 1786643339351933000}]]
+        fake.queue(FakeResponse(200, {"data": {"event_id": 101, "markets": [market]}}))
+        result = px.get_markets(_req(params={"event_id": 101, "api_version": "v3"}))
+        level = result["data"]["markets"][0]["selections"][0][0]
+        assert level["updated_at"] == 1786643339351933000
+        assert level["updated_at_s"] == pytest.approx(1786643339.35, abs=0.01)
 
     def test_empty_markets_is_success(self, fake):
         fake.queue(FakeResponse(200, {"data": {"event_id": 1, "markets": []}}))
@@ -411,6 +430,22 @@ class TestMultipleMarkets:
         assert len(grouped["101"]) == 1
         assert grouped["102"] == []
         assert len(grouped["_unattributed"]) == 1
+
+    def test_null_and_odd_values_do_not_fail_the_batch(self, fake):
+        # Observed live: per-event values vary between calls; null and odd
+        # scalars must not poison the whole batch.
+        fake.queue(
+            FakeResponse(
+                200,
+                {"data": {"101": [_market_v3()], "102": None, "103": "weird"}},
+            )
+        )
+        result = px.get_multiple_markets(_req(params={"event_ids": [101, 102, 103]}))
+        assert result["status"] is True
+        grouped = result["data"]["markets_by_event"]
+        assert len(grouped["101"]) == 1
+        assert grouped["102"] == []
+        assert grouped["_unattributed"][0]["event_key"] == "103"
 
     def test_drift_fails_closed(self, fake):
         fake.queue(FakeResponse(200, {"data": "garbage"}))
