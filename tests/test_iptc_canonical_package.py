@@ -445,10 +445,47 @@ RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
 #: package-input candidate on both proven interpreters. Every remaining hold needs
 #: an action outside this repository, which is precisely why none of them can be
 #: closed by a commit.
-UNRESOLVED_RELEASE_HOLDS = (
+#: The three absolutes this document used to state, asserted **absent**.
+#:
+#: Each was true when written and each is now provably false: the `pypi`
+#: environment carries a required reviewer and a branch policy, the registry
+#: serves `0.1.0` at the digests recorded below — which only a working trusted
+#: publisher could have uploaded — and the owner has approved the release.
+#: A blocker that has been cleared but still reads as blocking is not a
+#: conservative document; it teaches a releaser that this file's warnings are
+#: stale and can be stepped past, which is exactly the habit the real gates
+#: depend on them not having.
+FALSE_RELEASE_ABSOLUTES = (
     "the pypi environment is not configured",
     "the trusted publisher is not registered",
     "no human has approved publication",
+    "pypi has no pending publisher",
+    "does not exist with a required human reviewer",
+)
+
+#: The evidence that closed them, named so the claim is falsifiable rather than
+#: asserted. A reader with repository access can re-check every one of these.
+RELEASE_PREREQUISITE_EVIDENCE = (
+    # The publish workflow ran to success on the 0.1.0 tag, which is only
+    # possible if the environment resolved and the OIDC exchange was accepted.
+    "31743535579",
+    "machina-sports-canonical-v0.1.0",
+    "48d4168162fc84b48931b82971738b9359298dde",
+)
+
+#: The gates that still stand at release time. Closed prerequisites are not an
+#: open door: they mean the *standing setup* is in place, and every per-release
+#: check below still has to pass on its own evidence.
+#:
+#: The runtime reviewer is the load-bearing one. It is enforced by GitHub, not by
+#: any file here, and it is the only thing between a pushed tag and an upload.
+RELEASE_TIME_GATE_PHRASES = (
+    "required reviewer",
+    "merge",
+    "tag",
+    "sha256sum --check",
+    "license",
+    "after publishing",
 )
 
 #: The hold the renewed verification closed, spelled as the document used to state
@@ -561,11 +598,45 @@ HISTORICAL_RELEASE_DIGESTS = (
      "5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e"),
 )
 
-#: What the document must say about the *current* candidate's verification state.
-#: A candidate built once, on one machine, from an uncommitted tree is a
-#: candidate, and the document has to say so in words a releaser cannot read past.
-OPEN_VERIFICATION_PHRASES = (
-    "have not been independently verified",
+#: The commit whose `git archive` export was rebuilt to verify the 0.2.0 rows.
+#:
+#: The successor of the commit `package-receipt.json` pins, and necessarily so:
+#: the receipt names the canonical *source* commit, and the commit that records
+#: the resulting digests is the one after it. Named in full, because an
+#: abbreviation is a claim about a prefix.
+VERIFIED_RELEASE_COMMIT = "c5750ffa5656e4285c40ad734d05c41588475f6b"
+
+#: The two interpreters that independently reproduced the 0.2.0 rows, at the
+#: patch level each actually ran.
+#:
+#: NOT :data:`INDEPENDENT_VERIFICATION_INTERPRETERS`. That tuple records what
+#: rebuilt 0.1.0, on 3.9.**25**; this rebuild ran on 3.9.**6**. Reusing one tuple
+#: for both would silently restate whichever patch version was edited last, and a
+#: verification record that names an interpreter nobody ran is worse than one that
+#: names none.
+VERIFIED_RELEASE_INTERPRETERS = ("3.9.6", "3.11.14")
+
+#: What a CLOSED verification record must state.
+#:
+#: `git archive` is load-bearing rather than decorative: a rebuild from a working
+#: tree proves nothing, because an untracked file or a build cache can contribute
+#: bytes. The isolation is the evidence.
+CLOSED_VERIFICATION_PHRASES = (
+    "independently verified",
+    "git archive",
+)
+
+#: Asserted ABSENT once the rebuild has happened. A document that records the
+#: verification and still carries the sentence saying it never happened
+#: contradicts itself about the one thing a releaser reads it for — the same rule
+#: :data:`CLOSED_RELEASE_HOLD` enforces one version earlier.
+OPEN_CANDIDATE_CLAIM = "have not been independently verified"
+
+#: Closing the digest hold closes the digest hold. It is not release approval, it
+#: does not stand in for the required reviewer, and the three external holds are
+#: untouched by it — so the record has to keep saying so.
+VERIFICATION_IS_NOT_APPROVAL_PHRASES = (
+    "not release approval",
     "do not publish",
 )
 
@@ -3801,13 +3872,43 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         self.assertIn(NOTICE_FILE, self.text)
         self.assertMentions("mit", "attribution")
 
-    def test_the_docs_still_block_the_release_on_everything_else(self):
-        """Resolving the license must not read as unblocking the release. The
-        remaining holds are named individually, because "still blocked" without a
-        list is a sentence a releaser can talk themselves past."""
-        self.assertIn("BLOCKED", self.text)
-        self.assertMentions(*UNRESOLVED_RELEASE_HOLDS)
-        self.assertMentions("do not publish")
+    def test_the_docs_record_the_prerequisites_as_closed_on_evidence(self):
+        """The standing setup is in place, and the document says so with the
+        evidence rather than on trust.
+
+        Each prerequisite is closed by something a reader can re-check: a
+        successful publish run on the 0.1.0 tag, at a named head commit. Naming
+        the run is what separates "these are configured" from "somebody said
+        these are configured", and it is the same standard the digest records
+        below are held to.
+        """
+        for token in RELEASE_PREREQUISITE_EVIDENCE:
+            with self.subTest(evidence=token):
+                self.assertIn(token, self.text)
+
+    def test_the_docs_do_not_state_the_false_release_absolutes(self):
+        """The stale blockers, asserted gone.
+
+        A document that says the environment does not exist, while the
+        environment exists with a required reviewer, is not being careful — it is
+        wrong, and being wrong in the safe-sounding direction is how a releaser
+        learns to discount every other warning in the file.
+        """
+        for claim in FALSE_RELEASE_ABSOLUTES:
+            with self.subTest(claim=claim):
+                self.assertNotIn(claim, self.lowered)
+
+    def test_the_docs_preserve_every_release_time_gate(self):
+        """Closed prerequisites are not an open door.
+
+        The per-release checks are untouched by any of this: a green run, a merge
+        to the default branch, a tag on the exact merge commit, the runtime
+        reviewer on the `pypi` environment, the digest and license gates, and the
+        post-publish registry verification. Asserted individually, because
+        "the gates still apply" without a list is a sentence a releaser can talk
+        themselves past.
+        """
+        self.assertMentions(*RELEASE_TIME_GATE_PHRASES)
 
     def step_line(self, phrase: str) -> int:
         """The line the release step ``phrase`` is on.
@@ -3944,21 +4045,55 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
 
-    def test_the_docs_do_not_claim_the_current_candidate_was_independently_verified(self):
-        """The current rows were built once, on one machine, from an uncommitted
-        tree. Saying more than that is the fabrication this whole gate exists to
-        stop, and it is the easy mistake: the previous version's ✅ sits directly
-        above them.
+    def test_the_docs_record_the_0_2_0_independent_verification_as_closed(self):
+        """The 0.2.0 digest hold, closed on evidence rather than on assertion.
 
-        Asserted as a positive statement of the open hold rather than only as an
-        absent claim, because "the document does not say it was verified" is also
-        satisfied by a document that says nothing at all.
+        The rows were rebuilt from a clean ``git archive`` export of an exact
+        commit, in isolated trees, on both proven interpreters, and both
+        reproduced what the checked-in authority holds. A releaser can only weigh
+        that by seeing the same four things the 0.1.0 record gave them: which
+        commit, which two interpreters, which epoch, and which digests came out.
+
+        Every value is asserted against a named constant rather than against
+        prose, so a record that verified *some other* bytes, or that names an
+        interpreter nobody ran, is red.
         """
-        self.assertMentions(*OPEN_VERIFICATION_PHRASES)
+        self.assertMentions(*CLOSED_VERIFICATION_PHRASES)
+        self.assertIn(VERIFIED_RELEASE_COMMIT, self.text)
+        self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        for version in VERIFIED_RELEASE_INTERPRETERS:
+            with self.subTest(interpreter=version):
+                self.assertIn(version, self.text)
         for name, digest in REVIEWED_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
+
+    def test_the_docs_no_longer_carry_the_open_candidate_claim(self):
+        """The stale sentence, asserted gone.
+
+        Recording the rebuild while leaving the claim that it never happened is
+        not a half-finished edit — it is a document that contradicts itself about
+        the one thing a releaser reads it for.
+        """
+        self.assertNotIn(OPEN_CANDIDATE_CLAIM, self.lowered)
+
+    def test_the_closed_verification_does_not_read_as_release_approval(self):
+        """The failure mode a ✅ invites. Closing the digest hold says the bytes
+        are reproducible; it says nothing about whether this particular upload
+        may proceed, and every release-time gate is untouched by it."""
+        self.assertMentions(*VERIFICATION_IS_NOT_APPROVAL_PHRASES)
+        self.assertMentions(*RELEASE_TIME_GATE_PHRASES)
+
+    def test_the_verified_interpreters_are_not_confused_with_the_0_1_0_ones(self):
+        """Guard the guard. The two records ran on different 3.9 patch versions,
+        so one shared tuple would make whichever was edited last silently vouch
+        for a run that never happened."""
+        self.assertNotEqual(VERIFIED_RELEASE_INTERPRETERS,
+                            INDEPENDENT_VERIFICATION_INTERPRETERS)
+        for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
+            with self.subTest(historical=version):
+                self.assertIn(version, self.text)
 
     def test_the_docs_record_the_release_metadata_fixed_point(self):
         """Why the release metadata is self-referential, and which values resolve
@@ -4001,15 +4136,16 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         """
         self.assertNotIn(CLOSED_RELEASE_HOLD, self.lowered)
 
-    def test_the_closed_digest_hold_is_not_still_listed_as_a_hold(self):
-        """Guard the guard. The holds list is what "still blocked" means here, so
-        the closed hold must be out of the list and the remaining three must be
-        exactly what is left — a document naming four holds while one is closed
-        teaches a releaser to discount the list."""
-        self.assertNotIn(CLOSED_RELEASE_HOLD, [hold.lower()
-                                               for hold in UNRESOLVED_RELEASE_HOLDS])
-        self.assertEqual(len(UNRESOLVED_RELEASE_HOLDS), 3)
-        self.assertMentions(*UNRESOLVED_RELEASE_HOLDS)
+    def test_no_closed_item_is_still_written_as_a_blocker(self):
+        """Guard the guard. Every hold this document has ever carried is now
+        closed, so none of their sentences may survive anywhere in it — including
+        the digest hold closed one version earlier. A file that records a closure
+        in one section and restates it as a blocker in another teaches a releaser
+        to discount both."""
+        self.assertNotIn(CLOSED_RELEASE_HOLD, self.lowered)
+        for claim in FALSE_RELEASE_ABSOLUTES:
+            with self.subTest(claim=claim):
+                self.assertNotIn(claim, self.lowered)
 
     def test_the_verified_digests_are_the_ones_the_authority_holds(self):
         """The rebuild is only evidence about this release if the rows it
@@ -4024,9 +4160,15 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
     def test_the_resolved_digest_gate_does_not_authorize_a_release(self):
         """Closing a hold is not permission. The document has to keep saying so in
         the same breath, because "independently verified" is the phrase most
-        likely to be read as "ready to publish"."""
-        self.assertIn("BLOCKED", self.text)
+        likely to be read as "ready to publish".
+
+        Asserted as the gates that remain rather than as the word "BLOCKED",
+        which described this document only while the standing prerequisites were
+        open. Keying on that word made the check fail the moment they closed —
+        measuring the banner instead of the safeguard.
+        """
         self.assertMentions("do not publish", "not release approval")
+        self.assertMentions(*RELEASE_TIME_GATE_PHRASES)
 
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
