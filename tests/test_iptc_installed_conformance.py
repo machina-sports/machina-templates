@@ -30,10 +30,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMPORT_NAME = "machina_sports_canonical"
-ARTIFACT_STEM = "machina_sports_canonical-0.1.0"
+ARTIFACT_STEM = "machina_sports_canonical-0.2.0"
 RELEASE_HELPER = "packaging/machina_sports_canonical/release.py"
 RELEASE_CHECKSUM_PATH = (
-    REPO_ROOT / "docs/iptc/machina-sports-canonical-0.1.0.sha256")
+    REPO_ROOT / "docs/iptc/machina-sports-canonical-0.2.0.sha256")
 RELEASE_SOURCE_DATE_EPOCH = "1786398569"
 
 # The same closed staging set as the package proof.  Building a disposable copy

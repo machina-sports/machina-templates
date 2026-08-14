@@ -1,0 +1,90 @@
+{
+  "schema_version": "canonical-observation/1.1",
+  "observation": {
+    "provider": {
+      "namespace": "synthetic/reduced-precision-soccer",
+      "family": "synthetic"
+    },
+    "observed_at": "2030-03-01T23:00:00+00:00",
+    "adapter": {
+      "name": "synthetic.canonical.adapters.reduced_precision_soccer",
+      "version": "1",
+      "source_refs": [
+        {
+          "kind": "endpoint-class",
+          "value": "synthetic/fixtures",
+          "note": "no provider was called; this fixture is hand-authored"
+        }
+      ]
+    },
+    "rights": {
+      "data_class": "synthetic-fixture",
+      "prototype_only": true,
+      "commercial_use": false
+    },
+    "sport": {
+      "medtop": "20001065",
+      "key": "soccer"
+    },
+    "competition": {
+      "provider_id": "synthetic-soccer-league-1",
+      "name": "Synthetic Premier Division",
+      "type": "recurring-competition",
+      "season": {
+        "provider_id": "synthetic-soccer-league-1-2030",
+        "name": "Synthetic Premier Division 2030"
+      }
+    },
+    "phase": {
+      "provider_id": "synthetic-soccer-league-1-2030-27",
+      "name": "Matchday 27"
+    },
+    "site": {
+      "provider_id": "9101",
+      "name": "Synthetic Home Ground",
+      "city": "Synthetic City",
+      "country": "SYN"
+    },
+    "event": {
+      "provider_id": "9001",
+      "label": "Synthetic Home United vs Synthetic Away Town",
+      "status": "closed",
+      "outcome_type": "regular",
+      "temporal_evidence": {
+        "kind": "start",
+        "source_value": "2030-03-01T20:00-03:00",
+        "precision": "minute",
+        "lower_inclusive": "2030-03-01T23:00:00Z",
+        "upper_exclusive": "2030-03-01T23:01:00Z",
+        "provenance": {
+          "normalizer": "synthetic.canonical.adapters.reduced_precision_soccer",
+          "normalizer_version": "1",
+          "derivation": "declared_precision_interval"
+        }
+      }
+    },
+    "participants": [
+      {
+        "kind": "team",
+        "provider_id": "9011",
+        "name": "Synthetic Home United",
+        "alignment": "home",
+        "score": "2",
+        "outcome": "win"
+      },
+      {
+        "kind": "team",
+        "provider_id": "9012",
+        "name": "Synthetic Away Town",
+        "alignment": "away",
+        "score": "1",
+        "outcome": "loss"
+      }
+    ],
+    "raw": {
+      "@type": "synthetic-fixture",
+      "note": "Hand-authored. No provider payload was retrieved to build this file, and nothing here is evidence about any feed. It is the provider-neutrality half of the reduced-precision pair: a second sport, and an explicit non-UTC offset, on exactly the code path the basketball fixture uses. The stated value is a local kickoff at -03:00, so its bounds are only correct if the derivation normalizes at the offset carried in the value itself.",
+      "stated_start": "2030-03-01T20:00-03:00"
+    }
+  }
+}

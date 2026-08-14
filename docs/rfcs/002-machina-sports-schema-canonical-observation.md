@@ -5,9 +5,9 @@
 | **Status** | Accepted for PR 2. |
 | **Depends on** | RFC 001 (`machina-iptc-profile/1.1`), which stays normative for everything this document does not restate |
 | **External name** | Machina Sports Schema |
-| **Input contract** | `canonical-observation/1` |
+| **Input contract** | `canonical-observation/1.1` (§12); `canonical-observation/1` still read, never emitted |
 | **Output contract** | `machina-sports-schema/1` |
-| **Profile claimed** | `machina-iptc-profile/1.1` |
+| **Profile claimed** | `machina-iptc-profile/1.2` |
 | **Pin** | `https://github.com/iptc/sport-schema` @ `0e77bf8678f3702fe81c28673bede35efe47d633`, Sport Schema 1.1 |
 | **Executable form** | `tools/iptc/canonical/` |
 
@@ -44,9 +44,11 @@ database" has read it wrong.
 
 ## 1. The canonical observation
 
-`SCHEMA_VERSION = "canonical-observation/1"`. Plain JSON, no JSON-LD, no
-`sport:` term. It is the single input to serialization: every serializer reads
-the observation and nothing else.
+`SCHEMA_VERSION = "canonical-observation/1.1"`, and
+`ACCEPTED_SCHEMA_VERSIONS` is the closed set of identifiers a reader admits —
+`canonical-observation/1` alongside it, for existing exact documents only (§12.3).
+Plain JSON, no JSON-LD, no `sport:` term. It is the single input to
+serialization: every serializer reads the observation and nothing else.
 
 Validated by `validate_observation(document) -> list[str]`. An empty list means
 valid. Validation is **hand-rolled and dependency-free** — neither repository
@@ -55,7 +57,7 @@ package is not justified by a key walk.
 
 ```jsonc
 {
-  "schema_version": "canonical-observation/1",
+  "schema_version": "canonical-observation/1.1",
   "observation": {
     "provider":   { "namespace": "sports-skills/espn", "family": "open-data" },
     "observed_at": "2026-03-01T22:05:00+00:00",
@@ -98,8 +100,10 @@ package is not justified by a key walk.
 - **Required:** `provider.namespace`, `observed_at`, `adapter` (`name`,
   `version`), `rights` (`data_class`, `prototype_only`, `commercial_use`),
   `sport.medtop`, `competition.provider_id`, `event.provider_id`,
-  `event.start_time`, `event.status`, and **at least two `participants`**. A
-  one-sided event is not an event; it is a partially-parsed payload.
+  `event.status`, **exactly one of `event.start_time` or
+  `event.temporal_evidence`** (§12), and **at least two `participants`**. A
+  one-sided event is not an event; it is a partially-parsed payload, and an event
+  that states its start neither way is one we cannot place at all.
 - **`adapter` and `rights` are required, not optional-if-present.** Neither is
   derivable from a payload. An observation with no `rights` block leaves every
   consumer to pick its own licence default, which is a licence decision made by
@@ -261,7 +265,7 @@ for consumers reading RDF. Same facts.
   "provider":   { "namespace": "sports-skills/espn", "family": "open-data" },
   "adapter":    { "name": "…", "version": "0.31.0" },
   "serializer": { "name": "machina-iptc-serializer", "version": "1" },
-  "profile":    "machina-iptc-profile/1.1",
+  "profile":    "machina-iptc-profile/1.2",
   "upstream_pin": { "repository": "https://github.com/iptc/sport-schema",
                     "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
                     "target_version": "1.1" },
@@ -398,7 +402,7 @@ observation with advanced statistics but no clock is `core`, because claiming
 `advanced` would tell a consumer it can rely on live data it will not get.
 
 Presence is derived from the observation, one predicate per capability. Five
-capabilities have no predicate because `canonical-observation/1` has **no field
+capabilities have no predicate because the observation contract has **no field
 that could carry them**: `event.coordinates`, `event.tracking`,
 `event.expected_metrics`, `event.formations`, and — as a schema-shape matter
 rather than a provider one — anything a later version adds. Those are reported
@@ -428,7 +432,7 @@ reported and does not affect `compatible`; a missing *required* one does.
 ```jsonc
 { "machina_sports_schema": {
     "schema_version": "machina-sports-schema/1",
-    "profile": "machina-iptc-profile/1.1",
+    "profile": "machina-iptc-profile/1.2",
     "sport_schema_graph": { "@context": {…}, "@graph": [ … ] },
     "event_view": { … },
     "provenance": { … },
@@ -565,3 +569,177 @@ avoid.
 - no change to `sports-skills` native output, which stays byte-identical by
   default;
 - no product surface built on top of the envelope.
+
+---
+
+## 12. Reduced-precision temporal evidence
+
+`canonical-observation/1.1`, profile `machina-iptc-profile/1.2`. Additive: it
+adds one member and one capability name, and changes the meaning of no existing
+field.
+
+**The defect it corrects.** `event.start_time` requires an RFC 3339 instant with
+seconds. Most providers publish schedules at minute granularity, so an honest
+normalizer holding `2030-01-02T03:05Z` had two exits and both were wrong.
+Appending `:00` invents a second-of-minute the source never stated, and once that
+value is in the record no consumer can tell it from a source that genuinely said
+`:00` — a fabricated numeral carrying a real source reference, below every gate
+that could catch it. Refusing the observation blocks fact families for a
+formatting mismatch rather than a missing fact.
+
+The modelling error underneath is that one string was carrying three different
+things. They are kept separate here:
+
+| Concern | What it is | Authority |
+|---|---|---|
+| **Source lexical value** | the exact string the normalizer produced, byte for byte, including its explicit offset | observed, never rewritten |
+| **Declared source precision** | how precise that string actually is | observed, never inferred from formatting |
+| **Normalized comparison bounds** | the half-open instant interval the value denotes, UTC-normalized | derived, deterministic, recomputable |
+
+**A reduced-precision value denotes an interval, not a point.**
+`2030-01-02T03:05Z` at minute precision denotes
+`[2030-01-02T03:05:00Z, 2030-01-02T03:06:00Z)` — lower inclusive, upper
+exclusive, both emitted as second-precision RFC 3339 instants in UTC, so every
+consumer compares like with like.
+
+### 12.1 The member
+
+```jsonc
+{
+  "schema_version": "canonical-observation/1.1",
+  "observation": {
+    "event": {
+      // "start_time" is ABSENT in this case — see §12.2
+      "temporal_evidence": {
+        "kind": "start",
+        "source_value": "2030-01-02T03:05-03:00",
+        "precision": "minute",
+        "lower_inclusive": "2030-01-02T06:05:00Z",
+        "upper_exclusive": "2030-01-02T06:06:00Z",
+        "provenance": { "derivation": "declared_precision_interval" }
+      }
+    }
+  }
+}
+```
+
+- `kind` — closed to `start`, the one instant `event.start_time` covers. An
+  unrecognised kind would otherwise let an end-of-event bound satisfy a consumer
+  that asked for a bounded *start*.
+- `precision` — closed to `minute`. `date` and `hour` are deliberately out: no
+  fixture cites them and their interval semantics (all-day events,
+  timezone-ambiguous dates) are materially harder. Second and fractional-second
+  values are out because they already have a home, `event.start_time`; admitting
+  them here would be two ways to say one thing plus zero-width "intervals".
+- `source_value` — verbatim, and it **must** carry an explicit RFC 3339 offset
+  (`Z` or `±HH:MM`). **The offset lives here and nowhere else.** There is no
+  separate offset field, and the member's key set is closed so that adding one is
+  an error rather than a second source of truth that can disagree with the first.
+- `lower_inclusive` / `upper_exclusive` — derived, second-precision, `Z`.
+- `provenance` — identifiers and versions only: no URL, no query string, no
+  credential. `derivation` is closed to `declared_precision_interval`.
+
+**Bound derivation is a pure function of `(source_value, precision)`**,
+implemented as `observation.derive_bounds`:
+
+| `precision` | Width | Lower | Upper |
+|---|---|---|---|
+| `minute` | exactly 60 s | `source_value` with `:00` seconds, converted to UTC at its explicit offset | lower + 60 s |
+
+**No timezone database ever participates.** The offset is explicit and is read
+out of `source_value`; the arithmetic is fixed-offset subtraction. There is no
+zone name to resolve, so no DST rule can apply — a value at a DST transition
+instant derives exactly what the same wall value derives anywhere else. A value
+with a zone name but no explicit offset, or a naive value, is not admissible.
+This also keeps the packaging promise: standard library only, Python 3.9 floor,
+no `dateutil`, no `pendulum`, no `zoneinfo`.
+
+### 12.2 Conditional validation, fail-closed
+
+An event carries **exactly one** of two temporal states:
+
+1. **Exact** — `event.start_time` present, RFC 3339 with seconds;
+   `temporal_evidence` absent. Behaviour is unchanged in every respect.
+2. **Reduced** — `temporal_evidence` present with `precision: "minute"`;
+   `event.start_time` absent.
+
+Everything else is a hard validation error. There is no best-effort branch and no
+defaulted precision:
+
+| Condition | Disposition |
+|---|---|
+| both `start_time` and `temporal_evidence` present | **FAIL** — inconsistent dual assertion |
+| neither present | **FAIL** |
+| `precision` missing, unknown, or anything but `minute` | **FAIL** |
+| a second or fractional-second value inside the member | **FAIL** — exact values belong in `start_time` |
+| `source_value` naive, or its offset only implied by a zone name | **FAIL** |
+| any key the member does not define, including a second offset-bearing one | **FAIL** |
+| bounds absent, non-RFC-3339, not second-precision, or not `Z`-normalized | **FAIL** |
+| bounds not exactly recomputable from `(source_value, precision)` | **FAIL** |
+| `lower_inclusive >= upper_exclusive` (inverted **or** zero-width) | **FAIL** |
+| width other than 60 s for `minute` | **FAIL** |
+| `provenance` absent, or `derivation` outside its enum | **FAIL** |
+
+`event.start_time` keeps **exact-instant semantics**, its current regex and its
+current IPTC projection. Widening it instead would have changed the meaning of a
+released, pinned field that every existing consumer reads as an instant, with no
+way to detect the change from the data — a breaking change disguised as a
+permissive one.
+
+### 12.3 The closed schema-version acceptance matrix
+
+`validate_observation` compares `schema_version` against a **closed set**
+(`canonical.ACCEPTED_SCHEMA_VERSIONS`), not a single constant:
+
+| Declared schema | Temporal state | Disposition |
+|---|---|---|
+| `canonical-observation/1` | exact; no temporal evidence | **ACCEPT** as a legacy exact document |
+| `canonical-observation/1` | temporal evidence, with or without `start_time` | **REFUSE** — that contract defines no such member |
+| `canonical-observation/1.1` | exact; no temporal evidence | **ACCEPT** |
+| `canonical-observation/1.1` | valid minute evidence; no `start_time` | **ACCEPT** |
+| `canonical-observation/1.1` | both states, or neither | **REFUSE** |
+| any other identifier | any | **REFUSE** |
+
+Adapters emit the successor for both exact and reduced documents. The predecessor
+stays accepted only so existing exact documents keep reading, and is never
+emitted for a new reduced one.
+
+### 12.4 Capability and graph consequences
+
+- `event.start_time` — unchanged, present iff an exact instant is present.
+- `event.start_time.bounded` — present iff the record carries **valid** reduced
+  evidence. It joins the **core-tier optional** set, never the required set:
+  requiring it would knock every existing exact observation out of the core tier.
+- No alternatives or OR semantics are added. `check_compatibility` evaluates
+  `requires` as a flat conjunction, so a consumer picks **one** requirement set:
+  requiring `event.start_time` fails closed on a reduced record, and requiring
+  `event.start_time.bounded` fails closed on an exact one. Both are the truthful
+  answer for that consumer.
+- A reduced record therefore reports **below core**, with `event.start_time`
+  listed as core-required-absent. That is the honest reading — the record has no
+  exact instant — and requirement sets, not tier labels, are the mechanism for
+  bounded consumers.
+- Under profile `machina-iptc-profile/1.2`, a reduced-precision observation
+  produces `event_view` normally and **no `sport_schema_graph` at all**: not a
+  partial `Event`, not an `Event` with the start property dropped, and no
+  `machina:`-namespaced temporal property inside the interoperability document. A
+  partial `Event` is a conformance claim about a resource that is not conformant,
+  and a `machina:` temporal property in the graph is the same invented-precision
+  leak one namespace over. The evidence lives in `event_view`, where our
+  provenance travels with it.
+- **The omission is structured.** `capabilities.graph_unavailable_reason` carries
+  the enumerated token `exact-event-start-time-required`, and a direct
+  `sport_schema_graph` call raises `serialize.GraphUnavailable` carrying the same
+  token — never an unstructured error and never an empty `@graph`, which would
+  look like a conformant document that happens to describe nothing. The key is
+  absent, not null, on records whose graph is available.
+
+Exact observations are unaffected: `sport_schema_graph`, `event_view`,
+`provenance`, `provider_ids` and `rights` are byte-identical across the bump,
+apart from the profile identifier `provenance` restates. The only other changes
+are `schema_version` on the input document, `profile` on the envelope, and
+`event.start_time.bounded` appearing in the envelope's `capabilities.absent` and
+core `optional_absent` lists. `tests/test_iptc_temporal_evidence.py` proves that
+by rebuilding every corrected envelope, undoing exactly those changes, and
+comparing the digest against
+`tools/iptc/fixtures/exact-observation-0.1.0-digests.json`.

@@ -1,0 +1,34 @@
+{
+  "_comment": [
+    "SHA-256 of every corrected envelope fixture as machina-sports-canonical 0.1.0 produced it,",
+    "captured from the checked-in bytes at commit 08d62ef before any RFC 002 §12 edit.",
+    "",
+    "WHY A DIGEST RATHER THAN A SECOND COPY OF EACH FIXTURE. RFC 002 §12 requires the",
+    "exact-observation diff to be an ENUMERATED diff — 'any diff outside the enumerated items is a",
+    "regression, not a version artifact' — which is a claim about every other byte in the envelope.",
+    "tests/test_iptc_temporal_evidence.py rebuilds each envelope, mechanically undoes exactly the",
+    "enumerated version-bearing changes, reserializes with the writer the fixtures are checked in",
+    "with, and compares the digest against the row here. A match proves byte identity of",
+    "sport_schema_graph, event_view, provenance, provider_ids and rights across the bump, for every",
+    "fixture, in 8 checked-in lines instead of 160 KB of duplicated JSON that would rot.",
+    "",
+    "THESE ROWS ARE HISTORY AND ARE NEVER REGENERATED. They record what 0.1.0 emitted. If a row",
+    "stops matching, the answer is that something outside the enumerated diff changed — which is",
+    "the finding, not a stale file. Re-recording a row would delete the only evidence of it."
+  ],
+  "baseline_distribution_version": "0.1.0",
+  "baseline_commit": "08d62ef",
+  "baseline_profile": "machina-iptc-profile/1.1",
+  "baseline_schema_version": "canonical-observation/1",
+  "serialization": "json.dumps(document, indent=2, sort_keys=False, ensure_ascii=False) + newline",
+  "envelopes": {
+    "api-football-soccer-envelope.json": "6324fa7ad0ecb9c7e7cfed99e62cc509d677bb424855a12405be0c2d78dfd512",
+    "mapping-contract-synthetic-envelope.json": "01b56b47b3015c6241a1c3e09b57e988b40831e2f34969c54aa9f6ed6e7d2a90",
+    "sportradar-mlb-envelope.json": "a3f4642f48239a89e14dbd7c94d88b22f5bf9ea60a01771169ca279600d5611d",
+    "sportradar-nfl-envelope.json": "148abdff923b4355cd4446ce281f01e3d5ab7b69c361bf14202362b71cdeb3b5",
+    "sportradar-soccer-envelope.json": "1e85406d718423784c003e20190c5e2f3bac46673067ee465c853c12caa0be51",
+    "sportradar-tennis-envelope.json": "7a88aa2c993c0b2146359d09e5f54ba7decb6d6e5cadfa68da539f8f06b14a97",
+    "sports-skills-espn-soccer-envelope.json": "f3e6b8578c65c31ed696a74c49b3f6ba501a18730d8889b1b2a45adbe6df026e",
+    "stats-perform-opta-soccer-envelope.json": "652a3af05d69293e49b53f7acc179274f12bdd1fd08c4bdf3e896bc8f72ed89e"
+  }
+}

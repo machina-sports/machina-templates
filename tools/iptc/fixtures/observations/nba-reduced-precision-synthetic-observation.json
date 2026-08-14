@@ -1,0 +1,86 @@
+{
+  "schema_version": "canonical-observation/1.1",
+  "observation": {
+    "provider": {
+      "namespace": "synthetic/reduced-precision-basketball",
+      "family": "synthetic"
+    },
+    "observed_at": "2030-01-02T04:00:00+00:00",
+    "adapter": {
+      "name": "synthetic.canonical.adapters.reduced_precision_basketball",
+      "version": "1",
+      "source_refs": [
+        {
+          "kind": "endpoint-class",
+          "value": "synthetic/scoreboard",
+          "note": "no provider was called; this fixture is hand-authored"
+        }
+      ]
+    },
+    "rights": {
+      "data_class": "synthetic-fixture",
+      "prototype_only": true,
+      "commercial_use": false
+    },
+    "sport": {
+      "medtop": "20000851",
+      "key": "basketball"
+    },
+    "competition": {
+      "provider_id": "synthetic-basketball-league-1",
+      "name": "Synthetic Basketball League",
+      "type": "recurring-competition",
+      "season": {
+        "provider_id": "synthetic-basketball-league-1-2030",
+        "name": "Synthetic Basketball League 2030"
+      }
+    },
+    "site": {
+      "provider_id": "7101",
+      "name": "Synthetic Basketball Arena",
+      "city": "Synthetic City",
+      "country": "SYN"
+    },
+    "event": {
+      "provider_id": "7001",
+      "label": "Synthetic Home Hoops vs Synthetic Away Nets",
+      "status": "closed",
+      "outcome_type": "regular",
+      "temporal_evidence": {
+        "kind": "start",
+        "source_value": "2030-01-02T03:05Z",
+        "precision": "minute",
+        "lower_inclusive": "2030-01-02T03:05:00Z",
+        "upper_exclusive": "2030-01-02T03:06:00Z",
+        "provenance": {
+          "normalizer": "synthetic.canonical.adapters.reduced_precision_basketball",
+          "normalizer_version": "1",
+          "derivation": "declared_precision_interval"
+        }
+      }
+    },
+    "participants": [
+      {
+        "kind": "team",
+        "provider_id": "7011",
+        "name": "Synthetic Home Hoops",
+        "alignment": "home",
+        "score": "101",
+        "outcome": "win"
+      },
+      {
+        "kind": "team",
+        "provider_id": "7012",
+        "name": "Synthetic Away Nets",
+        "alignment": "away",
+        "score": "99",
+        "outcome": "loss"
+      }
+    ],
+    "raw": {
+      "@type": "synthetic-fixture",
+      "note": "Hand-authored. No provider payload was retrieved to build this file, and nothing here is evidence about any feed. It exists to exercise one thing: a source that published a start time to the minute and no further, which the canonical contract must carry as a bounded interval rather than as an invented second-of-minute.",
+      "stated_start": "2030-01-02T03:05Z"
+    }
+  }
+}

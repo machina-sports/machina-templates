@@ -173,7 +173,7 @@ ENVELOPE_KEY = "machina_sports_schema"
 #: The canonical observation contract's own version string, as a leg that arrives
 #: pre-canonicalized declares it. The seam recognizes an observation by this,
 #: never by the provider's name.
-OBSERVATION_SCHEMA_VERSION = "canonical-observation/1"
+OBSERVATION_SCHEMA_VERSION = "canonical-observation/1.1"
 
 
 # --------------------------------------------------------------------------

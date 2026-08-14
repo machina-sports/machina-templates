@@ -1,0 +1,233 @@
+{
+  "machina_sports_schema": {
+    "schema_version": "machina-sports-schema/1",
+    "profile": "machina-iptc-profile/1.2",
+    "event_view": {
+      "event_id": "urn:machina:sports:event:x618910fa20e09ad1c0e9b3afe1b077da",
+      "label": "Synthetic Home United vs Synthetic Away Town",
+      "sport": "soccer",
+      "temporal_evidence": {
+        "kind": "start",
+        "source_value": "2030-03-01T20:00-03:00",
+        "precision": "minute",
+        "lower_inclusive": "2030-03-01T23:00:00Z",
+        "upper_exclusive": "2030-03-01T23:01:00Z",
+        "provenance": {
+          "normalizer": "synthetic.canonical.adapters.reduced_precision_soccer",
+          "normalizer_version": "1",
+          "derivation": "declared_precision_interval"
+        }
+      },
+      "status": "closed",
+      "outcome_type": "regular",
+      "competition": {
+        "id": "urn:machina:sports:competition:xec99b9611f970abc9cf5d5973913e37a",
+        "name": "Synthetic Premier Division",
+        "type": "recurring-competition"
+      },
+      "season": {
+        "id": "urn:machina:sports:competition:x093d4a5fdca9842805101a8eafcfeecb",
+        "name": "Synthetic Premier Division 2030"
+      },
+      "phase": {
+        "id": "urn:machina:sports:phase:x14665fa1d3179c0efa5aa78fe82c5875",
+        "name": "Matchday 27"
+      },
+      "site": {
+        "id": "urn:machina:sports:site:xced5751abe3cb0307af495e5fd96dc9e",
+        "name": "Synthetic Home Ground",
+        "city": "Synthetic City",
+        "country": "SYN"
+      },
+      "participants": [
+        {
+          "id": "urn:machina:sports:team:x3e56c5a6cc00cc873477f162f475cfcc",
+          "role": "home",
+          "name": "Synthetic Home United",
+          "score": "2",
+          "outcome": "win"
+        },
+        {
+          "id": "urn:machina:sports:team:xa0cb4d31a4d226fd07aad5d417dd78ce",
+          "role": "away",
+          "name": "Synthetic Away Town",
+          "score": "1",
+          "outcome": "loss"
+        }
+      ],
+      "provider": {
+        "namespace": "synthetic/reduced-precision-soccer",
+        "family": "synthetic",
+        "raw": {
+          "@type": "synthetic-fixture",
+          "note": "Hand-authored. No provider payload was retrieved to build this file, and nothing here is evidence about any feed. It is the provider-neutrality half of the reduced-precision pair: a second sport, and an explicit non-UTC offset, on exactly the code path the basketball fixture uses. The stated value is a local kickoff at -03:00, so its bounds are only correct if the derivation normalizes at the offset carried in the value itself.",
+          "stated_start": "2030-03-01T20:00-03:00"
+        }
+      }
+    },
+    "provenance": {
+      "provider": {
+        "namespace": "synthetic/reduced-precision-soccer",
+        "family": "synthetic"
+      },
+      "adapter": {
+        "name": "synthetic.canonical.adapters.reduced_precision_soccer",
+        "version": "1"
+      },
+      "serializer": {
+        "name": "machina-iptc-serializer",
+        "version": "1"
+      },
+      "profile": "machina-iptc-profile/1.2",
+      "upstream_pin": {
+        "repository": "https://github.com/iptc/sport-schema",
+        "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
+        "target_version": "1.1"
+      },
+      "observed_at": "2030-03-01T23:00:00+00:00",
+      "source_refs": [
+        {
+          "kind": "endpoint-class",
+          "value": "synthetic/fixtures",
+          "note": "no provider was called; this fixture is hand-authored"
+        }
+      ],
+      "rights": {
+        "data_class": "synthetic-fixture",
+        "prototype_only": true,
+        "commercial_use": false
+      },
+      "determinism": {
+        "id_strategy": "provider-scoped-surrogate",
+        "digest": "blake2b-128",
+        "canonical_id_service": "not-available-in-this-phase"
+      }
+    },
+    "provider_ids": [
+      {
+        "machina_id": "urn:machina:sports:competition:xec99b9611f970abc9cf5d5973913e37a",
+        "entity_type": "competition",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "synthetic-soccer-league-1",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:competition:x093d4a5fdca9842805101a8eafcfeecb",
+        "entity_type": "season",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "synthetic-soccer-league-1-2030",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.season.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:phase:x14665fa1d3179c0efa5aa78fe82c5875",
+        "entity_type": "phase",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "synthetic-soccer-league-1-2030-27",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.phase.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:site:xced5751abe3cb0307af495e5fd96dc9e",
+        "entity_type": "site",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "9101",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.site.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:event:x618910fa20e09ad1c0e9b3afe1b077da",
+        "entity_type": "event",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "9001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.event.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:x3e56c5a6cc00cc873477f162f475cfcc",
+        "entity_type": "team",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "9011",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[0].provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:xa0cb4d31a4d226fd07aad5d417dd78ce",
+        "entity_type": "team",
+        "provider_namespace": "synthetic/reduced-precision-soccer",
+        "provider_id": "9012",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[1].provider_id"
+      }
+    ],
+    "capabilities": {
+      "tier": null,
+      "tiers_satisfied": [],
+      "present": [
+        "event.competition",
+        "event.identity",
+        "event.participants",
+        "event.result",
+        "event.score",
+        "event.start_time.bounded",
+        "event.status",
+        "provenance"
+      ],
+      "absent": [
+        "event.actions",
+        "event.clock",
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.lineups",
+        "event.live_statistics",
+        "event.period",
+        "event.play_by_play",
+        "event.start_time",
+        "event.tracking",
+        "participant.player_statistics"
+      ],
+      "not_expressible": [
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.tracking"
+      ],
+      "by_tier": {
+        "core": {
+          "required_present": [
+            "event.competition",
+            "event.identity",
+            "event.participants",
+            "event.status",
+            "provenance"
+          ],
+          "required_absent": [
+            "event.start_time"
+          ],
+          "optional_present": [
+            "event.result",
+            "event.score",
+            "event.start_time.bounded"
+          ],
+          "optional_absent": []
+        }
+      },
+      "violations": [],
+      "graph_unavailable_reason": "exact-event-start-time-required"
+    },
+    "rights": {
+      "data_class": "synthetic-fixture",
+      "prototype_only": true,
+      "commercial_use": false
+    }
+  }
+}

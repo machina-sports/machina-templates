@@ -107,7 +107,7 @@ jobs:
       # with digests they had seen somewhere else — and if this job produced
       # different bytes, nothing in the run said so. The rows are now diffed
       # against the reviewed digests checked in at
-      # docs/iptc/machina-sports-canonical-0.1.0.sha256, in the job that built
+      # docs/iptc/machina-sports-canonical-0.2.0.sha256, in the job that built
       # them and before the artefact is uploaded, so a release whose bytes are not
       # the approved bytes never reaches the approval gate at all.
       #
@@ -120,7 +120,7 @@ jobs:
       - name: The digests are the reviewed ones
         run: |
           (cd dist && sha256sum *.whl *.tar.gz) | tee SHA256SUMS
-          diff -u docs/iptc/machina-sports-canonical-0.1.0.sha256 SHA256SUMS
+          diff -u docs/iptc/machina-sports-canonical-0.2.0.sha256 SHA256SUMS
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:

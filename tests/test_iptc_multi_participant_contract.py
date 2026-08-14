@@ -138,7 +138,7 @@ class TestTheObservationIsObviouslySyntheticAndValid(unittest.TestCase):
         self.assertEqual(validate_observation(self.document), [])
 
     def test_the_document_claims_the_canonical_observation_contract(self):
-        self.assertEqual(self.document["schema_version"], "canonical-observation/1")
+        self.assertEqual(self.document["schema_version"], "canonical-observation/1.1")
         self.assertEqual(sorted(self.document), ["observation", "schema_version"])
 
     def test_every_name_announces_itself_as_synthetic(self):

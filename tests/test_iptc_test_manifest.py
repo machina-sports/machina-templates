@@ -118,7 +118,7 @@ INPUTS_THE_FILTERS_MUST_REACH = (
     "tools/iptc/fixtures/corrected/sports-skills-espn-soccer-graph.json",
     "docs/iptc/baseline-audit.json",
     "docs/iptc/BASELINE-AUDIT.md",
-    "docs/iptc/machina-sports-canonical-0.1.0.sha256",
+    "docs/iptc/machina-sports-canonical-0.2.0.sha256",
     ".github/workflows/publish-machina-sports-canonical.yml",
     #: THE LICENSE FILES ARE PACKAGE INPUTS. `license-files` in `pyproject.toml`
     #: makes setuptools read all three at build time and write them into the wheel

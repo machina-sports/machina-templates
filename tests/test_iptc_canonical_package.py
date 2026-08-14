@@ -117,7 +117,7 @@ VENDORED_MANIFEST_PATH = REPO_ROOT / "tools/iptc/vendored-manifest.json"
 #: PEP 503 normalization makes the first two look interchangeable and they are not.
 DISTRIBUTION = "machina-sports-canonical"
 IMPORT_NAME = "machina_sports_canonical"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 #: The stem every built artefact carries. ``build`` normalizes the distribution
 #: name to its underscore form for filenames.
@@ -508,7 +508,7 @@ RELEASE_DIGEST_FILE = "SHA256SUMS"
 #: published digest with the reviewed one" named no artefact to compare against.
 #: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
 #: whose bytes differ fails against the same rows every other leg passes against.
-RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.1.0.sha256"
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.2.0.sha256"
 RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 
 #: Exactly the rows that file carries, in exactly that order: the wheel, then the
@@ -523,9 +523,9 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
     ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
-     "c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf"),
+     "1d5becd852f4e208539f7fb73b194376bbefa6042edc6dc54f53fdfab325fb84"),
     ("{0}.tar.gz".format(ARTIFACT_STEM),
-     "5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e"),
+     "935c5ccabc943283d22468286c932cefd5f5a9e4734e5128f1aa805aabcd6d48"),
 )
 
 #: The digests the reviewed file carried before the license decision, kept as a
@@ -535,11 +535,49 @@ REVIEWED_RELEASE_DIGESTS = (
 #: three archive members changes both artefacts, so that evidence now describes a
 #: superseded candidate and the document has to say so rather than appear to vouch
 #: for rows nobody rebuilt.
+#: The artefact stem the *historical* verification evidence actually rebuilt.
+#:
+#: Pinned to the version it verified rather than derived from `ARTIFACT_STEM`,
+#: which moves with the distribution. While it was derived, bumping the version
+#: silently re-stamped every historical row with the new filename, so the document
+#: read as though a rebuild of 0.1.0 had verified 0.2.0's bytes. A record of what
+#: happened must not move when what happens next changes.
+HISTORICAL_VERIFIED_STEM = "machina_sports_canonical-0.1.0"
+
 SUPERSEDED_RELEASE_DIGESTS = (
-    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+    ("{0}-py3-none-any.whl".format(HISTORICAL_VERIFIED_STEM),
      "3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b"),
-    ("{0}.tar.gz".format(ARTIFACT_STEM),
+    ("{0}.tar.gz".format(HISTORICAL_VERIFIED_STEM),
      "11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324"),
+)
+
+#: The rows the renewed independent rebuild at :data:`RENEWED_VERIFICATION_COMMIT`
+#: reproduced: the digests 0.1.0 shipped, under 0.1.0's filenames. History, and
+#: therefore never regenerated.
+HISTORICAL_RELEASE_DIGESTS = (
+    ("{0}-py3-none-any.whl".format(HISTORICAL_VERIFIED_STEM),
+     "c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf"),
+    ("{0}.tar.gz".format(HISTORICAL_VERIFIED_STEM),
+     "5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e"),
+)
+
+#: What the document must say about the *current* candidate's verification state.
+#: A candidate built once, on one machine, from an uncommitted tree is a
+#: candidate, and the document has to say so in words a releaser cannot read past.
+OPEN_VERIFICATION_PHRASES = (
+    "have not been independently verified",
+    "do not publish",
+)
+
+#: The sequence that closes the hold without anyone inventing an identifier.
+#: Named phrase by phrase, because a releaser who is told only "it is blocked"
+#: has been given a dead end rather than a procedure.
+FIXED_POINT_SEQUENCE_PHRASES = (
+    "package-receipt.json",
+    "source_commit",
+    "source_date_epoch",
+    "commit a",
+    "commit b",
 )
 
 #: The candidate whose digests were rebuilt outside the agent that produced them,
@@ -1748,8 +1786,8 @@ class TestACleanInterpreterInstallsAndImportsIt(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = probe_payload(result)
         self.assertEqual(payload["adapters"], adapters)
-        self.assertEqual(payload["profile"], "machina-iptc-profile/1.1")
-        self.assertEqual(payload["schema"], "canonical-observation/1")
+        self.assertEqual(payload["profile"], "machina-iptc-profile/1.2")
+        self.assertEqual(payload["schema"], "canonical-observation/1.1")
         self.assertEqual(payload["envelope"], "machina-sports-schema/1")
         self.assertEqual(len(payload["callables"]), 11)
 
@@ -2508,7 +2546,7 @@ class TestTheProofHoldsOnEveryDeclaredInterpreter(unittest.TestCase):
         result = probe(venv_python, body, "proof-{0}".format(version))
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = probe_payload(result)
-        self.assertEqual(payload["version"], "machina-iptc-profile/1.1")
+        self.assertEqual(payload["version"], "machina-iptc-profile/1.2")
         self.assertGreater(payload["context_terms"], 0)
         self.assertGreater(payload["curies"], 0)
         self.assertEqual(sorted(payload["digests"]),
@@ -3303,7 +3341,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertTrue(
             fnmatch.fnmatch(RELEASE_TAG, RELEASE_TAG_GLOB),
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
-        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.1.0")
+        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.2.0")
 
     def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
@@ -3851,25 +3889,78 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         self.assertIn(RELEASE_CHECKSUM_FILE, self.text)
         self.assertMentions("not release approval", "not a license decision")
 
-    def test_the_docs_record_the_renewed_digests_as_independently_verified(self):
-        """The hold the license decision opened, now closed on evidence.
+    def test_the_docs_do_not_call_this_release_the_projects_first_upload(self):
+        """`machina-sports-canonical-v0.1.0` is an annotated tag on `48d4168`,
+        pushed to `origin`. Whatever the index state, this repository has already
+        cut a release of this distribution, so 0.2.0 is not a first upload and the
+        project is not a never-registered pending-publisher case.
 
-        The renewed rows were produced by the same process that recorded them,
-        which was the whole gap. They have since been rebuilt from a clean export
-        of the exact package-input candidate, on both proven interpreters, and
-        both reproduced the checked-in rows. A releaser can only weigh that the
-        way they weighed the first rebuild: by seeing which commit, which two
-        interpreters, how the source was obtained, and which digests came out.
+        A releaser who reads "the project does not exist on the index yet" will
+        try to add a *pending* publisher for a project that already converted, get
+        an authentication failure at upload time with no helpful message, and have
+        no idea which of the four matched values is wrong. The stale sentence
+        costs a debugging session at precisely the worst moment.
+
+        Nothing here relaxes a hold: all three remain, and the reviewer-gated
+        environment and no-API-token rules are asserted by their own cases.
+        """
+        self.assertNotIn("does not exist on the index yet", self.lowered)
+        self.assertNotIn("the first upload still cannot happen", self.lowered)
+        self.assertMentions("0.1.0", "already")
+
+    def test_the_docs_preserve_the_0_1_0_independent_verification_as_history(self):
+        """The 0.1.0 rebuild happened and its record must survive intact.
+
+        It was real evidence: a clean ``git archive`` export of an exact commit,
+        rebuilt on both proven interpreters, reproducing the rows that release
+        shipped. A later version bump does not unmake it, and deleting it would
+        throw away the only demonstration in this repository that the method
+        works end to end.
+
+        It must keep **its own** artefact names and digests. Re-stamping a
+        historical record with the current version's filenames is how a document
+        comes to vouch for bytes nobody rebuilt — the exact failure the
+        superseded-section rule already exists to prevent, one version later.
         """
         self.assertIn(RENEWED_VERIFICATION_COMMIT, self.text)
         self.assertMentions("independent", "git archive")
         for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
             with self.subTest(interpreter=version):
                 self.assertIn(version, self.text)
+        for name, digest in HISTORICAL_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(name, self.text)
+                self.assertIn(digest, self.text)
+
+    def test_the_docs_do_not_claim_the_current_candidate_was_independently_verified(self):
+        """The current rows were built once, on one machine, from an uncommitted
+        tree. Saying more than that is the fabrication this whole gate exists to
+        stop, and it is the easy mistake: the previous version's ✅ sits directly
+        above them.
+
+        Asserted as a positive statement of the open hold rather than only as an
+        absent claim, because "the document does not say it was verified" is also
+        satisfied by a document that says nothing at all.
+        """
+        self.assertMentions(*OPEN_VERIFICATION_PHRASES)
         for name, digest in REVIEWED_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
+
+    def test_the_docs_record_the_two_commit_fixed_point_sequence(self):
+        """Why the hold cannot close before a commit exists, and exactly how it
+        does close.
+
+        ``package-receipt.json`` ships inside the wheel and records the source
+        commit, and ``SOURCE_DATE_EPOCH`` is that commit's committer timestamp —
+        so recording either changes the artefacts whose digests are being
+        recorded. That fixed point is reachable in two commits, and a releaser who
+        is not told the sequence will either fabricate an identifier or conclude
+        the release is impossible.
+        """
+        self.assertMentions(*FIXED_POINT_SEQUENCE_PHRASES)
+        self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
 
     def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
         """The stale sentence, asserted gone.
@@ -3910,7 +4001,7 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
         is named as the authority, and the superseded rows must not be the ones
-        `docs/iptc/machina-sports-canonical-0.1.0.sha256` is said to hold."""
+        `docs/iptc/machina-sports-canonical-0.2.0.sha256` is said to hold."""
         current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
         stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
         self.assertEqual(current & stale, set(),
