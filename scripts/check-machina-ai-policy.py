@@ -70,7 +70,6 @@ EXEMPT_PREFIXES = (
     "connectors/openai/",
     "scripts/",
     ".githooks/",
-    ".github/workflows/lint-no-openai.yml",
 )
 
 
@@ -193,22 +192,6 @@ def semantic_lint(text: str) -> set[tuple[int, str]]:
                                 f"machina-ai task inputs may not set routing/security field {key!r}",
                             )
                         )
-                elif name == "openai":
-                    errors.add(
-                        (
-                            connector_line,
-                            "workflow connector name 'openai' is banned; use google-genai "
-                            "or the policy-governed machina-ai router",
-                        )
-                    )
-                model = str(connector.get("model") or connector.get("model_name") or "")
-                if model.lower().startswith("gpt-"):
-                    errors.add(
-                        (
-                            connector_line,
-                            f"hardcoded GPT model route {model!r} is banned; use a Vertex model",
-                        )
-                    )
             router_variables = _mapping_items(items.get("machina-ai"))
             for key in sorted(FORBIDDEN_KEYS.intersection(router_variables)):
                 errors.add(

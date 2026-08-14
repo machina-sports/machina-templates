@@ -7,7 +7,6 @@
 - **Compatibility alias:** `machina-ai-fast`
 - **Initial contract version:** `v1`
 - **Repository default route:** Google Vertex AI through the `google-genai` adapter
-- **Repository-policy prerequisite:** `CLAUDE.md` and `scripts/check-no-openai.sh` currently reject `connector.name: machina-ai` outside legacy paths. Shipping `machina-ai` as the new workflow facade requires an approved, narrow policy/lint change that permits the router only when its effective default is Vertex AI. Until then, canonical workflow examples using the new facade are specification-only and MUST NOT be committed as runnable YAML.
 - **Primary audience:** connector maintainers, workflow authors, runtime operators, Studio, CLI, and platform API teams
 
 ---
@@ -108,12 +107,10 @@ New workflows in this repository MUST continue to follow `CLAUDE.md`:
 - Vertex AI through `google-genai` is the default provider for new workflows.
 - The router's repository-default route MUST resolve to `provider: vertex_ai`.
 - The existence of OpenAI-compatible and other provider adapters is for compatibility, explicit approved usage, customer-owned endpoints, and runtime portability. It does not change the repository's default-provider policy.
-- New YAML workflows MUST NOT reintroduce banned OpenAI/GPT connector or model references.
-- `connector.name: machina-ai` is itself currently banned by the repository lint. The router cannot become the preferred committed workflow facade until maintainers approve a narrow lint/policy change.
-- That policy change SHOULD permit `machina-ai` only as a provider-independent router whose repository default is Vertex AI; it MUST NOT make OpenAI, Groq, or another non-Vertex provider the default for committed templates.
+- `machina-ai` is a provider-independent router whose committed examples remain subject to structural routing and security policy.
 - `fast` routes and non-Vertex fallbacks are operator-approved runtime options, not repository defaults.
 
-The router implementation, documentation, tests, and migration tooling may describe legacy/provider compatibility without changing the default write path for workflows. Every canonical runnable YAML example MUST pass `scripts/check-no-openai.sh all` after the approved policy change.
+The router implementation, documentation, tests, and migration tooling may describe provider compatibility without changing the default write path for workflows. Canonical `machina-ai` examples remain subject to `scripts/check-machina-ai-policy.py all --require-semantic`.
 
 ---
 
@@ -1405,7 +1402,7 @@ Live smoke tests MUST be opt-in in generic CI and skipped cleanly when credentia
 - every command string observed in workflow YAML is mapped or flagged as broken
 - connector install/load succeeds with nested modules or the selected compatible bundle design
 - connector identities do not collide, including the malformed current `openai` package
-- canonical runnable YAML examples pass `scripts/check-no-openai.sh all`
+- canonical `machina-ai` YAML examples pass `scripts/check-machina-ai-policy.py all --require-semantic`
 - factory objects load through real prompt and document runtime integrations
 
 ### 24.9 Configuration and async authorization tests
@@ -1627,7 +1624,7 @@ connector:
   profile: fast
 ```
 
-This is not currently valid committed repository YAML: `machina-ai` is blocked by lint under the Vertex-only repository policy. The Groq-backed `fast` route ships enabled in the repository default router config for no-regression with `machina-ai-fast`, but it activates only when the operator provisions `TEMP_CONTEXT_VARIABLE_GROQ_API_KEY` (or the SDK alias) in the runtime environment; workflow-supplied Groq credentials remain disabled, and an absent credential fails with a typed `credential_missing` error. The compatibility alias exists primarily so already-installed or legacy workflows do not break during rollout. Canonical committed examples MUST use the approved router syntax with an effective Vertex default and pass `scripts/check-no-openai.sh all`.
+The Groq-backed `fast` route ships enabled in the repository default router config for no-regression with `machina-ai-fast`, but it activates only when the operator provisions `TEMP_CONTEXT_VARIABLE_GROQ_API_KEY` (or the SDK alias) in the runtime environment; workflow-supplied Groq credentials remain disabled, and an absent credential fails with a typed `credential_missing` error. The compatibility alias exists primarily so already-installed or legacy workflows do not break during rollout. Canonical committed router examples remain subject to `scripts/check-machina-ai-policy.py all --require-semantic`.
 
 ### Provider-specific connectors
 

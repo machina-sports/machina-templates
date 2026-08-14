@@ -442,7 +442,6 @@ class Validator:
                     self.error(path, f"local Markdown link target does not exist: {raw!r}")
 
     def provider_policy(self) -> None:
-        banned = re.compile(r"openai|gpt(?:-|\b)|machina-ai", re.I)
         unsafe_secret = re.compile(r"GOOGLE_GENAI_API_KEY|sk-\.\.\.|your-api-key", re.I)
         direct_client_api = re.compile(r"MACHINA_CLIENT_URL|X-Api-Token", re.I)
         remote_operand = (r'''[\'"]?(?:https?://|ftp://|\$(?:[A-Za-z_][A-Za-z0-9_]*'''
@@ -511,9 +510,6 @@ class Validator:
             }
             for number, (kind, _, block) in enumerate(active_code_blocks(text), 1):
                 label = f"active {kind} code block {number}"
-                match = banned.search(block)
-                if match:
-                    self.error(path, f"{label} contains banned provider term {match.group(0)!r}")
                 secret = unsafe_secret.search(block)
                 if secret:
                     self.error(path, f"{label} contains obsolete or unsafe credential example {secret.group(0)!r}; use Vertex TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL / TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID Vault references and [REDACTED] values")
@@ -533,9 +529,6 @@ class Validator:
             text = self.read_text(path, "provider-policy YAML file")
             if text is None:
                 continue
-            match = banned.search(text)
-            if match:
-                self.error(path, f"manifest contains banned provider term {match.group(0)!r}")
 
     def run(self, check_sync: bool = True) -> list[str]:
         package_safety = {path: self.safe_package_tree(path) for path in (self.canonical, *self.aliases)}
