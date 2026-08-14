@@ -81,11 +81,12 @@ assertion:
 | A reviewer-gated `pypi` environment exists | The repository's `pypi` environment carries a **required reviewer** rule and a deployment-branch policy. Re-check with `gh api repos/<owner>/<repo>/environments/pypi`. |
 | The trusted publisher is registered and works | Workflow run **`31743535579`** — `publish-machina-sports-canonical.yml`, tag `machina-sports-canonical-v0.1.0`, head `48d4168162fc84b48931b82971738b9359298dde` — **completed successfully**. An upload cannot succeed unless the environment resolved and PyPI accepted the OIDC exchange, so that run is proof of the whole path. |
 | The owner has approved this release | The owner approved all five decisions of the temporal-precision contract change, including *version and release*, and separately confirmed proceeding with merge, tag and PyPI release. |
-| The 0.2.0 digests are reproducible | Independently rebuilt from a clean `git archive` export on Python 3.9.6 and 3.11.14 — see the verification record below. |
+| The 0.2.0 digests are independently verified | **OPEN.** Deterministic on one machine, but not yet rebuilt elsewhere for the *current* source commit — the review correction changed the artefacts and superseded the earlier rebuild. See the verification record below; this is the one prerequisite of the four that is not closed. |
 
-**A closed prerequisite is not an open door.** All four say the *standing setup*
-is in place and the bytes are reproducible. None of them approves this particular
-upload, and every per-release gate below still has to pass on its own evidence.
+**A closed prerequisite is not an open door.** The three closed rows say the
+*standing setup* is in place; the fourth is open and is tracked below. None of
+them approves this particular upload, and every per-release gate below still has
+to pass on its own evidence.
 
 ### The gates that still stand, at release time
 
@@ -178,17 +179,20 @@ The release is built once, by
 environment:
 
 ```sh
-SOURCE_DATE_EPOCH=1786714340 \
+SOURCE_DATE_EPOCH=1786716463 \
   python packaging/machina_sports_canonical/release.py . dist
 sha256sum dist/*.whl dist/*.tar.gz
 ```
 
-`1786714340` is the committer timestamp of `1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc`,
+`1786716463` is the committer timestamp of `fd787c71e5bce9861443eb3a28ae9144eafa5109`,
 the canonical source commit recorded in `tools/iptc/canonical/package-receipt.json`
 — re-derivable with `git log -1 --format=%ct <commit>`, not an arbitrary constant.
-It moved with that commit: the previous value, `1786398569`, is the timestamp of
-`cf43307`, and it survives below in the two historical verification records,
-which describe builds of *those* bytes and must not be restamped.
+It moves with that commit every time the canonical source changes: the review
+correction that restored byte-identical provenance for exact observations is a
+new source commit, so the epoch, the digests and the verification state all
+follow it. The value `1786398569` survives below in the two historical
+verification records, which describe builds of *those* bytes and must not be
+restamped.
 
 **Why this is a fixed point, and why it takes two commits to reach.**
 `package-receipt.json` ships *inside* the wheel and records `source_commit`, and
@@ -220,8 +224,8 @@ diffs against:
 
 | Artefact | SHA-256 |
 |---|---|
-| `machina_sports_canonical-0.2.0-py3-none-any.whl` | `177bec5af3a2984898a412eaedaa1725103b102d9191dcb8dfdb35d8f4d8d19d` |
-| `machina_sports_canonical-0.2.0.tar.gz` | `60f6ee03a64ecd8e38aba257675ee2b91b71008b7cdca5ad7880afceaa70102a` |
+| `machina_sports_canonical-0.2.0-py3-none-any.whl` | `de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31` |
+| `machina_sports_canonical-0.2.0.tar.gz` | `8eeb241a8ed331dd24ea6c5e95d154cea7bb5fccc6bef971c6e52b5313d3b451` |
 
 These rows are the **0.2.0 candidate**, produced from the RFC 002 §12 contract
 change. They are recorded so every automated comparison has an authority to diff
@@ -255,48 +259,55 @@ character. **If the wheel bytes change for any reason, these digests are stale a
 this file must be re-recorded as a reviewed change.** Adding the license metadata
 is exactly such a change, and it is why these rows differ from the ones below.
 
-### Independent verification of the 0.2.0 digests — ✅ RESOLVED
+### Independent verification of the current 0.2.0 digests — ⛔ OPEN
 
-**The 0.2.0 rows above have been independently verified, and this hold is
-closed.** Until this rebuild they had been produced by exactly one process — the
-one that also recorded them — which is not evidence that anyone else can build
-them.
+**The 0.2.0 rows above have not been independently verified.** They were built by
+one process, on one machine, on one interpreter. That is a deterministic
+candidate, not evidence that anyone else reproduces them.
 
-- **Candidate:** `c5750ffa5656e4285c40ad734d05c41588475f6b`, the commit that
-  records these digests. Named in full, because an abbreviation is a claim about
-  a prefix. It is the successor of the commit `package-receipt.json` pins, and
-  necessarily so: the receipt names the canonical *source* commit, and the commit
-  recording the resulting digests is the one after it.
-- **Source:** obtained with `git archive` into separate isolated temporary trees,
-  so no working tree, build cache or untracked file could contribute bytes.
-- **Environment:** fresh disposable virtual environments, each installing the
-  checked-in `requirements-iptc-build.txt` unchanged.
-- **Interpreters:** Python **3.9.6** and Python **3.11.14**, each running
-  `packaging/machina_sports_canonical/release.py` with
-  `SOURCE_DATE_EPOCH=1786714340`.
+**Why the previous ✅ does not carry forward.** It was real: the rows built from
+source commit `1b20df3` were rebuilt from a clean `git archive` export of
+`c5750ffa5656e4285c40ad734d05c41588475f6b` on Python 3.9.6 and 3.11.14, and both
+matched. Then independent review found a P1 — the serializer was stamping the
+running profile into `provenance` for exact observations, which moved a field
+inside a member RFC 002 §12 freezes and made the exact-observation diff five
+items instead of four. Correcting it changed the canonical source, which changed
+both artefacts. That rebuild is therefore **superseded**: it is evidence about
+bytes this repository no longer builds, and reusing its ✅ here would be the most
+defensible-looking false claim in this file, because the work really was done —
+just not on these bytes.
 
-Each interpreter independently produced:
+What has been done to the current rows:
 
-| Artefact | SHA-256 |
-|---|---|
-| `machina_sports_canonical-0.2.0-py3-none-any.whl` | `177bec5af3a2984898a412eaedaa1725103b102d9191dcb8dfdb35d8f4d8d19d` |
-| `machina_sports_canonical-0.2.0.tar.gz` | `60f6ee03a64ecd8e38aba257675ee2b91b71008b7cdca5ad7880afceaa70102a` |
+- **The fixed point has been reached again.** `source_commit` in
+  `tools/iptc/canonical/package-receipt.json` and `tools/iptc/vendored-manifest.json`
+  names `fd787c71e5bce9861443eb3a28ae9144eafa5109`, the commit carrying the P1
+  correction, and `SOURCE_DATE_EPOCH` is `1786716463`, that commit's committer
+  timestamp. The rows were rebuilt *after* both values were set.
+- **Reproducible twice, same machine, same interpreter.** The release helper was
+  run twice at that epoch on Python 3.12.12 and produced byte-identical artefacts
+  both times.
+- **Recorded as the authority**, in
+  `docs/iptc/machina-sports-canonical-0.2.0.sha256`.
 
-Both matched `docs/iptc/machina-sports-canonical-0.2.0.sha256` byte for byte, and
-matched each other. The temporary trees and environments were removed; this
-repository's working tree was not modified, and no package input changed to
-record this.
+What is still missing is the whole of the hold: a rebuild **outside the process
+that produced these rows**, from a clean `git archive` export rather than a
+working tree, on **both proven interpreters**, Python **3.9** and **3.11**.
 
-Note the 3.9 patch version differs from the 0.1.0 record below, which ran on
-**3.9.25**. Each record names the interpreter that actually ran it; neither is
-restated from the other.
+**What closes it**, once the re-pinned files are committed:
 
-**This closes the digest hold and nothing else. It is not release approval, and
-it is not a license decision.** It says the reviewed digests are what
-`c5750ff` builds on an independent machine across both proven interpreters, and
-nothing more. Reproducible is not authorized: **do not publish** except through
-the release-time gates above, of which the runtime reviewer on the `pypi`
-environment is the one that actually stops an upload.
+```sh
+git archive <that commit> | tar -x -C <clean tree>
+SOURCE_DATE_EPOCH=1786716463 python packaging/machina_sports_canonical/release.py <clean tree> dist
+sha256sum dist/*.whl dist/*.tar.gz
+```
+
+Run it on Python 3.9 and 3.11 in separate disposable environments, each
+installing the checked-in `requirements-iptc-build.txt` unchanged, confirm both
+reproduce the rows above, and replace this section with the closed record naming
+that commit and those two interpreter patch versions. Until then this hold is
+open: **do not publish**, and note that the readiness section's reproducibility
+row is the one prerequisite of the four that is currently open.
 
 ### Independent verification of the 0.1.0 renewed digests — ✅ HISTORY, STILL VALID FOR 0.1.0
 

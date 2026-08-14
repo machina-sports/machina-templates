@@ -49,7 +49,7 @@ What this suite holds, beyond "the file exists":
   restates a profile version can disagree with the module that emits it.
 
 **This task changes no canonical runtime byte.** It records the bytes that are
-already here at ``1b20df3``. If a test in this file fails on a later commit, the
+already here at ``fd787c7``. If a test in this file fails on a later commit, the
 answer is to update the manifest and re-sync the consumer — never to loosen the
 assertion.
 """
@@ -145,7 +145,7 @@ CONSUMER_KEY_ORDER = (
 
 #: The commit whose canonical bytes this manifest pins. A17 records the runtime
 #: as it stands and changes none of it.
-SOURCE_COMMIT = "1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc"
+SOURCE_COMMIT = "fd787c71e5bce9861443eb3a28ae9144eafa5109"
 
 
 def manifest():
