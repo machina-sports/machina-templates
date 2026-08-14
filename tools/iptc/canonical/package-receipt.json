@@ -1,7 +1,7 @@
 {
   "distribution_version": "0.2.0",
   "source": "machina-templates:tools/iptc/canonical",
-  "source_commit": "cf433075666de002e38fb3bd6f5dd8743e7caeb2",
+  "source_commit": "1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc",
   "core_manifest": {
     "__init__.py": "44b8ba807785aa58a5060bb355de38cbc06b1a92968c1815a991988f1e42d617",
     "capabilities.py": "9c97ddc8c58f0a537bb9a1f4d4f2cc085fda69f2855038aae861a617ae39e14f",

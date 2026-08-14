@@ -523,9 +523,9 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
     ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
-     "1d5becd852f4e208539f7fb73b194376bbefa6042edc6dc54f53fdfab325fb84"),
+     "177bec5af3a2984898a412eaedaa1725103b102d9191dcb8dfdb35d8f4d8d19d"),
     ("{0}.tar.gz".format(ARTIFACT_STEM),
-     "935c5ccabc943283d22468286c932cefd5f5a9e4734e5128f1aa805aabcd6d48"),
+     "60f6ee03a64ecd8e38aba257675ee2b91b71008b7cdca5ad7880afceaa70102a"),
 )
 
 #: The digests the reviewed file carried before the license decision, kept as a
@@ -569,16 +569,28 @@ OPEN_VERIFICATION_PHRASES = (
     "do not publish",
 )
 
-#: The sequence that closes the hold without anyone inventing an identifier.
-#: Named phrase by phrase, because a releaser who is told only "it is blocked"
-#: has been given a dead end rather than a procedure.
+#: The fixed point the release metadata has to reach, and the evidence it was
+#: reached. Named phrase by phrase, because a releaser who is told only "it is
+#: blocked" has been given a dead end rather than a procedure.
+#:
+#: THE MECHANISM, NOT THE STEP LABELS. An earlier version of this asserted the
+#: words "commit a" and "commit b", which described the sequence only while it was
+#: still ahead of us; once the re-pin landed, the document stopped narrating steps
+#: and started recording a state, and the gate failed on prose rather than on
+#: substance. What must always be present is *why* the metadata is
+#: self-referential and *which* values resolve it.
 FIXED_POINT_SEQUENCE_PHRASES = (
     "package-receipt.json",
     "source_commit",
     "source_date_epoch",
-    "commit a",
-    "commit b",
+    "fixed point",
 )
+
+#: The commit the canonical source is pinned to, and the epoch derived from it.
+#: Asserted in the release document as well as in the receipt, because a releaser
+#: reconstructing a build reads the document and must not have to open a JSON file
+#: to discover which two values the build depends on.
+FIXED_POINT_COMMIT = "1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc"
 
 #: The candidate whose digests were rebuilt outside the agent that produced them,
 #: and the two patch-level interpreters that rebuilt it.
@@ -611,8 +623,8 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "cf433075666de002e38fb3bd6f5dd8743e7caeb2"
-RELEASE_SOURCE_DATE_EPOCH = "1786398569"
+CANONICAL_SOURCE_COMMIT = "1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc"
+RELEASE_SOURCE_DATE_EPOCH = "1786714340"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -3948,19 +3960,37 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
 
-    def test_the_docs_record_the_two_commit_fixed_point_sequence(self):
-        """Why the hold cannot close before a commit exists, and exactly how it
-        does close.
+    def test_the_docs_record_the_release_metadata_fixed_point(self):
+        """Why the release metadata is self-referential, and which values resolve
+        it.
 
         ``package-receipt.json`` ships inside the wheel and records the source
         commit, and ``SOURCE_DATE_EPOCH`` is that commit's committer timestamp —
         so recording either changes the artefacts whose digests are being
-        recorded. That fixed point is reachable in two commits, and a releaser who
-        is not told the sequence will either fabricate an identifier or conclude
-        the release is impossible.
+        recorded. A releaser who is not told this will either fabricate an
+        identifier or conclude the release is impossible, and both of those end
+        with bytes nobody can reproduce.
+
+        The exact commit and epoch are asserted in the prose, not only in the
+        JSON: reconstructing a build from the document alone has to be possible,
+        and the two values it depends on are the two a reader cannot guess.
         """
         self.assertMentions(*FIXED_POINT_SEQUENCE_PHRASES)
         self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        self.assertIn(FIXED_POINT_COMMIT, self.text)
+
+    def test_the_pinned_source_commit_is_the_one_the_epoch_belongs_to(self):
+        """The receipt, the manifest and the release document must name one
+        commit. Two of them agreeing while the third drifts is how a build gets an
+        epoch belonging to some other tree — reproducible, and reproducibly
+        wrong."""
+        receipt = json.loads(
+            (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (REPO_ROOT / "tools/iptc/vendored-manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(receipt["source_commit"], FIXED_POINT_COMMIT)
+        self.assertEqual(manifest["source_commit"], FIXED_POINT_COMMIT)
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
 
     def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
         """The stale sentence, asserted gone.

@@ -156,14 +156,17 @@ The release is built once, by
 environment:
 
 ```sh
-SOURCE_DATE_EPOCH=1786398569 \
+SOURCE_DATE_EPOCH=1786714340 \
   python packaging/machina_sports_canonical/release.py . dist
 sha256sum dist/*.whl dist/*.tar.gz
 ```
 
-`1786398569` is the committer timestamp of `cf433075666de002e38fb3bd6f5dd8743e7caeb2`,
+`1786714340` is the committer timestamp of `1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc`,
 the canonical source commit recorded in `tools/iptc/canonical/package-receipt.json`
 — re-derivable with `git log -1 --format=%ct <commit>`, not an arbitrary constant.
+It moved with that commit: the previous value, `1786398569`, is the timestamp of
+`cf43307`, and it survives below in the two historical verification records,
+which describe builds of *those* bytes and must not be restamped.
 
 Both halves are needed. `wheel` reads `SOURCE_DATE_EPOCH` and stamps every zip
 entry with it; the sdist path ignores it entirely, so the helper rewrites the
@@ -184,8 +187,8 @@ diffs against:
 
 | Artefact | SHA-256 |
 |---|---|
-| `machina_sports_canonical-0.2.0-py3-none-any.whl` | `1d5becd852f4e208539f7fb73b194376bbefa6042edc6dc54f53fdfab325fb84` |
-| `machina_sports_canonical-0.2.0.tar.gz` | `935c5ccabc943283d22468286c932cefd5f5a9e4734e5128f1aa805aabcd6d48` |
+| `machina_sports_canonical-0.2.0-py3-none-any.whl` | `177bec5af3a2984898a412eaedaa1725103b102d9191dcb8dfdb35d8f4d8d19d` |
+| `machina_sports_canonical-0.2.0.tar.gz` | `60f6ee03a64ecd8e38aba257675ee2b91b71008b7cdca5ad7880afceaa70102a` |
 
 These rows are the **0.2.0 candidate**, produced from the RFC 002 §12 contract
 change. They are recorded so every automated comparison has an authority to diff
@@ -219,62 +222,57 @@ character. **If the wheel bytes change for any reason, these digests are stale a
 this file must be re-recorded as a reviewed change.** Adding the license metadata
 is exactly such a change, and it is why these rows differ from the ones below.
 
-### Independent verification of the 0.2.0 digests — ⛔ OPEN, AND IT CANNOT CLOSE YET
+### Independent verification of the 0.2.0 digests — ⛔ OPEN
 
-**The 0.2.0 rows above have NOT been independently verified.** They were produced
-by exactly one process, on one machine, from an uncommitted working tree — which
-is not evidence that anyone else can build them. Do not read the ✅ that stood
-here for 0.1.0 as covering them.
+**The 0.2.0 rows above have NOT been independently verified.** They were built by
+exactly one process, on one machine, on one interpreter. That is a deterministic
+candidate, not evidence that anyone else can reproduce them. Do not read the ✅
+that stands below for 0.1.0 as covering them.
 
 What has been done, and it is less than verification:
 
+- **The fixed point has been reached.** `source_commit` in
+  `tools/iptc/canonical/package-receipt.json` and `tools/iptc/vendored-manifest.json`
+  now names `1b20df3c55b2c8a2ce2112c17fc2cfca65f86bbc`, the commit carrying the
+  RFC 002 §12 contract change, and `SOURCE_DATE_EPOCH` is `1786714340`, that
+  commit's committer timestamp. The rows above were rebuilt *after* those two
+  values were set, so they are the digests this tree actually produces rather
+  than digests for a tree pinned to something else.
 - **Reproducible twice, same machine, same interpreter.**
   `packaging/machina_sports_canonical/release.py` was run twice with
-  `SOURCE_DATE_EPOCH=1786398569` on Python **3.12.12** and produced byte-identical
+  `SOURCE_DATE_EPOCH=1786714340` on Python **3.12.12** and produced byte-identical
   artefacts both times. That shows the build is deterministic here. It does not
   show it is deterministic anywhere else.
-- **Recorded as a candidate**, in
+- **Recorded as the authority**, in
   `docs/iptc/machina-sports-canonical-0.2.0.sha256`, so every automated
   comparison has something to diff against.
 
-Why it cannot close before the contract change is committed — this is structural,
-not an oversight:
+What is still missing, and it is the whole of the remaining hold:
 
-1. The verification record must name **the commit whose package inputs produce
-   these bytes**, in full. For 0.2.0 that is the commit carrying the RFC 002 §12
-   contract change, which does not exist while the change is uncommitted.
-2. `package-receipt.json` ships **inside the wheel** and records `source_commit`.
-   Setting it to that commit changes the wheel, which changes the digests — so
-   the digests above are a candidate for a tree whose receipt is still pinned to
-   the previous `cf43307`.
-3. `SOURCE_DATE_EPOCH` is defined as the committer timestamp of the commit
-   `package-receipt.json` records, so it moves for the same reason.
-4. The record must name **both proven interpreters**, 3.9 and 3.11. Only 3.11 and
-   3.12 were available where these rows were built; the 3.9 leg reports as an
-   explicit skip rather than a pass.
+1. The rebuild must happen **outside the process that produced these rows**, from
+   a clean `git archive` export rather than a working tree, so that no untracked
+   file or build cache can contribute bytes.
+2. It must run on **both proven interpreters**, Python **3.9** and **3.11**. Only
+   3.11 and 3.12 were available where these rows were built; the 3.9 leg of the
+   package proof reports as an explicit skip rather than a pass, and a skip is
+   not a verification.
+3. It must name the commit it exported, in full. These rows were produced from a
+   working tree at `1b20df3`; the commit that *records* them is its successor, and
+   the export must be of that successor.
 
-**The sequence that closes it** — two commits, no fabricated identifier at any
-point:
+**What closes it**, once the re-pinned files are committed:
 
-1. **Commit A** — the contract change, exactly as it stands: `source_commit` in
-   `tools/iptc/vendored-manifest.json` and
-   `tools/iptc/canonical/package-receipt.json` still at `cf43307`, and the rows
-   above still marked candidate.
-2. Re-pin both `source_commit` fields to **commit A's** full SHA, set
-   `SOURCE_DATE_EPOCH` in
-   `.github/workflows/publish-machina-sports-canonical.yml` to commit A's
-   committer timestamp, rebuild through the release helper, and re-record
-   `docs/iptc/machina-sports-canonical-0.2.0.sha256`, the reviewed table above
-   and `REVIEWED_RELEASE_DIGESTS` in `tests/test_iptc_canonical_package.py` from
-   that build.
-3. **Commit B** — those re-pinned files. Commit B's tree now builds to the
-   digests commit B records, so the fixed point is reached in two commits.
-4. Only then: `git archive` commit B into isolated trees, rebuild on Python
-   **3.9** and **3.11**, confirm both reproduce the recorded rows, and replace
-   this section with the closed record naming commit B.
+```sh
+git archive <that commit> | tar -x -C <clean tree>
+SOURCE_DATE_EPOCH=1786714340 python packaging/machina_sports_canonical/release.py <clean tree> dist
+sha256sum dist/*.whl dist/*.tar.gz
+```
 
-Until step 4 is done and written down here, this hold is open and **do not
-publish**.
+Run it on Python 3.9 and on Python 3.11, in separate disposable environments each
+installing the checked-in `requirements-iptc-build.txt` unchanged, confirm both
+reproduce the rows above, and replace this section with the closed record naming
+that commit and those two interpreter patch versions. Until then this hold is
+open and **do not publish**.
 
 ### Independent verification of the 0.1.0 renewed digests — ✅ HISTORY, STILL VALID FOR 0.1.0
 
