@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-03-01T22:05:00+00:00",
+  "sport_event": {
+    "id": "sr:sport_event:9201",
+    "start_time": "2026-03-01T20:00:00+00:00",
+    "start_time_confirmed": true,
+    "sport_event_context": {
+      "sport": {
+        "id": "sr:sport:1",
+        "name": "Soccer"
+      },
+      "category": {
+        "id": "sr:category:9200",
+        "name": "Syntheticland",
+        "country_code": "SYN"
+      },
+      "competition": {
+        "id": "sr:competition:9202",
+        "name": "Synthetic Premier Division",
+        "gender": "men"
+      },
+      "season": {
+        "id": "sr:season:9203",
+        "name": "Synthetic Premier Division 2026",
+        "start_date": "2025-08-08",
+        "end_date": "2026-05-24",
+        "year": "2026",
+        "competition_id": "sr:competition:9202"
+      }
+    },
+    "competitors": [
+      {
+        "id": "sr:competitor:9211",
+        "name": "Synthetic Home United",
+        "country": "Syntheticland",
+        "country_code": "SYN",
+        "abbreviation": "SHU",
+        "qualifier": "home",
+        "gender": "male"
+      },
+      {
+        "id": "sr:competitor:9212",
+        "name": "Synthetic Away Town",
+        "country": "Syntheticland",
+        "country_code": "SYN",
+        "abbreviation": "SAT",
+        "qualifier": "away",
+        "gender": "male"
+      }
+    ],
+    "venue": {
+      "id": "sr:venue:9204",
+      "name": "Synthetic Home Ground",
+      "capacity": 32000,
+      "city_name": "Synthetic City",
+      "country_code": "SYN",
+      "timezone": "UTC"
+    },
+    "sport_event_conditions": {
+      "ground": {
+        "neutral": false
+      },
+      "attendance": {
+        "count": 30125
+      }
+    }
+  },
+  "sport_event_status": {
+    "status": "closed",
+    "match_status": "ended",
+    "home_score": 2,
+    "away_score": 1,
+    "winner_id": "sr:competitor:9211",
+    "period_scores": [
+      {
+        "home_score": 1,
+        "away_score": 0,
+        "type": "regular_period",
+        "number": 1
+      },
+      {
+        "home_score": 1,
+        "away_score": 1,
+        "type": "regular_period",
+        "number": 2
+      }
+    ]
+  }
+}

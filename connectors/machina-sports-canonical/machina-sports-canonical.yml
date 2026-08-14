@@ -1,0 +1,23 @@
+connector:
+  name: "machina-sports-canonical"
+  description: "Thin shared canonical seam. Dispatches to the installed machina-sports-canonical distribution and returns what it answers; owns no vocabulary, no serialization and no rights decision. Preflight refuses a provider/tier/capability combination before any provider retrieval; post-render rights evaluation is a drift check only. Every adapter reachable today emits prototype-only evidence, so production-tier requests refuse."
+  filename: "machina-sports-canonical.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Provider preflight (rights + capability gate, before retrieval)"
+      value: "provider_preflight"
+    - name: "Canonicalize event (adapter dispatch + injected-crosswalk resolver)"
+      value: "canonicalize_event"
+    - name: "Validate event envelope"
+      value: "validate_event"
+    - name: "Capability / rights gate (post-render drift check)"
+      value: "capability_rights_gate"
+  capabilities:
+    - event.identity
+    - event.competition
+    - event.participants
+    - event.start_time
+    - event.status
+    - event.score
+    - event.lineups
+    - provenance

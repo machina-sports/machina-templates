@@ -1,0 +1,25 @@
+setup:
+  title: Machina Sports Canonical Canary
+  description: Minimal canonical-first template. One workflow reads one observed match through the shared machina-sports-canonical seam and returns the canonical envelope's default view with its capabilities, rights and provenance. Provider selection is configuration only, so the same source runs unchanged across every supported provider. Offline and read-only.
+  category:
+    - sports
+    - canonical
+  estimatedTime: 1 minute
+  features:
+    - One unchanged workflow source across every supported provider; the provider is an input, never a branch.
+    - Rights and capability gate before any retrieval, with zero provider calls on refusal.
+    - Canonical envelope default view, with capabilities, rights and provenance on every path.
+    - Interchange graph available on explicit opt-in rather than by default.
+    - Identity resolved from an injected crosswalk, with visibly marked surrogates where none is supplied.
+  integrations:
+    - machina-sports-canonical
+  status: available
+  value: agent-templates/machina-sports-canonical-canary
+  version: 0.1.0
+
+datasets:
+  - type: connector
+    path: ../../connectors/machina-sports-canonical/machina-sports-canonical.yml
+
+  - type: workflow
+    path: workflows/canonical-canary-event.yml

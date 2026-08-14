@@ -1,0 +1,71 @@
+workflow:
+  name: canonical-canary-event
+  title: Machina Sports Canonical - Canary Event
+  description: |
+    Canonical-first canary. One workflow source, exercised across every supported
+    provider with the provider chosen purely by input. It gates on rights and
+    capabilities before any retrieval, canonicalizes one observed match through
+    the shared machina-sports-canonical connector, and returns the canonical
+    envelope's default view plus the capabilities, rights and provenance blocks
+    that travel with it.
+
+    The interchange graph is opt-in: ask for it with include_graph and it is
+    returned, otherwise the default view is what a consumer reads.
+
+    Read-only and offline. It calls no provider itself -- the observed payload is
+    supplied by the caller -- and every adapter reachable through the seam emits
+    prototype-tier evidence only, so a production consumer_tier is refused.
+
+  context-variables:
+    debugger:
+      enabled: true
+  inputs:
+    provider: "$.get('provider', '')"
+    payload: "$.get('payload', {})"
+    observed_at: "$.get('observed_at', '')"
+    crosswalk: "$.get('crosswalk', [])"
+    consumer_tier: "$.get('consumer_tier', 'prototype')"
+    include_graph: "$.get('include_graph', False)"
+  outputs:
+    schema_version: "$.get('envelope', {}).get('machina_sports_schema', {}).get('schema_version', '')"
+    profile: "$.get('envelope', {}).get('machina_sports_schema', {}).get('profile', '')"
+    event_view: "$.get('envelope', {}).get('machina_sports_schema', {}).get('event_view', {})"
+    capabilities: "$.get('envelope', {}).get('machina_sports_schema', {}).get('capabilities', {})"
+    rights: "$.get('envelope', {}).get('machina_sports_schema', {}).get('rights', {})"
+    provenance: "$.get('envelope', {}).get('machina_sports_schema', {}).get('provenance', {})"
+    sport_schema_graph: "$.get('envelope', {}).get('machina_sports_schema', {}).get('sport_schema_graph', {}) if $.get('include_graph', False) else {}"
+    refusals: "$.get('preflight', {}).get('refusals', []) or $.get('refusals', [])"
+    workflow-status: "$.get('envelope', {}) != {} and 'executed' or 'skipped'"
+  tasks:
+    - type: connector
+      name: preflight
+      description: Rights and capability gate. Runs before anything is retrieved or read, and costs nothing when it refuses.
+      connector:
+        name: machina-sports-canonical
+        command: provider_preflight
+      inputs:
+        provider: "$.get('provider', '')"
+        consumer_tier: "$.get('consumer_tier', 'prototype')"
+        requires: "['event.identity', 'event.competition', 'event.participants', 'event.start_time', 'event.status', 'provenance']"
+        optional: "['event.score', 'event.lineups']"
+      outputs:
+        preflight: "$"
+
+    - type: connector
+      name: canonicalize
+      description: Canonicalize the observed match through the shared seam, resolving identity from the injected crosswalk.
+      condition: "$.get('preflight', {}).get('allowed', False)"
+      connector:
+        name: machina-sports-canonical
+        command: canonicalize_event
+      inputs:
+        provider: "$.get('provider', '')"
+        consumer_tier: "$.get('consumer_tier', 'prototype')"
+        requires: "['event.identity', 'event.competition', 'event.participants', 'event.start_time', 'event.status', 'provenance']"
+        optional: "['event.score', 'event.lineups']"
+        crosswalk: "$.get('crosswalk', [])"
+        observed_at: "$.get('observed_at', '')"
+        payload: "$.get('payload', {})"
+      outputs:
+        envelope: "$.get('envelope', {})"
+        refusals: "$.get('refusals', [])"
