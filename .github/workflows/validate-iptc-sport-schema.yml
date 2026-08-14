@@ -11,14 +11,15 @@ name: Validate IPTC Sport Schema
 # red. Pretending legacy output passes would make every later conformance claim
 # unfalsifiable.
 #
-# REPOSITORY-WIDE AI-ROUTE LINTS ARE DELIBERATELY NOT DUPLICATED HERE.
-# `scripts/check-no-openai.sh all` and `scripts/check-ai-command-inventory.py` are
-# owned by `.github/workflows/lint-no-openai.yml`, which triggers on EVERY
-# pull_request and on pushes to main with no path filter. It therefore already
-# covers every file this workflow touches. Re-running them behind the path filter
-# below would add no coverage and would actively mislead: a change outside these
-# paths would skip this workflow, so a reviewer could wrongly read a skipped run
-# as "the AI-route lint did not apply". One owner per check.
+# REPOSITORY-WIDE AI ROUTING CHECKS ARE DELIBERATELY NOT DUPLICATED HERE.
+# `scripts/check-machina-ai-policy.py all --require-semantic` and
+# `scripts/check-ai-command-inventory.py` are owned by
+# `.github/workflows/check-ai-policy.yml`, which triggers on EVERY pull_request
+# and on pushes to main with no path filter. It therefore already covers every
+# file this workflow touches. Re-running them behind the path filter below would
+# add no coverage and would actively mislead: a change outside these paths would
+# skip this workflow, so a reviewer could wrongly read a skipped run as "the AI
+# routing checks did not apply". One owner per check.
 
 # THE TWO FILTERS BELOW ARE IDENTICAL ON PURPOSE, AND `tests/test_iptc_*.py` IS A
 # GLOB RATHER THAN ONE FILE. Until PR 2 task A18 the filter named exactly one

@@ -331,10 +331,6 @@ workflow:
         )
         assert result.returncode == 0, result.stderr
 
-    def test_repository_policy_lint_passes(self):
-        result = subprocess.run([str(ROOT / "scripts" / "check-no-openai.sh"), "all"], cwd=ROOT, text=True, capture_output=True)
-        assert result.returncode == 0, result.stderr
-
 
 class TestInventory:
     def test_inventory_has_no_unknown_commands_or_identity_collisions(self):
