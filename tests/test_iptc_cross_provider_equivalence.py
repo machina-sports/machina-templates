@@ -183,11 +183,26 @@ class TestTheCrossProviderPayloadIsObviouslySynthetic(unittest.TestCase):
 
     def test_the_sports_skills_side_is_referenced_and_not_copied(self):
         """Two copies of one payload is the drift this programme refuses
-        everywhere else, and it would also make the comparison self-referential."""
-        copies = sorted(p.name for p in API_FOOTBALL_PAYLOAD_PATH.parent.iterdir()
-                        if p.suffix == ".json")
-        self.assertEqual(copies, ["api-football.json"])
+        everywhere else, and it would also make the comparison self-referential.
+
+        The inventory is still pinned, but to the three **native provider legs**
+        this directory now holds rather than to the one it held when this file
+        was written. Amendment C §C4 added the Sportradar and Opta expressions of
+        the same match for the four-provider proof; the sports-skills leg was not
+        added, and that is the property under test. It is asserted by content as
+        well as by name, which is strictly stronger than the old filename proxy:
+        a copy of the sports-skills payload under any name fails here.
+        """
+        legs = sorted(p for p in API_FOOTBALL_PAYLOAD_PATH.parent.iterdir()
+                      if p.suffix == ".json")
+        self.assertEqual([p.name for p in legs],
+                         ["api-football.json", "sportradar-soccer.json",
+                          "stats-perform-opta.json"])
         self.assertTrue(SPORTS_SKILLS_NATIVE_PATH.is_file())
+        reference = SPORTS_SKILLS_NATIVE_PATH.read_bytes()
+        for leg in legs:
+            with self.subTest(leg=leg.name):
+                self.assertNotEqual(leg.read_bytes(), reference)
         self.assertNotIn("competitors", self.blob,
                          "'competitors' is the sports-skills native key set")
 

@@ -1,4 +1,5 @@
 # IPTC PR 3 Canonical Runtime and WCI Provider Substitution Implementation Plan
+> **PR3-D superseded 2026-08-13** by Approved Amendment C — see `docs/plans/2026-08-13-iptc-pr3d-greenfield-canary-amendment-c.md`. Tasks 1–10 stand as executed; tasks 11–15 are replaced by the greenfield canary. PR3-A/B/C are unaffected.
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 **Goal:** Publish and install the canonical Python runtime, then prove World Cup Intelligence provider substitution without provider branches above the seam.
 **Architecture:** `machina-templates` remains source authority. A pinned `machina-sports-canonical` wheel maps import namespace `machina_sports_canonical` to existing `tools/iptc/canonical` bytes without copying/moving logic. `machina-client-api` installs it; a thin shared pyscript connector imports it; WCI persists the canonical envelope plus exact-path derived compatibility aliases under the unchanged `worldcup:event` name.

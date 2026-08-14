@@ -1,0 +1,78 @@
+{
+  "@context": {
+    "sport": "https://www.sportschema.org/ontologies/sport#",
+    "schema": "https://schema.org/"
+  },
+  "@id": "urn:opta:sport_event:synthetic0matchid921",
+  "@type": [
+    "sport:Event",
+    "schema:SportsEvent"
+  ],
+  "name": "Synthetic Home United vs Synthetic Away Town",
+  "schema:startDate": "2026-03-01T20:00:00Z",
+  "schema:sportName": "football",
+  "sport:localDate": "2026-03-01",
+  "sport:localTime": "20:00:00",
+  "sport:coverageLevel": "13",
+  "sport:var": true,
+  "sport:status": "Played",
+  "sport:week": "27",
+  "sport:competition": {
+    "@id": "urn:opta:competition:synthetic0compid921",
+    "@type": "sport:Competition",
+    "name": "Synthetic Premier Division",
+    "sport:knownName": "Synthetic Premier Division",
+    "sport:competitionCode": "SPD",
+    "sport:competitionFormat": "Domestic league",
+    "sport:season": {
+      "@id": "urn:opta:season:synthetic0tcalid921",
+      "@type": "sport:Season",
+      "name": "Synthetic Premier Division 2026",
+      "sport:startDate": "2025-08-08",
+      "sport:endDate": "2026-05-24"
+    }
+  },
+  "sport:venue": {
+    "@type": "sport:Venue",
+    "@id": "urn:opta:venue:synthetic0venueid921",
+    "name": "Synthetic Home Ground",
+    "sport:shortName": "SHG",
+    "sport:neutral": "no"
+  },
+  "sport:competitors": [
+    {
+      "@type": "sport:Team",
+      "@id": "urn:opta:team:synthetic0teamid921",
+      "name": "Synthetic Home United",
+      "sport:officialName": "Synthetic Home United FC",
+      "sport:shortName": "Home Utd",
+      "sport:code": "SHU",
+      "sport:qualifier": "home"
+    },
+    {
+      "@type": "sport:Team",
+      "@id": "urn:opta:team:synthetic0teamid922",
+      "name": "Synthetic Away Town",
+      "sport:officialName": "Synthetic Away Town FC",
+      "sport:shortName": "Away Twn",
+      "sport:code": "SAT",
+      "sport:qualifier": "away"
+    }
+  ],
+  "sport:score": {
+    "sport:homeScore": 2,
+    "sport:awayScore": 1,
+    "sport:halfTime": {
+      "sport:homeScore": 1,
+      "sport:awayScore": 0
+    },
+    "sport:penalties": null,
+    "sport:aggregate": null
+  },
+  "sport:matchInfo": {
+    "sport:numberOfPeriods": 2,
+    "sport:periodLength": 45,
+    "sport:attendance": "30125",
+    "sport:winner": "home"
+  }
+}
