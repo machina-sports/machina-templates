@@ -82,7 +82,7 @@ from tools.iptc.validate_graph import rights_findings  # noqa: E402
 #: required field, nothing optional. Every negative case below is this document
 #: with exactly one thing broken, so a failure names the rule it broke.
 MINIMAL = {
-    "schema_version": "canonical-observation/1",
+    "schema_version": "canonical-observation/1.1",
     "observation": {
         "provider": {"namespace": "api-football", "family": "licensed"},
         "observed_at": "2026-03-01T22:05:00+00:00",
@@ -116,8 +116,8 @@ class TestVersionClaims(unittest.TestCase):
     """A1 — the profile version and the RFC that authorises it move together."""
 
     def test_profile_version_is_the_minor_bump(self):
-        self.assertEqual(canonical.PROFILE_VERSION, "machina-iptc-profile/1.1")
-        self.assertEqual(canonical.SCHEMA_VERSION, "canonical-observation/1")
+        self.assertEqual(canonical.PROFILE_VERSION, "machina-iptc-profile/1.2")
+        self.assertEqual(canonical.SCHEMA_VERSION, "canonical-observation/1.1")
         self.assertEqual(canonical.MACHINA_SCHEMA_VERSION, "machina-sports-schema/1")
         self.assertEqual(canonical.SERIALIZER_VERSION, "1")
 
@@ -153,8 +153,13 @@ class TestObservationValidation(unittest.TestCase):
             ("sport", "medtop"),
             ("competition", "provider_id"),
             ("event", "provider_id"),
-            ("event", "start_time"),
             ("event", "status"),
+            # ("event", "start_time") is deliberately NOT here. It is required
+            # *conditionally* from RFC 002 §12.2 on: an event states its start
+            # exactly in start_time or as reduced-precision evidence in
+            # temporal_evidence, and stating neither is still a hard failure —
+            # with a finding that names both admissible states rather than one.
+            # tests/test_iptc_temporal_evidence.py owns that matrix.
         ]
         for path in required:
             with self.subTest(field=".".join(path)):
@@ -846,7 +851,7 @@ def graph_observation():
     proves the serializer can emit plausible-looking JSON.
     """
     return {
-        "schema_version": "canonical-observation/1",
+        "schema_version": "canonical-observation/1.1",
         "observation": {
             "provider": {"namespace": "api-football", "family": "licensed"},
             "observed_at": "2026-03-01T22:05:00+00:00",
@@ -1463,6 +1468,11 @@ class TestProvenanceBlock(unittest.TestCase):
         self.assertEqual(block["upstream_pin"]["commit"],
                          "0e77bf8678f3702fe81c28673bede35efe47d633")
         self.assertEqual(block["upstream_pin"]["target_version"], "1.1")
+        # MINIMAL is an exact observation, and provenance carries the conformance
+        # claim of the document rather than the serializer's own version — which
+        # the envelope states separately, as 1.2. RFC 002 §12 freezes `provenance`
+        # for exact observations, so this value does not move with the profile
+        # bump. tests/test_iptc_temporal_evidence.py holds the whole rule.
         self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
         self.assertEqual(block["observed_at"], "2026-03-01T22:05:00+00:00")
         self.assertEqual(block["serializer"],
@@ -1777,7 +1787,7 @@ class TestCanonicalEnvelope(unittest.TestCase):
             "rights", "schema_version", "sport_schema_graph",
         ])
         self.assertEqual(block["schema_version"], "machina-sports-schema/1")
-        self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
+        self.assertEqual(block["profile"], "machina-iptc-profile/1.2")
 
     def test_the_envelope_has_no_key_beyond_the_one_block(self):
         self.assertEqual(sorted(envelope_of()), ["machina_sports_schema"])

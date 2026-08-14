@@ -95,6 +95,18 @@ NON_PROVIDER_OBSERVATIONS = {
         "no adapter, so nothing about it is evidence about a feed. Covered by "
         "tests/test_iptc_multi_participant_contract.py, which asserts its own "
         "capability report.",
+    "nba-reduced-precision-synthetic-observation.json":
+        "Hand-authored reduced-precision fixture (RFC 002 §12). No provider "
+        "payload was retrieved, so it says nothing about any feed — and it "
+        "reports BELOW core by design, because it carries bounded rather than "
+        "exact event timing. A row here would put a deliberate below-core "
+        "record in a table a reader uses to compare feeds. Covered by "
+        "tests/test_iptc_temporal_evidence.py, which asserts its own capability "
+        "report and its graph refusal.",
+    "soccer-reduced-precision-synthetic-observation.json":
+        "The provider-neutrality half of the same pair: a second sport and an "
+        "explicit non-UTC offset on the same code path. Same reasons as the "
+        "basketball row above, and covered by the same suite.",
 }
 
 #: The six core capabilities. Every row below reaches all six, which is why the

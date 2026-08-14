@@ -117,7 +117,7 @@ VENDORED_MANIFEST_PATH = REPO_ROOT / "tools/iptc/vendored-manifest.json"
 #: PEP 503 normalization makes the first two look interchangeable and they are not.
 DISTRIBUTION = "machina-sports-canonical"
 IMPORT_NAME = "machina_sports_canonical"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 #: The stem every built artefact carries. ``build`` normalizes the distribution
 #: name to its underscore form for filenames.
@@ -445,10 +445,47 @@ RELEASE_DOCS_PATH = REPO_ROOT / "docs/iptc/RELEASING.md"
 #: package-input candidate on both proven interpreters. Every remaining hold needs
 #: an action outside this repository, which is precisely why none of them can be
 #: closed by a commit.
-UNRESOLVED_RELEASE_HOLDS = (
+#: The three absolutes this document used to state, asserted **absent**.
+#:
+#: Each was true when written and each is now provably false: the `pypi`
+#: environment carries a required reviewer and a branch policy, the registry
+#: serves `0.1.0` at the digests recorded below — which only a working trusted
+#: publisher could have uploaded — and the owner has approved the release.
+#: A blocker that has been cleared but still reads as blocking is not a
+#: conservative document; it teaches a releaser that this file's warnings are
+#: stale and can be stepped past, which is exactly the habit the real gates
+#: depend on them not having.
+FALSE_RELEASE_ABSOLUTES = (
     "the pypi environment is not configured",
     "the trusted publisher is not registered",
     "no human has approved publication",
+    "pypi has no pending publisher",
+    "does not exist with a required human reviewer",
+)
+
+#: The evidence that closed them, named so the claim is falsifiable rather than
+#: asserted. A reader with repository access can re-check every one of these.
+RELEASE_PREREQUISITE_EVIDENCE = (
+    # The publish workflow ran to success on the 0.1.0 tag, which is only
+    # possible if the environment resolved and the OIDC exchange was accepted.
+    "31743535579",
+    "machina-sports-canonical-v0.1.0",
+    "48d4168162fc84b48931b82971738b9359298dde",
+)
+
+#: The gates that still stand at release time. Closed prerequisites are not an
+#: open door: they mean the *standing setup* is in place, and every per-release
+#: check below still has to pass on its own evidence.
+#:
+#: The runtime reviewer is the load-bearing one. It is enforced by GitHub, not by
+#: any file here, and it is the only thing between a pushed tag and an upload.
+RELEASE_TIME_GATE_PHRASES = (
+    "required reviewer",
+    "merge",
+    "tag",
+    "sha256sum --check",
+    "license",
+    "after publishing",
 )
 
 #: The hold the renewed verification closed, spelled as the document used to state
@@ -508,7 +545,7 @@ RELEASE_DIGEST_FILE = "SHA256SUMS"
 #: published digest with the reviewed one" named no artefact to compare against.
 #: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
 #: whose bytes differ fails against the same rows every other leg passes against.
-RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.1.0.sha256"
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.2.0.sha256"
 RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 
 #: Exactly the rows that file carries, in exactly that order: the wheel, then the
@@ -523,9 +560,9 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
     ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
-     "c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf"),
+     "de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31"),
     ("{0}.tar.gz".format(ARTIFACT_STEM),
-     "5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e"),
+     "8eeb241a8ed331dd24ea6c5e95d154cea7bb5fccc6bef971c6e52b5313d3b451"),
 )
 
 #: The digests the reviewed file carried before the license decision, kept as a
@@ -535,12 +572,124 @@ REVIEWED_RELEASE_DIGESTS = (
 #: three archive members changes both artefacts, so that evidence now describes a
 #: superseded candidate and the document has to say so rather than appear to vouch
 #: for rows nobody rebuilt.
+#: The artefact stem the *historical* verification evidence actually rebuilt.
+#:
+#: Pinned to the version it verified rather than derived from `ARTIFACT_STEM`,
+#: which moves with the distribution. While it was derived, bumping the version
+#: silently re-stamped every historical row with the new filename, so the document
+#: read as though a rebuild of 0.1.0 had verified 0.2.0's bytes. A record of what
+#: happened must not move when what happens next changes.
+HISTORICAL_VERIFIED_STEM = "machina_sports_canonical-0.1.0"
+
 SUPERSEDED_RELEASE_DIGESTS = (
-    ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+    ("{0}-py3-none-any.whl".format(HISTORICAL_VERIFIED_STEM),
      "3c7fcbc539824ced118099f691ac23c3182c59ad0855aaec560d43dabb53361b"),
-    ("{0}.tar.gz".format(ARTIFACT_STEM),
+    ("{0}.tar.gz".format(HISTORICAL_VERIFIED_STEM),
      "11783dd7fff89b634e55bccdd17952679b8f7362fe9fd0bfa8a378a5dbe8d324"),
 )
+
+#: The rows the renewed independent rebuild at :data:`RENEWED_VERIFICATION_COMMIT`
+#: reproduced: the digests 0.1.0 shipped, under 0.1.0's filenames. History, and
+#: therefore never regenerated.
+HISTORICAL_RELEASE_DIGESTS = (
+    ("{0}-py3-none-any.whl".format(HISTORICAL_VERIFIED_STEM),
+     "c162c20514a3d3ad2d5f43e5392ce23fc52053edc44a4ed60599f0a2db6dd9bf"),
+    ("{0}.tar.gz".format(HISTORICAL_VERIFIED_STEM),
+     "5ba1fcc65182cce58b40df478bf74e04937a4350dbe9fa3eebe0bfa2d7f1894e"),
+)
+
+#: The commit whose `git archive` export was rebuilt to verify a set of rows, and
+#: **the version of the source those rows belong to**.
+#:
+#: `c5750ff` verified the rows built from source commit `1b20df3`. The review
+#: correction that restored byte-identical provenance for exact observations
+#: changed the canonical source, so it changed the artefacts, so that
+#: verification is evidence about bytes this repository no longer builds. It is
+#: kept as history and is NOT the record for the current rows.
+PRIOR_VERIFIED_RELEASE_COMMIT = "c5750ffa5656e4285c40ad734d05c41588475f6b"
+
+#: The two interpreters that independently reproduced the 0.2.0 rows, at the
+#: patch level each actually ran.
+#:
+#: NOT :data:`INDEPENDENT_VERIFICATION_INTERPRETERS`. That tuple records what
+#: rebuilt 0.1.0, on 3.9.**25**; this rebuild ran on 3.9.**6**. Reusing one tuple
+#: for both would silently restate whichever patch version was edited last, and a
+#: verification record that names an interpreter nobody ran is worse than one that
+#: names none.
+VERIFIED_RELEASE_INTERPRETERS = ("3.9.6", "3.11.14")
+
+#: The commit whose clean ``git archive`` export was rebuilt to verify the CURRENT
+#: 0.2.0 rows, in full.
+#:
+#: The release candidate itself, not the canonical source commit
+#: :data:`FIXED_POINT_COMMIT` the receipt names. The two are necessarily different
+#: commits and both have to appear: the receipt pins the *source* the artefacts
+#: were built from, and this is the *tree* that was exported and rebuilt — the one
+#: carrying the re-pinned checksum file, so an export of it rebuilds to rows it
+#: already holds. Naming only one of them would leave a releaser unable to tell
+#: which tree to export.
+VERIFIED_RELEASE_COMMIT = "455561632fc0f0f389109e5417c32798a02538c0"
+
+#: What the record for the CURRENT rows must state now that it is closed.
+#:
+#: ``git archive`` is load-bearing rather than decorative: a rebuild from a working
+#: tree proves nothing, because an untracked file or a build cache can contribute
+#: bytes. The isolation is the evidence. So is the cross-interpreter equality: two
+#: interpreters that each reproduce their own build prove determinism per
+#: interpreter and say nothing about whether they agree with each other, which is
+#: the failure the checked-in row file exists to make falsifiable.
+CLOSED_VERIFICATION_PHRASES = (
+    "independently verified",
+    "git archive",
+    "identical on both interpreters",
+)
+
+#: Asserted PRESENT: the closing claim for the current rows, in the exact words
+#: the record must use, so a reworded near-miss does not read as closure.
+CLOSED_CLAIM_FOR_CURRENT_ROWS = "the 0.2.0 rows above have been independently verified"
+
+#: Asserted ABSENT once the rebuild has happened. A document that records the
+#: verification and still carries the sentence saying it never happened
+#: contradicts itself about the one thing a releaser reads it for — the same rule
+#: :data:`CLOSED_RELEASE_HOLD` enforces one version earlier.
+OPEN_CLAIM_FOR_CURRENT_ROWS = "have not been independently verified"
+
+#: Asserted ABSENT: the readiness table's OPEN row, spelled as it stood. The
+#: prerequisite table and the verification record are two places one fact is
+#: stated, and a closed record under a table still calling it the one open
+#: prerequisite is the contradiction a releaser resolves by guessing.
+OPEN_READINESS_ROW_CLAIM = "this is the one prerequisite of the four that is not closed"
+
+#: Closing the digest hold closes the digest hold. It is not release approval, it
+#: does not stand in for the required reviewer, and the three external holds are
+#: untouched by it — so the record has to keep saying so.
+VERIFICATION_IS_NOT_APPROVAL_PHRASES = (
+    "not release approval",
+    "do not publish",
+)
+
+#: The fixed point the release metadata has to reach, and the evidence it was
+#: reached. Named phrase by phrase, because a releaser who is told only "it is
+#: blocked" has been given a dead end rather than a procedure.
+#:
+#: THE MECHANISM, NOT THE STEP LABELS. An earlier version of this asserted the
+#: words "commit a" and "commit b", which described the sequence only while it was
+#: still ahead of us; once the re-pin landed, the document stopped narrating steps
+#: and started recording a state, and the gate failed on prose rather than on
+#: substance. What must always be present is *why* the metadata is
+#: self-referential and *which* values resolve it.
+FIXED_POINT_SEQUENCE_PHRASES = (
+    "package-receipt.json",
+    "source_commit",
+    "source_date_epoch",
+    "fixed point",
+)
+
+#: The commit the canonical source is pinned to, and the epoch derived from it.
+#: Asserted in the release document as well as in the receipt, because a releaser
+#: reconstructing a build reads the document and must not have to open a JSON file
+#: to discover which two values the build depends on.
+FIXED_POINT_COMMIT = "fd787c71e5bce9861443eb3a28ae9144eafa5109"
 
 #: The candidate whose digests were rebuilt outside the agent that produced them,
 #: and the two patch-level interpreters that rebuilt it.
@@ -573,8 +722,8 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "cf433075666de002e38fb3bd6f5dd8743e7caeb2"
-RELEASE_SOURCE_DATE_EPOCH = "1786398569"
+CANONICAL_SOURCE_COMMIT = "fd787c71e5bce9861443eb3a28ae9144eafa5109"
+RELEASE_SOURCE_DATE_EPOCH = "1786716463"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -907,6 +1056,26 @@ def clean_sdist_install(python_exe: str, label: str) -> Path:
     ``--no-deps`` close every remaining network/dependency path.  The install is
     launched from a neutral directory, and the runtime probe comparing it with
     the wheel is neutral too.
+
+    THE PATH FILE ALONE DID NOT PUT THE PIN IN FORCE. ``site`` *appends* the
+    directories a path file names, so the venv's own ``site-packages`` is searched
+    first and any distribution ``ensurepip`` seeded there shadows the pinned copy.
+    ``setuptools`` is exactly such a distribution below 3.12, and the shadow
+    differs per interpreter: on the declared floor it was 58.0.4, which predates
+    ``[project]`` support and therefore read no name, no version and no packages —
+    ``--no-build-isolation`` does not check ``build-system.requires``, so the build
+    succeeded and installed ``UNKNOWN-0.0.0`` with an empty payload. On the image
+    interpreter it was 79.0.1: new enough to produce the right payload, still not
+    the pinned release, so that leg was green while proving something weaker than
+    it claimed.
+
+    So the bundled distribution is uninstalled — with the venv's own pip, which
+    removes exactly the files its ``RECORD`` lists — before the path file is
+    written, leaving the pinned copy the only one ``import setuptools`` can reach.
+    Then the pin is asserted, before the install rather than after it: a
+    precondition that is checked only by its consequences is a precondition that
+    gets discovered by a confusing failure three assertions downstream. No index
+    is consulted at any point; nothing is installed to replace what is removed.
     """
     if label in _INSTALLS:
         return _INSTALLS[label]
@@ -924,8 +1093,22 @@ def clean_sdist_install(python_exe: str, label: str) -> Path:
         if path == REPO_ROOT or REPO_ROOT in path.parents:
             raise AssertionError("current site-packages reaches repository: "
                                  + str(path))
+    removal = subprocess.run(
+        [str(venv_python), "-m", "pip", "uninstall", "-y",
+         "--disable-pip-version-check", "setuptools"],
+        capture_output=True, text=True, timeout=600)
+    if removal.returncode != 0:
+        raise AssertionError(
+            "could not remove the venv-bundled setuptools for {0}:\n{1}".format(
+                label, removal.stdout + removal.stderr))
     (purelib(venv_python) / "iptc-pinned-build-tooling.pth").write_text(
         "".join("{0}\n".format(path) for path in site_roots), encoding="utf-8")
+    pinned = pinned_build_version("setuptools")
+    effective = effective_backend_version(venv_python, "setuptools")
+    if effective != pinned:
+        raise AssertionError(
+            "the venv for {0} would build with setuptools {1!r}, not the pinned "
+            "{2!r}".format(label, effective, pinned))
     neutral = Path(tempfile.mkdtemp(prefix="iptc-sdist-install-"))
     try:
         install = subprocess.run(
@@ -982,6 +1165,64 @@ def purelib(venv_python: Path) -> Path:
     return Path(result.stdout.strip()).resolve()
 
 
+def venv_distributions(venv_python: Path) -> dict:
+    """Canonical distribution name -> version for everything in the venv.
+
+    Read off the ``dist-info`` directories rather than by asking the venv to look
+    a name up, because the question is what the install *left behind*, including a
+    distribution nobody asked for. A backend that read no project metadata at all
+    installs successfully under the name ``UNKNOWN`` at version ``0.0.0``, and a
+    lookup of the expected name cannot see that: it reports the same "absent" a
+    failed install would.
+    """
+    found = {}
+    for metadata_path in sorted(purelib(venv_python).glob("*.dist-info/METADATA")):
+        fields = {}
+        for line in metadata_path.read_text(
+                encoding="utf-8", errors="replace").splitlines():
+            if not line.strip():
+                break
+            if ":" in line:
+                key, _, value = line.partition(":")
+                fields.setdefault(key.strip().lower(), value.strip())
+        name = fields.get("name")
+        if name:
+            found[canonicalize_name(name)] = fields.get("version", "")
+    return found
+
+
+def effective_backend_version(venv_python: Path, name: str) -> str:
+    """The version of ``name`` an in-venv build would actually import.
+
+    Resolved by importing it in the venv rather than by reading metadata off a
+    path this suite chose: ``sys.path`` order is the thing under test, and the
+    backend a PEP 517 build executes is whichever copy ``import`` reaches first.
+    A ``.pth`` file cannot answer this question, because ``site`` *appends* the
+    directories a path file names — so anything the venv already carries under
+    that name wins, and the pin is decoration.
+
+    Imported in a throwaway subprocess, so probing for the answer cannot change
+    the interpreter that will do the building.
+    """
+    result = subprocess.run(
+        [str(venv_python), "-c",
+         "import {0} as module; print(module.__version__)".format(name)],
+        capture_output=True, text=True, timeout=120)
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def pinned_build_version(name: str) -> str:
+    """What ``requirements-iptc-build.txt`` pins ``name`` at on this interpreter.
+
+    Read through the same reader the closure tests use, so "the pinned version"
+    means one thing in this file rather than two.
+    """
+    text = (REPO_ROOT / BUILD_REQUIREMENTS).read_text(encoding="utf-8")
+    return active_pins(text).get(canonicalize_name(name), "")
+
+
 # ---------------------------------------------------------------------------
 # Source-side expectations
 # ---------------------------------------------------------------------------
@@ -1017,16 +1258,42 @@ def expected_runtime_members() -> set:
 
 
 def installed_root(venv_python: Path) -> Path:
-    return purelib(venv_python) / IMPORT_NAME
+    """The import namespace inside ``venv_python``, which must be there.
+
+    RAISES RATHER THAN RETURNING A PATH THAT DOES NOT EXIST. This used to hand
+    back the path unconditionally, and ``installed_members`` then ``rglob``-ed a
+    missing directory into the empty set — so an install that reported success and
+    put nothing importable in place read, downstream, as a membership difference
+    rather than as an empty install. Worse, the parity assertion compares two
+    member sets in both directions: had *both* installs been empty it would have
+    passed while proving nothing. The distributions actually present are named in
+    the message, because the answer to "where did the package go" is usually that
+    something else was installed under a different name.
+    """
+    root = purelib(venv_python) / IMPORT_NAME
+    if not root.is_dir():
+        raise AssertionError(
+            "no import namespace {0} under {1}; installed distributions: "
+            "{2}".format(IMPORT_NAME, purelib(venv_python),
+                         venv_distributions(venv_python) or "none"))
+    return root
 
 
 def installed_members(venv_python: Path) -> set:
+    """Every file under the installed import namespace, and never none.
+
+    Empty is refused for the same reason a missing root is: a set with nothing in
+    it satisfies both directions of a comparison against another empty set.
+    """
     root = installed_root(venv_python)
     found = set()
     for path in sorted(root.rglob("*")):
         if path.is_dir() or "__pycache__" in path.parts:
             continue
         found.add(path.relative_to(root).as_posix())
+    if not found:
+        raise AssertionError(
+            "the import namespace {0} installed no files at all".format(root))
     return found
 
 
@@ -1748,8 +2015,8 @@ class TestACleanInterpreterInstallsAndImportsIt(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = probe_payload(result)
         self.assertEqual(payload["adapters"], adapters)
-        self.assertEqual(payload["profile"], "machina-iptc-profile/1.1")
-        self.assertEqual(payload["schema"], "canonical-observation/1")
+        self.assertEqual(payload["profile"], "machina-iptc-profile/1.2")
+        self.assertEqual(payload["schema"], "canonical-observation/1.1")
         self.assertEqual(payload["envelope"], "machina-sports-schema/1")
         self.assertEqual(len(payload["callables"]), 11)
 
@@ -1866,6 +2133,55 @@ class TestTheInstalledBytesAreTheAuthoritativeBytes(unittest.TestCase):
         published package as a file it drops."""
         self.assertEqual(sorted(installed_members(self.venv_python)),
                          sorted(expected_runtime_members()))
+
+    def test_the_sdist_install_is_this_distribution_at_this_version(self):
+        """The sdist install has to *be* the distribution under review.
+
+        A PEP 517 backend too old to read ``[project]`` does not fail: it reads no
+        name, no version, no ``packages`` and no ``package-dir``, then builds and
+        installs a valid wheel called ``UNKNOWN-0.0.0`` whose only members are its
+        own ``dist-info``. pip exits 0 and reports success, because it did succeed
+        — at installing something else. Nothing in this suite asked which
+        distribution arrived, so the parity assertion below inherited an empty
+        install and reported it as seventeen missing members.
+
+        ``UNKNOWN`` is named as an absent distribution rather than left implicit,
+        so this failure states its own cause instead of leaving a reader to infer
+        it from an absence.
+        """
+        sdist_python = clean_sdist_install(sys.executable, "parity-sdist")
+        installed = venv_distributions(sdist_python)
+        self.assertEqual(installed.get(canonicalize_name(DISTRIBUTION)), VERSION,
+                         "the sdist install is not {0}=={1}; installed: "
+                         "{2}".format(DISTRIBUTION, VERSION, installed))
+        self.assertNotIn("unknown", installed,
+                         "the backend read no project metadata and installed "
+                         "UNKNOWN instead")
+
+    def test_the_sdist_install_builds_with_the_pinned_backend(self):
+        """The pin has to be in force where the build actually happens.
+
+        This suite's claim is that every leg builds with the closure
+        ``requirements-iptc-build.txt`` names. For the sdist leg that claim rested
+        on a ``.pth`` file, and ``site`` *appends* the directories a path file
+        names — so the throwaway venv's own ``site-packages`` is searched first and
+        whatever ``ensurepip`` seeded it with shadows the pin. The shadow is a
+        different version on every interpreter, which is why this went unnoticed:
+        on the declared floor it is old enough to ignore ``[project]`` entirely, on
+        the image interpreter it is new enough to work while still not being the
+        pinned release, and on 3.12 there is no shadow at all.
+
+        Asserted against the pinned version rather than against a floor, because
+        "new enough to work here" is how the floor leg came to build with a
+        backend from 2021.
+        """
+        sdist_python = clean_sdist_install(sys.executable, "parity-sdist")
+        pinned = pinned_build_version("setuptools")
+        self.assertTrue(pinned, "requirements-iptc-build.txt pins no setuptools")
+        self.assertEqual(effective_backend_version(sdist_python, "setuptools"),
+                         pinned,
+                         "the sdist install did not build with the pinned "
+                         "setuptools")
 
     def test_sdist_install_has_exactly_the_wheel_installs_members_and_bytes(self):
         """An sdist install is a separate consumer path, even though the default
@@ -2508,7 +2824,7 @@ class TestTheProofHoldsOnEveryDeclaredInterpreter(unittest.TestCase):
         result = probe(venv_python, body, "proof-{0}".format(version))
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = probe_payload(result)
-        self.assertEqual(payload["version"], "machina-iptc-profile/1.1")
+        self.assertEqual(payload["version"], "machina-iptc-profile/1.2")
         self.assertGreater(payload["context_terms"], 0)
         self.assertGreater(payload["curies"], 0)
         self.assertEqual(sorted(payload["digests"]),
@@ -3303,7 +3619,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertTrue(
             fnmatch.fnmatch(RELEASE_TAG, RELEASE_TAG_GLOB),
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
-        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.1.0")
+        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.2.0")
 
     def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
@@ -3751,13 +4067,43 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         self.assertIn(NOTICE_FILE, self.text)
         self.assertMentions("mit", "attribution")
 
-    def test_the_docs_still_block_the_release_on_everything_else(self):
-        """Resolving the license must not read as unblocking the release. The
-        remaining holds are named individually, because "still blocked" without a
-        list is a sentence a releaser can talk themselves past."""
-        self.assertIn("BLOCKED", self.text)
-        self.assertMentions(*UNRESOLVED_RELEASE_HOLDS)
-        self.assertMentions("do not publish")
+    def test_the_docs_record_the_prerequisites_as_closed_on_evidence(self):
+        """The standing setup is in place, and the document says so with the
+        evidence rather than on trust.
+
+        Each prerequisite is closed by something a reader can re-check: a
+        successful publish run on the 0.1.0 tag, at a named head commit. Naming
+        the run is what separates "these are configured" from "somebody said
+        these are configured", and it is the same standard the digest records
+        below are held to.
+        """
+        for token in RELEASE_PREREQUISITE_EVIDENCE:
+            with self.subTest(evidence=token):
+                self.assertIn(token, self.text)
+
+    def test_the_docs_do_not_state_the_false_release_absolutes(self):
+        """The stale blockers, asserted gone.
+
+        A document that says the environment does not exist, while the
+        environment exists with a required reviewer, is not being careful — it is
+        wrong, and being wrong in the safe-sounding direction is how a releaser
+        learns to discount every other warning in the file.
+        """
+        for claim in FALSE_RELEASE_ABSOLUTES:
+            with self.subTest(claim=claim):
+                self.assertNotIn(claim, self.lowered)
+
+    def test_the_docs_preserve_every_release_time_gate(self):
+        """Closed prerequisites are not an open door.
+
+        The per-release checks are untouched by any of this: a green run, a merge
+        to the default branch, a tag on the exact merge commit, the runtime
+        reviewer on the `pypi` environment, the digest and license gates, and the
+        post-publish registry verification. Asserted individually, because
+        "the gates still apply" without a list is a sentence a releaser can talk
+        themselves past.
+        """
+        self.assertMentions(*RELEASE_TIME_GATE_PHRASES)
 
     def step_line(self, phrase: str) -> int:
         """The line the release step ``phrase`` is on.
@@ -3851,25 +4197,160 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         self.assertIn(RELEASE_CHECKSUM_FILE, self.text)
         self.assertMentions("not release approval", "not a license decision")
 
-    def test_the_docs_record_the_renewed_digests_as_independently_verified(self):
-        """The hold the license decision opened, now closed on evidence.
+    def test_the_docs_do_not_call_this_release_the_projects_first_upload(self):
+        """`machina-sports-canonical-v0.1.0` is an annotated tag on `48d4168`,
+        pushed to `origin`. Whatever the index state, this repository has already
+        cut a release of this distribution, so 0.2.0 is not a first upload and the
+        project is not a never-registered pending-publisher case.
 
-        The renewed rows were produced by the same process that recorded them,
-        which was the whole gap. They have since been rebuilt from a clean export
-        of the exact package-input candidate, on both proven interpreters, and
-        both reproduced the checked-in rows. A releaser can only weigh that the
-        way they weighed the first rebuild: by seeing which commit, which two
-        interpreters, how the source was obtained, and which digests came out.
+        A releaser who reads "the project does not exist on the index yet" will
+        try to add a *pending* publisher for a project that already converted, get
+        an authentication failure at upload time with no helpful message, and have
+        no idea which of the four matched values is wrong. The stale sentence
+        costs a debugging session at precisely the worst moment.
+
+        Nothing here relaxes a hold: all three remain, and the reviewer-gated
+        environment and no-API-token rules are asserted by their own cases.
+        """
+        self.assertNotIn("does not exist on the index yet", self.lowered)
+        self.assertNotIn("the first upload still cannot happen", self.lowered)
+        self.assertMentions("0.1.0", "already")
+
+    def test_the_docs_preserve_the_0_1_0_independent_verification_as_history(self):
+        """The 0.1.0 rebuild happened and its record must survive intact.
+
+        It was real evidence: a clean ``git archive`` export of an exact commit,
+        rebuilt on both proven interpreters, reproducing the rows that release
+        shipped. A later version bump does not unmake it, and deleting it would
+        throw away the only demonstration in this repository that the method
+        works end to end.
+
+        It must keep **its own** artefact names and digests. Re-stamping a
+        historical record with the current version's filenames is how a document
+        comes to vouch for bytes nobody rebuilt — the exact failure the
+        superseded-section rule already exists to prevent, one version later.
         """
         self.assertIn(RENEWED_VERIFICATION_COMMIT, self.text)
         self.assertMentions("independent", "git archive")
         for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
             with self.subTest(interpreter=version):
                 self.assertIn(version, self.text)
+        for name, digest in HISTORICAL_RELEASE_DIGESTS:
+            with self.subTest(artefact=name):
+                self.assertIn(name, self.text)
+                self.assertIn(digest, self.text)
+
+    def test_the_docs_record_the_current_0_2_0_verification_as_closed(self):
+        """The 0.2.0 digest hold, closed on evidence rather than on assertion.
+
+        The rows were rebuilt from a clean ``git archive`` export of an exact
+        commit, in isolated trees, on both proven interpreters, and both
+        reproduced what the checked-in authority holds. A releaser can only weigh
+        that by seeing the same things the 0.1.0 record gave them: which tree was
+        exported, which source commit it was built from, which epoch, which two
+        interpreter patch versions ran, and which digests came out.
+
+        Every value is asserted against a named constant rather than against
+        prose, so a record that verified *some other* bytes, or that names an
+        interpreter nobody ran, is red.
+        """
+        self.assertMentions(*CLOSED_VERIFICATION_PHRASES)
+        self.assertIn(VERIFIED_RELEASE_COMMIT, self.text)
+        self.assertIn(FIXED_POINT_COMMIT, self.text)
+        self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        for version in VERIFIED_RELEASE_INTERPRETERS:
+            with self.subTest(interpreter=version):
+                self.assertIn(version, self.text)
         for name, digest in REVIEWED_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
+
+    def test_the_three_verification_commits_are_distinct_and_all_stated(self):
+        """Guard the guard. Three commits do three different jobs here — the tree
+        that was exported, the canonical source the receipt pins, and the
+        superseded candidate — and a record that reused one value for another
+        would read as complete while pointing a releaser at the wrong tree."""
+        commits = (VERIFIED_RELEASE_COMMIT, FIXED_POINT_COMMIT,
+                   PRIOR_VERIFIED_RELEASE_COMMIT)
+        self.assertEqual(len(set(commits)), len(commits))
+        for commit in commits:
+            with self.subTest(commit=commit):
+                self.assertRegex(commit, r"^[0-9a-f]{40}$")
+                self.assertIn(commit, self.text)
+
+    def test_the_docs_claim_the_current_rows_are_verified_in_those_words(self):
+        """Closure stated positively, in the exact words the record must use.
+
+        Deleting the open sentence is not the same act as recording the rebuild:
+        a section that merely stops saying "unverified" leaves a reader to infer
+        closure from an absence, which is how the 0.1.0 record's ✅ came to be
+        read as covering 0.2.0.
+        """
+        self.assertIn(CLOSED_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+
+    def test_the_docs_no_longer_carry_the_open_claim_for_the_current_rows(self):
+        """The stale sentences, asserted gone — in the record and in the
+        readiness table both, because one fact stated in two places is a fact that
+        can contradict itself."""
+        self.assertNotIn(OPEN_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+        self.assertNotIn(OPEN_READINESS_ROW_CLAIM, self.lowered)
+
+    def test_the_prior_verification_is_kept_and_scoped_to_what_it_rebuilt(self):
+        """Kept as history, and explicitly not as evidence for the current rows.
+        Deleting it would throw away a real rebuild; leaving it unscoped would let
+        it be read as covering bytes it never saw."""
+        self.assertIn(PRIOR_VERIFIED_RELEASE_COMMIT, self.text)
+        self.assertMentions("superseded")
+
+    def test_the_closed_verification_does_not_read_as_release_approval(self):
+        """The failure mode a ✅ invites. Closing the digest hold says the bytes
+        are reproducible; it says nothing about whether this particular upload
+        may proceed, and every release-time gate is untouched by it."""
+        self.assertMentions(*VERIFICATION_IS_NOT_APPROVAL_PHRASES)
+        self.assertMentions(*RELEASE_TIME_GATE_PHRASES)
+
+    def test_the_verified_interpreters_are_not_confused_with_the_0_1_0_ones(self):
+        """Guard the guard. The two records ran on different 3.9 patch versions,
+        so one shared tuple would make whichever was edited last silently vouch
+        for a run that never happened."""
+        self.assertNotEqual(VERIFIED_RELEASE_INTERPRETERS,
+                            INDEPENDENT_VERIFICATION_INTERPRETERS)
+        for version in INDEPENDENT_VERIFICATION_INTERPRETERS:
+            with self.subTest(historical=version):
+                self.assertIn(version, self.text)
+
+    def test_the_docs_record_the_release_metadata_fixed_point(self):
+        """Why the release metadata is self-referential, and which values resolve
+        it.
+
+        ``package-receipt.json`` ships inside the wheel and records the source
+        commit, and ``SOURCE_DATE_EPOCH`` is that commit's committer timestamp —
+        so recording either changes the artefacts whose digests are being
+        recorded. A releaser who is not told this will either fabricate an
+        identifier or conclude the release is impossible, and both of those end
+        with bytes nobody can reproduce.
+
+        The exact commit and epoch are asserted in the prose, not only in the
+        JSON: reconstructing a build from the document alone has to be possible,
+        and the two values it depends on are the two a reader cannot guess.
+        """
+        self.assertMentions(*FIXED_POINT_SEQUENCE_PHRASES)
+        self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        self.assertIn(FIXED_POINT_COMMIT, self.text)
+
+    def test_the_pinned_source_commit_is_the_one_the_epoch_belongs_to(self):
+        """The receipt, the manifest and the release document must name one
+        commit. Two of them agreeing while the third drifts is how a build gets an
+        epoch belonging to some other tree — reproducible, and reproducibly
+        wrong."""
+        receipt = json.loads(
+            (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (REPO_ROOT / "tools/iptc/vendored-manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(receipt["source_commit"], FIXED_POINT_COMMIT)
+        self.assertEqual(manifest["source_commit"], FIXED_POINT_COMMIT)
+        self.assertEqual(CANONICAL_SOURCE_COMMIT, FIXED_POINT_COMMIT)
 
     def test_the_docs_no_longer_claim_the_renewed_digests_are_unverified(self):
         """The stale sentence, asserted gone.
@@ -3880,15 +4361,16 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         """
         self.assertNotIn(CLOSED_RELEASE_HOLD, self.lowered)
 
-    def test_the_closed_digest_hold_is_not_still_listed_as_a_hold(self):
-        """Guard the guard. The holds list is what "still blocked" means here, so
-        the closed hold must be out of the list and the remaining three must be
-        exactly what is left — a document naming four holds while one is closed
-        teaches a releaser to discount the list."""
-        self.assertNotIn(CLOSED_RELEASE_HOLD, [hold.lower()
-                                               for hold in UNRESOLVED_RELEASE_HOLDS])
-        self.assertEqual(len(UNRESOLVED_RELEASE_HOLDS), 3)
-        self.assertMentions(*UNRESOLVED_RELEASE_HOLDS)
+    def test_no_closed_item_is_still_written_as_a_blocker(self):
+        """Guard the guard. Every hold this document has ever carried is now
+        closed, so none of their sentences may survive anywhere in it — including
+        the digest hold closed one version earlier. A file that records a closure
+        in one section and restates it as a blocker in another teaches a releaser
+        to discount both."""
+        self.assertNotIn(CLOSED_RELEASE_HOLD, self.lowered)
+        for claim in FALSE_RELEASE_ABSOLUTES:
+            with self.subTest(claim=claim):
+                self.assertNotIn(claim, self.lowered)
 
     def test_the_verified_digests_are_the_ones_the_authority_holds(self):
         """The rebuild is only evidence about this release if the rows it
@@ -3903,14 +4385,20 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
     def test_the_resolved_digest_gate_does_not_authorize_a_release(self):
         """Closing a hold is not permission. The document has to keep saying so in
         the same breath, because "independently verified" is the phrase most
-        likely to be read as "ready to publish"."""
-        self.assertIn("BLOCKED", self.text)
+        likely to be read as "ready to publish".
+
+        Asserted as the gates that remain rather than as the word "BLOCKED",
+        which described this document only while the standing prerequisites were
+        open. Keying on that word made the check fail the moment they closed —
+        measuring the banner instead of the safeguard.
+        """
         self.assertMentions("do not publish", "not release approval")
+        self.assertMentions(*RELEASE_TIME_GATE_PHRASES)
 
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
         is named as the authority, and the superseded rows must not be the ones
-        `docs/iptc/machina-sports-canonical-0.1.0.sha256` is said to hold."""
+        `docs/iptc/machina-sports-canonical-0.2.0.sha256` is said to hold."""
         current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
         stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
         self.assertEqual(current & stale, set(),

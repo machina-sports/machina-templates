@@ -74,6 +74,10 @@
       "group": "canonical"
     },
     {
+      "path": "tests/test_iptc_temporal_evidence.py",
+      "group": "canonical"
+    },
+    {
       "path": "tests/test_iptc_api_football_adapter.py",
       "group": "adapters"
     },

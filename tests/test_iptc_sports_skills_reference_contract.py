@@ -241,7 +241,7 @@ class TestObservationIsTheReferenceContract(unittest.TestCase):
         self.assertEqual(validate_observation(self.document), [])
 
     def test_the_document_claims_the_canonical_observation_contract(self):
-        self.assertEqual(self.document["schema_version"], "canonical-observation/1")
+        self.assertEqual(self.document["schema_version"], "canonical-observation/1.1")
         self.assertEqual(sorted(self.document), ["observation", "schema_version"])
 
     def test_the_provider_is_recorded_as_open_data(self):
@@ -506,7 +506,7 @@ class TestCheckedInOutputsAreReproducible(unittest.TestCase):
             "rights", "schema_version", "sport_schema_graph",
         ])
         self.assertEqual(block["schema_version"], "machina-sports-schema/1")
-        self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
+        self.assertEqual(block["profile"], "machina-iptc-profile/1.2")
 
     def test_the_provenance_block_cites_the_pin_and_the_adapter(self):
         provenance = envelope()["machina_sports_schema"]["provenance"]

@@ -91,7 +91,7 @@ class TestAdapterOutputIsAValidObservation(unittest.TestCase):
         self.assertEqual(validate_observation(observation()), [])
 
     def test_the_document_claims_the_canonical_observation_contract(self):
-        self.assertEqual(observation()["schema_version"], "canonical-observation/1")
+        self.assertEqual(observation()["schema_version"], "canonical-observation/1.1")
 
     def test_the_top_level_document_carries_nothing_but_the_observation(self):
         self.assertEqual(sorted(observation()), ["observation", "schema_version"])
@@ -380,7 +380,7 @@ class TestCorrectedFixturesAreReproducible(unittest.TestCase):
             "rights", "schema_version", "sport_schema_graph",
         ])
         self.assertEqual(block["schema_version"], "machina-sports-schema/1")
-        self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
+        self.assertEqual(block["profile"], "machina-iptc-profile/1.2")
 
     def test_the_capability_tier_is_core_and_says_why(self):
         """No clock, no period and no actions, so ``live`` is correctly not

@@ -1,0 +1,220 @@
+{
+  "machina_sports_schema": {
+    "schema_version": "machina-sports-schema/1",
+    "profile": "machina-iptc-profile/1.2",
+    "event_view": {
+      "event_id": "urn:machina:sports:event:xe47f808fa0dc3846f54af947bedbaf5f",
+      "label": "Synthetic Home Hoops vs Synthetic Away Nets",
+      "sport": "basketball",
+      "temporal_evidence": {
+        "kind": "start",
+        "source_value": "2030-01-02T03:05Z",
+        "precision": "minute",
+        "lower_inclusive": "2030-01-02T03:05:00Z",
+        "upper_exclusive": "2030-01-02T03:06:00Z",
+        "provenance": {
+          "normalizer": "synthetic.canonical.adapters.reduced_precision_basketball",
+          "normalizer_version": "1",
+          "derivation": "declared_precision_interval"
+        }
+      },
+      "status": "closed",
+      "outcome_type": "regular",
+      "competition": {
+        "id": "urn:machina:sports:competition:xd043ff5a2f6e81e08a38fad9a43133a6",
+        "name": "Synthetic Basketball League",
+        "type": "recurring-competition"
+      },
+      "season": {
+        "id": "urn:machina:sports:competition:x72fcf73d2de52b64c565c14b24638752",
+        "name": "Synthetic Basketball League 2030"
+      },
+      "site": {
+        "id": "urn:machina:sports:site:x7b695e6a2e2544f1322602489c11edee",
+        "name": "Synthetic Basketball Arena",
+        "city": "Synthetic City",
+        "country": "SYN"
+      },
+      "participants": [
+        {
+          "id": "urn:machina:sports:team:xa4135969d30d3f8488d6546343f7a5e3",
+          "role": "home",
+          "name": "Synthetic Home Hoops",
+          "score": "101",
+          "outcome": "win"
+        },
+        {
+          "id": "urn:machina:sports:team:xa3f4982f2f41e5f54e3d3335d4f60852",
+          "role": "away",
+          "name": "Synthetic Away Nets",
+          "score": "99",
+          "outcome": "loss"
+        }
+      ],
+      "provider": {
+        "namespace": "synthetic/reduced-precision-basketball",
+        "family": "synthetic",
+        "raw": {
+          "@type": "synthetic-fixture",
+          "note": "Hand-authored. No provider payload was retrieved to build this file, and nothing here is evidence about any feed. It exists to exercise one thing: a source that published a start time to the minute and no further, which the canonical contract must carry as a bounded interval rather than as an invented second-of-minute.",
+          "stated_start": "2030-01-02T03:05Z"
+        }
+      }
+    },
+    "provenance": {
+      "provider": {
+        "namespace": "synthetic/reduced-precision-basketball",
+        "family": "synthetic"
+      },
+      "adapter": {
+        "name": "synthetic.canonical.adapters.reduced_precision_basketball",
+        "version": "1"
+      },
+      "serializer": {
+        "name": "machina-iptc-serializer",
+        "version": "1"
+      },
+      "profile": "machina-iptc-profile/1.2",
+      "upstream_pin": {
+        "repository": "https://github.com/iptc/sport-schema",
+        "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",
+        "target_version": "1.1"
+      },
+      "observed_at": "2030-01-02T04:00:00+00:00",
+      "source_refs": [
+        {
+          "kind": "endpoint-class",
+          "value": "synthetic/scoreboard",
+          "note": "no provider was called; this fixture is hand-authored"
+        }
+      ],
+      "rights": {
+        "data_class": "synthetic-fixture",
+        "prototype_only": true,
+        "commercial_use": false
+      },
+      "determinism": {
+        "id_strategy": "provider-scoped-surrogate",
+        "digest": "blake2b-128",
+        "canonical_id_service": "not-available-in-this-phase"
+      }
+    },
+    "provider_ids": [
+      {
+        "machina_id": "urn:machina:sports:competition:xd043ff5a2f6e81e08a38fad9a43133a6",
+        "entity_type": "competition",
+        "provider_namespace": "synthetic/reduced-precision-basketball",
+        "provider_id": "synthetic-basketball-league-1",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:competition:x72fcf73d2de52b64c565c14b24638752",
+        "entity_type": "season",
+        "provider_namespace": "synthetic/reduced-precision-basketball",
+        "provider_id": "synthetic-basketball-league-1-2030",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.competition.season.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:site:x7b695e6a2e2544f1322602489c11edee",
+        "entity_type": "site",
+        "provider_namespace": "synthetic/reduced-precision-basketball",
+        "provider_id": "7101",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.site.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:event:xe47f808fa0dc3846f54af947bedbaf5f",
+        "entity_type": "event",
+        "provider_namespace": "synthetic/reduced-precision-basketball",
+        "provider_id": "7001",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.event.provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:xa4135969d30d3f8488d6546343f7a5e3",
+        "entity_type": "team",
+        "provider_namespace": "synthetic/reduced-precision-basketball",
+        "provider_id": "7011",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[0].provider_id"
+      },
+      {
+        "machina_id": "urn:machina:sports:team:xa3f4982f2f41e5f54e3d3335d4f60852",
+        "entity_type": "team",
+        "provider_namespace": "synthetic/reduced-precision-basketball",
+        "provider_id": "7012",
+        "resolution_method": "provider-native",
+        "confidence": 1.0,
+        "evidence": "observation.participants[1].provider_id"
+      }
+    ],
+    "capabilities": {
+      "tier": null,
+      "tiers_satisfied": [],
+      "present": [
+        "event.competition",
+        "event.identity",
+        "event.participants",
+        "event.result",
+        "event.score",
+        "event.start_time.bounded",
+        "event.status",
+        "provenance"
+      ],
+      "absent": [
+        "event.actions",
+        "event.clock",
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.lineups",
+        "event.live_statistics",
+        "event.period",
+        "event.play_by_play",
+        "event.start_time",
+        "event.tracking",
+        "participant.player_statistics"
+      ],
+      "not_expressible": [
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.tracking"
+      ],
+      "by_tier": {
+        "core": {
+          "required_present": [
+            "event.competition",
+            "event.identity",
+            "event.participants",
+            "event.status",
+            "provenance"
+          ],
+          "required_absent": [
+            "event.start_time"
+          ],
+          "optional_present": [
+            "event.result",
+            "event.score",
+            "event.start_time.bounded"
+          ],
+          "optional_absent": []
+        }
+      },
+      "violations": [],
+      "graph_unavailable_reason": "exact-event-start-time-required"
+    },
+    "rights": {
+      "data_class": "synthetic-fixture",
+      "prototype_only": true,
+      "commercial_use": false
+    }
+  }
+}
