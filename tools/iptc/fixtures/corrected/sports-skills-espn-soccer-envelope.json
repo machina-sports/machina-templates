@@ -327,7 +327,7 @@
         "name": "machina-iptc-serializer",
         "version": "1"
       },
-      "profile": "machina-iptc-profile/1.2",
+      "profile": "machina-iptc-profile/1.1",
       "upstream_pin": {
         "repository": "https://github.com/iptc/sport-schema",
         "commit": "0e77bf8678f3702fe81c28673bede35efe47d633",

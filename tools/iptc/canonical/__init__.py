@@ -32,6 +32,19 @@ runs here, and it is not vendored.
 #: bump changes the meaning of an already-conforming document.
 PROFILE_VERSION = "machina-iptc-profile/1.2"
 
+#: The profile an **exact** observation claims conformance to, unchanged.
+#:
+#: The two profile identifiers in an envelope answer different questions, and
+#: conflating them is what made the exact-observation diff five items instead of
+#: four. ``machina_sports_schema.profile`` states which profile version produced
+#: the document; ``provenance.profile`` is that document's own conformance claim.
+#: 1.2 adds exactly one rule, about reduced-precision observations, so an exact
+#: observation's projection is byte-for-byte what 1.1 specifies and 1.1 is the
+#: accurate claim for it — not a stale one. Reduced observations claim
+#: :data:`PROFILE_VERSION`, because the graph omission is 1.2's rule and nothing
+#: in 1.1 admits it.
+EXACT_OBSERVATION_PROFILE_VERSION = "machina-iptc-profile/1.1"
+
 #: The canonical observation input contract. RFC 002.
 SCHEMA_VERSION = "canonical-observation/1.1"
 
@@ -72,6 +85,7 @@ UPSTREAM_TARGET_VERSION = "1.1"
 
 __all__ = [
     "PROFILE_VERSION",
+    "EXACT_OBSERVATION_PROFILE_VERSION",
     "SCHEMA_VERSION",
     "PREDECESSOR_SCHEMA_VERSION",
     "ACCEPTED_SCHEMA_VERSIONS",

@@ -1468,7 +1468,12 @@ class TestProvenanceBlock(unittest.TestCase):
         self.assertEqual(block["upstream_pin"]["commit"],
                          "0e77bf8678f3702fe81c28673bede35efe47d633")
         self.assertEqual(block["upstream_pin"]["target_version"], "1.1")
-        self.assertEqual(block["profile"], "machina-iptc-profile/1.2")
+        # MINIMAL is an exact observation, and provenance carries the conformance
+        # claim of the document rather than the serializer's own version — which
+        # the envelope states separately, as 1.2. RFC 002 §12 freezes `provenance`
+        # for exact observations, so this value does not move with the profile
+        # bump. tests/test_iptc_temporal_evidence.py holds the whole rule.
+        self.assertEqual(block["profile"], "machina-iptc-profile/1.1")
         self.assertEqual(block["observed_at"], "2026-03-01T22:05:00+00:00")
         self.assertEqual(block["serializer"],
                          {"name": "machina-iptc-serializer", "version": "1"})

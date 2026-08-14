@@ -37,6 +37,7 @@ import json
 from pathlib import Path
 
 from . import (
+    EXACT_OBSERVATION_PROFILE_VERSION,
     MACHINA_SCHEMA_VERSION,
     PROFILE_VERSION,
     SERIALIZER_NAME,
@@ -823,7 +824,18 @@ def provenance_block(document, *, id_resolver):
     if isinstance(block.get("adapter"), dict):
         block["adapter"].pop("source_refs", None)
     block["serializer"] = {"name": SERIALIZER_NAME, "version": SERIALIZER_VERSION}
-    block["profile"] = PROFILE_VERSION
+    # The conformance claim of THIS document, not the version of the serializer
+    # that built it — the envelope's own `profile` says that. An exact
+    # observation projects byte-for-byte as `machina-iptc-profile/1.1` specifies,
+    # so 1.1 is what it conforms to; 1.2 adds one rule and it is a rule about a
+    # case this document is not. Stamping the running profile here instead moved
+    # a field inside `provenance`, which RFC 002 §12 freezes for exact
+    # observations, and made the enumerated diff five items instead of four.
+    block["profile"] = (
+        PROFILE_VERSION
+        if TEMPORAL_EVIDENCE_KEY in _section(observation, "event")
+        else EXACT_OBSERVATION_PROFILE_VERSION
+    )
     block["upstream_pin"] = {
         "repository": UPSTREAM_REPOSITORY,
         "commit": UPSTREAM_COMMIT,

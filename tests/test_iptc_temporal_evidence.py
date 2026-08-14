@@ -907,10 +907,12 @@ def as_0_1_0(envelope):
     """
     block = copy.deepcopy(envelope)["machina_sports_schema"]
     block["profile"] = "machina-iptc-profile/1.1"
-    # The fifth difference, and the one RFC 002 §12.3 does not enumerate: the
-    # provenance block restates the profile it claims conformance to. See
-    # TestTheUnenumeratedProvenanceProfileDifference below.
-    block["provenance"]["profile"] = "machina-iptc-profile/1.1"
+    # NOTHING INSIDE `provenance` IS NORMALIZED, AND THAT IS THE POINT. RFC 002
+    # §12 enumerates the exact-observation diff as four items, every one of them
+    # in the envelope's own version metadata or its capability vocabulary, and it
+    # names `provenance` among the members that stay byte-identical. A line here
+    # rewriting a field inside `provenance` would be this proof quietly excusing
+    # the difference it exists to catch — which is what it did, until review.
     capabilities = block["capabilities"]
     capabilities["absent"] = [n for n in capabilities["absent"] if n != BOUNDED]
     core = capabilities["by_tier"]["core"]
@@ -1013,36 +1015,55 @@ class TestExactObservationDiffIsExactlyTheEnumeratedItems(unittest.TestCase):
                 self.assertEqual(validate_observation(document), [])
 
 
-class TestTheUnenumeratedProvenanceProfileDifference(unittest.TestCase):
-    """A fifth intentional difference RFC 002 §12.3 does not list, gated here so it is
-    recorded rather than silent.
+class TestProvenanceIsByteIdenticalForExactObservations(unittest.TestCase):
+    """RFC 002 §12 names ``provenance`` among the members that do not move for an
+    exact observation. This is the case that holds it to that.
 
-    D8 says ``provenance`` is byte-identical for exact observations. It cannot
-    be: ``provenance_block`` restates the profile the document claims conformance
-    to, so bumping the profile necessarily bumps it there too. The alternative —
-    freezing that one field at 1.1 — would make the package emit a conformance
-    claim to a profile it no longer implements, and put two disagreeing spellings
-    of one fact in one document.
+    The serializer used to stamp the running profile into every document's
+    provenance, so bumping the profile silently rewrote a field inside a member
+    the contract froze. It read as harmless — the value was "more current" — but
+    it made the exact-observation diff five items instead of four, and the proof
+    above was normalizing the fifth away rather than reporting it.
 
-    D4's own wording covers it ("what does change is limited to explicitly
-    version-bearing metadata"); D8's "byte-identical" sentence is the over-broad
-    restatement. Recorded for the step-2 review to rule on.
+    **The two ``profile`` fields answer different questions.** The envelope's
+    states which profile version produced the document; ``provenance``'s is the
+    document's own conformance claim. For an exact observation the projection is
+    byte-for-byte what ``machina-iptc-profile/1.1`` specifies — 1.2 adds one rule,
+    and it is a rule about a case this document is not — so 1.1 is the accurate
+    claim, not a stale one.
     """
 
-    def test_the_provenance_block_restates_the_profile(self):
-        envelope = built_envelope(EXACT_PAIRS[0][0])["machina_sports_schema"]
-        self.assertEqual(envelope["provenance"]["profile"], "machina-iptc-profile/1.2")
+    def test_an_exact_record_keeps_the_predecessor_profile_in_provenance(self):
+        for observation_name, _ in EXACT_PAIRS:
+            with self.subTest(fixture=observation_name):
+                envelope = built_envelope(observation_name)["machina_sports_schema"]
+                self.assertEqual(envelope["provenance"]["profile"],
+                                 "machina-iptc-profile/1.1")
 
-    def test_it_agrees_with_the_envelope_it_travels_in(self):
-        """The property that makes this the right call: one document, one profile
-        claim, never two spellings that can disagree."""
+    def test_the_envelope_still_declares_the_successor_profile(self):
+        """The bump is real and visible; it is simply not inside ``provenance``."""
         envelope = built_envelope(EXACT_PAIRS[0][0])["machina_sports_schema"]
-        self.assertEqual(envelope["provenance"]["profile"], envelope["profile"])
+        self.assertEqual(envelope["profile"], "machina-iptc-profile/1.2")
 
-    def test_it_is_the_only_other_place_the_profile_is_stated(self):
-        envelope = built_envelope(EXACT_PAIRS[0][0])
-        blob = json.dumps(envelope)
-        self.assertEqual(blob.count("machina-iptc-profile/1.2"), 2)
+    def test_the_successor_profile_appears_exactly_once_in_an_exact_envelope(self):
+        """Guard the guard. If the serializer starts stamping 1.2 anywhere else in
+        an exact document, the count moves and this fails before the digest proof
+        has to."""
+        blob = json.dumps(built_envelope(EXACT_PAIRS[0][0]))
+        self.assertEqual(blob.count("machina-iptc-profile/1.2"), 1)
+
+    def test_a_reduced_record_does_claim_the_successor_profile(self):
+        """The reduced case is new, and it conforms only under 1.2 — the graph
+        omission is 1.2's rule. Its provenance says so."""
+        for observation_name, _, _, _ in REDUCED_FIXTURES:
+            with self.subTest(fixture=observation_name):
+                document = reduced_fixture(observation_name)
+                namespace = document["observation"]["provider"]["namespace"]
+                envelope = canonical_envelope(
+                    document, id_resolver=surrogate_resolver(namespace))
+                self.assertEqual(
+                    envelope["machina_sports_schema"]["provenance"]["profile"],
+                    "machina-iptc-profile/1.2")
 
 
 #: The two checked-in reduced-precision fixtures, and the receipt each one's

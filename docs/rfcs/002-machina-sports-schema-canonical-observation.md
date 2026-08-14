@@ -736,10 +736,21 @@ emitted for a new reduced one.
 
 Exact observations are unaffected: `sport_schema_graph`, `event_view`,
 `provenance`, `provider_ids` and `rights` are byte-identical across the bump,
-apart from the profile identifier `provenance` restates. The only other changes
-are `schema_version` on the input document, `profile` on the envelope, and
-`event.start_time.bounded` appearing in the envelope's `capabilities.absent` and
-core `optional_absent` lists. `tests/test_iptc_temporal_evidence.py` proves that
-by rebuilding every corrected envelope, undoing exactly those changes, and
+with no exception. The changes are exactly four: `schema_version` on the input
+document, `profile` on the envelope, and `event.start_time.bounded` appearing in
+the envelope's `capabilities.absent` and core `optional_absent` lists.
+`tests/test_iptc_temporal_evidence.py` proves that by rebuilding every corrected
+envelope, undoing exactly those changes and nothing inside `provenance`, and
 comparing the digest against
 `tools/iptc/fixtures/exact-observation-0.1.0-digests.json`.
+
+**The two `profile` identifiers are not one fact stated twice.**
+`machina_sports_schema.profile` states which profile version produced the
+document and becomes `1.2`. `provenance.profile` is that document's own
+conformance claim, and for an exact observation it stays `machina-iptc-profile/1.1`
+— the projection is byte-for-byte what 1.1 specifies, and 1.2's single added rule
+is about a case an exact observation is not. A reduced-precision observation
+claims `1.2` there, because the graph omission is 1.2's rule and nothing in 1.1
+admits it. Stamping the running profile into every document's provenance instead
+would move a field inside a member this section freezes, which is a fifth
+difference and a regression.
