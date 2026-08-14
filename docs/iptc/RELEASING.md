@@ -81,12 +81,12 @@ assertion:
 | A reviewer-gated `pypi` environment exists | The repository's `pypi` environment carries a **required reviewer** rule and a deployment-branch policy. Re-check with `gh api repos/<owner>/<repo>/environments/pypi`. |
 | The trusted publisher is registered and works | Workflow run **`31743535579`** — `publish-machina-sports-canonical.yml`, tag `machina-sports-canonical-v0.1.0`, head `48d4168162fc84b48931b82971738b9359298dde` — **completed successfully**. An upload cannot succeed unless the environment resolved and PyPI accepted the OIDC exchange, so that run is proof of the whole path. |
 | The owner has approved this release | The owner approved all five decisions of the temporal-precision contract change, including *version and release*, and separately confirmed proceeding with merge, tag and PyPI release. |
-| The 0.2.0 digests are independently verified | **OPEN.** Deterministic on one machine, but not yet rebuilt elsewhere for the *current* source commit — the review correction changed the artefacts and superseded the earlier rebuild. See the verification record below; this is the one prerequisite of the four that is not closed. |
+| The 0.2.0 digests are independently verified | **CLOSED.** Rebuilt from a clean `git archive` export of `455561632fc0f0f389109e5417c32798a02538c0`, in isolated trees, on Python **3.9.6** and **3.11.14**, at `SOURCE_DATE_EPOCH=1786716463`. Both interpreters reproduced the checked-in rows and each other. See the verification record below. |
 
-**A closed prerequisite is not an open door.** The three closed rows say the
-*standing setup* is in place; the fourth is open and is tracked below. None of
-them approves this particular upload, and every per-release gate below still has
-to pass on its own evidence.
+**A closed prerequisite is not an open door.** All four rows say the *standing
+setup* is in place and that the bytes are reproducible. None of them approves this
+particular upload, and every per-release gate below still has to pass on its own
+evidence.
 
 ### The gates that still stand, at release time
 
@@ -227,10 +227,10 @@ diffs against:
 | `machina_sports_canonical-0.2.0-py3-none-any.whl` | `de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31` |
 | `machina_sports_canonical-0.2.0.tar.gz` | `8eeb241a8ed331dd24ea6c5e95d154cea7bb5fccc6bef971c6e52b5313d3b451` |
 
-These rows are the **0.2.0 candidate**, produced from the RFC 002 §12 contract
-change. They are recorded so every automated comparison has an authority to diff
-against — they are **not** verified evidence. The section immediately below says
-exactly what has and has not been done to them, and it is open.
+These rows are the **0.2.0 release candidate**, produced from the RFC 002 §12
+contract change as corrected by the P1 review finding. They are recorded so every
+automated comparison has an authority to diff against, and the section immediately
+below is the record of their independent rebuild.
 
 Two older records follow it and are kept as history rather than rewritten: the
 0.1.0 renewed rows, which *were* independently rebuilt, and the pre-license 0.1.0
@@ -259,55 +259,78 @@ character. **If the wheel bytes change for any reason, these digests are stale a
 this file must be re-recorded as a reviewed change.** Adding the license metadata
 is exactly such a change, and it is why these rows differ from the ones below.
 
-### Independent verification of the current 0.2.0 digests — ⛔ OPEN
+### Independent verification of the current 0.2.0 digests — ✅ CLOSED
 
-**The 0.2.0 rows above have not been independently verified.** They were built by
-one process, on one machine, on one interpreter. That is a deterministic
-candidate, not evidence that anyone else reproduces them.
+**The 0.2.0 rows above have been independently verified.** They were rebuilt
+outside the process that produced them, from a clean `git archive` export rather
+than from a working tree, on both proven interpreters, and both reproduced what
+`docs/iptc/machina-sports-canonical-0.2.0.sha256` holds.
 
-**Why the previous ✅ does not carry forward.** It was real: the rows built from
-source commit `1b20df3` were rebuilt from a clean `git archive` export of
-`c5750ffa5656e4285c40ad734d05c41588475f6b` on Python 3.9.6 and 3.11.14, and both
-matched. Then independent review found a P1 — the serializer was stamping the
-running profile into `provenance` for exact observations, which moved a field
-inside a member RFC 002 §12 freezes and made the exact-observation diff five
-items instead of four. Correcting it changed the canonical source, which changed
-both artefacts. That rebuild is therefore **superseded**: it is evidence about
-bytes this repository no longer builds, and reusing its ✅ here would be the most
-defensible-looking false claim in this file, because the work really was done —
-just not on these bytes.
+- **Candidate:** `455561632fc0f0f389109e5417c32798a02538c0`, the commit whose tree
+  was exported and rebuilt. Named in full, because an abbreviation is a claim
+  about a prefix.
+- **Canonical source:** `fd787c71e5bce9861443eb3a28ae9144eafa5109`, the commit
+  carrying the P1 correction and the one `source_commit` names. It is not the same
+  commit as the candidate and cannot be: the receipt pins the *source* the bytes
+  are built from, and the candidate is the *tree* that carries that receipt
+  together with the re-pinned checksum file, so an export of it rebuilds to rows it
+  already holds.
+- **Source:** obtained with `git archive` into separate isolated temporary trees,
+  so no working tree, build cache or untracked file could contribute bytes. The
+  isolation is the evidence; a rebuild from a working tree would prove nothing.
+- **Environment:** fresh disposable virtual environments, each installing the
+  checked-in `requirements-iptc-build.txt` unchanged.
+- **Interpreters:** Python **3.9.6** and Python **3.11.14**, each running
+  `packaging/machina_sports_canonical/release.py` with
+  `SOURCE_DATE_EPOCH=1786716463`.
 
-What has been done to the current rows:
+Each interpreter independently produced:
 
-- **The fixed point has been reached again.** `source_commit` in
-  `tools/iptc/canonical/package-receipt.json` and `tools/iptc/vendored-manifest.json`
-  names `fd787c71e5bce9861443eb3a28ae9144eafa5109`, the commit carrying the P1
-  correction, and `SOURCE_DATE_EPOCH` is `1786716463`, that commit's committer
-  timestamp. The rows were rebuilt *after* both values were set.
-- **Reproducible twice, same machine, same interpreter.** The release helper was
-  run twice at that epoch on Python 3.12.12 and produced byte-identical artefacts
-  both times.
-- **Recorded as the authority**, in
-  `docs/iptc/machina-sports-canonical-0.2.0.sha256`.
+| Artefact (0.2.0) | SHA-256 |
+|---|---|
+| `machina_sports_canonical-0.2.0-py3-none-any.whl` | `de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31` |
+| `machina_sports_canonical-0.2.0.tar.gz` | `8eeb241a8ed331dd24ea6c5e95d154cea7bb5fccc6bef971c6e52b5313d3b451` |
 
-What is still missing is the whole of the hold: a rebuild **outside the process
-that produced these rows**, from a clean `git archive` export rather than a
-working tree, on **both proven interpreters**, Python **3.9** and **3.11**.
+These digests are **identical on both interpreters** and identical to the
+checked-in rows above. Both halves of that sentence are load-bearing and neither
+implies the other: an interpreter that reproduced only its own build would
+demonstrate determinism per interpreter while the two could still be stably
+producing different bytes, which is the failure the checked-in row file exists to
+make falsifiable.
 
-**What closes it**, once the re-pinned files are committed:
+**The fixed point holds.** `source_commit` in
+`tools/iptc/canonical/package-receipt.json` and `tools/iptc/vendored-manifest.json`
+names `fd787c71e5bce9861443eb3a28ae9144eafa5109`, and `SOURCE_DATE_EPOCH` is
+`1786716463`, that commit's committer timestamp. The rows were rebuilt *after*
+both values were set, which is what makes the fixed point reached rather than
+asserted.
+
+**Why the previous ✅ does not carry forward, and is kept anyway.** It was real:
+the rows built from source commit `1b20df3` were rebuilt from a clean `git archive`
+export of `c5750ffa5656e4285c40ad734d05c41588475f6b` on Python 3.9.6 and 3.11.14,
+and both matched. Then independent review found a P1 — the serializer was stamping
+the running profile into `provenance` for exact observations, which moved a field
+inside a member RFC 002 §12 freezes and made the exact-observation diff five items
+instead of four. Correcting it changed the canonical source, which changed both
+artefacts. That rebuild is therefore **superseded**: it is evidence about bytes
+this repository no longer builds. It is recorded rather than deleted because the
+work really was done — just not on these bytes — and because a deleted rebuild is
+a rebuild the next releaser repeats.
+
+Reproduce this record with:
 
 ```sh
-git archive <that commit> | tar -x -C <clean tree>
+git archive 455561632fc0f0f389109e5417c32798a02538c0 | tar -x -C <clean tree>
 SOURCE_DATE_EPOCH=1786716463 python packaging/machina_sports_canonical/release.py <clean tree> dist
 sha256sum dist/*.whl dist/*.tar.gz
 ```
 
-Run it on Python 3.9 and 3.11 in separate disposable environments, each
-installing the checked-in `requirements-iptc-build.txt` unchanged, confirm both
-reproduce the rows above, and replace this section with the closed record naming
-that commit and those two interpreter patch versions. Until then this hold is
-open: **do not publish**, and note that the readiness section's reproducibility
-row is the one prerequisite of the four that is currently open.
+**This closed the 0.2.0 digest hold and nothing else. It is not release
+approval.** It says the bytes are reproducible by someone other than their author;
+it says nothing about whether this upload may proceed. The required reviewer on the
+`pypi` environment is untouched by it, the owner's approval is untouched by it, and
+every release-time gate below still has to pass on its own evidence.
+**Do not publish** on the strength of this section alone.
 
 ### Independent verification of the 0.1.0 renewed digests — ✅ HISTORY, STILL VALID FOR 0.1.0
 

@@ -618,21 +618,47 @@ PRIOR_VERIFIED_RELEASE_COMMIT = "c5750ffa5656e4285c40ad734d05c41588475f6b"
 #: names none.
 VERIFIED_RELEASE_INTERPRETERS = ("3.9.6", "3.11.14")
 
-#: What the record for the CURRENT rows must state while it is open.
+#: The commit whose clean ``git archive`` export was rebuilt to verify the CURRENT
+#: 0.2.0 rows, in full.
 #:
-#: A verification is evidence about the exact bytes it rebuilt. When the source
-#: commit moves, the artefacts move with it and the previous rebuild stops being
-#: evidence about anything shipping — so the record reopens rather than carrying
-#: forward. Saying so positively, rather than only omitting the ✅, is what stops
-#: a reader inheriting the previous section's conclusion.
-OPEN_VERIFICATION_PHRASES = (
-    "have not been independently verified",
+#: The release candidate itself, not the canonical source commit
+#: :data:`FIXED_POINT_COMMIT` the receipt names. The two are necessarily different
+#: commits and both have to appear: the receipt pins the *source* the artefacts
+#: were built from, and this is the *tree* that was exported and rebuilt — the one
+#: carrying the re-pinned checksum file, so an export of it rebuilds to rows it
+#: already holds. Naming only one of them would leave a releaser unable to tell
+#: which tree to export.
+VERIFIED_RELEASE_COMMIT = "455561632fc0f0f389109e5417c32798a02538c0"
+
+#: What the record for the CURRENT rows must state now that it is closed.
+#:
+#: ``git archive`` is load-bearing rather than decorative: a rebuild from a working
+#: tree proves nothing, because an untracked file or a build cache can contribute
+#: bytes. The isolation is the evidence. So is the cross-interpreter equality: two
+#: interpreters that each reproduce their own build prove determinism per
+#: interpreter and say nothing about whether they agree with each other, which is
+#: the failure the checked-in row file exists to make falsifiable.
+CLOSED_VERIFICATION_PHRASES = (
+    "independently verified",
     "git archive",
+    "identical on both interpreters",
 )
 
-#: Asserted ABSENT while the record is open: the current rows must not be
-#: described as verified anywhere, in any tense.
+#: Asserted PRESENT: the closing claim for the current rows, in the exact words
+#: the record must use, so a reworded near-miss does not read as closure.
 CLOSED_CLAIM_FOR_CURRENT_ROWS = "the 0.2.0 rows above have been independently verified"
+
+#: Asserted ABSENT once the rebuild has happened. A document that records the
+#: verification and still carries the sentence saying it never happened
+#: contradicts itself about the one thing a releaser reads it for — the same rule
+#: :data:`CLOSED_RELEASE_HOLD` enforces one version earlier.
+OPEN_CLAIM_FOR_CURRENT_ROWS = "have not been independently verified"
+
+#: Asserted ABSENT: the readiness table's OPEN row, spelled as it stood. The
+#: prerequisite table and the verification record are two places one fact is
+#: stated, and a closed record under a table still calling it the one open
+#: prerequisite is the contradiction a releaser resolves by guessing.
+OPEN_READINESS_ROW_CLAIM = "this is the one prerequisite of the four that is not closed"
 
 #: Closing the digest hold closes the digest hold. It is not release approval, it
 #: does not stand in for the required reviewer, and the three external holds are
@@ -4214,29 +4240,61 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
 
-    def test_the_docs_reopen_verification_for_the_current_rows(self):
-        """A verification does not survive its source commit.
+    def test_the_docs_record_the_current_0_2_0_verification_as_closed(self):
+        """The 0.2.0 digest hold, closed on evidence rather than on assertion.
 
-        The review correction changed the canonical source, so it changed the
-        artefacts, so the rebuild that verified the previous rows is evidence
-        about bytes this repository no longer builds. Carrying its ✅ forward
-        would be the most defensible-looking false claim in the file — the work
-        really was done, just not on these bytes.
+        The rows were rebuilt from a clean ``git archive`` export of an exact
+        commit, in isolated trees, on both proven interpreters, and both
+        reproduced what the checked-in authority holds. A releaser can only weigh
+        that by seeing the same things the 0.1.0 record gave them: which tree was
+        exported, which source commit it was built from, which epoch, which two
+        interpreter patch versions ran, and which digests came out.
 
-        The current rows still have to be fully specified, so a reader knows
-        exactly what is awaiting verification.
+        Every value is asserted against a named constant rather than against
+        prose, so a record that verified *some other* bytes, or that names an
+        interpreter nobody ran, is red.
         """
-        self.assertMentions(*OPEN_VERIFICATION_PHRASES)
+        self.assertMentions(*CLOSED_VERIFICATION_PHRASES)
+        self.assertIn(VERIFIED_RELEASE_COMMIT, self.text)
+        self.assertIn(FIXED_POINT_COMMIT, self.text)
         self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        for version in VERIFIED_RELEASE_INTERPRETERS:
+            with self.subTest(interpreter=version):
+                self.assertIn(version, self.text)
         for name, digest in REVIEWED_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
 
-    def test_the_docs_do_not_claim_the_current_rows_are_verified(self):
-        """Asserted as an absent claim in the exact words the closed record used,
-        so a copy-forward of that section is caught rather than reworded."""
-        self.assertNotIn(CLOSED_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+    def test_the_three_verification_commits_are_distinct_and_all_stated(self):
+        """Guard the guard. Three commits do three different jobs here — the tree
+        that was exported, the canonical source the receipt pins, and the
+        superseded candidate — and a record that reused one value for another
+        would read as complete while pointing a releaser at the wrong tree."""
+        commits = (VERIFIED_RELEASE_COMMIT, FIXED_POINT_COMMIT,
+                   PRIOR_VERIFIED_RELEASE_COMMIT)
+        self.assertEqual(len(set(commits)), len(commits))
+        for commit in commits:
+            with self.subTest(commit=commit):
+                self.assertRegex(commit, r"^[0-9a-f]{40}$")
+                self.assertIn(commit, self.text)
+
+    def test_the_docs_claim_the_current_rows_are_verified_in_those_words(self):
+        """Closure stated positively, in the exact words the record must use.
+
+        Deleting the open sentence is not the same act as recording the rebuild:
+        a section that merely stops saying "unverified" leaves a reader to infer
+        closure from an absence, which is how the 0.1.0 record's ✅ came to be
+        read as covering 0.2.0.
+        """
+        self.assertIn(CLOSED_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+
+    def test_the_docs_no_longer_carry_the_open_claim_for_the_current_rows(self):
+        """The stale sentences, asserted gone — in the record and in the
+        readiness table both, because one fact stated in two places is a fact that
+        can contradict itself."""
+        self.assertNotIn(OPEN_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+        self.assertNotIn(OPEN_READINESS_ROW_CLAIM, self.lowered)
 
     def test_the_prior_verification_is_kept_and_scoped_to_what_it_rebuilt(self):
         """Kept as history, and explicitly not as evidence for the current rows.
