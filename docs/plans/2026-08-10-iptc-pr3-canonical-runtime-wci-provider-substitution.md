@@ -785,7 +785,7 @@ python3 -m pytest tests/test_iptc_wci_provider_substitution.py -q
 python3 -m pytest tests/test_iptc_canonical_connector.py -q
 python3 -m tools.iptc.run_test_suites
 python3 -m tools.iptc                      # regenerate; diff must be empty or explained
-scripts/check-no-openai.sh                 # repo AI-route lint
+python3 scripts/check-machina-ai-policy.py all --require-semantic  # router-policy lint
 ```
 Plus: full install audit (every `_install.yml` reference resolves) and static template import checks (every workflow/mapping/connector reference resolves without executing).
 

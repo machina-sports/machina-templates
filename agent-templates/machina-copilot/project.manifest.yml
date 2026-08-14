@@ -9,7 +9,7 @@
 #   POST /project/bootstrap-check        → preflight blockers/warnings
 #   POST /vault/validate                 → probe a credential against its rule
 #
-# Companion docs in machina-templates/CLAUDE.md describe the Vertex-only policy.
+# Companion docs in machina-templates/CLAUDE.md describe the default Vertex configuration.
 
 name: machina-copilot
 version: 1
