@@ -108,6 +108,7 @@ def test_skill_examples_use_execute_endpoint():
     for workflow_name in (
         "nfl-workload-report",
         "nfl-workload-latest",
+        "nfl-workload-machina-snapshot",
         "fantasy-explain-reasoning",
     ):
         assert f"POST /workflow/execute/{workflow_name}" in text

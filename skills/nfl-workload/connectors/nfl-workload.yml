@@ -57,6 +57,8 @@ connector:
   commands:
   - name: Generate workload report
     value: generate_workload_report
+  - name: Generate Machina workload snapshot
+    value: generate_machina_workload_snapshot
   - name: Get player workload
     value: get_player_workload
   - name: Get player pair workload

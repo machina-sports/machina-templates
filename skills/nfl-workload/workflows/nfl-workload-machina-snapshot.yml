@@ -1,0 +1,76 @@
+workflow:
+  name: nfl-workload-machina-snapshot
+  title: NFL - Machina workload snapshot
+  description: Produces and stores the additive machina-player-workload-snapshot/1 aggregate from the
+    unchanged native NFL workload report. This is a prototype-only player workload snapshot, not a
+    canonical event observation, event view, Sport Schema graph, or canonical identity assertion.
+    observed_at is always supplied by the caller with an explicit RFC3339 offset. Production consumers
+    are refused before nflreadpy bootstrap or data loading.
+  inputs:
+    season: $.get('season', 2025)
+    through_week: $.get('through_week', 0)
+    position: $.get('position', 'WR')
+    team: $.get('team', '')
+    lookback_weeks: $.get('lookback_weeks', 3)
+    min_opportunities: $.get('min_opportunities', 10)
+    limit: $.get('limit', 50)
+    observed_at: $.get('observed_at', '')
+    consumer_tier: $.get('consumer_tier', 'production')
+  outputs:
+    snapshot: $.get('snapshot', {})
+    season: $.get('season', 0)
+    week: $.get('week', 0)
+    position: $.get('position', '')
+    team: $.get('team', 'ALL')
+    n_players: $.get('n_players', 0)
+    deps: $.get('snapshot_deps', {})
+    workflow-status: $.get('snapshot', {}) and 'executed' or 'skipped'
+  tasks:
+  - type: connector
+    name: generate-machina-workload-snapshot
+    description: Calls the rights-gated additive command. The command lazily imports the installed
+      machina_sports_canonical distribution and projects the native report through an injected,
+      provider-scoped nflverse surrogate resolver.
+    condition: $.get('through_week', 0) > 0 and $.get('observed_at', '')
+    connector:
+      name: nfl-workload
+      command: generate_machina_workload_snapshot
+    continue_on_error: false
+    inputs:
+      season: $.get('season', 2025)
+      through_week: $.get('through_week', 0)
+      position: $.get('position', 'WR')
+      team: $.get('team', '')
+      lookback_weeks: $.get('lookback_weeks', 3)
+      min_opportunities: $.get('min_opportunities', 10)
+      limit: $.get('limit', 50)
+      observed_at: $.get('observed_at', '')
+      consumer_tier: $.get('consumer_tier', 'production')
+    outputs:
+      snapshot: $.get('snapshot', {})
+      season: $.get('season', 0)
+      week: $.get('week', 0)
+      position: $.get('position', '')
+      team: $.get('team', 'ALL')
+      n_players: $.get('n_players', 0)
+      snapshot_deps: $.get('deps', {})
+  - type: document
+    name: save-machina-workload-snapshot
+    description: Upserts one aggregate per season, week, position and team scope. ALL is an explicit
+      identity value, so a league-wide row cannot collide with a team-filtered row.
+    condition: $.get('snapshot', {}) and $.get('n_players', 0) > 0
+    config:
+      action: update
+      embed-vector: false
+      force-update: true
+    documents:
+      nfl-workload-machina-snapshot: $.get('snapshot', {})
+    metadata:
+      dataset: '''nfl-workload-machina-snapshot'''
+      sport: '''nfl'''
+      type: '''feed'''
+      schema_version: '''machina-player-workload-snapshot/1'''
+      season: $.get('season', 0)
+      week: $.get('week', 0)
+      position: $.get('position', 'ALL')
+      team: $.get('team', 'ALL')

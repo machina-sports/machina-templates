@@ -1,0 +1,45 @@
+name: Test NFL workload
+
+on:
+  pull_request:
+    paths:
+      - "skills/nfl-workload/**"
+      - "tests/test_nfl_workload_package.py"
+      - "tests/test_nfl_workload_snapshot.py"
+      - "tools/iptc/canonical/capabilities.py"
+      - "tools/iptc/canonical/ids.py"
+      - "tools/iptc/canonical/official-property-names.json"
+      - "tools/iptc/canonical/rights.py"
+      - ".github/workflows/test-nfl-workload.yml"
+  push:
+    paths:
+      - "skills/nfl-workload/**"
+      - "tests/test_nfl_workload_package.py"
+      - "tests/test_nfl_workload_snapshot.py"
+      - "tools/iptc/canonical/capabilities.py"
+      - "tools/iptc/canonical/ids.py"
+      - "tools/iptc/canonical/official-property-names.json"
+      - "tools/iptc/canonical/rights.py"
+      - ".github/workflows/test-nfl-workload.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned test dependencies
+        run: python -m pip install pytest==8.3.5 PyYAML==6.0.2 jsonschema==4.23.0
+      - name: Run deterministic offline NFL workload tests
+        run: >-
+          python -m pytest
+          tests/test_nfl_workload_snapshot.py
+          tests/test_nfl_workload_package.py
+          -q
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"

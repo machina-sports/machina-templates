@@ -31,6 +31,10 @@ datasets:
   - type: workflow
     path: workflows/nfl-workload-report.yml
 
+  # Additive Machina aggregate path - rights gated, never an event envelope
+  - type: workflow
+    path: workflows/nfl-workload-machina-snapshot.yml
+
   # Read path — fetches an already-stored report, computes nothing
   - type: workflow
     path: workflows/nfl-workload-latest.yml

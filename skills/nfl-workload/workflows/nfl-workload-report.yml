@@ -8,8 +8,8 @@ workflow:
     data only, no Sportradar. The connector's deps field is promoted to a workflow-level `deps` output,
     so the nflreadpy and polars versions that actually computed a stored report are recorded alongside
     the run rather than inferred from its latency. The document task upserts on name plus metadata, so
-    each distinct (season, week, position) becomes its own row rather than overwriting a single rolling
-    doc.
+    each distinct (season, week, position, team) becomes its own row rather than overwriting a single
+    rolling doc. The unfiltered default is stored as team ALL.
   inputs:
     season: $.get('season', 2025)
     through_week: $.get('through_week', 0)
@@ -22,6 +22,7 @@ workflow:
     season: $.get('season', 0)
     week: $.get('week', 0)
     position: $.get('position', '')
+    team: $.get('team', 'ALL')
     n_players: $.get('n_players', 0)
     deps: $.get('report_deps', {})
     workflow-status: $.get('n_players', 0) > 0 and 'executed' or 'skipped'
@@ -50,6 +51,7 @@ workflow:
       season: $.get('season', 0)
       week: $.get('week', 0)
       position: $.get('position', '')
+      team: $.get('report', {}).get('team', 'ALL')
       n_players: $.get('n_players', 0)
       report_deps: $.get('deps', {})
   - type: document
@@ -71,3 +73,4 @@ workflow:
       season: $.get('season', 0)
       week: $.get('week', 0)
       position: $.get('position', 'ALL')
+      team: $.get('team', 'ALL')

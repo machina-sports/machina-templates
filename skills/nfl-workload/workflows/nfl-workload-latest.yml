@@ -2,18 +2,20 @@ workflow:
   name: nfl-workload-latest
   title: NFL - Latest workload report (read)
   description: Read-side counterpart to nfl-workload-report. Fetches the already-stored workload report
-    for a given (season, week, position) out of the nfl-workload dataset. Computes nothing, calls no connector
+    for a given (season, week, position, team) out of the nfl-workload dataset. Computes nothing, calls no connector
     and writes no document — pure read. The write path upserts on name + metadata, so a full key match
     returns a single row.
   inputs:
     season: $.get('season', 0)
     week: $.get('week', 0)
     position: $.get('position', 'WR')
+    team: $.get('team', 'ALL')
   outputs:
     documents: $.get('workload-documents', [])
     season: $.get('season', 0)
     week: $.get('week', 0)
     position: $.get('position', 'WR')
+    team: $.get('team', 'ALL')
     workflow-status: $.get('workload-documents', []) and 'found' or 'not-found'
   tasks:
   - type: document
@@ -32,5 +34,25 @@ workflow:
       metadata.season: $.get('season', 0)
       metadata.week: $.get('week', 0)
       metadata.position: $.get('position', 'WR')
+      metadata.team: $.get('team', 'ALL')
+    outputs:
+      workload-documents: $.get('documents', [])
+  - type: document
+    name: fetch-legacy-all-workload-report
+    description: Backward-compatible read only for the default ALL scope. Reports persisted before team
+      became part of document identity have no metadata.team; a team-filtered request must never fall
+      back to one of those unscoped rows.
+    condition: not $.get('workload-documents', []) and $.get('team', 'ALL') == 'ALL' and $.get('season', 0) > 0 and $.get('week', 0) > 0
+    config:
+      action: search
+      search-limit: 1
+      search-vector: false
+    filters:
+      name: '''nfl-workload-report'''
+      metadata.dataset: '''nfl-workload'''
+      metadata.season: $.get('season', 0)
+      metadata.week: $.get('week', 0)
+      metadata.position: $.get('position', 'WR')
+      value.team: '''ALL'''
     outputs:
       workload-documents: $.get('documents', [])
