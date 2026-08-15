@@ -1,0 +1,46 @@
+workflow:
+  name: test-ambiguous-name
+  title: TEST - ambiguous name candidates
+  description: 'REGRESSION TEST. An ambiguous surname must come back as a soft miss carrying every colliding
+    candidate, not as a hard failure whose message continue_on_error discards. ''Brown'' at 2025 week
+    17 WR collides with exactly five players; Chase resolves alongside it, proving one bad name does not
+    discard the good one. Self-asserting: `result` is PASS/FAIL. Writes no documents.'
+  inputs:
+    season: $.get('season', 2025)
+    week: $.get('week', 17)
+    position: $.get('position', 'WR')
+  outputs:
+    b_reason: $.get('pb', {}).get('reason', '')
+    b_candidates: $.get('pb', {}).get('candidates', [])
+    b_candidate_count: len($.get('pb', {}).get('candidates', []))
+    a_reason: $.get('pa', {}).get('reason', '')
+    n_matched: $.get('n_matched', 0)
+    assert_ambiguous: $.get('pb', {}).get('reason', '') == 'ambiguous'
+    assert_five_candidates: len($.get('pb', {}).get('candidates', [])) == 5
+    assert_all_brown: all('Brown' in c for c in $.get('pb', {}).get('candidates', []))
+    assert_good_name_survived: $.get('pa', {}).get('reason', '') == 'matched' and $.get('n_matched', 0)
+      == 1
+    assert_message_present: '''ambiguous'' in $.get(''pb'', {}).get(''message'', '''')'
+    result: ($.get('pb', {}).get('reason', '') == 'ambiguous' and len($.get('pb', {}).get('candidates',
+      [])) == 5 and $.get('pa', {}).get('reason', '') == 'matched' and $.get('n_matched', 0) == 1) and
+      'PASS' or 'FAIL'
+    workflow-status: $.get('pb', {}) and 'executed' or 'skipped'
+  tasks:
+  - type: connector
+    name: pair-chase-brown
+    description: Chase resolves; Brown collides five ways. Expect reason=ambiguous with 5 candidates on
+      b, matched on a, n_matched=1.
+    connector:
+      name: nfl-workload
+      command: get_player_pair_workload
+    continue_on_error: true
+    inputs:
+      season: $.get('season', 2025)
+      week: $.get('week', 17)
+      position: $.get('position', 'WR')
+      player_a_name: '''Chase'''
+      player_b_name: '''Brown'''
+    outputs:
+      pa: $.get('player_a', {})
+      pb: $.get('player_b', {})
+      n_matched: $.get('n_matched', 0)

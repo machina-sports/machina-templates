@@ -1,0 +1,34 @@
+workflow:
+  name: test-missing-inputs
+  title: TEST - half-supplied params fail closed
+  description: 'REGRESSION TEST. season without week names no coordinate to check against, so get_player_context
+    must fail closed with a message naming BOTH parameters - not treat it as a soft miss and not silently
+    ignore the half-supplied pair. Runs with continue_on_error FALSE deliberately: under continue_on_error
+    the engine discards a status False message, and the message is what this test is about. The workflow
+    is therefore EXPECTED TO FAIL, with the text in tasks[0].audit.reason and in outputs[''workflow-error''].message.
+    The self-asserted half is assert_no_soft_payload: no soft envelope must be produced. A CI runner must
+    read the message from the execution record rather than trusting `result`. Writes no documents.'
+  inputs:
+    season: $.get('season', 2025)
+  outputs:
+    probe: $.get('probe', {})
+    assert_no_soft_payload: len($.get('probe', {})) == 0
+    assert_no_reason_key: $.get('probe', {}).get('reason', '') == ''
+    result: (len($.get('probe', {})) == 0) and 'PASS-partial (message asserted from tasks[0].audit.reason)'
+      or 'FAIL'
+    workflow-status: '''checked'''
+  tasks:
+  - type: connector
+    name: context-season-without-week
+    description: season supplied, week omitted. Expect status False naming both 'season' and 'week'. continue_on_error
+      is false so the message reaches the execution record.
+    connector:
+      name: nfl-workload
+      command: get_player_context
+    continue_on_error: false
+    inputs:
+      team: '''CIN'''
+      player_name: '''Ja''''Marr Chase'''
+      season: $.get('season', 2025)
+    outputs:
+      probe: $

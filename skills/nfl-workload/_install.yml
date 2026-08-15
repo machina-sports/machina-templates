@@ -1,0 +1,56 @@
+setup:
+  title: "NFL Workload"
+  description: "Derived NFL fantasy opportunity metrics from nflverse play-by-play — WOPR, target and air-yards share, red-zone touches, EPA per opportunity, recent-vs-season trend — plus ESPN depth-chart and injury context, and a start/sit explainer grounded strictly in those numbers."
+  category:
+    - skills
+  estimatedTime: 10 minutes
+  features:
+    - Opportunity metrics derived from play-by-play, not consumed from third-party projections
+    - Per-team stint handling — a traded player's numbers name the team they cover
+    - "Misses are data: not_found / ambiguous / historical carry reason, message and candidates"
+    - Temporal gate — refuses a past week rather than answering it with today's roster
+    - Exact dependency pins enforced at runtime, with loaded versions in every payload
+    - Five self-asserting regression workflows
+  status: available
+  integrations:
+    - google-genai
+  value: "skills/nfl-workload"
+  version: 1.0.0
+
+datasets:
+
+  # Pyscript connector — workload metrics + ESPN roster context
+  - type: connector
+    path: connectors/nfl-workload.yml
+
+  # Start/sit explainer prompt — grounded in supplied metrics only
+  - type: prompts
+    path: prompts/fantasy-explain-prompt.yml
+
+  # Write path — computes a report and upserts it per (season, week, position)
+  - type: workflow
+    path: workflows/nfl-workload-report.yml
+
+  # Read path — fetches an already-stored report, computes nothing
+  - type: workflow
+    path: workflows/nfl-workload-latest.yml
+
+  # Product workflow — two players, one season load, explained
+  - type: workflow
+    path: workflows/fantasy-explain-reasoning.yml
+
+  # Regression suite — each self-asserts a PASS/FAIL result output
+  - type: workflow
+    path: workflows/test-historical-week.yml
+  - type: workflow
+    path: workflows/test-ambiguous-name.yml
+  - type: workflow
+    path: workflows/test-duplicate-alias.yml
+  - type: workflow
+    path: workflows/test-traded-player.yml
+  - type: workflow
+    path: workflows/test-missing-inputs.yml
+
+  # Skill itself
+  - type: skill
+    path: skill.yml

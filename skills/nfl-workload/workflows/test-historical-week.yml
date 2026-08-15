@@ -1,0 +1,50 @@
+workflow:
+  name: test-historical-week
+  title: TEST - historical week gate
+  description: 'REGRESSION TEST. get_player_context must refuse a past week rather than answering it with
+    today''s roster state. Chase (CIN) and Olave (NO) at 2025 week 17: both must return reason == ''historical'',
+    because ESPN serves current state only and 2026 is in preseason. Self-asserting: the `result` output
+    is PASS/FAIL. Writes no documents.'
+  inputs:
+    season: $.get('season', 2025)
+    week: $.get('week', 17)
+  outputs:
+    a_reason: $.get('ctx_a', {}).get('reason', '')
+    b_reason: $.get('ctx_b', {}).get('reason', '')
+    a_message: $.get('ctx_a', {}).get('message', '')
+    assert_a_historical: $.get('ctx_a', {}).get('reason', '') == 'historical'
+    assert_b_historical: $.get('ctx_b', {}).get('reason', '') == 'historical'
+    assert_no_role_leaked: $.get('ctx_a', {}).get('depth_chart_role') is None and $.get('ctx_b', {}).get('depth_chart_role')
+      is None
+    result: ($.get('ctx_a', {}).get('reason', '') == 'historical' and $.get('ctx_b', {}).get('reason',
+      '') == 'historical' and $.get('ctx_a', {}).get('depth_chart_role') is None) and 'PASS' or 'FAIL'
+    workflow-status: $.get('ctx_a', {}) and 'executed' or 'skipped'
+  tasks:
+  - type: connector
+    name: context-chase
+    description: 'Chase on CIN with season+week supplied: expect reason=historical and a null depth_chart_role.'
+    connector:
+      name: nfl-workload
+      command: get_player_context
+    continue_on_error: true
+    inputs:
+      team: '''CIN'''
+      player_name: '''Ja''''Marr Chase'''
+      season: $.get('season', 2025)
+      week: $.get('week', 17)
+    outputs:
+      ctx_a: $
+  - type: connector
+    name: context-olave
+    description: Olave on NO, same expectation.
+    connector:
+      name: nfl-workload
+      command: get_player_context
+    continue_on_error: true
+    inputs:
+      team: '''NO'''
+      player_name: '''Chris Olave'''
+      season: $.get('season', 2025)
+      week: $.get('week', 17)
+    outputs:
+      ctx_b: $

@@ -1,0 +1,73 @@
+workflow:
+  name: nfl-workload-report
+  title: NFL - Workload report
+  description: Derives NFL fantasy opportunity metrics (target share, air yards share, WOPR, rush share,
+    red-zone touches, EPA per opportunity, plus recent-vs-season trend) from nflverse play-by-play via
+    the nfl-workload connector, and saves the result to the doc nfl-workload-report. No third-party projections
+    or consensus rankings exist on this platform, so opportunity is derived rather than consumed. Public
+    data only, no Sportradar. The connector's deps field is promoted to a workflow-level `deps` output,
+    so the nflreadpy and polars versions that actually computed a stored report are recorded alongside
+    the run rather than inferred from its latency. The document task upserts on name plus metadata, so
+    each distinct (season, week, position) becomes its own row rather than overwriting a single rolling
+    doc.
+  inputs:
+    season: $.get('season', 2025)
+    through_week: $.get('through_week', 0)
+    position: $.get('position', 'WR')
+    team: $.get('team', '')
+    lookback_weeks: $.get('lookback_weeks', 3)
+    min_opportunities: $.get('min_opportunities', 10)
+    limit: $.get('limit', 50)
+  outputs:
+    season: $.get('season', 0)
+    week: $.get('week', 0)
+    position: $.get('position', '')
+    n_players: $.get('n_players', 0)
+    deps: $.get('report_deps', {})
+    workflow-status: $.get('n_players', 0) > 0 and 'executed' or 'skipped'
+  tasks:
+  - type: connector
+    name: generate-workload
+    description: 'Calls nfl-workload.generate_workload_report: nflverse pbp -> per-player opportunity
+      shares, WOPR and recent-vs-season trend, ranked. Its payload carries the loaded nflreadpy/polars
+      versions, promoted to the workflow''s deps output so the build that produced the numbers is recorded
+      alongside them.'
+    condition: $.get('through_week', 0) > 0
+    connector:
+      name: nfl-workload
+      command: generate_workload_report
+    continue_on_error: false
+    inputs:
+      season: $.get('season', 2025)
+      through_week: $.get('through_week', 0)
+      position: $.get('position', 'WR')
+      team: $.get('team', '')
+      lookback_weeks: $.get('lookback_weeks', 3)
+      min_opportunities: $.get('min_opportunities', 10)
+      limit: $.get('limit', 50)
+    outputs:
+      report: $.get('report', {})
+      season: $.get('season', 0)
+      week: $.get('week', 0)
+      position: $.get('position', '')
+      n_players: $.get('n_players', 0)
+      report_deps: $.get('deps', {})
+  - type: document
+    name: save-workload-report
+    description: Upsert the doc nfl-workload-report with value = report. Season, week and position are
+      carried in both the value and the metadata so readers filter on value.season / value.week / value.position
+      rather than on the document name alone.
+    condition: $.get('n_players', 0) > 0
+    config:
+      action: update
+      embed-vector: false
+      force-update: true
+    documents:
+      nfl-workload-report: $.get('report', {})
+    metadata:
+      dataset: '''nfl-workload'''
+      sport: '''nfl'''
+      type: '''feed'''
+      season: $.get('season', 0)
+      week: $.get('week', 0)
+      position: $.get('position', 'ALL')

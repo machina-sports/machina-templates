@@ -1,0 +1,184 @@
+workflow:
+  name: fantasy-explain-reasoning
+  title: Fantasy - Start/sit explain (reasoning)
+  description: 'Resolves two players'' workload rows in ONE get_player_pair_workload call, enriches each
+    with depth-chart role and injury status via get_player_context, and asks fantasy-explain-prompt which
+    to start. The pair call loads and recomputes the season once instead of twice; measured at ~54ms per
+    pair call against ~53ms per single call, so two names cost roughly half what two separate lookups
+    cost. Every lookup runs with continue_on_error, but a miss is no longer silent: the connector returns
+    a soft miss (reason not_found / ambiguous / historical, with message and candidates) and this workflow
+    promotes those fields into its own outputs, so a caller learns "''Brown'' matches five players" rather
+    than an opaque not-found. Both context tasks pass this workflow''s season and week to get_player_context,
+    which checks them against the live coordinate from get_scoreboard(): ESPN serves current roster state
+    only, so a request about a past week comes back reason ''historical'' rather than having today''s
+    roles and injuries stapled onto it. Without that pass-through the temporal check never fires. STINT
+    PROVENANCE: a traded player''s workload row covers one team only, so selected_team and other_stints
+    are lifted out of the pair result and travel into the prompt as a separate _4-stints section, kept
+    apart from _3-context because the two come from different sources and different rules read them -
+    rule 2 for ESPN availability, rules 7 and 7a for the team split. The prompt''s rule 7 requires the
+    caveat to name the split and rule 7a requires the label at the point of citation in key_factors and
+    reasoning. Without this, a comparison against a traded player silently used part of his season: Rashid
+    Shaheed''s 2025 week 17 row is his NO stint, 68 of 100 opportunities, and the SEA stint went unmentioned.
+    The prompt is gated on BOTH players having workload reason == ''matched''; the context lookups are
+    not gating, because _3-context is explicitly allowed to be empty or partial and the prompt''s rule
+    2 reads the envelope''s reason and caveats it. DRIFT WARNING: The prompt task in this workflow is
+    duplicated in test-traded-player for synchronous assertion, since type: workflow tasks require config.detached:
+    true and cannot return outputs. If you change this task''s name, connector binding, or _1/_2/_3/_4
+    input wiring, update test-traded-player to match or it will silently test stale behavior.'
+  context-variables:
+    debugger:
+      enabled: false
+    google-genai:
+      credential: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_CREDENTIAL
+      project_id: $TEMP_CONTEXT_VARIABLE_VERTEX_AI_PROJECT_ID
+  inputs:
+    player_a_name: $.get('player_a_name', '')
+    player_a_team: $.get('player_a_team', '')
+    player_b_name: $.get('player_b_name', '')
+    player_b_team: $.get('player_b_team', '')
+    position: $.get('position', 'WR')
+    season: $.get('season', 0)
+    week: $.get('week', 0)
+  outputs:
+    n_matched: $.get('pair_n_matched', 0)
+    player_a_candidates: $.get('pair_a_candidates', [])
+    player_a_context_message: $.get('player_a_context', {}).get('message', '')
+    player_a_context_reason: $.get('player_a_context', {}).get('reason', '')
+    player_a_context_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'',
+      0) > 0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else
+      (''found'' if $.get(''player_a_context'', {}).get(''reason'', '''') == ''matched'' else ''not-found'')'
+    player_a_matched: $.get('pair_a_matched', '')
+    player_a_message: $.get('pair_a_message', '')
+    player_a_other_stints: $.get('pair_a_other_stints', [])
+    player_a_reason: $.get('pair_a_reason', '')
+    player_a_selected_team: $.get('pair_a_selected_team', '')
+    player_a_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'', 0) > 0
+      and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else (''found''
+      if $.get(''pair_a_reason'', '''') == ''matched'' else ''not-found'')'
+    player_b_candidates: $.get('pair_b_candidates', [])
+    player_b_context_message: $.get('player_b_context', {}).get('message', '')
+    player_b_context_reason: $.get('player_b_context', {}).get('reason', '')
+    player_b_context_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'',
+      0) > 0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else
+      (''found'' if $.get(''player_b_context'', {}).get(''reason'', '''') == ''matched'' else ''not-found'')'
+    player_b_matched: $.get('pair_b_matched', '')
+    player_b_message: $.get('pair_b_message', '')
+    player_b_other_stints: $.get('pair_b_other_stints', [])
+    player_b_reason: $.get('pair_b_reason', '')
+    player_b_selected_team: $.get('pair_b_selected_team', '')
+    player_b_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'', 0) > 0
+      and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else (''found''
+      if $.get(''pair_b_reason'', '''') == ''matched'' else ''not-found'')'
+    recommendation: $.get('recommendation', {})
+    validation_error: '''Missing required inputs: '' + '', ''.join([name for name, missing in [(''season'',
+      $.get(''season'', 0) <= 0), (''week'', $.get(''week'', 0) <= 0), (''player_a_name'', $.get(''player_a_name'',
+      '''') == ''''), (''player_b_name'', $.get(''player_b_name'', '''') == '''')] if missing]) if not ($.get(''season'',
+      0) > 0 and $.get(''week'', 0) > 0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'',
+      '''') != '''') else '''''
+    workflow-status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'', 0) >
+      0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else (''executed''
+      if $.get(''recommendation'') else ''skipped'')'
+  tasks:
+  - type: connector
+    name: lookup-pair
+    description: Resolves BOTH players' workload rows from a single season load. Also lifts each player's
+      stint provenance - selected_team and other_stints - so the prompt can disclose that a traded player's
+      numbers cover one team only. pair_a_stints / pair_b_stints are assembled here rather than in the
+      prompt input, so each expression nests only one level.
+    condition: $.get('season', 0) > 0 and $.get('week', 0) > 0 and $.get('player_a_name', '') != '' and
+      $.get('player_b_name', '') != ''
+    connector:
+      command: get_player_pair_workload
+      name: nfl-workload
+    continue_on_error: true
+    inputs:
+      player_a_name: $.get('player_a_name', '')
+      player_a_team: $.get('player_a_team', '')
+      player_b_name: $.get('player_b_name', '')
+      player_b_team: $.get('player_b_team', '')
+      position: $.get('position', 'WR')
+      season: $.get('season', 0)
+      week: $.get('week', 0)
+    outputs:
+      pair_a_candidates: $.get('player_a', {}).get('candidates', [])
+      pair_a_matched: $.get('player_a', {}).get('matched_name') or ''
+      pair_a_message: $.get('player_a', {}).get('message', '')
+      pair_a_other_stints: $.get('player_a', {}).get('other_stints', [])
+      pair_a_reason: $.get('player_a', {}).get('reason', '')
+      pair_a_row: $.get('player_a', {}).get('player') or {}
+      pair_a_selected_team: $.get('player_a', {}).get('selected_team') or ''
+      pair_a_stints: '{''selected_team'': $.get(''player_a'', {}).get(''selected_team''), ''other_stints'':
+        $.get(''player_a'', {}).get(''other_stints'', [])}'
+      pair_a_team_src: ($.get('player_a', {}).get('player') or {}).get('team', '')
+      pair_b_candidates: $.get('player_b', {}).get('candidates', [])
+      pair_b_matched: $.get('player_b', {}).get('matched_name') or ''
+      pair_b_message: $.get('player_b', {}).get('message', '')
+      pair_b_other_stints: $.get('player_b', {}).get('other_stints', [])
+      pair_b_reason: $.get('player_b', {}).get('reason', '')
+      pair_b_row: $.get('player_b', {}).get('player') or {}
+      pair_b_selected_team: $.get('player_b', {}).get('selected_team') or ''
+      pair_b_stints: '{''selected_team'': $.get(''player_b'', {}).get(''selected_team''), ''other_stints'':
+        $.get(''player_b'', {}).get(''other_stints'', [])}'
+      pair_b_team_src: ($.get('player_b', {}).get('player') or {}).get('team', '')
+      pair_n_matched: $.get('n_matched', 0)
+  - type: connector
+    name: context-player-a
+    description: 'Depth-chart role and injury status for player A. Team comes from the caller when supplied,
+      else from the pair result''s nflverse posteam. season and week are passed through so get_player_context
+      can check them against the live coordinate from get_scoreboard(): a request about a week that is
+      not the current one returns reason ''historical'' instead of today''s state dressed up as that week''s.
+      Gated on workload reason == ''matched'', so an ambiguous or absent name never reaches ESPN.'
+    condition: $.get('pair_a_reason', '') == 'matched' and ($.get('player_a_team', '') != '' or $.get('pair_a_team_src',
+      '') != '')
+    connector:
+      command: get_player_context
+      name: nfl-workload
+    continue_on_error: true
+    inputs:
+      player_name: $.get('pair_a_row', {}).get('player_display_name', '') or $.get('pair_a_matched', '')
+      season: $.get('season', 0)
+      team: $.get('player_a_team', '') or $.get('pair_a_team_src', '')
+      week: $.get('week', 0)
+    outputs:
+      player_a_context: $
+  - type: connector
+    name: context-player-b
+    description: Depth-chart role and injury status for player B. Same shape, same season/week pass-through
+      and same failure semantics as context-player-a.
+    condition: $.get('pair_b_reason', '') == 'matched' and ($.get('player_b_team', '') != '' or $.get('pair_b_team_src',
+      '') != '')
+    connector:
+      command: get_player_context
+      name: nfl-workload
+    continue_on_error: true
+    inputs:
+      player_name: $.get('pair_b_row', {}).get('player_display_name', '') or $.get('pair_b_matched', '')
+      season: $.get('season', 0)
+      team: $.get('player_b_team', '') or $.get('pair_b_team_src', '')
+      week: $.get('week', 0)
+    outputs:
+      player_b_context: $
+  - type: prompt
+    name: fantasy-explain-prompt
+    description: 'Asks fantasy-explain-prompt for a start/sit call. _3-context carries the ESPN availability
+      envelopes; _4-stints carries workload provenance - which team''s stint each row covers and which
+      stints it excludes. Kept in separate sections deliberately: they come from different sources and
+      the prompt''s rules read them differently, rule 2 for availability and rule 7 for the team split.
+      _4-stints is passed unconditionally, because an empty other_stints is itself the statement that
+      no split exists; the conditional part lives in rule 7.'
+    condition: $.get('pair_a_reason', '') == 'matched' and $.get('pair_b_reason', '') == 'matched'
+    connector:
+      command: invoke_prompt
+      location: global
+      model: gemini-2.5-flash
+      name: google-genai
+      provider: vertex_ai
+    inputs:
+      _1-player-a: $.get('pair_a_row', {})
+      _2-player-b: $.get('pair_b_row', {})
+      _3-context: '{''player_a'': $.get(''player_a_context'', {}), ''player_b'': $.get(''player_b_context'',
+        {})}'
+      _4-stints: '{''player_a'': $.get(''pair_a_stints'', {}), ''player_b'': $.get(''pair_b_stints'',
+        {})}'
+    outputs:
+      recommendation: $

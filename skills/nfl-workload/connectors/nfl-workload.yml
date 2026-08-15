@@ -1,0 +1,65 @@
+connector:
+  name: nfl-workload
+  description: 'Derived fantasy opportunity metrics plus roster context for the NFL (server-side). Two
+    sources, deliberately kept separate. WORKLOAD (nflverse play-by-play via nflreadpy, read directly
+    rather than through the sports-skills wrapper so air_yards, epa, yardline_100 and receiver/rusher
+    ids stay intact across a full season): generate_workload_report -> per-player target share, air yards
+    share, WOPR, rush share, red-zone touches, EPA per opportunity, plus a recent-window vs season trend
+    (deltas); get_player_workload -> one player''s row out of that same report resolved by name, built
+    unfiltered so a real but low-usage or low-ranked player is not reported as missing; get_player_pair_workload
+    -> two players resolved off a single season load instead of paying for the play-by-play twice. GROUPING:
+    usage is grouped on (player_id, team), with the play-by-play name taken as an aggregate rather than
+    a group key - nflverse carries two spellings of some players (''M.Wilson'' and ''Mi.Wilson'' are both
+    Michael Wilson) and keying on the name split one stint into two rows that each understated his shares
+    against the same team denominator. Trend deltas are keyed on the same (player_id, team) pair, so a
+    player traded midseason gets a null delta on a stint the recent window does not cover rather than
+    a cross-team number. STINT SELECTION: a traded player holds one row per team, so a name alone does
+    not name a row. get_player_workload takes an optional `team` (one name, one team); get_player_pair_workload
+    takes `player_a_team` and `player_b_team`, independent and individually optional, and REJECTS a shared
+    `team` with a status False naming the per-player parameters, because one team cannot scope two players
+    and silently applying or dropping it would answer about the wrong roster. Given a team, the name is
+    matched only within that team''s rows and a player who exists elsewhere but holds no row there is
+    not_found scoped to that team with his actual stints listed - never a fallback to another stint. Omitted,
+    the busiest stint wins, tie-broken on the most recent week (last_week, a per-stint column). Every
+    per-player response carries selected_team, other_stints [{team, opportunities, wopr}] and requested_team,
+    so the choice is visible instead of silent. SOFT MISSES: a not_found or ambiguous query returns status
+    True with an explicit reason, message and candidates, because continue_on_error discards the message
+    off a status False result and would erase the difference between an ambiguous name and an absent one.
+    CONTEXT (ESPN via sports-skills): get_player_context -> depth-chart role and injury status for one
+    player on one team, taking team + player_name plus OPTIONAL season + week; resolves the team through
+    get_teams() first (abbreviation/id/name/nickname, plus nflverse aliases LA/WAS/OAK/SD/STL), then narrows
+    the league-wide get_injuries() feed to that team before matching any name, so a same-surname player
+    on another roster cannot answer for this one. The injury feed is partial coverage, not injured-only
+    - players appear on it carrying status ''Active'' - so injury_listed and on_depth_chart flags say
+    which source actually spoke and a null status is never a claim of health. TEMPORAL SCOPE: ESPN serves
+    present state only, so when season and week are supplied get_player_context checks them against the
+    live coordinate from get_scoreboard() (season.type 2 is the regular season and carries a fantasy week;
+    type 1 preseason and 3+ postseason carry none) and returns a soft miss with reason ''historical''
+    rather than stapling today''s roles and injuries onto a past week; ''unknown_week'' when the coordinate
+    cannot be established at all. Omitting season and week preserves the previous current-state behaviour
+    exactly, with no scoreboard call and no added fields. DEPENDENCIES: _PIP_PACKAGES pins exact versions
+    (nflreadpy==0.1.5, polars==1.43.2) and the bootstrap enforces them - the gate compares each pinned
+    package''s resident __version__ against its pin and treats a mismatch as absence, so the pin holds
+    on a warm pod as well as a cold one, and the sys.modules purge covers a package''s private compiled
+    runtime (polars loads its binary from polars-runtime-32, imported as _polars_runtime_32) or a reinstall
+    would leave the old binary cached. Every response carries deps: {nflreadpy, polars} as actually loaded,
+    so the build that computed a number is visible in the number''s own payload rather than inferred from
+    call latency - on get_player_context read it as the worker''s state rather than what produced the
+    answer, since that command touches neither package and skips the bootstrap. Runs in-process and fails
+    closed if the install degrades. REGRESSION SUITE NOTE: the test-traded-player workflow duplicates
+    fantasy-explain-reasoning''s prompt wiring rather than invoking it directly. If that workflow''s prompt
+    task changes, this test must be updated to match or it will silently test stale behavior. Invoking
+    it instead is not possible: type: workflow tasks require config.detached: true (synchronous nested
+    workflows are not supported), so a nested call cannot return the recommendation the test asserts on
+    - measured 2026-08-10.'
+  filename: nfl-workload.py
+  filetype: pyscript
+  commands:
+  - name: Generate workload report
+    value: generate_workload_report
+  - name: Get player workload
+    value: get_player_workload
+  - name: Get player pair workload
+    value: get_player_pair_workload
+  - name: Get player context
+    value: get_player_context
