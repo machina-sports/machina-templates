@@ -745,6 +745,42 @@ def test_exact_curie_mapping_and_custom_metrics_are_separate():
     assert "must-not-leak" not in json.dumps(project(module))
 
 
+def test_projection_canonicalizes_integral_float_statistics():
+    module = load_connector()
+    report = deepcopy(REPORT)
+    report["players"][0].update(
+        {"targets": 0.0, "receptions": 1.0, "carries": 2.0}
+    )
+
+    player = project(module, report=report)["machina_workload_snapshot"]["players"][0]
+
+    assert player["statistics"] == {
+        "spamfstat:receptionsLooks": "0",
+        "spamfstat:receptionsTotal": "1",
+        "spamfstat:rushesAttempts": "2",
+    }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("targets", True),
+        ("receptions", -1),
+        ("carries", float("nan")),
+        ("targets", float("inf")),
+        ("receptions", float("-inf")),
+        ("carries", 1.5),
+    ],
+)
+def test_projection_refuses_invalid_official_statistics(field, value):
+    module = load_connector()
+    report = deepcopy(REPORT)
+    report["players"][0][field] = value
+
+    with pytest.raises(ValueError, match=rf"^{field} must be a non-negative integer$"):
+        project(module, report=report)
+
+
 def test_rights_provenance_capabilities_and_contract_validate():
     module = load_connector()
     snapshot = project(module)

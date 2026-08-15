@@ -1396,6 +1396,19 @@ def _has_value(value):
     return value is not None and value != "" and value != [] and value != {}
 
 
+def _official_statistic_string(field, value):
+    valid_int = isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    valid_float = (
+        isinstance(value, float)
+        and math.isfinite(value)
+        and value >= 0
+        and value.is_integer()
+    )
+    if not (valid_int or valid_float):
+        raise ValueError(f"{field} must be a non-negative integer")
+    return str(int(value))
+
+
 def _validate_observed_at(observed_at):
     value = str(observed_at or "")
     if _RFC3339_SECOND_60.fullmatch(value):
@@ -1911,7 +1924,7 @@ def _project_machina_workload_snapshot(
             "name": row.get("player_display_name") or row.get("player_name"),
             "position": row.get("position"),
             "statistics": {
-                curie: str(row[source_key])
+                curie: _official_statistic_string(source_key, row[source_key])
                 for source_key, curie in _SNAPSHOT_STATISTICS.items()
                 if _has_value(row.get(source_key))
             },
