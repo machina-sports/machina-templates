@@ -23,6 +23,14 @@ skill:
       metadata:
         category: "skill-guide"
         skill: "nfl-workload"
+    - name: "machina-player-workload-snapshot-contract"
+      title: "Machina Player Workload Snapshot v1 JSON Schema"
+      filename: "contracts/machina-player-workload-snapshot-v1.json"
+      filetype: "json"
+      metadata:
+        category: "contract"
+        skill: "nfl-workload"
+        schema_version: "machina-player-workload-snapshot/1"
 
   workflows:
     - name: "nfl-workload-report"
@@ -39,6 +47,7 @@ skill:
         season: "$.get('season', 0)"
         week: "$.get('week', 0)"
         position: "$.get('position', '')"
+        team: "$.get('team', 'ALL')"
         n_players: "$.get('n_players', 0)"
         deps: "$.get('report_deps', {})"
         workflow-status: "$.get('workflow-status')"
@@ -49,11 +58,35 @@ skill:
         season: "$.get('season', 0)"
         week: "$.get('week', 0)"
         position: "$.get('position', 'WR')"
+        team: "$.get('team', 'ALL')"
       outputs:
         documents: "$.get('workload-documents', [])"
         season: "$.get('season', 0)"
         week: "$.get('week', 0)"
         position: "$.get('position', 'WR')"
+        team: "$.get('team', 'ALL')"
+        workflow-status: "$.get('workflow-status')"
+
+    - name: "nfl-workload-machina-snapshot"
+      description: "Rights-gated additive machina-player-workload-snapshot/1 aggregate. Never emits an event observation, event view, RDF graph, or canonical identity claim."
+      inputs:
+        season: "$.get('season', 2025)"
+        through_week: "$.get('through_week', 0)"
+        position: "$.get('position', 'WR')"
+        team: "$.get('team', '')"
+        lookback_weeks: "$.get('lookback_weeks', 3)"
+        min_opportunities: "$.get('min_opportunities', 10)"
+        limit: "$.get('limit', 50)"
+        observed_at: "$.get('observed_at', '')"
+        consumer_tier: "$.get('consumer_tier', 'production')"
+      outputs:
+        snapshot: "$.get('snapshot', {})"
+        season: "$.get('season', 0)"
+        week: "$.get('week', 0)"
+        position: "$.get('position', '')"
+        team: "$.get('team', 'ALL')"
+        n_players: "$.get('n_players', 0)"
+        deps: "$.get('snapshot_deps', {})"
         workflow-status: "$.get('workflow-status')"
 
     - name: "fantasy-explain-reasoning"

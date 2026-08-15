@@ -19,8 +19,10 @@ papered over.
    than through the sports-skills wrapper so `air_yards`, `epa`, `yardline_100`
    and receiver/rusher ids survive intact across a season)
 
-   - `generate_workload_report` — the ranked leaderboard for a
-     (season, through_week, position).
+    - `generate_workload_report` — the ranked leaderboard for a
+      (season, through_week, position).
+   - `generate_machina_workload_snapshot` — an additive, rights-gated projection
+     of that unchanged report into `machina-player-workload-snapshot/1`.
    - `get_player_workload` — one player's row out of that same report, built
      unfiltered so a real but low-usage player is not reported as missing.
    - `get_player_pair_workload` — two players off a **single** season load. The
@@ -77,7 +79,14 @@ POST /workflow/execute/nfl-workload-report
 
 # Read back what was stored (computes nothing, writes nothing)
 POST /workflow/execute/nfl-workload-latest
-{ "season": 2025, "week": 17, "position": "WR" }
+{ "season": 2025, "week": 17, "position": "WR", "team": "ALL" }
+
+# Produce the additive aggregate. observed_at is caller supplied; public
+# nflverse data is prototype-only and production consumers are refused.
+POST /workflow/execute/nfl-workload-machina-snapshot
+{ "season": 2025, "through_week": 17, "position": "WR",
+  "team": "CIN", "observed_at": "2026-08-15T12:30:00+00:00",
+  "consumer_tier": "prototype" }
 
 # Start/sit call
 POST /workflow/execute/fantasy-explain-reasoning
@@ -86,9 +95,45 @@ POST /workflow/execute/fantasy-explain-reasoning
 ```
 
 `nfl-workload-report` upserts on name **plus metadata**, so each distinct
-(season, week, position) becomes its own document row rather than overwriting a
-single rolling doc. Readers should filter on `metadata.season` / `metadata.week`
-/ `metadata.position`, or sort `updated` descending.
+(season, week, position, team) becomes its own document row rather than
+overwriting a single rolling doc. The unfiltered scope is explicitly `ALL`, so
+it cannot collide with a team row. Readers should filter on `metadata.season` /
+`metadata.week` / `metadata.position` / `metadata.team`, or sort `updated`
+descending.
+
+## Machina snapshot contract
+
+The public contract is
+`contracts/machina-player-workload-snapshot-v1.json`. The snapshot is a player
+workload aggregate and deliberately does **not** emit
+`canonical-observation/1.1`, `machina_sports_schema`, `sport_schema_graph`,
+`event_view`, RDF keys, or fake event facts.
+
+Runtime projection uses `machina_sports_canonical.ids.surrogate_resolver("nflverse")`.
+Every Machina URN is marked as a provider-scoped surrogate, never canonical
+identity. nflverse player/team/season identifiers remain provider evidence;
+the `nfl` competition constant is `declared`. No name identifier, fuzzy
+cross-provider merge, `sameAs`, `exactMatch`, or ESPN equality is asserted.
+
+Only three verified American-football properties are mapped: `targets` to
+`spamfstat:receptionsLooks`, `receptions` to
+`spamfstat:receptionsTotal`, and `carries` to
+`spamfstat:rushesAttempts`. WOPR, shares, opportunities, red-zone touches, EPA,
+and trend deltas remain in the contract's bounded `metrics` object.
+
+Rights are `data_class: open-public`, `prototype_only: true`, and
+`commercial_use: false`. Missing or unreadable rights fail closed. The canonical
+rights gate refuses a production-tier call before dependency bootstrap, provider
+imports, or data loading. `observed_at` is required from the caller as RFC3339
+with `Z` or an explicit `±HH:MM` offset and a valid calendar value. Only seconds
+`00` through `59` are accepted; the connector never reads a clock. Leap-second
+values with second `60` fail closed rather than being normalized or accepted.
+
+The connector's fantasy workload scope intentionally ends at week 17
+(`FANTASY_LAST_WEEK = 17`). Week 18 is part of the NFL schedule but outside this
+fantasy scope; `through_week: 18` fails closed in both runtime and the public
+schema. This bound is a fantasy-product decision, not NFL schedule ignorance,
+and must not be widened to week 18 without changing the product contract.
 
 ## Dependencies
 
@@ -150,6 +195,11 @@ Two caveats a runner must respect:
 - **Deltas are null where windows do not align.** A stint the recent window does
   not cover gets `null` trend deltas rather than a cross-team number. Downstream
   arithmetic must handle `None`.
+- **Snapshot identities are not cross-provider identities.** They are stable
+  only inside the `nflverse` surrogate namespace until a canonical identity
+  service supplies a reviewed crosswalk.
+- **The snapshot is not licensed for production/commercial use.** Production
+  refusal is intentional, not a transient connector failure.
 - **`sports-skills` User-Agent stopgap.** The connector patches a spoofed
   browser UA that ESPN 403s. Fixed upstream in `sports-skills` 0.30.0 (commit
   `e6a5870`, #101); the block becomes a silent no-op there and can be removed

@@ -9,7 +9,11 @@ recent-vs-season trend.
 Commands:
   generate_workload_report(request_data)
       -> {"status": True, "data": {"report": {...}, "season", "week",
-                                   "position", "n_players", "deps"}}
+                                     "position", "n_players", "deps"}}
+  generate_machina_workload_snapshot(request_data)
+       -> additive machina-player-workload-snapshot/1 aggregate. Requires a
+          caller-supplied observed_at; the canonical rights gate runs before
+          dependency bootstrap or data loading.
   get_player_workload(request_data)
       -> {"status": True, "data": {"player": {...}, "matched_name": "...",
                                    "reason": "matched", "selected_team",
@@ -156,9 +160,12 @@ BOOTSTRAP, fail-closed and version-exact by design:
 """
 
 import importlib
+import math
 import os
+import re
 import subprocess
 import sys
+from datetime import datetime
 
 # nflreadpy is not part of the shared sports-skills install: it sits behind a
 # python_version >= '3.10' environment marker in extras, and the pod bootstraps
@@ -179,6 +186,86 @@ FANTASY_LAST_WEEK = 17
 _DEFAULT_LOOKBACK_WEEKS = 3
 _DEFAULT_MIN_OPPORTUNITIES = 10
 _DEFAULT_LIMIT = 50
+
+_SNAPSHOT_SCHEMA_VERSION = "machina-player-workload-snapshot/1"
+_SNAPSHOT_RIGHTS = {
+    "data_class": "open-public",
+    "prototype_only": True,
+    "commercial_use": False,
+}
+_SNAPSHOT_PRESENT_CAPABILITIES = (
+    "participant.player_statistics",
+    "provenance",
+)
+_SNAPSHOT_CAPABILITY_VOCABULARY = (
+    "event.actions",
+    "event.clock",
+    "event.competition",
+    "event.coordinates",
+    "event.expected_metrics",
+    "event.formations",
+    "event.identity",
+    "event.lineups",
+    "event.live_statistics",
+    "event.participants",
+    "event.period",
+    "event.play_by_play",
+    "event.result",
+    "event.score",
+    "event.start_time",
+    "event.start_time.bounded",
+    "event.status",
+    "event.tracking",
+    "participant.player_statistics",
+    "provenance",
+)
+_SNAPSHOT_STATISTICS = {
+    "targets": "spamfstat:receptionsLooks",
+    "receptions": "spamfstat:receptionsTotal",
+    "carries": "spamfstat:rushesAttempts",
+}
+_SNAPSHOT_METRICS = (
+    "air_yards",
+    "target_share",
+    "air_yards_share",
+    "rush_share",
+    "wopr",
+    "opportunities",
+    "rz_targets",
+    "rz_carries",
+    "rz_touches",
+    "rec_epa",
+    "rush_epa",
+    "total_epa",
+    "epa_per_opportunity",
+    "recent_target_share",
+    "recent_wopr",
+    "recent_rush_share",
+    "recent_opportunities",
+    "target_share_delta",
+    "wopr_delta",
+    "rush_share_delta",
+    "last_week",
+)
+_SNAPSHOT_INTEGER_METRICS = {
+    "opportunities",
+    "rz_targets",
+    "rz_carries",
+    "rz_touches",
+    "recent_opportunities",
+    "last_week",
+}
+_RFC3339_OFFSET = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d"
+    r"(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$"
+)
+_RFC3339_SECOND_60 = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:60"
+    r"(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$"
+)
+_SURROGATE_URN = re.compile(
+    r"^urn:machina:sports:[a-z][a-z0-9_-]*:x[0-9a-f]{32}$"
+)
 
 # Only the columns the metrics need. A full pbp frame is ~49k rows x 372 cols;
 # narrowing immediately keeps the pod's memory profile predictable.
@@ -1302,6 +1389,581 @@ def _context_envelope(team, stopgap_note, depth_err, injury_err, week_check=None
 
 
 # ---------------------------------------------------------------------------
+# Machina workload snapshot - aggregate contract, never an event observation
+# ---------------------------------------------------------------------------
+
+def _has_value(value):
+    return value is not None and value != "" and value != [] and value != {}
+
+
+def _validate_observed_at(observed_at):
+    value = str(observed_at or "")
+    if _RFC3339_SECOND_60.fullmatch(value):
+        raise ValueError(
+            "observed_at is not a valid RFC3339 timestamp: second 60 is not accepted"
+        )
+    if not _RFC3339_OFFSET.fullmatch(value):
+        raise ValueError(
+            "observed_at is required as RFC3339 with an explicit offset"
+        )
+    try:
+        parse_value = value
+        if parse_value.endswith("Z"):
+            parse_value = parse_value[:-1] + "+00:00"
+        datetime.fromisoformat(parse_value)
+    except ValueError as exc:
+        raise ValueError("observed_at is not a valid RFC3339 timestamp") from exc
+    return value
+
+
+def _provider_id_evidence(
+    machina_id,
+    entity_type,
+    provider_id,
+    resolution_method,
+    evidence,
+):
+    if not all(_has_value(value) for value in (machina_id, provider_id, evidence)):
+        return None
+    return {
+        "machina_id": machina_id,
+        "entity_type": entity_type,
+        "provider_namespace": "nflverse",
+        "provider_id": str(provider_id),
+        "resolution_method": resolution_method,
+        "confidence": 1.0,
+        "evidence": evidence,
+    }
+
+
+def _snapshot_player_sort_key(row, sort_key):
+    value = row.get(sort_key)
+    is_number = (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+    return (
+        value is None,
+        -value if is_number else 0,
+        str(row.get("player_id") or ""),
+        str(row.get("team") or ""),
+    )
+
+
+def _snapshot_contract_findings(snapshot):
+    """Small runtime guard for the public JSON Schema's critical invariants."""
+    findings = []
+    if not isinstance(snapshot, dict) or set(snapshot) != {"machina_workload_snapshot"}:
+        return ["snapshot must contain only machina_workload_snapshot"]
+    body = snapshot.get("machina_workload_snapshot")
+    if not isinstance(body, dict):
+        return ["machina_workload_snapshot must be an object"]
+    if body.get("schema_version") != _SNAPSHOT_SCHEMA_VERSION:
+        findings.append("unexpected schema_version")
+    required_body_keys = {
+        "schema_version",
+        "observed_at",
+        "identity",
+        "rights",
+        "competition",
+        "season",
+        "scope",
+        "players",
+        "provider_ids",
+        "capabilities",
+        "provenance",
+    }
+    if not required_body_keys <= set(body) or set(body) - required_body_keys - {"team"}:
+        findings.append("snapshot body does not match the closed public contract")
+    try:
+        _validate_observed_at(body.get("observed_at"))
+    except ValueError as exc:
+        findings.append(str(exc))
+
+    rights = body.get("rights")
+    if rights != _SNAPSHOT_RIGHTS:
+        findings.append("rights must be the exact open-public prototype-only claim")
+
+    capabilities = body.get("capabilities")
+    if not isinstance(capabilities, dict) or set(capabilities) != {
+        "present",
+        "absent",
+        "not_expressible",
+    }:
+        findings.append("capabilities must report present, absent and not_expressible")
+    elif capabilities.get("present") != sorted(_SNAPSHOT_PRESENT_CAPABILITIES):
+        findings.append("capabilities overclaim or omit present support")
+    else:
+        present = capabilities["present"]
+        absent = capabilities["absent"]
+        not_expressible = capabilities["not_expressible"]
+        vocabulary = set(_SNAPSHOT_CAPABILITY_VOCABULARY)
+        if (
+            present != sorted(set(present))
+            or absent != sorted(set(absent))
+            or set(present).intersection(absent)
+            or set(present).union(absent) != vocabulary
+            or not_expressible != sorted(
+                name for name in absent if name.startswith("event.")
+            )
+        ):
+            findings.append("capabilities do not partition the pinned vocabulary")
+
+    provenance = body.get("provenance")
+    dependencies = provenance.get("dependencies") if isinstance(provenance, dict) else None
+    if not isinstance(dependencies, dict) or not all(
+        isinstance(dependencies.get(name), str) and dependencies.get(name)
+        for name in ("nflreadpy", "polars")
+    ):
+        findings.append("provenance must name nflreadpy and polars versions")
+    elif set(dependencies) != {"nflreadpy", "polars"}:
+        findings.append("provenance dependencies must match the closed contract")
+    source_refs = provenance.get("source_refs") if isinstance(provenance, dict) else None
+    if not isinstance(source_refs, list) or not source_refs:
+        findings.append("provenance must carry safe source_refs")
+    else:
+        for source_ref in source_refs:
+            value = source_ref.get("value") if isinstance(source_ref, dict) else None
+            if not _has_value(value) or "://" in str(value) or "credential" in str(value).lower():
+                findings.append("source_refs must be non-URL and non-credential")
+                break
+    if not isinstance(provenance, dict) or provenance.get("method_version") != "workload-v0":
+        findings.append("provenance must name workload-v0")
+    determinism = provenance.get("determinism") if isinstance(provenance, dict) else None
+    if determinism != {
+        "id_strategy": "provider-scoped-surrogate",
+        "digest": "blake2b-128",
+        "canonical_id_service": "not-available-in-this-phase",
+    }:
+        findings.append("provenance must describe the injected surrogate resolver")
+
+    season = body.get("season")
+    scope = body.get("scope")
+    if not isinstance(season, dict) or not (
+        isinstance(season.get("year"), int)
+        and not isinstance(season.get("year"), bool)
+    ):
+        findings.append("season must carry an integer year")
+    if not isinstance(scope, dict) or not (
+        isinstance(scope.get("through_week"), int)
+        and not isinstance(scope.get("through_week"), bool)
+        and 1 <= scope["through_week"] <= FANTASY_LAST_WEEK
+        and isinstance(scope.get("lookback_weeks"), int)
+        and not isinstance(scope.get("lookback_weeks"), bool)
+        and scope["lookback_weeks"] >= 1
+        and isinstance(scope.get("position"), str)
+        and bool(scope["position"])
+        and isinstance(scope.get("team"), str)
+        and bool(scope["team"])
+        and scope.get("sorted_by") in ("opportunities", "wopr")
+    ):
+        findings.append("scope is missing a bounded native report coordinate")
+
+    players = body.get("players")
+    if not isinstance(players, list):
+        findings.append("players must be an array")
+    else:
+        for player in players:
+            if not isinstance(player, dict) or not _has_value(player.get("id")):
+                findings.append("every player must have an id")
+                break
+            if not isinstance(player.get("name"), str) or not player["name"]:
+                findings.append("every player must have a name label")
+                break
+            if set(player) - {"id", "name", "position", "team_id", "statistics", "metrics"}:
+                findings.append("player contains a property outside the closed contract")
+                break
+            if not _SURROGATE_URN.fullmatch(str(player["id"])):
+                findings.append("every player id must be a marked surrogate")
+                break
+            statistics = player.get("statistics")
+            if not isinstance(statistics, dict) or set(statistics) - set(
+                _SNAPSHOT_STATISTICS.values()
+            ):
+                findings.append("statistics contain a non-pinned property")
+                break
+            if not all(
+                isinstance(value, str) and value.isdigit()
+                for value in statistics.values()
+            ):
+                findings.append("statistics must carry non-negative integer strings")
+                break
+            metrics = player.get("metrics")
+            if not isinstance(metrics, dict) or set(metrics) - set(_SNAPSHOT_METRICS):
+                findings.append("metrics contain an unbounded property")
+                break
+            if not all(
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+                for value in metrics.values()
+            ):
+                findings.append("metrics must be numeric")
+                break
+            if not all(
+                isinstance(metrics[name], int) and not isinstance(metrics[name], bool)
+                for name in _SNAPSHOT_INTEGER_METRICS.intersection(metrics)
+            ):
+                findings.append("integer metrics must remain integers")
+                break
+            if player.get("position") is not None and (
+                not isinstance(player["position"], str) or not player["position"]
+            ):
+                findings.append("player position must be a non-empty string")
+                break
+            if player.get("team_id") is not None and not _SURROGATE_URN.fullmatch(
+                str(player["team_id"])
+            ):
+                findings.append("player team_id must be a marked surrogate")
+                break
+
+    for entity_name in ("competition", "season", "team"):
+        entity = body.get(entity_name)
+        if entity is not None and (
+            not isinstance(entity, dict)
+            or not _SURROGATE_URN.fullmatch(str(entity.get("id") or ""))
+        ):
+            findings.append("%s must carry a marked surrogate id" % entity_name)
+    team = body.get("team")
+    if team is not None and (
+        not isinstance(team.get("abbreviation"), str) or not team["abbreviation"]
+    ):
+        findings.append("team abbreviation must be a non-empty string")
+
+    provider_ids = body.get("provider_ids")
+    if not isinstance(provider_ids, list) or not provider_ids:
+        findings.append("provider_ids must carry structured evidence")
+    else:
+        provider_items_valid = True
+        for item in provider_ids:
+            if not isinstance(item, dict) or not all(
+                _has_value(item.get(key))
+                for key in (
+                    "machina_id",
+                    "entity_type",
+                    "provider_namespace",
+                    "provider_id",
+                    "resolution_method",
+                    "evidence",
+                )
+            ):
+                findings.append("provider_ids contain missing evidence")
+                provider_items_valid = False
+                break
+            if set(item) != {
+                "machina_id",
+                "entity_type",
+                "provider_namespace",
+                "provider_id",
+                "resolution_method",
+                "confidence",
+                "evidence",
+            }:
+                findings.append("provider evidence contains an extra property")
+                provider_items_valid = False
+                break
+            if item.get("entity_type") not in {
+                "competition",
+                "season",
+                "player",
+                "team",
+            }:
+                findings.append("provider evidence has an unknown entity_type")
+                provider_items_valid = False
+                break
+            if item.get("provider_namespace") != "nflverse":
+                findings.append("provider_ids must remain nflverse-scoped")
+                provider_items_valid = False
+                break
+            if not _SURROGATE_URN.fullmatch(str(item.get("machina_id"))):
+                findings.append("provider evidence must point to a marked surrogate")
+                provider_items_valid = False
+                break
+            if item.get("confidence") != 1.0:
+                findings.append("provider evidence confidence must be exactly 1.0")
+                provider_items_valid = False
+                break
+            expected_method = (
+                "declared"
+                if item.get("entity_type") in {"competition", "season"}
+                else "provider-native"
+            )
+            if item.get("resolution_method") != expected_method:
+                findings.append("provider evidence has an incorrect resolution_method")
+                break
+
+        if provider_items_valid:
+            if any(
+                item in provider_ids[:index]
+                for index, item in enumerate(provider_ids)
+            ):
+                findings.append("provider_ids must not contain duplicate evidence")
+
+            entity_counts = {
+                entity_type: sum(
+                    item["entity_type"] == entity_type for item in provider_ids
+                )
+                for entity_type in ("competition", "season")
+            }
+            if entity_counts != {"competition": 1, "season": 1}:
+                findings.append(
+                    "provider_ids must contain exactly one competition and one season item"
+                )
+
+            evidence_counts = {}
+            provider_targets = {}
+            provider_conflict = False
+            for item in provider_ids:
+                evidence_key = (item["entity_type"], item["machina_id"])
+                evidence_counts[evidence_key] = evidence_counts.get(evidence_key, 0) + 1
+                provider_key = (
+                    item["entity_type"],
+                    item["provider_namespace"],
+                    item["provider_id"],
+                )
+                previous_target = provider_targets.get(provider_key)
+                if previous_target is not None and previous_target != item["machina_id"]:
+                    provider_conflict = True
+                provider_targets[provider_key] = item["machina_id"]
+
+            if provider_conflict or any(
+                count != 1 for count in evidence_counts.values()
+            ):
+                findings.append("provider evidence conflicts for an emitted surrogate")
+
+            expected_evidence = set()
+            for entity_type in ("competition", "season", "team"):
+                entity = body.get(entity_type)
+                if isinstance(entity, dict) and _has_value(entity.get("id")):
+                    expected_evidence.add((entity_type, entity["id"]))
+            if isinstance(players, list):
+                for player in players:
+                    if not isinstance(player, dict):
+                        continue
+                    if _has_value(player.get("id")):
+                        expected_evidence.add(("player", player["id"]))
+                    if _has_value(player.get("team_id")):
+                        expected_evidence.add(("team", player["team_id"]))
+
+            actual_evidence = set(evidence_counts)
+            if expected_evidence - actual_evidence:
+                findings.append("provider evidence is missing for an emitted surrogate")
+            if actual_evidence - expected_evidence:
+                findings.append("provider evidence references an unemitted surrogate")
+
+    forbidden = {
+        "machina_sports_schema",
+        "sport_schema_graph",
+        "event_view",
+        "@context",
+        "@id",
+        "@type",
+    }
+
+    def keys(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                yield key
+                yield from keys(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from keys(child)
+
+    for key in keys(snapshot):
+        if key in forbidden or str(key).startswith("sport:"):
+            findings.append("event/RDF/envelope keys are forbidden in this aggregate")
+            break
+    return findings
+
+
+def _project_machina_workload_snapshot(
+    report,
+    observed_at,
+    dependency_versions,
+    *,
+    id_resolver,
+    rights,
+    capability_names,
+    contract_findings_fn,
+):
+    """Pure projection of a native report into the aggregate snapshot contract."""
+    observed_at = _validate_observed_at(observed_at)
+    if rights != _SNAPSHOT_RIGHTS:
+        raise ValueError("rights are missing or unreadable: %s" % rights)
+
+    if set(capability_names) != set(_SNAPSHOT_CAPABILITY_VOCABULARY):
+        raise ValueError("canonical capability vocabulary does not match snapshot contract v1")
+    known_capabilities = _SNAPSHOT_CAPABILITY_VOCABULARY
+    unknown_present = sorted(set(_SNAPSHOT_PRESENT_CAPABILITIES) - set(known_capabilities))
+    if unknown_present:
+        raise ValueError("unknown capability names: %s" % ", ".join(unknown_present))
+    present = sorted(_SNAPSHOT_PRESENT_CAPABILITIES)
+    absent = sorted(set(known_capabilities) - set(present))
+    not_expressible = sorted(
+        name for name in absent if name.startswith("event.")
+    )
+
+    competition_id = id_resolver("competition", "nfl")
+    season = report.get("season")
+    season_id = id_resolver("season", season)
+    report_team = report.get("team")
+    filtered_team = report_team if report_team and report_team != "ALL" else None
+
+    provider_ids = [
+        _provider_id_evidence(
+            competition_id,
+            "competition",
+            "nfl",
+            "declared",
+            "snapshot.competition.constant",
+        ),
+        _provider_id_evidence(
+            season_id,
+            "season",
+            season,
+            "declared",
+            "report.season",
+        ),
+    ]
+    body = {
+        "schema_version": _SNAPSHOT_SCHEMA_VERSION,
+        "observed_at": observed_at,
+        "identity": {
+            "status": "provider-scoped-surrogate",
+            "canonical_identity": False,
+        },
+        "rights": dict(rights),
+        "competition": {
+            "id": competition_id,
+            "name": "National Football League",
+        },
+        "season": {"id": season_id, "year": season},
+        "scope": {
+            "through_week": report.get("through_week"),
+            "position": report.get("position"),
+            "team": report_team,
+            "lookback_weeks": report.get("lookback_weeks"),
+            "sorted_by": report.get("sorted_by"),
+        },
+        "players": [],
+        "provider_ids": provider_ids,
+        "capabilities": {
+            "present": present,
+            "absent": absent,
+            "not_expressible": not_expressible,
+        },
+        "provenance": {
+            "provider": "nflverse",
+            "adapter": {
+                "name": "nflreadpy",
+                "version": dependency_versions.get("nflreadpy"),
+            },
+            "method_version": report.get("method_version"),
+            "dependencies": {
+                name: dependency_versions.get(name)
+                for name in ("nflreadpy", "polars")
+                if _has_value(dependency_versions.get(name))
+            },
+            "source_refs": [
+                {"kind": "dataset", "value": "nflverse-play-by-play"},
+                {"kind": "library", "value": "nflreadpy"},
+            ],
+            "determinism": dict(getattr(id_resolver, "strategy", {})),
+        },
+    }
+
+    if filtered_team:
+        team_id = id_resolver("team", filtered_team)
+        body["team"] = {"id": team_id, "abbreviation": filtered_team}
+        provider_ids.append(
+            _provider_id_evidence(
+                team_id,
+                "team",
+                filtered_team,
+                "provider-native",
+                "report.team",
+            )
+        )
+
+    seen_evidence = {
+        (item["machina_id"], item["entity_type"], item["provider_id"])
+        for item in provider_ids
+        if item is not None
+    }
+    snapshot_rows = sorted(
+        report.get("players") or [],
+        key=lambda row: _snapshot_player_sort_key(row, report.get("sorted_by")),
+    )
+    for index, row in enumerate(snapshot_rows):
+        player_provider_id = row.get("player_id")
+        if not _has_value(player_provider_id):
+            raise ValueError("player_id is required for every snapshot row")
+        player_id = id_resolver("player", player_provider_id)
+        team_provider_id = row.get("team")
+        team_id = (
+            id_resolver("team", team_provider_id)
+            if _has_value(team_provider_id)
+            else None
+        )
+        player = {
+            "id": player_id,
+            "name": row.get("player_display_name") or row.get("player_name"),
+            "position": row.get("position"),
+            "statistics": {
+                curie: str(row[source_key])
+                for source_key, curie in _SNAPSHOT_STATISTICS.items()
+                if _has_value(row.get(source_key))
+            },
+            "metrics": {
+                metric: row[metric]
+                for metric in _SNAPSHOT_METRICS
+                if _has_value(row.get(metric))
+            },
+        }
+        if team_id:
+            player["team_id"] = team_id
+        body["players"].append(
+            {key: value for key, value in player.items() if _has_value(value)}
+        )
+
+        evidence_rows = [
+            _provider_id_evidence(
+                player_id,
+                "player",
+                player_provider_id,
+                "provider-native",
+                "report.players[%s].player_id" % index,
+            ),
+            _provider_id_evidence(
+                team_id,
+                "team",
+                team_provider_id,
+                "provider-native",
+                "report.players[%s].team" % index,
+            ),
+        ]
+        for evidence in evidence_rows:
+            if evidence is None:
+                continue
+            identity = (
+                evidence["machina_id"],
+                evidence["entity_type"],
+                evidence["provider_id"],
+            )
+            if identity not in seen_evidence:
+                provider_ids.append(evidence)
+                seen_evidence.add(identity)
+
+    body["provider_ids"] = [item for item in provider_ids if item is not None]
+    snapshot = {"machina_workload_snapshot": body}
+    contract_errors = contract_findings_fn(snapshot)
+    if contract_errors:
+        raise ValueError("snapshot contract failed: %s" % "; ".join(contract_errors))
+    return snapshot
+
+
+# ---------------------------------------------------------------------------
 # command: generate_workload_report
 # ---------------------------------------------------------------------------
 
@@ -1372,6 +2034,95 @@ def generate_workload_report(request_data):
             "message": "generate_workload_report failed: %s: %s"
             % (type(exc).__name__, exc),
         }
+
+
+# ---------------------------------------------------------------------------
+# command: generate_machina_workload_snapshot
+# ---------------------------------------------------------------------------
+
+def generate_machina_workload_snapshot(request_data):
+    """Produce the additive aggregate contract without changing the native report."""
+    params = dict(request_data.get("params") or {})
+    try:
+        observed_at = _validate_observed_at(params.get("observed_at"))
+    except ValueError as exc:
+        return {"status": False, "message": str(exc)}
+
+    consumer_tier = str(params.get("consumer_tier") or "production").lower()
+
+    # Runtime owns these decisions. Import and evaluate the canonical gate
+    # before dependency bootstrap, provider imports or workload data access.
+    try:
+        from machina_sports_canonical.capabilities import ALL_CAPABILITIES
+        from machina_sports_canonical.ids import surrogate_resolver
+        from machina_sports_canonical.rights import rights_findings
+    except ImportError:
+        return {
+            "status": False,
+            "message": "machina_sports_canonical is required at runtime",
+        }
+
+    rights_probe = {
+        "machina_sports_schema": {"rights": dict(_SNAPSHOT_RIGHTS)},
+    }
+    try:
+        rights_errors = rights_findings(rights_probe, consumer_tier=consumer_tier)
+    except Exception:
+        return {
+            "status": False,
+            "message": "canonical rights gate failed closed",
+        }
+    if not isinstance(rights_errors, list):
+        return {
+            "status": False,
+            "message": "canonical rights gate failed closed",
+        }
+    if rights_errors:
+        return {
+            "status": False,
+            "message": "rights refusal: canonical policy does not permit this consumer tier",
+            "data": {
+                "allowed": False,
+                "snapshot": None,
+                "refusals": rights_errors[:1],
+                "stage": "pre-retrieval",
+            },
+        }
+
+    native = generate_workload_report(request_data)
+    if not native.get("status"):
+        return native
+    data = native["data"]
+    try:
+        snapshot = _project_machina_workload_snapshot(
+            data["report"],
+            observed_at,
+            data.get("deps") or {},
+            id_resolver=surrogate_resolver("nflverse"),
+            rights=dict(_SNAPSHOT_RIGHTS),
+            capability_names=ALL_CAPABILITIES,
+            contract_findings_fn=_snapshot_contract_findings,
+        )
+    except Exception as exc:
+        return {
+            "status": False,
+            "message": "generate_machina_workload_snapshot failed: %s: %s"
+            % (type(exc).__name__, exc),
+        }
+
+    report = data["report"]
+    return {
+        "status": True,
+        "data": {
+            "snapshot": snapshot,
+            "season": data["season"],
+            "week": data["week"],
+            "position": data["position"],
+            "team": report.get("team") or "ALL",
+            "n_players": data["n_players"],
+            "deps": data.get("deps") or {},
+        },
+    }
 
 
 # ---------------------------------------------------------------------------

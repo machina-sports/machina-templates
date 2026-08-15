@@ -1,0 +1,543 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.machina.gg/nfl-workload/machina-player-workload-snapshot-v1.json",
+  "title": "Machina Player Workload Snapshot v1",
+  "description": "A prototype-only aggregate of nflverse player workload. It is not an event observation, RDF graph, event view, or canonical identity assertion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "machina_workload_snapshot"
+  ],
+  "properties": {
+    "machina_workload_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "observed_at",
+        "identity",
+        "rights",
+        "competition",
+        "season",
+        "scope",
+        "players",
+        "provider_ids",
+        "capabilities",
+        "provenance"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "machina-player-workload-snapshot/1"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$",
+          "allOf": [
+            {
+              "not": {
+                "pattern": "^\\d{4}-(?:02-(?:30|31)|(?:04|06|09|11)-31)T"
+              }
+            },
+            {
+              "if": {
+                "pattern": "^\\d{4}-02-29T"
+              },
+              "then": {
+                "pattern": "^(?:(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))|(?:(?:[02468][048]|[13579][26])00))-02-29T"
+              }
+            }
+          ]
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "canonical_identity"
+          ],
+          "properties": {
+            "status": {
+              "const": "provider-scoped-surrogate"
+            },
+            "canonical_identity": {
+              "const": false
+            }
+          }
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "data_class",
+            "prototype_only",
+            "commercial_use"
+          ],
+          "properties": {
+            "data_class": {
+              "const": "open-public"
+            },
+            "prototype_only": {
+              "const": true
+            },
+            "commercial_use": {
+              "const": false
+            }
+          }
+        },
+        "competition": {
+          "$ref": "#/$defs/namedEntity"
+        },
+        "season": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "year"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/surrogateUrn"
+            },
+            "year": {
+              "type": "integer"
+            }
+          }
+        },
+        "team": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "abbreviation"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/surrogateUrn"
+            },
+            "abbreviation": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "through_week",
+            "position",
+            "team",
+            "lookback_weeks",
+            "sorted_by"
+          ],
+          "properties": {
+            "through_week": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 17
+            },
+            "position": {
+              "type": "string",
+              "minLength": 1
+            },
+            "team": {
+              "type": "string",
+              "minLength": 1
+            },
+            "lookback_weeks": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sorted_by": {
+              "enum": [
+                "opportunities",
+                "wopr"
+              ]
+            }
+          }
+        },
+        "players": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/player"
+          }
+        },
+        "provider_ids": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "entity_type": {"const": "competition"}
+                },
+                "required": ["entity_type"]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "entity_type": {"const": "season"}
+                },
+                "required": ["entity_type"]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ],
+          "items": {
+            "$ref": "#/$defs/providerId"
+          }
+        },
+        "capabilities": {
+          "$ref": "#/$defs/capabilities"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "surrogateUrn": {
+      "type": "string",
+      "pattern": "^urn:machina:sports:[a-z][a-z0-9_-]*:x[0-9a-f]{32}$"
+    },
+    "namedEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/surrogateUrn"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "spamfstat:receptionsLooks": {
+          "type": "string",
+          "pattern": "^\\d+$"
+        },
+        "spamfstat:receptionsTotal": {
+          "type": "string",
+          "pattern": "^\\d+$"
+        },
+        "spamfstat:rushesAttempts": {
+          "type": "string",
+          "pattern": "^\\d+$"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "air_yards": {"type": "number"},
+        "target_share": {"type": "number"},
+        "air_yards_share": {"type": "number"},
+        "rush_share": {"type": "number"},
+        "wopr": {"type": "number"},
+        "opportunities": {"type": "integer"},
+        "rz_targets": {"type": "integer"},
+        "rz_carries": {"type": "integer"},
+        "rz_touches": {"type": "integer"},
+        "rec_epa": {"type": "number"},
+        "rush_epa": {"type": "number"},
+        "total_epa": {"type": "number"},
+        "epa_per_opportunity": {"type": "number"},
+        "recent_target_share": {"type": "number"},
+        "recent_wopr": {"type": "number"},
+        "recent_rush_share": {"type": "number"},
+        "recent_opportunities": {"type": "integer"},
+        "target_share_delta": {"type": "number"},
+        "wopr_delta": {"type": "number"},
+        "rush_share_delta": {"type": "number"},
+        "last_week": {"type": "integer"}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "statistics",
+        "metrics"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/surrogateUrn"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "position": {
+          "type": "string",
+          "minLength": 1
+        },
+        "team_id": {
+          "$ref": "#/$defs/surrogateUrn"
+        },
+        "statistics": {
+          "$ref": "#/$defs/statistics"
+        },
+        "metrics": {
+          "$ref": "#/$defs/metrics"
+        }
+      }
+    },
+    "providerId": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "entity_type": {
+                "enum": ["competition", "season"]
+              }
+            },
+            "required": ["entity_type"]
+          },
+          "then": {
+            "properties": {
+              "resolution_method": {"const": "declared"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entity_type": {
+                "enum": ["player", "team"]
+              }
+            },
+            "required": ["entity_type"]
+          },
+          "then": {
+            "properties": {
+              "resolution_method": {"const": "provider-native"}
+            }
+          }
+        }
+      ],
+      "required": [
+        "machina_id",
+        "entity_type",
+        "provider_namespace",
+        "provider_id",
+        "resolution_method",
+        "confidence",
+        "evidence"
+      ],
+      "properties": {
+        "machina_id": {
+          "$ref": "#/$defs/surrogateUrn"
+        },
+        "entity_type": {
+          "enum": [
+            "competition",
+            "season",
+            "team",
+            "player"
+          ]
+        },
+        "provider_namespace": {
+          "const": "nflverse"
+        },
+        "provider_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolution_method": {
+          "enum": [
+            "provider-native",
+            "declared"
+          ]
+        },
+        "confidence": {
+          "const": 1.0
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "capabilityName": {
+      "enum": [
+        "event.actions",
+        "event.clock",
+        "event.competition",
+        "event.coordinates",
+        "event.expected_metrics",
+        "event.formations",
+        "event.identity",
+        "event.lineups",
+        "event.live_statistics",
+        "event.participants",
+        "event.period",
+        "event.play_by_play",
+        "event.result",
+        "event.score",
+        "event.start_time",
+        "event.start_time.bounded",
+        "event.status",
+        "event.tracking",
+        "participant.player_statistics",
+        "provenance"
+      ]
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "present",
+        "absent",
+        "not_expressible"
+      ],
+      "properties": {
+        "present": {
+          "type": "array",
+          "uniqueItems": true,
+          "const": [
+            "participant.player_statistics",
+            "provenance"
+          ],
+          "items": {"$ref": "#/$defs/capabilityName"}
+        },
+        "absent": {
+          "type": "array",
+          "uniqueItems": true,
+          "const": [
+            "event.actions",
+            "event.clock",
+            "event.competition",
+            "event.coordinates",
+            "event.expected_metrics",
+            "event.formations",
+            "event.identity",
+            "event.lineups",
+            "event.live_statistics",
+            "event.participants",
+            "event.period",
+            "event.play_by_play",
+            "event.result",
+            "event.score",
+            "event.start_time",
+            "event.start_time.bounded",
+            "event.status",
+            "event.tracking"
+          ],
+          "items": {"$ref": "#/$defs/capabilityName"}
+        },
+        "not_expressible": {
+          "type": "array",
+          "uniqueItems": true,
+          "const": [
+            "event.actions",
+            "event.clock",
+            "event.competition",
+            "event.coordinates",
+            "event.expected_metrics",
+            "event.formations",
+            "event.identity",
+            "event.lineups",
+            "event.live_statistics",
+            "event.participants",
+            "event.period",
+            "event.play_by_play",
+            "event.result",
+            "event.score",
+            "event.start_time",
+            "event.start_time.bounded",
+            "event.status",
+            "event.tracking"
+          ],
+          "items": {"$ref": "#/$defs/capabilityName"}
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "adapter",
+        "method_version",
+        "dependencies",
+        "source_refs",
+        "determinism"
+      ],
+      "properties": {
+        "provider": {"const": "nflverse"},
+        "adapter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": {"const": "nflreadpy"},
+            "version": {"type": "string", "minLength": 1}
+          }
+        },
+        "method_version": {"type": "string", "minLength": 1},
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nflreadpy", "polars"],
+          "properties": {
+            "nflreadpy": {"type": "string", "minLength": 1},
+            "polars": {"type": "string", "minLength": 1}
+          }
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "value"],
+            "properties": {
+              "kind": {"enum": ["dataset", "library"]},
+              "value": {
+                "type": "string",
+                "minLength": 1,
+                "not": {"pattern": "://"}
+              }
+            }
+          }
+        },
+        "determinism": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id_strategy",
+            "digest",
+            "canonical_id_service"
+          ],
+          "properties": {
+            "id_strategy": {"const": "provider-scoped-surrogate"},
+            "digest": {"const": "blake2b-128"},
+            "canonical_id_service": {"const": "not-available-in-this-phase"}
+          }
+        }
+      }
+    }
+  }
+}
