@@ -12,7 +12,8 @@ setup:
     - Exact dependency pins enforced at runtime, with loaded versions in every payload
     - Five self-asserting regression workflows
   status: available
-  integrations: []
+  integrations:
+    - google-genai
   value: "skills/nfl-workload"
   version: 1.0.0
 

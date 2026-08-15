@@ -47,11 +47,16 @@ workflow:
       in $.get('rec', {}).get('reasoning', '') and 'stint' not in $.get('rec', {}).get('reasoning', ''))
     unlabelled_kf_entries: '[e for e in $.get(''rec'', {}).get(''key_factors'', []) if (''0.305'' in e
       or ''68'' in e) and ''stint'' not in e]'
-    result: ($.get('sa_team', '') == 'NO' and $.get('sb_team', '') == 'CIN' and len($.get('sa_stints',
-      [])) == 1 and len($.get('sb_stints', [])) == 0 and 'NO stint' in $.get('rec', {}).get('caveat',
+    result: ($.get('sa_team', '') != $.get('sb_team', '') and $.get('sa_team', '') == 'NO' and $.get('sb_team',
+      '') == 'CIN' and len($.get('sa_stints', [])) == 1 and $.get('sa_stints', [{}])[0].get('team')
+      == 'SEA' and len($.get('sb_stints', [])) == 0 and 'NO stint' in $.get('rec', {}).get('caveat',
+      '') and 'SEA' in $.get('rec', {}).get('caveat', '') and '68 of 100' in $.get('rec', {}).get('caveat',
       '') and all('stint' in e for e in $.get('rec', {}).get('key_factors', []) if '0.305' in e or '68'
-      in e) and not any(('178' in e and '68' in e and 'stint' not in e) for e in $.get('rec', {}).get('key_factors',
-      [])) and 'stint' in $.get('rec', {}).get('reasoning', '')) and 'PASS' or 'FAIL'
+      in e) and any('stint' in e for e in $.get('rec', {}).get('key_factors', [])) and not any(('178'
+      in e and '68' in e and 'stint' not in e) for e in $.get('rec', {}).get('key_factors', [])) and
+      'stint' in $.get('rec', {}).get('reasoning', '') and not ('178' in $.get('rec', {}).get('reasoning',
+      '') and '68' in $.get('rec', {}).get('reasoning', '') and 'stint' not in $.get('rec', {}).get('reasoning',
+      ''))) and 'PASS' or 'FAIL'
     workflow-status: $.get('rec', {}) and 'executed' or 'skipped'
   tasks:
   - type: connector

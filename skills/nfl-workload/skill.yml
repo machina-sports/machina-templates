@@ -68,6 +68,7 @@ skill:
         player_b_team: "$.get('player_b_team', '')"
       outputs:
         recommendation: "$.get('recommendation', {})"
+        validation_error: "$.get('validation_error', '')"
         n_matched: "$.get('pair_n_matched', 0)"
         player_a_status: "$.get('player_a_status', '')"
         player_a_matched: "$.get('player_a_matched', '')"

@@ -71,16 +71,16 @@ week. Omit them and the previous current-state behaviour is preserved exactly.
 
 ```bash
 # Leaderboard, and store it
-POST /workflow/executor/nfl-workload-report
+POST /workflow/execute/nfl-workload-report
 { "season": 2025, "through_week": 17, "position": "WR",
   "min_opportunities": 10, "limit": 5 }
 
 # Read back what was stored (computes nothing, writes nothing)
-POST /workflow/executor/nfl-workload-latest
+POST /workflow/execute/nfl-workload-latest
 { "season": 2025, "week": 17, "position": "WR" }
 
 # Start/sit call
-POST /workflow/executor/fantasy-explain-reasoning
+POST /workflow/execute/fantasy-explain-reasoning
 { "season": 2025, "week": 17, "position": "WR",
   "player_a_name": "Shaheed", "player_b_name": "Chase" }
 ```

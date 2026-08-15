@@ -44,27 +44,40 @@ workflow:
     player_a_candidates: $.get('pair_a_candidates', [])
     player_a_context_message: $.get('player_a_context', {}).get('message', '')
     player_a_context_reason: $.get('player_a_context', {}).get('reason', '')
-    player_a_context_status: $.get('player_a_context', {}).get('reason', '') == 'matched' and 'found'
-      or 'not-found'
+    player_a_context_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'',
+      0) > 0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else
+      (''found'' if $.get(''player_a_context'', {}).get(''reason'', '''') == ''matched'' else ''not-found'')'
     player_a_matched: $.get('pair_a_matched', '')
     player_a_message: $.get('pair_a_message', '')
     player_a_other_stints: $.get('pair_a_other_stints', [])
     player_a_reason: $.get('pair_a_reason', '')
     player_a_selected_team: $.get('pair_a_selected_team', '')
-    player_a_status: $.get('pair_a_reason', '') == 'matched' and 'found' or 'not-found'
+    player_a_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'', 0) > 0
+      and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else (''found''
+      if $.get(''pair_a_reason'', '''') == ''matched'' else ''not-found'')'
     player_b_candidates: $.get('pair_b_candidates', [])
     player_b_context_message: $.get('player_b_context', {}).get('message', '')
     player_b_context_reason: $.get('player_b_context', {}).get('reason', '')
-    player_b_context_status: $.get('player_b_context', {}).get('reason', '') == 'matched' and 'found'
-      or 'not-found'
+    player_b_context_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'',
+      0) > 0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else
+      (''found'' if $.get(''player_b_context'', {}).get(''reason'', '''') == ''matched'' else ''not-found'')'
     player_b_matched: $.get('pair_b_matched', '')
     player_b_message: $.get('pair_b_message', '')
     player_b_other_stints: $.get('pair_b_other_stints', [])
     player_b_reason: $.get('pair_b_reason', '')
     player_b_selected_team: $.get('pair_b_selected_team', '')
-    player_b_status: $.get('pair_b_reason', '') == 'matched' and 'found' or 'not-found'
+    player_b_status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'', 0) > 0
+      and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else (''found''
+      if $.get(''pair_b_reason'', '''') == ''matched'' else ''not-found'')'
     recommendation: $.get('recommendation', {})
-    workflow-status: $.get('recommendation') and 'executed' or 'skipped'
+    validation_error: '''Missing required inputs: '' + '', ''.join([name for name, missing in [(''season'',
+      $.get(''season'', 0) <= 0), (''week'', $.get(''week'', 0) <= 0), (''player_a_name'', $.get(''player_a_name'',
+      '''') == ''''), (''player_b_name'', $.get(''player_b_name'', '''') == '''')] if missing]) if not ($.get(''season'',
+      0) > 0 and $.get(''week'', 0) > 0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'',
+      '''') != '''') else '''''
+    workflow-status: '''invalid-input'' if not ($.get(''season'', 0) > 0 and $.get(''week'', 0) >
+      0 and $.get(''player_a_name'', '''') != '''' and $.get(''player_b_name'', '''') != '''') else (''executed''
+      if $.get(''recommendation'') else ''skipped'')'
   tasks:
   - type: connector
     name: lookup-pair
@@ -80,7 +93,9 @@ workflow:
     continue_on_error: true
     inputs:
       player_a_name: $.get('player_a_name', '')
+      player_a_team: $.get('player_a_team', '')
       player_b_name: $.get('player_b_name', '')
+      player_b_team: $.get('player_b_team', '')
       position: $.get('position', 'WR')
       season: $.get('season', 0)
       week: $.get('week', 0)
