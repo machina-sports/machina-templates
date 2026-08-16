@@ -316,10 +316,10 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertFalse(res.get("status"))
         self.assertIn("data", res)
         self.assertIn("error", res["data"])
-        
+
         # Verify the error matches the generic canonicalization-refused code
         self.assertEqual(res["data"]["error"], "CANONICALIZATION_REFUSED")
-        
+
         # Verify no sensitive keywords or values exist in the output error dictionary
         res_str = json.dumps(res)
         self.assertNotIn("SECRET_API_KEY_MMA_VULN", res_str)
@@ -337,10 +337,10 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertFalse(res_prod.get("status"))
         self.assertIn("data", res_prod)
         self.assertIn("error", res_prod["data"])
-        
+
         # Verify the error matches the specific safe tier refusal code
         self.assertEqual(res_prod["data"]["error"], "TIER_REFUSAL")
-        
+
         # Verify no sensitive values exist in production refusal either
         res_prod_str = json.dumps(res_prod)
         self.assertNotIn("SECRET_API_KEY_MMA_VULN", res_prod_str)
