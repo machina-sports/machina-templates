@@ -1,0 +1,8 @@
+connector:
+  name: "fight-analytics-canonical"
+  description: "Fight Analytics canonical adapter"
+  filename: "fight_analytics_adapter.py"
+  filetype: "pyscript"
+  commands:
+    - name: "Canonicalize fight"
+      value: "canonicalize_fight"

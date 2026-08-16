@@ -90,7 +90,7 @@ def resolve_json_pointer(document: Any, pointer: str) -> Any:
 
 
 class TestFightAnalyticsConnector(unittest.TestCase):
-    def test_descriptor_and_install_manifest_register_only_the_connector(self):
+    def test_descriptor_and_install_manifest_register_connectors(self):
         self.assertTrue(DESCRIPTOR_PATH.is_file(), f"absent: {DESCRIPTOR_PATH}")
         self.assertTrue(INSTALL_PATH.is_file(), f"absent: {INSTALL_PATH}")
 
@@ -103,7 +103,10 @@ class TestFightAnalyticsConnector(unittest.TestCase):
         install = read_yaml(INSTALL_PATH)
         self.assertEqual(
             install["datasets"],
-            [{"type": "connector", "path": DESCRIPTOR_PATH.name}],
+            [
+                {"type": "connector", "path": DESCRIPTOR_PATH.name},
+                {"type": "connector", "path": "fight-analytics-canonical.yml"},
+            ],
         )
 
     def test_openapi_json_parses(self):

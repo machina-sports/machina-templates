@@ -36,7 +36,7 @@ ADAPTER_NAME = "connectors.fight_analytics.fight_analytics_adapter"
 ADAPTER_VERSION = "1"
 PROVIDER_NAMESPACE = "fight-analytics"
 PROVIDER_FAMILY = "licensed"
-RIGHTS_DATA_CLASS = "licensed-provider-example-fixture"
+RIGHTS_DATA_CLASS = "documentation-evidence"
 
 ENDPOINT_CLASS = "fight-analytics/fights"
 
@@ -602,3 +602,31 @@ def to_envelope(payload, *, observed_at, consumer_tier="production"):
 
     # 3. Serialize through the canonical package envelope builder
     return canonical_envelope(observation, id_resolver=resolver)
+
+
+def canonicalize_fight(request_data):
+    """Machina pyscript executor contract for Fight Analytics.
+
+    Reads params.payload, params.observed_at, params.consumer_tier,
+    runs the existing prototype-only path, and returns the Machina {status,data} contract
+    without leaking raw payloads/secrets into refusal errors.
+    """
+    params = dict((request_data or {}).get("params") or {})
+    payload = params.get("payload")
+    observed_at = params.get("observed_at")
+    consumer_tier = params.get("consumer_tier", "production")
+
+    try:
+        # Preflight check: refuse production/commercial tiers before adaptation
+        if consumer_tier != "prototype":
+            raise ValueError(
+                "Fight Analytics local connector fails closed for production/commercial tiers. "
+                "Only the prototype tier is supported for adaptation."
+            )
+
+        envelope = to_envelope(payload, observed_at=observed_at, consumer_tier=consumer_tier)
+        return {"status": True, "data": envelope}
+    except Exception as e:
+        # Return status: False without leaking raw payloads/secrets in the refusal errors.
+        # Ensure we only return the clean error message text.
+        return {"status": False, "data": {"error": str(e)}}

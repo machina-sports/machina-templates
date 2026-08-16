@@ -38,13 +38,13 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertTrue(MOCK_PAYLOAD_PATH.is_file(), f"Mock payload missing: {MOCK_PAYLOAD_PATH}")
         with MOCK_PAYLOAD_PATH.open(encoding="utf-8") as f:
             self.raw_payload = json.load(f)
-        
+
         # Ensure distinct IDs for corners to be valid
         self.raw_payload["redCornerId"] = "fighter-red-123"
         self.raw_payload["redCorner"]["id"] = "fighter-red-123"
         self.raw_payload["redCorner"]["firstName"] = "Song"
         self.raw_payload["redCorner"]["lastName"] = "Yadong"
-        
+
         self.raw_payload["blueCornerId"] = "fighter-blue-456"
         self.raw_payload["blueCorner"]["id"] = "fighter-blue-456"
         self.raw_payload["blueCorner"]["firstName"] = "Marlon"
@@ -75,23 +75,24 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
             fight_analytics_adapter.to_envelope(payload, observed_at="2026-08-15T12:00:00Z")
         self.assertIn("fails closed for production", str(ctx.exception))
 
-    def test_reduced_precision_with_split_time_and_offset(self):
+    def test_synthetic_reduced_precision_with_split_time_and_offset(self):
+        """Verify reduced precision with synthetic split time and offset."""
         payload = copy.deepcopy(self.raw_payload)
         # Give time an explicit offset (-05:00)
         payload["event"]["time"] = "04:00 PM-05:00"
-        
+
         doc = fight_analytics_adapter.to_observation(payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype")
-        
+
         # Verify it validates against the canonical-observation contract
         errors = validate_observation(doc)
         self.assertEqual(errors, [])
-        
+
         # Check temporal evidence is correctly derived
         obs = doc["observation"]
         event = obs["event"]
         self.assertIn("temporal_evidence", event)
         self.assertNotIn("start_time", event)
-        
+
         evidence = event["temporal_evidence"]
         self.assertEqual(evidence["kind"], "start")
         self.assertEqual(evidence["precision"], "minute")
@@ -99,17 +100,18 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertEqual(evidence["lower_inclusive"], "2022-11-12T21:00:00Z")
         self.assertEqual(evidence["upper_exclusive"], "2022-11-12T21:01:00Z")
 
-    def test_exact_precision_with_start_time(self):
+    def test_synthetic_exact_precision_with_start_time(self):
+        """Verify exact precision with synthetic start time and offset."""
         payload = copy.deepcopy(self.raw_payload)
         # Add explicit exact startsAt
         payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
-        
+
         doc = fight_analytics_adapter.to_observation(payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype")
-        
+
         # Verify it validates
         errors = validate_observation(doc)
         self.assertEqual(errors, [])
-        
+
         obs = doc["observation"]
         event = obs["event"]
         self.assertNotIn("temporal_evidence", event)
@@ -119,19 +121,19 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         payload = copy.deepcopy(self.raw_payload)
         payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
         payload["winner"] = "fighter-red-123"
-        
+
         doc = fight_analytics_adapter.to_observation(payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype")
         obs = doc["observation"]
-        
+
         participants = obs["participants"]
         self.assertEqual(len(participants), 2)
-        
+
         # Red Corner
         self.assertEqual(participants[0]["provider_id"], "fighter-red-123")
         self.assertEqual(participants[0]["name"], "Song Yadong")
         self.assertEqual(participants[0]["alignment"], "red")
         self.assertEqual(participants[0]["outcome"], "win")
-        
+
         # Blue Corner
         self.assertEqual(participants[1]["provider_id"], "fighter-blue-456")
         self.assertEqual(participants[1]["name"], "Marlon Vera")
@@ -143,10 +145,10 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
         payload["result"] = "DRAW"
         payload["winner"] = "Not available yet"
-        
+
         doc = fight_analytics_adapter.to_observation(payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype")
         obs = doc["observation"]
-        
+
         participants = obs["participants"]
         self.assertEqual(participants[0]["outcome"], "draw")
         self.assertEqual(participants[1]["outcome"], "draw")
@@ -162,7 +164,7 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
                 payload = copy.deepcopy(self.raw_payload)
                 payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
                 payload["sport"] = fa_sport
-                
+
                 doc = fight_analytics_adapter.to_observation(payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype")
                 self.assertEqual(doc["observation"]["sport"]["medtop"], expected_medtop)
 
@@ -170,11 +172,11 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         """Verify that to_envelope succeeds for the prototype tier and returns a valid canonical envelope."""
         payload = copy.deepcopy(self.raw_payload)
         payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
-        
+
         envelope = fight_analytics_adapter.to_envelope(
             payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype"
         )
-        
+
         # Verify the structure is a canonical envelope
         self.assertIn("machina_sports_schema", envelope)
         schema = envelope["machina_sports_schema"]
@@ -184,7 +186,7 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertIn("provenance", schema)
         self.assertIn("capabilities", schema)
         self.assertIn("rights", schema)
-        
+
         # Check provider scoped surrogate resolver is used for provider ids
         event_view = schema["event_view"]
         event_id = event_view["event_id"]
@@ -208,6 +210,92 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
                         node.module.startswith(("tools", "connectors", "agent_templates")),
                         f"Banned import: {node.module}"
                     )
+
+    def test_canonical_descriptor_and_install_manifest_exists_and_declares_command(self):
+        """Verify the canonical projection connector descriptor and its registration in _install.yml."""
+        import yaml
+        install_path = REPO_ROOT / "connectors" / "fight-analytics" / "_install.yml"
+        canonical_yaml_path = REPO_ROOT / "connectors" / "fight-analytics" / "fight-analytics-canonical.yml"
+
+        self.assertTrue(install_path.is_file(), f"absent: {install_path}")
+        self.assertTrue(canonical_yaml_path.is_file(), f"absent: {canonical_yaml_path}")
+
+        # Verify registration in _install.yml
+        with install_path.open(encoding="utf-8") as f:
+            install_data = yaml.safe_load(f)
+        datasets = install_data.get("datasets", [])
+        registered_paths = [d.get("path") for d in datasets if d.get("type") == "connector"]
+        self.assertIn("fight-analytics-canonical.yml", registered_paths)
+
+        # Verify fight-analytics-canonical.yml
+        with canonical_yaml_path.open(encoding="utf-8") as f:
+            canonical_data = yaml.safe_load(f)
+
+        connector = canonical_data.get("connector", {})
+        self.assertEqual(connector.get("name"), "fight-analytics-canonical")
+        self.assertEqual(connector.get("filename"), "fight_analytics_adapter.py")
+        self.assertEqual(connector.get("filetype"), "pyscript")
+
+        commands = connector.get("commands", [])
+        command_values = [cmd.get("value") for cmd in commands]
+        self.assertIn("canonicalize_fight", command_values)
+
+    def test_canonicalize_fight_command_executes_with_real_machina_params_and_status_data_envelope(self):
+        """Verify that the canonicalize_fight command executes with the real Machina {params} and {status, data} contract."""
+        payload = copy.deepcopy(self.raw_payload)
+        payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
+
+        request_data = {
+            "params": {
+                "payload": payload,
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "prototype"
+            }
+        }
+
+        res = fight_analytics_adapter.canonicalize_fight(request_data)
+        self.assertTrue(res.get("status"), f"Command failed: {res}")
+        self.assertIn("data", res)
+
+        envelope = res["data"]
+        self.assertIn("machina_sports_schema", envelope)
+        schema = envelope["machina_sports_schema"]
+        self.assertEqual(schema["schema_version"], "machina-sports-schema/1")
+
+    def test_production_refusal_happens_before_adaptation(self):
+        """Verify that production/commercial tier refusal happens before any adaptation of the payload."""
+        # Pass a completely invalid payload (empty dict). If it doesn't raise KeyError/TypeError but refuses on tier first,
+        # it proves production refusal happens before adaptation!
+        request_data = {
+            "params": {
+                "payload": {},
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "production"
+            }
+        }
+
+        res = fight_analytics_adapter.canonicalize_fight(request_data)
+        self.assertFalse(res.get("status"))
+        self.assertIn("data", res)
+        self.assertIn("error", res["data"])
+        self.assertIn("fails closed for production", res["data"]["error"])
+
+    def test_raw_swagger_documentation_fixture_itself_fails_closed_on_missing_timezone(self):
+        """Verify that the unmodified raw Swagger fixture itself fails closed on missing timezone."""
+        # Use unmodified self.raw_payload (time is "04:00 PM", which has no UTC offset)
+        request_data = {
+            "params": {
+                "payload": self.raw_payload,
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "prototype"
+            }
+        }
+
+        res = fight_analytics_adapter.canonicalize_fight(request_data)
+        self.assertFalse(res.get("status"))
+        self.assertIn("data", res)
+        self.assertIn("error", res["data"])
+        self.assertIn("does not state a complete RFC 3339-compatible time with an explicit offset", res["data"]["error"])
 
 
 if __name__ == "__main__":
