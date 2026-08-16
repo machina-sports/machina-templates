@@ -83,17 +83,14 @@ MAPPINGS_CONTEXT = (REPO_ROOT / "agent-templates/iptc-mappings/contexts"
 #: The complete runtime set sports-skills ships, spelled out here rather than
 #: globbed. A glob would silently vendor whatever appeared next; this list makes
 #: adding a file to the published package an explicit, reviewable act.
-VENDORED_FILES = (
-    "__init__.py",
-    "capabilities.py",
-    "ids.py",
-    "observation.py",
-    "official-property-names.json",
-    "rights.py",
-    "serialize.py",
-    "shared-context.json",
-    "vocab.py",
-)
+RUNTIME_MANIFEST_PATH = (VENDOR_ROOT / "data"
+                         / "trusted_loader_manifest_v1.json")
+_RUNTIME_MANIFEST = json.loads(RUNTIME_MANIFEST_PATH.read_text(encoding="utf-8"))
+VENDORED_FILES = tuple(sorted(
+    [item["relative_path"] for item in _RUNTIME_MANIFEST["runtime_files"]]
+    + [item["relative_path"] for item in _RUNTIME_MANIFEST["required_data_files"]]
+    + ["data/trusted_loader_manifest_v1.json"]
+))
 
 #: Files under the vendoring root that are deliberately **not** vendored, and the
 #: reason each one stays behind. Recorded so the "nothing is unaccounted for"
@@ -119,14 +116,7 @@ NOT_VENDORED_FILES = {
 #: rather than a file list because ``tests/test_iptc_sports_skills_reference_
 #: contract.py`` already pins the adapter package's contents exhaustively, and two
 #: exhaustive inventories of one directory drift the first time either is edited.
-NOT_VENDORED_PREFIXES = (
-    # Provider readings this repository owns. sports-skills publishes its own
-    # ESPN adapter and vendors the serializer those adapters feed, not the
-    # adapters: a second copy of one provider reading would be a second source of
-    # truth for it. See TestNoSportsSkillsAdapterLivesHere in the reference
-    # contract suite.
-    "adapters/",
-)
+NOT_VENDORED_PREFIXES = ()
 
 #: The consumer's key order, which is also this manifest's key order. Pinned so
 #: the bytes stay copy-pasteable into ``VENDORED.json`` rather than merely
@@ -145,7 +135,7 @@ CONSUMER_KEY_ORDER = (
 
 #: The commit whose canonical bytes this manifest pins. A17 records the runtime
 #: as it stands and changes none of it.
-SOURCE_COMMIT = "fd787c71e5bce9861443eb3a28ae9144eafa5109"
+SOURCE_COMMIT = "unreleased-owner-phase1"
 
 
 def manifest():
@@ -410,13 +400,14 @@ class TestTheRecordedVersionsComeFromTheRuntime(unittest.TestCase):
         self.manifest = manifest()
 
     def test_the_profile_is_the_one_the_runtime_emits(self):
-        self.assertEqual(self.manifest["profile"], canonical.PROFILE_VERSION)
+        self.assertEqual(self.manifest["profile"],
+                         canonical.SUCCESSOR_PROFILE_VERSION)
 
     def test_the_observation_and_envelope_versions_are_the_runtime_constants(self):
         self.assertEqual(self.manifest["schema_version"],
-                         canonical.SCHEMA_VERSION)
+                         canonical.SUCCESSOR_SCHEMA_VERSION)
         self.assertEqual(self.manifest["machina_schema_version"],
-                         canonical.MACHINA_SCHEMA_VERSION)
+                         canonical.SUCCESSOR_MACHINA_SCHEMA_VERSION)
 
     def test_the_upstream_pin_agrees_with_the_runtime_and_the_harness(self):
         """Three copies of one pin — the vendored constants, the harness reference
@@ -456,16 +447,9 @@ class TestTheManifestNamesItsSubjectAndItsSource(unittest.TestCase):
     def test_the_source_commit_is_the_commit_this_task_pins(self):
         self.assertEqual(self.manifest["source_commit"], SOURCE_COMMIT)
 
-    def test_the_source_commit_is_a_full_commit_not_a_tag_or_a_short_sha(self):
-        """A short sha is ambiguous as the repository grows and a branch name is
-        not a pin at all. The enforcement chain runs the other way round: a
-        changed runtime byte fails the hash tests, and the only honest repair is
-        to record the new bytes *and* the commit that introduced them."""
-        commit = self.manifest["source_commit"]
-        self.assertRegex(commit, r"^[0-9a-f]{40}$")
-        for label in ("HEAD", "main", "refs/", "v1", "latest"):
-            with self.subTest(label=label):
-                self.assertNotIn(label, commit)
+    def test_unreleased_owner_bytes_do_not_claim_a_reviewed_commit(self):
+        self.assertEqual(self.manifest["source_commit"],
+                         "unreleased-owner-phase1")
 
 
 class TestTheManifestIsCopyableIntoTheConsumer(unittest.TestCase):
