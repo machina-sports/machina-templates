@@ -229,42 +229,12 @@ def _result_code(payload):
     return None if code == "NOT_AVAILABLE_YET" else code
 
 
-def _explicit_status(payload, event):
-    stated = []
-    for value in (payload.get("status"), event.get("status")):
-        code = _code(value)
-        if code is None:
-            continue
-        if code not in EVENT_STATUS_BY_CODE:
-            raise ValueError(
-                "Fight Analytics status '{0}' has no canonical event-status "
-                "mapping in this adapter; no observation was produced".format(code)
-            )
-        stated.append(EVENT_STATUS_BY_CODE[code])
-    if len(set(stated)) > 1:
-        raise ValueError(
-            "Fight Analytics top-level and embedded event statuses disagree; no "
-            "observation was produced"
-        )
-    return stated[0] if stated else None
-
-
 def _event_status(payload, event, result_code):
-    explicit = _explicit_status(payload, event)
-    terminal = result_code in TERMINAL_RESULTS
-    if explicit is not None:
-        if terminal and explicit != "closed":
-            raise ValueError(
-                "Fight Analytics payload states a terminal result and a non-closed "
-                "status; no observation was produced"
-            )
-        return explicit
-    if terminal:
+    if result_code in TERMINAL_RESULTS:
         return "closed"
     raise ValueError(
-        "Fight Analytics payload has neither a mapped status nor a terminal "
-        "result, so canonical event status cannot be determined; no observation "
-        "was produced"
+        "Fight Analytics payload has no terminal result, so canonical event "
+        "status cannot be determined; no observation was produced"
     )
 
 
@@ -399,26 +369,6 @@ def _split_event_start(event):
 
 
 def _event_start(event):
-    # Some deployments expose a normalized start field even though the published
-    # GetOneFightDto does not.  Such a field is preferable to reconstructing the
-    # documented split date/time pair.
-    for key in (
-        "startTime",
-        "start_time",
-        "startsAt",
-        "starts_at",
-        "startDateTime",
-        "start_datetime",
-    ):
-        if _text(event.get(key)) is not None:
-            return _temporal_member(event.get(key), "event.{0}".format(key))
-
-    date_text = _text(event.get("date"))
-    if date_text is not None and "T" in date_text.upper():
-        return _temporal_member(date_text, "event.date")
-    time_text = _text(event.get("time"))
-    if time_text is not None and "T" in time_text.upper():
-        return _temporal_member(time_text, "event.time")
     return _split_event_start(event)
 
 
@@ -611,15 +561,21 @@ def canonicalize_fight(request_data):
     runs the existing prototype-only path, and returns the Machina {status,data} contract
     without leaking raw payloads/secrets into refusal errors.
     """
-    params = dict((request_data or {}).get("params") or {})
-    payload = params.get("payload")
-    observed_at = params.get("observed_at")
-    consumer_tier = params.get("consumer_tier", "production")
-
-    if consumer_tier != "prototype":
-        return {"status": False, "data": {"error": "TIER_REFUSAL"}}
-
     try:
+        if not isinstance(request_data, dict):
+            return {"status": False, "data": {"error": "CANONICALIZATION_REFUSED"}}
+        
+        params = request_data.get("params")
+        if not isinstance(params, dict):
+            return {"status": False, "data": {"error": "CANONICALIZATION_REFUSED"}}
+
+        payload = params.get("payload")
+        observed_at = params.get("observed_at")
+        consumer_tier = params.get("consumer_tier", "production")
+
+        if consumer_tier != "prototype":
+            return {"status": False, "data": {"error": "TIER_REFUSAL"}}
+
         envelope = to_envelope(payload, observed_at=observed_at, consumer_tier=consumer_tier)
         return {"status": True, "data": envelope}
     except Exception:

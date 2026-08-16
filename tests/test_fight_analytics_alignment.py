@@ -50,6 +50,9 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.raw_payload["blueCorner"]["firstName"] = "Marlon"
         self.raw_payload["blueCorner"]["lastName"] = "Vera"
 
+        # Give event.time a default explicit offset to be valid for general tests
+        self.raw_payload["event"]["time"] = "04:00 PM-05:00"
+
     def test_fixture_is_documentation_evidence_only(self):
         """Verify that the fixture is explicitly named and documented as documentation-evidence only."""
         self.assertIn("swagger-documentation-evidence-fight-dto.json", str(MOCK_PAYLOAD_PATH))
@@ -103,8 +106,9 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
     def test_synthetic_exact_precision_with_start_time(self):
         """Verify exact precision with synthetic start time and offset."""
         payload = copy.deepcopy(self.raw_payload)
-        # Add explicit exact startsAt
-        payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
+        # Use documented event.date/event.time with seconds+offset
+        payload["event"]["date"] = "2022-11-12"
+        payload["event"]["time"] = "04:00:00 PM-05:00"
 
         doc = fight_analytics_adapter.to_observation(payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype")
 
@@ -171,7 +175,8 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
     def test_to_envelope_prototype_tier(self):
         """Verify that to_envelope succeeds for the prototype tier and returns a valid canonical envelope."""
         payload = copy.deepcopy(self.raw_payload)
-        payload["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
+        payload["event"]["date"] = "2022-11-12"
+        payload["event"]["time"] = "04:00:00 PM-05:00"
 
         envelope = fight_analytics_adapter.to_envelope(
             payload, observed_at="2026-08-15T12:00:00Z", consumer_tier="prototype"
@@ -282,10 +287,21 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
 
     def test_raw_swagger_documentation_fixture_itself_fails_closed_on_missing_timezone(self):
         """Verify that the unmodified raw Swagger fixture itself fails closed on missing timezone."""
-        # Use unmodified self.raw_payload (time is "04:00 PM", which has no UTC offset)
+        # Use unmodified raw_payload (time is "04:00 PM", which has no UTC offset)
+        with MOCK_PAYLOAD_PATH.open(encoding="utf-8") as f:
+            raw_payload = json.load(f)
+        raw_payload["redCornerId"] = "fighter-red-123"
+        raw_payload["redCorner"]["id"] = "fighter-red-123"
+        raw_payload["redCorner"]["firstName"] = "Song"
+        raw_payload["redCorner"]["lastName"] = "Yadong"
+        raw_payload["blueCornerId"] = "fighter-blue-456"
+        raw_payload["blueCorner"]["id"] = "fighter-blue-456"
+        raw_payload["blueCorner"]["firstName"] = "Marlon"
+        raw_payload["blueCorner"]["lastName"] = "Vera"
+
         request_data = {
             "params": {
-                "payload": self.raw_payload,
+                "payload": raw_payload,
                 "observed_at": "2026-08-15T12:00:00Z",
                 "consumer_tier": "prototype"
             }
@@ -345,6 +361,76 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         res_prod_str = json.dumps(res_prod)
         self.assertNotIn("SECRET_API_KEY_MMA_VULN", res_prod_str)
         self.assertNotIn("SECRET_BEARER_TOKEN", res_prod_str)
+
+    def test_canonicalize_fight_malformed_inputs_generic_error(self):
+        """Verify that malformed request_data structure returns CANONICALIZATION_REFUSED instead of throwing uncaught exceptions."""
+        for malformed in ["secret", 123, True, [], None]:
+            with self.subTest(malformed_request_data=malformed):
+                res = fight_analytics_adapter.canonicalize_fight(malformed)
+                self.assertFalse(res.get("status"))
+                self.assertEqual(res.get("data", {}).get("error"), "CANONICALIZATION_REFUSED")
+
+        for malformed_params in [{"params": "secret"}, {"params": 123}, {"params": True}, {"params": []}]:
+            with self.subTest(malformed_params=malformed_params):
+                res = fight_analytics_adapter.canonicalize_fight(malformed_params)
+                self.assertFalse(res.get("status"))
+                self.assertEqual(res.get("data", {}).get("error"), "CANONICALIZATION_REFUSED")
+
+    def test_no_undocumented_fields_or_status_mappings_consumed_behavior(self):
+        """Verify behaviorally that undocumented status and start aliases are not consumed."""
+        # 1. Start time projection: if event date/time are missing but startTime is present, it should fail
+        payload_no_date_time = copy.deepcopy(self.raw_payload)
+        payload_no_date_time["event"].pop("date", None)
+        payload_no_date_time["event"].pop("time", None)
+        payload_no_date_time["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
+        
+        request_data = {
+            "params": {
+                "payload": payload_no_date_time,
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "prototype"
+            }
+        }
+        res = fight_analytics_adapter.canonicalize_fight(request_data)
+        self.assertFalse(res.get("status"))
+        self.assertEqual(res.get("data", {}).get("error"), "CANONICALIZATION_REFUSED")
+
+        # 2. Status mapping: if terminal result is NOT present, but status UPCOMING or LIVE is present, it should fail closed
+        payload_no_result = copy.deepcopy(self.raw_payload)
+        payload_no_result["result"] = "NOT_AVAILABLE_YET"
+        payload_no_result["status"] = "LIVE"
+        payload_no_result["event"]["status"] = "LIVE"
+        payload_no_result["event"]["time"] = "04:00 PM-05:00"
+
+        request_data_no_result = {
+            "params": {
+                "payload": payload_no_result,
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "prototype"
+            }
+        }
+        res_no_result = fight_analytics_adapter.canonicalize_fight(request_data_no_result)
+        self.assertFalse(res_no_result.get("status"))
+        self.assertEqual(res_no_result.get("data", {}).get("error"), "CANONICALIZATION_REFUSED")
+
+    def test_no_undocumented_fields_ast(self):
+        """AST check proving that undocumented status, start aliases, and code branches are not in the source file."""
+        with open(ADAPTER_PATH, "r", encoding="utf-8") as f:
+            code = f.read()
+
+        # Check for forbidden start time/date aliases
+        forbidden_aliases = [
+            "startTime", "startsAt", "starts_at",
+            "startDateTime", "start_datetime"
+        ]
+        for alias in forbidden_aliases:
+            self.assertNotIn(alias, code, f"Forbidden start time alias '{alias}' remains in the adapter code")
+
+        # Check for forbidden status lookups/mappings that could parse raw/event status
+        self.assertNotIn("payload.get(\"status\")", code.replace("'", '"'))
+        self.assertNotIn("event.get(\"status\")", code.replace("'", '"'))
+        self.assertNotIn("payload.get('status')", code)
+        self.assertNotIn("event.get('status')", code)
 
 
 if __name__ == "__main__":

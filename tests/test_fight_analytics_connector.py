@@ -241,6 +241,82 @@ class TestFightAnalyticsConnector(unittest.TestCase):
             f"nullable:true:\n" + "\n".join(offenders),
         )
 
+    def test_null_example_schemas_are_nullable(self):
+        document = read_openapi()
+
+        def schema_objects(
+            schema: dict, location: str
+        ) -> Iterator[Tuple[str, dict]]:
+            yield location, schema
+            for keyword in ("items", "additionalProperties", "not"):
+                child = schema.get(keyword)
+                if isinstance(child, dict):
+                    yield from schema_objects(child, f"{location}.{keyword}")
+            for name, child in schema.get("properties", {}).items():
+                yield from schema_objects(child, f"{location}.properties.{name}")
+            for keyword in ("oneOf", "anyOf", "allOf"):
+                for index, child in enumerate(schema.get(keyword, [])):
+                    yield from schema_objects(child, f"{location}.{keyword}[{index}]")
+
+        offenders = [
+            location
+            for name, schema in document["components"]["schemas"].items()
+            for location, schema in schema_objects(
+                schema, f"$.components.schemas.{name}"
+            )
+            if "example" in schema and schema["example"] is None
+            and schema.get("nullable") is not True
+        ]
+        self.assertEqual(
+            offenders,
+            [],
+            f"{len(offenders)} Schema Objects declare example:null without "
+            f"nullable:true:\n" + "\n".join(offenders),
+        )
+
+    def test_swagger_documentation_fixture_validates_against_get_one_fight_dto(self):
+        document = read_openapi()
+        fixture_path = CONNECTOR_DIR / "swagger-documentation-evidence-fight-dto.json"
+        with fixture_path.open(encoding="utf-8") as f:
+            fixture = json.load(f)
+
+        from jsonschema import RefResolver, Draft7Validator
+        import copy
+
+        document_js = copy.deepcopy(document)
+
+        def make_nullable_compatible(schema):
+            if not isinstance(schema, dict):
+                return
+            if schema.get("nullable") is True and "type" in schema:
+                t = schema["type"]
+                if isinstance(t, list):
+                    if "null" not in t:
+                        schema["type"] = t + ["null"]
+                else:
+                    schema["type"] = [t, "null"]
+            for k, v in schema.items():
+                if isinstance(v, dict):
+                    make_nullable_compatible(v)
+                elif isinstance(v, list):
+                    for item in v:
+                        make_nullable_compatible(item)
+
+        make_nullable_compatible(document_js)
+
+        schema = document_js["components"]["schemas"]["GetOneFightDto"]
+        resolver = RefResolver.from_schema(document_js)
+        validator = Draft7Validator(schema, resolver=resolver)
+
+        errors = list(validator.iter_errors(fixture))
+        error_msgs = [f"{err.message} at {list(err.path)}" for err in errors]
+        self.assertEqual(
+            errors,
+            [],
+            f"Swagger documentation fixture has {len(errors)} validation errors:\n"
+            + "\n".join(error_msgs),
+        )
+
     def test_schema_default_and_example_values_match_declared_types(self):
         document = read_openapi()
         python_types = {

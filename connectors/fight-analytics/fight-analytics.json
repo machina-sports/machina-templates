@@ -2601,7 +2601,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -2957,7 +2958,8 @@
           "prevPage": {
             "type": "number",
             "example": null,
-            "description": "Previous page"
+            "description": "Previous page",
+            "nullable": true
           },
           "lastPage": {
             "type": "number",
@@ -3625,7 +3627,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -4596,7 +4599,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -5590,7 +5594,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -5981,7 +5986,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -7134,7 +7140,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -8303,7 +8310,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -9475,7 +9483,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
@@ -9694,7 +9703,8 @@
           "deletedAt": {
             "type": "string",
             "example": null,
-            "description": "Soft deletion date"
+            "description": "Soft deletion date",
+            "nullable": true
           },
           "createdBy": {
             "type": "string",
