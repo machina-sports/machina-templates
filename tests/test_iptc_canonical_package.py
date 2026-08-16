@@ -561,7 +561,7 @@ RELEASE_DIGEST_FILE = "SHA256SUMS"
 #: published digest with the reviewed one" named no artefact to compare against.
 #: One checked-in file makes cross-interpreter reproducibility falsifiable: a leg
 #: whose bytes differ fails against the same rows every other leg passes against.
-RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.2.0.sha256"
+RELEASE_CHECKSUM_FILE = "docs/iptc/machina-sports-canonical-0.3.0.sha256"
 RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 
 #: Exactly the rows that file carries, in exactly that order: the wheel, then the
@@ -576,8 +576,17 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
     ("{0}-py3-none-any.whl".format(ARTIFACT_STEM),
-     "de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31"),
+     "52c2b5a321a60ca242166e5522307f72ef974a460e8f906775bb3cf0480d22a1"),
     ("{0}.tar.gz".format(ARTIFACT_STEM),
+     "0cbb26540e346daf86a31cc2ed2b1126da0e28c5836114ccb6cd39212c915024"),
+)
+
+#: The independently verified 0.2.0 rows are immutable release history. They are
+#: deliberately not derived from ``ARTIFACT_STEM``, which now names 0.3.0.
+HISTORICAL_0_2_RELEASE_DIGESTS = (
+    ("machina_sports_canonical-0.2.0-py3-none-any.whl",
+     "de6bd5cf6425157cb969ecf483ce103de2e1ad37666b10d37ea9763d34d69e31"),
+    ("machina_sports_canonical-0.2.0.tar.gz",
      "8eeb241a8ed331dd24ea6c5e95d154cea7bb5fccc6bef971c6e52b5313d3b451"),
 )
 
@@ -662,13 +671,13 @@ CLOSED_VERIFICATION_PHRASES = (
 
 #: Asserted PRESENT: the closing claim for the current rows, in the exact words
 #: the record must use, so a reworded near-miss does not read as closure.
-CLOSED_CLAIM_FOR_CURRENT_ROWS = "the 0.2.0 rows above have been independently verified"
+CLOSED_CLAIM_FOR_0_2_ROWS = "the 0.2.0 rows have been independently verified"
 
 #: Asserted ABSENT once the rebuild has happened. A document that records the
 #: verification and still carries the sentence saying it never happened
 #: contradicts itself about the one thing a releaser reads it for — the same rule
 #: :data:`CLOSED_RELEASE_HOLD` enforces one version earlier.
-OPEN_CLAIM_FOR_CURRENT_ROWS = "have not been independently verified"
+OPEN_CLAIM_FOR_0_2_ROWS = "the 0.2.0 rows have not been independently verified"
 
 #: Asserted ABSENT: the readiness table's OPEN row, spelled as it stood. The
 #: prerequisite table and the verification record are two places one fact is
@@ -705,7 +714,12 @@ FIXED_POINT_SEQUENCE_PHRASES = (
 #: Asserted in the release document as well as in the receipt, because a releaser
 #: reconstructing a build reads the document and must not have to open a JSON file
 #: to discover which two values the build depends on.
-FIXED_POINT_COMMIT = "fd787c71e5bce9861443eb3a28ae9144eafa5109"
+FIXED_POINT_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+
+#: The immutable source pin and epoch for the historical 0.2.0 fixed point.
+HISTORICAL_0_2_FIXED_POINT_COMMIT = \
+    "fd787c71e5bce9861443eb3a28ae9144eafa5109"
+HISTORICAL_0_2_SOURCE_DATE_EPOCH = "1786716463"
 
 #: The candidate whose digests were rebuilt outside the agent that produced them,
 #: and the two patch-level interpreters that rebuilt it.
@@ -738,8 +752,8 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "fd787c71e5bce9861443eb3a28ae9144eafa5109"
-RELEASE_SOURCE_DATE_EPOCH = "1786716463"
+CANONICAL_SOURCE_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
+RELEASE_SOURCE_DATE_EPOCH = "1786893899"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
 #: `wheel` stamps every zip entry with it — and this backend's sdist ignores it
@@ -2130,7 +2144,7 @@ class TestTheInstalledBytesAreTheAuthoritativeBytes(unittest.TestCase):
         self.assertEqual(receipt["source"],
                          "machina-templates:tools/iptc/canonical")
         self.assertEqual(receipt["source_commit"], self.manifest["source_commit"])
-        self.assertEqual(receipt["source_commit"], "unreleased-owner-phase1")
+        self.assertEqual(receipt["source_commit"], CANONICAL_SOURCE_COMMIT)
 
     def test_every_installed_runtime_file_is_byte_equal_to_its_source(self):
         """Wider than the nine-file core: the adapters and the JSON resources ship
@@ -3445,15 +3459,13 @@ class TestTheReleaseArtefactsAreReproducible(unittest.TestCase):
         self.assertEqual(len(second), 1, second)
         self.assertNotEqual(first, second)
 
-    def test_the_unreleased_candidate_does_not_claim_a_source_commit(self):
-        """Steps 2-5 precede exact-SHA review and must not invent its SHA."""
+    def test_the_release_metadata_pins_the_reviewed_source_commit(self):
         receipt = json.loads(
             (CANONICAL_ROOT / "package-receipt.json").read_text(encoding="utf-8"))
-        self.assertEqual(receipt["source_commit"], "unreleased-owner-phase1")
+        self.assertEqual(receipt["source_commit"], CANONICAL_SOURCE_COMMIT)
         self.assertRegex(RELEASE_SOURCE_DATE_EPOCH, r"^[1-9][0-9]+$")
 
 
-@unittest.skip("0.3.0 owner candidate has no reviewed release artifacts")
 class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
     """Reproducibility was proved, and never proved *against anything*.
 
@@ -3537,7 +3549,6 @@ class TestTheReviewedReleaseDigestsAreCheckedIn(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@unittest.skip("0.3.0 owner candidate must not be published by this work")
 class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
     """What may upload this distribution, and what must stop it.
 
@@ -3625,7 +3636,7 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
         self.assertTrue(
             fnmatch.fnmatch(RELEASE_TAG, RELEASE_TAG_GLOB),
             "{0} does not match {1}".format(RELEASE_TAG, RELEASE_TAG_GLOB))
-        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.2.0")
+        self.assertEqual(RELEASE_TAG, "machina-sports-canonical-v0.3.0")
 
     def test_the_workflow_scopes_each_write_permission_to_the_job_that_needs_it(self):
         """``id-token: write`` on the workflow would hand the upload identity to
@@ -4002,16 +4013,14 @@ class TestThePublishWorkflowUsesTrustedPublishing(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-@unittest.skip("0.3.0 release documentation follows exact-SHA review")
-class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
-    """One of the two decisions this release needed is now made; the other is not.
+class TestTheReleaseDocsGateTheUpload(unittest.TestCase):
+    """Release metadata does not bypass the per-release human and CI gates.
 
     The owner has chosen ``MIT AND CC-BY-4.0`` with three named license files, so
     the license blocker is recorded as resolved rather than left standing as a
-    blocker nobody can close. Everything else still holds: the ``pypi`` environment
-    is not configured, the trusted publisher is not registered, the renewed digests
-    have not been independently verified, and no human has approved publication.
-    Marking the license decision done must not read as "the release is unblocked".
+    blocker nobody can close. The standing environment and trusted publisher are
+    verified, but no metadata edit stands in for exact-SHA approval, green CI,
+    merge, tagging, the environment reviewer, or post-publish verification.
 
     So the document is asserted for the things a releaser would otherwise have to
     guess — how the trusted publisher is registered, that the environment must
@@ -4156,9 +4165,9 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         self.assertIn(IMPORT_NAME, self.text)
 
     def test_the_docs_state_the_recovery_path_and_that_a_version_is_spent(self):
-        """A bad 0.1.0 cannot be replaced; deleting it does not free the version.
+        """A bad 0.3.0 cannot be replaced; deleting it does not free the version.
         A document that omits that invites exactly the wrong recovery."""
-        self.assertMentions("yank", "0.1.1", "cannot")
+        self.assertMentions("yank", "0.3.1", "cannot")
 
     def test_the_docs_record_the_reviewed_digests_and_name_the_file_that_holds_them(self):
         """The document said "the digests below" and listed none.
@@ -4247,8 +4256,8 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
 
-    def test_the_docs_record_the_current_0_2_0_verification_as_closed(self):
-        """The 0.2.0 digest hold, closed on evidence rather than on assertion.
+    def test_the_docs_preserve_the_0_2_0_verification_as_closed_history(self):
+        """The 0.2.0 digest hold, preserved as evidence rather than rewritten.
 
         The rows were rebuilt from a clean ``git archive`` export of an exact
         commit, in isolated trees, on both proven interpreters, and both
@@ -4263,12 +4272,12 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         """
         self.assertMentions(*CLOSED_VERIFICATION_PHRASES)
         self.assertIn(VERIFIED_RELEASE_COMMIT, self.text)
-        self.assertIn(FIXED_POINT_COMMIT, self.text)
-        self.assertIn(RELEASE_SOURCE_DATE_EPOCH, self.text)
+        self.assertIn(HISTORICAL_0_2_FIXED_POINT_COMMIT, self.text)
+        self.assertIn(HISTORICAL_0_2_SOURCE_DATE_EPOCH, self.text)
         for version in VERIFIED_RELEASE_INTERPRETERS:
             with self.subTest(interpreter=version):
                 self.assertIn(version, self.text)
-        for name, digest in REVIEWED_RELEASE_DIGESTS:
+        for name, digest in HISTORICAL_0_2_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
                 self.assertIn(name, self.text)
                 self.assertIn(digest, self.text)
@@ -4278,7 +4287,7 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         that was exported, the canonical source the receipt pins, and the
         superseded candidate — and a record that reused one value for another
         would read as complete while pointing a releaser at the wrong tree."""
-        commits = (VERIFIED_RELEASE_COMMIT, FIXED_POINT_COMMIT,
+        commits = (VERIFIED_RELEASE_COMMIT, HISTORICAL_0_2_FIXED_POINT_COMMIT,
                    PRIOR_VERIFIED_RELEASE_COMMIT)
         self.assertEqual(len(set(commits)), len(commits))
         for commit in commits:
@@ -4286,7 +4295,7 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
                 self.assertRegex(commit, r"^[0-9a-f]{40}$")
                 self.assertIn(commit, self.text)
 
-    def test_the_docs_claim_the_current_rows_are_verified_in_those_words(self):
+    def test_the_docs_claim_the_0_2_rows_are_verified_in_those_words(self):
         """Closure stated positively, in the exact words the record must use.
 
         Deleting the open sentence is not the same act as recording the rebuild:
@@ -4294,13 +4303,13 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
         closure from an absence, which is how the 0.1.0 record's ✅ came to be
         read as covering 0.2.0.
         """
-        self.assertIn(CLOSED_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+        self.assertIn(CLOSED_CLAIM_FOR_0_2_ROWS, self.lowered)
 
-    def test_the_docs_no_longer_carry_the_open_claim_for_the_current_rows(self):
+    def test_the_docs_no_longer_carry_the_open_claim_for_the_0_2_rows(self):
         """The stale sentences, asserted gone — in the record and in the
         readiness table both, because one fact stated in two places is a fact that
         can contradict itself."""
-        self.assertNotIn(OPEN_CLAIM_FOR_CURRENT_ROWS, self.lowered)
+        self.assertNotIn(OPEN_CLAIM_FOR_0_2_ROWS, self.lowered)
         self.assertNotIn(OPEN_READINESS_ROW_CLAIM, self.lowered)
 
     def test_the_prior_verification_is_kept_and_scoped_to_what_it_rebuilt(self):
@@ -4379,11 +4388,8 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
             with self.subTest(claim=claim):
                 self.assertNotIn(claim, self.lowered)
 
-    def test_the_verified_digests_are_the_ones_the_authority_holds(self):
-        """The rebuild is only evidence about this release if the rows it
-        reproduced are the rows every automated comparison diffs against. Read off
-        the checked-in authority rather than off the prose, so a document that
-        recorded a verification of some other bytes is red."""
+    def test_the_reviewed_digests_are_the_ones_the_authority_holds(self):
+        """The active rows every automated comparison uses are exact."""
         authority = RELEASE_CHECKSUM_PATH.read_text(encoding="utf-8")
         for name, digest in REVIEWED_RELEASE_DIGESTS:
             with self.subTest(artefact=name):
@@ -4405,7 +4411,7 @@ class TestTheReleaseDocsGateTheFirstUpload(unittest.TestCase):
     def test_the_docs_do_not_present_the_superseded_digests_as_current(self):
         """Two digest pairs in one document is a reading hazard. The reviewed file
         is named as the authority, and the superseded rows must not be the ones
-        `docs/iptc/machina-sports-canonical-0.2.0.sha256` is said to hold."""
+        the active 0.3.0 checksum authority is said to hold."""
         current = {digest for _, digest in REVIEWED_RELEASE_DIGESTS}
         stale = {digest for _, digest in SUPERSEDED_RELEASE_DIGESTS}
         self.assertEqual(current & stale, set(),

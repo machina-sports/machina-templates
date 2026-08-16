@@ -1,10 +1,10 @@
 # RFC 003: Canonical Evidence Contract Phase 1
 
-**Status:** implemented owner candidate, unreleased
+**Status:** implemented; 0.3.0 release metadata prepared, unreleased
 
 This RFC records the owner implementation of the five independently approved
 Phase 1 ADRs. The authoritative decision is Design Log 033; this document is the
-repository-facing contract for the resulting 0.3.0 candidate.
+repository-facing contract for the resulting 0.3.0 release.
 
 ## Version Boundary
 
@@ -91,12 +91,13 @@ python3 tools/iptc/generate_phase1_receipts.py
 
 The first command derives statistic admissibility from pinned official bytes. The
 second freezes the 0.2 Python surface and produces the complete runtime/data/private
-symbol inventory, package receipt, and downstream vendoring receipt. Until exact
-SHA review and release work begin, receipts deliberately state
-`unreleased-owner-phase1` rather than inventing a reviewed commit.
+symbol inventory, package receipt, and downstream vendoring receipt. The release
+receipts pin the reviewed owner source commit
+`ddf12f04803eeb03016c10759aaf2a2be8e85f84`.
 
 ## Release State
 
-This owner candidate is not released, tagged, pushed, merged, or deployed. The
-release-specific digest, publisher, tag, and downstream `sports-skills` gates stay
-blocked until the separately approved exact-SHA review and release steps.
+The deterministic 0.3.0 release metadata and artifact digests are prepared on top
+of the reviewed owner source commit. Nothing in this work tags, pushes, merges,
+publishes, deploys, approves a GitHub environment, or updates downstream
+`sports-skills`; those remain separate release steps.

@@ -32,8 +32,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 IMPORT_NAME = "machina_sports_canonical"
 ARTIFACT_STEM = "machina_sports_canonical-0.3.0"
 RELEASE_HELPER = "packaging/machina_sports_canonical/release.py"
-RELEASE_CHECKSUM_PATH = None
-RELEASE_SOURCE_DATE_EPOCH = "1786716463"
+RELEASE_CHECKSUM_PATH = (
+    REPO_ROOT / "docs/iptc/machina-sports-canonical-0.3.0.sha256")
+RELEASE_SOURCE_DATE_EPOCH = "1786893899"
 
 # The same closed staging set as the package proof.  Building a disposable copy
 # avoids setuptools writing egg-info into the checkout.
@@ -505,6 +506,11 @@ class TestInstalledCanonicalConformance(unittest.TestCase):
         }
         if set(actual) != expected_names:
             raise AssertionError("candidate build artifact set is invalid: {0!r}".format(actual))
+        expected = reviewed_digests()
+        if actual != expected:
+            raise AssertionError(
+                "candidate build does not match reviewed digests:\n"
+                "expected: {0!r}\nactual: {1!r}".format(expected, actual))
         wheel_name = "{0}-py3-none-any.whl".format(ARTIFACT_STEM)
         wheel = outdir / wheel_name
 

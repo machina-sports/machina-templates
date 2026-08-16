@@ -15,6 +15,7 @@ RUNTIME_MANIFEST = DATA / "trusted_loader_manifest_v1.json"
 VENDORED_MANIFEST = ROOT / "tools/iptc/vendored-manifest.json"
 PACKAGE_RECEIPT = PACKAGE / "package-receipt.json"
 LEGACY_RECEIPT = DATA / "legacy_0_2_surface.json"
+SOURCE_COMMIT = "ddf12f04803eeb03016c10759aaf2a2be8e85f84"
 
 PRIVATE_SYMBOLS = (
     "_IdentityResolutionProvider", "_load_source_artifact", "_build_statistic_fact",
@@ -119,7 +120,7 @@ def generate():
         "consumer": "machina-sports/sports-skills",
         "source_repository": "machina-sports/machina-templates",
         "source_path": "tools/iptc/canonical",
-        "source_commit": "unreleased-owner-phase1",
+        "source_commit": SOURCE_COMMIT,
         "profile": "machina-iptc-profile/1.3",
         "schema_version": "canonical-observation/1.2",
         "machina_schema_version": "machina-sports-schema/1.1",
@@ -132,7 +133,7 @@ def generate():
     receipt = {
         "distribution_version": "0.3.0",
         "source": "machina-templates:tools/iptc/canonical",
-        "source_commit": "unreleased-owner-phase1",
+        "source_commit": SOURCE_COMMIT,
         "legacy_contract_version": "0.2.0",
         "runtime_manifest": digest(RUNTIME_MANIFEST),
         "core_manifest": dict(sorted(files.items())),

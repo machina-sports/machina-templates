@@ -67,9 +67,9 @@ packages = ["machina_sports_canonical", "machina_sports_canonical.adapters"]
 package-dir = {machina_sports_canonical = "tools/iptc/canonical"}
 include-package-data = false
 
-# The three non-Python files the runtime reads through `__file__`. Named one by
-# one: a glob here would absorb whatever appeared beside them next, and what ships
-# in a published package should be an explicit act.
+# The non-Python files the runtime reads through `__file__`. Named one by one: a
+# glob here would absorb whatever appeared beside them next, and what ships in a
+# published package should be an explicit act.
 [tool.setuptools.package-data]
 machina_sports_canonical = [
     "official-property-names.json",

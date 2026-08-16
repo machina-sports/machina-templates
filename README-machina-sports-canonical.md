@@ -51,7 +51,7 @@ the complete runtime receipt ship under `data/`.
 
 ## Opt-in Phase 1 evidence contract
 
-The 0.3.0 owner candidate adds `canonical-observation/1.2`, profile 1.3,
+Version 0.3.0 adds `canonical-observation/1.2`, profile 1.3,
 envelope 1.1, and the separate longitudinal contract without rebinding the three
 legacy public version constants. Existing adapters and legacy serializers remain
 on `/1.1` unless a caller explicitly uses the successor execution path.
@@ -67,9 +67,9 @@ generation commands.
 These bytes are not authored in this distribution. They are published from
 `machina-templates` at `tools/iptc/canonical`, unmodified. `package-receipt.json`
 ships inside the package and records the distribution version, source path, and
-complete SHA-256 runtime/data manifest. The unreleased 0.3.0 owner candidate uses
-the explicit `unreleased-owner-phase1` marker until exact-SHA review; it does not
-invent a reviewed source commit:
+complete SHA-256 runtime/data manifest. The 0.3.0 release metadata pins the
+reviewed owner source commit
+`ddf12f04803eeb03016c10759aaf2a2be8e85f84`:
 
 ```python
 import json, pathlib, machina_sports_canonical
