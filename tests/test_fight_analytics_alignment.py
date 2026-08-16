@@ -383,7 +383,7 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         payload_no_date_time["event"].pop("date", None)
         payload_no_date_time["event"].pop("time", None)
         payload_no_date_time["event"]["startTime"] = "2022-11-12T16:00:00-05:00"
-        
+
         request_data = {
             "params": {
                 "payload": payload_no_date_time,

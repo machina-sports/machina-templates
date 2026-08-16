@@ -56,26 +56,6 @@ SPORT_BY_CODE = {
 }
 
 
-EVENT_STATUS_BY_CODE = {
-    "SCHEDULED": "not_started",
-    "NOT_STARTED": "not_started",
-    "UPCOMING": "not_started",
-    "LIVE": "in_progress",
-    "IN_PROGRESS": "in_progress",
-    "COMPLETED": "closed",
-    "COMPLETE": "closed",
-    "FINISHED": "closed",
-    "CLOSED": "closed",
-    "POSTPONED": "postponed",
-    "CANCELLED": "cancelled",
-    "CANCELED": "cancelled",
-    "SUSPENDED": "suspended",
-    "ABANDONED": "abandoned",
-    "DELAYED": "delayed",
-    "RESCHEDULED": "rescheduled",
-}
-
-
 TERMINAL_RESULTS = frozenset({
     "DRAW",
     "MAJORITY_DECISION",
@@ -564,7 +544,7 @@ def canonicalize_fight(request_data):
     try:
         if not isinstance(request_data, dict):
             return {"status": False, "data": {"error": "CANONICALIZATION_REFUSED"}}
-        
+
         params = request_data.get("params")
         if not isinstance(params, dict):
             return {"status": False, "data": {"error": "CANONICALIZATION_REFUSED"}}
