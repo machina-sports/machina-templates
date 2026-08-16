@@ -278,7 +278,7 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertFalse(res.get("status"))
         self.assertIn("data", res)
         self.assertIn("error", res["data"])
-        self.assertIn("fails closed for production", res["data"]["error"])
+        self.assertEqual(res["data"]["error"], "TIER_REFUSAL")
 
     def test_raw_swagger_documentation_fixture_itself_fails_closed_on_missing_timezone(self):
         """Verify that the unmodified raw Swagger fixture itself fails closed on missing timezone."""
@@ -295,7 +295,56 @@ class TestFightAnalyticsAlignment(unittest.TestCase):
         self.assertFalse(res.get("status"))
         self.assertIn("data", res)
         self.assertIn("error", res["data"])
-        self.assertIn("does not state a complete RFC 3339-compatible time with an explicit offset", res["data"]["error"])
+        self.assertEqual(res["data"]["error"], "CANONICALIZATION_REFUSED")
+
+    def test_canonicalize_fight_adversarial_vulnerability_leak(self):
+        """Verify that adversarial/hostile payload fields and credentials do not leak in error responses."""
+        payload = copy.deepcopy(self.raw_payload)
+        payload["sport"] = "SECRET_API_KEY_MMA_VULN"
+        payload["event"]["time"] = "SECRET_BEARER_TOKEN_04:00 PM"
+
+        request_data = {
+            "params": {
+                "payload": payload,
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "prototype"
+            }
+        }
+
+        # 1. Test prototype shape/semantic failure error response
+        res = fight_analytics_adapter.canonicalize_fight(request_data)
+        self.assertFalse(res.get("status"))
+        self.assertIn("data", res)
+        self.assertIn("error", res["data"])
+        
+        # Verify the error matches the generic canonicalization-refused code
+        self.assertEqual(res["data"]["error"], "CANONICALIZATION_REFUSED")
+        
+        # Verify no sensitive keywords or values exist in the output error dictionary
+        res_str = json.dumps(res)
+        self.assertNotIn("SECRET_API_KEY_MMA_VULN", res_str)
+        self.assertNotIn("SECRET_BEARER_TOKEN", res_str)
+
+        # 2. Test tier refusal error response
+        request_data_prod = {
+            "params": {
+                "payload": payload,
+                "observed_at": "2026-08-15T12:00:00Z",
+                "consumer_tier": "production"
+            }
+        }
+        res_prod = fight_analytics_adapter.canonicalize_fight(request_data_prod)
+        self.assertFalse(res_prod.get("status"))
+        self.assertIn("data", res_prod)
+        self.assertIn("error", res_prod["data"])
+        
+        # Verify the error matches the specific safe tier refusal code
+        self.assertEqual(res_prod["data"]["error"], "TIER_REFUSAL")
+        
+        # Verify no sensitive values exist in production refusal either
+        res_prod_str = json.dumps(res_prod)
+        self.assertNotIn("SECRET_API_KEY_MMA_VULN", res_prod_str)
+        self.assertNotIn("SECRET_BEARER_TOKEN", res_prod_str)
 
 
 if __name__ == "__main__":
