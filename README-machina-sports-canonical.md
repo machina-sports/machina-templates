@@ -41,19 +41,35 @@ produces the same bytes.
 | `.rights` | the consumer-tier rights gate |
 | `.capabilities` | what a given document can and cannot support |
 | `.adapters` | one module per provider reading |
+| `.successor` | strict Phase 1 readers, validators, opaque trust objects and private execution engine |
 
-Two JSON resources ship beside the code and are read through `__file__`:
+Two legacy JSON resources ship beside the code and are read through `__file__`:
 `shared-context.json` (the prefix table) and `official-property-names.json` (the
 official Sport Schema property allowlist, generated from the pinned upstream
-ontologies).
+ontologies). Phase 1 registries, manifests, schemas, compatibility snapshots and
+the complete runtime receipt ship under `data/`.
+
+## Opt-in Phase 1 evidence contract
+
+Version 0.3.0 adds `canonical-observation/1.2`, profile 1.3,
+envelope 1.1, and the separate longitudinal contract without rebinding the three
+legacy public version constants. Existing adapters and legacy serializers remain
+on `/1.1` unless a caller explicitly uses the successor execution path.
+
+Strict successor readers, validators, opaque trust/document handles, and the
+private sequence-owning execution engine live in
+`machina_sports_canonical.successor`. See
+`docs/rfcs/003-canonical-evidence-contract-phase-1.md` for the contract and
+generation commands.
 
 ## Provenance
 
 These bytes are not authored in this distribution. They are published from
 `machina-templates` at `tools/iptc/canonical`, unmodified. `package-receipt.json`
-ships inside the package and records the distribution version, the source path
-and the exact source commit, together with a SHA-256 manifest of the nine core
-files:
+ships inside the package and records the distribution version, source path, and
+complete SHA-256 runtime/data manifest. The 0.3.0 release metadata pins the
+reviewed owner source commit
+`ddf12f04803eeb03016c10759aaf2a2be8e85f84`:
 
 ```python
 import json, pathlib, machina_sports_canonical
@@ -62,7 +78,7 @@ receipt = json.loads(
     .read_text(encoding="utf-8"))
 ```
 
-The same nine hashes gate the source tree in the originating repository, so an
+The same complete file hashes gate the source tree in the originating repository, so an
 installed file that disagrees with the receipt is a build that transformed
 something it had no business transforming.
 

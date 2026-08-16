@@ -31,7 +31,7 @@ name: Validate IPTC Sport Schema
 # restated as separate entries: an overlapping glob is one more thing to keep in
 # step with a directory move. `tests/test_iptc_test_manifest.py` asserts that each
 # of those concrete inputs is in fact reached — including
-# `docs/iptc/machina-sports-canonical-0.2.0.sha256`, the reviewed release digests
+# `docs/iptc/machina-sports-canonical-0.3.0.sha256`, the reviewed release digests
 # both the package-proof job and the release job diff against, which is under
 # `docs/iptc/**` and is therefore asserted rather than restated.
 #
@@ -77,6 +77,7 @@ on:
       - "tests/test_iptc_*.py"
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
+      - "docs/rfcs/003-canonical-evidence-contract-phase-1.md"
       - "requirements-iptc-validator.txt"
       - "requirements-iptc-build.txt"
       - "requirements-validator.txt"
@@ -98,6 +99,7 @@ on:
       - "tests/test_iptc_*.py"
       - "docs/iptc/**"
       - "docs/rfcs/001-machina-iptc-sport-schema-profile.md"
+      - "docs/rfcs/003-canonical-evidence-contract-phase-1.md"
       - "requirements-iptc-validator.txt"
       - "requirements-iptc-build.txt"
       - "requirements-validator.txt"
@@ -268,7 +270,7 @@ jobs:
       # because nothing compared one leg with the other. So each leg now builds a
       # release through the same helper and the same epoch the release job uses and
       # diffs its digests against the reviewed ones checked in at
-      # docs/iptc/machina-sports-canonical-0.2.0.sha256. A divergent interpreter
+      # docs/iptc/machina-sports-canonical-0.3.0.sha256. A divergent interpreter
       # fails its own job, against the file the other one passes.
       #
       # INTO $RUNNER_TEMP, AND BASENAMES. The next step is a clean-tree gate, so an
@@ -289,10 +291,10 @@ jobs:
         run: |
           python packaging/machina_sports_canonical/release.py . "$RUNNER_TEMP/release"
           (cd "$RUNNER_TEMP/release" && sha256sum *.whl *.tar.gz) | tee "$RUNNER_TEMP/SHA256SUMS"
-          diff -u docs/iptc/machina-sports-canonical-0.2.0.sha256 "$RUNNER_TEMP/SHA256SUMS"
+          diff -u docs/iptc/machina-sports-canonical-0.3.0.sha256 "$RUNNER_TEMP/SHA256SUMS"
           rm -rf machina_sports_canonical.egg-info
         env:
-          SOURCE_DATE_EPOCH: "1786716463"
+          SOURCE_DATE_EPOCH: "1786893899"
 
       # The suite builds and installs into disposable trees and removes them, so
       # this asserts what it claims about not polluting a checkout.

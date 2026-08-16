@@ -27,6 +27,10 @@
       "group": "canonical"
     },
     {
+      "path": "tests/test_iptc_canonical_evidence_phase1.py",
+      "group": "canonical"
+    },
+    {
       "path": "tests/test_iptc_canonical_package.py",
       "group": "canonical",
       "timeout_seconds": 900

@@ -17,7 +17,7 @@
 # module, it is not package data, and `tests/test_iptc_canonical_package.py`
 # asserts it is absent from the wheel.
 #
-# Nothing else is added. The canonical modules and the three JSON resources reach
+# Nothing else is added. The canonical modules and declared JSON resources reach
 # the sdist through the package configuration in `pyproject.toml`, and a
 # `recursive-include` over `tools/` would additionally sweep in the harness, the
 # fixtures and the reports, none of which belong in a published artefact.

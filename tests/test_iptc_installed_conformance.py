@@ -30,11 +30,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMPORT_NAME = "machina_sports_canonical"
-ARTIFACT_STEM = "machina_sports_canonical-0.2.0"
+ARTIFACT_STEM = "machina_sports_canonical-0.3.0"
 RELEASE_HELPER = "packaging/machina_sports_canonical/release.py"
 RELEASE_CHECKSUM_PATH = (
-    REPO_ROOT / "docs/iptc/machina-sports-canonical-0.2.0.sha256")
-RELEASE_SOURCE_DATE_EPOCH = "1786716463"
+    REPO_ROOT / "docs/iptc/machina-sports-canonical-0.3.0.sha256")
+RELEASE_SOURCE_DATE_EPOCH = "1786893899"
 
 # The same closed staging set as the package proof.  Building a disposable copy
 # avoids setuptools writing egg-info into the checkout.
@@ -59,6 +59,7 @@ PACKAGING_INPUTS = (
 # future installed adapter cannot inherit conformance by being absent from a loose
 # suite list.
 CORE_CONFORMANCE_SUITES = (
+    "tests/test_iptc_canonical_evidence_phase1.py",
     "tests/test_iptc_canonical_serializer.py",
     "tests/test_iptc_capability_matrix.py",
     "tests/test_iptc_cli_rights_gate.py",
@@ -499,11 +500,17 @@ class TestInstalledCanonicalConformance(unittest.TestCase):
         artifacts = sorted(list(outdir.glob("*.whl"))
                            + list(outdir.glob("*.tar.gz")))
         actual = {path.name: sha256(path) for path in artifacts}
+        expected_names = {
+            "{0}-py3-none-any.whl".format(ARTIFACT_STEM),
+            "{0}.tar.gz".format(ARTIFACT_STEM),
+        }
+        if set(actual) != expected_names:
+            raise AssertionError("candidate build artifact set is invalid: {0!r}".format(actual))
         expected = reviewed_digests()
         if actual != expected:
-            raise AssertionError("build is not the reviewed release:\n"
-                                 "expected {0!r}\nactual {1!r}".format(
-                                     expected, actual))
+            raise AssertionError(
+                "candidate build does not match reviewed digests:\n"
+                "expected: {0!r}\nactual: {1!r}".format(expected, actual))
         wheel_name = "{0}-py3-none-any.whl".format(ARTIFACT_STEM)
         wheel = outdir / wheel_name
 

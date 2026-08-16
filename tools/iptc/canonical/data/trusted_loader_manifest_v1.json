@@ -1,0 +1,322 @@
+{
+  "schema_version": "machina-canonical-runtime-vendored-manifest/1",
+  "owner_package": {
+    "name": "machina-sports-canonical",
+    "version": "0.3.0",
+    "release_digest": "sha256:5b011b72a9d4061099f39555983b73ec6e26ef7dea650311c6bc8910e53521d6"
+  },
+  "runtime_files": [
+    {
+      "relative_path": "__init__.py",
+      "byte_length": 5321,
+      "sha256": "sha256:42b677afb4d5dc9f2c3265274b6b5b7aa4190c1b93aa6e51f489679cfa74a579",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/__init__.py",
+      "byte_length": 1832,
+      "sha256": "sha256:435f101bf2ac993c028ea0e2e310cbba90223996c419073db0c9ee8117e88d4c",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/api_football.py",
+      "byte_length": 12736,
+      "sha256": "sha256:f60d347722d53897521aee7d50649bd20e8fee11e01c45e859226b2776a032fc",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/sportradar_mlb.py",
+      "byte_length": 20282,
+      "sha256": "sha256:01b1dd844907512ecf64fa0b1054136b412927345a89ce6988dc709b61417fa9",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/sportradar_nfl.py",
+      "byte_length": 18369,
+      "sha256": "sha256:0ca8772a48ea46c0d351fb75ee2c99922678e1d74a46ad53eaf672fe56861a43",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/sportradar_soccer.py",
+      "byte_length": 15155,
+      "sha256": "sha256:3466d1165ef62bbfd359b1c9dc52292be1f202de2392462c40f05138d8393279",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/sportradar_tennis.py",
+      "byte_length": 18446,
+      "sha256": "sha256:e7cc2d39ad83c8ce9d61303f85f53734dbb9cdff57d9b2cee7c87d53a429d7d0",
+      "executable_module": true
+    },
+    {
+      "relative_path": "adapters/stats_perform_opta.py",
+      "byte_length": 17605,
+      "sha256": "sha256:2e4d3148efb7159f687ca8f11740d3f1f044afbd62f104e0adf27b87a24f723e",
+      "executable_module": true
+    },
+    {
+      "relative_path": "capabilities.py",
+      "byte_length": 9650,
+      "sha256": "sha256:9c97ddc8c58f0a537bb9a1f4d4f2cc085fda69f2855038aae861a617ae39e14f",
+      "executable_module": true
+    },
+    {
+      "relative_path": "ids.py",
+      "byte_length": 3736,
+      "sha256": "sha256:06910976674e3b4747e0bd5f2b71ba92c6214b54bf76fb604f7920d1893781f4",
+      "executable_module": true
+    },
+    {
+      "relative_path": "observation.py",
+      "byte_length": 37508,
+      "sha256": "sha256:7b17faced2130dac88436bcc15b87795dec5d66eefb35757187787ee6b5e4b0d",
+      "executable_module": true
+    },
+    {
+      "relative_path": "rights.py",
+      "byte_length": 4713,
+      "sha256": "sha256:7177ff0bf7899c77b99f14a5a39c21919d2d7bc2d539757c8f2e8376f317739e",
+      "executable_module": true
+    },
+    {
+      "relative_path": "serialize.py",
+      "byte_length": 45155,
+      "sha256": "sha256:b7e16c94b3557e3d6b80fcb3a61ab8f76f98cf1185d58950dbcbfe2cfba10d4f",
+      "executable_module": true
+    },
+    {
+      "relative_path": "successor.py",
+      "byte_length": 156600,
+      "sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1",
+      "executable_module": true
+    },
+    {
+      "relative_path": "vocab.py",
+      "byte_length": 6258,
+      "sha256": "sha256:2782eada455637f23edc3cf4bc751fb500fc987c84725c55a230f46e683ecbdd",
+      "executable_module": true
+    }
+  ],
+  "required_data_files": [
+    {
+      "relative_path": "data/capability_evidence_contract_v1.json",
+      "byte_length": 1494,
+      "sha256": "sha256:e15a388ef84f3e62ee4691a7a3f45625c9e0cf80628d46275a757b1fc5212ab4",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/coverage_derivation_manifest_v1.json",
+      "byte_length": 167,
+      "sha256": "sha256:201beeea7509a415aea927830e594e077f5bd0104628ee9585ed9652a82c2337",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/identity_authority_registry_v1.json",
+      "byte_length": 170,
+      "sha256": "sha256:7390bc9a18620808a7eeaed0b6236c593fd5a3420ce2f553f17a0c3b0c64d152",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/legacy_0_2_surface.json",
+      "byte_length": 822,
+      "sha256": "sha256:2ed9e4f2002c42807af2bc3e27de249642d2e70b978470eaef9a65855dbadb66",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/longitudinal_aggregation_manifest_v1.json",
+      "byte_length": 216,
+      "sha256": "sha256:4c52169ebc672a1be6b27cf8f5fe6eb57063ff11ec010036c16958c29c30c2cd",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/official_statistic_admissibility_v1.json",
+      "byte_length": 659280,
+      "sha256": "sha256:abd12e312ecb0bb00969735d50502572abcbbf027828b24909fa602bb6f38947",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/source_shape_registry_v1.json",
+      "byte_length": 179,
+      "sha256": "sha256:3b4bc5cf04af3cfa15a9f2544202bdfeb0402a75277e15aa086c0de887319c42",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/spatial_coordinate_system_manifest_v1.json",
+      "byte_length": 652,
+      "sha256": "sha256:033b83ec072c37165c776f23cf520c68f96bb94d66c5dbd3e677919f36d4500d",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/spatial_distance_unit_registry_v1.json",
+      "byte_length": 464,
+      "sha256": "sha256:d348eb9df54a4149db5cfb25b8244e717b53a9f4197167d459a1b05f2b82f962",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/spatial_metric_manifest_v1.json",
+      "byte_length": 155,
+      "sha256": "sha256:217b6805654cc44b61704c8fc7ca681daf5592cf4e7dc60c5cd49ca00f76ac07",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/spatial_transform_manifest_v1.json",
+      "byte_length": 161,
+      "sha256": "sha256:e07a353872e3986aa019d4c9b921f8d14c0ec2d7fb0fe5332586c5d5fa3f8ddf",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/statistic_derivation_manifest_v1.json",
+      "byte_length": 426,
+      "sha256": "sha256:e20fd77c50a78dc0e89a96024dc07c5b39f703cd0cfe2e800a350d69507de115",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/statistic_unit_registry_v1.json",
+      "byte_length": 522,
+      "sha256": "sha256:a94880a5eb16068e4d61e2b1830b8f477cee4d52f67e8ab1f5f76094c6ece2a7",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/successor_provenance_schema_v1.json",
+      "byte_length": 346,
+      "sha256": "sha256:5d2eecf82d31825465cdebe0a95b2f861a844edc25f8037fafe7825d4186f868",
+      "executable_module": false
+    },
+    {
+      "relative_path": "data/zone_scheme_manifest_v1.json",
+      "byte_length": 149,
+      "sha256": "sha256:92bfc6e4cde4ae6783f4d312ab184d0d6bdb4a0be24078f24e0e2c714b2d255b",
+      "executable_module": false
+    },
+    {
+      "relative_path": "official-property-names.json",
+      "byte_length": 33706,
+      "sha256": "sha256:02a9c69c56a88bc0b6a4a86d35428356b4bc5d783e3a6c6957942b26df88fb61",
+      "executable_module": false
+    },
+    {
+      "relative_path": "shared-context.json",
+      "byte_length": 5794,
+      "sha256": "sha256:50a437a694057037bc1b9580772b37671a5af62802df5e652e8e59d11759b695",
+      "executable_module": false
+    }
+  ],
+  "private_symbols": [
+    {
+      "symbol": "_IdentityResolutionProvider",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_load_source_artifact",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_statistic_fact",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_period_descriptor",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_rolling_event_anchor",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_validate_identity_occurrence",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_derive_provider_scoped_entity_id",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_derive_operational_resource_id",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_derive_operational_id_ledger",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_normalize_spatial_evidence",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_derive_spatial_distance",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_derive_spatial_zone",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_canonical_spatial_evidence",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_coverage_evidence",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_expand_managed_collection_patterns",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_successor_provenance",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_build_successor_envelope",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_project_successor_graph",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_validate_successor_envelope",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_validate_successor_envelope_bytes",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_validate_longitudinal_envelope_bytes",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "_statistic_projection_disposition",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    },
+    {
+      "symbol": "execute_adapter_operation",
+      "defining_module_path": "successor.py",
+      "source_file_sha256": "sha256:6913180976b4a4abf169c7331297092a8b23da60e8d2ee19a34288dbe662b2f1"
+    }
+  ],
+  "aggregate_runtime_digest": "sha256:5b011b72a9d4061099f39555983b73ec6e26ef7dea650311c6bc8910e53521d6"
+}

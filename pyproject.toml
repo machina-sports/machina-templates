@@ -38,7 +38,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machina-sports-canonical"
-version = "0.2.0"
+version = "0.3.0"
 description = "Canonical Machina Sports Schema runtime: provider-neutral observations, IPTC Sport Schema 1.1 serialization, and the shared JSON-LD context."
 readme = "README-machina-sports-canonical.md"
 requires-python = ">=3.9"
@@ -67,12 +67,28 @@ packages = ["machina_sports_canonical", "machina_sports_canonical.adapters"]
 package-dir = {machina_sports_canonical = "tools/iptc/canonical"}
 include-package-data = false
 
-# The three non-Python files the runtime reads through `__file__`. Named one by
-# one: a glob here would absorb whatever appeared beside them next, and what ships
-# in a published package should be an explicit act.
+# The non-Python files the runtime reads through `__file__`. Named one by one: a
+# glob here would absorb whatever appeared beside them next, and what ships in a
+# published package should be an explicit act.
 [tool.setuptools.package-data]
 machina_sports_canonical = [
     "official-property-names.json",
     "package-receipt.json",
     "shared-context.json",
+    "data/capability_evidence_contract_v1.json",
+    "data/coverage_derivation_manifest_v1.json",
+    "data/identity_authority_registry_v1.json",
+    "data/legacy_0_2_surface.json",
+    "data/longitudinal_aggregation_manifest_v1.json",
+    "data/official_statistic_admissibility_v1.json",
+    "data/source_shape_registry_v1.json",
+    "data/spatial_coordinate_system_manifest_v1.json",
+    "data/spatial_distance_unit_registry_v1.json",
+    "data/spatial_metric_manifest_v1.json",
+    "data/spatial_transform_manifest_v1.json",
+    "data/statistic_derivation_manifest_v1.json",
+    "data/statistic_unit_registry_v1.json",
+    "data/successor_provenance_schema_v1.json",
+    "data/trusted_loader_manifest_v1.json",
+    "data/zone_scheme_manifest_v1.json",
 ]
