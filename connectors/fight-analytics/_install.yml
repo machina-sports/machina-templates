@@ -1,5 +1,3 @@
 datasets:
   - type: "connector"
     path: "fight-analytics.yml"
-  - type: "connector"
-    path: "fight-analytics-canonical.yml"
