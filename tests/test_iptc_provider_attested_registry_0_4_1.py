@@ -1,4 +1,4 @@
-"""Design 034 data-only owner registry conformance for canonical 0.4.1."""
+"""Design 034 owner registry conformance for canonical 0.4.1."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ SUPPORT_SPEC = importlib.util.spec_from_file_location(
 SUPPORT = importlib.util.module_from_spec(SUPPORT_SPEC)
 SUPPORT_SPEC.loader.exec_module(SUPPORT)
 CANONICAL_ROOT = Path(SUPPORT.canonical_package().__file__).resolve().parent
+successor = SUPPORT.canonical_module("successor")
 REGISTRY_PATH = CANONICAL_ROOT / "data/source_shape_registry_v2.json"
 GENERATOR = REPO_ROOT / "tools/iptc/generate_provider_attested_registry.py"
 PROVIDER = "sports-skills/espn"
@@ -137,6 +138,35 @@ def by_operation(records):
     return {record["operation"]: record for record in records}
 
 
+def longitudinal_fixture(operation, fixture_id, sequence):
+    sport = SPORTS[operation]
+    statistic_value = "1" if sport == "soccer" else 1
+    coverage_tuple = {
+        "cursor": "", "page_cap": 1, "request_limit": 1,
+        "total": 1, "truncated": False,
+    }
+    return {
+        "aggregates": [{"field_id": "stat", "value": statistic_value}],
+        "contains_provider_data": False,
+        "coverage": {
+            "aggregates": coverage_tuple,
+            "record_statistics": [coverage_tuple],
+            "records": coverage_tuple,
+        },
+        "fixture_id": fixture_id,
+        "identity": [],
+        "records": [{
+            "period": {"scheme": "period", "sequence": sequence, "value": "1"},
+            "semantics": "period_delta",
+            "statistics": [{"field_id": "stat", "value": statistic_value}],
+        }],
+        "scope": {"kind": "season"},
+        "sport": sport,
+        "subject": {"entity_type": "team", "provider_id": "synthetic-team"},
+        "synthetic": True,
+    }
+
+
 class TestProviderAttestedOwnerRegistry(unittest.TestCase):
     def setUp(self):
         self.registry = registry()
@@ -177,25 +207,38 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
         for operation, fixture_ids in FIXTURES.items():
             with self.subTest(operation=operation):
                 schema = self.shapes[operation]["artifact_schema"]
-                members = schema["members"]
-                self.assertEqual(members["fixture_id"]["allowed_values"], fixture_ids)
-                self.assertEqual(members["synthetic"]["allowed_values"], [True])
-                self.assertEqual(
-                    members["contains_provider_data"]["allowed_values"], [False]
-                )
-                self.assertEqual(members["sport"]["allowed_values"], [SPORTS[operation]])
-                self.assertEqual(schema["unknown_members"], "forbidden")
-                self.assertEqual(schema["required"], sorted(schema["required"]))
-                if operation == "arena_nfl_refusal_event":
+                branches = schema["branches"] if schema["kind"] == \
+                    "fixture-discriminated" else [{
+                        "fixture_id": None, "shape": schema}]
+                actual_fixture_ids = []
+                for branch in branches:
+                    branch_schema = branch["shape"]
+                    members = branch_schema["members"]
+                    branch_fixture_ids = members["fixture_id"]["allowed_values"]
+                    actual_fixture_ids.extend(branch_fixture_ids)
+                    if branch["fixture_id"] is not None:
+                        self.assertEqual(branch_fixture_ids, [branch["fixture_id"]])
+                    self.assertEqual(members["synthetic"]["allowed_values"], [True])
                     self.assertEqual(
-                        set(members),
-                        {"contains_provider_data", "fixture_id", "sport", "synthetic"},
+                        members["contains_provider_data"]["allowed_values"], [False]
                     )
-                else:
-                    family = "scope" if OUTPUT_KINDS[operation] == "longitudinal" else "event"
-                    self.assertIn(family, members)
-                    self.assertIn("coverage", members)
-                    self.assertIn("identity", members)
+                    self.assertEqual(
+                        members["sport"]["allowed_values"], [SPORTS[operation]])
+                    self.assertEqual(branch_schema["unknown_members"], "forbidden")
+                    self.assertEqual(
+                        branch_schema["required"], sorted(branch_schema["required"]))
+                    if operation == "arena_nfl_refusal_event":
+                        self.assertEqual(
+                            set(members),
+                            {"contains_provider_data", "fixture_id", "sport", "synthetic"},
+                        )
+                    else:
+                        family = "scope" if OUTPUT_KINDS[
+                            operation] == "longitudinal" else "event"
+                        self.assertIn(family, members)
+                        self.assertIn("coverage", members)
+                        self.assertIn("identity", members)
+                self.assertEqual(actual_fixture_ids, fixture_ids)
 
     def test_d7_pointer_templates_and_d8_representations_are_exact(self):
         for operation, expected in STATISTICS.items():
@@ -236,6 +279,82 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
             self.assertEqual(periods["sequence_pointer_template"],
                              "/records/{record_index}/period/sequence")
             self.assertEqual(periods["fixture_sequence_representations"], expected)
+
+    def test_mixed_longitudinal_shapes_are_fixture_discriminated_only(self):
+        for operation in ("arena_soccer_longitudinal", "arena_nfl_longitudinal"):
+            with self.subTest(operation=operation):
+                schema = self.shapes[operation]["artifact_schema"]
+                self.assertEqual(schema["kind"], "fixture-discriminated")
+                self.assertEqual(
+                    [branch["fixture_id"] for branch in schema["branches"]],
+                    FIXTURES[operation],
+                )
+        for operation in set(FIXTURES) - {
+                "arena_soccer_longitudinal", "arena_nfl_longitudinal"}:
+            with self.subTest(operation=operation):
+                self.assertEqual(
+                    self.shapes[operation]["artifact_schema"]["kind"], "object")
+
+    def test_all_approved_longitudinal_sequence_representations_validate_exactly(self):
+        cases = (
+            ("arena_soccer_longitudinal", "soccer-season-number", 1,
+             successor._JsonNumber),
+            ("arena_nfl_longitudinal", "nfl-rolling-anchor-number", 1,
+             successor._JsonNumber),
+            ("arena_soccer_longitudinal", "soccer-date-range-string", "1", str),
+            ("arena_nfl_longitudinal", "nfl-season-string", "1", str),
+            ("arena_nba_longitudinal", "nba-career-string", "1", str),
+        )
+        for operation, fixture_id, sequence, expected_type in cases:
+            schema = self.shapes[operation]["artifact_schema"]
+            raw = json.dumps(
+                longitudinal_fixture(operation, fixture_id, sequence),
+                sort_keys=True, separators=(",", ":"),
+            ).encode("utf-8")
+            parsed = successor._strict_json_object(raw, preserve_numbers=True)
+            with self.subTest(operation=operation, fixture_id=fixture_id):
+                self.assertIsNone(
+                    successor._validate_source_artifact_shape(parsed, schema))
+                self.assertIsInstance(
+                    parsed["records"][0]["period"]["sequence"], expected_type)
+
+    def test_cross_representation_discriminator_mismatch_and_unknown_fixture_refuse(self):
+        cases = (
+            ("arena_soccer_longitudinal", "soccer-season-number", "1"),
+            ("arena_soccer_longitudinal", "soccer-date-range-string", 1),
+            ("arena_nfl_longitudinal", "nfl-rolling-anchor-number", "1"),
+            ("arena_nfl_longitudinal", "nfl-season-string", 1),
+            ("arena_nfl_longitudinal", "unknown-fixture", 1),
+        )
+        for operation, fixture_id, sequence in cases:
+            schema = self.shapes[operation]["artifact_schema"]
+            raw = json.dumps(
+                longitudinal_fixture(operation, fixture_id, sequence),
+                sort_keys=True, separators=(",", ":"),
+            ).encode("utf-8")
+            parsed = successor._strict_json_object(raw, preserve_numbers=True)
+            with self.subTest(operation=operation, fixture_id=fixture_id,
+                              sequence=sequence), self.assertRaisesRegex(
+                    successor.CanonicalContractError,
+                    "^source-artifact-shape-mismatch$"):
+                successor._validate_source_artifact_shape(parsed, schema)
+
+    def test_refusal_non_collection_evidence_sets_are_target_exact(self):
+        expected = {
+            "arena_soccer_refusal_event": {
+                "complete_identity_census",
+                "validated_spatial_evidence_and_disposition",
+            },
+            "arena_nba_refusal_event": {"complete_identity_census"},
+        }
+        for operation, evidence_classes in expected.items():
+            actual = {
+                item["evidence_class"]
+                for item in self.operations[operation][
+                    "promised_non_collection_evidence"]
+            }
+            with self.subTest(operation=operation):
+                self.assertEqual(actual, evidence_classes)
 
     def test_d9_collection_boundaries_use_one_exact_source_tuple(self):
         expected_by_operation = {

@@ -51,10 +51,12 @@ the complete runtime receipt ship under `data/`.
 
 ## Opt-in Phase 1 evidence contract
 
-Version 0.4.1 adds nine data-only, synthetic-replay owner registrations for the
-approved Sports Skills Arena operations. Their descriptions explicitly limit
-non-evidenced spatial, coverage, authority, and longitudinal semantics to
-synthetic replay. Version 0.4.0 preserves the 0.3.0 public surface and adds the
+Version 0.4.1 adds nine synthetic-replay owner registrations for the approved
+Sports Skills Arena operations, accepts only exact 0.4.0/0.4.1 owner identity,
+and adds closed root-fixture dispatch for the approved mixed-representation
+longitudinal shapes. Their descriptions explicitly limit non-evidenced spatial,
+coverage, authority, and longitudinal semantics to synthetic replay. Version
+0.4.0 preserves the 0.3.0 public surface and adds the
 internal, provider-neutral trust prerequisites for separately attested output
 collection contracts, closed source-shape validation, and selector enums. Version 0.3.0
 added `canonical-observation/1.2`, profile 1.3,

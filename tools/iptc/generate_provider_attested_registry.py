@@ -1,4 +1,4 @@
-"""Generate the Design 034 data-only owner registry.
+"""Generate the Design 034 owner registry.
 
 The records describe synthetic, provider-data-free replay artifacts. They attest
 Sports Skills' normalized adapter boundary, never provider transport payloads.
@@ -254,16 +254,21 @@ def event_schema(operation, config):
         "sport", "synthetic"))
 
 
-def longitudinal_schema(operation, config):
+def longitudinal_object_schema(operation, config, fixture_id=None):
     statistic_value = string() if config["sport"] == "soccer" else number()
     statistic = statistic_schema(statistic_value)
-    # The closed grammar has no unions. The owner record keeps the common scalar
-    # slot closed; exact per-fixture number/string interpretation is digest-bound
-    # in the operation evidence below and enforced by the consumer package.
+    fixture_ids = [fixture_id] if fixture_id is not None else config["fixtures"]
+    representations = SEQUENCE_REPRESENTATIONS[operation]
+    sequence_representations = {representations[item] for item in fixture_ids}
+    if len(sequence_representations) != 1:
+        raise ValueError("mixed sequence representations require fixture branches")
+    sequence_representation = sequence_representations.pop()
+    sequence = number() if sequence_representation.startswith("json-number") \
+        else string()
     period = object_shape({
         "boundary": boundary_schema(),
         "scheme": string(),
-        "sequence": string(),
+        "sequence": sequence,
         "value": string(),
     }, ("scheme", "sequence", "value"))
     record = object_shape({
@@ -295,7 +300,7 @@ def longitudinal_schema(operation, config):
         "aggregates": array(statistic),
         "contains_provider_data": boolean(False),
         "coverage": coverage,
-        "fixture_id": string(*config["fixtures"]),
+        "fixture_id": string(*fixture_ids),
         "identity": array(identity_schema("longitudinal")),
         "records": array(record),
         "scope": scope,
@@ -306,6 +311,19 @@ def longitudinal_schema(operation, config):
         "synthetic": boolean(True),
     }, ("aggregates", "contains_provider_data", "coverage", "fixture_id", "identity",
         "records", "scope", "sport", "subject", "synthetic"))
+
+
+def longitudinal_schema(operation, config):
+    if operation not in (
+            "arena_soccer_longitudinal", "arena_nfl_longitudinal"):
+        return longitudinal_object_schema(operation, config)
+    return {
+        "kind": "fixture-discriminated",
+        "branches": [{
+            "fixture_id": fixture_id,
+            "shape": longitudinal_object_schema(operation, config, fixture_id),
+        } for fixture_id in config["fixtures"]],
+    }
 
 
 def nfl_refusal_schema(config):
@@ -466,7 +484,9 @@ def operation_evidence(operation, config):
             ),
             "evidence_class": "preflight_refusal_only",
         }]
-    evidence = [identity_evidence("event"), event_period_evidence()]
+    evidence = [identity_evidence("event")]
+    if config["family"] not in ("soccer-refusal", "nba-refusal"):
+        evidence.append(event_period_evidence())
     if operation in STATISTICS:
         evidence.append(statistic_evidence(operation))
     if operation in SPATIAL_REPRESENTATIONS:

@@ -88,6 +88,7 @@ _ENTITY_TYPES = frozenset({
 })
 _OUTPUT_MODES = frozenset({"operational_only", "with_iptc_graph"})
 _CONSUMER_TIERS = frozenset({"prototype", "production"})
+_SUPPORTED_0_4_OWNER_VERSIONS = frozenset({"0.4.0", "0.4.1"})
 
 
 class CanonicalContractError(ValueError):
@@ -693,10 +694,37 @@ def _validate_source_shape_schema(schema: Mapping[str, Any]) -> None:
     def canonical_sort(values):
         return sorted(values, key=canonical_json_bytes)
 
-    def validate_node(node):
+    def validate_node(node, allow_fixture_discriminator=False):
         if not isinstance(node, Mapping) or not isinstance(node.get("kind"), str):
             raise ValueError
         kind = node["kind"]
+        if kind == "fixture-discriminated":
+            if not allow_fixture_discriminator or set(node) != {"kind", "branches"}:
+                raise ValueError
+            branches = node.get("branches")
+            if not isinstance(branches, list) or not branches:
+                raise ValueError
+            fixture_ids = []
+            for branch in branches:
+                if not isinstance(branch, Mapping) or set(branch) != {
+                        "fixture_id", "shape"} or \
+                        type(branch.get("fixture_id")) is not str or \
+                        _contains_invalid_text(branch["fixture_id"]):
+                    raise ValueError
+                fixture_id = branch["fixture_id"]
+                branch_shape = branch["shape"]
+                if not isinstance(branch_shape, Mapping) or \
+                        branch_shape.get("kind") != "object" or \
+                        "fixture_id" not in branch_shape.get("required", ()) or \
+                        branch_shape.get("members", {}).get("fixture_id") != {
+                            "kind": "string", "allowed_values": [fixture_id]}:
+                    raise ValueError
+                fixture_ids.append(fixture_id)
+                validate_node(branch_shape)
+            if fixture_ids != sorted(fixture_ids) or \
+                    len(fixture_ids) != len(set(fixture_ids)):
+                raise ValueError
+            return
         if kind == "object":
             if set(node) != {"kind", "members", "required", "unknown_members"} or \
                     node.get("unknown_members") != "forbidden":
@@ -740,8 +768,8 @@ def _validate_source_shape_schema(schema: Mapping[str, Any]) -> None:
             raise ValueError
 
     try:
-        validate_node(schema)
-        if schema.get("kind") != "object":
+        validate_node(schema, allow_fixture_discriminator=True)
+        if schema.get("kind") not in ("object", "fixture-discriminated"):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise CanonicalContractError("invalid-source-shape-schema") from None
@@ -754,6 +782,15 @@ def _validate_source_artifact_shape(
     def validate_node(node, shape):
         kind = shape["kind"]
         allowed = shape.get("allowed_values")
+        if kind == "fixture-discriminated":
+            if not isinstance(node, dict) or type(node.get("fixture_id")) is not str:
+                raise ValueError
+            matches = [branch for branch in shape["branches"]
+                       if branch["fixture_id"] == node["fixture_id"]]
+            if len(matches) != 1:
+                raise ValueError
+            validate_node(node, matches[0]["shape"])
+            return
         if kind == "object":
             if not isinstance(node, dict) or not set(shape["required"]).issubset(node) or \
                     set(node) - set(shape["members"]):
@@ -828,9 +865,12 @@ def _load_0_4_closure(
     *, package_ref: Mapping[str, Any], request: Mapping[str, Any]
 ) -> LoadedCanonicalTrustClosureV1:
     """Load one exact version-2 owner registration without legacy fallback."""
-    if not isinstance(package_ref, Mapping) or not isinstance(request, Mapping) or \
-            package_ref.get("owner_package") != {
-                "name": "machina-sports-canonical", "version": "0.4.0"}:
+    owner_package = package_ref.get("owner_package") \
+        if isinstance(package_ref, Mapping) else None
+    if not isinstance(owner_package, Mapping) or not isinstance(request, Mapping) or \
+            set(owner_package) != {"name", "version"} or \
+            owner_package.get("name") != "machina-sports-canonical" or \
+            owner_package.get("version") not in _SUPPORTED_0_4_OWNER_VERSIONS:
         raise CanonicalContractError("invalid-0.4-owner-package")
     registry_bytes = package_ref.get("registry_bytes")
     registry = _strict_json_object(registry_bytes)
@@ -966,13 +1006,19 @@ def _load_0_4_closure(
         raise CanonicalContractError("fixture-manifest-disagreement")
     _validate_operation_argument_schema(
         argument_schema, fixture_manifest.get("fixture_ids"))
+    artifact_schema = shape["artifact_schema"]
+    if artifact_schema.get("kind") == "fixture-discriminated" and \
+            [branch["fixture_id"] for branch in artifact_schema["branches"]] != \
+            fixture_manifest.get("fixture_ids"):
+        raise CanonicalContractError("fixture-manifest-disagreement")
 
     loaded_values = dict(values)
     loaded_values.update(source_shape=shape, operation_contract=operation,
                          output_collection_contract=output)
     package_release = loaded_values.get("package_release")
     if not isinstance(package_release, Mapping) or package_release.get("name") != \
-            "machina-sports-canonical" or package_release.get("version") != "0.4.0":
+            "machina-sports-canonical" or package_release.get("version") != \
+            owner_package["version"]:
         raise CanonicalContractError("invalid-0.4-owner-package")
     return _construct_loaded_trust_closure(**loaded_values)
 
@@ -2209,7 +2255,8 @@ def _load_source_artifact(
     if media_type == "application/json":
         parsed = _strict_json_object(original_bytes, preserve_numbers=True)
         schema = trust.source_shape.get("artifact_schema")
-        if schema is None and trust.package_release.get("version") == "0.4.0":
+        if schema is None and trust.package_release.get(
+                "version") in _SUPPORTED_0_4_OWNER_VERSIONS:
             raise CanonicalContractError("invalid-source-shape-schema")
         if schema is not None:
             _validate_source_artifact_shape(parsed, schema)
@@ -2240,7 +2287,8 @@ def _reparse_source_artifact(artifact, trust):
     if artifact.media_type == "application/json":
         parsed = _strict_json_object(artifact.original_bytes, preserve_numbers=True)
         schema = trust.source_shape.get("artifact_schema")
-        if schema is None and trust.package_release.get("version") == "0.4.0":
+        if schema is None and trust.package_release.get(
+                "version") in _SUPPORTED_0_4_OWNER_VERSIONS:
             raise CanonicalContractError("invalid-source-shape-schema")
         if schema is not None:
             _validate_source_artifact_shape(parsed, schema)
@@ -3474,7 +3522,7 @@ def execute_adapter_operation(
     if trust.source_artifacts or trust._requested_consumer_tier is not None or \
             trust._required_capabilities:
         raise CanonicalContractError("loaded-trust-closure-reused")
-    if trust.package_release.get("version") == "0.4.0":
+    if trust.package_release.get("version") in _SUPPORTED_0_4_OWNER_VERSIONS:
         schema = trust.source_shape.get("artifact_schema")
         if schema is None:
             raise CanonicalContractError("invalid-source-shape-schema")
