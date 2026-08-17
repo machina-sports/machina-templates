@@ -1,7 +1,7 @@
 {
   "distribution_version": "0.4.1",
   "source": "machina-templates:tools/iptc/canonical",
-  "source_commit": "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671",
+  "source_commit": "ca275c65b3ad2e830ecf755d41c6ff95533c2040",
   "legacy_contract_version": "0.2.0",
   "runtime_manifest": "sha256:bea48955cea85b8ca62816b7c3f81c30fd21fbd3cff1ce1e367d091908a8044c",
   "core_manifest": {

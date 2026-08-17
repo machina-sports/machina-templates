@@ -596,9 +596,9 @@ RELEASE_CHECKSUM_PATH = REPO_ROOT / RELEASE_CHECKSUM_FILE
 #: unperformable in two of the three.
 REVIEWED_RELEASE_DIGESTS = (
     ("machina_sports_canonical-0.4.1-py3-none-any.whl",
-      "97eedc7311b8c407755468e1cc1f41aedcdb8f6e4744a79694fdc98ac1cafb48"),
+      "f3f966d247bc541d48d2119a53a984da39a43f171cf6e92c487cafbcf244eaf6"),
     ("machina_sports_canonical-0.4.1.tar.gz",
-      "91732cc875b81b4fe4f37aa576d2c27d8bb6a5d10e0d8288a19d802be6d18112"),
+      "6fb2d6a1aeb180e010e0f0da68f9060934ef4ccd052738652cba3a74967ff858"),
 )
 
 HISTORICAL_0_3_CHECKSUM_FILE = \
@@ -744,7 +744,7 @@ FIXED_POINT_SEQUENCE_PHRASES = (
 #: Asserted in the release document as well as in the receipt, because a releaser
 #: reconstructing a build reads the document and must not have to open a JSON file
 #: to discover which two values the build depends on.
-FIXED_POINT_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
+FIXED_POINT_COMMIT = "ca275c65b3ad2e830ecf755d41c6ff95533c2040"
 
 #: The immutable source pin and epoch for the historical 0.2.0 fixed point.
 HISTORICAL_0_2_FIXED_POINT_COMMIT = \
@@ -782,9 +782,9 @@ GITHUB_RELEASE_ATTACHMENTS = ("dist/*.whl", "dist/*.tar.gz",
 #: timestamp with one fixed value. It is the source commit's own time rather than
 #: an arbitrary constant so the number in the workflow can be re-derived from the
 #: tree it describes.
-CANONICAL_SOURCE_COMMIT = "a57ffcff0b6efabbbc62fd5b736c8fee0eb4b671"
-CANONICAL_SOURCE_TREE = "6102c846860a05aa42932dbbad81541d25f64d7c"
-RELEASE_SOURCE_DATE_EPOCH = "1786951696"
+CANONICAL_SOURCE_COMMIT = "ca275c65b3ad2e830ecf755d41c6ff95533c2040"
+CANONICAL_SOURCE_TREE = "b2b9241f0b93fa002b918949161714a6ecfafa64"
+RELEASE_SOURCE_DATE_EPOCH = "1786977102"
 APPROVAL_REFERENCE = "provider-attested-sports-skills-operations-v1"
 
 #: The one place a release is built. `SOURCE_DATE_EPOCH` is enough for the wheel —
