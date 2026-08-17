@@ -682,6 +682,54 @@ class TestProviderAttestedOwnerRegistry(unittest.TestCase):
                 successor._build_period_descriptor(
                     handle, record_ref="/records/0", loaded_trust=trust)
 
+    def test_legacy_closures_refuse_0_4_1_absence_probe_before_adapter_import(self):
+        operation = "arena_nba_longitudinal"
+        probe_templates = self.shapes[operation]["safe_absence_probe_templates"]
+        imported = []
+
+        class Loader:
+            def __init__(self, version):
+                self.version = version
+
+            def load_static(self, package_ref, operation_request):
+                return successor._construct_loaded_trust_closure(
+                    descriptor={
+                        "schema_version": "machina-adapter-descriptor/1",
+                        "provider_namespace": PROVIDER,
+                        "operation": operation,
+                        "capabilities": [],
+                        "module_entrypoint": "synthetic-fixture",
+                    },
+                    source_shape={
+                        "safe_absence_probe_templates": json.loads(json.dumps(
+                            probe_templates)),
+                    },
+                    package_release={
+                        "name": "machina-sports-canonical",
+                        "version": self.version,
+                        "package_artifact_digest": "sha256:" + "2" * 64,
+                        "release_id": "fixture",
+                        "release_digest": "sha256:" + "3" * 64,
+                    },
+                )
+
+            def import_adapter(self, trust):
+                imported.append(self.version)
+                raise AssertionError("adapter import must remain at zero")
+
+        for version in ("0.3.0", "0.4.0"):
+            with self.subTest(version=version), self.assertRaisesRegex(
+                    successor.CanonicalContractError,
+                    "^safe-absence-probes-require-0.4.1-owner$"):
+                successor.execute_adapter_operation(
+                    package_ref={},
+                    request_bytes=successor.canonical_json_bytes(
+                        request_for_operation(operation)),
+                    operation_arguments_bytes=b'{}',
+                    trusted_loader=Loader(version),
+                )
+        self.assertEqual(imported, [])
+
     def test_refusal_shapes_expose_only_assigned_runtime_binding_paths(self):
         expected = {
             "arena_soccer_refusal_event": {

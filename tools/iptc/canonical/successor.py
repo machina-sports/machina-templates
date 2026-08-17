@@ -2749,7 +2749,8 @@ def _load_source_value_handle(artifact, template, bindings, trust_closure):
                 approved_probe = {
                     "pointer_template": template[field], "probe": "member_absent"}
                 probes = trust.source_shape.get("safe_absence_probe_templates", ())
-                if sum(probe == approved_probe for probe in probes) == 1 and \
+                if trust.package_release.get("version") == "0.4.1" and \
+                        sum(probe == approved_probe for probe in probes) == 1 and \
                         _source_member_is_absent(parsed, pointer):
                     continue
             expanded[name] = pointer
@@ -3969,6 +3970,9 @@ def execute_adapter_operation(
     if trust.source_artifacts or trust._requested_consumer_tier is not None or \
             trust._required_capabilities:
         raise CanonicalContractError("loaded-trust-closure-reused")
+    if trust.package_release.get("version") in ("0.3.0", "0.4.0") and \
+            trust.source_shape.get("safe_absence_probe_templates"):
+        raise CanonicalContractError("safe-absence-probes-require-0.4.1-owner")
     if trust.package_release.get("version") in _SUPPORTED_0_4_OWNER_VERSIONS:
         schema = trust.source_shape.get("artifact_schema")
         if schema is None:
