@@ -583,6 +583,25 @@ class TestFightAnalyticsAdditionalRestConnectors(unittest.TestCase):
             self.assertEqual(operation["operationId"], operation_id)
             self.assertEqual(operation.get("security"), [{"bearer": []}])
 
+    def test_bearer_secured_operations_do_not_declare_authorization_headers(self):
+        for openapi_path in (OPENAPI_PATH, AUTH_OPENAPI_PATH, STATISTICS_OPENAPI_PATH):
+            document = read_openapi(openapi_path)
+            for path, path_item in document["paths"].items():
+                for method in set(path_item) & HTTP_METHODS:
+                    operation = path_item[method]
+                    if {"bearer": []} not in operation.get("security", []):
+                        continue
+                    authorization_headers = [
+                        parameter
+                        for parameter in operation.get("parameters", [])
+                        if parameter.get("in") == "header"
+                        and parameter.get("name", "").casefold() == "authorization"
+                    ]
+                    with self.subTest(
+                        document=openapi_path.name, path=path, method=method
+                    ):
+                        self.assertEqual(authorization_headers, [])
+
     def test_every_reference_in_all_openapi_documents_resolves(self):
         for path in (OPENAPI_PATH, AUTH_OPENAPI_PATH, STATISTICS_OPENAPI_PATH):
             document = read_openapi(path)

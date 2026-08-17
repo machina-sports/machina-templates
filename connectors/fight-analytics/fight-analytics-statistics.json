@@ -190,14 +190,6 @@
               "example": "desc",
               "type": "string"
             }
-          },
-          {
-            "name": "authorization",
-            "required": true,
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
