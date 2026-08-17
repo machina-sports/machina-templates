@@ -77,7 +77,7 @@ These bytes are not authored in this distribution. They are published from
 ships inside the package and records the distribution version, source path, and
 complete SHA-256 runtime/data manifest. The 0.4.1 release metadata pins the
 reviewed owner source commit
-`ca275c65b3ad2e830ecf755d41c6ff95533c2040`:
+`2f4807103a460f4ac4b8892d9afbf3c1b31b2bc5`:
 
 ```python
 import json, pathlib, machina_sports_canonical

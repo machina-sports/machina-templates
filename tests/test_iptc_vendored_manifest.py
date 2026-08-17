@@ -135,7 +135,7 @@ CONSUMER_KEY_ORDER = (
 
 #: The commit whose canonical bytes this manifest pins. A17 records the runtime
 #: as it stands and changes none of it.
-SOURCE_COMMIT = "ca275c65b3ad2e830ecf755d41c6ff95533c2040"
+SOURCE_COMMIT = "2f4807103a460f4ac4b8892d9afbf3c1b31b2bc5"
 
 
 def manifest():
