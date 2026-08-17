@@ -178,7 +178,7 @@ The release is built once, by
 environment:
 
 ```sh
-SOURCE_DATE_EPOCH=1786983984 \
+SOURCE_DATE_EPOCH=1786988387 \
   python packaging/machina_sports_canonical/release.py . dist
 sha256sum dist/*.whl dist/*.tar.gz
 ```
@@ -186,8 +186,8 @@ sha256sum dist/*.whl dist/*.tar.gz
 `docs/iptc/machina-sports-canonical-0.4.1.review-source.json` is the durable review
 receipt for these values. It records schema `machina-reviewed-source/1`, approval
 reference `provider-attested-sports-skills-operations-v1`, canonical source commit
-`0165557eb459740071963de3cf7a0669bd4dd721`, reviewed tree
-`bfddaab8c9ac4d9ab335af085dadfdfb8c50525d`, and integer epoch `1786983984`.
+`120d5ccfd6d3c6d1e068d3424bc1ce116bbdd545`, reviewed tree
+`de99f537514af24cc240a67ca587bd6e274468fe`, and integer epoch `1786988387`.
 `reviewed_source_tree` identifies the canonical implementation tree before the
 generated fixed-point metadata re-pin; it does not identify the complete fixed-point
 tree that produces the recorded archives.
@@ -231,8 +231,8 @@ diffs against:
 
 | Artefact | SHA-256 |
 |---|---|
-| `machina_sports_canonical-0.4.1-py3-none-any.whl` | `e8c65a4f22136075bd8414743de25ea83470b737a780c814a4137ff91850c1b5` |
-| `machina_sports_canonical-0.4.1.tar.gz` | `caa7b6aa4c7e6f5f77ec483d2fa58d4abae8c558599252b387a254c23c4aa95b` |
+| `machina_sports_canonical-0.4.1-py3-none-any.whl` | `ceea3427bd68db3c3639422ba7aedd3a090bd5c8b78b5beefb8fbe8ab0d65e69` |
+| `machina_sports_canonical-0.4.1.tar.gz` | `8d74ba917b33c6f10feea22b9cf41ac13d3ae6afce9e894b2ea7cb5390532221` |
 
 These rows are the **0.4.1 release candidate**, produced from the reviewed 0.4
 owner source commit and its re-pinned generated receipts. They are recorded so

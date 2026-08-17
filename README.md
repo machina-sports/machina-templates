@@ -8,12 +8,12 @@ The durable review authority for `machina-sports-canonical` 0.4.1 is
 reachability of a pre-squash Git object. The closed `machina-reviewed-source/1`
 receipt records approval reference
 `provider-attested-sports-skills-operations-v1`, source commit
-`0165557eb459740071963de3cf7a0669bd4dd721`, reviewed tree
-`bfddaab8c9ac4d9ab335af085dadfdfb8c50525d`, and epoch `1786983984` alongside
+`120d5ccfd6d3c6d1e068d3424bc1ce116bbdd545`, reviewed tree
+`de99f537514af24cc240a67ca587bd6e274468fe`, and epoch `1786988387` alongside
 these reviewed artefacts:
 
-- `machina_sports_canonical-0.4.1-py3-none-any.whl`: `e8c65a4f22136075bd8414743de25ea83470b737a780c814a4137ff91850c1b5`
-- `machina_sports_canonical-0.4.1.tar.gz`: `caa7b6aa4c7e6f5f77ec483d2fa58d4abae8c558599252b387a254c23c4aa95b`
+- `machina_sports_canonical-0.4.1-py3-none-any.whl`: `ceea3427bd68db3c3639422ba7aedd3a090bd5c8b78b5beefb8fbe8ab0d65e69`
+- `machina_sports_canonical-0.4.1.tar.gz`: `8d74ba917b33c6f10feea22b9cf41ac13d3ae6afce9e894b2ea7cb5390532221`
 
 The source commit remains package provenance even if squash merge and branch
 deletion make it unreachable as a Git object. `reviewed_source_tree` identifies
